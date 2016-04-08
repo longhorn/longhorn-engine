@@ -1,15 +1,57 @@
-FROM golang:1.6
-RUN go get github.com/rancher/trash
-RUN go get github.com/golang/lint/golint
-RUN curl -sL https://get.docker.com/builds/Linux/x86_64/docker-1.9.1 > /usr/bin/docker && \
-    chmod +x /usr/bin/docker
+FROM ubuntu:16.04
+
+# Setup environment
 ENV PATH /go/bin:$PATH
-ENV DAPPER_SOURCE /go/src/github.com/rancher/longhorn
-ENV DAPPER_OUTPUT bin
 ENV DAPPER_DOCKER_SOCKET true
 ENV DAPPER_ENV TAG REPO
-ENV GO15VENDOREXPERIMENT 1
+ENV DAPPER_OUTPUT bin
+ENV DAPPER_RUN_ARGS --privileged
+ENV DAPPER_RUN_ARGS --tmpfs /go/src/github.com/rancher/longhorn/integration/.venv:exec --tmpfs /go/src/github.com/rancher/longhorn/integration/.tox:exec
+ENV DAPPER_SOURCE /go/src/github.com/rancher/longhorn
 ENV TRASH_CACHE ${DAPPER_SOURCE}/.trash-cache
 WORKDIR ${DAPPER_SOURCE}
+
+# Install packages
+RUN apt-get update && \
+    apt-get install -y \
+        curl \
+        git \
+        python-tox \
+        cmake \
+        pkg-config \
+        libglib2.0-dev \
+        libkmod-dev \
+        libnl-genl-3-dev \
+        linux-libc-dev
+
+# Install Go 1.6
+RUN curl -o go.tar.gz https://storage.googleapis.com/golang/go1.6.1.linux-amd64.tar.gz
+RUN echo '6d894da8b4ad3f7f6c295db0d73ccc3646bce630e1c43e662a0120681d47e988  go.tar.gz' | sha256sum -c && \
+    tar xvzf go.tar.gz -C /usr/local && \
+    rm go.tar.gz
+RUN mkdir -p /go
+ENV PATH $PATH:/usr/local/go/bin
+ENV GOPATH=/go
+
+# Go tools
+RUN go get github.com/rancher/trash
+RUN go get github.com/golang/lint/golint
+
+# Docker
+RUN curl -sL https://get.docker.com/builds/Linux/x86_64/docker-1.9.1 > /usr/bin/docker && \
+    chmod +x /usr/bin/docker
+
+# Build TCMU
+RUN cd /usr/src && \
+    git clone https://github.com/agrover/tcmu-runner.git && \
+    cd tcmu-runner && \
+    git checkout 9b6d458cd3106ee75b1800cb2fbfb6ffe545b669
+RUN cd /usr/src/tcmu-runner && \
+    cmake . -Dwith-glfs=false && \
+    make && \
+    make install && \
+    cp scsi_defs.h /usr/local/include && \
+    cp libtcmu_static.a /usr/local/lib/libtcmu.a
+
 ENTRYPOINT ["./scripts/entry"]
-CMD ["ci"]
+CMD ["build"]

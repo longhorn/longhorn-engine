@@ -8,6 +8,10 @@ cd $(dirname $0)/../package
 TAG=${TAG:-${VERSION}}
 REPO=${REPO:-rancher}
 
+if [ ! -x ../bin/longhorn ]; then
+    ../scripts/build
+fi
+
 cp ../bin/longhorn .
 docker build -t ${REPO}/longhorn:${TAG} .
 

@@ -1,4 +1,11 @@
 /.dapper
-/bin
-*.swp
 /.trash-cache
+/bin
+*.pyc
+*.pyo
+*.swp
+
+integration/.idea/
+integration/.tox/
+integration/.venv/
+integration/MANIFEST

@@ -10,7 +10,10 @@ A microservice that does micro things.
 
 ## Running
 
-`./bin/longhorn`
+    ./bin/longhorn replica --size 10g /opt/volume
+    ./bin/longhorn controller --frontend tcmu vol-name --replica tcp://localhost:9052
+
+That will create the device `/dev/longhorn/vol-name`
 
 ## License
 Copyright (c) 2014-2016 [Rancher Labs, Inc.](http://rancher.com)

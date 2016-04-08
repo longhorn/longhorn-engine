@@ -1,0 +1,12 @@
+#!/bin/bash
+set -e
+
+temp=$(mktemp -d)
+trap "rm -rf $temp" EXIT
+
+cd $(dirname $0)/..
+./bin/longhorn controller --enable-backend file test-volume &
+./bin/longhorn replica $temp &
+cd integration
+find -depth -name __pycache__ -o -name "*.pyc" -exec rm -rf {} \;
+tox
