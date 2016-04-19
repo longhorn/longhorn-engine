@@ -16,6 +16,11 @@ func (s *Server) ListReplicas(rw http.ResponseWriter, req *http.Request) error {
 		resp.Data = append(resp.Data, NewReplica(r.Address, r.Mode))
 	}
 
+	resp.ResourceType = "replica"
+	resp.CreateTypes = map[string]string{
+		"replica": apiContext.UrlBuilder.Collection("replica"),
+	}
+
 	apiContext.Write(&resp)
 	return nil
 }
