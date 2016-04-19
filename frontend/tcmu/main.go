@@ -164,7 +164,7 @@ func (s *State) handleCommand(dev Device, cmd Command) int {
 	case C.WRITE_6, C.WRITE_10, C.WRITE_12, C.WRITE_16:
 		return s.handleWriteCommand(dev, cmd)
 	default:
-		log.Errorf("unknown command 0x%x\n", scsiCmd)
+		log.Debugf("Ignore unknown SCSI command 0x%x\n", scsiCmd)
 	}
 	return C.TCMU_NOT_HANDLED
 }
