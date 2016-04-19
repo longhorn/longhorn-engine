@@ -93,6 +93,7 @@ func (c *Client) handleRequest(req *Message) {
 
 func (c *Client) handleResponse(resp *Message) {
 	if req, ok := c.messages[resp.Seq]; ok {
+		delete(c.messages, resp.Seq)
 		// can probably optimize away this copy
 		if len(resp.Data) > 0 {
 			copy(req.Data, resp.Data)
