@@ -1,4 +1,4 @@
-package main
+package tcmu
 
 /*
 #include <stdio.h>
@@ -6,8 +6,8 @@ package main
 #include <stdarg.h>
 #include <poll.h>
 #include <scsi/scsi.h>
-
-#include "libtcmu.h"
+#include <scsi_defs.h>
+#include <libtcmu.h>
 
 
 void errp(const char *fmt, ...)
@@ -69,7 +69,7 @@ int tcmu_wait_for_next_command(struct tcmu_device *dev) {
 
 	poll(&pfd, 1, -1);
 
-	if (pfd.revents != 0 && pfd.revents != POLLIN ) {
+	if (pfd.revents != POLLIN) {
 		errp("poll received unexpected revent: 0x%x\n", pfd.revents);
 		return -1;
 	}
@@ -92,17 +92,17 @@ import (
 )
 
 type (
-	TcmuCommand *C.struct_tcmulib_cmd
-	TcmuDevice  *C.struct_tcmu_device
+	Command *C.struct_tcmulib_cmd
+	Device  *C.struct_tcmu_device
 
 	Cbuffer *C.void
 )
 
-func CmdGetScsiCmd(cmd TcmuCommand) byte {
+func CmdGetScsiCmd(cmd Command) byte {
 	return byte(C.tcmucmd_get_cdb_at(cmd, 0))
 }
 
-func CmdMemcpyIntoIovec(cmd TcmuCommand, buf []byte, length int) int {
+func CmdMemcpyIntoIovec(cmd Command, buf []byte, length int) int {
 	if len(buf) != length {
 		log.Errorln("read buffer length %v is not %v: ", len(buf), length)
 		return 0
@@ -110,7 +110,7 @@ func CmdMemcpyIntoIovec(cmd TcmuCommand, buf []byte, length int) int {
 	return int(C.tcmu_memcpy_into_iovec(cmd.iovec, cmd.iov_cnt, unsafe.Pointer(&buf[0]), C.size_t(length)))
 }
 
-func CmdMemcpyFromIovec(cmd TcmuCommand, buf []byte, length int) int {
+func CmdMemcpyFromIovec(cmd Command, buf []byte, length int) int {
 	if len(buf) != length {
 		log.Errorln("write buffer length %v is not %v: ", len(buf), length)
 		return 0
@@ -118,35 +118,35 @@ func CmdMemcpyFromIovec(cmd TcmuCommand, buf []byte, length int) int {
 	return int(C.tcmu_memcpy_from_iovec(unsafe.Pointer(&buf[0]), C.size_t(length), cmd.iovec, cmd.iov_cnt))
 }
 
-func CmdSetMediumError(cmd TcmuCommand) int {
+func CmdSetMediumError(cmd Command) int {
 	return int(C.tcmu_set_sense_data(&cmd.sense_buf[0], C.MEDIUM_ERROR, C.ASC_READ_ERROR, nil))
 }
 
-func CmdGetLba(cmd TcmuCommand) int64 {
+func CmdGetLba(cmd Command) int64 {
 	return int64(C.tcmu_get_lba(cmd.cdb))
 }
 
-func CmdGetXferLength(cmd TcmuCommand) int {
+func CmdGetXferLength(cmd Command) int {
 	return int(C.tcmu_get_xfer_length(cmd.cdb))
 }
 
-func CmdEmulateInquiry(cmd TcmuCommand, dev TcmuDevice) int {
+func CmdEmulateInquiry(cmd Command, dev Device) int {
 	return int(C.tcmu_emulate_inquiry(dev, cmd.cdb, cmd.iovec, cmd.iov_cnt, &cmd.sense_buf[0]))
 }
 
-func CmdEmulateTestUnitReady(cmd TcmuCommand) int {
+func CmdEmulateTestUnitReady(cmd Command) int {
 	return int(C.tcmu_emulate_test_unit_ready(cmd.cdb, cmd.iovec, cmd.iov_cnt, &cmd.sense_buf[0]))
 }
 
-func CmdEmulateModeSense(cmd TcmuCommand) int {
+func CmdEmulateModeSense(cmd Command) int {
 	return int(C.tcmu_emulate_mode_sense(cmd.cdb, cmd.iovec, cmd.iov_cnt, &cmd.sense_buf[0]))
 }
 
-func CmdEmulateModeSelect(cmd TcmuCommand) int {
+func CmdEmulateModeSelect(cmd Command) int {
 	return int(C.tcmu_emulate_mode_select(cmd.cdb, cmd.iovec, cmd.iov_cnt, &cmd.sense_buf[0]))
 }
 
-func CmdEmulateServiceActionIn(cmd TcmuCommand, numLbas int64, blockSize int) int {
+func CmdEmulateServiceActionIn(cmd Command, numLbas int64, blockSize int) int {
 	if C.tcmucmd_get_cdb_at(cmd, 1) == C.READ_CAPACITY_16 {
 		return int(C.tcmu_emulate_read_capacity_16(C.uint64_t(numLbas),
 			C.uint32_t(blockSize),
