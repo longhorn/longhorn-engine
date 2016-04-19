@@ -11,7 +11,7 @@ A microservice that does micro things.
 ## Running
 
     ./bin/longhorn replica --size 10g /opt/volume
-    ./bin/longhorn controller --frontend tcmu vol-name --replica tcp://localhost:9052
+    ./bin/longhorn controller --frontend tcmu --replica tcp://localhost:9502 vol-name
 
 That will create the device `/dev/longhorn/vol-name`
 
