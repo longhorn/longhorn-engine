@@ -45,6 +45,10 @@ func startReplica(c *cli.Context) error {
 		return errors.New("directory name is required")
 	}
 
+	if c.Bool("debug") {
+		logrus.SetLevel(logrus.DebugLevel)
+	}
+
 	dir := c.Args()[0]
 	s := replica.NewServer(dir, 4096)
 

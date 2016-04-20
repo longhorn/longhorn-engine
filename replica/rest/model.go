@@ -15,7 +15,7 @@ const (
 
 type Replica struct {
 	client.Resource
-	Dirty      bool     `json:"dirtry"`
+	Dirty      bool     `json:"dirty"`
 	Head       string   `json:"head"`
 	Parent     string   `json:"parent"`
 	Size       string   `json:"size"`

@@ -51,6 +51,12 @@ func (c *ControllerClient) CreateReplica(address string) (*rest.Replica, error) 
 	return &resp, err
 }
 
+func (c *ControllerClient) UpdateReplica(replica rest.Replica) (rest.Replica, error) {
+	var resp rest.Replica
+	err := c.put(replica.Links["self"], &replica, &resp)
+	return resp, err
+}
+
 func (c *ControllerClient) GetVolume() (*rest.Volume, error) {
 	var volumes rest.VolumeCollection
 
@@ -67,6 +73,14 @@ func (c *ControllerClient) GetVolume() (*rest.Volume, error) {
 }
 
 func (c *ControllerClient) post(path string, req, resp interface{}) error {
+	return c.do("POST", path, req, resp)
+}
+
+func (c *ControllerClient) put(path string, req, resp interface{}) error {
+	return c.do("PUT", path, req, resp)
+}
+
+func (c *ControllerClient) do(method, path string, req, resp interface{}) error {
 	b, err := json.Marshal(req)
 	if err != nil {
 		return err
@@ -78,8 +92,14 @@ func (c *ControllerClient) post(path string, req, resp interface{}) error {
 		url = c.controller + path
 	}
 
-	logrus.Debugf("POST %s", url)
-	httpResp, err := http.Post(url, bodyType, bytes.NewBuffer(b))
+	logrus.Debugf("%s %s", method, url)
+	httpReq, err := http.NewRequest(method, url, bytes.NewBuffer(b))
+	if err != nil {
+		return err
+	}
+	httpReq.Header.Set("Content-Type", bodyType)
+
+	httpResp, err := http.DefaultClient.Do(httpReq)
 	if err != nil {
 		return err
 	}
