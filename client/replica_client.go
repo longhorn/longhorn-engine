@@ -59,6 +59,17 @@ func NewReplicaClient(address string) (*ReplicaClient, error) {
 	}, nil
 }
 
+func (c *ReplicaClient) OpenReplica(size string) error {
+	r, err := c.GetReplica()
+	if err != nil {
+		return err
+	}
+
+	return c.post(r.Actions["open"], rest.OpenInput{
+		Size: size,
+	}, nil)
+}
+
 func (c *ReplicaClient) GetReplica() (rest.Replica, error) {
 	var replica rest.Replica
 
