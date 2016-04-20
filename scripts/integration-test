@@ -1,12 +1,31 @@
 #!/bin/bash
 set -e
 
+killall longhorn ssync || true
+
 temp=$(mktemp -d)
-trap "rm -rf $temp" EXIT
+temp2=$(mktemp -d)
+trap "rm -rf $temp $temp2" EXIT
 
 cd $(dirname $0)/..
+
+if [ ! -x ./bin/longhorn ]; then
+    ./scripts/build
+fi
+
 ./bin/longhorn controller --enable-backend file test-volume &
 ./bin/longhorn replica $temp &
+./bin/longhorn replica --listen localhost:9505 $temp2 &
+(
+    mkdir -p $temp
+    cd $temp
+    $OLDPWD/bin/longhorn sync-agent --listen localhost:9504 --listen-port-range 5000-5500 &
+)
+(
+    mkdir -p $temp2
+    cd $temp2
+    $OLDPWD/bin/longhorn sync-agent --listen localhost:9507 --listen-port-range 5501-6000 &
+)
 cd integration
 find -depth -name __pycache__ -o -name "*.pyc" -exec rm -rf {} \;
 tox

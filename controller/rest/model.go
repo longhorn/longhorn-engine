@@ -21,6 +21,16 @@ type Volume struct {
 	ReplicaCount int    `json:"replicaCount"`
 }
 
+type VolumeCollection struct {
+	client.Collection
+	Data []Volume `json:"data"`
+}
+
+type ReplicaCollection struct {
+	client.Collection
+	Data []Replica `json:"data"`
+}
+
 type StartInput struct {
 	client.Resource
 	Replicas []string `json:"replicas"`
@@ -71,10 +81,19 @@ func NewSchema() *client.Schemas {
 	schemas.AddType("error", client.ServerApiError{})
 	schemas.AddType("apiVersion", client.Resource{})
 	schemas.AddType("schema", client.Schema{})
+	schemas.AddType("startInput", StartInput{})
 
 	replica := schemas.AddType("replica", Replica{})
 	replica.CollectionMethods = []string{"GET", "POST"}
 	replica.ResourceMethods = []string{"GET", "PUT"}
+
+	f := replica.ResourceFields["address"]
+	f.Create = true
+	replica.ResourceFields["address"] = f
+
+	f = replica.ResourceFields["mode"]
+	f.Update = true
+	replica.ResourceFields["mode"] = f
 
 	volumes := schemas.AddType("volume", Volume{})
 	volumes.ResourceActions = map[string]client.Action{

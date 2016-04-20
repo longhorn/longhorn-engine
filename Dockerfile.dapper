@@ -14,20 +14,21 @@ WORKDIR ${DAPPER_SOURCE}
 # Install packages
 RUN apt-get update && \
     apt-get install -y \
+        cmake \
         curl \
         git \
-        python-tox \
-        cmake \
-        pkg-config \
         libglib2.0-dev \
         libkmod-dev \
         libnl-genl-3-dev \
-        linux-libc-dev
+        linux-libc-dev \
+        pkg-config \
+        psmisc \
+        python-tox
 
 # Install Go 1.6
 RUN curl -o go.tar.gz https://storage.googleapis.com/golang/go1.6.1.linux-amd64.tar.gz
 RUN echo '6d894da8b4ad3f7f6c295db0d73ccc3646bce630e1c43e662a0120681d47e988  go.tar.gz' | sha256sum -c && \
-    tar xvzf go.tar.gz -C /usr/local && \
+    tar xzf go.tar.gz -C /usr/local && \
     rm go.tar.gz
 RUN mkdir -p /go
 ENV PATH $PATH:/usr/local/go/bin
@@ -52,6 +53,13 @@ RUN cd /usr/src/tcmu-runner && \
     make install && \
     cp scsi_defs.h /usr/local/include && \
     cp libtcmu_static.a /usr/local/lib/libtcmu.a
+
+# Install ssync
+RUN go get -d github.com/kp6/alphorn/ssync && \
+    cd $GOPATH/src/github.com/kp6/alphorn && \
+    git clone https://github.com/kp6/alphorn.git && \
+    cd ssync && \
+    go build -o /usr/local/bin/ssync
 
 ENTRYPOINT ["./scripts/entry"]
 CMD ["build"]

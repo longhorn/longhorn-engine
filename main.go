@@ -24,6 +24,8 @@ func main() {
 	a.Commands = []cli.Command{
 		app.ControllerCmd(),
 		app.ReplicaCmd(),
+		app.AddReplicaCmd(),
+		app.SyncAgentCmd(),
 	}
 
 	a.Run(os.Args)

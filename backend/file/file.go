@@ -2,7 +2,6 @@ package file
 
 import (
 	"os"
-	"syscall"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/rancher/longhorn/types"
@@ -38,7 +37,7 @@ func (f *Wrapper) Size() (int64, error) {
 
 func (ff *Factory) Create(address string) (types.Backend, error) {
 	logrus.Infof("Creating file: %s", address)
-	file, err := os.OpenFile(address, os.O_RDWR|os.O_CREATE|syscall.O_DIRECT, 0600)
+	file, err := os.OpenFile(address, os.O_RDWR|os.O_CREATE, 0600)
 	if err != nil {
 		logrus.Infof("Failed to create file %s: %v", address, err)
 		return nil, err
