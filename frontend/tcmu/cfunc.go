@@ -19,6 +19,9 @@ void errp(const char *fmt, ...)
 	va_end(va);
 }
 
+extern int shOpen(struct tcmu_device *dev);
+extern void shClose(struct tcmu_device *dev);
+
 int sh_open_cgo(struct tcmu_device *dev) {
 	return shOpen(dev);
 }
