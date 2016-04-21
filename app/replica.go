@@ -4,6 +4,9 @@ import (
 	"errors"
 	"net/http"
 	"os"
+	"os/exec"
+	"path/filepath"
+	"syscall"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
@@ -23,6 +26,9 @@ func ReplicaCmd() cli.Command {
 			cli.StringFlag{
 				Name:  "listen",
 				Value: "localhost:9502",
+			},
+			cli.BoolTFlag{
+				Name: "sync-agent",
 			},
 			cli.BoolFlag{
 				Name: "debug",
@@ -65,7 +71,7 @@ func startReplica(c *cli.Context) error {
 		}
 	}
 
-	controlAddress, dataAddress, err := util.ParseAddresses(address)
+	controlAddress, dataAddress, syncAddress, err := util.ParseAddresses(address)
 	if err != nil {
 		return err
 	}
@@ -85,6 +91,29 @@ func startReplica(c *cli.Context) error {
 		logrus.Infof("Listening on data %s", dataAddress)
 		resp <- rpcServer.ListenAndServe()
 	}()
+
+	if c.Bool("sync-agent") {
+		exe, err := exec.LookPath(os.Args[0])
+		if err != nil {
+			return err
+		}
+
+		exe, err = filepath.Abs(exe)
+		if err != nil {
+			return err
+		}
+
+		go func() {
+			cmd := exec.Command(exe, "sync-agent", "--listen", syncAddress)
+			cmd.SysProcAttr = &syscall.SysProcAttr{
+				Pdeathsig: syscall.SIGKILL,
+			}
+			cmd.Dir = dir
+			cmd.Stdout = os.Stdout
+			cmd.Stderr = os.Stderr
+			resp <- cmd.Run()
+		}()
+	}
 
 	return <-resp
 }

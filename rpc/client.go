@@ -16,6 +16,7 @@ type Client struct {
 	seq       uint32
 	messages  map[uint32]*Message
 	wire      *Wire
+	err       error
 }
 
 func NewClient(conn net.Conn) *Client {
@@ -63,15 +64,17 @@ func (c *Client) operation(op uint32, buf []byte, offset int64) (int, error) {
 }
 
 func (c *Client) Close() {
+	c.wire.Close()
 	c.end <- struct{}{}
-	close(c.send)
 }
 
 func (c *Client) loop() {
+	defer close(c.send)
+
 	for {
 		select {
 		case <-c.end:
-			break
+			return
 		case req := <-c.requests:
 			c.handleRequest(req)
 		case resp := <-c.responses:
@@ -85,14 +88,40 @@ func (c *Client) nextSeq() uint32 {
 	return c.seq
 }
 
+func (c *Client) replyError(req *Message) {
+	delete(c.messages, req.Seq)
+	req.Type = TypeError
+	req.Data = []byte(c.err.Error())
+	req.Done()
+}
+
 func (c *Client) handleRequest(req *Message) {
+	if c.err != nil {
+		c.replyError(req)
+		return
+	}
+
 	req.Seq = c.nextSeq()
 	c.messages[req.Seq] = req
 	c.send <- req
 }
 
 func (c *Client) handleResponse(resp *Message) {
+	if resp.transportErr != nil {
+		c.err = resp.transportErr
+		// Terminate all in flight
+		for _, msg := range c.messages {
+			c.replyError(msg)
+		}
+		return
+	}
+
 	if req, ok := c.messages[resp.Seq]; ok {
+		if c.err != nil {
+			c.replyError(req)
+			return
+		}
+
 		delete(c.messages, resp.Seq)
 		// can probably optimize away this copy
 		if len(resp.Data) > 0 {
@@ -107,9 +136,7 @@ func (c *Client) write() {
 	for msg := range c.send {
 		if err := c.wire.Write(msg); err != nil {
 			c.responses <- &Message{
-				Seq:  msg.Seq,
-				Type: TypeError,
-				Data: []byte(err.Error()),
+				transportErr: err,
 			}
 		}
 	}
@@ -120,6 +147,10 @@ func (c *Client) read() {
 		msg, err := c.wire.Read()
 		if err != nil {
 			logrus.Errorf("Error reading from wire: %v", err)
+			c.responses <- &Message{
+				transportErr: err,
+			}
+			break
 		}
 		c.responses <- msg
 	}

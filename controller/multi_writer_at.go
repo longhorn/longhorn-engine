@@ -2,6 +2,7 @@ package controller
 
 import (
 	"io"
+	"strings"
 	"sync"
 )
 
@@ -10,18 +11,26 @@ type MultiWriterAt struct {
 }
 
 type MultiWriterError struct {
-	Index   int
 	Writers []io.WriterAt
 	Errors  []error
 }
 
 func (m *MultiWriterError) Error() string {
+	errors := []string{}
 	for _, err := range m.Errors {
 		if err != nil {
-			return err.Error()
+			errors = append(errors, err.Error())
 		}
 	}
-	return "Unknown"
+
+	switch len(errors) {
+	case 0:
+		return "Unknown"
+	case 1:
+		return errors[0]
+	default:
+		return strings.Join(errors, "; ")
+	}
 }
 
 func (m *MultiWriterAt) WriteAt(p []byte, off int64) (n int, err error) {

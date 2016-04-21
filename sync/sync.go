@@ -86,7 +86,7 @@ func (t *Task) reloadAndCheck(fromClient *client.ReplicaClient, toClient *client
 	fromChain := from.Chain[1:]
 	toChain := to.Chain[1:]
 
-	if reflect.DeepEqual(fromChain, toChain) {
+	if !reflect.DeepEqual(fromChain, toChain) {
 		return fmt.Errorf("Chains are not equal: %v != %v", fromChain, toChain)
 	}
 
@@ -99,7 +99,7 @@ func (t *Task) syncFiles(fromClient *client.ReplicaClient, toClient *client.Repl
 		return err
 	}
 
-	to, err := fromClient.GetReplica()
+	to, err := toClient.GetReplica()
 	if err != nil {
 		return err
 	}

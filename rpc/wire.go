@@ -8,12 +8,14 @@ import (
 )
 
 type Wire struct {
+	conn   net.Conn
 	writer *bufio.Writer
 	reader io.Reader
 }
 
 func NewWire(conn net.Conn) *Wire {
 	return &Wire{
+		conn:   conn,
 		writer: bufio.NewWriterSize(conn, writeBufferSize),
 		reader: bufio.NewReaderSize(conn, readBufferSize),
 	}
@@ -70,4 +72,8 @@ func (w *Wire) Read() (*Message, error) {
 	}
 
 	return &msg, nil
+}
+
+func (w *Wire) Close() error {
+	return w.conn.Close()
 }

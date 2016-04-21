@@ -5,13 +5,12 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
-	"github.com/rancher/longhorn/sync"
 )
 
-func AddReplicaCmd() cli.Command {
+func RmReplicaCmd() cli.Command {
 	return cli.Command{
-		Name:      "add-replica",
-		ShortName: "add",
+		Name:      "rm-replica",
+		ShortName: "rm",
 		Flags: []cli.Flag{
 			cli.StringFlag{
 				Name:  "url",
@@ -22,24 +21,24 @@ func AddReplicaCmd() cli.Command {
 			},
 		},
 		Action: func(c *cli.Context) {
-			if err := addReplica(c); err != nil {
+			if err := rmReplica(c); err != nil {
 				logrus.Fatal(err)
 			}
 		},
 	}
 }
 
-func addReplica(c *cli.Context) error {
+func rmReplica(c *cli.Context) error {
 	if c.NArg() == 0 {
 		return errors.New("replica address is required")
 	}
 	replica := c.Args()[0]
 
-	url := c.String("url")
 	if c.Bool("debug") {
 		logrus.SetLevel(logrus.DebugLevel)
 	}
 
-	task := sync.NewTask(url)
-	return task.AddReplica(replica)
+	controllerClient := getCli(c)
+	_, err := controllerClient.DeleteReplica(replica)
+	return err
 }
