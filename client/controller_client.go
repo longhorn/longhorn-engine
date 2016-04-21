@@ -51,6 +51,33 @@ func (c *ControllerClient) CreateReplica(address string) (*rest.Replica, error) 
 	return &resp, err
 }
 
+func (c *ControllerClient) DeleteReplica(address string) (*rest.Replica, error) {
+	reps, err := c.ListReplicas()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, rep := range reps {
+		if rep.Address == address {
+			httpReq, err := http.NewRequest("DELETE", rep.Links["self"], nil)
+			if err != nil {
+				return nil, err
+			}
+			httpResp, err := http.DefaultClient.Do(httpReq)
+			if err != nil {
+				return nil, err
+			}
+			if httpResp.StatusCode >= 300 {
+				content, _ := ioutil.ReadAll(httpResp.Body)
+				return nil, fmt.Errorf("Bad response: %d %s: %s", httpResp.StatusCode, httpResp.Status, content)
+			}
+			return &rep, nil
+		}
+	}
+
+	return nil, nil
+}
+
 func (c *ControllerClient) UpdateReplica(replica rest.Replica) (rest.Replica, error) {
 	var resp rest.Replica
 	err := c.put(replica.Links["self"], &replica, &resp)

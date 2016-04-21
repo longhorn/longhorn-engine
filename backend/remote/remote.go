@@ -93,9 +93,9 @@ func (r *Remote) info() (rest.Replica, error) {
 }
 
 func (rf *Factory) Create(address string) (types.Backend, error) {
-	logrus.Infof("Conneting to remote: %s", address)
+	logrus.Infof("Connecting to remote: %s", address)
 
-	controlAddress, dataAddress, err := util.ParseAddresses(address)
+	controlAddress, dataAddress, _, err := util.ParseAddresses(address)
 	if err != nil {
 		return nil, err
 	}

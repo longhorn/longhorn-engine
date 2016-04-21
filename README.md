@@ -18,28 +18,29 @@ Also ensure that TCMU is enabled:
 Then run
 
     ./bin/longhorn replica --size 10g /opt/volume
-    ./bin/longhorn controller --frontend tcmu --replica tcp://localhost:9502 vol-name
+    ./bin/longhorn replica --size 10g --listen localhost:9505 /opt/volume2
+    ./bin/longhorn controller --frontend tcmu --replica tcp://localhost:9502 --replica tcp://localhost:9505 vol-name
 
 That will create the device `/dev/longhorn/vol-name`
 
-## Add Replica/Rebuild
+## Ports
 
-To add a live replica needs the sync agent to be running.  The replica runs by default on port
-9502 and 9053.  9502 is the HTTP control port and 9503 is the data path.  The sync agent must run
-on the next port, which is 9503 by default.  You must run the sync agent for each running replica and
-in the same folder as the replica.  For example:
+Each replica uses three consequetive ports.  By default they are 9502, 9503, and 9504.  They are used for
+controll channel, data channel, and sync communication respectively.
 
-    ./bin/longhorn replica --size 10g /opt/volume &
-    cd /opt/volume
-    $OLDPWD/bin/longhorn sync-agent &
+## CLI
 
-You also need to install `ssync` to your $PATH.  The code for that is available at https://github.com/kp6/alphorn/tree/master/ssync
+List replicas
 
-To perform the actual add replica/rebuild run the below command
+    longhorn ls
 
-    ./bin/longhorn add-replica tcp://123.123.123.123:9502
+Remove replica
 
-If that program exist with exit code 0, then it worked.
+    longhorn rm tcp://localhost:9502
+
+Add replica
+
+    longhorn add tcp://localhost:9502
 
 ## License
 Copyright (c) 2014-2016 [Rancher Labs, Inc.](http://rancher.com)

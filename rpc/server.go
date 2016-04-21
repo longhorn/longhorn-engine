@@ -35,7 +35,9 @@ func (s *Server) Handle() error {
 func (s *Server) read() error {
 	for {
 		msg, err := s.wire.Read()
-		if err != nil {
+		if err == io.EOF {
+			return err
+		} else if err != nil {
 			logrus.Errorf("Failed to read: %v", err)
 			return err
 		}

@@ -17,8 +17,9 @@ const (
 type Message struct {
 	sync.WaitGroup
 
-	Seq    uint32
-	Type   uint32
-	Offset int64
-	Data   []byte
+	Seq          uint32
+	Type         uint32
+	Offset       int64
+	Data         []byte
+	transportErr error
 }

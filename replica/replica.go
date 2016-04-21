@@ -86,7 +86,7 @@ func New(size, sectorSize int64, dir string) (*Replica, error) {
 
 	r.info.Parent = r.diskData[r.info.Head].Parent
 
-	return r, nil
+	return r, r.writeVolumeMetaData(true)
 }
 
 func (r *Replica) Reload() (*Replica, error) {
@@ -169,15 +169,19 @@ func (r *Replica) Chain() ([]string, error) {
 	return result, nil
 }
 
+func (r *Replica) writeVolumeMetaData(dirty bool) error {
+	info := r.info
+	info.Dirty = dirty
+	return r.encodeToFile(&info, volumeMetaData)
+}
+
 func (r *Replica) close(writeMeta bool) error {
 	for _, f := range r.volume.files {
 		f.Close()
 	}
 
 	if writeMeta {
-		info := r.info
-		info.Dirty = false
-		return r.encodeToFile(&info, volumeMetaData)
+		return r.writeVolumeMetaData(false)
 	}
 
 	return nil
@@ -295,7 +299,7 @@ func (r *Replica) createDisk() error {
 
 	info := r.info
 	info.Head = newHeadDisk.name
-	info.Dirty = false
+	info.Dirty = true
 	info.Parent = newHeadDisk.Parent
 	info.SectorSize = r.volume.sectorSize
 
@@ -417,6 +421,7 @@ func (r *Replica) Snapshot() error {
 
 func (r *Replica) WriteAt(buf []byte, offset int64) (int, error) {
 	r.RLock()
+	r.info.Dirty = true
 	c, err := r.volume.WriteAt(buf, offset)
 	r.RUnlock()
 	return c, err

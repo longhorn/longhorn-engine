@@ -33,6 +33,13 @@ func (c *Controller) AddReplica(address string) error {
 }
 
 func (c *Controller) addReplica(address string, snapshot bool) error {
+	c.Lock()
+	if c.hasReplica(address) {
+		c.Unlock()
+		return nil
+	}
+	c.Unlock()
+
 	newBackend, err := c.factory.Create(address)
 	if err != nil {
 		return err
@@ -53,12 +60,15 @@ func (c *Controller) Snapshot() error {
 
 func (c *Controller) addReplicaNoLock(newBackend types.Backend, address string, snapshot bool) error {
 	if c.hasReplica(address) {
-		newBackend.Close()
 		return nil
 	}
 
 	if snapshot {
 		if err := c.backend.Snapshot(); err != nil {
+			newBackend.Close()
+			return err
+		}
+		if err := newBackend.Snapshot(); err != nil {
 			newBackend.Close()
 			return err
 		}
@@ -112,7 +122,7 @@ func (c *Controller) SetReplicaMode(address string, mode types.Mode) error {
 		defer c.Unlock()
 	case types.RW:
 		c.RLock()
-		c.RUnlock()
+		defer c.RUnlock()
 	default:
 		return fmt.Errorf("Can not set to mode %s", mode)
 	}
@@ -182,12 +192,37 @@ func (c *Controller) Start(addresses ...string) error {
 	return nil
 }
 
-func (c *Controller) WriteAt(b []byte, off int64) (n int, err error) {
-	return c.backend.WriteAt(b, off)
+func (c *Controller) WriteAt(b []byte, off int64) (int, error) {
+	c.RLock()
+	n, err := c.backend.WriteAt(b, off)
+	c.RUnlock()
+	if err != nil {
+		return n, c.handleError(err)
+	}
+	return n, err
 }
 
-func (c *Controller) ReadAt(b []byte, off int64) (n int, err error) {
-	return c.backend.ReadAt(b, off)
+func (c *Controller) ReadAt(b []byte, off int64) (int, error) {
+	c.RLock()
+	n, err := c.backend.ReadAt(b, off)
+	c.RUnlock()
+	if err != nil {
+		return n, c.handleError(err)
+	}
+	return n, err
+}
+
+func (c *Controller) handleError(err error) error {
+	if bErr, ok := err.(*BackendError); ok {
+		if len(bErr.Errors) > 0 {
+			c.Lock()
+			for address := range bErr.Errors {
+				c.setReplicaModeNoLock(address, types.ERR)
+			}
+			c.Unlock()
+		}
+	}
+	return err
 }
 
 func (c *Controller) reset() {

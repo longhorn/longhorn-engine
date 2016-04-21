@@ -1,19 +1,50 @@
 package controller
 
 import (
+	"errors"
+	"fmt"
 	"io"
+	"strings"
 	"sync"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/rancher/longhorn/types"
 )
 
-type replicator struct {
-	io.WriterAt
+var (
+	ErrNoBackend = errors.New("No backend available")
+)
 
-	backends     map[string]backendWrapper
-	readers      []io.ReaderAt
-	readerLength int
+type replicator struct {
+	backendsAvailable bool
+	backends          map[string]backendWrapper
+	writerIndex       map[int]string
+	readerIndex       map[int]string
+	readers           []io.ReaderAt
+	writer            io.WriterAt
+	next              int
+}
+
+type BackendError struct {
+	Errors map[string]error
+}
+
+func (b *BackendError) Error() string {
+	errors := []string{}
+	for address, err := range b.Errors {
+		if err != nil {
+			errors = append(errors, fmt.Sprintf("%s: %s", address, err.Error()))
+		}
+	}
+
+	switch len(errors) {
+	case 0:
+		return "Unknown"
+	case 1:
+		return errors[0]
+	default:
+		return strings.Join(errors, "; ")
+	}
 }
 
 func (r *replicator) AddBackend(address string, backend types.Backend) {
@@ -48,24 +79,76 @@ func (r *replicator) RemoveBackend(address string) {
 	r.buildReadWriters()
 }
 
-func (r *replicator) ReadAt(buf []byte, off int64) (n int, err error) {
-	// Use a poor random algorithm by always selecting 0 :)
-	return r.readers[0].ReadAt(buf, off)
+func (r *replicator) ReadAt(buf []byte, off int64) (int, error) {
+	if !r.backendsAvailable {
+		return 0, ErrNoBackend
+	}
+
+	index := r.next
+	r.next++
+	if index >= len(r.readers) {
+		r.next = 0
+		index = 0
+	}
+	n, err := r.readers[index].ReadAt(buf, off)
+	if err != nil {
+		return n, &BackendError{
+			Errors: map[string]error{
+				r.readerIndex[index]: err,
+			},
+		}
+	}
+	return n, err
+}
+
+func (r *replicator) WriteAt(p []byte, off int64) (int, error) {
+	if !r.backendsAvailable {
+		return 0, ErrNoBackend
+	}
+
+	n, err := r.writer.WriteAt(p, off)
+	if err != nil {
+		errors := map[string]error{
+			r.writerIndex[0]: err,
+		}
+		if mErr, ok := err.(*MultiWriterError); ok {
+			errors = map[string]error{}
+			for index, err := range mErr.Errors {
+				if err != nil {
+					errors[r.writerIndex[index]] = err
+				}
+			}
+		}
+		return n, &BackendError{Errors: errors}
+	}
+	return n, err
 }
 
 func (r *replicator) buildReadWriters() {
+	r.reset(false)
+
 	readers := []io.ReaderAt{}
-	writers := make([]io.WriterAt, 0, len(r.backends))
-	for _, b := range r.backends {
-		writers = append(writers, b.backend)
-		readers = append(readers, b.backend)
+	writers := []io.WriterAt{}
+
+	for address, b := range r.backends {
+		if b.mode != types.ERR {
+			r.writerIndex[len(writers)] = address
+			writers = append(writers, b.backend)
+		}
+		if b.mode == types.RW {
+			r.readerIndex[len(readers)] = address
+			readers = append(readers, b.backend)
+		}
 	}
 
-	r.WriterAt = &MultiWriterAt{
+	r.writer = &MultiWriterAt{
 		writers: writers,
 	}
 	r.readers = readers
-	r.readerLength = len(readers)
+
+	if len(r.readers) > 0 {
+		r.backendsAvailable = true
+	}
 }
 
 func (r *replicator) SetMode(address string, mode types.Mode) {
@@ -107,14 +190,20 @@ func (r *replicator) Close() error {
 		}
 	}
 
-	r.reset()
+	r.reset(true)
 
 	return lastErr
 }
 
-func (r *replicator) reset() {
-	r.WriterAt = nil
-	r.backends = nil
+func (r *replicator) reset(full bool) {
+	r.backendsAvailable = false
+	r.writer = nil
+	r.writerIndex = map[int]string{}
+	r.readerIndex = map[int]string{}
+
+	if full {
+		r.backends = nil
+	}
 }
 
 type backendWrapper struct {
