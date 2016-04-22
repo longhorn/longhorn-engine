@@ -32,11 +32,30 @@ func (c *Controller) AddReplica(address string) error {
 	return c.addReplica(address, true)
 }
 
+func (c *Controller) hasWOReplica() bool {
+	for _, i := range c.replicas {
+		if i.Mode == types.WO {
+			return true
+		}
+	}
+	return false
+}
+
+func (c *Controller) canAdd(address string) (bool, error) {
+	if c.hasReplica(address) {
+		return false, nil
+	}
+	if c.hasWOReplica() {
+		return false, fmt.Errorf("Can only have one WO replica at a time")
+	}
+	return true, nil
+}
+
 func (c *Controller) addReplica(address string, snapshot bool) error {
 	c.Lock()
-	if c.hasReplica(address) {
+	if ok, err := c.canAdd(address); !ok {
 		c.Unlock()
-		return nil
+		return err
 	}
 	c.Unlock()
 
@@ -59,8 +78,8 @@ func (c *Controller) Snapshot() error {
 }
 
 func (c *Controller) addReplicaNoLock(newBackend types.Backend, address string, snapshot bool) error {
-	if c.hasReplica(address) {
-		return nil
+	if ok, err := c.canAdd(address); !ok {
+		return err
 	}
 
 	if snapshot {

@@ -3,6 +3,7 @@ import random
 
 import pytest
 import cattle
+from cattle import ApiError
 
 
 @pytest.fixture
@@ -47,6 +48,14 @@ def test_replica_create(client):
     assert r[0].mode == 'WO'
 
     f2 = 'file://' + random_str()
+    with pytest.raises(ApiError) as e:
+        client.create_replica(address=f2)
+    assert e.value.error.status == 500
+    assert e.value.error.message == 'Can only have one WO replica at a time'
+
+    r = client.update(r[0], mode='RW')
+    assert r.mode == 'RW'
+
     replica2 = client.create_replica(address=f2)
     assert replica2.address == f2
 
@@ -57,8 +66,11 @@ def test_replica_create(client):
 def test_replica_delete(client):
     f = 'file://' + random_str()
     r1 = client.create_replica(address=f+'1')
+    client.update(r1, mode='RW')
     r2 = client.create_replica(address=f+'2')
+    client.update(r2, mode='RW')
     r3 = client.create_replica(address=f+'3')
+    client.update(r3, mode='RW')
 
     r = client.list_replica()
     assert len(r) == 3
