@@ -57,7 +57,7 @@ RUN cd /usr/src/tcmu-runner && \
 # Install ssync
 RUN go get -d github.com/kp6/alphorn/ssync && \
     cd $GOPATH/src/github.com/kp6/alphorn && \
-    git clone https://github.com/kp6/alphorn.git && \
+    git checkout c7705144deb2d398820fd248c261d2279b27f45d && \
     cd ssync && \
     go build -o /usr/local/bin/ssync
 
