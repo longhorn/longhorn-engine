@@ -248,7 +248,15 @@ func (r *Replica) linkDisk(oldname, newname string) error {
 		return nil
 	}
 
-	if err := os.Link(path.Join(r.dir, oldname), path.Join(r.dir, newname)); err != nil {
+	dest := path.Join(r.dir, newname)
+	if _, err := os.Stat(dest); err == nil {
+		logrus.Infof("Old file %s exists, deleting", dest)
+		if err := os.Remove(dest); err != nil {
+			return err
+		}
+	}
+
+	if err := os.Link(path.Join(r.dir, oldname), dest); err != nil {
 		return err
 	}
 
