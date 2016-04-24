@@ -98,8 +98,8 @@ def test_snapshot(client):
     assert r.parent == ''
     assert r.head == 'volume-head-000.img'
 
-    r = r.snapshot()
-    r = r.snapshot()
+    r = r.snapshot(name='000')
+    r = r.snapshot(name='001')
 
     assert r.state == 'open'
     assert r.size == str(1024*4096)
@@ -116,8 +116,8 @@ def test_remove_disk(client):
 
     r = replicas[0]
     r = r.open(size=str(1024*4096))
-    r = r.snapshot()
-    r = r.snapshot()
+    r = r.snapshot(name='000')
+    r = r.snapshot(name='001')
     assert r.chain == ['volume-head-002.img', 'volume-snap-001.img',
                        'volume-snap-000.img']
 
@@ -136,8 +136,8 @@ def test_remove_last_disk(client):
 
     r = replicas[0]
     r = r.open(size=str(1024*4096))
-    r = r.snapshot()
-    r = r.snapshot()
+    r = r.snapshot(name='000')
+    r = r.snapshot(name='001')
     assert r.chain == ['volume-head-002.img', 'volume-snap-001.img',
                        'volume-snap-000.img']
 
@@ -156,8 +156,8 @@ def test_reload(client):
 
     r = replicas[0]
     r = r.open(size=str(1024*4096))
-    r = r.snapshot()
-    r = r.snapshot()
+    r = r.snapshot(name='000')
+    r = r.snapshot(name='001')
     assert r.chain == ['volume-head-002.img', 'volume-snap-001.img',
                        'volume-snap-000.img']
 

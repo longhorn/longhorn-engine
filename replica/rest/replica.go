@@ -1,12 +1,14 @@
 package rest
 
 import (
+	"io"
 	"net/http"
 	"strconv"
 
 	"github.com/gorilla/mux"
 	"github.com/rancher/go-rancher/api"
 	"github.com/rancher/go-rancher/client"
+	"github.com/satori/go.uuid"
 )
 
 func (s *Server) ListReplicas(rw http.ResponseWriter, req *http.Request) error {
@@ -46,13 +48,17 @@ func (s *Server) doOp(req *http.Request, err error) error {
 func (s *Server) OpenReplica(rw http.ResponseWriter, req *http.Request) error {
 	var input OpenInput
 	apiContext := api.GetApiContext(req)
-	if err := apiContext.Read(&input); err != nil {
+	if err := apiContext.Read(&input); err != nil && err != io.EOF {
 		return err
 	}
 
-	size, err := strconv.ParseInt(input.Size, 10, 0)
-	if err != nil {
-		return err
+	size := int64(0)
+	if input.Size != "" {
+		var err error
+		size, err = strconv.ParseInt(input.Size, 10, 0)
+		if err != nil {
+			return err
+		}
 	}
 
 	return s.doOp(req, s.s.Open(size))
@@ -69,7 +75,18 @@ func (s *Server) RemoveDisk(rw http.ResponseWriter, req *http.Request) error {
 }
 
 func (s *Server) SnapshotReplica(rw http.ResponseWriter, req *http.Request) error {
-	return s.doOp(req, s.s.Snapshot())
+	var input SnapshotInput
+	apiContext := api.GetApiContext(req)
+	if err := apiContext.Read(&input); err != nil && err != io.EOF {
+		return err
+	}
+
+	name := input.Name
+	if name == "" {
+		name = uuid.NewV4().String()
+	}
+
+	return s.doOp(req, s.s.Snapshot(name))
 }
 
 func (s *Server) ReloadReplica(rw http.ResponseWriter, req *http.Request) error {

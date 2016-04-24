@@ -62,7 +62,7 @@ func (s *Server) Replica() *Replica {
 	return s.r
 }
 
-func (s *Server) Snapshot() error {
+func (s *Server) Snapshot(name string) error {
 	s.Lock()
 	defer s.Unlock()
 
@@ -70,8 +70,8 @@ func (s *Server) Snapshot() error {
 		return nil
 	}
 
-	logrus.Infof("Snapshotting volume")
-	return s.r.Snapshot()
+	logrus.Infof("Snapshotting [%s] volume", name)
+	return s.r.Snapshot(name)
 }
 
 func (s *Server) RemoveDiffDisk(name string) error {

@@ -29,6 +29,11 @@ type OpenInput struct {
 	Size string `json:"size"`
 }
 
+type SnapshotInput struct {
+	client.Resource
+	Name string `json:"Name"`
+}
+
 type RemoveDiskInput struct {
 	client.Resource
 	Name string `json:"name"`
@@ -71,6 +76,7 @@ func NewSchema() *client.Schemas {
 	schemas.AddType("apiVersion", client.Resource{})
 	schemas.AddType("schema", client.Schema{})
 	schemas.AddType("openInput", OpenInput{})
+	schemas.AddType("snapshotInput", SnapshotInput{})
 	schemas.AddType("removediskInput", RemoveDiskInput{})
 	replica := schemas.AddType("replica", Replica{})
 
@@ -86,6 +92,7 @@ func NewSchema() *client.Schemas {
 			Output: "replica",
 		},
 		"snapshot": client.Action{
+			Input:  "snapshotInput",
 			Output: "replica",
 		},
 		"removedisk": client.Action{

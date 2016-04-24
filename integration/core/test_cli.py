@@ -114,8 +114,8 @@ def test_replica_add_rebuild(bin, controller_client, replica_client,
     open_replica(replica_client2)
 
     r = replica_client.list_replica()[0]
-    r = r.snapshot()
-    r = r.snapshot()
+    r = r.snapshot(name='000')
+    r = r.snapshot(name='001')
 
     l = replica_client2.list_replica()[0]
 
