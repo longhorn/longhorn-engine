@@ -21,11 +21,11 @@ const (
 	volumeMetaData    = "volume.meta"
 	defaultSectorSize = 4096
 	headName          = "volume-head-%03d.img"
-	diskName          = "volume-snap-%03d.img"
+	diskName          = "volume-snap-%s.img"
 )
 
 var (
-	diskPattern = regexp.MustCompile(`volume-snap-(\d)+.img`)
+	diskPattern = regexp.MustCompile(`volume-head-(\d)+.img`)
 )
 
 type Replica struct {
@@ -78,8 +78,10 @@ func New(size, sectorSize int64, dir string) (*Replica, error) {
 		if err := r.openFiles(); err != nil {
 			return nil, err
 		}
+	} else if size <= 0 {
+		return nil, os.ErrNotExist
 	} else {
-		if err := r.createDisk(); err != nil {
+		if err := r.createDisk("000"); err != nil {
 			return nil, err
 		}
 	}
@@ -224,10 +226,14 @@ func (r *Replica) openFile(name string, flag int) (*os.File, error) {
 	return os.OpenFile(path.Join(r.dir, name), os.O_RDWR|os.O_CREATE|flag, 0666)
 }
 
-func (r *Replica) createNewHead(parent string) (*os.File, disk, error) {
-	newHeadName, err := r.nextFile(diskPattern, headName, parent)
+func (r *Replica) createNewHead(oldHead, parent string) (*os.File, disk, error) {
+	newHeadName, err := r.nextFile(diskPattern, headName, oldHead)
 	if err != nil {
 		return nil, disk{}, err
+	}
+
+	if _, err := os.Stat(path.Join(r.dir, newHeadName)); err == nil {
+		return nil, disk{}, fmt.Errorf("%s already exists", newHeadName)
 	}
 
 	f, err := r.openFile(newHeadName, os.O_TRUNC)
@@ -275,19 +281,16 @@ func (r *Replica) rmDisk(name string) error {
 	return lastErr
 }
 
-func (r *Replica) createDisk() error {
+func (r *Replica) createDisk(name string) error {
 	done := false
 	oldHead := r.info.Head
-	newSnapName, err := r.nextFile(diskPattern, diskName, r.diskData[oldHead].Parent)
-	if err != nil {
-		return err
-	}
+	newSnapName := fmt.Sprintf(diskName, name)
 
 	if oldHead == "" {
 		newSnapName = ""
 	}
 
-	f, newHeadDisk, err := r.createNewHead(newSnapName)
+	f, newHeadDisk, err := r.createNewHead(oldHead, newSnapName)
 	if err != nil {
 		return err
 	}
@@ -420,11 +423,11 @@ func (r *Replica) Delete() error {
 	return nil
 }
 
-func (r *Replica) Snapshot() error {
+func (r *Replica) Snapshot(name string) error {
 	r.Lock()
 	defer r.Unlock()
 
-	return r.createDisk()
+	return r.createDisk(name)
 }
 
 func (r *Replica) WriteAt(buf []byte, offset int64) (int, error) {

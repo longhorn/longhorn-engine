@@ -38,10 +38,10 @@ func (s *TestSuite) TestSnapshot(c *C) {
 	c.Assert(err, IsNil)
 	defer r.Close()
 
-	err = r.Snapshot()
+	err = r.Snapshot("000")
 	c.Assert(err, IsNil)
 
-	err = r.Snapshot()
+	err = r.Snapshot("001")
 	c.Assert(err, IsNil)
 
 	c.Assert(len(r.activeDiskData), Equals, 4)
@@ -65,10 +65,10 @@ func (s *TestSuite) TestRemoveLast(c *C) {
 	c.Assert(err, IsNil)
 	defer r.Close()
 
-	err = r.Snapshot()
+	err = r.Snapshot("000")
 	c.Assert(err, IsNil)
 
-	err = r.Snapshot()
+	err = r.Snapshot("001")
 	c.Assert(err, IsNil)
 
 	c.Assert(len(r.activeDiskData), Equals, 4)
@@ -102,10 +102,10 @@ func (s *TestSuite) TestRemoveMiddle(c *C) {
 	c.Assert(err, IsNil)
 	defer r.Close()
 
-	err = r.Snapshot()
+	err = r.Snapshot("000")
 	c.Assert(err, IsNil)
 
-	err = r.Snapshot()
+	err = r.Snapshot("001")
 	c.Assert(err, IsNil)
 
 	c.Assert(len(r.activeDiskData), Equals, 4)
@@ -139,10 +139,10 @@ func (s *TestSuite) TestRemoveFirst(c *C) {
 	c.Assert(err, IsNil)
 	defer r.Close()
 
-	err = r.Snapshot()
+	err = r.Snapshot("000")
 	c.Assert(err, IsNil)
 
-	err = r.Snapshot()
+	err = r.Snapshot("001")
 	c.Assert(err, IsNil)
 
 	c.Assert(len(r.activeDiskData), Equals, 4)
@@ -227,19 +227,19 @@ func (s *TestSuite) TestSnapshotReadWrite(c *C) {
 	count, err := r.WriteAt(buf, 0)
 	c.Assert(err, IsNil)
 	c.Assert(count, Equals, 3*b)
-	err = r.Snapshot()
+	err = r.Snapshot("000")
 	c.Assert(err, IsNil)
 
 	fill(buf[b:2*b], 2)
 	count, err = r.WriteAt(buf[b:2*b], b)
 	c.Assert(count, Equals, b)
-	err = r.Snapshot()
+	err = r.Snapshot("001")
 	c.Assert(err, IsNil)
 
 	fill(buf[:b], 1)
 	count, err = r.WriteAt(buf[:b], 0)
 	c.Assert(count, Equals, b)
-	err = r.Snapshot()
+	err = r.Snapshot("002")
 	c.Assert(err, IsNil)
 
 	readBuf := make([]byte, 3*b)
