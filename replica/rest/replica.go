@@ -8,7 +8,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/rancher/go-rancher/api"
 	"github.com/rancher/go-rancher/client"
-	"github.com/satori/go.uuid"
+	"github.com/rancher/longhorn/util"
 )
 
 func (s *Server) ListReplicas(rw http.ResponseWriter, req *http.Request) error {
@@ -83,7 +83,7 @@ func (s *Server) SnapshotReplica(rw http.ResponseWriter, req *http.Request) erro
 
 	name := input.Name
 	if name == "" {
-		name = uuid.NewV4().String()
+		name = util.UUID()
 	}
 
 	return s.doOp(req, s.s.Snapshot(name))

@@ -16,10 +16,22 @@ func SnapshotCmd() cli.Command {
 		Name:      "snapshots",
 		ShortName: "snapshot",
 		Subcommands: []cli.Command{
+			SnapshotCreateCmd(),
 			SnapshotLsCmd(),
 		},
 		Action: func(c *cli.Context) {
 			if err := lsSnapshot(c); err != nil {
+				logrus.Fatal(err)
+			}
+		},
+	}
+}
+
+func SnapshotCreateCmd() cli.Command {
+	return cli.Command{
+		Name: "create",
+		Action: func(c *cli.Context) {
+			if err := createSnapshot(c); err != nil {
 				logrus.Fatal(err)
 			}
 		},
@@ -35,6 +47,18 @@ func SnapshotLsCmd() cli.Command {
 			}
 		},
 	}
+}
+
+func createSnapshot(c *cli.Context) error {
+	cli := getCli(c)
+
+	id, err := cli.Snapshot()
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(id)
+	return nil
 }
 
 func lsSnapshot(c *cli.Context) error {

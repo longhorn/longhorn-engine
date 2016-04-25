@@ -196,3 +196,29 @@ def test_snapshot_ls(bin, controller_client, replica_client, replica_client2):
 {}
 {}
 '''.format(snap2.id, snap.id)
+
+
+def test_snapshot_create(bin, controller_client, replica_client,
+                         replica_client2):
+    open_replica(replica_client)
+    open_replica(replica_client2)
+
+    v = controller_client.list_volume()[0]
+    v = v.start(replicas=[
+        REPLICA,
+        REPLICA2,
+    ])
+    assert v.replicaCount == 2
+
+    cmd = [bin, 'snapshot', 'create']
+    output = subprocess.check_output(cmd).strip()
+    expected = replica_client.list_replica()[0].chain[1]
+
+    assert expected == 'volume-snap-{}.img'.format(output)
+
+    cmd = [bin, '--debug', 'snapshot', 'ls']
+    ls_output = subprocess.check_output(cmd)
+
+    assert ls_output == '''ID
+{}
+'''.format(output)
