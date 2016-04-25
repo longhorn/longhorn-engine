@@ -26,8 +26,8 @@ RUN apt-get update && \
         python-tox
 
 # Install Go 1.6
-RUN curl -o go.tar.gz https://storage.googleapis.com/golang/go1.6.1.linux-amd64.tar.gz
-RUN echo '6d894da8b4ad3f7f6c295db0d73ccc3646bce630e1c43e662a0120681d47e988  go.tar.gz' | sha256sum -c && \
+RUN curl -o go.tar.gz https://storage.googleapis.com/golang/go1.6.2.linux-amd64.tar.gz
+RUN echo 'e40c36ae71756198478624ed1bb4ce17597b3c19d243f3f0899bb5740d56212a  go.tar.gz' | sha256sum -c && \
     tar xzf go.tar.gz -C /usr/local && \
     rm go.tar.gz
 RUN mkdir -p /go
