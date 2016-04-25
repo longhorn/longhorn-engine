@@ -12,7 +12,7 @@ if [ ! -x ../bin/longhorn ]; then
     ../scripts/build
 fi
 
-cp ../bin/longhorn .
+cp ../bin/longhorn* .
 docker build -t ${REPO}/longhorn:${TAG} .
 
 echo Built ${REPO}/longhorn:${TAG}
