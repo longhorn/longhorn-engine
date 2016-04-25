@@ -13,7 +13,6 @@ import (
 	"syscall"
 
 	"github.com/Sirupsen/logrus"
-    fio "github.com/rancher/sparse-utils/directfio"
 )
 
 const (
@@ -224,7 +223,7 @@ func (r *Replica) nextFile(parsePattern *regexp.Regexp, pattern, parent string) 
 
 func (r *Replica) openFile(name string, flag int) (*os.File, error) {
 	// TODO: need to turn on O_DIRECT
-	return os.OpenFile(path.Join(r.dir, name), fio.O_DIRECT|os.O_RDWR|os.O_CREATE|flag, 0666)
+	return os.OpenFile(path.Join(r.dir, name), syscall.O_DIRECT|os.O_RDWR|os.O_CREATE|flag, 0666)
 }
 
 func (r *Replica) createNewHead(oldHead, parent string) (*os.File, disk, error) {
