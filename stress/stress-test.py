@@ -13,11 +13,12 @@ import time
 SIZE = 20 * 1024 * 1024 * 1024
 SIZE_STR = str(SIZE)
 BLOCK_SIZE = 4096
-BATCH_SIZE = 1024
-LIVE_DATA = binascii.crc32("livedata")
+BATCH_SIZE = 128
 
 INIT_TIME = time.time()
 MAX_SNAPSHOTS = 16
+MAX_TIME_SLACK = 3000
+MAX_BLOCK_OFFSET = SIZE / BLOCK_SIZE
 
 def gen_blockdata(blockoffset, nblocks, pattern):
   d = bytearray(nblocks * BLOCK_SIZE)
@@ -54,62 +55,67 @@ def rebuild_replica():
 def gen_pattern():
   return int((time.time() - INIT_TIME) * 1000)
 
-def random_write(snapshots, testdata):
-  print "Starting random write in process " + str(multiprocessing.current_process())
+def random_write(snapshots, testdata, iterations):
+  print "Starting random write in process " + str(multiprocessing.current_process().pid)
   fd = open("/dev/longhorn/foo", "r+")
-  maxoffset = SIZE / BLOCK_SIZE
   base = snapshots["livedata"]
-  for n in range(10000):
-    blockoffset = int(maxoffset * random.random())
-    nblocks = int(100 * random.random())
-    if nblocks + blockoffset > maxoffset:
-      nblocks = maxoffset - blockoffset
+  for iteration in range(iterations):
+    if iteration % 100 == 0:
+      print "Iteration " + str(iteration) + " random write in process " + str(multiprocessing.current_process().pid)
+    blockoffset = int(MAX_BLOCK_OFFSET * random.random())
+    nblocks = int(BATCH_SIZE * random.random())
+    if nblocks + blockoffset > MAX_BLOCK_OFFSET:
+      nblocks = MAX_BLOCK_OFFSET - blockoffset
     pattern = gen_pattern()
     for i in range(nblocks):
       testdata[base + blockoffset + i] = pattern
     fd.seek(blockoffset * BLOCK_SIZE)
     fd.write(gen_blockdata(blockoffset, nblocks, pattern))
-  print "Completed random write in process " + str(multiprocessing.current_process())
+  print "Completed random write in process " + str(multiprocessing.current_process().pid)
   fd.close()
 
-def read_and_check(snapshots, testdata):
+def read_and_check(snapshots, testdata, iterations):
   data_blocks = 0
   hole_blocks = 0
-  percentage = 1
-  print "Starting read and check"
-  fd = open("/dev/longhorn/foo", "r+")
-  fd.seek(0)
+  print "Starting read and check in process " + str(multiprocessing.current_process().pid)
+  fd = open("/dev/longhorn/foo", "r")
   base = snapshots["livedata"]
-  for n in range(SIZE / BLOCK_SIZE / BATCH_SIZE):
-    d = fd.read(BLOCK_SIZE * BATCH_SIZE)
-    for i in range(BATCH_SIZE):
-      blockoffset = ord(d[BLOCK_SIZE * i + 0]) + (ord(d[BLOCK_SIZE * i + 1]) << 8) + (ord(d[BLOCK_SIZE * i + 2]) << 16) + (ord(d[BLOCK_SIZE * i + 3]) << 24)
-      pattern = ord(d[BLOCK_SIZE * i + 4]) + (ord(d[BLOCK_SIZE * i + 5]) << 8) + (ord(d[BLOCK_SIZE * i + 6]) << 16) + (ord(d[BLOCK_SIZE * i + 7]) << 24)
+  for iteration in range(iterations):
+    if iteration % 100 == 0:
+      print "Iteration " + str(iteration) + " read and check in process " + str(multiprocessing.current_process().pid)
+    blockoffset = int(MAX_BLOCK_OFFSET * random.random())
+    nblocks = int(BATCH_SIZE * random.random())
+    if nblocks + blockoffset > MAX_BLOCK_OFFSET:
+      nblocks = MAX_BLOCK_OFFSET - blockoffset
+    fd.seek(blockoffset * BLOCK_SIZE)
+    d = fd.read(BLOCK_SIZE * nblocks)
+    current_pattern = gen_pattern()
+    for i in range(nblocks):
+      stored_blockoffset = ord(d[BLOCK_SIZE * i + 0]) + (ord(d[BLOCK_SIZE * i + 1]) << 8) + (ord(d[BLOCK_SIZE * i + 2]) << 16) + (ord(d[BLOCK_SIZE * i + 3]) << 24)
+      stored_pattern = ord(d[BLOCK_SIZE * i + 4]) + (ord(d[BLOCK_SIZE * i + 5]) << 8) + (ord(d[BLOCK_SIZE * i + 6]) << 16) + (ord(d[BLOCK_SIZE * i + 7]) << 24)
+      pattern = testdata[base + blockoffset + i]
+      if current_pattern - pattern < MAX_TIME_SLACK or current_pattern - stored_pattern < MAX_TIME_SLACK:
+        continue
       try:
-        if testdata[base + n * BATCH_SIZE + i] != 0:
-          assert blockoffset == n * BATCH_SIZE + i
-          pattern_mem = testdata[base + n * BATCH_SIZE + i]
-          if pattern_mem > pattern:
-            diff = pattern_mem - pattern
+        if pattern != 0 and blockoffset != 0:
+          assert stored_blockoffset == blockoffset + i
+          if stored_pattern > pattern:
+            diff = stored_pattern - pattern
           else:
-            diff = pattern - pattern_mem
+            diff = pattern - stored_pattern
 #          if diff > 0:
-#            print "Difference at " + str(n * BATCH_SIZE + i) + " is " + str(diff)
-          assert diff < 3000
+#            print "Difference at " + str(stored_blockoffset) + " is " + str(diff)
+          assert diff < MAX_TIME_SLACK
           data_blocks = data_blocks + 1
         else:
-          assert blockoffset == 0
-          assert pattern == 0
+          assert stored_blockoffset == 0
+          assert stored_pattern == 0
           hole_blocks = hole_blocks + 1
       except AssertionError:
-        print "n = " + str(n) + " i = " + str(i) + " blockoffset = " + str(blockoffset) + " pattern = " + str(pattern) + " testdata[base + n * BATCH_SIZE + i] = " + str(testdata[base + n * BATCH_SIZE + i])
+        print "current_pattern = " + str(current_pattern) + " nblocks = " + str(nblocks) + " blockoffset = " + str(blockoffset) + " i = " + str(i) + " stored_blockoffset = " + str(stored_blockoffset) + " pattern = " + str(pattern) + " stored_pattern = " + str(stored_pattern)
         raise
-    if 100 * (n + 1) / (SIZE / BLOCK_SIZE / BATCH_SIZE) >= percentage:
-      sys.stdout.write(" " + str(percentage) + "%")
-      percentage = percentage + 1
-      print " data_blocks: " + str(data_blocks) + " hole_blocks: " + str(hole_blocks)
-  sys.stdout.write("\n")
   print "data_blocks: " + str(data_blocks) + " hole_blocks: " + str(hole_blocks)
+  print "Completed read and check in process " + str(multiprocessing.current_process().pid)
   fd.close()
     
 
@@ -131,13 +137,16 @@ snapshots = manager.dict()
 snapshots["livedata"] = 0
 
 workers = []
+
 for i in range(10):
-  p = Process(target=random_write, args=(snapshots, testdata))
+  p = Process(target = random_write, args = (snapshots, testdata, 10000))
+  workers.append(p)
+  p.start()
+
+for i in range(10):
+  p = Process(target = read_and_check, args = (snapshots, testdata, 10000))
   workers.append(p)
   p.start()
 
 for p in workers:
   p.join()
-
-read_and_check(snapshots, testdata)
-
