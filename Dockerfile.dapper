@@ -61,5 +61,7 @@ RUN go get -d github.com/kp6/alphorn/ssync && \
     cd ssync && \
     go build -o /usr/local/bin/ssync
 
+VOLUME /tmp
+ENV TMPDIR /tmp
 ENTRYPOINT ["./scripts/entry"]
 CMD ["build"]
