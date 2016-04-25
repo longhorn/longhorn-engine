@@ -16,9 +16,6 @@ func SyncAgentCmd() cli.Command {
 		Name:      "sync-agent",
 		UsageText: "longhorn controller DIRECTORY SIZE",
 		Flags: []cli.Flag{
-			cli.BoolFlag{
-				Name: "debug",
-			},
 			cli.StringFlag{
 				Name:  "listen",
 				Value: "localhost:9504",
@@ -37,10 +34,6 @@ func SyncAgentCmd() cli.Command {
 }
 
 func startSyncAgent(c *cli.Context) error {
-	if c.Bool("debug") {
-		logrus.SetLevel(logrus.DebugLevel)
-	}
-
 	listen := c.String("listen")
 	portRange := c.String("listen-port-range")
 

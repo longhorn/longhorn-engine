@@ -101,7 +101,7 @@ def open_replica(client):
 def test_replica_add_start(bin, controller_client, replica_client):
     open_replica(replica_client)
 
-    cmd = [bin, 'add-replica', '--debug', REPLICA]
+    cmd = [bin, '--debug', 'add-replica', REPLICA]
     subprocess.check_call(cmd)
 
     volume = controller_client.list_volume()[0]
@@ -127,13 +127,13 @@ def test_replica_add_rebuild(bin, controller_client, replica_client,
                        'volume-snap-001.img',
                        'volume-snap-000.img']
 
-    cmd = [bin, 'add-replica', '--debug', REPLICA]
+    cmd = [bin, '--debug', 'add-replica', REPLICA]
     subprocess.check_call(cmd)
 
     volume = controller_client.list_volume()[0]
     assert volume.replicaCount == 1
 
-    cmd = [bin, 'add-replica', '--debug', REPLICA2]
+    cmd = [bin, '--debug', 'add-replica', REPLICA2]
     subprocess.check_call(cmd)
 
     volume = controller_client.list_volume()[0]
@@ -146,7 +146,7 @@ def test_replica_add_rebuild(bin, controller_client, replica_client,
         assert r.mode == 'RW'
 
 
-def test_snapshot(controller_client, replica_client, replica_client2):
+def test_snapshot(bin, controller_client, replica_client, replica_client2):
     open_replica(replica_client)
     open_replica(replica_client2)
 
@@ -160,15 +160,39 @@ def test_snapshot(controller_client, replica_client, replica_client2):
     snap = v.snapshot()
     assert snap.id != ''
 
-    r1 = replica_client.list_replica()[0]
-    r2 = replica_client2.list_replica()[0]
+    snap2 = v.snapshot()
+    assert snap2.id != ''
 
-    assert r2.chain == [
-        'volume-head-001.img',
-        'volume-snap-{}.img'.format(snap.id),
-    ]
+    cmd = [bin, '--debug', 'snapshot']
+    output = subprocess.check_output(cmd)
 
-    assert r1.chain == [
-        'volume-head-001.img',
-        'volume-snap-{}.img'.format(snap.id),
-    ]
+    assert output == '''ID
+{}
+{}
+'''.format(snap2.id, snap.id)
+
+
+def test_snapshot_ls(bin, controller_client, replica_client, replica_client2):
+    open_replica(replica_client)
+    open_replica(replica_client2)
+
+    v = controller_client.list_volume()[0]
+    v = v.start(replicas=[
+        REPLICA,
+        REPLICA2,
+    ])
+    assert v.replicaCount == 2
+
+    snap = v.snapshot()
+    assert snap.id != ''
+
+    snap2 = v.snapshot()
+    assert snap2.id != ''
+
+    cmd = [bin, '--debug', 'snapshot', 'ls']
+    output = subprocess.check_output(cmd)
+
+    assert output == '''ID
+{}
+{}
+'''.format(snap2.id, snap.id)
