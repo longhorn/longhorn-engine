@@ -6,6 +6,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/rancher/longhorn/types"
+	"github.com/rancher/longhorn/util"
 )
 
 type Controller struct {
@@ -70,11 +71,15 @@ func (c *Controller) addReplica(address string, snapshot bool) error {
 	return c.addReplicaNoLock(newBackend, address, snapshot)
 }
 
-func (c *Controller) Snapshot() error {
+func (c *Controller) Snapshot(name string) (string, error) {
 	c.Lock()
 	defer c.Unlock()
 
-	return c.backend.Snapshot()
+	if name == "" {
+		name = util.UUID()
+	}
+
+	return name, c.backend.Snapshot(name)
 }
 
 func (c *Controller) addReplicaNoLock(newBackend types.Backend, address string, snapshot bool) error {
@@ -83,11 +88,13 @@ func (c *Controller) addReplicaNoLock(newBackend types.Backend, address string, 
 	}
 
 	if snapshot {
-		if err := c.backend.Snapshot(); err != nil {
+		uuid := util.UUID()
+
+		if err := c.backend.Snapshot(uuid); err != nil {
 			newBackend.Close()
 			return err
 		}
-		if err := newBackend.Snapshot(); err != nil {
+		if err := newBackend.Snapshot(uuid); err != nil {
 			newBackend.Close()
 			return err
 		}

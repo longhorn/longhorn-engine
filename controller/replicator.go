@@ -161,14 +161,20 @@ func (r *replicator) SetMode(address string, mode types.Mode) {
 	r.buildReadWriters()
 }
 
-func (r *replicator) Snapshot() error {
+func (r *replicator) Snapshot(name string) error {
+	for _, wrapper := range r.backends {
+		if wrapper.mode == types.ERR {
+			return errors.New("Can not snapshot while a replica is in ERR")
+		}
+	}
+
 	var lastErr error
 	wg := sync.WaitGroup{}
 
 	for _, backend := range r.backends {
 		wg.Add(1)
 		go func(backend types.Backend) {
-			if err := backend.Snapshot(); err != nil {
+			if err := backend.Snapshot(name); err != nil {
 				lastErr = err
 			}
 			wg.Done()

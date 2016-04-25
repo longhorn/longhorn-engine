@@ -49,6 +49,30 @@ func (s *Server) ShutdownVolume(rw http.ResponseWriter, req *http.Request) error
 	return s.GetVolume(rw, req)
 }
 
+func (s *Server) SnapshotVolume(rw http.ResponseWriter, req *http.Request) error {
+	apiContext := api.GetApiContext(req)
+	id := mux.Vars(req)["id"]
+
+	v := s.getVolume(apiContext, id)
+	if v == nil {
+		rw.WriteHeader(http.StatusNotFound)
+		return nil
+	}
+
+	name, err := s.c.Snapshot("")
+	if err != nil {
+		return err
+	}
+
+	apiContext.Write(&SnapshotOutput{
+		client.Resource{
+			Id:   name,
+			Type: "snapshotOutput",
+		},
+	})
+	return nil
+}
+
 func (s *Server) StartVolume(rw http.ResponseWriter, req *http.Request) error {
 	apiContext := api.GetApiContext(req)
 	id := mux.Vars(req)["id"]
