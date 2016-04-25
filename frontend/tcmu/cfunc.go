@@ -72,7 +72,7 @@ int tcmu_wait_for_next_command(struct tcmu_device *dev) {
 
 	poll(&pfd, 1, -1);
 
-	if (pfd.revents != POLLIN) {
+	if (pfd.revents != 0 && pfd.revents != POLLIN) {
 		errp("poll received unexpected revent: 0x%x\n", pfd.revents);
 		return -1;
 	}
