@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/frostschutz/go-fibmap"
-    fio "github.com/rancher/sparse-tools/directfio"
+	fio "github.com/rancher/sparse-tools/directfio"
 )
 
 type diffDisk struct {
