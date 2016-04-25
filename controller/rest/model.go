@@ -36,6 +36,10 @@ type StartInput struct {
 	Replicas []string `json:"replicas"`
 }
 
+type SnapshotOutput struct {
+	client.Resource
+}
+
 func NewVolume(context *api.ApiContext, name string, replicas int) *Volume {
 	v := &Volume{
 		Resource: client.Resource{
@@ -47,8 +51,12 @@ func NewVolume(context *api.ApiContext, name string, replicas int) *Volume {
 		ReplicaCount: replicas,
 	}
 
-	v.Actions["start"] = context.UrlBuilder.ActionLink(v.Resource, "start")
-	v.Actions["shutdown"] = context.UrlBuilder.ActionLink(v.Resource, "shutdown")
+	if replicas == 0 {
+		v.Actions["start"] = context.UrlBuilder.ActionLink(v.Resource, "start")
+	} else {
+		v.Actions["shutdown"] = context.UrlBuilder.ActionLink(v.Resource, "shutdown")
+		v.Actions["snapshot"] = context.UrlBuilder.ActionLink(v.Resource, "snapshot")
+	}
 	return v
 }
 
@@ -82,6 +90,7 @@ func NewSchema() *client.Schemas {
 	schemas.AddType("apiVersion", client.Resource{})
 	schemas.AddType("schema", client.Schema{})
 	schemas.AddType("startInput", StartInput{})
+	schemas.AddType("snapshotOutput", SnapshotOutput{})
 
 	replica := schemas.AddType("replica", Replica{})
 	replica.CollectionMethods = []string{"GET", "POST"}
@@ -103,6 +112,9 @@ func NewSchema() *client.Schemas {
 		},
 		"shutdown": client.Action{
 			Output: "volume",
+		},
+		"snapshot": client.Action{
+			Output: "snapshotOutput",
 		},
 	}
 

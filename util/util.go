@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"regexp"
 	"strconv"
+
+	"github.com/satori/go.uuid"
 )
 
 var (
@@ -22,4 +24,8 @@ func ParseAddresses(name string) (string, string, string, error) {
 	return fmt.Sprintf("%s:%d", host, port),
 		fmt.Sprintf("%s:%d", host, port+1),
 		fmt.Sprintf("%s:%d", host, port+2), nil
+}
+
+func UUID() string {
+	return uuid.NewV4().String()
 }

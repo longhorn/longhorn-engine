@@ -1,8 +1,10 @@
 package remote
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
+	"io"
 	"net"
 	"net/http"
 	"strconv"
@@ -36,18 +38,31 @@ type Remote struct {
 
 func (r *Remote) Close() error {
 	logrus.Infof("Closing: %s", r.name)
-	return r.doAction("close")
+	return r.doAction("close", "")
 }
 
-func (r *Remote) Snapshot() error {
-	logrus.Infof("Snapshot: %s", r.name)
-	return r.doAction("snapshot")
+func (r *Remote) Snapshot(name string) error {
+	logrus.Infof("Snapshot: %s %s", r.name, name)
+	return r.doAction("snapshot", name)
 }
 
-func (r *Remote) doAction(action string) error {
-	req, err := http.NewRequest("POST", r.replicaURL+"?action="+action, nil)
+func (r *Remote) doAction(action, name string) error {
+	body := io.Reader(nil)
+	if name != "" {
+		buffer := &bytes.Buffer{}
+		if err := json.NewEncoder(buffer).Encode(&map[string]string{"name": name}); err != nil {
+			return err
+		}
+		body = buffer
+	}
+
+	req, err := http.NewRequest("POST", r.replicaURL+"?action="+action, body)
 	if err != nil {
 		return err
+	}
+
+	if name != "" {
+		req.Header.Add("Content-Type", "application/json")
 	}
 
 	resp, err := r.httpClient.Do(req)

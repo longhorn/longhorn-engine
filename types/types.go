@@ -16,7 +16,7 @@ type ReaderWriterAt interface {
 type Backend interface {
 	ReaderWriterAt
 	io.Closer
-	Snapshot() error
+	Snapshot(name string) error
 	Size() (int64, error)
 }
 

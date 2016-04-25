@@ -144,3 +144,31 @@ def test_replica_add_rebuild(bin, controller_client, replica_client,
 
     for r in replicas:
         assert r.mode == 'RW'
+
+
+def test_snapshot(controller_client, replica_client, replica_client2):
+    open_replica(replica_client)
+    open_replica(replica_client2)
+
+    v = controller_client.list_volume()[0]
+    v = v.start(replicas=[
+        REPLICA,
+        REPLICA2,
+    ])
+    assert v.replicaCount == 2
+
+    snap = v.snapshot()
+    assert snap.id != ''
+
+    r1 = replica_client.list_replica()[0]
+    r2 = replica_client2.list_replica()[0]
+
+    assert r2.chain == [
+        'volume-head-001.img',
+        'volume-snap-{}.img'.format(snap.id),
+    ]
+
+    assert r1.chain == [
+        'volume-head-001.img',
+        'volume-snap-{}.img'.format(snap.id),
+    ]
