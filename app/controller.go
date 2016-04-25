@@ -41,9 +41,6 @@ func ControllerCmd() cli.Command {
 			cli.StringSliceFlag{
 				Name: "replica",
 			},
-			cli.BoolFlag{
-				Name: "debug",
-			},
 		},
 		Action: func(c *cli.Context) {
 			if err := startController(c); err != nil {
@@ -63,10 +60,6 @@ func startController(c *cli.Context) error {
 	backends := c.StringSlice("enable-backend")
 	replicas := c.StringSlice("replica")
 	frontendName := c.String("frontend")
-
-	if c.Bool("debug") {
-		logrus.SetLevel(logrus.DebugLevel)
-	}
 
 	factories := map[string]types.BackendFactory{}
 	for _, backend := range backends {

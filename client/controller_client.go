@@ -37,6 +37,21 @@ func (c *ControllerClient) Start(replicas ...string) error {
 	}, nil)
 }
 
+func (c *ControllerClient) Snapshot() (string, error) {
+	volume, err := c.GetVolume()
+	if err != nil {
+		return "", err
+	}
+
+	output := &rest.SnapshotOutput{}
+	err = c.post(volume.Actions["snapshot"], nil, output)
+	if err != nil {
+		return "", err
+	}
+
+	return output.Id, err
+}
+
 func (c *ControllerClient) ListReplicas() ([]rest.Replica, error) {
 	var resp rest.ReplicaCollection
 	err := c.get("/replicas", &resp)

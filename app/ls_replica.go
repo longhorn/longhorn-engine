@@ -14,15 +14,6 @@ func LsReplicaCmd() cli.Command {
 	return cli.Command{
 		Name:      "ls-replica",
 		ShortName: "ls",
-		Flags: []cli.Flag{
-			cli.StringFlag{
-				Name:  "url",
-				Value: "http://localhost:9501",
-			},
-			cli.BoolFlag{
-				Name: "debug",
-			},
-		},
 		Action: func(c *cli.Context) {
 			if err := lsReplica(c); err != nil {
 				logrus.Fatal(err)
@@ -32,7 +23,7 @@ func LsReplicaCmd() cli.Command {
 }
 
 func getCli(c *cli.Context) *client.ControllerClient {
-	url := c.String("url")
+	url := c.GlobalString("url")
 	return client.NewControllerClient(url)
 
 }
@@ -45,26 +36,32 @@ func lsReplica(c *cli.Context) error {
 		return err
 	}
 
+	format := "%s\t%s\t%v\n"
 	tw := tabwriter.NewWriter(os.Stdout, 0, 20, 1, ' ', 0)
+	fmt.Fprintf(tw, format, "ADDRESS", "MODE", "CHAIN")
 	for _, r := range reps {
 		chain := interface{}("")
-		repClient, err := client.NewReplicaClient(r.Address)
-		if err != nil {
-			chain = err.Error()
+		chainList, err := getChain(r.Address)
+		if err == nil {
+			chain = chainList
 		}
-
-		if chain == "" {
-			r, err := repClient.GetReplica()
-			if err == nil {
-				chain = r.Chain
-			} else {
-				chain = err.Error()
-			}
-		}
-
-		fmt.Fprintf(tw, "%s\t%s\t%v\n", r.Address, r.Mode, chain)
+		fmt.Fprintf(tw, format, r.Address, r.Mode, chain)
 	}
 	tw.Flush()
 
 	return nil
+}
+
+func getChain(address string) ([]string, error) {
+	repClient, err := client.NewReplicaClient(address)
+	if err != nil {
+		return nil, err
+	}
+
+	r, err := repClient.GetReplica()
+	if err != nil {
+		return nil, err
+	}
+
+	return r.Chain, err
 }

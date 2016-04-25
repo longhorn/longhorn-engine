@@ -12,15 +12,6 @@ func AddReplicaCmd() cli.Command {
 	return cli.Command{
 		Name:      "add-replica",
 		ShortName: "add",
-		Flags: []cli.Flag{
-			cli.StringFlag{
-				Name:  "url",
-				Value: "http://localhost:9501",
-			},
-			cli.BoolFlag{
-				Name: "debug",
-			},
-		},
 		Action: func(c *cli.Context) {
 			if err := addReplica(c); err != nil {
 				logrus.Fatal(err)
@@ -35,11 +26,7 @@ func addReplica(c *cli.Context) error {
 	}
 	replica := c.Args()[0]
 
-	url := c.String("url")
-	if c.Bool("debug") {
-		logrus.SetLevel(logrus.DebugLevel)
-	}
-
+	url := c.GlobalString("url")
 	task := sync.NewTask(url)
 	return task.AddReplica(replica)
 }

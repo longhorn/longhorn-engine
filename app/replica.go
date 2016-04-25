@@ -30,9 +30,6 @@ func ReplicaCmd() cli.Command {
 			cli.BoolTFlag{
 				Name: "sync-agent",
 			},
-			cli.BoolFlag{
-				Name: "debug",
-			},
 			cli.StringFlag{
 				Name:  "size",
 				Usage: "Volume size in bytes or human readable 42kb, 42mb, 42gb",
@@ -49,10 +46,6 @@ func ReplicaCmd() cli.Command {
 func startReplica(c *cli.Context) error {
 	if c.NArg() != 1 {
 		return errors.New("directory name is required")
-	}
-
-	if c.Bool("debug") {
-		logrus.SetLevel(logrus.DebugLevel)
 	}
 
 	dir := c.Args()[0]
