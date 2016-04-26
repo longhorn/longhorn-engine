@@ -1,19 +1,11 @@
-# A stress test program to perform repeated and random-sized operations in multiple processes.
+# A stress test program to perform repeated operations in multiple processes.
 # 
 # 1. Write data between 0 and BATCH_SIZE blocks at a random offset
 # 2. Read data between 0 and BATCH_SIZE blocks at a random offset
+# 3. Remove a replica and add it back, causing a rebuild
 #
-# We write the 1st 4 bytes of the block the offset, and the 2nd 4 bytes of the block a pattern
-# comprising the current time stamp measured in number of miliseconds since the start of the 
-# program. Every time a pattern is written to the disk, it is also saves in a Python Array
-# called testdata. Testdata is stored in shared memory for all process to access, and
-# is used to validate the correctness of data after being read.
-# Time stamp patterns are reasonably unique and are guaranteed to be in increasing order.
-# Due to race conditions, however, one process might write a pattern, record that pattern in
-# shared memory, only to be immediately over-written by another process. So patterns on disk
-# are not always the same as what's recorded in memory due to race conditions.
-# We use a MAX_TIME_SLACK to account for small differences between disk patterns and in-memory
-# patterns caused by race conditions
+# Test patterns are stored in shared memory for all processes to access, and is 
+# used to validate the correctness of data after being read.
 #
 
 import subprocess
