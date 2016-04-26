@@ -5,6 +5,7 @@ import (
 	"os"
 
 	"github.com/frostschutz/go-fibmap"
+	fio "github.com/rancher/sparse-tools/directfio"
 )
 
 type diffDisk struct {
@@ -42,7 +43,7 @@ func (d *diffDisk) WriteAt(buf []byte, offset int64) (int, error) {
 	startSector := offset / d.sectorSize
 	sectors := int64(len(buf)) / d.sectorSize
 
-	c, err := d.files[target].WriteAt(buf, offset)
+	c, err := fio.WriteAt(d.files[target], buf, offset)
 
 	// Regardless of err mark bytes as written
 	for i := int64(0); i < sectors; i++ {
@@ -100,7 +101,7 @@ func (d *diffDisk) read(target byte, buf []byte, offset int64, startSector int64
 	bufStart := startSector * d.sectorSize
 	bufEnd := sectors * d.sectorSize
 	newBuf := buf[bufStart : bufStart+bufEnd]
-	return d.files[target].ReadAt(newBuf, offset+bufStart)
+	return fio.ReadAt(d.files[target], newBuf, offset+bufStart)
 }
 
 func (d *diffDisk) lookup(sector int64) (byte, error) {

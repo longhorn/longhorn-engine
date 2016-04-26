@@ -22,3 +22,5 @@ import:
   version: 71f57d300dd6a780ac1856c005c4b518cfd498ec
 - package: github.com/satori/go.uuid
   version: f9ab0dce87d815821e221626b772e3475a0d2749
+- package: github.com/rancher/sparse-tools
+  version: 84fc96db3ee359d3e5675df414494c09c7d0c0c2 

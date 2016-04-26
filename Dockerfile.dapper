@@ -54,10 +54,10 @@ RUN cd /usr/src/tcmu-runner && \
     cp scsi_defs.h /usr/local/include && \
     cp libtcmu_static.a /usr/local/lib/libtcmu.a
 
-# Install ssync
-RUN go get -d github.com/kp6/alphorn/ssync && \
-    cd $GOPATH/src/github.com/kp6/alphorn && \
-    git checkout c7705144deb2d398820fd248c261d2279b27f45d && \
+# Install ssync, etc
+RUN go get -d github.com/rancher/sparse-tools/ssync && \
+    cd $GOPATH/src/github.com/rancher/sparse-tools && \
+    git checkout 84fc96db3ee359d3e5675df414494c09c7d0c0c2 && \
     cd ssync && \
     go build -o /usr/local/bin/ssync
 
