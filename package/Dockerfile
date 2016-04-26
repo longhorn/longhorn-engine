@@ -1,3 +1,5 @@
 FROM ubuntu:16.04
-COPY longhorn /usr/bin/
+RUN apt-get update && apt-get install kmod
+
+COPY longhorn longhorn-agent launch ssync docker-longhorn-driver /usr/bin/
 CMD ["longhorn"]

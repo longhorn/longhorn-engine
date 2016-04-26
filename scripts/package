@@ -12,7 +12,8 @@ if [ ! -x ../bin/longhorn ]; then
     ../scripts/build
 fi
 
-cp ../bin/longhorn .
+cp ../bin/longhorn* .
+cp /usr/local/bin/{docker-longhorn-driver,ssync} .
 docker build -t ${REPO}/longhorn:${TAG} .
 
 echo Built ${REPO}/longhorn:${TAG}
