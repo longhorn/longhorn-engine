@@ -1,5 +1,8 @@
 FROM ubuntu:16.04
-RUN apt-get update && apt-get install kmod
+RUN apt-get update && apt-get install -y kmod curl
 
-COPY longhorn longhorn-agent launch ssync docker-longhorn-driver /usr/bin/
+RUN curl -sSL -o share-mnt https://github.com/rancher/runc/releases/download/share-mnt-v0.0.3/share-mnt && \
+    chmod u+x share-mnt && mv share-mnt /usr/bin
+
+COPY longhorn longhorn-agent launch ssync launch-driver docker-longhorn-driver /usr/bin/
 CMD ["longhorn"]
