@@ -20,6 +20,100 @@ func NewTask(controller string) *Task {
 	}
 }
 
+func (t *Task) DeleteSnapshot(snapshot string) error {
+	replicas, err := t.client.ListReplicas()
+	if err != nil {
+		return err
+	}
+
+	for _, replica := range replicas {
+		if err := t.coalesceSnapshot(&replica, snapshot); err != nil {
+			return err
+		}
+	}
+
+	for _, replica := range replicas {
+		if err := t.rmDisk(&replica, snapshot); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (t *Task) rmDisk(replicaInController *rest.Replica, snapshot string) error {
+	repClient, err := client.NewReplicaClient(replicaInController.Address)
+	if err != nil {
+		return err
+	}
+
+	replica, err := repClient.GetReplica()
+	if err != nil {
+		return err
+	}
+
+	disk, _ := getNameAndIndex(replica.Chain, snapshot)
+	return repClient.RemoveDisk(disk)
+}
+
+func getNameAndIndex(chain []string, snapshot string) (string, int) {
+	index := find(chain, snapshot)
+	if index < 0 {
+		snapshot = fmt.Sprintf("volume-snap-%s.img", snapshot)
+		index = find(chain, snapshot)
+	}
+
+	if index < 0 {
+		return "", index
+	}
+
+	return snapshot, index
+}
+
+func (t *Task) coalesceSnapshot(replicaInController *rest.Replica, snapshot string) error {
+	if replicaInController.Mode != "RW" {
+		return fmt.Errorf("Can only removed snapshot from replica in mode RW, got %s", replicaInController.Mode)
+	}
+
+	repClient, err := client.NewReplicaClient(replicaInController.Address)
+	if err != nil {
+		return err
+	}
+
+	replica, err := repClient.GetReplica()
+	if err != nil {
+		return err
+	}
+
+	_, index := getNameAndIndex(replica.Chain, snapshot)
+
+	switch {
+	case index < 0:
+		return fmt.Errorf("Snapshot %s not found on replica %s", snapshot, replicaInController.Address)
+	case index == 0:
+		return fmt.Errorf("Can not remove the head disk in the chain")
+	case index >= len(replica.Chain):
+		return fmt.Errorf("Can not remove the last disk in the chain")
+	}
+
+	logrus.Infof("Coalescing %s on %s", snapshot, replicaInController.Address)
+	err = repClient.Coalesce(replica.Chain[index], replica.Chain[index+1])
+	if err != nil {
+		logrus.Errorf("Failed to coalesce %s on %s: %v", snapshot, replicaInController.Address, err)
+		return err
+	}
+	return nil
+}
+
+func find(list []string, item string) int {
+	for i, val := range list {
+		if val == item {
+			return i
+		}
+	}
+	return -1
+}
+
 func (t *Task) AddReplica(replica string) error {
 	volume, err := t.client.GetVolume()
 	if err != nil {

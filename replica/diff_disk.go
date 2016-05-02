@@ -24,8 +24,9 @@ func (d *diffDisk) RemoveIndex(index int) error {
 	}
 
 	for i := 0; i < len(d.location); i++ {
-		if d.location[i] >= byte(index) {
-			d.location[i] = d.location[i] - 1
+		if d.location[i] == byte(index) {
+			// set back to unknown
+			d.location[i] = 0
 		}
 	}
 

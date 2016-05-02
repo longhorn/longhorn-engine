@@ -18,4 +18,6 @@ fi
 ./bin/longhorn replica --listen localhost:9505 $temp2 &
 cd integration
 find -depth -name __pycache__ -o -name "*.pyc" -exec rm -rf {} \;
-tox
+if [ -z "$NO_TEST" ]; then
+    tox "$@"
+fi
