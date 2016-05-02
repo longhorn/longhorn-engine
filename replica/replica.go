@@ -41,6 +41,7 @@ type Info struct {
 	Size       int64
 	Head       string
 	Dirty      bool
+	Rebuilding bool
 	Parent     string
 	SectorSize int64
 }
@@ -48,6 +49,12 @@ type Info struct {
 type disk struct {
 	name   string
 	Parent string
+}
+
+func ReadInfo(dir string) (Info, error) {
+	var info Info
+	err := (&Replica{dir: dir}).unmarshalFile(volumeMetaData, &info)
+	return info, err
 }
 
 func New(size, sectorSize int64, dir string) (*Replica, error) {
@@ -88,11 +95,25 @@ func New(size, sectorSize int64, dir string) (*Replica, error) {
 
 	r.info.Parent = r.diskData[r.info.Head].Parent
 
-	return r, r.writeVolumeMetaData(true)
+	return r, r.writeVolumeMetaData(true, r.info.Rebuilding)
+}
+
+func (r *Replica) SetRebuilding(rebuilding bool) error {
+	err := r.writeVolumeMetaData(true, rebuilding)
+	if err != nil {
+		return err
+	}
+	r.info.Rebuilding = rebuilding
+	return nil
 }
 
 func (r *Replica) Reload() (*Replica, error) {
-	return New(r.info.Size, r.volume.sectorSize, r.dir)
+	newReplica, err := New(r.info.Size, r.volume.sectorSize, r.dir)
+	if err != nil {
+		return nil, err
+	}
+	newReplica.info.Dirty = r.info.Dirty
+	return newReplica, nil
 }
 
 func (r *Replica) findDisk(name string) int {
@@ -171,22 +192,19 @@ func (r *Replica) Chain() ([]string, error) {
 	return result, nil
 }
 
-func (r *Replica) writeVolumeMetaData(dirty bool) error {
+func (r *Replica) writeVolumeMetaData(dirty, rebuilding bool) error {
 	info := r.info
 	info.Dirty = dirty
+	info.Rebuilding = rebuilding
 	return r.encodeToFile(&info, volumeMetaData)
 }
 
-func (r *Replica) close(writeMeta bool) error {
+func (r *Replica) close() error {
 	for _, f := range r.volume.files {
 		f.Close()
 	}
 
-	if writeMeta {
-		return r.writeVolumeMetaData(false)
-	}
-
-	return nil
+	return r.writeVolumeMetaData(false, r.info.Rebuilding)
 }
 
 func (r *Replica) encodeToFile(obj interface{}, file string) error {
@@ -408,7 +426,7 @@ func (r *Replica) Close() error {
 	r.Lock()
 	defer r.Unlock()
 
-	return r.close(true)
+	return r.close()
 }
 
 func (r *Replica) Delete() error {

@@ -44,11 +44,14 @@ def replica_client2(request):
 
 
 def cleanup_replica(client):
-    for r in client.list_replica():
-        if 'close' in r:
-            client.delete(r)
-        else:
-            client.delete(r.open(size=str(1024*1024)))
+    r = client.list_replica()[0]
+    if r.state == 'initial':
+        return client
+    if 'open' in r:
+        r = r.open()
+    client.delete(r)
+    r = client.reload(r)
+    assert r.state == 'initial'
     return client
 
 
@@ -81,15 +84,15 @@ def open_replica(client):
     assert len(replicas) == 1
 
     r = replicas[0]
-    assert r.state == 'closed'
-    assert r.size == ''
+    assert r.state == 'initial'
+    assert r.size == '0'
     assert r.sectorSize == 0
     assert r.parent == ''
     assert r.head == ''
 
-    r = r.open(size=str(1024*4096))
+    r = r.create(size=str(1024*4096))
 
-    assert r.state == 'open'
+    assert r.state == 'closed'
     assert r.size == str(1024*4096)
     assert r.sectorSize == 4096
     assert r.parent == ''
@@ -114,6 +117,7 @@ def test_replica_add_rebuild(bin, controller_client, replica_client,
     open_replica(replica_client2)
 
     r = replica_client.list_replica()[0]
+    r = r.open()
     r = r.snapshot(name='000')
     r = r.snapshot(name='001')
 
@@ -127,6 +131,7 @@ def test_replica_add_rebuild(bin, controller_client, replica_client,
                        'volume-snap-001.img',
                        'volume-snap-000.img']
 
+    r = r.close()
     cmd = [bin, '--debug', 'add-replica', REPLICA]
     subprocess.check_call(cmd)
 

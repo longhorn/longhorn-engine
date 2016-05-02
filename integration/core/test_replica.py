@@ -14,11 +14,14 @@ def client(request):
 
 
 def cleanup(client):
-    for r in client.list_replica():
-        if 'close' in r:
-            client.delete(r)
-        else:
-            client.delete(r.open(size='4096'))
+    r = client.list_replica()[0]
+    if r.state == 'initial':
+        return client
+    if 'open' in r:
+        r = r.open()
+    client.delete(r)
+    r = client.reload(r)
+    assert r.state == 'initial'
     return client
 
 
@@ -31,20 +34,52 @@ def random_num():
     return random.randint(0, 1000000)
 
 
+def test_create(client):
+    replicas = client.list_replica()
+    assert len(replicas) == 1
+
+    r = replicas[0]
+    assert r.state == 'initial'
+    assert r.size == '0'
+    assert r.sectorSize == 0
+    assert r.parent == ''
+    assert r.head == ''
+
+    r = r.create(size=str(1024*4096))
+
+    assert r.state == 'closed'
+    assert r.size == str(1024*4096)
+    assert r.sectorSize == 4096
+    assert r.parent == ''
+    assert r.head == 'volume-head-000.img'
+
+
 def test_open(client):
     replicas = client.list_replica()
     assert len(replicas) == 1
 
     r = replicas[0]
-    assert r.state == 'closed'
-    assert r.size == ''
+    assert r.state == 'initial'
+    assert r.size == '0'
     assert r.sectorSize == 0
     assert r.parent == ''
     assert r.head == ''
 
-    r = r.open(size=str(1024*4096))
+    r = r.create(size=str(1024*4096))
+
+    assert r.state == 'closed'
+    assert not r.dirty
+    assert not r.rebuilding
+    assert r.size == str(1024*4096)
+    assert r.sectorSize == 4096
+    assert r.parent == ''
+    assert r.head == 'volume-head-000.img'
+
+    r = r.open()
 
     assert r.state == 'open'
+    assert not r.dirty
+    assert not r.rebuilding
     assert r.size == str(1024*4096)
     assert r.sectorSize == 4096
     assert r.parent == ''
@@ -56,15 +91,12 @@ def test_close(client):
     assert len(replicas) == 1
 
     r = replicas[0]
-    assert r.state == 'closed'
-    assert r.size == ''
-    assert r.sectorSize == 0
-    assert r.parent == ''
-    assert r.head == ''
-
-    r = r.open(size=str(1024*4096))
+    r = r.create(size=str(1024*4096))
+    r = r.open()
 
     assert r.state == 'open'
+    assert not r.dirty
+    assert not r.rebuilding
     assert r.size == str(1024*4096)
     assert r.sectorSize == 4096
     assert r.parent == ''
@@ -73,10 +105,12 @@ def test_close(client):
     r = r.close()
 
     assert r.state == 'closed'
-    assert r.size == ''
-    assert r.sectorSize == 0
+    assert not r.dirty
+    assert not r.rebuilding
+    assert r.size == str(1024*4096)
+    assert r.sectorSize == 4096
     assert r.parent == ''
-    assert r.head == ''
+    assert r.head == 'volume-head-000.img'
 
 
 def test_snapshot(client):
@@ -84,24 +118,29 @@ def test_snapshot(client):
     assert len(replicas) == 1
 
     r = replicas[0]
-    assert r.state == 'closed'
-    assert r.size == ''
-    assert r.sectorSize == 0
-    assert r.parent == ''
-    assert r.head == ''
-
-    r = r.open(size=str(1024*4096))
+    r = r.create(size=str(1024*4096))
+    r = r.open()
 
     assert r.state == 'open'
+    assert not r.dirty
+    assert not r.rebuilding
     assert r.size == str(1024*4096)
     assert r.sectorSize == 4096
     assert r.parent == ''
     assert r.head == 'volume-head-000.img'
 
     r = r.snapshot(name='000')
+    assert r.state == 'dirty'
+    assert r.dirty
+    assert not r.rebuilding
+    assert r.size == str(1024*4096)
+    assert r.sectorSize == 4096
+
     r = r.snapshot(name='001')
 
-    assert r.state == 'open'
+    assert r.state == 'dirty'
+    assert r.dirty
+    assert not r.rebuilding
     assert r.size == str(1024*4096)
     assert r.sectorSize == 4096
     assert r.head == 'volume-head-002.img'
@@ -115,14 +154,16 @@ def test_remove_disk(client):
     assert len(replicas) == 1
 
     r = replicas[0]
-    r = r.open(size=str(1024*4096))
+    r = r.create(size=str(1024*4096))
+    r = r.open()
     r = r.snapshot(name='000')
     r = r.snapshot(name='001')
     assert r.chain == ['volume-head-002.img', 'volume-snap-001.img',
                        'volume-snap-000.img']
 
     r = r.removedisk(name='volume-snap-001.img')
-    assert r.state == 'open'
+    assert r.state == 'dirty'
+    assert not r.rebuilding
     assert r.size == str(1024*4096)
     assert r.sectorSize == 4096
     assert r.head == 'volume-head-002.img'
@@ -135,14 +176,16 @@ def test_remove_last_disk(client):
     assert len(replicas) == 1
 
     r = replicas[0]
-    r = r.open(size=str(1024*4096))
+    r = r.create(size=str(1024*4096))
+    r = r.open()
     r = r.snapshot(name='000')
     r = r.snapshot(name='001')
     assert r.chain == ['volume-head-002.img', 'volume-snap-001.img',
                        'volume-snap-000.img']
 
     r = r.removedisk(name='volume-snap-000.img')
-    assert r.state == 'open'
+    assert r.state == 'dirty'
+    assert not r.rebuilding
     assert r.size == str(1024*4096)
     assert r.sectorSize == 4096
     assert r.head == 'volume-head-002.img'
@@ -155,14 +198,15 @@ def test_reload(client):
     assert len(replicas) == 1
 
     r = replicas[0]
-    r = r.open(size=str(1024*4096))
+    r = r.create(size=str(1024*4096))
+    r = r.open()
     r = r.snapshot(name='000')
     r = r.snapshot(name='001')
     assert r.chain == ['volume-head-002.img', 'volume-snap-001.img',
                        'volume-snap-000.img']
 
     r = r.removedisk(name='volume-snap-000.img')
-    assert r.state == 'open'
+    assert r.state == 'dirty'
     assert r.size == str(1024*4096)
     assert r.sectorSize == 4096
     assert r.head == 'volume-head-002.img'
@@ -170,6 +214,14 @@ def test_reload(client):
     assert r.chain == ['volume-head-002.img', 'volume-snap-001.img']
 
     r = r.reload()
+    assert r.state == 'dirty'
+    assert r.size == str(1024*4096)
+    assert r.sectorSize == 4096
+    assert r.chain == ['volume-head-002.img', 'volume-snap-001.img']
+    assert r.head == 'volume-head-002.img'
+    assert r.parent == 'volume-snap-001.img'
+
+    r = r.close().open()
     assert r.state == 'open'
     assert r.size == str(1024*4096)
     assert r.sectorSize == 4096
@@ -183,14 +235,10 @@ def test_reload_simple(client):
     assert len(replicas) == 1
 
     r = replicas[0]
-    assert r.state == 'closed'
-    assert r.size == ''
-    assert r.sectorSize == 0
-    assert r.parent == ''
-    assert r.head == ''
-
-    r = r.open(size=str(1024*4096))
+    r = r.create(size=str(1024*4096))
+    r = r.open()
     assert r.state == 'open'
+    assert not r.rebuilding
     assert r.size == str(1024*4096)
     assert r.sectorSize == 4096
     assert r.parent == ''
@@ -202,3 +250,82 @@ def test_reload_simple(client):
     assert r.sectorSize == 4096
     assert r.parent == ''
     assert r.head == 'volume-head-000.img'
+
+
+def test_rebuilding(client):
+    replicas = client.list_replica()
+    assert len(replicas) == 1
+
+    r = replicas[0]
+    r = r.create(size=str(1024*4096))
+    r = r.open()
+    r = r.snapshot(name='001')
+    assert r.state == 'dirty'
+    assert not r.rebuilding
+    assert r.size == str(1024*4096)
+    assert r.sectorSize == 4096
+    assert r.parent == 'volume-snap-001.img'
+    assert r.head == 'volume-head-001.img'
+    assert r.chain == ['volume-head-001.img', 'volume-snap-001.img']
+
+    r = r.setrebuilding(rebuilding=True)
+    assert r.state == 'rebuilding'
+    assert r.rebuilding
+    assert r.size == str(1024*4096)
+    assert r.sectorSize == 4096
+    assert r.parent == 'volume-snap-001.img'
+    assert r.head == 'volume-head-001.img'
+    assert r.chain == ['volume-head-001.img', 'volume-snap-001.img']
+
+    r = r.close().open()
+    assert r.state == 'rebuilding'
+    assert r.rebuilding
+    assert r.size == str(1024*4096)
+    assert r.sectorSize == 4096
+    assert r.parent == 'volume-snap-001.img'
+    assert r.head == 'volume-head-001.img'
+    assert r.chain == ['volume-head-001.img', 'volume-snap-001.img']
+
+    r = r.reload()
+    assert r.state == 'rebuilding'
+    assert r.rebuilding
+    assert r.size == str(1024*4096)
+    assert r.sectorSize == 4096
+    assert r.parent == 'volume-snap-001.img'
+    assert r.head == 'volume-head-001.img'
+    assert r.chain == ['volume-head-001.img', 'volume-snap-001.img']
+
+
+def test_not_rebuilding(client):
+    replicas = client.list_replica()
+    assert len(replicas) == 1
+
+    r = replicas[0]
+    r = r.create(size=str(1024*4096))
+    r = r.open()
+    r = r.snapshot(name='001')
+    assert r.state == 'dirty'
+    assert not r.rebuilding
+    assert r.size == str(1024*4096)
+    assert r.sectorSize == 4096
+    assert r.parent == 'volume-snap-001.img'
+    assert r.head == 'volume-head-001.img'
+    assert r.chain == ['volume-head-001.img', 'volume-snap-001.img']
+
+    r = r.setrebuilding(rebuilding=True)
+    assert r.state == 'rebuilding'
+    assert r.rebuilding
+    assert r.size == str(1024*4096)
+    assert r.sectorSize == 4096
+    assert r.parent == 'volume-snap-001.img'
+    assert r.head == 'volume-head-001.img'
+    assert r.chain == ['volume-head-001.img', 'volume-snap-001.img']
+
+    r = r.setrebuilding(rebuilding=False)
+    assert r.state == 'dirty'
+    assert not r.rebuilding
+    assert r.size == str(1024*4096)
+    assert r.sectorSize == 4096
+    assert r.parent == 'volume-snap-001.img'
+    assert r.head == 'volume-head-001.img'
+    assert r.chain == ['volume-head-001.img', 'volume-snap-001.img']
