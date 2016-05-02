@@ -14,19 +14,20 @@ import (
 func (s *Server) ListReplicas(rw http.ResponseWriter, req *http.Request) error {
 	apiContext := api.GetApiContext(req)
 	resp := client.GenericCollection{}
-	resp.Data = append(resp.Data, s.getReplica(apiContext))
+	resp.Data = append(resp.Data, s.Replica(apiContext))
 
 	apiContext.Write(&resp)
 	return nil
 }
 
-func (s *Server) getReplica(apiContext *api.ApiContext) *Replica {
-	return NewReplica(apiContext, s.s.Replica())
+func (s *Server) Replica(apiContext *api.ApiContext) *Replica {
+	state, info := s.s.Status()
+	return NewReplica(apiContext, state, info, s.s.Replica())
 }
 
 func (s *Server) GetReplica(rw http.ResponseWriter, req *http.Request) error {
 	apiContext := api.GetApiContext(req)
-	r := s.getReplica(apiContext)
+	r := s.Replica(apiContext)
 	if mux.Vars(req)["id"] == r.Id {
 		apiContext.Write(r)
 	} else {
@@ -41,12 +42,22 @@ func (s *Server) doOp(req *http.Request, err error) error {
 	}
 
 	apiContext := api.GetApiContext(req)
-	apiContext.Write(s.getReplica(apiContext))
+	apiContext.Write(s.Replica(apiContext))
 	return nil
 }
 
-func (s *Server) OpenReplica(rw http.ResponseWriter, req *http.Request) error {
-	var input OpenInput
+func (s *Server) SetRebuilding(rw http.ResponseWriter, req *http.Request) error {
+	var input RebuildingInput
+	apiContext := api.GetApiContext(req)
+	if err := apiContext.Read(&input); err != nil && err != io.EOF {
+		return err
+	}
+
+	return s.doOp(req, s.s.SetRebuilding(input.Rebuilding))
+}
+
+func (s *Server) Create(rw http.ResponseWriter, req *http.Request) error {
+	var input CreateInput
 	apiContext := api.GetApiContext(req)
 	if err := apiContext.Read(&input); err != nil && err != io.EOF {
 		return err
@@ -61,7 +72,11 @@ func (s *Server) OpenReplica(rw http.ResponseWriter, req *http.Request) error {
 		}
 	}
 
-	return s.doOp(req, s.s.Open(size))
+	return s.doOp(req, s.s.Create(size))
+}
+
+func (s *Server) OpenReplica(rw http.ResponseWriter, req *http.Request) error {
+	return s.doOp(req, s.s.Open())
 }
 
 func (s *Server) RemoveDisk(rw http.ResponseWriter, req *http.Request) error {

@@ -2,10 +2,22 @@ package replica
 
 import (
 	"fmt"
+	"os"
 	"sync"
 
 	"github.com/Sirupsen/logrus"
 )
+
+const (
+	Initial    = State("initial")
+	Open       = State("open")
+	Closed     = State("closed")
+	Dirty      = State("dirty")
+	Rebuilding = State("rebuilding")
+	Error      = State("error")
+)
+
+type State string
 
 type Server struct {
 	sync.RWMutex
@@ -21,13 +33,34 @@ func NewServer(dir string, sectorSize int64) *Server {
 	}
 }
 
-func (s *Server) Open(size int64) error {
+func (s *Server) Create(size int64) error {
+	s.Lock()
+	defer s.Unlock()
+
+	state, _ := s.Status()
+	if state != Initial {
+		return nil
+	}
+
+	logrus.Infof("Creating volume %s, size %d/%d", s.dir, size, s.sectorSize)
+	r, err := New(size, s.sectorSize, s.dir)
+	if err != nil {
+		return err
+	}
+
+	return r.Close()
+}
+
+func (s *Server) Open() error {
 	s.Lock()
 	defer s.Unlock()
 
 	if s.r != nil {
 		return fmt.Errorf("Replica is already open")
 	}
+
+	_, info := s.Status()
+	size := info.Size
 
 	logrus.Infof("Opening volume %s, size %d/%d", s.dir, size, s.sectorSize)
 	r, err := New(size, s.sectorSize, s.dir)
@@ -56,6 +89,39 @@ func (s *Server) Reload() error {
 	s.r = newReplica
 	oldReplica.Close()
 	return nil
+}
+
+func (s *Server) Status() (State, Info) {
+	if s.r == nil {
+		info, err := ReadInfo(s.dir)
+		if os.IsNotExist(err) {
+			return Initial, Info{}
+		} else if err != nil {
+			return Error, Info{}
+		}
+		return Closed, info
+	} else {
+		info := s.r.Info()
+		switch {
+		case info.Rebuilding:
+			return Rebuilding, info
+		case info.Dirty:
+			return Dirty, info
+		default:
+			return Open, info
+		}
+	}
+}
+
+func (s *Server) SetRebuilding(rebuilding bool) error {
+	state, _ := s.Status()
+	// Must be Open/Dirty to set true or must be Rebuilding to set false
+	if (rebuilding && state != Open && state != Dirty) ||
+		(!rebuilding && state != Rebuilding) {
+		return fmt.Errorf("Can not set rebuilding=%b from state %s", rebuilding, state)
+	}
+
+	return s.r.SetRebuilding(rebuilding)
 }
 
 func (s *Server) Replica() *Replica {
