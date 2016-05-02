@@ -41,6 +41,11 @@ func (r *Remote) Close() error {
 	return r.doAction("close", "")
 }
 
+func (r *Remote) open() error {
+	logrus.Infof("Opening: %s", r.name)
+	return r.doAction("open", "")
+}
+
 func (r *Remote) Snapshot(name string) error {
 	logrus.Infof("Snapshot: %s %s", r.name, name)
 	return r.doAction("snapshot", name)
@@ -128,8 +133,8 @@ func (rf *Factory) Create(address string) (types.Backend, error) {
 		return nil, err
 	}
 
-	if replica.State != rest.StateOpen {
-		return nil, fmt.Errorf("Can not add replica in state: %s", replica.State)
+	if replica.State != "closed" {
+		return nil, fmt.Errorf("Replica must be closed, Can not add in state: %s", replica.State)
 	}
 
 	conn, err := net.Dial("tcp", dataAddress)
@@ -139,5 +144,5 @@ func (rf *Factory) Create(address string) (types.Backend, error) {
 
 	r.ReaderWriterAt = rpc.NewClient(conn)
 
-	return r, nil
+	return r, r.open()
 }

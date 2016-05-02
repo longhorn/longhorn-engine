@@ -59,7 +59,7 @@ func startReplica(c *cli.Context) error {
 			return err
 		}
 
-		if err := s.Open(size); err != nil {
+		if err := s.Create(size); err != nil {
 			return err
 		}
 	}
