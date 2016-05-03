@@ -90,12 +90,16 @@ func (t *Task) reloadAndCheck(fromClient *client.ReplicaClient, toClient *client
 		return fmt.Errorf("Chains are not equal: %v != %v", fromChain, toChain)
 	}
 
-	return nil
+	return toClient.SetRebuilding(false)
 }
 
 func (t *Task) syncFiles(fromClient *client.ReplicaClient, toClient *client.ReplicaClient) error {
 	from, err := fromClient.GetReplica()
 	if err != nil {
+		return err
+	}
+
+	if err := toClient.SetRebuilding(true); err != nil {
 		return err
 	}
 

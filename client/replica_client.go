@@ -59,15 +59,44 @@ func NewReplicaClient(address string) (*ReplicaClient, error) {
 	}, nil
 }
 
-func (c *ReplicaClient) OpenReplica(size string) error {
+func (c *ReplicaClient) Create(size string) error {
 	r, err := c.GetReplica()
 	if err != nil {
 		return err
 	}
 
-	return c.post(r.Actions["open"], rest.OpenInput{
+	return c.post(r.Actions["create"], rest.CreateInput{
 		Size: size,
 	}, nil)
+}
+
+func (c *ReplicaClient) Close() error {
+	r, err := c.GetReplica()
+	if err != nil {
+		return err
+	}
+
+	return c.post(r.Actions["close"], nil, nil)
+}
+
+func (c *ReplicaClient) SetRebuilding(rebuilding bool) error {
+	r, err := c.GetReplica()
+	if err != nil {
+		return err
+	}
+
+	return c.post(r.Actions["setrebuilding"], &rest.RebuildingInput{
+		Rebuilding: rebuilding,
+	}, nil)
+}
+
+func (c *ReplicaClient) OpenReplica() error {
+	r, err := c.GetReplica()
+	if err != nil {
+		return err
+	}
+
+	return c.post(r.Actions["open"], nil, nil)
 }
 
 func (c *ReplicaClient) GetReplica() (rest.Replica, error) {

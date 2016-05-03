@@ -2,17 +2,18 @@ package controller
 
 import (
 	"fmt"
+	"io/ioutil"
+	"net/http"
+	"os"
 	"os/exec"
 	"time"
 
 	"github.com/Sirupsen/logrus"
 
 	"github.com/rancher/go-rancher-metadata/metadata"
+
 	lclient "github.com/rancher/longhorn/client"
 	"github.com/rancher/longhorn/controller/rest"
-	"io/ioutil"
-	"net/http"
-	"os"
 )
 
 const (
@@ -21,7 +22,7 @@ const (
 )
 
 type replica struct {
-	client      *metadata.Client
+	client      *lclient.ReplicaClient
 	host        string
 	port        int
 	healthState string
@@ -68,66 +69,161 @@ func (c *Controller) Start() error {
 }
 
 func (c *Controller) getReplicasAndStart() error {
-	var fromMetadata map[string]replica
+	var replicaMetadata map[string]*replica
 	var scale int
 	for {
 		var err error
-		if scale, fromMetadata, err = c.replicasFromMetadata(); err != nil {
+		if scale, replicaMetadata, err = c.replicaMetadataAndClient(); err != nil {
 			return err
-		} else if len(fromMetadata) < scale {
-			logrus.Infof("Waiting for replicas. Current %v, expected: %v", len(fromMetadata), scale)
+		} else if len(replicaMetadata) < scale {
+			logrus.Infof("Waiting for replicas. Current %v, expected: %v", len(replicaMetadata), scale)
 			time.Sleep(1 * time.Second)
 		} else {
 			break
 		}
 	}
 
-	startingReplicas := map[string]replica{}
-	dirtyReplicas := map[string]replica{}
-	for address, replFromMD := range fromMetadata {
-		replicaClient, err := lclient.NewReplicaClient(address)
+	initializingReplicas := map[string]*replica{}
+	closedCleanReplicas := map[string]*replica{}
+	closedDirtyReplicas := map[string]*replica{}
+	openCleanReplicas := map[string]*replica{}
+	openDirtyReplicas := map[string]*replica{}
+	rebuildingClosedReplicas := map[string]*replica{}
+	rebuildingOpenReplicas := map[string]*replica{}
+	otherReplicas := map[string]*replica{}
+
+	for address, replicaMd := range replicaMetadata {
+		replica, err := replicaMd.client.GetReplica()
 		if err != nil {
-			logrus.Errorf("Error getting client for replica %v. Removing from list of startup replicas. Error: %v", address, err)
+			logrus.Errorf("Error getting replica %v. Removing from list of start replcias. Error: %v", address, err)
 			continue
 		}
 
-		replica, err := replicaClient.GetReplica()
-		if replica.Dirty {
-			logrus.Infof("Removing dirty replica %v from startup.", address)
-			dirtyReplicas[address] = replFromMD
+		if replica.State == "initial" {
+			initializingReplicas[address] = replicaMd
+
+		} else if replica.Rebuilding && replica.State == "closed" {
+			rebuildingClosedReplicas[address] = replicaMd
+
+		} else if replica.Rebuilding {
+			rebuildingOpenReplicas[address] = replicaMd
+
+		} else if replica.State == "closed" && replica.Dirty {
+			closedDirtyReplicas[address] = replicaMd
+
+		} else if replica.State == "closed" {
+			closedCleanReplicas[address] = replicaMd
+
+		} else if replica.State == "open" {
+			openCleanReplicas[address] = replicaMd
+
+		} else if replica.State == "dirty" {
+			openDirtyReplicas[address] = replicaMd
+
 		} else {
-			startingReplicas[address] = replFromMD
+			otherReplicas[address] = replicaMd
+
 		}
 	}
+	logrus.Infof("Initializing replicas: %v", initializingReplicas)
+	logrus.Infof("Closed and clean replicas: %v", closedCleanReplicas)
+	logrus.Infof("Closed and dirty replicas: %v", closedDirtyReplicas)
+	logrus.Infof("Open and dirty replicas: %v", openDirtyReplicas)
+	logrus.Infof("Open and clean replicas: %v", openCleanReplicas)
+	logrus.Infof("Rebuilding and closed replicas: %v", rebuildingClosedReplicas)
+	logrus.Infof("Rebuilding and open replicas: %v", rebuildingOpenReplicas)
+	logrus.Infof("Other replicas (likely in error state)L %v", otherReplicas)
 
-	if len(startingReplicas) == 0 && len(dirtyReplicas) > 0 {
-		// just start with a single dirty replica
-		for k, v := range dirtyReplicas {
-			logrus.Infof("Couldn't find any clean replicas. Using dirty replica %v.", k)
-			startingReplicas[k] = v
-			break
-		}
+	// Closed and clean. Start with all replicas.
+	attemptedStart, err := c.startWithAll(closedCleanReplicas, false)
+	if attemptedStart {
+		return err
 	}
 
+	// Closed and dirty. Start with one.
+	attemptedStart, err = c.startWithOne(closedDirtyReplicas, false)
+	if attemptedStart {
+		return err
+	}
+
+	// Open and dirty. Close and start with one.
+	attemptedStart, err = c.startWithOne(openDirtyReplicas, true)
+	if attemptedStart {
+		return err
+	}
+
+	// Open and clean. Close and start with one (because they could become dirty before we close).
+	attemptedStart, err = c.startWithOne(openCleanReplicas, true)
+	if attemptedStart {
+		return err
+	}
+
+	// Rebuilding and closed. Start with one.
+	attemptedStart, err = c.startWithOne(rebuildingClosedReplicas, false)
+	if attemptedStart {
+		return err
+	}
+
+	// Rebuilding and open. Close and start with one.
+	attemptedStart, err = c.startWithOne(rebuildingOpenReplicas, true)
+	if attemptedStart {
+		return err
+	}
+
+	// Initial. Start with all
+	attemptedStart, err = c.startWithAll(initializingReplicas, true)
+	if attemptedStart {
+		return err
+	}
+
+	return fmt.Errorf("Couldn't find any valid replicas to start with. Original replicas from metadata: %v", replicaMetadata)
+}
+
+func (c *Controller) startWithAll(replicas map[string]*replica, create bool) (bool, error) {
 	addresses := []string{}
-	for address, repl := range startingReplicas {
-		if err := c.ensureOpen(repl); err != nil {
-			logrus.Errorf("Replica %v is not open. Removing it from startup list. Error while waiting for open: %v", address, err)
-			continue
+	for address, replica := range replicas {
+		if create {
+			logrus.Infof("Create replica %v", address)
+			if err := replica.client.Create(replica.size); err != nil {
+				logrus.Errorf("Error creating replica %v: %v. It won't be used to start controller.", address, err)
+				continue
+			}
 		}
 		addresses = append(addresses, address)
 	}
+	if len(addresses) > 0 {
+		logrus.Infof("Starting controller with replicas: %v.", addresses)
+		return true, c.client.Start(addresses...)
+	}
+	return false, nil
+}
 
-	if len(addresses) == 0 {
-		return fmt.Errorf("Couldn't find any valid replicas to start with. Original replica set from metadta: %v", fromMetadata)
+// Start the controller with a single replica from the provided map. If the map is bigger than one, will try with each replica.
+// Return bool indicates if the controller attempted to start.
+func (c *Controller) startWithOne(replicas map[string]*replica, close bool) (bool, error) {
+	returnErrors := []error{}
+	for addr, replica := range replicas {
+		if close {
+			logrus.Infof("Closing replica %v", addr)
+			if err := replica.client.Close(); err != nil {
+				logrus.Errorf("Error closing replica %v: %v. It won't be used to start controller.", addr, err)
+				continue
+			}
+		}
+
+		logrus.Infof("Starting controller with replica: %v.", addr)
+		if err := c.client.Start(addr); err != nil {
+			returnErrors = append(returnErrors, fmt.Errorf("%v: %v", addr, err))
+		} else {
+			return true, nil
+		}
 	}
 
-	logrus.Infof("Starting controller with replicas: %v.", addresses)
-	if err := c.client.Start(addresses...); err != nil {
-		return fmt.Errorf("Error starting controller: %v", err)
+	var err error
+	if len(returnErrors) > 0 {
+		err = fmt.Errorf("Enountered %v errors trying to start controller. Errors: %v", len(returnErrors), returnErrors)
 	}
-
-	return nil
+	return err != nil, err
 }
 
 func (c *Controller) refresh() error {
@@ -151,7 +247,7 @@ func (c *Controller) syncReplicas() (retErr error) {
 		fromController[r.Address] = r
 	}
 
-	_, fromMetadata, err := c.replicasFromMetadata()
+	_, fromMetadata, err := c.replicaMetadataAndClient()
 	if err != nil {
 		return fmt.Errorf("Error listing replicas in metadata: %v", err)
 	}
@@ -181,11 +277,22 @@ func (c *Controller) syncReplicas() (retErr error) {
 	return nil
 }
 
-func (c *Controller) addReplica(r replica) error {
-	logrus.Infof("Adding replica %v", r.host)
-	err := c.ensureOpen(r)
+func (c *Controller) addReplica(r *replica) error {
+	replica, err := r.client.GetReplica()
 	if err != nil {
-		return err
+		return fmt.Errorf("Error getting replica %v before adding: %v", r.host, err)
+	}
+
+	if replica.State == "initial" {
+		err := r.client.Create(r.size)
+		if err != nil {
+			return fmt.Errorf("Error opening replica %v before adding: %v", r.host, err)
+		}
+	} else if _, ok := replica.Actions["close"]; ok {
+		err := r.client.Close()
+		if err != nil {
+			return fmt.Errorf("Error closing replica %v before adding: %v", r.host, err)
+		}
 	}
 
 	cmd := exec.Command("longhorn", "add", ReplicaAddress(r.host, r.port))
@@ -195,51 +302,7 @@ func (c *Controller) addReplica(r replica) error {
 	return cmd.Run()
 }
 
-func (c *Controller) ensureOpen(r replica) error {
-	client, err := lclient.NewReplicaClient(ReplicaAddress(r.host, r.port))
-	if err != nil {
-		return err
-	}
-
-	replica, err := client.GetReplica()
-	if err != nil {
-		return err
-	}
-
-	if replica.State != "open" {
-		if err := client.OpenReplica(r.size); err != nil {
-			return fmt.Errorf("Error opening replica %v: %v", r.host, err)
-		}
-	}
-
-	return nil
-}
-
-func backoff(maxDuration time.Duration, timeoutMessage string, f func() (bool, error)) error {
-	startTime := time.Now()
-	waitTime := 150 * time.Millisecond
-	maxWaitTime := 2 * time.Second
-	for {
-		if time.Now().Sub(startTime) > maxDuration {
-			return fmt.Errorf(timeoutMessage)
-		}
-
-		if done, err := f(); err != nil {
-			return err
-		} else if done {
-			return nil
-		}
-
-		time.Sleep(waitTime)
-
-		waitTime *= 2
-		if waitTime > maxWaitTime {
-			waitTime = maxWaitTime
-		}
-	}
-}
-
-func (c *Controller) replicasFromMetadata() (int, map[string]replica, error) {
+func (c *Controller) replicaMetadataAndClient() (int, map[string]*replica, error) {
 	client, err := metadata.NewClientAndWait(MetadataURL)
 	if err != nil {
 		return 0, nil, err
@@ -277,15 +340,22 @@ func (c *Controller) replicasFromMetadata() (int, map[string]replica, error) {
 		}
 	}
 
-	result := map[string]replica{}
+	result := map[string]*replica{}
 	for _, container := range containers {
-		r := replica{
+		r := &replica{
 			healthState: container.HealthState,
 			host:        container.PrimaryIp,
 			port:        9502,
 			size:        size,
 		}
-		result[ReplicaAddress(r.host, r.port)] = r
+
+		address := ReplicaAddress(r.host, r.port)
+		replicaClient, err := lclient.NewReplicaClient(address)
+		if err != nil {
+			return 0, nil, fmt.Errorf("Error getting client for replica %v: %v", address, err)
+		}
+		r.client = replicaClient
+		result[address] = r
 	}
 
 	return service.Scale, result, nil

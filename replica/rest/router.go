@@ -1,10 +1,23 @@
 package rest
 
 import (
+	"net/http"
+
 	"github.com/gorilla/mux"
 	"github.com/rancher/go-rancher/api"
 	"github.com/rancher/longhorn/controller/rest"
 )
+
+func checkAction(s *Server, t func(http.ResponseWriter, *http.Request) error) func(http.ResponseWriter, *http.Request) error {
+	return func(rw http.ResponseWriter, req *http.Request) error {
+		replica := s.Replica(api.GetApiContext(req))
+		if replica.Actions[req.URL.Query().Get("action")] == "" {
+			rw.WriteHeader(http.StatusNotFound)
+			return nil
+		}
+		return t(rw, req)
+	}
+}
 
 func NewRouter(s *Server) *mux.Router {
 	schemas := NewSchema()
@@ -20,12 +33,22 @@ func NewRouter(s *Server) *mux.Router {
 	// Replicas
 	router.Methods("GET").Path("/v1/replicas").Handler(f(schemas, s.ListReplicas))
 	router.Methods("GET").Path("/v1/replicas/{id}").Handler(f(schemas, s.GetReplica))
-	router.Methods("POST").Path("/v1/replicas/{id}").Queries("action", "reload").Handler(f(schemas, s.ReloadReplica))
-	router.Methods("POST").Path("/v1/replicas/{id}").Queries("action", "snapshot").Handler(f(schemas, s.SnapshotReplica))
-	router.Methods("POST").Path("/v1/replicas/{id}").Queries("action", "open").Handler(f(schemas, s.OpenReplica))
-	router.Methods("POST").Path("/v1/replicas/{id}").Queries("action", "close").Handler(f(schemas, s.CloseReplica))
-	router.Methods("POST").Path("/v1/replicas/{id}").Queries("action", "removedisk").Handler(f(schemas, s.RemoveDisk))
 	router.Methods("DELETE").Path("/v1/replicas/{id}").Handler(f(schemas, s.DeleteReplica))
+
+	// Actions
+	actions := map[string]func(http.ResponseWriter, *http.Request) error{
+		"reload":        s.ReloadReplica,
+		"snapshot":      s.SnapshotReplica,
+		"open":          s.OpenReplica,
+		"close":         s.CloseReplica,
+		"removedisk":    s.RemoveDisk,
+		"setrebuilding": s.SetRebuilding,
+		"create":        s.Create,
+	}
+
+	for name, action := range actions {
+		router.Methods("POST").Path("/v1/replicas/{id}").Queries("action", name).Handler(f(schemas, checkAction(s, action)))
+	}
 
 	return router
 }

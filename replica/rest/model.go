@@ -8,14 +8,10 @@ import (
 	"github.com/rancher/longhorn/replica"
 )
 
-const (
-	StateOpen   = "open"
-	StateClosed = "closed"
-)
-
 type Replica struct {
 	client.Resource
 	Dirty      bool     `json:"dirty"`
+	Rebuilding bool     `json:"rebuilding"`
 	Head       string   `json:"head"`
 	Parent     string   `json:"parent"`
 	Size       string   `json:"size"`
@@ -24,9 +20,14 @@ type Replica struct {
 	Chain      []string `json:"chain"`
 }
 
-type OpenInput struct {
+type CreateInput struct {
 	client.Resource
 	Size string `json:"size"`
+}
+
+type RebuildingInput struct {
+	client.Resource
+	Rebuilding bool `json:"rebuilding"`
 }
 
 type SnapshotInput struct {
@@ -39,7 +40,7 @@ type RemoveDiskInput struct {
 	Name string `json:"name"`
 }
 
-func NewReplica(context *api.ApiContext, rep *replica.Replica) *Replica {
+func NewReplica(context *api.ApiContext, state replica.State, info replica.Info, rep *replica.Replica) *Replica {
 	r := &Replica{
 		Resource: client.Resource{
 			Type:    "replica",
@@ -48,22 +49,48 @@ func NewReplica(context *api.ApiContext, rep *replica.Replica) *Replica {
 		},
 	}
 
-	if rep == nil {
-		r.State = StateClosed
-		r.Actions["open"] = context.UrlBuilder.ActionLink(r.Resource, "open")
-	} else {
-		r.State = StateOpen
-		info := rep.Info()
-		r.Dirty = info.Dirty
-		r.Head = info.Head
-		r.Parent = info.Parent
-		r.SectorSize = info.SectorSize
-		r.Size = strconv.FormatInt(info.Size, 10)
+	r.State = string(state)
+
+	actions := map[string]bool{}
+
+	switch state {
+	case replica.Initial:
+		actions["create"] = true
+	case replica.Open:
+		actions["close"] = true
+		actions["setrebuilding"] = true
+		actions["snapshot"] = true
+		actions["reload"] = true
+		actions["removedisk"] = true
+	case replica.Closed:
+		actions["open"] = true
+		actions["removedisk"] = true
+	case replica.Dirty:
+		actions["setrebuilding"] = true
+		actions["close"] = true
+		actions["snapshot"] = true
+		actions["reload"] = true
+		actions["removedisk"] = true
+	case replica.Rebuilding:
+		actions["setrebuilding"] = true
+		actions["close"] = true
+		actions["reload"] = true
+	case replica.Error:
+	}
+
+	for action := range actions {
+		r.Actions[action] = context.UrlBuilder.ActionLink(r.Resource, action)
+	}
+
+	r.Dirty = info.Dirty
+	r.Rebuilding = info.Rebuilding
+	r.Head = info.Head
+	r.Parent = info.Parent
+	r.SectorSize = info.SectorSize
+	r.Size = strconv.FormatInt(info.Size, 10)
+
+	if rep != nil {
 		r.Chain, _ = rep.Chain()
-		r.Actions["reload"] = context.UrlBuilder.ActionLink(r.Resource, "reload")
-		r.Actions["snapshot"] = context.UrlBuilder.ActionLink(r.Resource, "snapshot")
-		r.Actions["close"] = context.UrlBuilder.ActionLink(r.Resource, "close")
-		r.Actions["removedisk"] = context.UrlBuilder.ActionLink(r.Resource, "removedisk")
 	}
 
 	return r
@@ -75,17 +102,18 @@ func NewSchema() *client.Schemas {
 	schemas.AddType("error", client.ServerApiError{})
 	schemas.AddType("apiVersion", client.Resource{})
 	schemas.AddType("schema", client.Schema{})
-	schemas.AddType("openInput", OpenInput{})
+	schemas.AddType("createInput", CreateInput{})
+	schemas.AddType("rebuildingInput", RebuildingInput{})
 	schemas.AddType("snapshotInput", SnapshotInput{})
 	schemas.AddType("removediskInput", RemoveDiskInput{})
 	replica := schemas.AddType("replica", Replica{})
 
+	replica.ResourceMethods = []string{"GET", "DELETE"}
 	replica.ResourceActions = map[string]client.Action{
 		"close": client.Action{
 			Output: "replica",
 		},
 		"open": client.Action{
-			Input:  "openInput",
 			Output: "replica",
 		},
 		"reload": client.Action{
@@ -97,6 +125,14 @@ func NewSchema() *client.Schemas {
 		},
 		"removedisk": client.Action{
 			Input:  "removediskInput",
+			Output: "replica",
+		},
+		"setrebuilding": client.Action{
+			Input:  "rebuildingInput",
+			Output: "replica",
+		},
+		"create": client.Action{
+			Input:  "createInput",
 			Output: "replica",
 		},
 	}
