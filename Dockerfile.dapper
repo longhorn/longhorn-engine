@@ -67,7 +67,7 @@ RUN GOPATH=/tmp/docker-longhorn-driver && \
     cd $GOPATH/src/github.com/rancher && \
     git clone https://github.com/cjellick/docker-longhorn-driver.git && \
     cd docker-longhorn-driver && \
-    git checkout 553bfea741326737cc88b9fa99a0b147de2e5830 && \
+    git checkout e861cbf7058bbcdf1c0600469710dc07afeeeeb2 && \
     go build -o /usr/local/bin/docker-longhorn-driver
 
 VOLUME /tmp

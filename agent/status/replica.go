@@ -7,8 +7,6 @@ import (
 	md "github.com/rancher/go-rancher-metadata/metadata"
 	"github.com/rancher/longhorn/client"
 
-	"strings"
-
 	"github.com/Sirupsen/logrus"
 	"github.com/rancher/longhorn/agent/controller"
 )
@@ -69,14 +67,13 @@ func (s *ReplicaStatus) checkReplicaStatusInController(rw http.ResponseWriter) (
 	}
 	for _, replica := range replicas {
 		if replica.Address == s.address {
-			if strings.EqualFold(replica.Mode, "err") {
+			if replica.Mode == "ERR" {
 				return s.cacheControllerResponse(false, fmt.Sprintf("Replica %v is in error mode.", s.address))
 			}
-			return s.cacheControllerResponse(true, "")
 		}
 	}
 
-	return s.cacheControllerResponse(false, fmt.Sprintf("Replica %v is not in the controller's list of replicas. Current list: %v", s.address, replicas))
+	return s.cacheControllerResponse(true, "")
 }
 
 func (s *ReplicaStatus) reportCacheControllerResponse() (bool, string) {
