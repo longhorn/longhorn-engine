@@ -240,13 +240,20 @@ func (c *Controller) ReadAt(b []byte, off int64) (int, error) {
 
 func (c *Controller) handleError(err error) error {
 	if bErr, ok := err.(*BackendError); ok {
+		c.Lock()
 		if len(bErr.Errors) > 0 {
-			c.Lock()
 			for address := range bErr.Errors {
 				c.setReplicaModeNoLock(address, types.ERR)
 			}
-			c.Unlock()
+			// if we still have a good replica, do not return error
+			for _, r := range c.replicas {
+				if r.Mode == types.RW {
+					err = nil
+					break
+				}
+			}
 		}
+		c.Unlock()
 	}
 	return err
 }
