@@ -70,6 +70,14 @@ RUN GOPATH=/tmp/docker-longhorn-driver && \
     git checkout e861cbf7058bbcdf1c0600469710dc07afeeeeb2 && \
     go build -o /usr/local/bin/docker-longhorn-driver
 
+# Install libqcow
+RUN curl -sfL https://github.com/libyal/libqcow/releases/download/20160123/libqcow-alpha-20160123.tar.gz | tar xvzf - -C /usr/src
+RUN cd /usr/src/libqcow-20160123 && \
+    ./configure
+RUN cd /usr/src/libqcow-20160123 && \
+    make -j$(nproc) && \
+    make install
+
 VOLUME /tmp
 ENV TMPDIR /tmp
 ENTRYPOINT ["./scripts/entry"]

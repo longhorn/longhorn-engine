@@ -2,10 +2,9 @@ package replica
 
 import (
 	"fmt"
-	"os"
 
 	"github.com/frostschutz/go-fibmap"
-	fio "github.com/rancher/sparse-tools/directfio"
+	"github.com/rancher/longhorn/types"
 )
 
 type diffDisk struct {
@@ -14,7 +13,7 @@ type diffDisk struct {
 	location []byte
 	// list of files in child, parent, grandparent, etc order.
 	// index 0 is nil and index 1 is the active write layer
-	files      []*os.File
+	files      []types.DiffDisk
 	sectorSize int64
 }
 
@@ -43,7 +42,7 @@ func (d *diffDisk) WriteAt(buf []byte, offset int64) (int, error) {
 	startSector := offset / d.sectorSize
 	sectors := int64(len(buf)) / d.sectorSize
 
-	c, err := fio.WriteAt(d.files[target], buf, offset)
+	c, err := d.files[target].WriteAt(buf, offset)
 
 	// Regardless of err mark bytes as written
 	for i := int64(0); i < sectors; i++ {
@@ -101,7 +100,7 @@ func (d *diffDisk) read(target byte, buf []byte, offset int64, startSector int64
 	bufStart := startSector * d.sectorSize
 	bufEnd := sectors * d.sectorSize
 	newBuf := buf[bufStart : bufStart+bufEnd]
-	return fio.ReadAt(d.files[target], newBuf, offset+bufStart)
+	return d.files[target].ReadAt(newBuf, offset+bufStart)
 }
 
 func (d *diffDisk) lookup(sector int64) (byte, error) {
@@ -120,6 +119,13 @@ func (d *diffDisk) lookup(sector int64) (byte, error) {
 
 	if target == 0 {
 		for i := len(d.files) - 1; i > 0; i-- {
+			if i == 1 {
+				// This is important that for index 1 we don't check Fiemap because it may be a base image file
+				// Also the result has to be 1
+				d.location[sector] = byte(i)
+				return byte(i), nil
+			}
+
 			e, err := fibmap.Fiemap(d.files[i].Fd(), uint64(sector*d.sectorSize), uint64(d.sectorSize), 1)
 			if err != 0 {
 				return byte(0), err

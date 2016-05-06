@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path"
 	"testing"
 
 	. "gopkg.in/check.v1"
@@ -24,7 +25,7 @@ func (s *TestSuite) TestCreate(c *C) {
 	c.Assert(err, IsNil)
 	defer os.RemoveAll(dir)
 
-	r, err := New(9, 3, dir)
+	r, err := New(9, 3, dir, nil)
 	c.Assert(err, IsNil)
 	defer r.Close()
 }
@@ -34,7 +35,7 @@ func (s *TestSuite) TestSnapshot(c *C) {
 	c.Assert(err, IsNil)
 	defer os.RemoveAll(dir)
 
-	r, err := New(9, 3, dir)
+	r, err := New(9, 3, dir, nil)
 	c.Assert(err, IsNil)
 	defer r.Close()
 
@@ -61,7 +62,7 @@ func (s *TestSuite) TestRemoveLast(c *C) {
 	c.Assert(err, IsNil)
 	defer os.RemoveAll(dir)
 
-	r, err := New(9, 3, dir)
+	r, err := New(9, 3, dir, nil)
 	c.Assert(err, IsNil)
 	defer r.Close()
 
@@ -98,7 +99,7 @@ func (s *TestSuite) TestRemoveMiddle(c *C) {
 	c.Assert(err, IsNil)
 	defer os.RemoveAll(dir)
 
-	r, err := New(9, 3, dir)
+	r, err := New(9, 3, dir, nil)
 	c.Assert(err, IsNil)
 	defer r.Close()
 
@@ -135,7 +136,7 @@ func (s *TestSuite) TestRemoveFirst(c *C) {
 	c.Assert(err, IsNil)
 	defer os.RemoveAll(dir)
 
-	r, err := New(9, 3, dir)
+	r, err := New(9, 3, dir, nil)
 	c.Assert(err, IsNil)
 	defer r.Close()
 
@@ -181,7 +182,7 @@ func (s *TestSuite) TestRead(c *C) {
 	c.Assert(err, IsNil)
 	defer os.RemoveAll(dir)
 
-	r, err := New(9*b, b, dir)
+	r, err := New(9*b, b, dir, nil)
 	c.Assert(err, IsNil)
 	defer r.Close()
 
@@ -196,7 +197,7 @@ func (s *TestSuite) TestWrite(c *C) {
 	c.Assert(err, IsNil)
 	defer os.RemoveAll(dir)
 
-	r, err := New(9*b, b, dir)
+	r, err := New(9*b, b, dir, nil)
 	c.Assert(err, IsNil)
 	defer r.Close()
 
@@ -216,9 +217,9 @@ func (s *TestSuite) TestSnapshotReadWrite(c *C) {
 	dir, err := ioutil.TempDir("", "replica")
 	c.Logf("Volume: %s", dir)
 	c.Assert(err, IsNil)
-	//defer os.RemoveAll(dir)
+	defer os.RemoveAll(dir)
 
-	r, err := New(3*b, b, dir)
+	r, err := New(3*b, b, dir, nil)
 	c.Assert(err, IsNil)
 	defer r.Close()
 
@@ -256,4 +257,48 @@ func (s *TestSuite) TestSnapshotReadWrite(c *C) {
 	c.Assert(err, IsNil)
 	byteEquals(c, readBuf, buf)
 	byteEquals(c, r.volume.location, []byte{3, 2, 1})
+}
+
+func (s *TestSuite) TestBackingFile(c *C) {
+	dir, err := ioutil.TempDir("", "replica")
+	c.Logf("Volume: %s", dir)
+	c.Assert(err, IsNil)
+	defer os.RemoveAll(dir)
+
+	buf := make([]byte, 3*b)
+	fill(buf, 3)
+
+	f, err := os.Create(path.Join(dir, "backing"))
+	c.Assert(err, IsNil)
+	defer f.Close()
+	_, err = f.Write(buf)
+	c.Assert(err, IsNil)
+
+	backing := &BackingFile{
+		Name: "backing",
+		Disk: f,
+	}
+
+	r, err := New(3*b, b, dir, backing)
+	c.Assert(err, IsNil)
+	defer r.Close()
+
+	chain, err := r.Chain()
+	c.Assert(err, IsNil)
+	c.Assert(len(chain), Equals, 2)
+	c.Assert(chain[0], Equals, "volume-head-000.img")
+	c.Assert(chain[1], Equals, "backing")
+
+	newBuf := make([]byte, 1*b)
+	_, err = r.WriteAt(newBuf, b)
+	c.Assert(err, IsNil)
+
+	newBuf2 := make([]byte, 3*b)
+	fill(newBuf2, 3)
+	fill(newBuf2[b:2*b], 0)
+
+	_, err = r.ReadAt(buf, 0)
+	c.Assert(err, IsNil)
+
+	byteEquals(c, buf, newBuf2)
 }
