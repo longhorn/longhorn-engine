@@ -34,12 +34,12 @@ type Tcmu struct {
 	volume string
 }
 
-func (t *Tcmu) Activate(name string, size int64, rw types.ReaderWriterAt) error {
+func (t *Tcmu) Activate(name string, size, sectorSize int64, rw types.ReaderWriterAt) error {
 	t.volume = name
 
 	t.Shutdown()
 
-	if err := PreEnableTcmu(name, size); err != nil {
+	if err := PreEnableTcmu(name, size, sectorSize); err != nil {
 		return err
 	}
 
@@ -47,18 +47,18 @@ func (t *Tcmu) Activate(name string, size int64, rw types.ReaderWriterAt) error 
 		return err
 	}
 
-	return PostEnableTcmu(name, size)
+	return PostEnableTcmu(name)
 }
 
 func (t *Tcmu) Shutdown() error {
 	return TeardownTcmu(t.volume)
 }
 
-func PreEnableTcmu(volume string, size int64) error {
+func PreEnableTcmu(volume string, size, sectorSize int64) error {
 	err := writeLines(path.Join(configDir, volume, "control"), []string{
 		fmt.Sprintf("dev_size=%d", size),
 		fmt.Sprintf("dev_config=%s", GetDevConfig(volume)),
-		"hw_block_size=4096",
+		fmt.Sprintf("hw_block_size=%d", sectorSize),
 		"async=1",
 	})
 	if err != nil {
@@ -70,7 +70,7 @@ func PreEnableTcmu(volume string, size int64) error {
 	})
 }
 
-func PostEnableTcmu(volume string, size int64) error {
+func PostEnableTcmu(volume string) error {
 	prefix, nexusWnn := getScsiPrefixAndWnn(volume)
 
 	err := writeLines(path.Join(prefix, "nexus"), []string{

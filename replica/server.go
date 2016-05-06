@@ -21,16 +21,32 @@ type State string
 
 type Server struct {
 	sync.RWMutex
-	r          *Replica
-	dir        string
-	sectorSize int64
+	r                 *Replica
+	dir               string
+	defaultSectorSize int64
+	backing           *BackingFile
 }
 
-func NewServer(dir string, sectorSize int64) *Server {
+func NewServer(dir string, backing *BackingFile, sectorSize int64) *Server {
 	return &Server{
-		dir:        dir,
-		sectorSize: sectorSize,
+		dir:               dir,
+		backing:           backing,
+		defaultSectorSize: sectorSize,
 	}
+}
+
+func (s *Server) getSectorSize() int64 {
+	if s.backing != nil && s.backing.SectorSize > 0 {
+		return s.backing.SectorSize
+	}
+	return s.defaultSectorSize
+}
+
+func (s *Server) getSize(size int64) int64 {
+	if s.backing != nil && s.backing.Size > 0 {
+		return s.backing.Size
+	}
+	return size
 }
 
 func (s *Server) Create(size int64) error {
@@ -42,8 +58,11 @@ func (s *Server) Create(size int64) error {
 		return nil
 	}
 
-	logrus.Infof("Creating volume %s, size %d/%d", s.dir, size, s.sectorSize)
-	r, err := New(size, s.sectorSize, s.dir)
+	size = s.getSize(size)
+	sectorSize := s.getSectorSize()
+
+	logrus.Infof("Creating volume %s, size %d/%d", s.dir, size, sectorSize)
+	r, err := New(size, sectorSize, s.dir, s.backing)
 	if err != nil {
 		return err
 	}
@@ -60,10 +79,11 @@ func (s *Server) Open() error {
 	}
 
 	_, info := s.Status()
-	size := info.Size
+	size := s.getSize(info.Size)
+	sectorSize := s.getSectorSize()
 
-	logrus.Infof("Opening volume %s, size %d/%d", s.dir, size, s.sectorSize)
-	r, err := New(size, s.sectorSize, s.dir)
+	logrus.Infof("Opening volume %s, size %d/%d", s.dir, size, sectorSize)
+	r, err := New(size, sectorSize, s.dir, s.backing)
 	if err != nil {
 		return err
 	}

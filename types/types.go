@@ -13,11 +13,18 @@ type ReaderWriterAt interface {
 	io.WriterAt
 }
 
+type DiffDisk interface {
+	ReaderWriterAt
+	io.Closer
+	Fd() uintptr
+}
+
 type Backend interface {
 	ReaderWriterAt
 	io.Closer
 	Snapshot(name string) error
 	Size() (int64, error)
+	SectorSize() (int64, error)
 }
 
 type BackendFactory interface {
@@ -46,6 +53,6 @@ type Replica struct {
 }
 
 type Frontend interface {
-	Activate(name string, size int64, rw ReaderWriterAt) error
+	Activate(name string, size, sectorSize int64, rw ReaderWriterAt) error
 	Shutdown() error
 }

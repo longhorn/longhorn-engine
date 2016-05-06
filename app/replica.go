@@ -27,6 +27,10 @@ func ReplicaCmd() cli.Command {
 				Name:  "listen",
 				Value: "localhost:9502",
 			},
+			cli.StringFlag{
+				Name:  "backing-file",
+				Usage: "qcow file to use as the base image of this disk",
+			},
 			cli.BoolTFlag{
 				Name: "sync-agent",
 			},
@@ -49,7 +53,12 @@ func startReplica(c *cli.Context) error {
 	}
 
 	dir := c.Args()[0]
-	s := replica.NewServer(dir, 4096)
+	backingFile, err := openBackingFile(c.String("backing-file"))
+	if err != nil {
+		return err
+	}
+
+	s := replica.NewServer(dir, backingFile, 4096)
 
 	address := c.String("listen")
 	size := c.String("size")
