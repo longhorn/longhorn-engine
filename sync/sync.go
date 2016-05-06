@@ -30,6 +30,10 @@ func (t *Task) AddReplica(replica string) error {
 		return t.client.Start(replica)
 	}
 
+	if err := t.checkAndResetFailedRebuild(replica); err != nil {
+		return err
+	}
+
 	logrus.Infof("Adding replica %s in WO mode", replica)
 	_, err = t.client.CreateReplica(replica)
 	if err != nil {
@@ -50,6 +54,32 @@ func (t *Task) AddReplica(replica string) error {
 	}
 
 	return t.setRw(replica)
+}
+
+func (t *Task) checkAndResetFailedRebuild(address string) error {
+	client, err := client.NewReplicaClient(address)
+	if err != nil {
+		return err
+	}
+
+	replica, err := client.GetReplica()
+	if err != nil {
+		return err
+	}
+
+	if replica.State == "closed" && replica.Rebuilding {
+		if err := client.OpenReplica(); err != nil {
+			return err
+		}
+
+		if err := client.SetRebuilding(false); err != nil {
+			return err
+		}
+
+		return client.Close()
+	}
+
+	return nil
 }
 
 func (t *Task) setRw(replica string) error {

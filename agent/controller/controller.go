@@ -19,6 +19,7 @@ import (
 const (
 	defaultVolumeSize = "10737418240" // 10 gb
 	MetadataURL       = "http://rancher-metadata/2015-12-19"
+	errorRetryMax     = 1
 )
 
 type replica struct {
@@ -34,13 +35,15 @@ func ReplicaAddress(host string, port int) string {
 }
 
 type Controller struct {
-	client *lclient.ControllerClient
+	client       *lclient.ControllerClient
+	errorRetries map[string]int
 }
 
 func New() *Controller {
 	client := lclient.NewControllerClient("http://localhost:9501")
 	return &Controller{
-		client: client,
+		client:       client,
+		errorRetries: map[string]int{},
 	}
 }
 
@@ -238,36 +241,132 @@ func (c *Controller) refresh() error {
 func (c *Controller) syncReplicas() (retErr error) {
 	logrus.Debugf("Syncing replicas.")
 
+	// Remove replicas from controller if they aren't in metadata
+	_, fromMetadata, err := c.replicaMetadataAndClient()
+	if err != nil {
+		return fmt.Errorf("Error listing replicas in metadata: %v", err)
+	}
+	if err := c.removeReplicasNotInMetadata(fromMetadata); err != nil {
+		return err
+	}
+
+	// Retry replicas in error state
+	if err := c.retryErroredReplicas(); err != nil {
+		return err
+	}
+
+	// Add new replicas
+	return c.addReplicasInMetadata()
+}
+
+func (c *Controller) removeReplicasNotInMetadata(fromMetadata map[string]*replica) error {
 	replicasInController, err := c.client.ListReplicas()
 	if err != nil {
-		return fmt.Errorf("Error listing replicas in controller: %v", err)
+		return fmt.Errorf("Error listing replicas in controller during remove: %v", err)
 	}
 	fromController := map[string]rest.Replica{}
 	for _, r := range replicasInController {
 		fromController[r.Address] = r
 	}
 
-	_, fromMetadata, err := c.replicaMetadataAndClient()
-	if err != nil {
-		return fmt.Errorf("Error listing replicas in metadata: %v", err)
-	}
-
-	// Remove replicas from controller if they aren't in metadata
-	if len(replicasInController) > 1 {
+	if len(fromController) > 1 {
 		for address := range fromController {
 			if _, ok := fromMetadata[address]; !ok {
-				logrus.Infof("Removing replica %v", address)
+				logrus.Infof("Replica %v not in metadata. Removing it.", address)
 				if _, err := c.client.DeleteReplica(address); err != nil {
 					return fmt.Errorf("Error removing replica %v: %v", address, err)
 				}
-				return nil // Just remove one replica per cycle
+				return c.removeReplicasNotInMetadata(fromMetadata)
 			}
 		}
 	}
 
-	// Add replicas
+	return nil
+}
+
+func (c *Controller) retryErroredReplicas() error {
+	_, fromMetadata, err := c.replicaMetadataAndClient()
+	if err != nil {
+		return fmt.Errorf("Error listing replicas in metadata during retry: %v", err)
+	}
+
+	replicasInController, err := c.client.ListReplicas()
+	if err != nil {
+		return fmt.Errorf("Error listing replicas in controller during retry: %v", err)
+	}
+
+	for _, r := range replicasInController {
+		if r.Mode != "ERR" {
+			continue
+		}
+
+		if retryCount, ok := c.errorRetries[r.Address]; ok && retryCount >= errorRetryMax {
+			logrus.Infof("Reached max retry count for replica %v. Ignoring it so that replica helthcheck failure destroys it.", r.Address)
+		} else {
+			logrus.Infof("Retrying errored replica %v", r.Address)
+			c.errorRetries[r.Address] = retryCount + 1
+			replicaMD, ok := fromMetadata[r.Address]
+			if !ok {
+				logrus.Warnf("Cannot find errored replica %v in metadata. Won't attempt to re-add it.", r.Actions)
+			} else if err := c.removeAndAdd(r, replicaMD); err != nil {
+				return fmt.Errorf("Error performing remove and add for replica %v: %v", r.Address, err)
+			} else {
+				// remove and add was successful
+				delete(c.errorRetries, r.Address)
+			}
+		}
+	}
+
+	// Cleanup error retires map
+	for address := range c.errorRetries {
+		if _, ok := fromMetadata[address]; !ok {
+			delete(c.errorRetries, address)
+		}
+	}
+
+	return nil
+}
+
+func (c *Controller) removeAndAdd(replica rest.Replica, replicaMD *replica) error {
+	logrus.Infof("Removing errored replica %v for re-add.", replica.Address)
+	if _, err := c.client.DeleteReplica(replica.Address); err != nil {
+		return fmt.Errorf("Error removing errored replica %v: %v.", replica.Address, err)
+	}
+
+	freshReplica, err := replicaMD.client.GetReplica()
+	if err != nil {
+		return fmt.Errorf("Error getting replica %v during removeAndAdd: %v.", replica.Address, err)
+	}
+
+	if _, ok := freshReplica.Actions["close"]; ok {
+		err := replicaMD.client.Close()
+		if err != nil {
+			return fmt.Errorf("Error closing replica %v before adding: %v.", replica.Address, err)
+		}
+	}
+
+	return c.addReplica(replicaMD)
+}
+
+func (c *Controller) addReplicasInMetadata() error {
+	_, fromMetadata, err := c.replicaMetadataAndClient()
+	if err != nil {
+		return fmt.Errorf("Error listing replicas in metadata during add: %v", err)
+	}
+
+	replicasInController, err := c.client.ListReplicas()
+	if err != nil {
+		return fmt.Errorf("Error listing replicas in controller during add: %v", err)
+	}
+
+	fromController := map[string]rest.Replica{}
+	for _, r := range replicasInController {
+		fromController[r.Address] = r
+	}
+
 	for address, r := range fromMetadata {
 		if _, ok := fromController[address]; !ok {
+			logrus.Infof("Adding replica %v because it isn't in controller.", address)
 			if err := c.addReplica(r); err != nil {
 				return fmt.Errorf("Error adding replica %v: %v", address, err)
 			}
@@ -283,7 +382,7 @@ func (c *Controller) addReplica(r *replica) error {
 		return fmt.Errorf("Error getting replica %v before adding: %v", r.host, err)
 	}
 
-	if replica.State == "initial" {
+	if _, ok := replica.Actions["create"]; ok {
 		err := r.client.Create(r.size)
 		if err != nil {
 			return fmt.Errorf("Error opening replica %v before adding: %v", r.host, err)
@@ -295,11 +394,30 @@ func (c *Controller) addReplica(r *replica) error {
 		}
 	}
 
-	cmd := exec.Command("longhorn", "add", ReplicaAddress(r.host, r.port))
+	address := ReplicaAddress(r.host, r.port)
+	logrus.Infof("Calling longhorn add cli for replica %v.", address)
+	cmd := exec.Command("longhorn", "add", address)
 	cmd.Stderr = os.Stderr
 	cmd.Stdout = os.Stdout
 
-	return cmd.Run()
+	if err := cmd.Run(); err != nil {
+		logrus.Warnf("longhorn add cli returned error %v while adding replica %v. Attempting to clean up.", err, address)
+		replicas, err2 := c.client.ListReplicas()
+		if err2 != nil {
+			logrus.Errorf("Error listing replicas while trying to clean up after failed add for replica %v", address)
+		} else {
+			for _, replica := range replicas {
+				if replica.Address == address && replica.Mode != "RW" {
+					logrus.Infof("Removing replica %v after having failed to add it. Add failure: %v", address, err)
+					if _, err := c.client.DeleteReplica(address); err != nil {
+						logrus.Errorf("Error while deleting replica as part of cleanup: %v", err)
+					}
+				}
+			}
+		}
+		return fmt.Errorf("Error executing add command %v: %v", cmd, err)
+	}
+	return nil
 }
 
 func (c *Controller) replicaMetadataAndClient() (int, map[string]*replica, error) {

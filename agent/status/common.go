@@ -7,7 +7,6 @@ import (
 )
 
 func writeOK(rw http.ResponseWriter) {
-	logrus.Debugf("Reporting OK.")
 	rw.Write([]byte("OK"))
 }
 
