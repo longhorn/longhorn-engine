@@ -151,6 +151,40 @@ def test_replica_add_rebuild(bin, controller_client, replica_client,
         assert r.mode == 'RW'
 
 
+def test_replica_add_after_rebuild_failed(bin, controller_client,
+                                          replica_client, replica_client2):
+    open_replica(replica_client)
+    open_replica(replica_client2)
+
+    r = replica_client.list_replica()[0]
+    r = r.open()
+    r = r.snapshot(name='000')
+    r.close()
+
+    cmd = [bin, '--debug', 'add-replica', REPLICA]
+    subprocess.check_call(cmd)
+
+    volume = controller_client.list_volume()[0]
+    assert volume.replicaCount == 1
+
+    l = replica_client2.list_replica()[0]
+    l = l.open()
+    l = l.setrebuilding(rebuilding=True)
+    l.close()
+
+    cmd = [bin, '--debug', 'add-replica', REPLICA2]
+    subprocess.check_call(cmd)
+
+    volume = controller_client.list_volume()[0]
+    assert volume.replicaCount == 2
+
+    replicas = controller_client.list_replica()
+    assert len(replicas) == 2
+
+    for r in replicas:
+        assert r.mode == 'RW'
+
+
 def test_snapshot(bin, controller_client, replica_client, replica_client2):
     open_replica(replica_client)
     open_replica(replica_client2)
