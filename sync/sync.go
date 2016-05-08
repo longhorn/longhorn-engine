@@ -92,7 +92,7 @@ func (t *Task) coalesceSnapshot(replicaInController *rest.Replica, snapshot stri
 		return fmt.Errorf("Snapshot %s not found on replica %s", snapshot, replicaInController.Address)
 	case index == 0:
 		return fmt.Errorf("Can not remove the head disk in the chain")
-	case index >= len(replica.Chain):
+	case index >= len(replica.Chain)-1:
 		return fmt.Errorf("Can not remove the last disk in the chain")
 	}
 
