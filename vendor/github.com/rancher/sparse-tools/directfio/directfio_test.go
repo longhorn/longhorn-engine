@@ -10,13 +10,26 @@ import (
 
 	"io/ioutil"
 
-	fio "github.com/rancher/sparse-tools/directfio"
 	"syscall"
+
+	fio "github.com/rancher/sparse-tools/directfio"
 )
 
-func tempFileName() string {
-	// Make a temporary file name
-	f, err := ioutil.TempFile("", "fio_test")
+func tempFilePath() string {
+	// Make a temporary file path
+	f, err := ioutil.TempFile("", "fio-test")
+	if err != nil {
+		log.Fatal("Failed to make temp file", err)
+	}
+	defer f.Close()
+	return f.Name()
+}
+
+// tempBigFileName is for files that are substantial in isze (for benchmark and stress tests)
+// created in current directory
+func tempBigFilePath() string {
+	// Make a temporary file path in current dir
+	f, err := ioutil.TempFile(".", "fio-test")
 	if err != nil {
 		log.Fatal("Failed to make temp file", err)
 	}
@@ -45,7 +58,8 @@ func TestDirectFileIO1(t *testing.T) {
 	data1 := fio.AllocateAligned(blocks * fio.BlockSize)
 	fillData(data1, 0)
 
-	path := tempFileName()
+	path := tempFilePath()
+	defer cleanup(path)
 	{
 		// Write
 		f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|syscall.O_DIRECT, 0644)
@@ -79,8 +93,6 @@ func TestDirectFileIO1(t *testing.T) {
 	if !bytes.Equal(data1, data2) {
 		t.Fatal("Read not the same as written")
 	}
-    
-    cleanup(path)
 }
 
 func TestDirectFileIO2(t *testing.T) {
@@ -90,10 +102,11 @@ func TestDirectFileIO2(t *testing.T) {
 	data1 := make([]byte, blocks*fio.BlockSize)
 	fillData(data1, 0)
 
-	path := tempFileName()
+	path := tempFilePath()
+	defer cleanup(path)
 	{
 		// Write
-		f, err := os.OpenFile(path, os.O_CREATE|os.O_WRONLY|syscall.O_DIRECT, 0644)
+		f, err := fio.OpenFile(path, os.O_CREATE|os.O_WRONLY, 0644)
 		if err != nil {
 			t.Fatal("Failed to OpenFile for write", err)
 		}
@@ -108,7 +121,7 @@ func TestDirectFileIO2(t *testing.T) {
 	data2 := make([]byte, blocks*fio.BlockSize)
 	{
 		// Read
-		f, err := os.OpenFile(path, os.O_RDONLY|syscall.O_DIRECT, 0)
+		f, err := fio.OpenFile(path, os.O_RDONLY, 0)
 		if err != nil {
 			t.Fatal("Failed to OpenFile for read", err)
 		}
@@ -124,19 +137,17 @@ func TestDirectFileIO2(t *testing.T) {
 	if !bytes.Equal(data1, data2) {
 		t.Fatal("Read not the same as written")
 	}
-    
-    cleanup(path)
 }
 
-const fileSize = int64(512) /*MB*/ << 20
+const fileSize = int64(1) /*GB*/ << 30
 
-const FileMode = os.O_WRONLY | syscall.O_DIRECT
+const FileMode = os.O_RDWR
 
 func write(b *testing.B, path string, done chan<- bool, batchSize int, offset, size int64) {
 	data := fio.AllocateAligned(batchSize)
 	fillData(data, 0)
 
-	f, err := os.OpenFile(path, FileMode, 0)
+	f, err := os.OpenFile(path, syscall.O_DIRECT|FileMode, 0)
 	if err != nil {
 		b.Fatal("Failed to OpenFile for write", err)
 	}
@@ -151,11 +162,29 @@ func write(b *testing.B, path string, done chan<- bool, batchSize int, offset, s
 	done <- true
 }
 
+func read(b *testing.B, path string, done chan<- bool, batchSize int, offset, size int64) {
+	data := fio.AllocateAligned(batchSize)
+
+	f, err := os.OpenFile(path, syscall.O_DIRECT|FileMode, 0)
+	if err != nil {
+		b.Fatal("Failed to OpenFile for read", err)
+	}
+	defer f.Close()
+
+	for pos := offset; pos < offset+size; pos += int64(batchSize) {
+		_, err = f.ReadAt(data, pos)
+		if err != nil {
+			b.Fatal("Failed to read", err)
+		}
+	}
+	done <- true
+}
+
 func writeUnaligned(b *testing.B, path string, done chan<- bool, batchSize int, offset, size int64) {
 	data := make([]byte, batchSize)
 	fillData(data, 0)
 
-	f, err := os.OpenFile(path, FileMode, 0)
+	f, err := fio.OpenFile(path, FileMode, 0)
 	if err != nil {
 		b.Fatal("Failed to OpenFile for write", err)
 	}
@@ -170,58 +199,88 @@ func writeUnaligned(b *testing.B, path string, done chan<- bool, batchSize int, 
 	done <- true
 }
 
-func writeTest(b *testing.B, path string, writers, batch int, write func(b *testing.B, path string, done chan<- bool, batchSize int, offset, size int64)) {
-	done := make(chan bool, writers)
-	chunkSize := fileSize / int64(writers)
+func readUnaligned(b *testing.B, path string, done chan<- bool, batchSize int, offset, size int64) {
+	data := make([]byte, batchSize)
 
-	start := time.Now().Unix()
-	ioSize := batch * fio.BlockSize
-	for i := 0; i < writers; i++ {
-		go write(b, path, done, ioSize, int64(i)*chunkSize, chunkSize)
+	f, err := fio.OpenFile(path, FileMode, 0)
+	if err != nil {
+		b.Fatal("Failed to OpenFile for read", err)
 	}
-	for i := 0; i < writers; i++ {
+	defer f.Close()
+
+	for pos := offset; pos < offset+size; pos += int64(batchSize) {
+		_, err = fio.ReadAt(f, data, pos)
+		if err != nil {
+			b.Fatal("Failed to read", err)
+		}
+	}
+	done <- true
+}
+
+func ioTest(title string, b *testing.B, path string, threads, batch int, io func(b *testing.B, path string, done chan<- bool, batchSize int, offset, size int64)) {
+	done := make(chan bool, threads)
+	chunkSize := fileSize / int64(threads)
+
+	start := time.Now().UnixNano()
+	ioSize := batch * fio.BlockSize
+	for i := 0; i < threads; i++ {
+		go io(b, path, done, ioSize, int64(i)*chunkSize, chunkSize)
+	}
+	for i := 0; i < threads; i++ {
 		<-done
 	}
-	stop := time.Now().Unix()
-	log.Println("writers=", writers, "batch=", batch, "(blocks)", "thruput=", fileSize/(1<<20)/(stop-start), "(MB/s)")
+	stop := time.Now().UnixNano()
+	if len(title) > 0 {
+		log.Println(title, ":", threads, "(threads) batch=", batch, "(blocks)", "thruput=", 1000000*fileSize/(1<<20)/((stop-start)/1000), "(MB/s)")
+	}
 }
 
-func BenchmarkWrite8(b *testing.B) {
-	path := tempFileName()
+func BenchmarkIO8(b *testing.B) {
+	path := tempBigFilePath()
 
+	defer cleanup(path)
+	f, err := os.OpenFile(path, os.O_CREATE|FileMode, 0644)
+	if err != nil {
+		b.Fatal("Failed to OpenFile for write", err)
+	}
+	defer f.Close()
+
+	f.Truncate(fileSize)
+	log.Println("")
+	ioTest("pilot write", b, path, 8, 32, write)
+
+	for batch := 32; batch >= 1; batch >>= 1 {
+		log.Println("")
+		for threads := 1; threads <= 8; threads <<= 1 {
+			ioTest("write", b, path, threads, batch, write)
+		}
+		for threads := 1; threads <= 8; threads <<= 1 {
+			ioTest(" read", b, path, threads, batch, read)
+		}
+	}
+
+}
+
+func BenchmarkIO8u(b *testing.B) {
+	path := tempBigFilePath()
+
+	defer cleanup(path)
 	f, err := os.OpenFile(path, os.O_CREATE|FileMode, 0644)
 	if err != nil {
 		b.Fatal("Failed to OpenFile for write", err)
 	}
 	defer f.Close()
 	f.Truncate(fileSize)
+	log.Println("")
+	ioTest("pilot write", b, path, 8, 32, writeUnaligned)
 
 	for batch := 32; batch >= 1; batch >>= 1 {
 		log.Println("")
-		for writers := 1; writers <= 8; writers <<= 1 {
-			writeTest(b, path, writers, batch, write)
+		for threads := 1; threads <= 8; threads <<= 1 {
+			ioTest("unaligned write", b, path, threads, batch, writeUnaligned)
+		}
+		for threads := 1; threads <= 8; threads <<= 1 {
+			ioTest(" unaligned read", b, path, threads, batch, readUnaligned)
 		}
 	}
-    
-    cleanup(path)
-}
-
-func BenchmarkWrite8u(b *testing.B) {
-	path := tempFileName()
-
-	f, err := os.OpenFile(path, os.O_CREATE|FileMode, 0644)
-	if err != nil {
-		b.Fatal("Failed to OpenFile for write", err)
-	}
-	defer f.Close()
-	f.Truncate(fileSize)
-
-	for batch := 32; batch >= 1; batch >>= 1 {
-		log.Println("")
-		for writers := 1; writers <= 8; writers <<= 1 {
-			writeTest(b, path, writers, batch, writeUnaligned)
-		}
-	}
-    
-    cleanup(path)
 }

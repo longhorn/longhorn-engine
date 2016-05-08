@@ -1,0 +1,4 @@
+import:
+- package: github.com/frostschutz/go-fibmap
+  version: 5fc9f8c1ed479f20414771a17b9686ee77029676
+  repo:    https://github.com/rancher/go-fibmap.git
