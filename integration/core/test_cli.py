@@ -290,3 +290,34 @@ def test_snapshot_rm(bin, controller_client, replica_client, replica_client2):
     assert len(new_chain) == 2
     assert chain[0] == new_chain[0]
     assert chain[2] == new_chain[1]
+
+
+def test_snapshot_last(bin, controller_client, replica_client,
+                       replica_client2):
+    open_replica(replica_client)
+    open_replica(replica_client2)
+
+    v = controller_client.list_volume()[0]
+    v = v.start(replicas=[
+        REPLICA,
+    ])
+    assert v.replicaCount == 1
+
+    cmd = [bin, 'add', REPLICA2]
+    subprocess.check_output(cmd)
+    output = subprocess.check_output([bin, 'snapshot', 'ls'])
+    output = output.splitlines()[1]
+
+    chain = replica_client.list_replica()[0].chain
+    assert len(chain) == 2
+    assert chain[0] == 'volume-head-001.img'
+    assert chain[1] == 'volume-snap-{}.img'.format(output)
+
+    chain = replica_client2.list_replica()[0].chain
+    assert len(chain) == 2
+    assert chain[0] == 'volume-head-001.img'
+    assert chain[1] == 'volume-snap-{}.img'.format(output)
+
+    cmd = [bin, 'snapshot', 'rm', output]
+    with pytest.raises(subprocess.CalledProcessError):
+        subprocess.check_call(cmd)
