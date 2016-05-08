@@ -8,6 +8,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
+	"github.com/rancher/longhorn/sync"
 	"github.com/rancher/longhorn/util"
 )
 
@@ -18,6 +19,7 @@ func SnapshotCmd() cli.Command {
 		Subcommands: []cli.Command{
 			SnapshotCreateCmd(),
 			SnapshotLsCmd(),
+			SnapshotRmCmd(),
 		},
 		Action: func(c *cli.Context) {
 			if err := lsSnapshot(c); err != nil {
@@ -32,6 +34,17 @@ func SnapshotCreateCmd() cli.Command {
 		Name: "create",
 		Action: func(c *cli.Context) {
 			if err := createSnapshot(c); err != nil {
+				logrus.Fatal(err)
+			}
+		},
+	}
+}
+
+func SnapshotRmCmd() cli.Command {
+	return cli.Command{
+		Name: "rm",
+		Action: func(c *cli.Context) {
+			if err := rmSnapshot(c); err != nil {
 				logrus.Fatal(err)
 			}
 		},
@@ -59,6 +72,23 @@ func createSnapshot(c *cli.Context) error {
 
 	fmt.Println(id)
 	return nil
+}
+
+func rmSnapshot(c *cli.Context) error {
+	var lastErr error
+	url := c.GlobalString("url")
+	task := sync.NewTask(url)
+
+	for _, name := range c.Args() {
+		if err := task.DeleteSnapshot(name); err == nil {
+			fmt.Printf("deleted %s\n", name)
+		} else {
+			lastErr = err
+			fmt.Fprintf(os.Stderr, "Failed to delete %s: %v", name, err)
+		}
+	}
+
+	return lastErr
 }
 
 func lsSnapshot(c *cli.Context) error {

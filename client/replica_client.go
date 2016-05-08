@@ -90,6 +90,17 @@ func (c *ReplicaClient) SetRebuilding(rebuilding bool) error {
 	}, nil)
 }
 
+func (c *ReplicaClient) RemoveDisk(disk string) error {
+	r, err := c.GetReplica()
+	if err != nil {
+		return err
+	}
+
+	return c.post(r.Actions["removedisk"], &rest.RemoveDiskInput{
+		Name: disk,
+	}, nil)
+}
+
 func (c *ReplicaClient) OpenReplica() error {
 	r, err := c.GetReplica()
 	if err != nil {
@@ -115,7 +126,9 @@ func (c *ReplicaClient) ReloadReplica() (rest.Replica, error) {
 
 func (c *ReplicaClient) LaunchReceiver() (string, int, error) {
 	var running agent.Process
-	err := c.post(c.syncAgent+"/processes", &agent.Process{}, &running)
+	err := c.post(c.syncAgent+"/processes", &agent.Process{
+		ProcessType: "sync",
+	}, &running)
 	if err != nil {
 		return "", 0, err
 	}
@@ -123,13 +136,47 @@ func (c *ReplicaClient) LaunchReceiver() (string, int, error) {
 	return c.host, running.Port, nil
 }
 
+func (c *ReplicaClient) Coalesce(from, to string) error {
+	var running agent.Process
+	err := c.post(c.syncAgent+"/processes", &agent.Process{
+		ProcessType: "fold",
+		SrcFile:     from,
+		DestFile:    to,
+	}, &running)
+	if err != nil {
+		return err
+	}
+
+	start := 250 * time.Millisecond
+	for {
+		err := c.get(running.Links["self"], &running)
+		if err != nil {
+			return err
+		}
+
+		switch running.ExitCode {
+		case -2:
+			time.Sleep(start)
+			start = start * 2
+			if start > 1*time.Second {
+				start = 1 * time.Second
+			}
+		case 0:
+			return nil
+		default:
+			return fmt.Errorf("ExitCode: %d", running.ExitCode)
+		}
+	}
+}
+
 func (c *ReplicaClient) SendFile(from, to, host string, port int) error {
 	var running agent.Process
 	err := c.post(c.syncAgent+"/processes", &agent.Process{
-		Host:     host,
-		SrcFile:  from,
-		DestFile: to,
-		Port:     port,
+		ProcessType: "sync",
+		Host:        host,
+		SrcFile:     from,
+		DestFile:    to,
+		Port:        port,
 	}, &running)
 	if err != nil {
 		return err

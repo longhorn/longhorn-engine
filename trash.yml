@@ -18,11 +18,14 @@ import:
   version: 5ed452cd07a408bc6c96d10766a963c0d7585518
 - package: github.com/docker/go-units
   version: 5d2041e26a699eaca682e2ea41c8f891e1060444
+- package: github.com/docker/docker
+  version: v1.11.1
 - package: github.com/codegangsta/cli
   version: 71f57d300dd6a780ac1856c005c4b518cfd498ec
 - package: github.com/satori/go.uuid
   version: f9ab0dce87d815821e221626b772e3475a0d2749
 - package: github.com/rancher/sparse-tools
-  version: 84fc96db3ee359d3e5675df414494c09c7d0c0c2 
+  version: 8ab53cdb89eb75f6ab104e44145303b04139689c
+  repo:    https://github.com/ibuildthecloud/sparse-tools.git
 - package: github.com/rancher/go-rancher-metadata
   version: 721b783c9983a17ec0d63d5530337610de9519ec

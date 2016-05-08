@@ -7,10 +7,22 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
+	"github.com/docker/docker/pkg/reexec"
 	"github.com/rancher/longhorn/app"
+	"github.com/rancher/sparse-tools/cli/sfold"
+	"github.com/rancher/sparse-tools/cli/ssync"
 )
 
 func main() {
+	reexec.Register("ssync", ssync.Main)
+	reexec.Register("sfold", sfold.Main)
+
+	if !reexec.Init() {
+		longhornCli()
+	}
+}
+
+func longhornCli() {
 	pprofFile := os.Getenv("PPROFILE")
 	if pprofFile != "" {
 		f, err := os.Create(pprofFile)

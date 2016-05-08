@@ -54,13 +54,6 @@ RUN cd /usr/src/tcmu-runner && \
     cp scsi_defs.h /usr/local/include && \
     cp libtcmu_static.a /usr/local/lib/libtcmu.a
 
-# Install ssync, etc
-RUN GOPATH=/tmp/ssync && go get -d github.com/rancher/sparse-tools/ssync && \
-    cd $GOPATH/src/github.com/rancher/sparse-tools && \
-    git checkout 84fc96db3ee359d3e5675df414494c09c7d0c0c2 && \
-    cd ssync && \
-    go build -o /usr/local/bin/ssync
-
 # Install longhorn Docker driver
 RUN GOPATH=/tmp/docker-longhorn-driver && \
     mkdir -p $GOPATH/src/github.com/rancher && \

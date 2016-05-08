@@ -261,3 +261,32 @@ def test_snapshot_create(bin, controller_client, replica_client,
     assert ls_output == '''ID
 {}
 '''.format(output)
+
+
+def test_snapshot_rm(bin, controller_client, replica_client, replica_client2):
+    open_replica(replica_client)
+    open_replica(replica_client2)
+
+    v = controller_client.list_volume()[0]
+    v = v.start(replicas=[
+        REPLICA,
+        REPLICA2,
+    ])
+    assert v.replicaCount == 2
+
+    cmd = [bin, 'snapshot', 'create']
+    subprocess.check_call(cmd)
+    output = subprocess.check_output(cmd).strip()
+
+    chain = replica_client.list_replica()[0].chain
+    assert len(chain) == 3
+    assert chain[0] == 'volume-head-002.img'
+    assert chain[1] == 'volume-snap-{}.img'.format(output)
+
+    cmd = [bin, 'snapshot', 'rm', output]
+    subprocess.check_call(cmd)
+
+    new_chain = replica_client.list_replica()[0].chain
+    assert len(new_chain) == 2
+    assert chain[0] == new_chain[0]
+    assert chain[2] == new_chain[1]

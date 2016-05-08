@@ -8,12 +8,13 @@ import (
 
 type Process struct {
 	client.Resource
-	SrcFile  string    `json:"srcFile"`
-	DestFile string    `json:"destfile"`
-	Host     string    `json:"host"`
-	Port     int       `json:"port"`
-	ExitCode int       `json:"exitCode"`
-	Created  time.Time `json:"created"`
+	ProcessType string    `json:"processType"`
+	SrcFile     string    `json:"srcFile"`
+	DestFile    string    `json:"destfile"`
+	Host        string    `json:"host"`
+	Port        int       `json:"port"`
+	ExitCode    int       `json:"exitCode"`
+	Created     time.Time `json:"created"`
 }
 
 type ProcessCollection struct {

@@ -2,6 +2,7 @@ package agent
 
 import (
 	"errors"
+	"fmt"
 	"net/http"
 	"os"
 	"os/exec"
@@ -10,6 +11,7 @@ import (
 	"syscall"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/docker/docker/pkg/reexec"
 	"github.com/gorilla/mux"
 	"github.com/rancher/go-rancher/api"
 	"github.com/rancher/go-rancher/client"
@@ -99,14 +101,65 @@ func (s *Server) CreateProcess(rw http.ResponseWriter, req *http.Request) error 
 	s.Unlock()
 
 	p.ExitCode = -2
-	go s.launch(&p)
+	go func() {
+		if err := s.launch(&p); err != nil {
+			logrus.Errorf("Failed to launch %#v: %v", p, err)
+		}
+	}()
 
 	apiContext.Write(&p)
 	return nil
 }
 
 func (s *Server) launch(p *Process) error {
-	args := []string{}
+	switch p.ProcessType {
+	case "sync":
+		return s.launchSync(p)
+	case "fold":
+		return s.launchFold(p)
+	}
+	return fmt.Errorf("Unknown process type %s", p.ProcessType)
+}
+
+func (s *Server) launchFold(p *Process) error {
+	cmd := reexec.Command("sfold", p.SrcFile, p.DestFile)
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Pdeathsig: syscall.SIGKILL,
+	}
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+
+	logrus.Infof("Running %s %v", cmd.Path, cmd.Args)
+	err := cmd.Wait()
+	if err != nil {
+		logrus.Infof("Error running %s %v: %v", "sfold", cmd.Args, err)
+		p.ExitCode = 1
+		if exitError, ok := err.(*exec.ExitError); ok {
+			if waitStatus, ok := exitError.Sys().(syscall.WaitStatus); ok {
+				logrus.Infof("Error running %s %v: %v", "sfold", cmd.Args, waitStatus.ExitStatus())
+				p.ExitCode = waitStatus.ExitStatus()
+			}
+		}
+		return err
+	}
+
+	p.ExitCode = 0
+	logrus.Infof("Done running %s %v", "sfold", cmd.Args)
+	return nil
+}
+
+func binName() (string, error) {
+	if _, err := os.Stat(os.Args[0]); err == nil {
+		return os.Args[0], nil
+	}
+	return exec.LookPath(os.Args[0])
+}
+
+func (s *Server) launchSync(p *Process) error {
+	args := []string{"ssync"}
 	if p.Host != "" {
 		args = append(args, "-host", p.Host)
 	}
@@ -122,13 +175,15 @@ func (s *Server) launch(p *Process) error {
 		}
 	}
 
-	cmd := exec.Command("ssync", args...)
+	cmd := reexec.Command(args...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Pdeathsig: syscall.SIGKILL,
 	}
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
-	cmd.Start()
+	if err := cmd.Start(); err != nil {
+		return err
+	}
 
 	logrus.Infof("Running %s %v", "ssync", args)
 	err := cmd.Wait()
