@@ -267,17 +267,40 @@ func (c *Controller) Close() error {
 	return c.Shutdown()
 }
 
-func (c *Controller) Shutdown() error {
-	c.Lock()
-	defer c.Unlock()
-
-	c.backend.Close()
-	c.reset()
+func (c *Controller) shutdownFrontend() error {
+	// Make sure writing data won't be blocked
+	c.RLock()
+	defer c.RUnlock()
 
 	if c.frontend != nil {
 		return c.frontend.Shutdown()
 	}
+	return nil
+}
 
+func (c *Controller) shutdownBackend() error {
+	c.Lock()
+	defer c.Unlock()
+
+	err := c.backend.Close()
+	c.reset()
+
+	return err
+}
+
+func (c *Controller) Shutdown() error {
+	/*
+		Need to shutdown frontend first because it will write
+		the final piece of data to backend
+	*/
+	err := c.shutdownFrontend()
+	if err != nil {
+		logrus.Error("Error when shutting down frontend:", err)
+	}
+	err = c.shutdownBackend()
+	if err != nil {
+		logrus.Error("Error when shutting down backend:", err)
+	}
 	return nil
 }
 
