@@ -72,6 +72,7 @@ func NewReplica(context *api.ApiContext, state replica.State, info replica.Info,
 		actions["reload"] = true
 		actions["removedisk"] = true
 	case replica.Rebuilding:
+		actions["snapshot"] = true
 		actions["setrebuilding"] = true
 		actions["close"] = true
 		actions["reload"] = true
