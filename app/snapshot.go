@@ -84,7 +84,7 @@ func rmSnapshot(c *cli.Context) error {
 			fmt.Printf("deleted %s\n", name)
 		} else {
 			lastErr = err
-			fmt.Fprintf(os.Stderr, "Failed to delete %s: %v", name, err)
+			fmt.Fprintf(os.Stderr, "Failed to delete %s: %v\n", name, err)
 		}
 	}
 
