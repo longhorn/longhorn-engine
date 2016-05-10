@@ -65,9 +65,9 @@ RUN GOPATH=/tmp/ssync && go get -d github.com/rancher/sparse-tools/ssync && \
 RUN GOPATH=/tmp/docker-longhorn-driver && \
     mkdir -p $GOPATH/src/github.com/rancher && \
     cd $GOPATH/src/github.com/rancher && \
-    git clone https://github.com/cjellick/docker-longhorn-driver.git && \
+    git clone https://github.com/rancher/docker-longhorn-driver.git && \
     cd docker-longhorn-driver && \
-    git checkout e861cbf7058bbcdf1c0600469710dc07afeeeeb2 && \
+    git checkout d9292c70a98d27d846ac1485e812c8215018528c && \
     go build -o /usr/local/bin/docker-longhorn-driver
 
 # Install libqcow

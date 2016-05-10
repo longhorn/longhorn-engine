@@ -1,0 +1,3 @@
+#!/bin/bash
+
+cp $(which longhorn) $(which launch-replica-with-vm-backing-file) /cmd
