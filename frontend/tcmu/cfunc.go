@@ -53,7 +53,7 @@ bool tcmu_poll_master_fd(struct tcmulib_context *cxt) {
 	ret = poll(&pfd, 1, -1);
 	if (ret < 0) {
 		errp("poll error out with %d", ret);
-		exit(1);
+		return false;
 	}
 
 	if (pfd.revents) {
