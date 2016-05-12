@@ -83,8 +83,13 @@ func New(size, sectorSize int64, dir string, backingFile *BackingFile) (*Replica
 	r.info.Size = size
 	r.info.SectorSize = sectorSize
 	r.info.BackingFile = backingFile
-	r.volume.sectorSize = sectorSize
-	r.volume.location = make([]byte, size/sectorSize)
+
+	r.volume.sectorSize = defaultSectorSize
+	locationSize := size / defaultSectorSize
+	if size%defaultSectorSize != 0 {
+		locationSize++
+	}
+	r.volume.location = make([]byte, locationSize)
 	r.volume.files = []types.DiffDisk{nil}
 
 	exists, err := r.readMetadata()
