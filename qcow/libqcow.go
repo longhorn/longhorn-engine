@@ -1,4 +1,5 @@
 // +build qcow
+
 package qcow
 
 // #cgo LDFLAGS: -lqcow -lz
