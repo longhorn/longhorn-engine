@@ -137,7 +137,7 @@ func (r *Replica) SetRebuilding(rebuilding bool) error {
 }
 
 func (r *Replica) Reload() (*Replica, error) {
-	newReplica, err := New(r.info.Size, r.volume.sectorSize, r.dir, r.info.BackingFile)
+	newReplica, err := New(r.info.Size, r.info.SectorSize, r.dir, r.info.BackingFile)
 	if err != nil {
 		return nil, err
 	}
@@ -374,7 +374,6 @@ func (r *Replica) createDisk(name string) error {
 	info.Head = newHeadDisk.name
 	info.Dirty = true
 	info.Parent = newHeadDisk.Parent
-	info.SectorSize = r.volume.sectorSize
 
 	if err := r.encodeToFile(&info, volumeMetaData); err != nil {
 		return err
@@ -431,7 +430,7 @@ func (r *Replica) readMetadata() (bool, error) {
 			if err := r.unmarshalFile(file.Name(), &r.info); err != nil {
 				return false, err
 			}
-			r.volume.sectorSize = r.info.SectorSize
+			r.volume.sectorSize = defaultSectorSize
 		} else if strings.HasSuffix(file.Name(), metadataSuffix) {
 			if err := r.readDiskData(file.Name()); err != nil {
 				return false, err

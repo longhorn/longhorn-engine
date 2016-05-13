@@ -49,7 +49,7 @@ def test_create(client):
 
     assert r.state == 'closed'
     assert r.size == str(1024*4096)
-    assert r.sectorSize == 4096
+    assert r.sectorSize == 512
     assert r.parent == ''
     assert r.head == 'volume-head-000.img'
 
@@ -71,7 +71,7 @@ def test_open(client):
     assert not r.dirty
     assert not r.rebuilding
     assert r.size == str(1024*4096)
-    assert r.sectorSize == 4096
+    assert r.sectorSize == 512
     assert r.parent == ''
     assert r.head == 'volume-head-000.img'
 
@@ -81,7 +81,7 @@ def test_open(client):
     assert not r.dirty
     assert not r.rebuilding
     assert r.size == str(1024*4096)
-    assert r.sectorSize == 4096
+    assert r.sectorSize == 512
     assert r.parent == ''
     assert r.head == 'volume-head-000.img'
 
@@ -98,7 +98,7 @@ def test_close(client):
     assert not r.dirty
     assert not r.rebuilding
     assert r.size == str(1024*4096)
-    assert r.sectorSize == 4096
+    assert r.sectorSize == 512
     assert r.parent == ''
     assert r.head == 'volume-head-000.img'
 
@@ -108,7 +108,7 @@ def test_close(client):
     assert not r.dirty
     assert not r.rebuilding
     assert r.size == str(1024*4096)
-    assert r.sectorSize == 4096
+    assert r.sectorSize == 512
     assert r.parent == ''
     assert r.head == 'volume-head-000.img'
 
@@ -125,7 +125,7 @@ def test_snapshot(client):
     assert not r.dirty
     assert not r.rebuilding
     assert r.size == str(1024*4096)
-    assert r.sectorSize == 4096
+    assert r.sectorSize == 512
     assert r.parent == ''
     assert r.head == 'volume-head-000.img'
 
@@ -134,7 +134,7 @@ def test_snapshot(client):
     assert r.dirty
     assert not r.rebuilding
     assert r.size == str(1024*4096)
-    assert r.sectorSize == 4096
+    assert r.sectorSize == 512
 
     r = r.snapshot(name='001')
 
@@ -142,7 +142,7 @@ def test_snapshot(client):
     assert r.dirty
     assert not r.rebuilding
     assert r.size == str(1024*4096)
-    assert r.sectorSize == 4096
+    assert r.sectorSize == 512
     assert r.head == 'volume-head-002.img'
     assert r.parent == 'volume-snap-001.img'
     assert r.chain == ['volume-head-002.img', 'volume-snap-001.img',
@@ -165,7 +165,7 @@ def test_remove_disk(client):
     assert r.state == 'dirty'
     assert not r.rebuilding
     assert r.size == str(1024*4096)
-    assert r.sectorSize == 4096
+    assert r.sectorSize == 512
     assert r.head == 'volume-head-002.img'
     assert r.parent == 'volume-snap-000.img'
     assert r.chain == ['volume-head-002.img', 'volume-snap-000.img']
@@ -187,7 +187,7 @@ def test_remove_last_disk(client):
     assert r.state == 'dirty'
     assert not r.rebuilding
     assert r.size == str(1024*4096)
-    assert r.sectorSize == 4096
+    assert r.sectorSize == 512
     assert r.head == 'volume-head-002.img'
     assert r.parent == 'volume-snap-001.img'
     assert r.chain == ['volume-head-002.img', 'volume-snap-001.img']
@@ -208,7 +208,7 @@ def test_reload(client):
     r = r.removedisk(name='volume-snap-000.img')
     assert r.state == 'dirty'
     assert r.size == str(1024*4096)
-    assert r.sectorSize == 4096
+    assert r.sectorSize == 512
     assert r.head == 'volume-head-002.img'
     assert r.parent == 'volume-snap-001.img'
     assert r.chain == ['volume-head-002.img', 'volume-snap-001.img']
@@ -216,7 +216,7 @@ def test_reload(client):
     r = r.reload()
     assert r.state == 'dirty'
     assert r.size == str(1024*4096)
-    assert r.sectorSize == 4096
+    assert r.sectorSize == 512
     assert r.chain == ['volume-head-002.img', 'volume-snap-001.img']
     assert r.head == 'volume-head-002.img'
     assert r.parent == 'volume-snap-001.img'
@@ -224,7 +224,7 @@ def test_reload(client):
     r = r.close().open()
     assert r.state == 'open'
     assert r.size == str(1024*4096)
-    assert r.sectorSize == 4096
+    assert r.sectorSize == 512
     assert r.chain == ['volume-head-002.img', 'volume-snap-001.img']
     assert r.head == 'volume-head-002.img'
     assert r.parent == 'volume-snap-001.img'
@@ -240,14 +240,14 @@ def test_reload_simple(client):
     assert r.state == 'open'
     assert not r.rebuilding
     assert r.size == str(1024*4096)
-    assert r.sectorSize == 4096
+    assert r.sectorSize == 512
     assert r.parent == ''
     assert r.head == 'volume-head-000.img'
 
     r = r.reload()
     assert r.state == 'open'
     assert r.size == str(1024*4096)
-    assert r.sectorSize == 4096
+    assert r.sectorSize == 512
     assert r.parent == ''
     assert r.head == 'volume-head-000.img'
 
@@ -263,7 +263,7 @@ def test_rebuilding(client):
     assert r.state == 'dirty'
     assert not r.rebuilding
     assert r.size == str(1024*4096)
-    assert r.sectorSize == 4096
+    assert r.sectorSize == 512
     assert r.parent == 'volume-snap-001.img'
     assert r.head == 'volume-head-001.img'
     assert r.chain == ['volume-head-001.img', 'volume-snap-001.img']
@@ -272,7 +272,7 @@ def test_rebuilding(client):
     assert r.state == 'rebuilding'
     assert r.rebuilding
     assert r.size == str(1024*4096)
-    assert r.sectorSize == 4096
+    assert r.sectorSize == 512
     assert r.parent == 'volume-snap-001.img'
     assert r.head == 'volume-head-001.img'
     assert r.chain == ['volume-head-001.img', 'volume-snap-001.img']
@@ -281,7 +281,7 @@ def test_rebuilding(client):
     assert r.state == 'rebuilding'
     assert r.rebuilding
     assert r.size == str(1024*4096)
-    assert r.sectorSize == 4096
+    assert r.sectorSize == 512
     assert r.parent == 'volume-snap-001.img'
     assert r.head == 'volume-head-001.img'
     assert r.chain == ['volume-head-001.img', 'volume-snap-001.img']
@@ -290,7 +290,7 @@ def test_rebuilding(client):
     assert r.state == 'rebuilding'
     assert r.rebuilding
     assert r.size == str(1024*4096)
-    assert r.sectorSize == 4096
+    assert r.sectorSize == 512
     assert r.parent == 'volume-snap-001.img'
     assert r.head == 'volume-head-001.img'
     assert r.chain == ['volume-head-001.img', 'volume-snap-001.img']
@@ -307,7 +307,7 @@ def test_not_rebuilding(client):
     assert r.state == 'dirty'
     assert not r.rebuilding
     assert r.size == str(1024*4096)
-    assert r.sectorSize == 4096
+    assert r.sectorSize == 512
     assert r.parent == 'volume-snap-001.img'
     assert r.head == 'volume-head-001.img'
     assert r.chain == ['volume-head-001.img', 'volume-snap-001.img']
@@ -316,7 +316,7 @@ def test_not_rebuilding(client):
     assert r.state == 'rebuilding'
     assert r.rebuilding
     assert r.size == str(1024*4096)
-    assert r.sectorSize == 4096
+    assert r.sectorSize == 512
     assert r.parent == 'volume-snap-001.img'
     assert r.head == 'volume-head-001.img'
     assert r.chain == ['volume-head-001.img', 'volume-snap-001.img']
@@ -325,7 +325,7 @@ def test_not_rebuilding(client):
     assert r.state == 'dirty'
     assert not r.rebuilding
     assert r.size == str(1024*4096)
-    assert r.sectorSize == 4096
+    assert r.sectorSize == 512
     assert r.parent == 'volume-snap-001.img'
     assert r.head == 'volume-head-001.img'
     assert r.chain == ['volume-head-001.img', 'volume-snap-001.img']
