@@ -94,7 +94,7 @@ def open_replica(client):
 
     assert r.state == 'closed'
     assert r.size == str(1024*4096)
-    assert r.sectorSize == 4096
+    assert r.sectorSize == 512
     assert r.parent == ''
     assert r.head == 'volume-head-000.img'
 
