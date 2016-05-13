@@ -431,7 +431,7 @@ func (c *Controller) replicaMetadataAndClient() (int, map[string]*replica, error
 	}
 
 	// Unmarshalling the metadata as json is forcing it to a bad format
-	resp, err := http.Get(MetadataURL + "/self/service/metadata/longhorn/volume_size")
+	resp, err := http.Get(MetadataURL + "/self/service/metadata/volume/volume_size")
 	if err != nil {
 		return 0, nil, err
 	}

@@ -91,6 +91,14 @@ func (r *Remote) Size() (int64, error) {
 	return strconv.ParseInt(replica.Size, 10, 0)
 }
 
+func (r *Remote) SectorSize() (int64, error) {
+	replica, err := r.info()
+	if err != nil {
+		return 0, err
+	}
+	return replica.SectorSize, nil
+}
+
 func (r *Remote) info() (rest.Replica, error) {
 	var replica rest.Replica
 	req, err := http.NewRequest("GET", r.replicaURL, nil)

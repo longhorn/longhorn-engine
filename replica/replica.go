@@ -13,6 +13,7 @@ import (
 	"syscall"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/rancher/longhorn/types"
 )
 
 const (
@@ -38,17 +39,25 @@ type Replica struct {
 }
 
 type Info struct {
-	Size       int64
-	Head       string
-	Dirty      bool
-	Rebuilding bool
-	Parent     string
-	SectorSize int64
+	Size        int64
+	Head        string
+	Dirty       bool
+	Rebuilding  bool
+	Parent      string
+	SectorSize  int64
+	BackingFile *BackingFile `json:"-"`
 }
 
 type disk struct {
 	name   string
 	Parent string
+}
+
+type BackingFile struct {
+	Size       int64
+	SectorSize int64
+	Name       string
+	Disk       types.DiffDisk
 }
 
 func ReadInfo(dir string) (Info, error) {
@@ -57,7 +66,7 @@ func ReadInfo(dir string) (Info, error) {
 	return info, err
 }
 
-func New(size, sectorSize int64, dir string) (*Replica, error) {
+func New(size, sectorSize int64, dir string, backingFile *BackingFile) (*Replica, error) {
 	if size%sectorSize != 0 {
 		return nil, fmt.Errorf("Size %d not a multiple of sector size %d", size, sectorSize)
 	}
@@ -69,12 +78,19 @@ func New(size, sectorSize int64, dir string) (*Replica, error) {
 	r := &Replica{
 		dir:            dir,
 		activeDiskData: make([]disk, 1),
+		diskData:       map[string]disk{},
 	}
 	r.info.Size = size
 	r.info.SectorSize = sectorSize
-	r.volume.sectorSize = sectorSize
-	r.volume.location = make([]byte, size/sectorSize)
-	r.volume.files = []*os.File{nil}
+	r.info.BackingFile = backingFile
+
+	r.volume.sectorSize = defaultSectorSize
+	locationSize := size / defaultSectorSize
+	if size%defaultSectorSize != 0 {
+		locationSize++
+	}
+	r.volume.location = make([]byte, locationSize)
+	r.volume.files = []types.DiffDisk{nil}
 
 	exists, err := r.readMetadata()
 	if err != nil {
@@ -95,7 +111,20 @@ func New(size, sectorSize int64, dir string) (*Replica, error) {
 
 	r.info.Parent = r.diskData[r.info.Head].Parent
 
+	r.insertBackingFile()
+
 	return r, r.writeVolumeMetaData(true, r.info.Rebuilding)
+}
+
+func (r *Replica) insertBackingFile() {
+	if r.info.BackingFile == nil {
+		return
+	}
+
+	d := disk{name: r.info.BackingFile.Name}
+	r.activeDiskData = append([]disk{disk{}, d}, r.activeDiskData[1:]...)
+	r.volume.files = append([]types.DiffDisk{nil, r.info.BackingFile.Disk}, r.volume.files[1:]...)
+	r.diskData[d.name] = d
 }
 
 func (r *Replica) SetRebuilding(rebuilding bool) error {
@@ -108,7 +137,7 @@ func (r *Replica) SetRebuilding(rebuilding bool) error {
 }
 
 func (r *Replica) Reload() (*Replica, error) {
-	newReplica, err := New(r.info.Size, r.volume.sectorSize, r.dir)
+	newReplica, err := New(r.info.Size, r.volume.sectorSize, r.dir, r.info.BackingFile)
 	if err != nil {
 		return nil, err
 	}
@@ -199,9 +228,18 @@ func (r *Replica) writeVolumeMetaData(dirty, rebuilding bool) error {
 	return r.encodeToFile(&info, volumeMetaData)
 }
 
+func (r *Replica) isBackingFile(index int) bool {
+	if r.info.BackingFile == nil {
+		return false
+	}
+	return index == 1
+}
+
 func (r *Replica) close() error {
-	for _, f := range r.volume.files {
-		f.Close()
+	for i, f := range r.volume.files {
+		if f != nil && !r.isBackingFile(i) {
+			f.Close()
+		}
 	}
 
 	return r.writeVolumeMetaData(false, r.info.Rebuilding)
@@ -239,12 +277,18 @@ func (r *Replica) nextFile(parsePattern *regexp.Regexp, pattern, parent string) 
 	return fmt.Sprintf(pattern, index+1), nil
 }
 
-func (r *Replica) openFile(name string, flag int) (*os.File, error) {
+func (r *Replica) openFile(name string, flag int) (types.DiffDisk, error) {
 	// TODO: need to turn on O_DIRECT
-	return os.OpenFile(path.Join(r.dir, name), syscall.O_DIRECT|os.O_RDWR|os.O_CREATE|flag, 0666)
+	f, err := os.OpenFile(path.Join(r.dir, name), syscall.O_DIRECT|os.O_RDWR|os.O_CREATE|flag, 0666)
+	if err != nil {
+		return nil, err
+	}
+	return &directFile{
+		File: f,
+	}, nil
 }
 
-func (r *Replica) createNewHead(oldHead, parent string) (*os.File, disk, error) {
+func (r *Replica) createNewHead(oldHead, parent string) (types.DiffDisk, disk, error) {
 	newHeadName, err := r.nextFile(diskPattern, headName, oldHead)
 	if err != nil {
 		return nil, disk{}, err

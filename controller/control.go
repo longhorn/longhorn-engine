@@ -11,12 +11,13 @@ import (
 
 type Controller struct {
 	sync.RWMutex
-	Name     string
-	size     int64
-	replicas []types.Replica
-	factory  types.BackendFactory
-	backend  *replicator
-	frontend types.Frontend
+	Name       string
+	size       int64
+	sectorSize int64
+	replicas   []types.Replica
+	factory    types.BackendFactory
+	backend    *replicator
+	frontend   types.Frontend
 }
 
 func NewController(name string, factory types.BackendFactory, frontend types.Frontend) *Controller {
@@ -183,7 +184,7 @@ func (c *Controller) Start(addresses ...string) error {
 
 	defer func() {
 		if len(c.replicas) > 0 && c.frontend != nil {
-			if err := c.frontend.Activate(c.Name, c.size, c); err != nil {
+			if err := c.frontend.Activate(c.Name, c.size, c.sectorSize, c); err != nil {
 				// FATAL
 				logrus.Fatalf("Failed to activate frontend: %v", err)
 			}
@@ -202,11 +203,19 @@ func (c *Controller) Start(addresses ...string) error {
 			return err
 		}
 
+		newSectorSize, err := newBackend.SectorSize()
+		if err != nil {
+			return err
+		}
+
 		if first {
 			first = false
 			c.size = newSize
+			c.sectorSize = newSectorSize
 		} else if c.size != newSize {
 			return fmt.Errorf("Backend sizes do not match %d != %d", c.size, newSize)
+		} else if c.sectorSize != newSectorSize {
+			return fmt.Errorf("Backend sizes do not match %d != %d", c.sectorSize, newSectorSize)
 		}
 
 		if err := c.addReplicaNoLock(newBackend, address, false); err != nil {
