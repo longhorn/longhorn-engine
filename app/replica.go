@@ -58,7 +58,7 @@ func startReplica(c *cli.Context) error {
 		return err
 	}
 
-	s := replica.NewServer(dir, backingFile, 4096)
+	s := replica.NewServer(dir, backingFile, 512)
 
 	address := c.String("listen")
 	size := c.String("size")
