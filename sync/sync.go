@@ -26,6 +26,14 @@ func (t *Task) DeleteSnapshot(snapshot string) error {
 		return err
 	}
 
+	for _, r := range replicas {
+		if ok, err := t.isRebuilding(&r); err != nil {
+			return err
+		} else if ok {
+			return fmt.Errorf("Can not remove a snapshot because %s is rebuilding", r.Address)
+		}
+	}
+
 	for _, replica := range replicas {
 		if err := t.coalesceSnapshot(&replica, snapshot); err != nil {
 			return err
@@ -68,6 +76,20 @@ func getNameAndIndex(chain []string, snapshot string) (string, int) {
 	}
 
 	return snapshot, index
+}
+
+func (t *Task) isRebuilding(replicaInController *rest.Replica) (bool, error) {
+	repClient, err := client.NewReplicaClient(replicaInController.Address)
+	if err != nil {
+		return false, err
+	}
+
+	replica, err := repClient.GetReplica()
+	if err != nil {
+		return false, err
+	}
+
+	return replica.Rebuilding, nil
 }
 
 func (t *Task) coalesceSnapshot(replicaInController *rest.Replica, snapshot string) error {
