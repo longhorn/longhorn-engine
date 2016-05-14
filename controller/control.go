@@ -251,18 +251,23 @@ func (c *Controller) handleError(err error) error {
 	if bErr, ok := err.(*BackendError); ok {
 		c.Lock()
 		if len(bErr.Errors) > 0 {
-			for address := range bErr.Errors {
+			for address, replicaErr := range bErr.Errors {
+				logrus.Errorf("Setting replica %s to ERR due to: %v", address, replicaErr)
 				c.setReplicaModeNoLock(address, types.ERR)
 			}
 			// if we still have a good replica, do not return error
 			for _, r := range c.replicas {
 				if r.Mode == types.RW {
+					logrus.Errorf("Ignoring error because %s is mode RW: %v", r.Address, err)
 					err = nil
 					break
 				}
 			}
 		}
 		c.Unlock()
+	}
+	if err != nil {
+		logrus.Errorf("I/O error: %v", err)
 	}
 	return err
 }
