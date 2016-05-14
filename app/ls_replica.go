@@ -16,7 +16,7 @@ func LsReplicaCmd() cli.Command {
 		ShortName: "ls",
 		Action: func(c *cli.Context) {
 			if err := lsReplica(c); err != nil {
-				logrus.Fatal(err)
+				logrus.Fatalf("Error running ls command: %v", err)
 			}
 		},
 	}

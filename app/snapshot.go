@@ -23,7 +23,7 @@ func SnapshotCmd() cli.Command {
 		},
 		Action: func(c *cli.Context) {
 			if err := lsSnapshot(c); err != nil {
-				logrus.Fatal(err)
+				logrus.Fatalf("Error running snapshot command: %v", err)
 			}
 		},
 	}
@@ -34,7 +34,7 @@ func SnapshotCreateCmd() cli.Command {
 		Name: "create",
 		Action: func(c *cli.Context) {
 			if err := createSnapshot(c); err != nil {
-				logrus.Fatal(err)
+				logrus.Fatalf("Error running create snapshot command: %v", err)
 			}
 		},
 	}
@@ -45,7 +45,7 @@ func SnapshotRmCmd() cli.Command {
 		Name: "rm",
 		Action: func(c *cli.Context) {
 			if err := rmSnapshot(c); err != nil {
-				logrus.Fatal(err)
+				logrus.Fatalf("Error running rm snapshot command: %v", err)
 			}
 		},
 	}
@@ -56,7 +56,7 @@ func SnapshotLsCmd() cli.Command {
 		Name: "ls",
 		Action: func(c *cli.Context) {
 			if err := lsSnapshot(c); err != nil {
-				logrus.Fatal(err)
+				logrus.Fatalf("Error running ls snapshot command: %v", err)
 			}
 		},
 	}

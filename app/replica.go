@@ -41,7 +41,7 @@ func ReplicaCmd() cli.Command {
 		},
 		Action: func(c *cli.Context) {
 			if err := startReplica(c); err != nil {
-				logrus.Fatal(err)
+				logrus.Fatalf("Error running start replica command: %v", err)
 			}
 		},
 	}

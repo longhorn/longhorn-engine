@@ -14,7 +14,7 @@ func AddReplicaCmd() cli.Command {
 		ShortName: "add",
 		Action: func(c *cli.Context) {
 			if err := addReplica(c); err != nil {
-				logrus.Fatal(err)
+				logrus.Fatalf("Error running add replica command: %v", err)
 			}
 		},
 	}

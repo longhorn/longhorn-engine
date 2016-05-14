@@ -404,7 +404,7 @@ func (c *Controller) addReplica(r *replica) error {
 		logrus.Warnf("longhorn add cli returned error %v while adding replica %v. Attempting to clean up.", err, address)
 		replicas, err2 := c.client.ListReplicas()
 		if err2 != nil {
-			logrus.Errorf("Error listing replicas while trying to clean up after failed add for replica %v", address)
+			logrus.Errorf("Error listing replicas while trying to clean up after failed add for replica %v: %v", address, err2)
 		} else {
 			for _, replica := range replicas {
 				if replica.Address == address && replica.Mode != "RW" {

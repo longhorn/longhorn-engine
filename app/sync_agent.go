@@ -27,7 +27,7 @@ func SyncAgentCmd() cli.Command {
 		},
 		Action: func(c *cli.Context) {
 			if err := startSyncAgent(c); err != nil {
-				logrus.Fatal(err)
+				logrus.Fatalf("Error running sync-agent command: %v", err)
 			}
 		},
 	}
