@@ -17,9 +17,10 @@ import (
 )
 
 type ReplicaClient struct {
-	address   string
-	syncAgent string
-	host      string
+	address    string
+	syncAgent  string
+	host       string
+	httpClient *http.Client
 }
 
 func NewReplicaClient(address string) (*ReplicaClient, error) {
@@ -52,10 +53,16 @@ func NewReplicaClient(address string) (*ReplicaClient, error) {
 
 	syncAgent := strings.Replace(address, fmt.Sprintf(":%d", port), fmt.Sprintf(":%d", port+2), -1)
 
+	timeout := time.Duration(10 * time.Second)
+	client := &http.Client{
+		Timeout: timeout,
+	}
+
 	return &ReplicaClient{
-		host:      parts[0],
-		address:   address,
-		syncAgent: syncAgent,
+		host:       parts[0],
+		address:    address,
+		syncAgent:  syncAgent,
+		httpClient: client,
 	}, nil
 }
 
@@ -209,7 +216,7 @@ func (c *ReplicaClient) get(url string, obj interface{}) error {
 		url = c.address + url
 	}
 
-	resp, err := http.Get(url)
+	resp, err := c.httpClient.Get(url)
 	if err != nil {
 		return err
 	}
@@ -231,7 +238,8 @@ func (c *ReplicaClient) post(path string, req, resp interface{}) error {
 	}
 
 	logrus.Debugf("POST %s", url)
-	httpResp, err := http.Post(url, bodyType, bytes.NewBuffer(b))
+
+	httpResp, err := c.httpClient.Post(url, bodyType, bytes.NewBuffer(b))
 	if err != nil {
 		return err
 	}
