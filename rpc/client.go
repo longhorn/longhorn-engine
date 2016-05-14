@@ -4,8 +4,13 @@ import (
 	"errors"
 	"io"
 	"net"
+	"time"
 
 	"github.com/Sirupsen/logrus"
+)
+
+var (
+	ErrPingTimeout = errors.New("Ping timeout")
 )
 
 type Client struct {
@@ -42,6 +47,35 @@ func (c *Client) ReadAt(buf []byte, offset int64) (int, error) {
 	return c.operation(TypeRead, buf, offset)
 }
 
+func (c *Client) Ping() error {
+	ret := make(chan error, 1)
+	go func() {
+		_, err := c.operation(TypePing, nil, 0)
+		ret <- err
+	}()
+
+	select {
+	case err := <-ret:
+		return err
+	case <-time.After(2 * time.Second):
+		return ErrPingTimeout
+	}
+}
+
+func (c *Client) checkPing() {
+	// don't ping if we know the connection is already bad
+	if c.err != nil {
+		return
+	}
+
+	if err := c.Ping(); err != nil {
+		logrus.Errorf("Error monitoring wire: %v", err)
+		c.responses <- &Message{
+			transportErr: err,
+		}
+	}
+}
+
 func (c *Client) operation(op uint32, buf []byte, offset int64) (int, error) {
 	msg := Message{
 		Type:   op,
@@ -70,9 +104,13 @@ func (c *Client) Close() {
 
 func (c *Client) loop() {
 	defer close(c.send)
+	ticker := time.NewTicker(3 * time.Second)
+	defer ticker.Stop()
 
 	for {
 		select {
+		case <-ticker.C:
+			go c.checkPing()
 		case <-c.end:
 			return
 		case req := <-c.requests:
@@ -109,6 +147,7 @@ func (c *Client) handleRequest(req *Message) {
 func (c *Client) handleResponse(resp *Message) {
 	if resp.transportErr != nil {
 		c.err = resp.transportErr
+		logrus.Errorf("Got transport error: %v", c.err)
 		// Terminate all in flight
 		for _, msg := range c.messages {
 			c.replyError(msg)

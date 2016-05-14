@@ -8,6 +8,7 @@ const (
 	TypeResponse
 	TypeError
 	TypeEOF
+	TypePing
 
 	messageSize     = (32 + 32 + 32 + 64) / 8
 	readBufferSize  = 8096
