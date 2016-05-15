@@ -19,6 +19,8 @@ import (
 )
 
 var (
+	pingTimeout    = 10 * time.Second
+	pingInveral    = 3 * time.Second
 	timeout        = 30 * time.Second
 	requestBuffer  = 1024
 	ErrPingTimeout = errors.New("Ping timeout")
@@ -166,7 +168,7 @@ func (rf *Factory) Create(address string) (types.Backend, error) {
 }
 
 func (r *Remote) monitorPing(client *rpc.Client) error {
-	ticker := time.NewTicker(3 * time.Second)
+	ticker := time.NewTicker(pingInveral)
 	defer ticker.Stop()
 
 	for {
@@ -202,7 +204,7 @@ func (r *Remote) Ping() error {
 	select {
 	case err := <-ret:
 		return err
-	case <-time.After(2 * time.Second):
+	case <-time.After(pingTimeout):
 		return ErrPingTimeout
 	}
 }
