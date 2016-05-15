@@ -202,7 +202,7 @@ func (r *Remote) Ping() error {
 	select {
 	case err := <-ret:
 		return err
-	case <-time.After(2 * time.Second):
+	case <-time.After(10 * time.Second):
 		return ErrPingTimeout
 	}
 }
