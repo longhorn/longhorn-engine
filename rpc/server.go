@@ -46,8 +46,6 @@ func (s *Server) read() error {
 			go s.handleRead(msg)
 		case TypeWrite:
 			go s.handleWrite(msg)
-		case TypePing:
-			go s.handlePong(msg)
 		}
 	}
 }
@@ -60,10 +58,6 @@ func (s *Server) handleRead(msg *Message) {
 func (s *Server) handleWrite(msg *Message) {
 	c, err := s.data.WriteAt(msg.Data, msg.Offset)
 	s.pushResponse(c, msg, err)
-}
-
-func (s *Server) handlePong(msg *Message) {
-	s.pushResponse(0, msg, nil)
 }
 
 func (s *Server) pushResponse(count int, msg *Message, err error) {
