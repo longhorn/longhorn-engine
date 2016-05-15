@@ -38,6 +38,12 @@ func (c *Client) WriteAt(buf []byte, offset int64) (int, error) {
 	return c.operation(TypeWrite, buf, offset)
 }
 
+func (c *Client) SetError(err error) {
+	c.responses <- &Message{
+		transportErr: err,
+	}
+}
+
 func (c *Client) ReadAt(buf []byte, offset int64) (int, error) {
 	return c.operation(TypeRead, buf, offset)
 }

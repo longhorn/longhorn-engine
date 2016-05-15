@@ -3,6 +3,7 @@ package remote
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -18,8 +19,9 @@ import (
 )
 
 var (
-	timeout       = 30 * time.Second
-	requestBuffer = 1024
+	timeout        = 30 * time.Second
+	requestBuffer  = 1024
+	ErrPingTimeout = errors.New("Ping timeout")
 )
 
 func New() types.BackendFactory {
@@ -32,11 +34,14 @@ type Factory struct {
 type Remote struct {
 	types.ReaderWriterAt
 	name       string
+	pingURL    string
 	replicaURL string
 	httpClient *http.Client
+	closeChan  chan struct{}
 }
 
 func (r *Remote) Close() error {
+	r.closeChan <- struct{}{}
 	logrus.Infof("Closing: %s", r.name)
 	return r.doAction("close", "")
 }
@@ -131,9 +136,11 @@ func (rf *Factory) Create(address string) (types.Backend, error) {
 	r := &Remote{
 		name:       address,
 		replicaURL: fmt.Sprintf("http://%s/v1/replicas/1", controlAddress),
+		pingURL:    fmt.Sprintf("http://%s/ping", controlAddress),
 		httpClient: &http.Client{
 			Timeout: timeout,
 		},
+		closeChan: make(chan struct{}, 1),
 	}
 
 	replica, err := r.info()
@@ -150,7 +157,52 @@ func (rf *Factory) Create(address string) (types.Backend, error) {
 		return nil, err
 	}
 
-	r.ReaderWriterAt = rpc.NewClient(conn)
+	rpc := rpc.NewClient(conn)
+	go r.monitorPing(rpc)
+
+	r.ReaderWriterAt = rpc
 
 	return r, r.open()
+}
+
+func (r *Remote) monitorPing(client *rpc.Client) error {
+	ticker := time.NewTicker(3 * time.Second)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-r.closeChan:
+			break
+		case <-ticker.C:
+			if err := r.Ping(); err != nil {
+				logrus.Errorf("Failed to get ping response: %v", err)
+				client.SetError(err)
+				return err
+			}
+		}
+	}
+}
+
+func (r *Remote) Ping() error {
+	ret := make(chan error, 1)
+	go func() {
+		resp, err := r.httpClient.Get(r.pingURL)
+		if err != nil {
+			ret <- err
+			return
+		}
+		defer resp.Body.Close()
+		if resp.StatusCode != 200 {
+			ret <- fmt.Errorf("Non-200 response %d from ping to %s", resp.StatusCode, r.name)
+			return
+		}
+		ret <- nil
+	}()
+
+	select {
+	case err := <-ret:
+		return err
+	case <-time.After(2 * time.Second):
+		return ErrPingTimeout
+	}
 }
