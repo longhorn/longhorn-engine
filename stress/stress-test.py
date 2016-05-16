@@ -46,6 +46,8 @@ def create_testdata():
 
 def rebuild_replicas(iterations):
   for iteration in range(iterations):
+    if iteration % 3 == 0:
+      subprocess.call("./bin/longhorn snapshots | grep -v ID | xargs ./bin/longhorn snapshot rm", shell = True)
     time.sleep(120)
     if random.random() > 0.5:
       replica_host = "localhost:9502"
@@ -77,6 +79,7 @@ def random_write(snapshots, testdata, iterations):
       testdata[base + blockoffset + i] = pattern
     fd.seek(blockoffset * BLOCK_SIZE)
     fd.write(gen_blockdata(blockoffset, nblocks, pattern))
+    fd.flush()
   print "Completed random write in " + str(proc) + " pid = " + str(proc.pid)
   fd.close()
 
@@ -115,7 +118,6 @@ def read_and_check(snapshots, testdata, iterations):
           hole_blocks = hole_blocks + 1
       except AssertionError:
         print "current_pattern = " + str(current_pattern) + " nblocks = " + str(nblocks) + " blockoffset = " + str(blockoffset) + " i = " + str(i) + " stored_blockoffset = " + str(stored_blockoffset) + " pattern = " + str(pattern) + " stored_pattern = " + str(stored_pattern)
-#        raise
   print "data_blocks: " + str(data_blocks) + " hole_blocks: " + str(hole_blocks)
   print "Completed read and check in " + str(proc) + " pid = " + str(proc.pid)
   fd.close()
@@ -141,16 +143,16 @@ snapshots["livedata"] = 0
 workers = []
 
 for i in range(10):
-  p = Process(target = random_write, args = (snapshots, testdata, 10000))
+  p = Process(target = random_write, args = (snapshots, testdata, 100000))
   workers.append(p)
   p.start()
 
 for i in range(10):
-  p = Process(target = read_and_check, args = (snapshots, testdata, 10000))
+  p = Process(target = read_and_check, args = (snapshots, testdata, 100000))
   workers.append(p)
   p.start()
 
-p = Process(target = rebuild_replicas, args = (8,))
+p = Process(target = rebuild_replicas, args = (18,))
 workers.append(p)
 p.start()
 
