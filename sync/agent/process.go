@@ -105,6 +105,9 @@ func (s *Server) CreateProcess(rw http.ResponseWriter, req *http.Request) error 
 		if err := s.launch(&p); err != nil {
 			logrus.Errorf("Failed to launch %#v: %v", p, err)
 		}
+		s.Lock()
+		delete(s.processesByPort, p.Port)
+		s.Unlock()
 	}()
 
 	apiContext.Write(&p)
