@@ -160,11 +160,15 @@ func (rf *Factory) Create(address string) (types.Backend, error) {
 	}
 
 	rpc := rpc.NewClient(conn)
-	go r.monitorPing(rpc)
-
 	r.ReaderWriterAt = rpc
 
-	return r, r.open()
+	if err := r.open(); err != nil {
+		return nil, err
+	}
+
+	go r.monitorPing(rpc)
+
+	return r, nil
 }
 
 func (r *Remote) monitorPing(client *rpc.Client) error {
