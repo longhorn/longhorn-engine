@@ -178,7 +178,7 @@ func (r *Remote) monitorPing(client *rpc.Client) error {
 	for {
 		select {
 		case <-r.closeChan:
-			break
+			return nil
 		case <-ticker.C:
 			if err := r.Ping(); err != nil {
 				logrus.Errorf("Failed to get ping response: %v", err)
