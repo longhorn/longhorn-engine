@@ -59,7 +59,12 @@ func (s *Server) SnapshotVolume(rw http.ResponseWriter, req *http.Request) error
 		return nil
 	}
 
-	name, err := s.c.Snapshot("")
+	var input SnapshotInput
+	if err := apiContext.Read(&input); err != nil {
+		return err
+	}
+
+	name, err := s.c.Snapshot(input.Name)
 	if err != nil {
 		return err
 	}

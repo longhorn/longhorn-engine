@@ -196,11 +196,11 @@ def test_snapshot(bin, controller_client, replica_client, replica_client2):
     ])
     assert v.replicaCount == 2
 
-    snap = v.snapshot()
-    assert snap.id != ''
+    snap = v.snapshot(name='foo1')
+    assert snap.id == 'foo1'
 
-    snap2 = v.snapshot()
-    assert snap2.id != ''
+    snap2 = v.snapshot(name='foo2')
+    assert snap2.id == 'foo2'
 
     cmd = [bin, '--debug', 'snapshot']
     output = subprocess.check_output(cmd)
