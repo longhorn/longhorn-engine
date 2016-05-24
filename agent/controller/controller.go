@@ -12,8 +12,9 @@ import (
 
 	"github.com/rancher/go-rancher-metadata/metadata"
 
-	lclient "github.com/rancher/longhorn/client"
+	lclient "github.com/rancher/longhorn/controller/client"
 	"github.com/rancher/longhorn/controller/rest"
+	replicaClient "github.com/rancher/longhorn/replica/client"
 )
 
 const (
@@ -23,7 +24,7 @@ const (
 )
 
 type replica struct {
-	client      *lclient.ReplicaClient
+	client      *replicaClient.ReplicaClient
 	host        string
 	port        int
 	healthState string
@@ -468,7 +469,7 @@ func (c *Controller) replicaMetadataAndClient() (int, map[string]*replica, error
 		}
 
 		address := ReplicaAddress(r.host, r.port)
-		replicaClient, err := lclient.NewReplicaClient(address)
+		replicaClient, err := replicaClient.NewReplicaClient(address)
 		if err != nil {
 			return 0, nil, fmt.Errorf("Error getting client for replica %v: %v", address, err)
 		}
