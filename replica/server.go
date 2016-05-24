@@ -147,6 +147,24 @@ func (s *Server) Replica() *Replica {
 	return s.r
 }
 
+func (s *Server) Revert(name string) error {
+	s.Lock()
+	defer s.Unlock()
+
+	if s.r == nil {
+		return nil
+	}
+
+	logrus.Infof("Reverting to snapshot [%s] on volume [%s]", name)
+	r, err := s.r.Revert(name)
+	if err != nil {
+		return err
+	}
+
+	s.r = r
+	return nil
+}
+
 func (s *Server) Snapshot(name string) error {
 	s.Lock()
 	defer s.Unlock()

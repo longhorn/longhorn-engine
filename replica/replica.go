@@ -366,6 +366,37 @@ func (r *Replica) rmDisk(name string) error {
 	return lastErr
 }
 
+func (r *Replica) revertDisk(parent string) (*Replica, error) {
+	if _, err := os.Stat(path.Join(r.dir, parent)); err != nil {
+		return nil, err
+	}
+
+	oldHead := r.info.Head
+	f, newHeadDisk, err := r.createNewHead(oldHead, parent)
+	if err != nil {
+		return nil, err
+	}
+	defer f.Close()
+
+	info := r.info
+	info.Head = newHeadDisk.name
+	info.Dirty = true
+	info.Parent = newHeadDisk.Parent
+
+	if err := r.encodeToFile(&info, volumeMetaData); err != nil {
+		r.encodeToFile(&r.info, volumeMetaData)
+		return nil, err
+	}
+
+	rNew, err := r.Reload()
+	if err != nil {
+		return nil, err
+	}
+
+	r.rmDisk(oldHead)
+	return rNew, nil
+}
+
 func (r *Replica) createDisk(name string) error {
 	if r.readOnly {
 		return fmt.Errorf("Can not create disk on read-only replica")
@@ -516,6 +547,13 @@ func (r *Replica) Snapshot(name string) error {
 	defer r.Unlock()
 
 	return r.createDisk(name)
+}
+
+func (r *Replica) Revert(name string) (*Replica, error) {
+	r.Lock()
+	defer r.Unlock()
+
+	return r.revertDisk(name)
 }
 
 func (r *Replica) WriteAt(buf []byte, offset int64) (int, error) {

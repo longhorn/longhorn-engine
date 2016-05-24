@@ -185,6 +185,38 @@ def test_replica_add_after_rebuild_failed(bin, controller_client,
         assert r.mode == 'RW'
 
 
+def test_revert(bin, controller_client, replica_client, replica_client2):
+    open_replica(replica_client)
+    open_replica(replica_client2)
+
+    v = controller_client.list_volume()[0]
+    v = v.start(replicas=[
+        REPLICA,
+        REPLICA2,
+    ])
+    assert v.replicaCount == 2
+
+    snap = v.snapshot(name='foo1')
+    assert snap.id == 'foo1'
+
+    snap2 = v.snapshot(name='foo2')
+    assert snap2.id == 'foo2'
+
+    r1 = replica_client.list_replica()[0]
+    r2 = replica_client2.list_replica()[0]
+
+    assert r1.chain == ['volume-head-002.img', 'volume-snap-foo2.img',
+                        'volume-snap-foo1.img']
+    assert r1.chain == r2.chain
+
+    v.revert(name='foo1')
+
+    r1 = replica_client.list_replica()[0]
+    r2 = replica_client2.list_replica()[0]
+    assert r1.chain == ['volume-head-003.img', 'volume-snap-foo1.img']
+    assert r1.chain == r2.chain
+
+
 def test_snapshot(bin, controller_client, replica_client, replica_client2):
     open_replica(replica_client)
     open_replica(replica_client2)

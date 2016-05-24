@@ -168,6 +168,18 @@ func (c *Controller) setReplicaModeNoLock(address string, mode types.Mode) {
 	}
 }
 
+func (c *Controller) startFrontend() error {
+	if len(c.replicas) > 0 && c.frontend != nil {
+		if err := c.frontend.Activate(c.Name, c.size, c.sectorSize, c); err != nil {
+			// FATAL
+			logrus.Fatalf("Failed to activate frontend: %v", err)
+			// This will never be reached
+			return err
+		}
+	}
+	return nil
+}
+
 func (c *Controller) Start(addresses ...string) error {
 	c.Lock()
 	defer c.Unlock()
@@ -182,14 +194,7 @@ func (c *Controller) Start(addresses ...string) error {
 
 	c.reset()
 
-	defer func() {
-		if len(c.replicas) > 0 && c.frontend != nil {
-			if err := c.frontend.Activate(c.Name, c.size, c.sectorSize, c); err != nil {
-				// FATAL
-				logrus.Fatalf("Failed to activate frontend: %v", err)
-			}
-		}
-	}()
+	defer c.startFrontend()
 
 	first := true
 	for _, address := range addresses {
