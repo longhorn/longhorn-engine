@@ -59,6 +59,41 @@ func (s *TestSuite) TestSnapshot(c *C) {
 	c.Assert(r.activeDiskData[1].Parent, Equals, "")
 }
 
+func (s *TestSuite) TestRevert(c *C) {
+	dir, err := ioutil.TempDir("", "replica")
+	c.Assert(err, IsNil)
+	defer os.RemoveAll(dir)
+
+	r, err := New(9, 3, dir, nil)
+	c.Assert(err, IsNil)
+	defer r.Close()
+
+	err = r.Snapshot("000")
+	c.Assert(err, IsNil)
+
+	err = r.Snapshot("001")
+	c.Assert(err, IsNil)
+
+	c.Assert(len(r.activeDiskData), Equals, 4)
+	c.Assert(len(r.volume.files), Equals, 4)
+
+	chain, err := r.Chain()
+	c.Assert(err, IsNil)
+	c.Assert(len(chain), Equals, 3)
+	c.Assert(chain[0], Equals, "volume-head-002.img")
+	c.Assert(chain[1], Equals, "volume-snap-001.img")
+	c.Assert(chain[2], Equals, "volume-snap-000.img")
+
+	r, err = r.Revert("volume-snap-000.img")
+	c.Assert(err, IsNil)
+
+	chain, err = r.Chain()
+	c.Assert(err, IsNil)
+	c.Assert(len(chain), Equals, 2)
+	c.Assert(chain[0], Equals, "volume-head-003.img")
+	c.Assert(chain[1], Equals, "volume-snap-000.img")
+}
+
 func (s *TestSuite) TestRemoveLast(c *C) {
 	dir, err := ioutil.TempDir("", "replica")
 	c.Assert(err, IsNil)

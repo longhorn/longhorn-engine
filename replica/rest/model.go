@@ -25,6 +25,11 @@ type CreateInput struct {
 	Size string `json:"size"`
 }
 
+type RevertInput struct {
+	client.Resource
+	Name string `json:"name"`
+}
+
 type RebuildingInput struct {
 	client.Resource
 	Rebuilding bool `json:"rebuilding"`
@@ -62,15 +67,18 @@ func NewReplica(context *api.ApiContext, state replica.State, info replica.Info,
 		actions["snapshot"] = true
 		actions["reload"] = true
 		actions["removedisk"] = true
+		actions["revert"] = true
 	case replica.Closed:
 		actions["open"] = true
 		actions["removedisk"] = true
+		actions["revert"] = true
 	case replica.Dirty:
 		actions["setrebuilding"] = true
 		actions["close"] = true
 		actions["snapshot"] = true
 		actions["reload"] = true
 		actions["removedisk"] = true
+		actions["revert"] = true
 	case replica.Rebuilding:
 		actions["snapshot"] = true
 		actions["setrebuilding"] = true
@@ -107,6 +115,7 @@ func NewSchema() *client.Schemas {
 	schemas.AddType("rebuildingInput", RebuildingInput{})
 	schemas.AddType("snapshotInput", SnapshotInput{})
 	schemas.AddType("removediskInput", RemoveDiskInput{})
+	schemas.AddType("revertInput", RevertInput{})
 	replica := schemas.AddType("replica", Replica{})
 
 	replica.ResourceMethods = []string{"GET", "DELETE"}
@@ -134,6 +143,10 @@ func NewSchema() *client.Schemas {
 		},
 		"create": client.Action{
 			Input:  "createInput",
+			Output: "replica",
+		},
+		"revert": client.Action{
+			Input:  "revertInput",
 			Output: "replica",
 		},
 	}
