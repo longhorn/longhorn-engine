@@ -6,8 +6,9 @@ import (
 	"strings"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/rancher/longhorn/client"
+	"github.com/rancher/longhorn/controller/client"
 	"github.com/rancher/longhorn/controller/rest"
+	replicaClient "github.com/rancher/longhorn/replica/client"
 )
 
 type Task struct {
@@ -50,7 +51,7 @@ func (t *Task) DeleteSnapshot(snapshot string) error {
 }
 
 func (t *Task) rmDisk(replicaInController *rest.Replica, snapshot string) error {
-	repClient, err := client.NewReplicaClient(replicaInController.Address)
+	repClient, err := replicaClient.NewReplicaClient(replicaInController.Address)
 	if err != nil {
 		return err
 	}
@@ -79,7 +80,7 @@ func getNameAndIndex(chain []string, snapshot string) (string, int) {
 }
 
 func (t *Task) isRebuilding(replicaInController *rest.Replica) (bool, error) {
-	repClient, err := client.NewReplicaClient(replicaInController.Address)
+	repClient, err := replicaClient.NewReplicaClient(replicaInController.Address)
 	if err != nil {
 		return false, err
 	}
@@ -97,7 +98,7 @@ func (t *Task) coalesceSnapshot(replicaInController *rest.Replica, snapshot stri
 		return fmt.Errorf("Can only removed snapshot from replica in mode RW, got %s", replicaInController.Mode)
 	}
 
-	repClient, err := client.NewReplicaClient(replicaInController.Address)
+	repClient, err := replicaClient.NewReplicaClient(replicaInController.Address)
 	if err != nil {
 		return err
 	}
@@ -173,7 +174,7 @@ func (t *Task) AddReplica(replica string) error {
 }
 
 func (t *Task) checkAndResetFailedRebuild(address string) error {
-	client, err := client.NewReplicaClient(address)
+	client, err := replicaClient.NewReplicaClient(address)
 	if err != nil {
 		return err
 	}
@@ -218,7 +219,7 @@ func (t *Task) setRw(replica string) error {
 	return nil
 }
 
-func (t *Task) reloadAndCheck(fromClient *client.ReplicaClient, toClient *client.ReplicaClient) error {
+func (t *Task) reloadAndCheck(fromClient *replicaClient.ReplicaClient, toClient *replicaClient.ReplicaClient) error {
 	from, err := fromClient.GetReplica()
 	if err != nil {
 		return err
@@ -239,7 +240,7 @@ func (t *Task) reloadAndCheck(fromClient *client.ReplicaClient, toClient *client
 	return toClient.SetRebuilding(false)
 }
 
-func (t *Task) syncFiles(fromClient *client.ReplicaClient, toClient *client.ReplicaClient) error {
+func (t *Task) syncFiles(fromClient *replicaClient.ReplicaClient, toClient *replicaClient.ReplicaClient) error {
 	from, err := fromClient.GetReplica()
 	if err != nil {
 		return err
@@ -296,7 +297,7 @@ func (t *Task) syncFiles(fromClient *client.ReplicaClient, toClient *client.Repl
 	return nil
 }
 
-func (t *Task) syncFile(from, to string, fromClient *client.ReplicaClient, toClient *client.ReplicaClient) error {
+func (t *Task) syncFile(from, to string, fromClient *replicaClient.ReplicaClient, toClient *replicaClient.ReplicaClient) error {
 	host, port, err := toClient.LaunchReceiver()
 	if err != nil {
 		return err
@@ -317,14 +318,14 @@ func (t *Task) syncFile(from, to string, fromClient *client.ReplicaClient, toCli
 	return err
 }
 
-func (t *Task) getTransferClients(address string) (*client.ReplicaClient, *client.ReplicaClient, error) {
+func (t *Task) getTransferClients(address string) (*replicaClient.ReplicaClient, *replicaClient.ReplicaClient, error) {
 	from, err := t.getFromReplica()
 	if err != nil {
 		return nil, nil, err
 	}
 	logrus.Infof("Using replica %s as the source for rebuild ", from.Address)
 
-	fromClient, err := client.NewReplicaClient(from.Address)
+	fromClient, err := replicaClient.NewReplicaClient(from.Address)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -335,7 +336,7 @@ func (t *Task) getTransferClients(address string) (*client.ReplicaClient, *clien
 	}
 	logrus.Infof("Using replica %s as the target for rebuild ", to.Address)
 
-	toClient, err := client.NewReplicaClient(to.Address)
+	toClient, err := replicaClient.NewReplicaClient(to.Address)
 	if err != nil {
 		return nil, nil, err
 	}
