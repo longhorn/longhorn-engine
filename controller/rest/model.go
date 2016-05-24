@@ -45,6 +45,11 @@ type SnapshotInput struct {
 	Name string `json:"name"`
 }
 
+type RevertInput struct {
+	client.Resource
+	Name string `json:"name"`
+}
+
 func NewVolume(context *api.ApiContext, name string, replicas int) *Volume {
 	v := &Volume{
 		Resource: client.Resource{
@@ -61,6 +66,7 @@ func NewVolume(context *api.ApiContext, name string, replicas int) *Volume {
 	} else {
 		v.Actions["shutdown"] = context.UrlBuilder.ActionLink(v.Resource, "shutdown")
 		v.Actions["snapshot"] = context.UrlBuilder.ActionLink(v.Resource, "snapshot")
+		v.Actions["revert"] = context.UrlBuilder.ActionLink(v.Resource, "revert")
 	}
 	return v
 }
@@ -97,6 +103,7 @@ func NewSchema() *client.Schemas {
 	schemas.AddType("startInput", StartInput{})
 	schemas.AddType("snapshotOutput", SnapshotOutput{})
 	schemas.AddType("snapshotInput", SnapshotInput{})
+	schemas.AddType("revertInput", RevertInput{})
 
 	replica := schemas.AddType("replica", Replica{})
 	replica.CollectionMethods = []string{"GET", "POST"}
@@ -112,6 +119,10 @@ func NewSchema() *client.Schemas {
 
 	volumes := schemas.AddType("volume", Volume{})
 	volumes.ResourceActions = map[string]client.Action{
+		"revert": client.Action{
+			Input:  "revertInput",
+			Output: "volume",
+		},
 		"start": client.Action{
 			Input:  "startInput",
 			Output: "volume",
