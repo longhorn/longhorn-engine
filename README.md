@@ -1,4 +1,4 @@
-longhorn
+longhorn [![Build Status](https://ci-longhorn.rancher.io/api/badges/rancher/longhorn/status.svg)](https://ci-longhorn.rancher.io/rancher/longhorn)
 ========
 
 A microservice that does micro things.
