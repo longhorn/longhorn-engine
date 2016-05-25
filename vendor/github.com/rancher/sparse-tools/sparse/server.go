@@ -10,7 +10,6 @@ import (
 	"strconv"
 	"time"
 
-	fio "github.com/rancher/sparse-tools/directfio"
 	"github.com/rancher/sparse-tools/log"
 )
 
@@ -24,6 +23,8 @@ func TestServer(addr TCPEndPoint, timeout int) {
 	server(addr, true, timeout)
 }
 
+const fileReaders = 1
+const fileWriters = 1
 const verboseServer = true
 
 func server(addr TCPEndPoint, serveOnce /*test flag*/ bool, timeout int) {
@@ -51,11 +52,13 @@ func server(addr TCPEndPoint, serveOnce /*test flag*/ bool, timeout int) {
 		if serveOnce {
 			// This is to avoid server listening port conflicts while running tests
 			// exit after single connection request
-			serveConnection(conn)
-			break
+			if serveConnection(conn) {
+				break // no retries
+			}
+			log.Warn("Server: waiting for client sync retry...")
+		} else {
+			go serveConnection(conn)
 		}
-
-		go serveConnection(conn)
 	}
 	log.Info("Sync server exit.")
 }
@@ -72,7 +75,8 @@ type requestHeader struct {
 	Code  requestCode
 }
 
-func serveConnection(conn net.Conn) {
+// returns true if no retry is necessary
+func serveConnection(conn net.Conn) bool {
 	defer conn.Close()
 
 	decoder := gob.NewDecoder(conn)
@@ -80,11 +84,11 @@ func serveConnection(conn net.Conn) {
 	err := decoder.Decode(&request)
 	if err != nil {
 		log.Fatal("Protocol decoder error:", err)
-		return
+		return true
 	}
 	if requestMagic != request.Magic {
 		log.Error("Bad request")
-		return
+		return true
 	}
 
 	switch request.Code {
@@ -93,30 +97,44 @@ func serveConnection(conn net.Conn) {
 		err := decoder.Decode(&path)
 		if err != nil {
 			log.Fatal("Protocol decoder error:", err)
-			return
+			return true
 		}
 		var size int64
 		err = decoder.Decode(&size)
 		if err != nil {
 			log.Fatal("Protocol decoder error:", err)
-			return
+			return true
+		}
+		var salt []byte
+		err = decoder.Decode(&salt)
+		if err != nil {
+			log.Fatal("Protocol decoder error:", err)
+			return true
 		}
 		encoder := gob.NewEncoder(conn)
-		serveSyncRequest(encoder, decoder, path, size)
+		return serveSyncRequest(encoder, decoder, path, size, salt)
 	}
+	return true
 }
 
-func serveSyncRequest(encoder *gob.Encoder, decoder *gob.Decoder, path string, size int64) {
+// returns true if no retry is necessary
+func serveSyncRequest(encoder *gob.Encoder, decoder *gob.Decoder, path string, size int64, salt []byte) bool {
+	directFileIO := size%Blocks == 0
+	SetupFileIO(directFileIO)
 
 	// Open destination file
-	file, err := fio.OpenFile(path, os.O_RDWR, 0666)
+	file, err := fileOpen(path, os.O_RDWR, 0666)
 	if err != nil {
 		file, err = os.Create(path)
 		if err != nil {
 			log.Error("Failed to create file:", string(path), err)
 			encoder.Encode(false) // NACK request
-			return
+			return true
 		}
+	}
+	// Setup close sequence
+	if directFileIO {
+		defer file.Sync()
 	}
 	defer file.Close()
 
@@ -124,15 +142,15 @@ func serveSyncRequest(encoder *gob.Encoder, decoder *gob.Decoder, path string, s
 	if err = file.Truncate(size); err != nil {
 		log.Error("Failed to resize file:", string(path), err)
 		encoder.Encode(false) // NACK request
-		return
+		return true
 	}
 
 	// open file
-	fileRO, err := fio.OpenFile(path, os.O_RDONLY, 0)
+	fileRO, err := fileOpen(path, os.O_RDONLY, 0)
 	if err != nil {
 		log.Error("Failed to open file for reading:", string(path), err)
 		encoder.Encode(false) // NACK request
-		return
+		return true
 	}
 	defer fileRO.Close()
 
@@ -147,7 +165,8 @@ func serveSyncRequest(encoder *gob.Encoder, decoder *gob.Decoder, path string, s
 	netOutDoneStream := make(chan bool)
 
 	netInStream := make(chan DataInterval, 128)
-	fileWrittenStreamDone := make(chan bool)
+	fileWriteStream := make(chan DataInterval, 128)
+	deltaReceiverDoneDone := make(chan bool)
 	checksumStream := make(chan DataInterval, 128)
 	resultStream := make(chan []byte)
 
@@ -155,19 +174,22 @@ func serveSyncRequest(encoder *gob.Encoder, decoder *gob.Decoder, path string, s
 	err = loadFileLayout(abortStream, fileRO, layoutStream, errStream)
 	if err != nil {
 		encoder.Encode(false) // NACK request
-		return
+		return true
 	}
 	encoder.Encode(true) // ACK request
 
 	go IntervalSplitter(layoutStream, fileStream)
-	go FileReader(fileStream, fileRO, unorderedStream)
+	FileReaderGroup(fileReaders, salt, fileStream, path, unorderedStream)
 	go OrderIntervals("dst:", unorderedStream, orderedStream)
 	go Tee(orderedStream, netOutStream, checksumStream)
 
 	// Send layout along with data hashes
 	go netSender(netOutStream, encoder, netOutDoneStream)
-	go netReceiver(decoder, file, netInStream, fileWrittenStreamDone) // receiver and checker
-	go Validator(checksumStream, netInStream, resultStream)
+
+	// Start receiving deltas, write those and compute file hash
+	fileWritten := FileWriterGroup(fileWriters, fileWriteStream, path)
+	go netReceiver(decoder, file, netInStream, fileWriteStream, deltaReceiverDoneDone) // receiver and checker
+	go Validator(salt, checksumStream, netInStream, resultStream)
 
 	// Block till completion
 	status := true
@@ -177,7 +199,8 @@ func serveSyncRequest(encoder *gob.Encoder, decoder *gob.Decoder, path string, s
 		status = false
 	}
 	status = <-netOutDoneStream && status      // done sending dst hashes
-	status = <-fileWrittenStreamDone && status // done writing dst file
+	status = <-deltaReceiverDoneDone && status // done writing dst file
+	fileWritten.Wait()                         // wait for write stream completion
 	hash := <-resultStream                     // done processing diffs
 
 	// reply to client with status
@@ -185,14 +208,27 @@ func serveSyncRequest(encoder *gob.Encoder, decoder *gob.Decoder, path string, s
 	err = encoder.Encode(status)
 	if err != nil {
 		log.Fatal("Protocol encoder error:", err)
-		return
+		return true
 	}
 	// reply with local hash
 	err = encoder.Encode(hash)
 	if err != nil {
 		log.Fatal("Protocol encoder error:", err)
-		return
+		return true
 	}
+
+	var retry bool
+	err = decoder.Decode(&retry)
+	if err != nil {
+		log.Fatal("Protocol retry decoder error:", err)
+		return true
+	}
+	encoder.Encode(true) // ACK retry
+	if err != nil {
+		log.Fatal("Protocol retry encoder error:", err)
+		return true
+	}
+	return !retry // don't terminate server if retry expected
 }
 
 // Tee ordered intervals into the network and checksum checker
@@ -235,7 +271,7 @@ func netSender(netOutStream <-chan HashedInterval, encoder *gob.Encoder, netOutD
 	netOutDoneStream <- true
 }
 
-func netReceiver(decoder *gob.Decoder, file *os.File, netInStream chan<- DataInterval, fileWrittenStreamDone chan<- bool) {
+func netReceiver(decoder *gob.Decoder, file *os.File, netInStream chan<- DataInterval, fileStream chan<- DataInterval, deltaReceiverDone chan<- bool) {
 	// receive & process data diff
 	status := true
 	for status {
@@ -266,27 +302,15 @@ func netReceiver(decoder *gob.Decoder, file *os.File, netInStream chan<- DataInt
 				status = false
 				break
 			}
-			// Push for vaildator processing
+			// Push for writing and vaildator processing
+			fileStream <- DataInterval{delta, data}
 			netInStream <- DataInterval{delta, data}
 
-			log.Debug("writing data...")
-			_, err = fio.WriteAt(file, data, delta.Begin)
-			if err != nil {
-				log.Error("Failed to write file")
-				status = false
-				break
-			}
 		case SparseHole:
-			// Push for vaildator processing
+			// Push for writing and vaildator processing
+			fileStream <- DataInterval{delta, make([]byte, 0)}
 			netInStream <- DataInterval{delta, make([]byte, 0)}
 
-			log.Debug("trimming...")
-			err := PunchHole(file, delta.Interval)
-			if err != nil {
-				log.Error("Failed to trim file")
-				status = false
-				break
-			}
 		case SparseIgnore:
 			// Push for vaildator processing
 			netInStream <- DataInterval{delta, make([]byte, 0)}
@@ -296,7 +320,8 @@ func netReceiver(decoder *gob.Decoder, file *os.File, netInStream chan<- DataInt
 
 	log.Debug("Server.netReceiver done, sync")
 	close(netInStream)
-	fileWrittenStreamDone <- status
+	close(fileStream)
+	deltaReceiverDone <- status
 }
 
 func logData(prefix string, data []byte) {
@@ -322,10 +347,10 @@ func hashFileData(fileHasher hash.Hash, dataLen int64, data []byte) {
 }
 
 // Validator merges source and diff data; produces hash of the destination file
-func Validator(checksumStream, netInStream <-chan DataInterval, resultStream chan<- []byte) {
+func Validator(salt []byte, checksumStream, netInStream <-chan DataInterval, resultStream chan<- []byte) {
 	fileHasher := sha1.New()
 	//TODO: error handling
-	fileHasher.Write(HashSalt)
+	fileHasher.Write(salt)
 	r := <-checksumStream // original dst file data
 	q := <-netInStream    // diff data
 	for q.Len() != 0 || r.Len() != 0 {
