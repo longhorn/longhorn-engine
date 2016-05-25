@@ -280,6 +280,10 @@ func (r *Replica) encodeToFile(obj interface{}, file string) error {
 		return err
 	}
 
+	if err := f.Sync(); err != nil {
+		return err
+	}
+
 	if err := f.Close(); err != nil {
 		return err
 	}
