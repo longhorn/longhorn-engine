@@ -6,6 +6,10 @@ import (
 	"os"
 	"strconv"
 
+	"bytes"
+
+	"encoding/binary"
+
 	fio "github.com/rancher/sparse-tools/directfio"
 	"github.com/rancher/sparse-tools/log"
 )
@@ -16,6 +20,13 @@ import "errors"
 
 import "fmt"
 import "time"
+
+// HashCollsisionError indicates block hash collision
+type HashCollsisionError struct{}
+
+func (e *HashCollsisionError) Error() string {
+	return "file hash divergence: storage error or block hash collision"
+}
 
 // TCPEndPoint tcp connection address
 type TCPEndPoint struct {
@@ -28,6 +39,23 @@ const verboseClient = true
 
 // SyncFile synchronizes local file to remote host
 func SyncFile(localPath string, addr TCPEndPoint, remotePath string, timeout int) (hashLocal []byte, err error) {
+	for retries := 1; retries >= 0; retries-- {
+		hashLocal, err = syncFile(localPath, addr, remotePath, timeout, retries > 0)
+		if err != nil {
+			if _, ok := err.(*HashCollsisionError); ok {
+				// retry on HahsCollisionError
+				log.Warn("SSync: retrying on chunk hash collision...")
+				continue
+			} else {
+				log.Error("SSync error:", err)
+			}
+		}
+		break
+	}
+	return
+}
+
+func syncFile(localPath string, addr TCPEndPoint, remotePath string, timeout int, retry bool) (hashLocal []byte, err error) {
 	hashLocal = make([]byte, 0) // empty hash for errors
 	file, err := fio.OpenFile(localPath, os.O_RDONLY, 0)
 	if err != nil {
@@ -42,6 +70,8 @@ func SyncFile(localPath string, addr TCPEndPoint, remotePath string, timeout int
 		return
 	}
 
+	SetupFileIO(size%Blocks == 0)
+
 	conn := connect(addr.Host, strconv.Itoa(int(addr.Port)), timeout)
 	if nil == conn {
 		log.Error("Failed to connect to", addr)
@@ -51,7 +81,11 @@ func SyncFile(localPath string, addr TCPEndPoint, remotePath string, timeout int
 
 	encoder := gob.NewEncoder(conn)
 	decoder := gob.NewDecoder(conn)
-	status := sendSyncRequest(encoder, decoder, remotePath, size)
+
+	// Use unix time as hash salt
+	salt := make([]byte, binary.MaxVarintLen64)
+	binary.PutVarint(salt, time.Now().UnixNano())
+	status := sendSyncRequest(encoder, decoder, remotePath, size, salt)
 	if !status {
 		return
 	}
@@ -72,7 +106,7 @@ func SyncFile(localPath string, addr TCPEndPoint, remotePath string, timeout int
 	orderedStream := make(chan HashedDataInterval, 128)
 
 	go IntervalSplitter(layoutStream, fileStream)
-	go FileReader(fileStream, file, unorderedStream)
+	FileReaderGroup(fileReaders, salt, fileStream, localPath, unorderedStream)
 	go OrderIntervals("src:", unorderedStream, orderedStream)
 
 	// Get remote file intervals and their hashes
@@ -80,7 +114,7 @@ func SyncFile(localPath string, addr TCPEndPoint, remotePath string, timeout int
 	netInStreamDone := make(chan bool)
 	go netDstReceiver(decoder, netInStream, netInStreamDone)
 
-	return processDiff(abortStream, errStream, encoder, decoder, orderedStream, netInStream, netInStreamDone, file)
+	return processDiff(salt, abortStream, errStream, encoder, decoder, orderedStream, netInStream, netInStreamDone, retry)
 }
 
 func connect(host, port string, timeout int) net.Conn {
@@ -106,7 +140,7 @@ func connect(host, port string, timeout int) net.Conn {
 	return nil
 }
 
-func sendSyncRequest(encoder *gob.Encoder, decoder *gob.Decoder, path string, size int64) bool {
+func sendSyncRequest(encoder *gob.Encoder, decoder *gob.Decoder, path string, size int64, salt []byte) bool {
 	err := encoder.Encode(requestHeader{requestMagic, syncRequestCode})
 	if err != nil {
 		log.Fatal("Client protocol encoder error:", err)
@@ -118,6 +152,11 @@ func sendSyncRequest(encoder *gob.Encoder, decoder *gob.Decoder, path string, si
 		return false
 	}
 	err = encoder.Encode(size)
+	if err != nil {
+		log.Fatal("Client protocol encoder error:", err)
+		return false
+	}
+	err = encoder.Encode(salt)
 	if err != nil {
 		log.Fatal("Client protocol encoder error:", err)
 		return false
@@ -180,7 +219,7 @@ type diffChunk struct {
 	header DataInterval
 }
 
-func processDiff(abortStream chan<- error, errStream <-chan error, encoder *gob.Encoder, decoder *gob.Decoder, local <-chan HashedDataInterval, remote <-chan HashedInterval, netInStreamDone <-chan bool, file *os.File) (hashLocal []byte, err error) {
+func processDiff(salt []byte, abortStream chan<- error, errStream <-chan error, encoder *gob.Encoder, decoder *gob.Decoder, local <-chan HashedDataInterval, remote <-chan HashedInterval, netInStreamDone <-chan bool, retry bool) (hashLocal []byte, err error) {
 	// Local:   __ _*
 	// Remote:  *_ **
 	hashLocal = make([]byte, 0) // empty hash for errors
@@ -188,18 +227,8 @@ func processDiff(abortStream chan<- error, errStream <-chan error, encoder *gob.
 	netStream := make(chan diffChunk, 128)
 	netStatus := make(chan netXferStatus)
 	go networkSender(netStream, encoder, netStatus)
-	// fileStream := make(chan fileChunk, 128)
-	// fileStatus := make(chan bool)
-	// for i := 0; i < concurrentReaders; i++ {
-	// 	if 0 == i {
-	// 		go fileReader(i, file, fileStream, netStream, fileStatus)
-	// 	} else {
-	// 		f, _ := os.Open(file.Name())
-	// 		go fileReader(i, f, fileStream, netStream, fileStatus)
-	// 	}
-	// }
 	fileHasher := sha1.New()
-	fileHasher.Write(HashSalt)
+	fileHasher.Write(salt)
 
 	lrange := <-local
 	rrange := <-remote
@@ -257,18 +286,11 @@ func processDiff(abortStream chan<- error, errStream <-chan error, encoder *gob.
 			rrange = <-remote
 		} else {
 			// Should never happen
-			log.Fatal("internal error")
-			err = errors.New("internal error")
+			log.Fatal("processDiff internal error")
 			return
 		}
 	}
 	log.Info("Finished processing file diff")
-
-	// // stop file readers
-	// for i := 0; i < concurrentReaders; i++ {
-	// 	fileStream <- fileChunk{true, FileInterval{SparseHole, Interval{0, 0}}}
-	// 	<-fileStatus // wait for reader completion
-	// }
 
 	status := true
 	err = <-errStream
@@ -310,25 +332,30 @@ func processDiff(abortStream chan<- error, errStream <-chan error, encoder *gob.
 
 	// Compare file hashes
 	hashLocal = fileHasher.Sum(nil)
-	if isHashDifferent(hashLocal, hashRemote) {
+	if isHashDifferent(hashLocal, hashRemote) || FailPointFileHashMatch() {
 		log.Warn("hashLocal =", hashLocal)
 		log.Warn("hashRemote=", hashRemote)
-		err = errors.New("file hash divergence: storage error or block hash collision")
-		return
+		err = &HashCollsisionError{}
+	} else {
+		retry = false // success, don't retry anymore
+	}
+
+	// Final retry negotiation
+	{
+		err1 := encoder.Encode(retry)
+		if err1 != nil {
+			log.Fatal("Cient protocol remote retry error:", err)
+		}
+		err1 = decoder.Decode(&statusRemote)
+		if err1 != nil {
+			log.Fatal("Cient protocol remote retry status error:", err)
+		}
 	}
 	return
 }
 
 func isHashDifferent(a, b []byte) bool {
-	if len(a) != len(b) {
-		return true
-	}
-	for i, val := range a {
-		if val != b[i] {
-			return true
-		}
-	}
-	return false // hashes are equal
+	return !bytes.Equal(a, b)
 }
 
 func processFileInterval(local HashedDataInterval, remote HashedInterval, netStream chan<- diffChunk) {
@@ -443,44 +470,4 @@ func networkSender(netStream <-chan diffChunk, encoder *gob.Encoder, netStatus c
 		}
 	}
 	netStatus <- netXferStatus{status, byteCount}
-}
-
-// obsolete method
-func fileReader(id int, file *os.File, fileStream <-chan fileChunk, netStream chan<- diffChunk, fileStatus chan<- bool) {
-	idBeg := map[int]string{0: "a", 1: "b", 2: "c", 3: "d"}
-	idEnd := map[int]string{0: "A", 1: "B", 2: "C", 3: "D"}
-	for {
-		chunk := <-fileStream
-		if chunk.eof {
-			break
-		}
-		if traceChannelLoad {
-			fmt.Fprint(os.Stderr, len(fileStream), idBeg[id])
-		}
-		// Check interval type
-		r := chunk.header
-		if SparseData != r.Kind {
-			log.Fatal("internal error: noles should be send directly to netStream")
-		}
-
-		// Read file data
-		data := make([]byte, r.Len())
-		status := true
-		n, err := fio.ReadAt(file, data, r.Begin)
-		if err != nil {
-			log.Error("File read error")
-			status = false
-		} else if int64(n) != r.Len() {
-			log.Error("File read underrun")
-			status = false
-		}
-
-		// Send file data
-		if traceChannelLoad {
-			fmt.Fprint(os.Stderr, idEnd[id])
-		}
-		netStream <- diffChunk{status, DataInterval{r, data}}
-	}
-	log.Info("Finished reading file")
-	fileStatus <- true
 }

@@ -22,7 +22,10 @@ func (interval Interval) Len() int64 {
 
 // String conversion
 func (interval Interval) String() string {
-	return fmt.Sprintf("[%8d:%8d](%3d)", interval.Begin/Blocks, interval.End/Blocks, interval.Len()/Blocks)
+	if interval.Begin%Blocks == 0 && interval.End%Blocks == 0 {
+		return fmt.Sprintf("[%8d:%8d](%3d)", interval.Begin/Blocks, interval.End/Blocks, interval.Len()/Blocks)
+	}
+	return fmt.Sprintf("{unaligned}[%8d:%8d](%3d)", interval.Begin, interval.End, interval.Len())
 }
 
 // FileIntervalKind distinguishes between data and hole
@@ -116,7 +119,7 @@ func RetrieveLayoutStream(abortStream <-chan error, file *os.File, r Interval, l
 				break
 			}
 
-			// Process each extents
+			// Process each extent
 			for _, e := range ext {
 				interval := Interval{int64(e.Logical), int64(e.Logical + e.Length)}
 				log.Debug("Extent:", interval, e.Flags)
@@ -141,11 +144,14 @@ func RetrieveLayoutStream(abortStream <-chan error, file *os.File, r Interval, l
 				chunk.Begin = interval.End
 			}
 		}
-		chunk = Interval{chunk.End, chunk.End + chunkSizeMax}
+		chunk = Interval{chunk.End, chunk.End + chunkSize}
 	}
 
 	if intervalLast.Len() > 0 {
 		// Pop last Data
+		if intervalLast.End > r.End {
+			intervalLast.End = r.End
+		}
 		layoutStream <- FileInterval{SparseData, intervalLast}
 	}
 	if intervalLast.End < r.End {
