@@ -36,6 +36,7 @@ type Replica struct {
 	info           Info
 	diskData       map[string]disk
 	activeDiskData []disk
+	readOnly       bool
 }
 
 type Info struct {
@@ -67,6 +68,15 @@ func ReadInfo(dir string) (Info, error) {
 }
 
 func New(size, sectorSize int64, dir string, backingFile *BackingFile) (*Replica, error) {
+	return construct(false, size, sectorSize, dir, "", backingFile)
+}
+
+func NewReadOnly(dir, head string, backingFile *BackingFile) (*Replica, error) {
+	// size and sectorSize don't matter because they will be read from metadata
+	return construct(true, 0, 512, dir, head, backingFile)
+}
+
+func construct(readonly bool, size, sectorSize int64, dir, head string, backingFile *BackingFile) (*Replica, error) {
 	if size%sectorSize != 0 {
 		return nil, fmt.Errorf("Size %d not a multiple of sector size %d", size, sectorSize)
 	}
@@ -83,18 +93,28 @@ func New(size, sectorSize int64, dir string, backingFile *BackingFile) (*Replica
 	r.info.Size = size
 	r.info.SectorSize = sectorSize
 	r.info.BackingFile = backingFile
-
 	r.volume.sectorSize = defaultSectorSize
-	locationSize := size / defaultSectorSize
+
+	exists, err := r.readMetadata()
+	if err != nil {
+		return nil, err
+	}
+
+	// Reference r.info.Size because it may have changed from reading
+	// metadata
+	locationSize := r.info.Size / r.volume.sectorSize
 	if size%defaultSectorSize != 0 {
 		locationSize++
 	}
 	r.volume.location = make([]byte, locationSize)
 	r.volume.files = []types.DiffDisk{nil}
 
-	exists, err := r.readMetadata()
-	if err != nil {
-		return nil, err
+	if r.readOnly && !exists {
+		return nil, os.ErrNotExist
+	}
+
+	if head != "" {
+		r.info.Head = head
 	}
 
 	if exists {
@@ -246,6 +266,10 @@ func (r *Replica) close() error {
 }
 
 func (r *Replica) encodeToFile(obj interface{}, file string) error {
+	if r.readOnly {
+		return nil
+	}
+
 	f, err := os.Create(path.Join(r.dir, file+".tmp"))
 	if err != nil {
 		return err
@@ -278,7 +302,6 @@ func (r *Replica) nextFile(parsePattern *regexp.Regexp, pattern, parent string) 
 }
 
 func (r *Replica) openFile(name string, flag int) (types.DiffDisk, error) {
-	// TODO: need to turn on O_DIRECT
 	f, err := os.OpenFile(path.Join(r.dir, name), syscall.O_DIRECT|os.O_RDWR|os.O_CREATE|flag, 0666)
 	if err != nil {
 		return nil, err
@@ -344,6 +367,10 @@ func (r *Replica) rmDisk(name string) error {
 }
 
 func (r *Replica) createDisk(name string) error {
+	if r.readOnly {
+		return fmt.Errorf("Can not create disk on read-only replica")
+	}
+
 	done := false
 	oldHead := r.info.Head
 	newSnapName := fmt.Sprintf(diskName, name)
@@ -492,6 +519,10 @@ func (r *Replica) Snapshot(name string) error {
 }
 
 func (r *Replica) WriteAt(buf []byte, offset int64) (int, error) {
+	if r.readOnly {
+		return 0, fmt.Errorf("Can not write on read-only replica")
+	}
+
 	r.RLock()
 	r.info.Dirty = true
 	c, err := r.volume.WriteAt(buf, offset)

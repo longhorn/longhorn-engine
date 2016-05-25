@@ -80,5 +80,5 @@ func (q Qcow) Size() (int64, error) {
 }
 
 func (q *Qcow) Fd() uintptr {
-	panic("Unsupported")
+	return 0
 }

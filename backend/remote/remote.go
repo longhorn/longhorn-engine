@@ -19,8 +19,8 @@ import (
 )
 
 var (
-	pingTimeout    = 10 * time.Second
-	pingInveral    = 3 * time.Second
+	pingTimeout    = 3 * time.Second
+	pingInveral    = 2 * time.Second
 	timeout        = 30 * time.Second
 	requestBuffer  = 1024
 	ErrPingTimeout = errors.New("Ping timeout")
