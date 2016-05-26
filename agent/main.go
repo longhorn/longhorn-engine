@@ -6,8 +6,11 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
+	"github.com/gorilla/handlers"
 	"github.com/gorilla/mux"
 	"github.com/rancher/longhorn/agent/controller"
+	"github.com/rancher/longhorn/agent/controller/rest"
+	replica "github.com/rancher/longhorn/agent/replica/rest"
 	"github.com/rancher/longhorn/agent/status"
 )
 
@@ -55,18 +58,41 @@ func runApp(context *cli.Context) error {
 
 	if runController {
 		go runPing(context)
+		go runControllerAPI(context)
 		c := controller.New()
 		defer c.Close()
 		return c.Start()
 	} else if runReplica {
+		go runReplicaAPI(context)
 		return runPing(context)
 	}
 
 	return nil
 }
 
-func runPing(context *cli.Context) error {
+func runControllerAPI(context *cli.Context) {
+	server := rest.NewServer()
+	router := http.Handler(rest.NewRouter(server))
 
+	router = handlers.LoggingHandler(os.Stdout, router)
+	router = handlers.ProxyHeaders(router)
+	listen := "0.0.0.0:80"
+	logrus.Infof("Listening on %s", listen)
+	err := http.ListenAndServe(listen, router)
+	logrus.Fatalf("API returned with error: %v", err)
+}
+
+func runReplicaAPI(context *cli.Context) {
+	router := http.Handler(replica.NewRouter())
+	router = handlers.LoggingHandler(os.Stdout, router)
+	router = handlers.ProxyHeaders(router)
+	listen := "0.0.0.0:80"
+	logrus.Infof("Listening on %s", listen)
+	err := http.ListenAndServe(listen, router)
+	logrus.Fatalf("API returned with error: %v", err)
+}
+
+func runPing(context *cli.Context) error {
 	controller := status.NewControllerStatus()
 
 	replica, err := status.NewReplicaStatus()

@@ -37,14 +37,37 @@ func (c *ControllerClient) Start(replicas ...string) error {
 	}, nil)
 }
 
-func (c *ControllerClient) Snapshot() (string, error) {
+func (c *ControllerClient) RevertVolume(name string) (*rest.Volume, error) {
+	volume, err := c.GetVolume()
+	if err != nil {
+		return nil, err
+	}
+
+	input := &rest.RevertInput{
+		Name: name,
+	}
+
+	output := &rest.Volume{}
+
+	err = c.post(volume.Actions["revert"], input, output)
+	if err != nil {
+		return nil, err
+	}
+
+	return output, err
+}
+
+func (c *ControllerClient) Snapshot(name string) (string, error) {
 	volume, err := c.GetVolume()
 	if err != nil {
 		return "", err
 	}
 
+	input := &rest.SnapshotInput{
+		Name: name,
+	}
 	output := &rest.SnapshotOutput{}
-	err = c.post(volume.Actions["snapshot"], nil, output)
+	err = c.post(volume.Actions["snapshot"], input, output)
 	if err != nil {
 		return "", err
 	}
