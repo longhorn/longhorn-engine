@@ -3,8 +3,11 @@ set -e
 
 killall longhorn ssync || true
 
-temp=$(mktemp -d)
-temp2=$(mktemp -d)
+temp="/tmp/replica1/test-volume"
+temp2="/tmp/replica2/test-volume"
+mkdir -p $temp
+mkdir -p $temp2
+
 trap "rm -rf $temp $temp2" EXIT
 
 cd $(dirname $0)/..
