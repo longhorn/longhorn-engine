@@ -46,9 +46,9 @@ def create_testdata():
 
 def rebuild_replicas(iterations):
   for iteration in range(iterations):
-    if iteration % 3 == 0:
-      subprocess.call("./bin/longhorn snapshots | grep -v ID | xargs ./bin/longhorn snapshot rm", shell = True)
-    time.sleep(120)
+    if iteration % 1 == 0:
+      subprocess.call("./bin/longhorn snapshots | tail -n +2 | head -n -1 | xargs ./bin/longhorn snapshot rm", shell = True)
+    time.sleep(SIZE / 1024 / 1024 / 256)
     if random.random() > 0.5:
       replica_host = "localhost:9502"
     else:
@@ -128,9 +128,11 @@ subprocess.call("mount -t configfs none /sys/kernel/config", shell=True)
 
 subprocess.call(["killall", "longhorn", "ssync"])
 subprocess.call("rm -rf /opt/*", shell=True)
-subprocess.call("nohup ./bin/longhorn replica --listen localhost:9502 --size " + SIZE_STR + " /opt/volume > replica.out &", shell=True)
-subprocess.call("nohup ./bin/longhorn replica --listen localhost:9505 --size " + SIZE_STR + " /opt/volume2 > replica2.out &", shell=True)
+subprocess.call("nohup ./bin/longhorn replica --sync-agent=false --listen localhost:9502 --size " + SIZE_STR + " /opt/volume > replica.out &", shell=True)
+subprocess.call("nohup ./bin/longhorn replica --sync-agent=false --listen localhost:9505 --size " + SIZE_STR + " /opt/volume2 > replica2.out &", shell=True)
 time.sleep(3)
+subprocess.call("cd /opt/volume; nohup ionice -c 2 -n 7 /home/rancher/longhorn/bin/longhorn sync-agent --listen localhost:9504 > sync-agent.out &", shell=True)
+subprocess.call("cd /opt/volume2; nohup ionice -c 2 -n 7 /home/rancher/longhorn/bin/longhorn sync-agent --listen localhost:9507 > sync-agent2.out &", shell=True)
 subprocess.call("nohup ./bin/longhorn controller --frontend tcmu --replica tcp://localhost:9502 --replica tcp://localhost:9505 foo > controller.out &", shell=True)
 
 time.sleep(20)
@@ -143,16 +145,16 @@ snapshots["livedata"] = 0
 workers = []
 
 for i in range(10):
-  p = Process(target = random_write, args = (snapshots, testdata, 100000))
+  p = Process(target = random_write, args = (snapshots, testdata, 2000000))
   workers.append(p)
   p.start()
 
 for i in range(10):
-  p = Process(target = read_and_check, args = (snapshots, testdata, 100000))
+  p = Process(target = read_and_check, args = (snapshots, testdata, 2000000))
   workers.append(p)
   p.start()
 
-p = Process(target = rebuild_replicas, args = (18,))
+p = Process(target = rebuild_replicas, args = (1000,))
 workers.append(p)
 p.start()
 
