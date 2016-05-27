@@ -261,6 +261,59 @@ func (s *TestSuite) TestSnapshotReadWrite(c *C) {
 	byteEquals(c, r.volume.location, []byte{3, 2, 1})
 }
 
+func (s *TestSuite) TestSnapshotRemoveReadWrite(c *C) {
+	dir, err := ioutil.TempDir("", "replica")
+	c.Logf("Volume: %s", dir)
+	c.Assert(err, IsNil)
+	defer os.RemoveAll(dir)
+
+	r, err := New(3*b, b, dir, nil)
+	c.Assert(err, IsNil)
+	defer r.Close()
+
+	buf := make([]byte, 3*b)
+	fill(buf, 3)
+	count, err := r.WriteAt(buf, 0)
+	c.Assert(err, IsNil)
+	c.Assert(count, Equals, 3*b)
+	err = r.Snapshot("000")
+	c.Assert(err, IsNil)
+
+	fill(buf[b:2*b], 2)
+	count, err = r.WriteAt(buf[b:2*b], b)
+	c.Assert(count, Equals, b)
+	err = r.Snapshot("001")
+	c.Assert(err, IsNil)
+	buf1 := make([]byte, 3*b)
+	copy(buf1, buf)
+
+	fill(buf[:b], 1)
+	count, err = r.WriteAt(buf[:b], 0)
+	c.Assert(count, Equals, b)
+	err = r.Snapshot("002")
+	c.Assert(err, IsNil)
+
+	readBuf := make([]byte, 3*b)
+	_, err = r.ReadAt(readBuf, 0)
+	c.Logf("%v", r.volume.location)
+	c.Assert(err, IsNil)
+	byteEquals(c, readBuf, buf)
+	byteEquals(c, r.volume.location, []byte{3, 2, 1})
+
+	err = r.RemoveDiffDisk("volume-snap-002.img")
+	c.Assert(err, IsNil)
+	c.Assert(len(r.activeDiskData), Equals, 4)
+	c.Assert(len(r.volume.files), Equals, 4)
+
+	r, err = r.Reload()
+	c.Assert(err, IsNil)
+
+	_, err = r.ReadAt(readBuf, 0)
+	c.Assert(err, IsNil)
+	byteEquals(c, readBuf, buf1)
+	byteEquals(c, r.volume.location, []byte{1, 2, 1})
+}
+
 func (s *TestSuite) TestBackingFile(c *C) {
 	dir, err := ioutil.TempDir("", "replica")
 	c.Logf("Volume: %s", dir)
