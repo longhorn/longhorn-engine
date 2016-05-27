@@ -158,17 +158,19 @@ def test_remove_disk(client):
     r = r.open()
     r = r.snapshot(name='000')
     r = r.snapshot(name='001')
-    assert r.chain == ['volume-head-002.img', 'volume-snap-001.img',
-                       'volume-snap-000.img']
+    r = r.snapshot(name='002')
+    assert r.chain == ['volume-head-003.img', 'volume-snap-002.img',
+                       'volume-snap-001.img', 'volume-snap-000.img']
 
     r = r.removedisk(name='volume-snap-001.img')
     assert r.state == 'dirty'
     assert not r.rebuilding
     assert r.size == str(1024*4096)
     assert r.sectorSize == 512
-    assert r.head == 'volume-head-002.img'
-    assert r.parent == 'volume-snap-000.img'
-    assert r.chain == ['volume-head-002.img', 'volume-snap-000.img']
+    assert r.head == 'volume-head-003.img'
+    assert r.parent == 'volume-snap-002.img'
+    assert r.chain == ['volume-head-003.img', 'volume-snap-002.img',
+                       'volume-snap-000.img']
 
 
 def test_remove_last_disk(client):
