@@ -111,11 +111,16 @@ func (s *TestSuite) TestRemoveMiddle(c *C) {
 	err = r.Snapshot("001")
 	c.Assert(err, IsNil)
 
-	c.Assert(len(r.activeDiskData), Equals, 4)
-	c.Assert(len(r.volume.files), Equals, 4)
+	err = r.Snapshot("002")
+	c.Assert(err, IsNil)
 
-	c.Assert(r.info.Head, Equals, "volume-head-002.img")
-	c.Assert(r.activeDiskData[3].name, Equals, "volume-head-002.img")
+	c.Assert(len(r.activeDiskData), Equals, 5)
+	c.Assert(len(r.volume.files), Equals, 5)
+
+	c.Assert(r.info.Head, Equals, "volume-head-003.img")
+	c.Assert(r.activeDiskData[4].name, Equals, "volume-head-003.img")
+	c.Assert(r.activeDiskData[4].Parent, Equals, "volume-snap-002.img")
+	c.Assert(r.activeDiskData[3].name, Equals, "volume-snap-002.img")
 	c.Assert(r.activeDiskData[3].Parent, Equals, "volume-snap-001.img")
 	c.Assert(r.activeDiskData[2].name, Equals, "volume-snap-001.img")
 	c.Assert(r.activeDiskData[2].Parent, Equals, "volume-snap-000.img")
@@ -124,10 +129,12 @@ func (s *TestSuite) TestRemoveMiddle(c *C) {
 
 	err = r.RemoveDiffDisk("volume-snap-001.img")
 	c.Assert(err, IsNil)
-	c.Assert(len(r.activeDiskData), Equals, 3)
-	c.Assert(len(r.volume.files), Equals, 3)
-	c.Assert(r.info.Head, Equals, "volume-head-002.img")
-	c.Assert(r.activeDiskData[2].name, Equals, "volume-head-002.img")
+	c.Assert(len(r.activeDiskData), Equals, 4)
+	c.Assert(len(r.volume.files), Equals, 4)
+	c.Assert(r.info.Head, Equals, "volume-head-003.img")
+	c.Assert(r.activeDiskData[3].name, Equals, "volume-head-003.img")
+	c.Assert(r.activeDiskData[3].Parent, Equals, "volume-snap-002.img")
+	c.Assert(r.activeDiskData[2].name, Equals, "volume-snap-002.img")
 	c.Assert(r.activeDiskData[2].Parent, Equals, "volume-snap-000.img")
 	c.Assert(r.activeDiskData[1].name, Equals, "volume-snap-000.img")
 	c.Assert(r.activeDiskData[1].Parent, Equals, "")
@@ -300,7 +307,10 @@ func (s *TestSuite) TestSnapshotRemoveReadWrite(c *C) {
 	byteEquals(c, readBuf, buf)
 	byteEquals(c, r.volume.location, []byte{3, 2, 1})
 
-	err = r.RemoveDiffDisk("volume-snap-002.img")
+	// We're in fact removing volume-snap-002.img(because of expected
+	// coalesce), but we will rename volume-snap-001.img to
+	// volume-snap-002.img
+	err = r.RemoveDiffDisk("volume-snap-001.img")
 	c.Assert(err, IsNil)
 	c.Assert(len(r.activeDiskData), Equals, 4)
 	c.Assert(len(r.volume.files), Equals, 4)

@@ -199,6 +199,16 @@ func (r *Replica) RemoveDiffDisk(name string) error {
 		return fmt.Errorf("Can not delete the active differencing disk")
 	}
 
+	if len(r.activeDiskData)-2 == index {
+		return fmt.Errorf("Can not delete the latest differencing disk")
+	}
+
+	// We're in fact delete index + 1 disk because it has coalesced
+	updateDisk := r.activeDiskData[index+1].name
+	if err := r.linkDisk(name, updateDisk, true); err != nil {
+		return fmt.Errorf("Can not link %v to %v: %v", name, updateDisk, err)
+	}
+
 	if err := r.relinkChild(index); err != nil {
 		return err
 	}
@@ -334,7 +344,7 @@ func (r *Replica) createNewHead(oldHead, parent string) (types.DiffDisk, disk, e
 	return f, newDisk, err
 }
 
-func (r *Replica) linkDisk(oldname, newname string) error {
+func (r *Replica) linkDisk(oldname, newname string, diskOnly bool) error {
 	if oldname == "" {
 		return nil
 	}
@@ -351,7 +361,10 @@ func (r *Replica) linkDisk(oldname, newname string) error {
 		return err
 	}
 
-	return os.Link(path.Join(r.dir, oldname+metadataSuffix), path.Join(r.dir, newname+metadataSuffix))
+	if !diskOnly {
+		return os.Link(path.Join(r.dir, oldname+metadataSuffix), path.Join(r.dir, newname+metadataSuffix))
+	}
+	return nil
 }
 
 func (r *Replica) rmDisk(name string) error {
@@ -393,7 +406,7 @@ func (r *Replica) createDisk(name string) error {
 		r.rmDisk(oldHead)
 	}()
 
-	if err := r.linkDisk(r.info.Head, newHeadDisk.Parent); err != nil {
+	if err := r.linkDisk(r.info.Head, newHeadDisk.Parent, false); err != nil {
 		return err
 	}
 
