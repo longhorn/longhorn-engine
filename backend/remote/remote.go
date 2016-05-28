@@ -196,7 +196,7 @@ func (r *Remote) Ping() error {
 		timeStart := time.Now()
 		resp, err := r.httpClient.Get(r.pingURL)
 		timeElapsed := time.Now().Sub(timeStart)
-		stats.Sample(timeStart, timeElapsed, index, stats.OpRead, len(buf))
+		stats.Sample(timeStart, timeElapsed, 0, stats.OpPing, 0)
 		if err != nil {
 			ret <- err
 			return
