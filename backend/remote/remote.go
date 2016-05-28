@@ -194,15 +194,17 @@ func (r *Remote) monitorPing(client *rpc.Client) error {
 func (r *Remote) Ping() error {
 	ret := make(chan error, 1)
 	go func() {
+		var prefix string
+		var port int
+		fmt.Sscanf(r.replicaURL, "%17s%d", &prefix, &port)
 		timeStart := time.Now()
+		id := stats.InsertPendingOp(timeStart, port, stats.OpPing, 0)
+		// Actual ping
 		resp, err := r.httpClient.Get(r.pingURL)
+
 		timeElapsed := time.Now().Sub(timeStart)
-		{
-			var prefix string
-			var port int
-			fmt.Sscanf(r.replicaURL, "%17s%d", &prefix, &port)
-			stats.Sample(timeStart, timeElapsed, port, stats.OpPing, 0)
-		}
+		stats.RemovePendingOp(id)
+		stats.Sample(timeStart, timeElapsed, port, stats.OpPing, 0)
 		if err != nil {
 			ret <- err
 			return

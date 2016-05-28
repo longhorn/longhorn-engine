@@ -45,12 +45,16 @@ func (m *MultiWriterAt) WriteAt(p []byte, off int64) (n int, err error) {
 		wg.Add(1)
 		go func(index int, w io.WriterAt) {
 			timeStart := time.Now()
+			id := stats.InsertPendingOp(timeStart, index, stats.OpWrite, len(p))
+			// Actual write
 			_, err := w.WriteAt(p, off)
+
 			if err != nil {
 				errored = true
 				errs[index] = err
 			}
 			timeElapsed := time.Now().Sub(timeStart)
+			stats.RemovePendingOp(id)
 			stats.Sample(timeStart, timeElapsed, index, stats.OpWrite, len(p))
 			wg.Done()
 		}(i, w)

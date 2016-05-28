@@ -93,8 +93,12 @@ func (r *replicator) ReadAt(buf []byte, off int64) (int, error) {
 		index = 0
 	}
 	timeStart := time.Now()
+	id := stats.InsertPendingOp(timeStart, index, stats.OpRead, len(buf))
+	// Actual read
 	n, err := r.readers[index].ReadAt(buf, off)
+
 	timeElapsed := time.Now().Sub(timeStart)
+	stats.RemovePendingOp(id)
 	stats.Sample(timeStart, timeElapsed, index, stats.OpRead, len(buf))
 	if err != nil {
 		logrus.Error("Replicator.ReadAt:", index, err)

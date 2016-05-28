@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"time"
 
+	"errors"
+
 	"github.com/rancher/sparse-tools/log"
 )
 
@@ -17,12 +19,14 @@ const (
 type SampleOp int
 
 const (
+	// OpNone unitialized operation
+	OpNone SampleOp = iota
 	// OpRead read from replica
-	OpRead = SampleOp(0)
+	OpRead
 	// OpWrite write to replica
-	OpWrite = SampleOp(1)
+	OpWrite
 	// OpPing ping replica
-	OpPing = SampleOp(2)
+	OpPing
 )
 
 type dataPoint struct {
@@ -47,7 +51,10 @@ func (op SampleOp) String() string {
 }
 
 func (sample dataPoint) String() string {
-	return fmt.Sprintf("%s: #%d %v[%3dkB] %8dus", sample.timestamp.Format(time.StampMicro), sample.target, sample.op, sample.size/1024, sample.duration.Nanoseconds()/1000)
+	if sample.duration != time.Duration(0) {
+		return fmt.Sprintf("%s: #%d %v[%3dkB] %8dus", sample.timestamp.Format(time.StampMicro), sample.target, sample.op, sample.size/1024, sample.duration.Nanoseconds()/1000)
+	}
+	return fmt.Sprintf("%s: #%d %v[%3dkB] pending", sample.timestamp.Format(time.StampMicro), sample.target, sample.op, sample.size/1024)
 }
 
 var (
@@ -114,13 +121,17 @@ func Process(processor func(dataPoint)) chan struct{} {
 	mutex.Unlock()
 
 	done := make(chan struct{})
-	go func(data []dataPoint, done chan struct{}) {
+	go func(data, pending []dataPoint, done chan struct{}) {
 		for _, sample := range data {
 			log.Debug("Stats.Processing=", sample)
 			processor(sample)
 		}
+		for _, sample := range pending {
+			log.Debug("Stats.Processing pending=", sample)
+			processor(sample)
+		}
 		close(done)
-	}(dataCopy, done)
+	}(dataCopy, getPendingOps(), done)
 	return done
 }
 
@@ -137,4 +148,66 @@ func Print() chan struct{} {
 func resetStats(size int) {
 	log.Debug("Stats.reset")
 	initStats(size)
+}
+
+//OpID pending operation id
+type OpID int
+
+var (
+	pendingOps      = make([]dataPoint, 8, 128)
+	mutexPendingOps sync.Mutex
+)
+
+//InsertPendingOp starts tracking of a pending operation
+func InsertPendingOp(timestamp time.Time, target int, op SampleOp, size int) OpID {
+	mutexPendingOps.Lock()
+	defer mutexPendingOps.Unlock()
+
+	id := pendingOpEmptySlot()
+	pendingOps[id] = dataPoint{target, op, timestamp, 0, size}
+	return OpID(id)
+}
+
+//RemovePendingOp removes tracking of a completed operation
+func RemovePendingOp(id OpID) error {
+	mutexPendingOps.Lock()
+	defer mutexPendingOps.Unlock()
+
+	i := int(id)
+	if i < 0 || i >= len(pendingOps) {
+		errMsg := "RemovePendingOp: Invalid OpID"
+		log.Error(errMsg, i)
+		return errors.New(errMsg)
+	}
+	if pendingOps[i].op == OpNone {
+		errMsg := "RemovePendingOp: OpID already removed"
+		log.Error(errMsg, i)
+		return errors.New(errMsg)
+	}
+
+	pendingOps[i].op = OpNone
+	return nil
+}
+
+func pendingOpEmptySlot() int {
+	for i, op := range pendingOps {
+		if op.op == OpNone {
+			return i
+		}
+	}
+	pendingOps = append(pendingOps, dataPoint{})
+	return len(pendingOps) - 1
+}
+
+func getPendingOps() []dataPoint {
+	mutexPendingOps.Lock()
+	defer mutexPendingOps.Unlock()
+
+	ops := make([]dataPoint, 0, len(pendingOps))
+	for _, op := range pendingOps {
+		if op.op != OpNone {
+			ops = append(ops, op)
+		}
+	}
+	return ops
 }
