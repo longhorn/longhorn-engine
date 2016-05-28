@@ -47,7 +47,7 @@ func (op SampleOp) String() string {
 }
 
 func (sample dataPoint) String() string {
-	return fmt.Sprintf("%s: #%d %v[%4dkB] %8dus", sample.timestamp.Format(time.StampMicro), sample.target, sample.op, sample.size, sample.duration.Nanoseconds()/1000)
+	return fmt.Sprintf("%s: #%d %v[%3dkB] %8dus", sample.timestamp.Format(time.StampMicro), sample.target, sample.op, sample.size/1024, sample.duration.Nanoseconds()/1000)
 }
 
 var (

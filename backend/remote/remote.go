@@ -184,6 +184,7 @@ func (r *Remote) monitorPing(client *rpc.Client) error {
 			if err := r.Ping(); err != nil {
 				logrus.Errorf("Failed to get ping response: %v", err)
 				client.SetError(err)
+				stats.Print()
 				return err
 			}
 		}
@@ -196,7 +197,12 @@ func (r *Remote) Ping() error {
 		timeStart := time.Now()
 		resp, err := r.httpClient.Get(r.pingURL)
 		timeElapsed := time.Now().Sub(timeStart)
-		stats.Sample(timeStart, timeElapsed, 0, stats.OpPing, 0)
+		{
+			var prefix string
+			var port int
+			fmt.Sscanf(r.replicaURL, "%17s%d", &prefix, &port)
+			stats.Sample(timeStart, timeElapsed, port, stats.OpPing, 0)
+		}
 		if err != nil {
 			ret <- err
 			return
@@ -213,7 +219,6 @@ func (r *Remote) Ping() error {
 	case err := <-ret:
 		return err
 	case <-time.After(pingTimeout):
-		stats.Print()
 		return ErrPingTimeout
 	}
 }
