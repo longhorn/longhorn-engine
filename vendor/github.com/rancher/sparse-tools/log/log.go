@@ -21,7 +21,7 @@ const (
 // crude global log level control:
 // log everything at this level and above
 var logMutex sync.RWMutex
-var logLevel = LevelDebug
+var logLevel = LevelInfo
 var logLevelStack []Level
 
 // LevelPush push current level down the stack and set
