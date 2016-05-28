@@ -16,6 +16,7 @@ import (
 	"github.com/rancher/longhorn/rpc"
 	"github.com/rancher/longhorn/types"
 	"github.com/rancher/longhorn/util"
+	"github.com/rancher/sparse-tools/stats"
 )
 
 var (
@@ -192,7 +193,10 @@ func (r *Remote) monitorPing(client *rpc.Client) error {
 func (r *Remote) Ping() error {
 	ret := make(chan error, 1)
 	go func() {
+		timeStart := time.Now()
 		resp, err := r.httpClient.Get(r.pingURL)
+		timeElapsed := time.Now().Sub(timeStart)
+		stats.Sample(timeStart, timeElapsed, index, stats.OpRead, len(buf))
 		if err != nil {
 			ret <- err
 			return
@@ -209,6 +213,7 @@ func (r *Remote) Ping() error {
 	case err := <-ret:
 		return err
 	case <-time.After(pingTimeout):
+		stats.Print()
 		return ErrPingTimeout
 	}
 }
