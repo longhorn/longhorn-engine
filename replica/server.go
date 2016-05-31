@@ -155,7 +155,7 @@ func (s *Server) Revert(name string) error {
 		return nil
 	}
 
-	logrus.Infof("Reverting to snapshot [%s] on volume [%s]", name)
+	logrus.Infof("Reverting to snapshot [%s] on volume", name)
 	r, err := s.r.Revert(name)
 	if err != nil {
 		return err

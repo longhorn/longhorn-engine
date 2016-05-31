@@ -52,6 +52,17 @@ func (c *ControllerClient) Snapshot() (string, error) {
 	return output.Id, err
 }
 
+func (c *ControllerClient) RevertSnapshot(snapshot string) error {
+	volume, err := c.GetVolume()
+	if err != nil {
+		return err
+	}
+
+	return c.post(volume.Actions["revert"], rest.RevertInput{
+		Name: snapshot,
+	}, nil)
+}
+
 func (c *ControllerClient) ListReplicas() ([]rest.Replica, error) {
 	var resp rest.ReplicaCollection
 	err := c.get("/replicas", &resp)

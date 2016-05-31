@@ -18,6 +18,7 @@ func SnapshotCmd() cli.Command {
 		ShortName: "snapshot",
 		Subcommands: []cli.Command{
 			SnapshotCreateCmd(),
+			SnapshotRevertCmd(),
 			SnapshotLsCmd(),
 			SnapshotRmCmd(),
 		},
@@ -35,6 +36,17 @@ func SnapshotCreateCmd() cli.Command {
 		Action: func(c *cli.Context) {
 			if err := createSnapshot(c); err != nil {
 				logrus.Fatalf("Error running create snapshot command: %v", err)
+			}
+		},
+	}
+}
+
+func SnapshotRevertCmd() cli.Command {
+	return cli.Command{
+		Name: "revert",
+		Action: func(c *cli.Context) {
+			if err := revertSnapshot(c); err != nil {
+				logrus.Fatalf("Error running revert snapshot command: %v", err)
 			}
 		},
 	}
@@ -71,6 +83,22 @@ func createSnapshot(c *cli.Context) error {
 	}
 
 	fmt.Println(id)
+	return nil
+}
+
+func revertSnapshot(c *cli.Context) error {
+	cli := getCli(c)
+
+	name := c.Args()[0]
+	if name == "" {
+		return fmt.Errorf("Missing parameter for snapshot")
+	}
+
+	err := cli.RevertSnapshot(name)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
 
