@@ -52,31 +52,34 @@ func (c *Controller) clientsAndSnapshot(name string) (map[string]*client.Replica
 			return nil, "", err
 		}
 
-		rep, err := repClient.GetReplica()
+		_, err = repClient.GetReplica()
 		if err != nil {
 			return nil, "", err
 		}
 
-		found := ""
-		for _, snapshot := range rep.Chain {
-			if snapshot == name {
-				found = name
-				break
+		/*
+			found := ""
+			for _, snapshot := range rep.Chain {
+				if snapshot == name {
+					found = name
+					break
+				}
+				fullName := "volume-snap-" + name + ".img"
+				if snapshot == fullName {
+					found = fullName
+					break
+				}
 			}
-			fullName := "volume-snap-" + name + ".img"
-			if snapshot == fullName {
-				found = fullName
-				break
+
+			if found == "" {
+				return nil, "", fmt.Errorf("Failed to find snapshot %s on %s", name, replica)
 			}
-		}
 
-		if found == "" {
-			return nil, "", fmt.Errorf("Failed to find snapshot %s on %s", name, replica)
-		}
-
-		name = found
+			name = found
+		*/
 		clients[replica.Address] = repClient
 	}
+	name = "volume-snap-" + name + ".img"
 
 	return clients, name, nil
 }
