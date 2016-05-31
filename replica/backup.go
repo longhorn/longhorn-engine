@@ -3,7 +3,6 @@ package replica
 import (
 	"fmt"
 	"os"
-	"path"
 
 	"github.com/rancher/convoy/metadata"
 )
@@ -36,8 +35,8 @@ func NewBackup(backingFile *BackingFile) *Backup {
 }
 
 func (rb *Backup) HasSnapshot(id, volumeID string) bool {
-	data := path.Join(volumeID, id)
-	for _, file := range []string{data, data + ".meta"} {
+	//TODO Check current in the volume directory of volumeID
+	for _, file := range []string{id, id + ".meta"} {
 		if _, err := os.Stat(file); err != nil {
 			return false
 		}
@@ -54,7 +53,11 @@ func (rb *Backup) OpenSnapshot(id, volumeID string) error {
 		return fmt.Errorf("Volume %s and snapshot %s are already open, close first", rb.volumeID, rb.snapshotID)
 	}
 
-	r, err := NewReadOnly(volumeID, id, rb.backingFile)
+	dir, err := os.Getwd()
+	if err != nil {
+		return fmt.Errorf("Cannot get working directory: %v", err)
+	}
+	r, err := NewReadOnly(dir, id, rb.backingFile)
 	if err != nil {
 		return err
 	}
