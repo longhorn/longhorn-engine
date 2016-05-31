@@ -77,6 +77,17 @@ func (c *ReplicaClient) Create(size string) error {
 	}, nil)
 }
 
+func (c *ReplicaClient) Revert(name string) error {
+	r, err := c.GetReplica()
+	if err != nil {
+		return err
+	}
+
+	return c.post(r.Actions["revert"], rest.RevertInput{
+		Name: name,
+	}, nil)
+}
+
 func (c *ReplicaClient) Close() error {
 	r, err := c.GetReplica()
 	if err != nil {
