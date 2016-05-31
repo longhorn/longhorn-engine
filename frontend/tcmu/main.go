@@ -26,12 +26,11 @@ import (
 )
 
 var (
-	ready = false
-
 	log = logrus.WithFields(logrus.Fields{"pkg": "main"})
 
 	// this is super dirty
 	backend types.ReaderWriterAt
+	cxt     *C.struct_tcmulib_context
 )
 
 type State struct {
@@ -175,20 +174,21 @@ func shClose(dev Device) {
 }
 
 func start(rw types.ReaderWriterAt) error {
-	// this is super dirty
-	backend = rw
-
-	cxt := C.tcmu_init()
 	if cxt == nil {
-		return errors.New("TCMU ctx is nil")
-	}
-
-	go func() {
-		for !ready {
-			result := C.tcmu_poll_master_fd(cxt)
-			log.Debugln("Poll master fd one more time, last result ", result)
+		// this is super dirty
+		backend = rw
+		cxt = C.tcmu_init()
+		if cxt == nil {
+			return errors.New("TCMU ctx is nil")
 		}
-	}()
+
+		go func() {
+			for {
+				result := C.tcmu_poll_master_fd(cxt)
+				log.Debugln("Poll master fd one more time, last result ", result)
+			}
+		}()
+	}
 
 	return nil
 }
