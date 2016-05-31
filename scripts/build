@@ -5,4 +5,3 @@ cd $(dirname $0)
 
 ./build-cli
 ./build-agent
-./build-backup

@@ -1,6 +1,7 @@
 package agent
 
 import (
+	"bytes"
 	"errors"
 	"fmt"
 	"net/http"
@@ -120,6 +121,12 @@ func (s *Server) launch(p *Process) error {
 		return s.launchSync(p)
 	case "fold":
 		return s.launchFold(p)
+	case "backup":
+		return s.launchBackup(p)
+	case "rmbackup":
+		return s.launchRmBackup(p)
+	case "restore":
+		return s.launchRestore(p)
 	}
 	return fmt.Errorf("Unknown process type %s", p.ProcessType)
 }
@@ -224,4 +231,98 @@ func (s *Server) nextPort() (int, error) {
 	}
 
 	return 0, errors.New("Out of ports")
+}
+
+func (s *Server) launchBackup(p *Process) error {
+	buf := new(bytes.Buffer)
+
+	cmd := reexec.Command("sbackup", "create", p.SrcFile, "--dest", p.DestFile,
+		"--volume", p.Host)
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Pdeathsig: syscall.SIGKILL,
+	}
+	cmd.Stdout = buf
+	cmd.Stderr = os.Stderr
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+
+	logrus.Infof("Running %s %v", cmd.Path, cmd.Args)
+	err := cmd.Wait()
+	if err != nil {
+		logrus.Infof("Error running %s %v: %v", "sbackup", cmd.Args, err)
+		p.ExitCode = 1
+		if exitError, ok := err.(*exec.ExitError); ok {
+			if waitStatus, ok := exitError.Sys().(syscall.WaitStatus); ok {
+				logrus.Infof("Error running %s %v: %v", "sbackup", cmd.Args, waitStatus.ExitStatus())
+				p.ExitCode = waitStatus.ExitStatus()
+			}
+		}
+		return err
+	}
+
+	p.ExitCode = 0
+	p.Output = buf.String()
+	logrus.Infof("Done running %s %v, returns %v", "sbackup", cmd.Args, p.Output)
+	return nil
+}
+
+func (s *Server) launchRmBackup(p *Process) error {
+	cmd := reexec.Command("sbackup", "delete", p.SrcFile)
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Pdeathsig: syscall.SIGKILL,
+	}
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+
+	logrus.Infof("Running %s %v", cmd.Path, cmd.Args)
+	err := cmd.Wait()
+	if err != nil {
+		logrus.Infof("Error running %s %v: %v", "sbackup", cmd.Args, err)
+		p.ExitCode = 1
+		if exitError, ok := err.(*exec.ExitError); ok {
+			if waitStatus, ok := exitError.Sys().(syscall.WaitStatus); ok {
+				logrus.Infof("Error running %s %v: %v", "sbackup", cmd.Args, waitStatus.ExitStatus())
+				p.ExitCode = waitStatus.ExitStatus()
+			}
+		}
+		return err
+	}
+
+	p.ExitCode = 0
+	logrus.Infof("Done running %s %v", "sbackup", cmd.Args)
+	return nil
+}
+
+func (s *Server) launchRestore(p *Process) error {
+	cmd := reexec.Command("sbackup", "restore", p.SrcFile, "--to", p.DestFile)
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Pdeathsig: syscall.SIGKILL,
+	}
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+
+	logrus.Infof("Running %s %v", cmd.Path, cmd.Args)
+	err := cmd.Wait()
+	if err != nil {
+		logrus.Infof("Error running %s %v: %v", "sbackup", cmd.Args, err)
+		p.ExitCode = 1
+		if exitError, ok := err.(*exec.ExitError); ok {
+			if waitStatus, ok := exitError.Sys().(syscall.WaitStatus); ok {
+				logrus.Infof("Error running %s %v: %v", "sbackup", cmd.Args, waitStatus.ExitStatus())
+				p.ExitCode = waitStatus.ExitStatus()
+			}
+		}
+		return err
+	}
+
+	p.ExitCode = 0
+	logrus.Infof("Done running %s %v", "sbackup", cmd.Args)
+	return nil
 }

@@ -136,6 +136,10 @@ func construct(readonly bool, size, sectorSize int64, dir, head string, backingF
 	return r, r.writeVolumeMetaData(true, r.info.Rebuilding)
 }
 
+func GenerateSnapshotDiskName(name string) string {
+	return fmt.Sprintf(diskName, name)
+}
+
 func (r *Replica) insertBackingFile() {
 	if r.info.BackingFile == nil {
 		return
@@ -404,7 +408,7 @@ func (r *Replica) createDisk(name string) error {
 
 	done := false
 	oldHead := r.info.Head
-	newSnapName := fmt.Sprintf(diskName, name)
+	newSnapName := GenerateSnapshotDiskName(name)
 
 	if oldHead == "" {
 		newSnapName = ""

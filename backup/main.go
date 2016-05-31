@@ -1,10 +1,9 @@
-package main
+package backup
 
 import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"path"
 	"runtime"
 	"runtime/debug"
 	"strings"
@@ -113,8 +112,14 @@ func cleanup() {
 	}
 }
 
-func main() {
+func Main() {
 	defer cleanup()
+
+	dir, err := os.Getwd()
+	if err != nil {
+		log.Fatalf("Cannot get running directory: %s", err)
+	}
+	log.Debugf("Currently running at %v, assume as volume dir", dir)
 
 	app := cli.NewApp()
 	app.Version = VERSION
@@ -176,22 +181,17 @@ func doBackupCreate(c *cli.Context) error {
 		return err
 	}
 
-	volumePath, err := util.GetFlag(c, "volume", true, err)
+	volumeName, err := util.GetFlag(c, "volume", true, err)
 	if err != nil {
 		return err
 	}
 
-	// Switch to one level upper than volume working directory
-	volumeName := path.Base(volumePath)
-	volumeDir := path.Dir(volumePath)
-	log.Info("volume dir, name", volumeDir, volumeName)
-	if volumeDir != "" {
-		if err := os.Chdir(volumeDir); err != nil {
-			return err
-		}
+	dir, err := os.Getwd()
+	if err != nil {
+		return err
 	}
 
-	volumeInfo, err := replica.ReadInfo(volumeName)
+	volumeInfo, err := replica.ReadInfo(dir)
 	if err != nil {
 		return err
 	}

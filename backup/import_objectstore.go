@@ -1,4 +1,4 @@
-package main
+package backup
 
 import (
 	// Involve S3 objecstore drivers for registeration
