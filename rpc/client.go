@@ -4,8 +4,16 @@ import (
 	"errors"
 	"io"
 	"net"
+	"time"
 
 	"github.com/Sirupsen/logrus"
+)
+
+var (
+	opReadTimeout   = 15 * time.Second // client read
+	opWriteTimeout  = 15 * time.Second // client write
+	errReadTimeout  = errors.New("read timeout")
+	errWriteTimeout = errors.New("write timeout")
 )
 
 type Client struct {
@@ -50,13 +58,36 @@ func (c *Client) ReadAt(buf []byte, offset int64) (int, error) {
 
 func (c *Client) operation(op uint32, buf []byte, offset int64) (int, error) {
 	msg := Message{
-		Type:   op,
-		Offset: offset,
-		Data:   buf,
+		Complete: make(chan struct{}, 1),
+		Type:     op,
+		Offset:   offset,
+		Data:     buf,
 	}
-	msg.Add(1)
+
+	timeout := func(op uint32) <-chan time.Time {
+		switch op {
+		case TypeRead:
+			return time.After(opReadTimeout)
+		}
+		return time.After(opWriteTimeout)
+	}(msg.Type)
+
 	c.requests <- &msg
-	msg.Wait()
+
+	select {
+	case <-msg.Complete:
+	case <-timeout:
+		switch msg.Type {
+		case TypeRead:
+			c.SetError(errReadTimeout)
+			logrus.Errorln("Read timeout: seq=", msg.Seq, "size=", len(msg.Data)/1024, "(kB)")
+
+		case TypeWrite:
+			c.SetError(errWriteTimeout)
+			logrus.Errorln("Write timeout: seq=", msg.Seq, "size=", len(msg.Data)/1024, "(kB)")
+		}
+		// stats.Print()//flush automaticalyupon timeout
+	}
 
 	if msg.Type == TypeError {
 		return 0, errors.New(string(msg.Data))
@@ -98,7 +129,7 @@ func (c *Client) replyError(req *Message) {
 	delete(c.messages, req.Seq)
 	req.Type = TypeError
 	req.Data = []byte(c.err.Error())
-	req.Done()
+	req.Complete <- struct{}{}
 }
 
 func (c *Client) handleRequest(req *Message) {
@@ -134,7 +165,7 @@ func (c *Client) handleResponse(resp *Message) {
 			copy(req.Data, resp.Data)
 		}
 		req.Type = resp.Type
-		req.Done()
+		req.Complete <- struct{}{}
 	}
 }
 
