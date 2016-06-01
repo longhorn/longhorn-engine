@@ -83,16 +83,9 @@ func startReplica(c *cli.Context) error {
 	go func() {
 		server := rest.NewServer(s)
 		router := http.Handler(rest.NewRouter(server))
-		loggingHander := handlers.LoggingHandler(os.Stdout, router)
-		wrappedRouter := http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-			if req.URL.Path == "/ping" {
-				router.ServeHTTP(rw, req)
-			} else {
-				loggingHander.ServeHTTP(rw, req)
-			}
-		})
+		router = handlers.LoggingHandler(os.Stdout, router)
 		logrus.Infof("Listening on control %s", controlAddress)
-		resp <- http.ListenAndServe(controlAddress, wrappedRouter)
+		resp <- http.ListenAndServe(controlAddress, router)
 	}()
 
 	go func() {

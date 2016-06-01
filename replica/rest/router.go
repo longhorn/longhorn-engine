@@ -24,10 +24,6 @@ func NewRouter(s *Server) *mux.Router {
 	router := mux.NewRouter().StrictSlash(true)
 	f := rest.HandleError
 
-	router.Methods("GET").Path("/ping").Handler(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		rw.Write([]byte("pong"))
-	}))
-
 	// API framework routes
 	router.Methods("GET").Path("/").Handler(api.VersionsHandler(schemas, "v1"))
 	router.Methods("GET").Path("/v1/schemas").Handler(api.SchemasHandler(schemas))
