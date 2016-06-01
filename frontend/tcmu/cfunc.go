@@ -31,9 +31,9 @@ void sh_close_cgo(struct tcmu_device *dev) {
 }
 
 static struct tcmulib_handler sh_handler = {
-	.name = "Shorthorn TCMU handler",
-	.subtype = "file",
-	.cfg_desc = "dev_config=file/<path>",
+	.name = "Longhorn TCMU handler",
+	.subtype = "longhorn",
+	.cfg_desc = "dev_config=longhorn//<id>",
 	.added = sh_open_cgo,
 	.removed = sh_close_cgo,
 };

@@ -18,6 +18,7 @@ extern void *allocate_buffer(int length);
 import "C"
 import (
 	"errors"
+	"strings"
 	"sync"
 	"unsafe"
 
@@ -31,6 +32,7 @@ var (
 	// this is super dirty
 	backend types.ReaderWriterAt
 	cxt     *C.struct_tcmulib_context
+	volume  string
 )
 
 type State struct {
@@ -68,12 +70,17 @@ func shOpen(dev Device) int {
 		log.Errorln("Cannot find configuration string")
 		return -C.EINVAL
 	}
-	//id := strings.TrimPrefix(cfgString, "file/")
-	//TODO check volume name here
+
+	id := strings.TrimPrefix(cfgString, "longhorn//")
+	if id != volume {
+		log.Debugf("Ignore volume %s, which is not mine", id)
+		return -C.EINVAL
+	}
+	state.volume = id
 
 	go state.HandleRequest(dev)
 
-	log.Debugln("Device added")
+	log.Debugf("Device %s added", state.volume)
 	return 0
 }
 
@@ -173,10 +180,11 @@ func shClose(dev Device) {
 	log.Debugln("Device removed")
 }
 
-func start(rw types.ReaderWriterAt) error {
+func start(name string, rw types.ReaderWriterAt) error {
 	if cxt == nil {
 		// this is super dirty
 		backend = rw
+		volume = name
 		cxt = C.tcmu_init()
 		if cxt == nil {
 			return errors.New("TCMU ctx is nil")
