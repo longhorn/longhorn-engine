@@ -36,10 +36,13 @@ func NewBackup(backingFile *BackingFile) *Backup {
 
 func (rb *Backup) HasSnapshot(id, volumeID string) bool {
 	//TODO Check current in the volume directory of volumeID
-	for _, file := range []string{id, id + ".meta"} {
-		if _, err := os.Stat(file); err != nil {
-			return false
-		}
+	if err := rb.assertOpen(id, volumeID); err != nil {
+		return false
+	}
+
+	to := rb.findIndex(id)
+	if to < 0 {
+		return false
 	}
 	return true
 }
