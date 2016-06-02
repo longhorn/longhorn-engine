@@ -1,7 +1,5 @@
 package rpc
 
-import "sync"
-
 const (
 	TypeRead = iota
 	TypeWrite
@@ -9,13 +7,13 @@ const (
 	TypeError
 	TypeEOF
 
-	messageSize     = (32 + 32 + 32 + 64) / 8
+	messageSize     = (32 + 32 + 32 + 64) / 8 //TODO: unused?
 	readBufferSize  = 8096
 	writeBufferSize = 8096
 )
 
 type Message struct {
-	sync.WaitGroup
+	Complete chan struct{}
 
 	Seq          uint32
 	Type         uint32
