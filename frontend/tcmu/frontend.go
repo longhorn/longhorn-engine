@@ -43,7 +43,7 @@ func (t *Tcmu) Activate(name string, size, sectorSize int64, rw types.ReaderWrit
 		return err
 	}
 
-	if err := start(rw); err != nil {
+	if err := start(name, rw); err != nil {
 		return err
 	}
 
@@ -169,7 +169,7 @@ func mknod(device string, major, minor int) error {
 }
 
 func GetDevConfig(volume string) string {
-	return fmt.Sprintf("file//root/%s", volume)
+	return fmt.Sprintf("longhorn//%s", volume)
 }
 
 func getScsiPrefixAndWnn(volume string) (string, string) {
