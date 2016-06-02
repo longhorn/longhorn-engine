@@ -5,8 +5,17 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/rancher/go-rancher/api"
-	"github.com/rancher/longhorn/controller/rest"
+	"github.com/rancher/go-rancher/client"
 )
+
+func HandleError(s *client.Schemas, t func(http.ResponseWriter, *http.Request) error) http.Handler {
+	return api.ApiHandler(s, http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if err := t(rw, req); err != nil {
+			apiContext := api.GetApiContext(req)
+			apiContext.WriteErr(err)
+		}
+	}))
+}
 
 func checkAction(s *Server, t func(http.ResponseWriter, *http.Request) error) func(http.ResponseWriter, *http.Request) error {
 	return func(rw http.ResponseWriter, req *http.Request) error {
@@ -22,7 +31,7 @@ func checkAction(s *Server, t func(http.ResponseWriter, *http.Request) error) fu
 func NewRouter(s *Server) *mux.Router {
 	schemas := NewSchema()
 	router := mux.NewRouter().StrictSlash(true)
-	f := rest.HandleError
+	f := HandleError
 
 	router.Methods("GET").Path("/ping").Handler(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
 		rw.Write([]byte("pong"))
@@ -48,6 +57,7 @@ func NewRouter(s *Server) *mux.Router {
 		"removedisk":    s.RemoveDisk,
 		"setrebuilding": s.SetRebuilding,
 		"create":        s.Create,
+		"revert":        s.RevertReplica,
 	}
 
 	for name, action := range actions {

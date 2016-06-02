@@ -5,7 +5,8 @@ import (
 	"net/http"
 
 	md "github.com/rancher/go-rancher-metadata/metadata"
-	"github.com/rancher/longhorn/client"
+	"github.com/rancher/longhorn/controller/client"
+	replicaClient "github.com/rancher/longhorn/replica/client"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/rancher/longhorn/agent/controller"
@@ -13,7 +14,7 @@ import (
 
 type ReplicaStatus struct {
 	controller          *client.ControllerClient
-	replica             *client.ReplicaClient
+	replica             *replicaClient.ReplicaClient
 	metadata            *md.Client
 	address             string
 	controllerLastError string
@@ -31,7 +32,7 @@ func NewReplicaStatus() (*ReplicaStatus, error) {
 	addr := controller.ReplicaAddress(self.PrimaryIp, 9502)
 
 	controllerClient := client.NewControllerClient("http://controller:9501/v1")
-	replicaClient, err := client.NewReplicaClient("http://localhost:9502/v1")
+	replicaClient, err := replicaClient.NewReplicaClient("http://localhost:9502/v1")
 	if err != nil {
 		return nil, err
 	}
