@@ -16,6 +16,7 @@ import (
 	"github.com/rancher/longhorn/rpc"
 	"github.com/rancher/longhorn/types"
 	"github.com/rancher/longhorn/util"
+	"github.com/rancher/sparse-tools/stats"
 )
 
 var (
@@ -183,6 +184,7 @@ func (r *Remote) monitorPing(client *rpc.Client) error {
 			if err := r.Ping(); err != nil {
 				logrus.Errorf("Failed to get ping response: %v", err)
 				client.SetError(err)
+				stats.Print()
 				return err
 			}
 		}
@@ -192,7 +194,17 @@ func (r *Remote) monitorPing(client *rpc.Client) error {
 func (r *Remote) Ping() error {
 	ret := make(chan error, 1)
 	go func() {
+		var prefix string
+		var port int
+		fmt.Sscanf(r.replicaURL, "%17s%d", &prefix, &port)
+		timeStart := time.Now()
+		id := stats.InsertPendingOp(timeStart, port, stats.OpPing, 0)
+		// Actual ping
 		resp, err := r.httpClient.Get(r.pingURL)
+
+		timeElapsed := time.Now().Sub(timeStart)
+		stats.RemovePendingOp(id)
+		stats.Sample(timeStart, timeElapsed, port, stats.OpPing, 0)
 		if err != nil {
 			ret <- err
 			return
