@@ -14,6 +14,7 @@ type Process struct {
 	Host        string    `json:"host"`
 	Port        int       `json:"port"`
 	ExitCode    int       `json:"exitCode"`
+	Output      string    `json:"output"`
 	Created     time.Time `json:"created"`
 }
 

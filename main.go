@@ -9,6 +9,7 @@ import (
 	"github.com/codegangsta/cli"
 	"github.com/docker/docker/pkg/reexec"
 	"github.com/rancher/longhorn/app"
+	"github.com/rancher/longhorn/backup"
 	"github.com/rancher/sparse-tools/cli/sfold"
 	"github.com/rancher/sparse-tools/cli/ssync"
 )
@@ -16,6 +17,7 @@ import (
 func main() {
 	reexec.Register("ssync", ssync.Main)
 	reexec.Register("sfold", sfold.Main)
+	reexec.Register("sbackup", backup.Main)
 
 	if !reexec.Init() {
 		longhornCli()
@@ -57,6 +59,7 @@ func longhornCli() {
 		app.LsReplicaCmd(),
 		app.RmReplicaCmd(),
 		app.SnapshotCmd(),
+		app.BackupCmd(),
 	}
 
 	if err := a.Run(os.Args); err != nil {

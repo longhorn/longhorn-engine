@@ -104,6 +104,16 @@ func (s *Server) SnapshotReplica(rw http.ResponseWriter, req *http.Request) erro
 	return s.doOp(req, s.s.Snapshot(name))
 }
 
+func (s *Server) RevertReplica(rw http.ResponseWriter, req *http.Request) error {
+	var input RevertInput
+	apiContext := api.GetApiContext(req)
+	if err := apiContext.Read(&input); err != nil && err != io.EOF {
+		return err
+	}
+
+	return s.doOp(req, s.s.Revert(input.Name))
+}
+
 func (s *Server) ReloadReplica(rw http.ResponseWriter, req *http.Request) error {
 	return s.doOp(req, s.s.Reload())
 }

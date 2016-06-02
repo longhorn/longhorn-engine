@@ -7,7 +7,8 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
-	"github.com/rancher/longhorn/client"
+	"github.com/rancher/longhorn/controller/client"
+	replicaClient "github.com/rancher/longhorn/replica/client"
 )
 
 func LsReplicaCmd() cli.Command {
@@ -53,7 +54,7 @@ func lsReplica(c *cli.Context) error {
 }
 
 func getChain(address string) ([]string, error) {
-	repClient, err := client.NewReplicaClient(address)
+	repClient, err := replicaClient.NewReplicaClient(address)
 	if err != nil {
 		return nil, err
 	}

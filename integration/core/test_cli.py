@@ -1,6 +1,7 @@
 import time
 import random
 from os import path
+import os
 import subprocess
 
 import pytest
@@ -9,6 +10,8 @@ import cattle
 
 REPLICA = 'tcp://localhost:9502'
 REPLICA2 = 'tcp://localhost:9505'
+
+BACKUP_DEST = '/tmp/longhorn-backup'
 
 
 @pytest.fixture
@@ -79,6 +82,14 @@ def bin():
     return c
 
 
+def setup_module():
+    if os.path.exists(BACKUP_DEST):
+        subprocess.check_call(["rm", "-rf", BACKUP_DEST])
+
+    os.makedirs(BACKUP_DEST)
+    assert os.path.exists(BACKUP_DEST)
+
+
 def open_replica(client):
     replicas = client.list_replica()
     assert len(replicas) == 1
@@ -90,10 +101,10 @@ def open_replica(client):
     assert r.parent == ''
     assert r.head == ''
 
-    r = r.create(size=str(1024*4096))
+    r = r.create(size=str(1024 * 4096))
 
     assert r.state == 'closed'
-    assert r.size == str(1024*4096)
+    assert r.size == str(1024 * 4096)
     assert r.sectorSize == 512
     assert r.parent == ''
     assert r.head == 'volume-head-000.img'
@@ -183,6 +194,38 @@ def test_replica_add_after_rebuild_failed(bin, controller_client,
 
     for r in replicas:
         assert r.mode == 'RW'
+
+
+def test_revert(bin, controller_client, replica_client, replica_client2):
+    open_replica(replica_client)
+    open_replica(replica_client2)
+
+    v = controller_client.list_volume()[0]
+    v = v.start(replicas=[
+        REPLICA,
+        REPLICA2,
+    ])
+    assert v.replicaCount == 2
+
+    snap = v.snapshot(name='foo1')
+    assert snap.id == 'foo1'
+
+    snap2 = v.snapshot(name='foo2')
+    assert snap2.id == 'foo2'
+
+    r1 = replica_client.list_replica()[0]
+    r2 = replica_client2.list_replica()[0]
+
+    assert r1.chain == ['volume-head-002.img', 'volume-snap-foo2.img',
+                        'volume-snap-foo1.img']
+    assert r1.chain == r2.chain
+
+    v.revert(name='foo1')
+
+    r1 = replica_client.list_replica()[0]
+    r2 = replica_client2.list_replica()[0]
+    assert r1.chain == ['volume-head-003.img', 'volume-snap-foo1.img']
+    assert r1.chain == r2.chain
 
 
 def test_snapshot(bin, controller_client, replica_client, replica_client2):
@@ -321,3 +364,47 @@ def test_snapshot_last(bin, controller_client, replica_client,
     cmd = [bin, 'snapshot', 'rm', output]
     with pytest.raises(subprocess.CalledProcessError):
         subprocess.check_call(cmd)
+
+
+def test_backup(bin, controller_client, replica_client,
+                replica_client2):
+    open_replica(replica_client)
+    open_replica(replica_client2)
+
+    v = controller_client.list_volume()[0]
+    v = v.start(replicas=[
+        REPLICA,
+        REPLICA2,
+    ])
+    assert v.replicaCount == 2
+
+    cmd = [bin, 'snapshot', 'create']
+    output = subprocess.check_output(cmd).strip()
+    snapshot1 = replica_client.list_replica()[0].chain[1]
+
+    assert snapshot1 == 'volume-snap-{}.img'.format(output)
+
+    cmd = [bin, 'backup', 'create', snapshot1,
+           '--dest', "vfs://" + BACKUP_DEST]
+    backup1 = subprocess.check_output(cmd).strip()
+
+    cmd = [bin, 'snapshot', 'create']
+    output = subprocess.check_output(cmd).strip()
+    snapshot2 = replica_client.list_replica()[0].chain[1]
+
+    assert snapshot2 == 'volume-snap-{}.img'.format(output)
+
+    cmd = [bin, 'create', snapshot2,
+           '--dest', "vfs://" + BACKUP_DEST]
+    backup2 = subprocess.check_output(cmd).strip()
+
+    cmd = [bin, 'restore', backup1]
+    subprocess.check_call(cmd)
+
+    cmd = [bin, 'restore', backup2]
+    subprocess.check_call(cmd)
+
+    cmd = [bin, 'rm', backup1]
+    subprocess.check_call(cmd)
+    cmd = [bin, 'rm', backup2]
+    subprocess.check_call(cmd)

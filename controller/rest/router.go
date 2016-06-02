@@ -1,26 +1,15 @@
 package rest
 
 import (
-	"net/http"
-
 	"github.com/gorilla/mux"
 	"github.com/rancher/go-rancher/api"
-	"github.com/rancher/go-rancher/client"
+	"github.com/rancher/longhorn/replica/rest"
 )
-
-func HandleError(s *client.Schemas, t func(http.ResponseWriter, *http.Request) error) http.Handler {
-	return api.ApiHandler(s, http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		if err := t(rw, req); err != nil {
-			apiContext := api.GetApiContext(req)
-			apiContext.WriteErr(err)
-		}
-	}))
-}
 
 func NewRouter(s *Server) *mux.Router {
 	schemas := NewSchema()
 	router := mux.NewRouter().StrictSlash(true)
-	f := HandleError
+	f := rest.HandleError
 
 	// API framework routes
 	router.Methods("GET").Path("/").Handler(api.VersionsHandler(schemas, "v1"))
@@ -34,6 +23,7 @@ func NewRouter(s *Server) *mux.Router {
 	router.Methods("POST").Path("/v1/volumes/{id}").Queries("action", "start").Handler(f(schemas, s.StartVolume))
 	router.Methods("POST").Path("/v1/volumes/{id}").Queries("action", "shutdown").Handler(f(schemas, s.ShutdownVolume))
 	router.Methods("POST").Path("/v1/volumes/{id}").Queries("action", "snapshot").Handler(f(schemas, s.SnapshotVolume))
+	router.Methods("POST").Path("/v1/volumes/{id}").Queries("action", "revert").Handler(f(schemas, s.RevertVolume))
 
 	// Replicas
 	router.Methods("GET").Path("/v1/replicas").Handler(f(schemas, s.ListReplicas))
