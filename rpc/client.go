@@ -107,7 +107,7 @@ func (c *Client) operation(op uint32, buf []byte, offset int64) (int, error) {
 			case TypeWrite:
 				logrus.Errorln("Write timeout: seq=", msg.Seq, "size=", len(msg.Data)/1024, "(kB)")
 				c.SetError(ErrRWTimeout)
-				stats.Print() //flush automatically upon timeout
+				stats.PrintLimited(1000) //flush automatically upon timeout
 				return 0, ErrRWTimeout
 			}
 		}
