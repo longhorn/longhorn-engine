@@ -105,7 +105,7 @@ func (c *Client) operation(op uint32, buf []byte, offset int64) (int, error) {
 				logrus.Errorln("Retry ", retry, "on replica", c.wire.conn.RemoteAddr().String(), "seq=", msg.Seq, "size=", len(msg.Data)/1024, "(kB)")
 			} else {
 				c.SetError(ErrRWTimeout)
-				stats.Print() //flush automatically upon timeout
+				stats.PrintLimited(1000) //flush automatically upon timeout
 				return 0, ErrRWTimeout
 			}
 		}
