@@ -187,7 +187,7 @@ func (r *Remote) monitorPing(client *rpc.Client) error {
 				retry = 0 // reset on success
 				break
 			} else {
-				if err == ErrPingTimeout && retry < pingRetries {
+				if _, isNetErr := err.(net.Error); (isNetErr || err == ErrPingTimeout) && retry < pingRetries {
 					retry++
 					logrus.Errorf("Ping retry %v on error: %v", retry, err)
 					break
