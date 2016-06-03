@@ -44,8 +44,8 @@ type State struct {
 	backend   types.ReaderWriterAt
 }
 
-//export shOpen
-func shOpen(dev Device) int {
+//export devOpen
+func devOpen(dev Device) int {
 	state := &State{
 		backend: backend,
 	}
@@ -80,7 +80,7 @@ func shOpen(dev Device) int {
 
 	go state.HandleRequest(dev)
 
-	log.Debugf("Device %s added", state.volume)
+	log.Infof("Device %s added", state.volume)
 	return 0
 }
 
@@ -175,9 +175,40 @@ func (s *State) handleCommand(dev Device, cmd Command) int {
 	return C.TCMU_NOT_HANDLED
 }
 
-//export shClose
-func shClose(dev Device) {
-	log.Debugln("Device removed")
+//export devClose
+func devClose(dev Device) {
+	cfgString := C.GoString(C.tcmu_get_dev_cfgstring(dev))
+	if cfgString == "" {
+		log.Errorln("Cannot find configuration string")
+		return
+	}
+
+	id := strings.TrimPrefix(cfgString, "longhorn//")
+	if id != volume {
+		//Ignore close other devs
+		return
+	}
+	log.Infof("Device %s removed", volume)
+}
+
+//export devCheckConfig
+func devCheckConfig(cfg *C.char, reason **C.char) bool {
+	cfgString := C.GoString(cfg)
+	if cfgString == "" {
+		// Don't want deal with free or cause memory leak, so ignore
+		// reason
+		log.Errorln("Cannot find valid configuration string")
+		return false
+	}
+
+	id := strings.TrimPrefix(cfgString, "longhorn//")
+	if id != volume {
+		//it's for others
+		*reason = C.CString("Not current volume")
+		log.Debugf("%s is not my volume", id)
+		return false
+	}
+	return true
 }
 
 func start(name string, rw types.ReaderWriterAt) error {

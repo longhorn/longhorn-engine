@@ -19,27 +19,33 @@ void errp(const char *fmt, ...)
 	va_end(va);
 }
 
-extern int shOpen(struct tcmu_device *dev);
-extern void shClose(struct tcmu_device *dev);
+extern bool devCheckConfig(const char *cfgString, char **reason);
+extern int devOpen(struct tcmu_device *dev);
+extern void devClose(struct tcmu_device *dev);
 
-int sh_open_cgo(struct tcmu_device *dev) {
-	return shOpen(dev);
+int dev_open_cgo(struct tcmu_device *dev) {
+	return devOpen(dev);
 }
 
-void sh_close_cgo(struct tcmu_device *dev) {
-	shClose(dev);
+void dev_close_cgo(struct tcmu_device *dev) {
+	devClose(dev);
 }
 
-static struct tcmulib_handler sh_handler = {
+bool dev_check_config_cgo(const char *cfgString, char **reason) {
+	return devCheckConfig(cfgString, reason);
+}
+
+static struct tcmulib_handler lh_handler = {
 	.name = "Longhorn TCMU handler",
 	.subtype = "longhorn",
 	.cfg_desc = "dev_config=longhorn//<id>",
-	.added = sh_open_cgo,
-	.removed = sh_close_cgo,
+	.added = dev_open_cgo,
+	.removed = dev_close_cgo,
+	.check_config = dev_check_config_cgo,
 };
 
 struct tcmulib_context *tcmu_init() {
-	return tcmulib_initialize(&sh_handler, 1, errp);
+	return tcmulib_initialize(&lh_handler, 1, errp);
 }
 
 bool tcmu_poll_master_fd(struct tcmulib_context *cxt) {
