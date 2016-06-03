@@ -185,16 +185,15 @@ func (r *Remote) monitorPing(client *rpc.Client) error {
 		case <-ticker.C:
 			if err := r.Ping(); err == nil {
 				retry = 0 // reset on success
-				break
 			} else {
-				if _, isNetErr := err.(net.Error); (isNetErr || err == ErrPingTimeout) && retry < pingRetries {
+				if retry < pingRetries {
 					retry++
 					logrus.Errorf("Ping retry %v on error: %v", retry, err)
-					break
+				} else {
+					logrus.Errorf("Failed to get ping response: %v", err)
+					client.SetError(err)
+					return err
 				}
-				logrus.Errorf("Failed to get ping response: %v", err)
-				client.SetError(err)
-				return err
 			}
 		}
 	}
