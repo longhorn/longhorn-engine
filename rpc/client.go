@@ -10,10 +10,9 @@ import (
 )
 
 var (
-	opReadTimeout   = 15 * time.Second // client read
-	opWriteTimeout  = 15 * time.Second // client write
-	errReadTimeout  = errors.New("read timeout")
-	errWriteTimeout = errors.New("write timeout")
+	opReadTimeout  = 15 * time.Second // client read
+	opWriteTimeout = 15 * time.Second // client write
+	ErrRWTimeout   = errors.New("r/w timeout")
 )
 
 type Client struct {
@@ -79,14 +78,13 @@ func (c *Client) operation(op uint32, buf []byte, offset int64) (int, error) {
 	case <-timeout:
 		switch msg.Type {
 		case TypeRead:
-			c.SetError(errReadTimeout)
 			logrus.Errorln("Read timeout: seq=", msg.Seq, "size=", len(msg.Data)/1024, "(kB)")
+			c.SetError(ErrRWTimeout)
 
 		case TypeWrite:
-			c.SetError(errWriteTimeout)
 			logrus.Errorln("Write timeout: seq=", msg.Seq, "size=", len(msg.Data)/1024, "(kB)")
+			c.SetError(ErrRWTimeout)
 		}
-		// stats.Print()//flush automaticalyupon timeout
 	}
 
 	if msg.Type == TypeError {
