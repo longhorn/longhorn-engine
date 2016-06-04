@@ -10,12 +10,15 @@ import (
 )
 
 var (
-	opReadTimeout   = 15 * time.Second // client read
-	opWriteTimeout  = 15 * time.Second // client write
-	errReadTimeout  = errors.New("read timeout")
-	errWriteTimeout = errors.New("write timeout")
+	//ErrRWTimeout r/w operation timeout
+	ErrRWTimeout = errors.New("r/w timeout")
+
+	opRetries      = 4
+	opReadTimeout  = 15 * time.Second // client read
+	opWriteTimeout = 15 * time.Second // client write
 )
 
+//Client replica client
 type Client struct {
 	end       chan struct{}
 	requests  chan *Message
@@ -27,6 +30,7 @@ type Client struct {
 	err       error
 }
 
+//NewClient replica client
 func NewClient(conn net.Conn) *Client {
 	c := &Client{
 		wire:      NewWire(conn),
@@ -42,64 +46,73 @@ func NewClient(conn net.Conn) *Client {
 	return c
 }
 
+//WriteAt replica client
 func (c *Client) WriteAt(buf []byte, offset int64) (int, error) {
 	return c.operation(TypeWrite, buf, offset)
 }
 
+//SetError replica client transport error
 func (c *Client) SetError(err error) {
 	c.responses <- &Message{
 		transportErr: err,
 	}
 }
 
+//ReadAt replica client
 func (c *Client) ReadAt(buf []byte, offset int64) (int, error) {
 	return c.operation(TypeRead, buf, offset)
 }
 
 func (c *Client) operation(op uint32, buf []byte, offset int64) (int, error) {
-	msg := Message{
-		Complete: make(chan struct{}, 1),
-		Type:     op,
-		Offset:   offset,
-		Data:     buf,
-	}
-
-	timeout := func(op uint32) <-chan time.Time {
-		switch op {
-		case TypeRead:
-			return time.After(opReadTimeout)
+	retry := 0
+	for {
+		msg := Message{
+			Complete: make(chan struct{}, 1),
+			Type:     op,
+			Offset:   offset,
+			Data:     buf,
 		}
-		return time.After(opWriteTimeout)
-	}(msg.Type)
 
-	c.requests <- &msg
+		timeout := func(op uint32) <-chan time.Time {
+			switch op {
+			case TypeRead:
+				return time.After(opReadTimeout)
+			}
+			return time.After(opWriteTimeout)
+		}(msg.Type)
 
-	select {
-	case <-msg.Complete:
-	case <-timeout:
-		switch msg.Type {
-		case TypeRead:
-			c.SetError(errReadTimeout)
-			logrus.Errorln("Read timeout: seq=", msg.Seq, "size=", len(msg.Data)/1024, "(kB)")
+		c.requests <- &msg
 
-		case TypeWrite:
-			c.SetError(errWriteTimeout)
-			logrus.Errorln("Write timeout: seq=", msg.Seq, "size=", len(msg.Data)/1024, "(kB)")
+		select {
+		case <-msg.Complete:
+			if msg.Type == TypeError {
+				return 0, errors.New(string(msg.Data))
+			}
+			if msg.Type == TypeEOF {
+				return len(msg.Data), io.EOF
+			}
+			return len(msg.Data), nil
+		case <-timeout:
+			switch msg.Type {
+			case TypeRead:
+				logrus.Errorln("Read timeout: seq=", msg.Seq, "size=", len(msg.Data)/1024, "(kB)")
+				if retry < opRetries {
+					retry++
+					logrus.Errorln("Retry", retry, "seq=", msg.Seq, "size=", len(msg.Data)/1024, "(kB)")
+				} else {
+					c.SetError(ErrRWTimeout)
+					return 0, ErrRWTimeout
+				}
+			case TypeWrite:
+				logrus.Errorln("Write timeout: seq=", msg.Seq, "size=", len(msg.Data)/1024, "(kB)")
+				c.SetError(ErrRWTimeout)
+				return 0, ErrRWTimeout
+			}
 		}
-		// stats.Print()//flush automaticalyupon timeout
 	}
-
-	if msg.Type == TypeError {
-		return 0, errors.New(string(msg.Data))
-	}
-
-	if msg.Type == TypeEOF {
-		return len(msg.Data), io.EOF
-	}
-
-	return len(msg.Data), nil
 }
 
+//Close replica client
 func (c *Client) Close() {
 	c.wire.Close()
 	c.end <- struct{}{}
