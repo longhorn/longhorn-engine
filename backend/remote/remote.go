@@ -19,8 +19,10 @@ import (
 )
 
 var (
-	pingTimeout    = 3 * time.Second
-	pingInveral    = 2 * time.Second
+	pingRetries = 6
+	pingTimeout = 3 * time.Second
+	pingInveral = 2 * time.Second
+
 	timeout        = 30 * time.Second
 	requestBuffer  = 1024
 	ErrPingTimeout = errors.New("Ping timeout")
@@ -175,15 +177,23 @@ func (r *Remote) monitorPing(client *rpc.Client) error {
 	ticker := time.NewTicker(pingInveral)
 	defer ticker.Stop()
 
+	retry := 0
 	for {
 		select {
 		case <-r.closeChan:
 			return nil
 		case <-ticker.C:
-			if err := r.Ping(); err != nil {
-				logrus.Errorf("Failed to get ping response: %v", err)
-				client.SetError(err)
-				return err
+			if err := r.Ping(); err == nil {
+				retry = 0 // reset on success
+			} else {
+				if retry < pingRetries {
+					retry++
+					logrus.Errorf("Ping retry %v on error: %v", retry, err)
+				} else {
+					logrus.Errorf("Failed to get ping response: %v", err)
+					client.SetError(err)
+					return err
+				}
 			}
 		}
 	}

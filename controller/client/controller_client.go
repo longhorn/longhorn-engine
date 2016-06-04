@@ -63,6 +63,11 @@ func (c *ControllerClient) RevertSnapshot(snapshot string) error {
 	}, nil)
 }
 
+func (c *ControllerClient) ListStats(limit int) error {
+	err := c.post("/stats", &rest.StatsInput{Limit: limit}, nil)
+	return err
+}
+
 func (c *ControllerClient) ListReplicas() ([]rest.Replica, error) {
 	var resp rest.ReplicaCollection
 	err := c.get("/replicas", &resp)
