@@ -44,9 +44,9 @@ RUN curl -sL https://get.docker.com/builds/Linux/x86_64/docker-1.9.1 > /usr/bin/
 
 # Build TCMU
 RUN cd /usr/src && \
-    git clone https://github.com/yasker/tcmu-runner.git && \
+    git clone https://github.com/agrover/tcmu-runner.git && \
     cd tcmu-runner && \
-    git checkout 8a72eaefada2ad939eff5ac5628c8fdea8f69a19
+    git checkout 2c5b9bbf131c2c668ffb1cda712157d35c1865ba
 RUN cd /usr/src/tcmu-runner && \
     cmake . -Dwith-glfs=false && \
     make && \
