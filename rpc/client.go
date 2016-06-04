@@ -96,13 +96,15 @@ func (c *Client) operation(op uint32, buf []byte, offset int64) (int, error) {
 			switch msg.Type {
 			case TypeRead:
 				logrus.Errorln("Read timeout: seq=", msg.Seq, "size=", len(msg.Data)/1024, "(kB)")
+				if retry < opRetries {
+					retry++
+					logrus.Errorln("Retry", retry, "seq=", msg.Seq, "size=", len(msg.Data)/1024, "(kB)")
+				} else {
+					c.SetError(ErrRWTimeout)
+					return 0, ErrRWTimeout
+				}
 			case TypeWrite:
 				logrus.Errorln("Write timeout: seq=", msg.Seq, "size=", len(msg.Data)/1024, "(kB)")
-			}
-			if retry < opRetries {
-				retry++
-				logrus.Errorln("Retry", retry, "seq=", msg.Seq, "size=", len(msg.Data)/1024, "(kB)")
-			} else {
 				c.SetError(ErrRWTimeout)
 				return 0, ErrRWTimeout
 			}
