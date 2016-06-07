@@ -23,7 +23,8 @@ RUN apt-get update && \
         linux-libc-dev \
         pkg-config \
         psmisc \
-        python-tox
+        python-tox \
+        qemu-utils
 
 # Install Go 1.6
 RUN curl -o go.tar.gz https://storage.googleapis.com/golang/go1.6.2.linux-amd64.tar.gz

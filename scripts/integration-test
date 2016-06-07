@@ -5,7 +5,9 @@ killall longhorn ssync || true
 
 temp=$(mktemp -d)
 temp2=$(mktemp -d)
-trap "rm -rf $temp $temp2" EXIT
+temp3=$(mktemp -d)
+temp4=$(mktemp -d)
+trap "rm -rf $temp $temp2 $temp3 $temp4" EXIT
 
 cd $(dirname $0)/..
 
@@ -13,9 +15,23 @@ if [ ! -x ./bin/longhorn ]; then
     ./scripts/build
 fi
 
-./bin/longhorn controller --enable-backend file test-volume &
+./bin/longhorn controller --frontend rest --enable-backend file test-volume &
 ./bin/longhorn replica $temp &
 ./bin/longhorn replica --listen localhost:9505 $temp2 &
+
+# replica with 4MB backing file
+backing_file=backing_file.raw
+backing_qcow2=backing_file.qcow2
+cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w $((1024 * 4096)) | head -n 1 > $backing_file
+truncate -s 4M $backing_file
+
+qemu-img convert -f raw -O qcow2 $backing_file $backing_qcow2
+cp $backing_qcow2 $temp3
+cp $backing_qcow2 $temp4
+
+./bin/longhorn replica --listen localhost:9602 --backing-file $backing_qcow2 $temp3 &
+./bin/longhorn replica --listen localhost:9605 --backing-file $backing_qcow2 $temp4 &
+
 cd integration
 find -depth -name __pycache__ -o -name "*.pyc" -exec rm -rf {} \;
 if [ -z "$NO_TEST" ]; then
