@@ -5,6 +5,7 @@ setup(
     version='0.1',
     packages=[
       'core',
+      'data',
     ],
     license='ASL 2.0',
 )

@@ -13,7 +13,7 @@ if [ ! -x ./bin/longhorn ]; then
     ./scripts/build
 fi
 
-./bin/longhorn controller --enable-backend file test-volume &
+./bin/longhorn controller --frontend rest --enable-backend file test-volume &
 ./bin/longhorn replica $temp &
 ./bin/longhorn replica --listen localhost:9505 $temp2 &
 cd integration
