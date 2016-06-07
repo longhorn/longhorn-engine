@@ -2,11 +2,11 @@ import pytest
 
 import cmd
 import common
-from common import dev, backing_dev, read_dev, write_dev, \
-        read_from_backing_file
+from common import dev, backing_dev  # NOQA
+from common import read_dev, read_from_backing_file
 
 
-def test_snapshot_revert(dev):
+def test_snapshot_revert(dev):  # NOQA
     offset = 0
     length = 128
 
@@ -37,7 +37,7 @@ def test_snapshot_revert(dev):
 
 
 # TODO BUG: https://github.com/rancher/longhorn/issues/108
-@pytest.mark.xfail(strict=True)
+@pytest.mark.xfail(strict=True)  # NOQA
 def test_snapshot_rm(dev):
     offset = 0
     length = 128
@@ -69,8 +69,8 @@ def test_snapshot_rm(dev):
     assert readed == snap1_data
 
 
-def test_snapshot_revert_with_backing_file(backing_dev):
-    dev = backing_dev
+def test_snapshot_revert_with_backing_file(backing_dev):  # NOQA
+    dev = backing_dev  # NOQA
 
     offset = 0
     length = 256

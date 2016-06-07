@@ -1,8 +1,6 @@
 import subprocess
 from os import path
 
-import pytest
-
 
 def _file(f):
     return path.join(_base(), '../../{}'.format(f))

@@ -4,11 +4,11 @@ import pytest
 
 import cmd
 import common
-from common import dev, backing_dev, read_dev, write_dev, \
-        read_from_backing_file, BACKUP_DEST
+from common import dev, backing_dev  # NOQA
+from common import read_dev, read_from_backing_file, BACKUP_DEST
 
 
-def test_backup(dev):
+def test_backup(dev):  # NOQA
     offset = 0
     length = 128
 
@@ -30,7 +30,7 @@ def test_backup(dev):
 
     backup3 = cmd.backup_create(snap3, BACKUP_DEST)
 
-    res3 = cmd.backup_restore(backup3)
+    cmd.backup_restore(backup3)
     readed = read_dev(dev, offset, length)
     assert readed == snap3_data
 
@@ -38,7 +38,7 @@ def test_backup(dev):
     with pytest.raises(subprocess.CalledProcessError):
         cmd.backup_restore(backup3)
 
-    res1 = cmd.backup_restore(backup1)
+    cmd.backup_restore(backup1)
     readed = read_dev(dev, offset, length)
     assert readed == snap1_data
 
@@ -46,7 +46,7 @@ def test_backup(dev):
     with pytest.raises(subprocess.CalledProcessError):
         cmd.backup_restore(backup1)
 
-    res2 = cmd.backup_restore(backup2)
+    cmd.backup_restore(backup2)
     readed = read_dev(dev, offset, length)
     assert readed == snap2_data
 
@@ -55,8 +55,8 @@ def test_backup(dev):
         cmd.backup_restore(backup2)
 
 
-def test_backup_with_backing_file(backing_dev):
-    dev = backing_dev
+def test_backup_with_backing_file(backing_dev):  # NOQA
+    dev = backing_dev  # NOQA
 
     offset = 0
     length = 256
@@ -72,11 +72,10 @@ def test_backup_with_backing_file(backing_dev):
 
     test_backup(dev)
 
-    res0 = cmd.backup_restore(backup0)
+    cmd.backup_restore(backup0)
     after = read_dev(dev, offset, length)
     assert before == after
 
     cmd.backup_rm(backup0)
     with pytest.raises(subprocess.CalledProcessError):
         cmd.backup_restore(backup0)
-
