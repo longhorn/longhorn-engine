@@ -7,7 +7,7 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/rancher/sparse-tools/stats"
+	journal "github.com/rancher/sparse-tools/stats"
 )
 
 var (
@@ -28,6 +28,7 @@ type Client struct {
 	seq       uint32
 	messages  map[uint32]*Message
 	wire      *Wire
+	peerAddr  string
 	err       error
 }
 
@@ -35,6 +36,7 @@ type Client struct {
 func NewClient(conn net.Conn) *Client {
 	c := &Client{
 		wire:      NewWire(conn),
+		peerAddr:  conn.RemoteAddr().String(),
 		end:       make(chan struct{}, 1024),
 		requests:  make(chan *Message, 1024),
 		send:      make(chan *Message, 1024),
@@ -45,6 +47,11 @@ func NewClient(conn net.Conn) *Client {
 	go c.write()
 	go c.read()
 	return c
+}
+
+//TargetID operation target ID
+func (c *Client) TargetID() string {
+	return c.peerAddr
 }
 
 //WriteAt replica client
@@ -96,16 +103,16 @@ func (c *Client) operation(op uint32, buf []byte, offset int64) (int, error) {
 		case <-timeout:
 			switch msg.Type {
 			case TypeRead:
-				logrus.Errorln("Read timeout on replcia", c.wire.conn.RemoteAddr().String(), "seq=", msg.Seq, "size=", len(msg.Data)/1024, "(kB)")
+				logrus.Errorln("Read timeout on replcia", c.TargetID(), "seq=", msg.Seq, "size=", len(msg.Data)/1024, "(kB)")
 			case TypeWrite:
-				logrus.Errorln("Write timeout on replica", c.wire.conn.RemoteAddr().String(), "seq=", msg.Seq, "size=", len(msg.Data)/1024, "(kB)")
+				logrus.Errorln("Write timeout on replica", c.TargetID(), "seq=", msg.Seq, "size=", len(msg.Data)/1024, "(kB)")
 			}
 			if retry < opRetries {
 				retry++
-				logrus.Errorln("Retry ", retry, "on replica", c.wire.conn.RemoteAddr().String(), "seq=", msg.Seq, "size=", len(msg.Data)/1024, "(kB)")
+				logrus.Errorln("Retry ", retry, "on replica", c.TargetID(), "seq=", msg.Seq, "size=", len(msg.Data)/1024, "(kB)")
 			} else {
 				c.SetError(ErrRWTimeout)
-				stats.PrintLimited(1000) //flush automatically upon timeout
+				journal.PrintLimited(1000) //flush automatically upon timeout
 				return 0, ErrRWTimeout
 			}
 		}
@@ -139,7 +146,7 @@ func (c *Client) nextSeq() uint32 {
 }
 
 func (c *Client) replyError(req *Message) {
-	stats.RemovePendingOp(req.ID, false)
+	journal.RemovePendingOp(req.ID, false)
 	delete(c.messages, req.Seq)
 	req.Type = TypeError
 	req.Data = []byte(c.err.Error())
@@ -149,9 +156,9 @@ func (c *Client) replyError(req *Message) {
 func (c *Client) handleRequest(req *Message) {
 	switch req.Type {
 	case TypeRead:
-		req.ID = stats.InsertPendingOp(time.Now(), c.wire.conn.RemoteAddr().String(), stats.OpRead, len(req.Data))
+		req.ID = journal.InsertPendingOp(time.Now(), c.TargetID(), journal.OpRead, len(req.Data))
 	case TypeWrite:
-		req.ID = stats.InsertPendingOp(time.Now(), c.wire.conn.RemoteAddr().String(), stats.OpWrite, len(req.Data))
+		req.ID = journal.InsertPendingOp(time.Now(), c.TargetID(), journal.OpWrite, len(req.Data))
 	}
 	if c.err != nil {
 		c.replyError(req)
@@ -179,7 +186,7 @@ func (c *Client) handleResponse(resp *Message) {
 			return
 		}
 
-		stats.RemovePendingOp(req.ID, true)
+		journal.RemovePendingOp(req.ID, true)
 		delete(c.messages, resp.Seq)
 		// can probably optimize away this copy
 		if len(resp.Data) > 0 {

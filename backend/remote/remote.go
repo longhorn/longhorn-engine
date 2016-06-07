@@ -16,6 +16,7 @@ import (
 	"github.com/rancher/longhorn/rpc"
 	"github.com/rancher/longhorn/types"
 	"github.com/rancher/longhorn/util"
+	journal "github.com/rancher/sparse-tools/stats"
 )
 
 var (
@@ -183,14 +184,16 @@ func (r *Remote) monitorPing(client *rpc.Client) error {
 		case <-r.closeChan:
 			return nil
 		case <-ticker.C:
-			if err := r.Ping(); err == nil {
+			if err := r.Ping(client); err == nil {
 				retry = 0 // reset on success
 			} else {
 				if retry < pingRetries {
 					retry++
-					logrus.Errorf("Ping retry %v on error: %v", retry, err)
+					logrus.Errorf("Ping retry %v on replica %v; error: %v", retry, r.replicaURL, err)
+					journal.PrintLimited(1000) //flush automatically upon retry
 				} else {
-					logrus.Errorf("Failed to get ping response: %v", err)
+					logrus.Errorf("Failed to get ping response from replica %v; error: %v", r.replicaURL, err)
+					journal.PrintLimited(1000) //flush automatically upon error
 					client.SetError(err)
 					return err
 				}
@@ -199,8 +202,11 @@ func (r *Remote) monitorPing(client *rpc.Client) error {
 	}
 }
 
-func (r *Remote) Ping() error {
+func (r *Remote) Ping(client *rpc.Client) error {
 	ret := make(chan error, 1)
+	// use replica data addr for ping target tracking
+	opID := journal.InsertPendingOp(time.Now(), client.TargetID(), journal.OpPing, 0)
+
 	go func() {
 		resp, err := r.httpClient.Get(r.pingURL)
 		if err != nil {
@@ -217,8 +223,10 @@ func (r *Remote) Ping() error {
 
 	select {
 	case err := <-ret:
+		journal.RemovePendingOp(opID, err == nil)
 		return err
 	case <-time.After(pingTimeout):
+		journal.RemovePendingOp(opID, false)
 		return ErrPingTimeout
 	}
 }
