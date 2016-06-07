@@ -9,19 +9,37 @@ from os import path
 import pytest
 import cattle
 
-REPLICA = 'tcp://localhost:9502'
+REPLICA1 = 'tcp://localhost:9502'
+REPLICA1_SCHEMA = 'http://localhost:9502/v1/schemas'
 REPLICA2 = 'tcp://localhost:9505'
+REPLICA2_SCHEMA = 'http://localhost:9505/v1/schemas'
+
+BACKED_REPLICA1 = 'tcp://localhost:9602'
+BACKED_REPLICA1_SCHEMA = 'http://localhost:9602/v1/schemas'
+BACKED_REPLICA2 = 'tcp://localhost:9605'
+BACKED_REPLICA2_SCHEMA = 'http://localhost:9605/v1/schemas'
 
 SIZE = 1024 * 4096
 
-BACKUP_DEST = '/tmp/longhorn-backup'
+BACKUP_DIR = '/tmp/longhorn-backup'
+BACKUP_DEST = 'vfs://' + BACKUP_DIR
+
+BACKING_FILE = 'backing_file.raw'
+
+
+def _file(f):
+    return path.join(_base(), '../../{}'.format(f))
+
+
+def _base():
+    return path.dirname(__file__)
 
 
 @pytest.fixture()
 def dev(request):
     controller = controller_client(request)
-    replica = replica_client(request)
-    replica2 = replica2_client(request)
+    replica = replica_client(request, REPLICA1_SCHEMA)
+    replica2 = replica_client(request, REPLICA2_SCHEMA)
 
     open_replica(replica)
     open_replica(replica2)
@@ -31,8 +49,32 @@ def dev(request):
 
     v = controller.list_volume()[0]
     v = v.start(replicas=[
-        REPLICA,
+        REPLICA1,
         REPLICA2
+    ])
+    assert v.replicaCount == 2
+    d = get_restdev()
+
+    return d
+
+
+@pytest.fixture()
+def backing_dev(request):
+    prepare_backup_dir(BACKUP_DIR)
+    controller = controller_client(request)
+    replica = replica_client(request, BACKED_REPLICA1_SCHEMA)
+    replica2 = replica_client(request, BACKED_REPLICA2_SCHEMA)
+
+    open_replica(replica)
+    open_replica(replica2)
+
+    replicas = controller.list_replica()
+    assert len(replicas) == 0
+
+    v = controller.list_volume()[0]
+    v = v.start(replicas=[
+        BACKED_REPLICA1,
+        BACKED_REPLICA2
     ])
     assert v.replicaCount == 2
     d = get_restdev()
@@ -55,15 +97,7 @@ def cleanup_controller(client):
     return client
 
 
-def replica_client(request):
-    url = 'http://localhost:9502/v1/schemas'
-    c = cattle.from_env(url=url)
-    request.addfinalizer(lambda: cleanup_replica(c))
-    return cleanup_replica(c)
-
-
-def replica2_client(request):
-    url = 'http://localhost:9505/v1/schemas'
+def replica_client(request, url):
     c = cattle.from_env(url=url)
     request.addfinalizer(lambda: cleanup_replica(c))
     return cleanup_replica(c)
@@ -81,7 +115,7 @@ def cleanup_replica(client):
     return client
 
 
-def open_replica(client, backing_file = None):
+def open_replica(client, backing_file=None):
     replicas = client.list_replica()
     assert len(replicas) == 1
 
@@ -138,3 +172,13 @@ def prepare_backup_dir(backup_dir):
 
     os.makedirs(backup_dir)
     assert os.path.exists(backup_dir)
+
+
+def read_from_backing_file(offset, length):
+    p = _file(BACKING_FILE)
+    assert path.exists(p)
+    f = open(p, 'r')
+    f.seek(offset)
+    data = f.read(length)
+    f.close()
+    return data

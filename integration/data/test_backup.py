@@ -4,18 +4,11 @@ import pytest
 
 import cmd
 import common
-from common import dev, SIZE, read_dev, write_dev
+from common import dev, backing_dev, read_dev, write_dev, \
+        read_from_backing_file, BACKUP_DEST
 
 
-BACKUP_DIR = '/tmp/longhorn-backup'
-BACKUP_DEST = 'vfs://' + BACKUP_DIR
-
-
-def setup_module():
-    common.prepare_backup_dir(BACKUP_DIR)
-
-
-def test_backup_create_rm_restore(dev):
+def test_backup(dev):
     offset = 0
     length = 128
 
@@ -60,3 +53,30 @@ def test_backup_create_rm_restore(dev):
     cmd.backup_rm(backup2)
     with pytest.raises(subprocess.CalledProcessError):
         cmd.backup_restore(backup2)
+
+
+def test_backup_with_backing_file(backing_dev):
+    dev = backing_dev
+
+    offset = 0
+    length = 256
+
+    snap0 = cmd.snapshot_create()
+    before = read_dev(dev, offset, length)
+    assert before != ""
+
+    exists = read_from_backing_file(offset, length)
+    assert before == exists
+
+    backup0 = cmd.backup_create(snap0, BACKUP_DEST)
+
+    test_backup(dev)
+
+    res0 = cmd.backup_restore(backup0)
+    after = read_dev(dev, offset, length)
+    assert before == after
+
+    cmd.backup_rm(backup0)
+    with pytest.raises(subprocess.CalledProcessError):
+        cmd.backup_restore(backup0)
+

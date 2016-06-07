@@ -2,7 +2,8 @@ import pytest
 
 import cmd
 import common
-from common import dev, SIZE, read_dev, write_dev
+from common import dev, backing_dev, read_dev, write_dev, \
+        read_from_backing_file
 
 
 def test_snapshot_revert(dev):
@@ -66,3 +67,23 @@ def test_snapshot_rm(dev):
     cmd.snapshot_revert(snap1)
     readed = read_dev(dev, offset, length)
     assert readed == snap1_data
+
+
+def test_snapshot_revert_with_backing_file(backing_dev):
+    dev = backing_dev
+
+    offset = 0
+    length = 256
+
+    snap0 = cmd.snapshot_create()
+    before = read_dev(dev, offset, length)
+    assert before != ""
+
+    exists = read_from_backing_file(offset, length)
+    assert before == exists
+
+    test_snapshot_revert(dev)
+
+    cmd.snapshot_revert(snap0)
+    after = read_dev(dev, offset, length)
+    assert before == after
