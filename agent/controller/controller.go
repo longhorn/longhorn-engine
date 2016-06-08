@@ -11,7 +11,6 @@ import (
 	"github.com/Sirupsen/logrus"
 
 	"github.com/rancher/go-rancher-metadata/metadata"
-
 	lclient "github.com/rancher/longhorn/controller/client"
 	"github.com/rancher/longhorn/controller/rest"
 	replicaClient "github.com/rancher/longhorn/replica/client"

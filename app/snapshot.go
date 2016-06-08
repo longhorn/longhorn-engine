@@ -77,7 +77,11 @@ func SnapshotLsCmd() cli.Command {
 func createSnapshot(c *cli.Context) error {
 	cli := getCli(c)
 
-	id, err := cli.Snapshot()
+	var name string
+	if len(c.Args()) > 0 {
+		name = c.Args()[0]
+	}
+	id, err := cli.Snapshot(name)
 	if err != nil {
 		return err
 	}
