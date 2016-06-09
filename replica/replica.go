@@ -539,7 +539,9 @@ func (r *Replica) Delete() error {
 	defer r.Unlock()
 
 	for name := range r.diskData {
-		r.rmDisk(name)
+		if name != r.info.BackingFileName {
+			r.rmDisk(name)
+		}
 	}
 
 	os.Remove(path.Join(r.dir, volumeMetaData))
