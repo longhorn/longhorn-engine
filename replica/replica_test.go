@@ -1,6 +1,7 @@
 package replica
 
 import (
+	"crypto/md5"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -204,6 +205,18 @@ func byteEquals(c *C, expected, obtained []byte) {
 	for i := range expected {
 		l := fmt.Sprintf("%d=%x", i, expected[i])
 		r := fmt.Sprintf("%d=%x", i, obtained[i])
+		c.Assert(r, Equals, l)
+	}
+}
+
+func md5Equals(c *C, expected, obtained []byte) {
+	c.Assert(len(expected), Equals, len(obtained))
+
+	expectedMd5 := md5.Sum(expected)
+	obtainedMd5 := md5.Sum(obtained)
+	for i := range expectedMd5 {
+		l := fmt.Sprintf("%d=%x", i, expectedMd5[i])
+		r := fmt.Sprintf("%d=%x", i, obtainedMd5[i])
 		c.Assert(r, Equals, l)
 	}
 }
