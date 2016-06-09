@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/rancher/sparse-tools/stats"
 )
 
 var (
@@ -104,6 +105,7 @@ func (c *Client) operation(op uint32, buf []byte, offset int64) (int, error) {
 				logrus.Errorln("Retry ", retry, "on replica", c.wire.conn.RemoteAddr().String(), "seq=", msg.Seq, "size=", len(msg.Data)/1024, "(kB)")
 			} else {
 				c.SetError(ErrRWTimeout)
+				stats.PrintLimited(1000) //flush automatically upon timeout
 				return 0, ErrRWTimeout
 			}
 		}
@@ -137,6 +139,7 @@ func (c *Client) nextSeq() uint32 {
 }
 
 func (c *Client) replyError(req *Message) {
+	stats.RemovePendingOp(req.ID, false)
 	delete(c.messages, req.Seq)
 	req.Type = TypeError
 	req.Data = []byte(c.err.Error())
@@ -144,6 +147,12 @@ func (c *Client) replyError(req *Message) {
 }
 
 func (c *Client) handleRequest(req *Message) {
+	switch req.Type {
+	case TypeRead:
+		req.ID = stats.InsertPendingOp(time.Now(), c.wire.conn.RemoteAddr().String(), stats.OpRead, len(req.Data))
+	case TypeWrite:
+		req.ID = stats.InsertPendingOp(time.Now(), c.wire.conn.RemoteAddr().String(), stats.OpWrite, len(req.Data))
+	}
 	if c.err != nil {
 		c.replyError(req)
 		return
@@ -170,6 +179,7 @@ func (c *Client) handleResponse(resp *Message) {
 			return
 		}
 
+		stats.RemovePendingOp(req.ID, true)
 		delete(c.messages, resp.Seq)
 		// can probably optimize away this copy
 		if len(resp.Data) > 0 {

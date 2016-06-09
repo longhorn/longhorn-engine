@@ -92,6 +92,7 @@ func (r *replicator) ReadAt(buf []byte, off int64) (int, error) {
 	}
 	n, err := r.readers[index].ReadAt(buf, off)
 	if err != nil {
+		logrus.Error("Replicator.ReadAt:", index, err)
 		return n, &BackendError{
 			Errors: map[string]error{
 				r.readerIndex[index]: err,

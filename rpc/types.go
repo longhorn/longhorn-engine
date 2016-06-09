@@ -1,5 +1,7 @@
 package rpc
 
+import "github.com/rancher/sparse-tools/stats"
+
 const (
 	TypeRead = iota
 	TypeWrite
@@ -20,4 +22,6 @@ type Message struct {
 	Offset       int64
 	Data         []byte
 	transportErr error
+
+	ID stats.OpID //Seq and ID can apparently be collapsed into one (ID)
 }
