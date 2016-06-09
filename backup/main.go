@@ -115,6 +115,8 @@ func cleanup() {
 func Main() {
 	defer cleanup()
 
+	logrus.SetLevel(logrus.DebugLevel)
+	logrus.SetOutput(os.Stderr)
 	dir, err := os.Getwd()
 	if err != nil {
 		log.Fatalf("Cannot get running directory: %s", err)
@@ -169,7 +171,10 @@ func cmdBackupCreate(c *cli.Context) {
 }
 
 func doBackupCreate(c *cli.Context) error {
-	var err error
+	var (
+		err         error
+		backingFile *replica.BackingFile
+	)
 
 	destURL, err := util.GetFlag(c, "dest", true, err)
 	if err != nil {
@@ -195,7 +200,18 @@ func doBackupCreate(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	replicaBackup := replica.NewBackup(volumeInfo.BackingFile)
+	if volumeInfo.BackingFileName != "" {
+		backingFileName := volumeInfo.BackingFileName
+		if _, err := os.Stat(backingFileName); err != nil {
+			return err
+		}
+
+		backingFile, err = openBackingFile(backingFileName)
+		if err != nil {
+			return err
+		}
+	}
+	replicaBackup := replica.NewBackup(backingFile)
 
 	volume := &objectstore.Volume{
 		Name:        volumeName,

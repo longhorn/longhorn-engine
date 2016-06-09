@@ -40,13 +40,14 @@ type Replica struct {
 }
 
 type Info struct {
-	Size        int64
-	Head        string
-	Dirty       bool
-	Rebuilding  bool
-	Parent      string
-	SectorSize  int64
-	BackingFile *BackingFile `json:"-"`
+	Size            int64
+	Head            string
+	Dirty           bool
+	Rebuilding      bool
+	Parent          string
+	SectorSize      int64
+	BackingFileName string
+	BackingFile     *BackingFile `json:"-"`
 }
 
 type disk struct {
@@ -93,6 +94,9 @@ func construct(readonly bool, size, sectorSize int64, dir, head string, backingF
 	r.info.Size = size
 	r.info.SectorSize = sectorSize
 	r.info.BackingFile = backingFile
+	if backingFile != nil {
+		r.info.BackingFileName = backingFile.Name
+	}
 	r.volume.sectorSize = defaultSectorSize
 
 	exists, err := r.readMetadata()
@@ -539,7 +543,9 @@ func (r *Replica) Delete() error {
 	defer r.Unlock()
 
 	for name := range r.diskData {
-		r.rmDisk(name)
+		if name != r.info.BackingFileName {
+			r.rmDisk(name)
+		}
 	}
 
 	os.Remove(path.Join(r.dir, volumeMetaData))

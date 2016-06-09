@@ -79,3 +79,47 @@ def test_backup_with_backing_file(backing_dev):  # NOQA
     cmd.backup_rm(backup0)
     with pytest.raises(subprocess.CalledProcessError):
         cmd.backup_restore(backup0)
+
+
+def test_backup_hole_with_backing_file(backing_dev):  # NOQA
+    dev = backing_dev  # NOQA
+
+    offset1 = 512
+    length1 = 256
+
+    offset2 = 640
+    length2 = 256
+
+    boundary_offset = 0
+    boundary_length = 4100  # just pass 4096 into next 4k
+
+    hole_offset = 2 * 1024 * 1024
+    hole_length = 1024
+
+    snap1_data = common.random_string(length1)
+    common.verify_data(dev, offset1, snap1_data)
+    snap1 = cmd.snapshot_create()
+
+    boundary_data_backup1 = read_dev(dev, boundary_offset, boundary_length)
+    hole_data_backup1 = read_dev(dev, hole_offset, hole_length)
+    backup1 = cmd.backup_create(snap1, BACKUP_DEST)
+
+    snap2_data = common.random_string(length2)
+    common.verify_data(dev, offset2, snap2_data)
+    snap2 = cmd.snapshot_create()
+
+    boundary_data_backup2 = read_dev(dev, boundary_offset, boundary_length)
+    hole_data_backup2 = read_dev(dev, hole_offset, hole_length)
+    backup2 = cmd.backup_create(snap2, BACKUP_DEST)
+
+    cmd.backup_restore(backup1)
+    readed = read_dev(dev, boundary_offset, boundary_length)
+    assert readed == boundary_data_backup1
+    readed = read_dev(dev, hole_offset, hole_length)
+    assert readed == hole_data_backup1
+
+    cmd.backup_restore(backup2)
+    readed = read_dev(dev, boundary_offset, boundary_length)
+    assert readed == boundary_data_backup2
+    readed = read_dev(dev, hole_offset, hole_length)
+    assert readed == hole_data_backup2
