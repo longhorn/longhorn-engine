@@ -60,7 +60,7 @@ func longhornCli() {
 		app.RmReplicaCmd(),
 		app.SnapshotCmd(),
 		app.BackupCmd(),
-		app.LsStats(),
+		app.Journal(),
 	}
 
 	if err := a.Run(os.Args); err != nil {

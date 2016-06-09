@@ -86,8 +86,8 @@ func (c *ControllerClient) RevertSnapshot(snapshot string) error {
 	}, nil)
 }
 
-func (c *ControllerClient) ListStats(limit int) error {
-	err := c.post("/stats", &rest.StatsInput{Limit: limit}, nil)
+func (c *ControllerClient) ListJournal(limit int) error {
+	err := c.post("/journal", &rest.JournalInput{Limit: limit}, nil)
 	return err
 }
 

@@ -5,10 +5,10 @@ import (
 	"github.com/codegangsta/cli"
 )
 
-func LsStats() cli.Command {
+// Journal flush operations since last flush
+func Journal() cli.Command {
 	return cli.Command{
-		Name:      "ls-stats",
-		ShortName: "stats",
+		Name: "journal",
 		Flags: []cli.Flag{
 			cli.IntFlag{
 				Name:  "limit",
@@ -17,9 +17,9 @@ func LsStats() cli.Command {
 		},
 		Action: func(c *cli.Context) {
 			controllerClient := getCli(c)
-			err := controllerClient.ListStats(c.Int("limit"))
+			err := controllerClient.ListJournal(c.Int("limit"))
 			if err != nil {
-				logrus.Fatalln("Error running stats command:", err)
+				logrus.Fatalln("Error running journal command:", err)
 			}
 		},
 	}
