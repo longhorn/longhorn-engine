@@ -158,7 +158,10 @@ func (rb *Backup) CompareSnapshot(id, compareID, volumeID string) (*metadata.Map
 
 func (rb *Backup) findIndex(id string) int {
 	if id == "" {
-		return 0
+		if rb.backingFile == nil {
+			return 0
+		}
+		return 1
 	}
 
 	for i, disk := range rb.replica.activeDiskData {

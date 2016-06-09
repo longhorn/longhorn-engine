@@ -124,7 +124,7 @@ func (s *TestSuite) testBackupWithBackups(c *C, backingFile *BackingFile) {
 
 	chain, err := r.Chain()
 
-	rb := NewBackup(nil)
+	rb := NewBackup(backingFile)
 
 	// Test 003 -> ""
 	err = rb.OpenSnapshot(chain[1], volume)
@@ -137,6 +137,10 @@ func (s *TestSuite) testBackupWithBackups(c *C, backingFile *BackingFile) {
 	fill(expected[2*mb:3*mb], 1)
 	fill(expected[4*mb:6*mb], 3)
 	fill(expected[8*mb:10*mb], 3)
+	if backingFile != nil {
+		fill(expected[3*mb:4*mb], 9)
+		fill(expected[6*mb:8*mb], 9)
+	}
 	err = rb.ReadSnapshot(chain[1], volume, 0, readBuf)
 	c.Assert(err, IsNil)
 	md5Equals(c, readBuf, expected)
@@ -179,6 +183,10 @@ func (s *TestSuite) testBackupWithBackups(c *C, backingFile *BackingFile) {
 	fill(expected[:2*mb], 2)
 	fill(expected[2*mb:3*mb], 1)
 	fill(expected[4*mb:6*mb], 2)
+	if backingFile != nil {
+		fill(expected[3*mb:4*mb], 9)
+		fill(expected[6*mb:10*mb], 9)
+	}
 	err = rb.ReadSnapshot(chain[2], volume, 0, readBuf)
 	c.Assert(err, IsNil)
 	md5Equals(c, readBuf, expected)
@@ -218,6 +226,10 @@ func (s *TestSuite) testBackupWithBackups(c *C, backingFile *BackingFile) {
 	expected = make([]byte, 10*mb)
 	readBuf = make([]byte, 10*mb)
 	fill(expected[mb:3*mb], 1)
+	if backingFile != nil {
+		fill(expected[:mb], 9)
+		fill(expected[3*mb:10*mb], 9)
+	}
 	err = rb.ReadSnapshot(chain[3], volume, 0, readBuf)
 	c.Assert(err, IsNil)
 	md5Equals(c, readBuf, expected)
