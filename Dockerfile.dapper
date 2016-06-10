@@ -61,7 +61,7 @@ RUN GOPATH=/tmp/docker-longhorn-driver && \
     cd $GOPATH/src/github.com/rancher && \
     git clone https://github.com/rancher/docker-longhorn-driver.git && \
     cd docker-longhorn-driver && \
-    git checkout cce4790c6391002b948e8cf500460b8efacefdfc && \
+    git checkout 26608ec42be1801a6c7febfcb5ef19fff4c98284 && \
     go build -o /usr/local/bin/docker-longhorn-driver
 
 # Install libqcow
