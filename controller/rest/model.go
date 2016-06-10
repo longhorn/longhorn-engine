@@ -50,7 +50,7 @@ type RevertInput struct {
 	Name string `json:"name"`
 }
 
-type StatsInput struct {
+type JournalInput struct {
 	client.Resource
 	Limit int `json:"limit"`
 }
@@ -109,7 +109,7 @@ func NewSchema() *client.Schemas {
 	schemas.AddType("snapshotOutput", SnapshotOutput{})
 	schemas.AddType("snapshotInput", SnapshotInput{})
 	schemas.AddType("revertInput", RevertInput{})
-	schemas.AddType("statsInput", StatsInput{})
+	schemas.AddType("journalInput", JournalInput{})
 
 	replica := schemas.AddType("replica", Replica{})
 	replica.CollectionMethods = []string{"GET", "POST"}

@@ -1,6 +1,6 @@
 package rpc
 
-import "github.com/rancher/sparse-tools/stats"
+import journal "github.com/rancher/sparse-tools/stats"
 
 const (
 	TypeRead = iota
@@ -23,5 +23,5 @@ type Message struct {
 	Data         []byte
 	transportErr error
 
-	ID stats.OpID //Seq and ID can apparently be collapsed into one (ID)
+	ID journal.OpID //Seq and ID can apparently be collapsed into one (ID)
 }

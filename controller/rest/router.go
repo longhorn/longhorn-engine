@@ -32,8 +32,8 @@ func NewRouter(s *Server) *mux.Router {
 	router.Methods("DELETE").Path("/v1/replicas/{id}").Handler(f(schemas, s.DeleteReplica))
 	router.Methods("PUT").Path("/v1/replicas/{id}").Handler(f(schemas, s.UpdateReplica))
 
-	// Stats
-	router.Methods("POST").Path("/v1/stats").Handler(f(schemas, s.ListStats))
+	// Journal
+	router.Methods("POST").Path("/v1/journal").Handler(f(schemas, s.ListJournal))
 
 	return router
 }
