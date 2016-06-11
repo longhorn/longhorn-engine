@@ -42,7 +42,8 @@ type SnapshotInput struct {
 
 type RemoveDiskInput struct {
 	client.Resource
-	Name string `json:"name"`
+	Name     string `json:"name"`
+	MarkOnly bool   `json:"markonly"`
 }
 
 type PrepareRemoveDiskInput struct {

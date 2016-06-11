@@ -179,12 +179,12 @@ func (s *TestSuite) TestRemoveLeafNode(c *C) {
 	c.Assert(r.diskChildMap["volume-snap-001.img"].Cardinality(), Equals, 1)
 	c.Assert(r.diskChildMap["volume-snap-002.img"], IsNil)
 
-	err = r.RemoveDiffDisk("volume-snap-002.img")
+	err = r.RemoveDiffDisk("volume-snap-002.img", false)
 	c.Assert(err, IsNil)
 
 	c.Assert(r.diskChildMap["volume-snap-001.img"], IsNil)
 
-	err = r.RemoveDiffDisk("volume-snap-001.img")
+	err = r.RemoveDiffDisk("volume-snap-001.img", false)
 	c.Assert(err, IsNil)
 
 	c.Assert(r.diskChildMap["volume-snap-000.img"], Not(IsNil))
@@ -294,7 +294,7 @@ func (s *TestSuite) TestRemoveFirst(c *C) {
 	c.Assert(r.activeDiskData[1].name, Equals, "volume-snap-000.img")
 	c.Assert(r.activeDiskData[1].Parent, Equals, "")
 
-	err = r.RemoveDiffDisk("volume-head-002.img")
+	err = r.RemoveDiffDisk("volume-head-002.img", false)
 	c.Assert(err, Not(IsNil))
 }
 

@@ -44,7 +44,7 @@ func (t *Task) DeleteSnapshot(snapshot string) error {
 	*/
 
 	for _, replica := range replicas {
-		if err := t.rmDisk(&replica, snapshot); err != nil {
+		if err := t.rmDisk(&replica, snapshot, false); err != nil {
 			return err
 		}
 	}
@@ -52,7 +52,7 @@ func (t *Task) DeleteSnapshot(snapshot string) error {
 	return nil
 }
 
-func (t *Task) rmDisk(replicaInController *rest.Replica, snapshot string) error {
+func (t *Task) rmDisk(replicaInController *rest.Replica, snapshot string, markOnly bool) error {
 	repClient, err := replicaClient.NewReplicaClient(replicaInController.Address)
 	if err != nil {
 		return err
@@ -66,7 +66,7 @@ func (t *Task) rmDisk(replicaInController *rest.Replica, snapshot string) error 
 	//TODO coalescing and backup need to check the location of snapshot,
 	//so needs index. should be replaced later.
 	disk, _ := getNameAndIndex(replica.Chain, snapshot)
-	return repClient.RemoveDisk(disk)
+	return repClient.RemoveDisk(disk, false)
 }
 
 func getNameAndIndex(chain []string, snapshot string) (string, int) {

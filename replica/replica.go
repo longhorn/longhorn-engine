@@ -214,12 +214,20 @@ func (r *Replica) relinkChild(index int) error {
 	return r.encodeToFile(*childData, childData.name+metadataSuffix)
 }
 
-func (r *Replica) RemoveDiffDisk(name string) error {
+func (r *Replica) RemoveDiffDisk(name string, markOnly bool) error {
 	r.Lock()
 	defer r.Unlock()
 
 	if name == r.info.Head {
 		return fmt.Errorf("Can not delete the active differencing disk")
+	}
+
+	if markOnly {
+		if err := r.markDiskAsRemoved(name); err != nil {
+			// ignore error deleting files
+			logrus.Errorf("Failed to delete %s: %v", name, err)
+		}
+		return nil
 	}
 
 	// If snapshot has no child, then we can safely delete it
@@ -264,7 +272,6 @@ func (r *Replica) RemoveDiffDisk(name string) error {
 		// ignore error deleting files
 		logrus.Errorf("Failed to delete %s: %v", name, err)
 	}
-
 	return nil
 }
 
