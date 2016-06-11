@@ -222,7 +222,9 @@ def test_reload(client):
     r = replicas[0]
     r = r.create(size=str(1024*4096))
     r = r.open()
+    assert r.chain == ['volume-head-000.img']
     r = r.snapshot(name='000')
+    assert r.chain == ['volume-head-001.img', 'volume-snap-000.img']
     r = r.snapshot(name='001')
     assert r.chain == ['volume-head-002.img', 'volume-snap-001.img',
                        'volume-snap-000.img']

@@ -34,7 +34,7 @@ def test_snapshot_revert(dev):  # NOQA
     assert readed == snap1_data
 
 
-# TODO BUG: https://github.com/rancher/longhorn/issues/108
+# BUG: https://github.com/rancher/longhorn/issues/108
 def test_snapshot_rm(dev):  # NOQA
     offset = 0
     length = 128
