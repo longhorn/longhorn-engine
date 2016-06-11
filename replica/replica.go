@@ -13,6 +13,7 @@ import (
 	"syscall"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/deckarep/golang-set"
 	"github.com/rancher/longhorn/types"
 )
 
@@ -35,6 +36,7 @@ type Replica struct {
 	dir            string
 	info           Info
 	diskData       map[string]disk
+	diskChildMap   map[string]mapset.Set
 	activeDiskData []disk
 	readOnly       bool
 }
@@ -91,6 +93,7 @@ func construct(readonly bool, size, sectorSize int64, dir, head string, backingF
 		dir:            dir,
 		activeDiskData: make([]disk, 1),
 		diskData:       map[string]disk{},
+		diskChildMap:   map[string]mapset.Set{},
 	}
 	r.info.Size = size
 	r.info.SectorSize = sectorSize
@@ -437,12 +440,13 @@ func (r *Replica) revertDisk(parent string) (*Replica, error) {
 		return nil, err
 	}
 
+	// Need to execute before r.Reload() to update r.diskChildMap
+	r.rmDisk(oldHead)
+
 	rNew, err := r.Reload()
 	if err != nil {
 		return nil, err
 	}
-
-	r.rmDisk(oldHead)
 	return rNew, nil
 }
 
@@ -489,7 +493,10 @@ func (r *Replica) createDisk(name string) error {
 	done = true
 	r.diskData[newHeadDisk.name] = newHeadDisk
 	if newHeadDisk.Parent != "" {
+		r.addChildDisk(newHeadDisk.Parent, newHeadDisk.name)
+
 		r.diskData[newHeadDisk.Parent] = r.diskData[oldHead]
+		r.updateChildDisk(oldHead, newHeadDisk.Parent)
 		r.activeDiskData[len(r.activeDiskData)-1].name = newHeadDisk.Parent
 	}
 	delete(r.diskData, oldHead)
@@ -501,7 +508,40 @@ func (r *Replica) createDisk(name string) error {
 	return nil
 }
 
+func (r *Replica) addChildDisk(parent, child string) {
+	children, exists := r.diskChildMap[parent]
+	if !exists {
+		children = mapset.NewSet()
+	}
+	children.Add(child)
+	r.diskChildMap[parent] = children
+}
+
+func (r *Replica) rmChildDisk(parent, child string) {
+	children, exists := r.diskChildMap[parent]
+	if !exists {
+		return
+	}
+	if !children.Contains(child) {
+		return
+	}
+	children.Remove(child)
+	if children.Cardinality() == 0 {
+		delete(r.diskChildMap, parent)
+		return
+	}
+	r.diskChildMap[parent] = children
+}
+
+func (r *Replica) updateChildDisk(oldName, newName string) {
+	parent := r.diskData[oldName].Parent
+	r.rmChildDisk(parent, oldName)
+	r.addChildDisk(parent, newName)
+}
+
 func (r *Replica) openFiles() error {
+	// We have live chain, which will be included here
+	// We also need to scan all other disks, and track them properly
 	chain, err := r.Chain()
 	if err != nil {
 		return err
@@ -557,6 +597,9 @@ func (r *Replica) readDiskData(file string) error {
 	name := file[:len(file)-len(metadataSuffix)]
 	data.name = name
 	r.diskData[name] = data
+	if data.Parent != "" {
+		r.addChildDisk(data.Parent, data.name)
+	}
 	return nil
 }
 

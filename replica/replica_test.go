@@ -58,6 +58,14 @@ func (s *TestSuite) TestSnapshot(c *C) {
 	c.Assert(r.activeDiskData[2].Parent, Equals, "volume-snap-000.img")
 	c.Assert(r.activeDiskData[1].name, Equals, "volume-snap-000.img")
 	c.Assert(r.activeDiskData[1].Parent, Equals, "")
+
+	c.Assert(r.diskChildMap["volume-snap-000.img"], Not(IsNil))
+	c.Assert(r.diskChildMap["volume-snap-000.img"].Contains("volume-snap-001.img"), Equals, true)
+	c.Assert(r.diskChildMap["volume-snap-000.img"].Cardinality(), Equals, 1)
+	c.Assert(r.diskChildMap["volume-snap-001.img"], Not(IsNil))
+	c.Assert(r.diskChildMap["volume-snap-001.img"].Contains("volume-head-002.img"), Equals, true)
+	c.Assert(r.diskChildMap["volume-snap-001.img"].Cardinality(), Equals, 1)
+	c.Assert(r.diskChildMap["volume-head-002.img"], IsNil)
 }
 
 func (s *TestSuite) TestRevert(c *C) {
@@ -93,6 +101,39 @@ func (s *TestSuite) TestRevert(c *C) {
 	c.Assert(len(chain), Equals, 2)
 	c.Assert(chain[0], Equals, "volume-head-003.img")
 	c.Assert(chain[1], Equals, "volume-snap-000.img")
+
+	c.Assert(r.diskChildMap["volume-snap-000.img"], Not(IsNil))
+	c.Assert(r.diskChildMap["volume-snap-000.img"].Contains("volume-snap-001.img"), Equals, true)
+	c.Assert(r.diskChildMap["volume-snap-000.img"].Contains("volume-head-003.img"), Equals, true)
+	c.Assert(r.diskChildMap["volume-snap-000.img"].Cardinality(), Equals, 2)
+	c.Assert(r.diskChildMap["volume-snap-001.img"], IsNil)
+	c.Assert(r.diskChildMap["volume-head-002.img"], IsNil)
+	c.Assert(r.diskChildMap["volume-head-003.img"], IsNil)
+
+	err = r.Snapshot("003")
+	c.Assert(err, IsNil)
+	c.Assert(r.diskChildMap["volume-snap-000.img"], Not(IsNil))
+	c.Assert(r.diskChildMap["volume-snap-000.img"].Contains("volume-snap-001.img"), Equals, true)
+	c.Assert(r.diskChildMap["volume-snap-000.img"].Contains("volume-snap-003.img"), Equals, true)
+	c.Assert(r.diskChildMap["volume-snap-000.img"].Cardinality(), Equals, 2)
+	c.Assert(r.diskChildMap["volume-snap-003.img"], Not(IsNil))
+	c.Assert(r.diskChildMap["volume-snap-003.img"].Contains("volume-head-004.img"), Equals, true)
+	c.Assert(r.diskChildMap["volume-snap-003.img"].Cardinality(), Equals, 1)
+
+	r, err = r.Revert("volume-snap-001.img")
+	c.Assert(err, IsNil)
+
+	chain, err = r.Chain()
+	c.Assert(err, IsNil)
+	c.Assert(len(chain), Equals, 3)
+	c.Assert(chain[0], Equals, "volume-head-005.img")
+	c.Assert(chain[1], Equals, "volume-snap-001.img")
+	c.Assert(chain[2], Equals, "volume-snap-000.img")
+
+	c.Assert(r.diskChildMap["volume-snap-001.img"], Not(IsNil))
+	c.Assert(r.diskChildMap["volume-snap-001.img"].Contains("volume-head-005.img"), Equals, true)
+	c.Assert(r.diskChildMap["volume-snap-001.img"].Cardinality(), Equals, 1)
+	c.Assert(r.diskChildMap["volume-snap-003.img"], IsNil)
 }
 
 /* Disable unit test until we implement this part correctly
