@@ -65,6 +65,18 @@ type BackingFile struct {
 	Disk       types.DiffDisk
 }
 
+type PrepareRemoveAction struct {
+	Action string `json:"action"`
+	Source string `json:"source"`
+	Target string `json:"target"`
+}
+
+const (
+	OpCoalesce      = "coalesce" // Source is parent, target is child
+	OpRemove        = "remove"
+	OpMarkAsRemoved = "markasremoved"
+)
+
 func ReadInfo(dir string) (Info, error) {
 	var info Info
 	err := (&Replica{dir: dir}).unmarshalFile(volumeMetaData, &info)
@@ -254,6 +266,60 @@ func (r *Replica) RemoveDiffDisk(name string) error {
 	}
 
 	return nil
+}
+
+func (r *Replica) PrepareRemoveDisk(name string) ([]PrepareRemoveAction, error) {
+	r.Lock()
+	defer r.Unlock()
+
+	action := []PrepareRemoveAction{}
+	disk := name
+
+	if _, exists := r.diskData[disk]; !exists {
+		disk = GenerateSnapshotDiskName(name)
+		if _, exists := r.diskData[disk]; !exists {
+			return nil, fmt.Errorf("Can not find snapshot %v", disk)
+		}
+	}
+
+	if disk == r.info.Head {
+		return nil, fmt.Errorf("Can not delete the active differencing disk")
+	}
+
+	// 1) leaf node
+	children := r.diskChildMap[disk]
+	if children == nil {
+		action = append(action, PrepareRemoveAction{
+			Action: OpRemove,
+			Source: disk,
+		})
+		return action, nil
+	}
+
+	// 2) has only one child and is not head
+	if children.Cardinality() == 1 {
+		child := (<-children.Iter()).(string)
+		if child != r.info.Head {
+			action = append(action,
+				PrepareRemoveAction{
+					Action: OpCoalesce,
+					Source: disk,
+					Target: child,
+				},
+				PrepareRemoveAction{
+					Action: OpRemove,
+					Source: disk,
+				})
+			return action, nil
+		}
+	}
+
+	// 3) for other situation, we only mark it as removed
+	action = append(action, PrepareRemoveAction{
+		Action: OpMarkAsRemoved,
+		Source: disk,
+	})
+	return action, nil
 }
 
 func (r *Replica) Info() Info {
