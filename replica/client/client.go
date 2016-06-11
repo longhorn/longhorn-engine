@@ -53,7 +53,7 @@ func NewReplicaClient(address string) (*ReplicaClient, error) {
 
 	syncAgent := strings.Replace(address, fmt.Sprintf(":%d", port), fmt.Sprintf(":%d", port+2), -1)
 
-	timeout := time.Duration(10 * time.Second)
+	timeout := time.Duration(30 * time.Second)
 	client := &http.Client{
 		Timeout: timeout,
 	}
