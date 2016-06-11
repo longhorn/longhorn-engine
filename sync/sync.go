@@ -115,12 +115,15 @@ func (t *Task) coalesceSnapshot(replicaInController *rest.Replica, snapshot stri
 		return fmt.Errorf("Snapshot %s not found on replica %s", snapshot, replicaInController.Address)
 	case index == 0:
 		return fmt.Errorf("Can not remove the head disk in the chain")
-	case index >= len(replica.Chain)-1:
-		return fmt.Errorf("Can not remove the last disk in the chain")
+	case index == 1:
+		return fmt.Errorf("Can not remove the second to head disk in the chain")
 	}
 
-	logrus.Infof("Coalescing %s on %s", snapshot, replicaInController.Address)
-	err = repClient.Coalesce(replica.Chain[index], replica.Chain[index+1])
+	oldDisk := replica.Chain[index]
+	newDisk := replica.Chain[index-1]
+	logrus.Infof("Coalescing %s on %s, folding %s to %s", snapshot, replicaInController.Address, newDisk, oldDisk)
+
+	err = repClient.Coalesce(newDisk, oldDisk)
 	if err != nil {
 		logrus.Errorf("Failed to coalesce %s on %s: %v", snapshot, replicaInController.Address, err)
 		return err

@@ -147,11 +147,16 @@ func (s *TestSuite) TestRemoveMiddle(c *C) {
 	err = r.Snapshot("001")
 	c.Assert(err, IsNil)
 
-	c.Assert(len(r.activeDiskData), Equals, 4)
-	c.Assert(len(r.volume.files), Equals, 4)
+	err = r.Snapshot("002")
+	c.Assert(err, IsNil)
 
-	c.Assert(r.info.Head, Equals, "volume-head-002.img")
-	c.Assert(r.activeDiskData[3].name, Equals, "volume-head-002.img")
+	c.Assert(len(r.activeDiskData), Equals, 5)
+	c.Assert(len(r.volume.files), Equals, 5)
+
+	c.Assert(r.info.Head, Equals, "volume-head-003.img")
+	c.Assert(r.activeDiskData[4].name, Equals, "volume-head-003.img")
+	c.Assert(r.activeDiskData[4].Parent, Equals, "volume-snap-002.img")
+	c.Assert(r.activeDiskData[3].name, Equals, "volume-snap-002.img")
 	c.Assert(r.activeDiskData[3].Parent, Equals, "volume-snap-001.img")
 	c.Assert(r.activeDiskData[2].name, Equals, "volume-snap-001.img")
 	c.Assert(r.activeDiskData[2].Parent, Equals, "volume-snap-000.img")
@@ -160,10 +165,12 @@ func (s *TestSuite) TestRemoveMiddle(c *C) {
 
 	err = r.RemoveDiffDisk("volume-snap-001.img")
 	c.Assert(err, IsNil)
-	c.Assert(len(r.activeDiskData), Equals, 3)
-	c.Assert(len(r.volume.files), Equals, 3)
-	c.Assert(r.info.Head, Equals, "volume-head-002.img")
-	c.Assert(r.activeDiskData[2].name, Equals, "volume-head-002.img")
+	c.Assert(len(r.activeDiskData), Equals, 4)
+	c.Assert(len(r.volume.files), Equals, 4)
+	c.Assert(r.info.Head, Equals, "volume-head-003.img")
+	c.Assert(r.activeDiskData[3].name, Equals, "volume-head-003.img")
+	c.Assert(r.activeDiskData[3].Parent, Equals, "volume-snap-002.img")
+	c.Assert(r.activeDiskData[2].name, Equals, "volume-snap-002.img")
 	c.Assert(r.activeDiskData[2].Parent, Equals, "volume-snap-000.img")
 	c.Assert(r.activeDiskData[1].name, Equals, "volume-snap-000.img")
 	c.Assert(r.activeDiskData[1].Parent, Equals, "")
@@ -307,6 +314,62 @@ func (s *TestSuite) TestSnapshotReadWrite(c *C) {
 	c.Assert(err, IsNil)
 	byteEquals(c, readBuf, buf)
 	byteEquals(c, r.volume.location, []byte{3, 2, 1})
+}
+
+func (s *TestSuite) TestSnapshotRemoveReadWrite(c *C) {
+	dir, err := ioutil.TempDir("", "replica")
+	c.Logf("Volume: %s", dir)
+	c.Assert(err, IsNil)
+	defer os.RemoveAll(dir)
+
+	r, err := New(3*b, b, dir, nil)
+	c.Assert(err, IsNil)
+	defer r.Close()
+
+	buf := make([]byte, 3*b)
+	fill(buf, 3)
+	count, err := r.WriteAt(buf, 0)
+	c.Assert(err, IsNil)
+	c.Assert(count, Equals, 3*b)
+	err = r.Snapshot("000")
+	c.Assert(err, IsNil)
+
+	fill(buf[b:2*b], 2)
+	count, err = r.WriteAt(buf[b:2*b], b)
+	c.Assert(count, Equals, b)
+	err = r.Snapshot("001")
+	c.Assert(err, IsNil)
+	buf1 := make([]byte, 3*b)
+	copy(buf1, buf)
+
+	fill(buf[:b], 1)
+	count, err = r.WriteAt(buf[:b], 0)
+	c.Assert(count, Equals, b)
+	err = r.Snapshot("002")
+	c.Assert(err, IsNil)
+
+	readBuf := make([]byte, 3*b)
+	_, err = r.ReadAt(readBuf, 0)
+	c.Logf("%v", r.volume.location)
+	c.Assert(err, IsNil)
+	byteEquals(c, readBuf, buf)
+	byteEquals(c, r.volume.location, []byte{3, 2, 1})
+
+	// We're in fact removing volume-snap-002.img(because of expected
+	// coalesce), but we will rename volume-snap-001.img to
+	// volume-snap-002.img
+	err = r.RemoveDiffDisk("volume-snap-001.img")
+	c.Assert(err, IsNil)
+	c.Assert(len(r.activeDiskData), Equals, 4)
+	c.Assert(len(r.volume.files), Equals, 4)
+
+	r, err = r.Reload()
+	c.Assert(err, IsNil)
+
+	_, err = r.ReadAt(readBuf, 0)
+	c.Assert(err, IsNil)
+	byteEquals(c, readBuf, buf1)
+	byteEquals(c, r.volume.location, []byte{1, 2, 1})
 }
 
 func (s *TestSuite) TestBackingFile(c *C) {
