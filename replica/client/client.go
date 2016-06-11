@@ -108,15 +108,29 @@ func (c *ReplicaClient) SetRebuilding(rebuilding bool) error {
 	}, nil)
 }
 
-func (c *ReplicaClient) RemoveDisk(disk string) error {
+func (c *ReplicaClient) RemoveDisk(disk string, markOnly bool) error {
 	r, err := c.GetReplica()
 	if err != nil {
 		return err
 	}
 
 	return c.post(r.Actions["removedisk"], &rest.RemoveDiskInput{
-		Name: disk,
+		Name:     disk,
+		MarkOnly: markOnly,
 	}, nil)
+}
+
+func (c *ReplicaClient) PrepareRemoveDisk(disk string) (rest.PrepareRemoveDiskOutput, error) {
+	var output rest.PrepareRemoveDiskOutput
+	r, err := c.GetReplica()
+	if err != nil {
+		return output, err
+	}
+
+	err = c.post(r.Actions["prepareremovedisk"], &rest.PrepareRemoveDiskInput{
+		Name: disk,
+	}, &output)
+	return output, err
 }
 
 func (c *ReplicaClient) OpenReplica() error {
@@ -364,4 +378,37 @@ func (c *ReplicaClient) post(path string, req, resp interface{}) error {
 	}
 
 	return json.NewDecoder(httpResp.Body).Decode(resp)
+}
+
+func (c *ReplicaClient) HardLink(from, to string) error {
+	var running agent.Process
+	err := c.post(c.syncAgent+"/processes", &agent.Process{
+		ProcessType: "hardlink",
+		SrcFile:     from,
+		DestFile:    to,
+	}, &running)
+	if err != nil {
+		return err
+	}
+
+	start := 250 * time.Millisecond
+	for {
+		err := c.get(running.Links["self"], &running)
+		if err != nil {
+			return err
+		}
+
+		switch running.ExitCode {
+		case -2:
+			time.Sleep(start)
+			start = start * 2
+			if start > 1*time.Second {
+				start = 1 * time.Second
+			}
+		case 0:
+			return nil
+		default:
+			return fmt.Errorf("ExitCode: %d", running.ExitCode)
+		}
+	}
 }

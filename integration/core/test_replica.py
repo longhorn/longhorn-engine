@@ -161,6 +161,20 @@ def test_remove_disk(client):
     assert r.chain == ['volume-head-002.img', 'volume-snap-001.img',
                        'volume-snap-000.img']
 
+    with pytest.raises(cattle.ApiError) as e:
+        r.prepareremovedisk(name='003')
+        assert "Can not find snapshot" in e
+
+    with pytest.raises(cattle.ApiError) as e:
+        r.prepareremovedisk(name='volume-head-002.img')
+        assert "Can not delete the active" in e
+
+    ops = r.prepareremovedisk(name='001')["operations"]
+    assert len(ops) == 1
+    assert ops[0].action == "markasremoved"
+    assert ops[0].source == "volume-snap-001.img"
+    assert ops[0].target == ""
+
     r = r.removedisk(name='volume-snap-001.img')
     assert r.state == 'dirty'
     assert not r.rebuilding
@@ -183,6 +197,14 @@ def test_remove_last_disk(client):
     assert r.chain == ['volume-head-002.img', 'volume-snap-001.img',
                        'volume-snap-000.img']
 
+    ops = r.prepareremovedisk(name='volume-snap-000.img')["operations"]
+    assert len(ops) == 2
+    assert ops[0].action == "coalesce"
+    assert ops[0].source == "volume-snap-000.img"
+    assert ops[0].target == "volume-snap-001.img"
+    assert ops[1].action == "remove"
+    assert ops[1].source == "volume-snap-000.img"
+
     r = r.removedisk(name='volume-snap-000.img')
     assert r.state == 'dirty'
     assert not r.rebuilding
@@ -200,7 +222,9 @@ def test_reload(client):
     r = replicas[0]
     r = r.create(size=str(1024*4096))
     r = r.open()
+    assert r.chain == ['volume-head-000.img']
     r = r.snapshot(name='000')
+    assert r.chain == ['volume-head-001.img', 'volume-snap-000.img']
     r = r.snapshot(name='001')
     assert r.chain == ['volume-head-002.img', 'volume-snap-001.img',
                        'volume-snap-000.img']

@@ -86,7 +86,27 @@ func (s *Server) RemoveDisk(rw http.ResponseWriter, req *http.Request) error {
 		return err
 	}
 
-	return s.doOp(req, s.s.RemoveDiffDisk(input.Name))
+	return s.doOp(req, s.s.RemoveDiffDisk(input.Name, input.MarkOnly))
+}
+
+func (s *Server) PrepareRemoveDisk(rw http.ResponseWriter, req *http.Request) error {
+	var input PrepareRemoveDiskInput
+	apiContext := api.GetApiContext(req)
+	if err := apiContext.Read(&input); err != nil && err != io.EOF {
+		return err
+	}
+	operations, err := s.s.PrepareRemoveDisk(input.Name)
+	if err != nil {
+		return err
+	}
+	apiContext.Write(&PrepareRemoveDiskOutput{
+		Resource: client.Resource{
+			Id:   input.Name,
+			Type: "prepareRemoveDiskOutput",
+		},
+		Operations: operations,
+	})
+	return nil
 }
 
 func (s *Server) SnapshotReplica(rw http.ResponseWriter, req *http.Request) error {

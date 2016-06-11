@@ -13,6 +13,7 @@ import (
 	"syscall"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/deckarep/golang-set"
 	"github.com/rancher/longhorn/types"
 )
 
@@ -34,8 +35,9 @@ type Replica struct {
 	volume         diffDisk
 	dir            string
 	info           Info
-	diskData       map[string]disk
-	activeDiskData []disk
+	diskData       map[string]*disk
+	diskChildMap   map[string]mapset.Set
+	activeDiskData []*disk
 	readOnly       bool
 }
 
@@ -51,8 +53,9 @@ type Info struct {
 }
 
 type disk struct {
-	name   string
-	Parent string
+	name    string
+	Parent  string
+	Removed bool
 }
 
 type BackingFile struct {
@@ -61,6 +64,18 @@ type BackingFile struct {
 	Name       string
 	Disk       types.DiffDisk
 }
+
+type PrepareRemoveAction struct {
+	Action string `json:"action"`
+	Source string `json:"source"`
+	Target string `json:"target"`
+}
+
+const (
+	OpCoalesce      = "coalesce" // Source is parent, target is child
+	OpRemove        = "remove"
+	OpMarkAsRemoved = "markasremoved"
+)
 
 func ReadInfo(dir string) (Info, error) {
 	var info Info
@@ -88,8 +103,9 @@ func construct(readonly bool, size, sectorSize int64, dir, head string, backingF
 
 	r := &Replica{
 		dir:            dir,
-		activeDiskData: make([]disk, 1),
-		diskData:       map[string]disk{},
+		activeDiskData: make([]*disk, 1),
+		diskData:       make(map[string]*disk),
+		diskChildMap:   map[string]mapset.Set{},
 	}
 	r.info.Size = size
 	r.info.SectorSize = sectorSize
@@ -144,15 +160,19 @@ func GenerateSnapshotDiskName(name string) string {
 	return fmt.Sprintf(diskName, name)
 }
 
+func (r *Replica) diskPath(name string) string {
+	return path.Join(r.dir, name)
+}
+
 func (r *Replica) insertBackingFile() {
 	if r.info.BackingFile == nil {
 		return
 	}
 
 	d := disk{name: r.info.BackingFile.Name}
-	r.activeDiskData = append([]disk{disk{}, d}, r.activeDiskData[1:]...)
+	r.activeDiskData = append([]*disk{&disk{}, &d}, r.activeDiskData[1:]...)
 	r.volume.files = append([]types.DiffDisk{nil, r.info.BackingFile.Disk}, r.volume.files[1:]...)
-	r.diskData[d.name] = d
+	r.diskData[d.name] = &d
 }
 
 func (r *Replica) SetRebuilding(rebuilding bool) error {
@@ -175,6 +195,9 @@ func (r *Replica) Reload() (*Replica, error) {
 
 func (r *Replica) findDisk(name string) int {
 	for i, d := range r.activeDiskData {
+		if i == 0 {
+			continue
+		}
 		if d.name == name {
 			return i
 		}
@@ -182,56 +205,148 @@ func (r *Replica) findDisk(name string) int {
 	return 0
 }
 
-func (r *Replica) relinkChild(index int) error {
-	childData := &r.activeDiskData[index+1]
-	if index == 1 {
-		childData.Parent = ""
-	} else {
-		childData.Parent = r.activeDiskData[index-1].name
-	}
-
-	r.diskData[childData.name] = *childData
-	return r.encodeToFile(*childData, childData.name+metadataSuffix)
-}
-
-func (r *Replica) RemoveDiffDisk(name string) error {
+func (r *Replica) RemoveDiffDisk(name string, markOnly bool) error {
 	r.Lock()
 	defer r.Unlock()
 
-	index := r.findDisk(name)
-	if index <= 0 {
-		return nil
-	}
-
-	if len(r.activeDiskData)-1 == index {
+	if name == r.info.Head {
 		return fmt.Errorf("Can not delete the active differencing disk")
 	}
 
-	if err := r.relinkChild(index); err != nil {
+	if markOnly {
+		if err := r.markDiskAsRemoved(name); err != nil {
+			// ignore error deleting files
+			logrus.Errorf("Failed to delete %s: %v", name, err)
+		}
+		return nil
+	}
+
+	if err := r.removeDiskNode(name); err != nil {
 		return err
 	}
-
-	if err := r.volume.RemoveIndex(index); err != nil {
-		return err
-	}
-
-	if len(r.activeDiskData)-2 == index {
-		r.info.Parent = r.diskData[r.info.Head].Parent
-	}
-
-	r.activeDiskData = append(r.activeDiskData[:index], r.activeDiskData[index+1:]...)
-	delete(r.diskData, name)
 
 	if err := r.rmDisk(name); err != nil {
-		// ignore error deleting files
-		logrus.Errorf("Failed to delete %s: %v", name, err)
+		return err
 	}
 
 	return nil
 }
 
+func (r *Replica) removeDiskNode(name string) error {
+	// If snapshot has no child, then we can safely delete it
+	// And it's definitely not in the live chain
+	children := r.diskChildMap[name]
+	if children == nil {
+		r.updateChildDisk(name, "")
+		delete(r.diskData, name)
+		return nil
+	}
+
+	// If snapshot has more than one child, we cannot really delete it
+	// Caller should call with markOnly=true instead
+	if children.Cardinality() > 1 {
+		return fmt.Errorf("Cannot remove snapshot %v with %v children",
+			name, children.Cardinality())
+	}
+
+	// only one child from here
+	childIter := <-children.Iter()
+	child := childIter.(string)
+	r.updateChildDisk(name, child)
+	if err := r.updateParentDisk(child, name); err != nil {
+		return err
+	}
+	delete(r.diskData, name)
+
+	index := r.findDisk(name)
+	if index <= 0 {
+		return nil
+	}
+	if err := r.volume.RemoveIndex(index); err != nil {
+		return err
+	}
+	if len(r.activeDiskData)-2 == index {
+		r.info.Parent = r.diskData[r.info.Head].Parent
+	}
+	r.activeDiskData = append(r.activeDiskData[:index], r.activeDiskData[index+1:]...)
+
+	return nil
+}
+
+func (r *Replica) PrepareRemoveDisk(name string) ([]PrepareRemoveAction, error) {
+	r.Lock()
+	defer r.Unlock()
+
+	action := []PrepareRemoveAction{}
+	disk := name
+
+	if _, exists := r.diskData[disk]; !exists {
+		disk = GenerateSnapshotDiskName(name)
+		if _, exists := r.diskData[disk]; !exists {
+			return nil, fmt.Errorf("Can not find snapshot %v", disk)
+		}
+	}
+
+	if disk == r.info.Head {
+		return nil, fmt.Errorf("Can not delete the active differencing disk")
+	}
+
+	// 1) leaf node
+	children := r.diskChildMap[disk]
+	if children == nil {
+		action = append(action, PrepareRemoveAction{
+			Action: OpRemove,
+			Source: disk,
+		})
+		return action, nil
+	}
+
+	// 2) has only one child and is not head
+	if children.Cardinality() == 1 {
+		child := (<-children.Iter()).(string)
+		if child != r.info.Head {
+			action = append(action,
+				PrepareRemoveAction{
+					Action: OpCoalesce,
+					Source: disk,
+					Target: child,
+				},
+				PrepareRemoveAction{
+					Action: OpRemove,
+					Source: disk,
+				})
+			return action, nil
+		}
+	}
+
+	// 3) for other situation, we only mark it as removed
+	action = append(action, PrepareRemoveAction{
+		Action: OpMarkAsRemoved,
+		Source: disk,
+	})
+	return action, nil
+}
+
 func (r *Replica) Info() Info {
 	return r.info
+}
+
+func (r *Replica) DisplayChain() ([]string, error) {
+	result := make([]string, 0, len(r.activeDiskData))
+
+	cur := r.info.Head
+	for cur != "" {
+		disk, ok := r.diskData[cur]
+		if !ok {
+			return nil, fmt.Errorf("Failed to find metadata for %s", cur)
+		}
+		if !disk.Removed {
+			result = append(result, cur)
+		}
+		cur = r.diskData[cur].Parent
+	}
+
+	return result, nil
 }
 
 func (r *Replica) Chain() ([]string, error) {
@@ -278,7 +393,7 @@ func (r *Replica) encodeToFile(obj interface{}, file string) error {
 		return nil
 	}
 
-	f, err := os.Create(path.Join(r.dir, file+".tmp"))
+	f, err := os.Create(r.diskPath(file + ".tmp"))
 	if err != nil {
 		return err
 	}
@@ -292,7 +407,7 @@ func (r *Replica) encodeToFile(obj interface{}, file string) error {
 		return err
 	}
 
-	return os.Rename(path.Join(r.dir, file+".tmp"), path.Join(r.dir, file))
+	return os.Rename(r.diskPath(file+".tmp"), r.diskPath(file))
 }
 
 func (r *Replica) nextFile(parsePattern *regexp.Regexp, pattern, parent string) (string, error) {
@@ -310,7 +425,7 @@ func (r *Replica) nextFile(parsePattern *regexp.Regexp, pattern, parent string) 
 }
 
 func (r *Replica) openFile(name string, flag int) (types.DiffDisk, error) {
-	f, err := os.OpenFile(path.Join(r.dir, name), syscall.O_DIRECT|os.O_RDWR|os.O_CREATE|flag, 0666)
+	f, err := os.OpenFile(r.diskPath(name), syscall.O_DIRECT|os.O_RDWR|os.O_CREATE|flag, 0666)
 	if err != nil {
 		return nil, err
 	}
@@ -325,7 +440,7 @@ func (r *Replica) createNewHead(oldHead, parent string) (types.DiffDisk, disk, e
 		return nil, disk{}, err
 	}
 
-	if _, err := os.Stat(path.Join(r.dir, newHeadName)); err == nil {
+	if _, err := os.Stat(r.diskPath(newHeadName)); err == nil {
 		return nil, disk{}, fmt.Errorf("%s already exists", newHeadName)
 	}
 
@@ -333,11 +448,11 @@ func (r *Replica) createNewHead(oldHead, parent string) (types.DiffDisk, disk, e
 	if err != nil {
 		return nil, disk{}, err
 	}
-	if err := syscall.Truncate(path.Join(r.dir, newHeadName), r.info.Size); err != nil {
+	if err := syscall.Truncate(r.diskPath(newHeadName), r.info.Size); err != nil {
 		return nil, disk{}, err
 	}
 
-	newDisk := disk{Parent: parent, name: newHeadName}
+	newDisk := disk{Parent: parent, name: newHeadName, Removed: false}
 	err = r.encodeToFile(&newDisk, newHeadName+metadataSuffix)
 	return f, newDisk, err
 }
@@ -347,7 +462,7 @@ func (r *Replica) linkDisk(oldname, newname string) error {
 		return nil
 	}
 
-	dest := path.Join(r.dir, newname)
+	dest := r.diskPath(newname)
 	if _, err := os.Stat(dest); err == nil {
 		logrus.Infof("Old file %s exists, deleting", dest)
 		if err := os.Remove(dest); err != nil {
@@ -355,11 +470,27 @@ func (r *Replica) linkDisk(oldname, newname string) error {
 		}
 	}
 
-	if err := os.Link(path.Join(r.dir, oldname), dest); err != nil {
+	if err := os.Link(r.diskPath(oldname), dest); err != nil {
 		return err
 	}
 
-	return os.Link(path.Join(r.dir, oldname+metadataSuffix), path.Join(r.dir, newname+metadataSuffix))
+	return os.Link(r.diskPath(oldname+metadataSuffix), r.diskPath(newname+metadataSuffix))
+}
+
+func (r *Replica) markDiskAsRemoved(name string) error {
+	disk, ok := r.diskData[name]
+	if !ok {
+		return fmt.Errorf("Cannot find disk %v", name)
+	}
+	if stat, err := os.Stat(r.diskPath(name)); err != nil || stat.IsDir() {
+		return fmt.Errorf("Cannot find disk file %v", name)
+	}
+	if stat, err := os.Stat(r.diskPath(name + metadataSuffix)); err != nil || stat.IsDir() {
+		return fmt.Errorf("Cannot find disk metafile %v", name+metadataSuffix)
+	}
+	disk.Removed = true
+	r.diskData[name] = disk
+	return r.encodeToFile(disk, name+metadataSuffix)
 }
 
 func (r *Replica) rmDisk(name string) error {
@@ -367,15 +498,15 @@ func (r *Replica) rmDisk(name string) error {
 		return nil
 	}
 
-	lastErr := os.Remove(path.Join(r.dir, name))
-	if err := os.Remove(path.Join(r.dir, name+metadataSuffix)); err != nil {
+	lastErr := os.Remove(r.diskPath(name))
+	if err := os.Remove(r.diskPath(name + metadataSuffix)); err != nil {
 		lastErr = err
 	}
 	return lastErr
 }
 
 func (r *Replica) revertDisk(parent string) (*Replica, error) {
-	if _, err := os.Stat(path.Join(r.dir, parent)); err != nil {
+	if _, err := os.Stat(r.diskPath(parent)); err != nil {
 		return nil, err
 	}
 
@@ -396,12 +527,13 @@ func (r *Replica) revertDisk(parent string) (*Replica, error) {
 		return nil, err
 	}
 
+	// Need to execute before r.Reload() to update r.diskChildMap
+	r.rmDisk(oldHead)
+
 	rNew, err := r.Reload()
 	if err != nil {
 		return nil, err
 	}
-
-	r.rmDisk(oldHead)
 	return rNew, nil
 }
 
@@ -446,21 +578,70 @@ func (r *Replica) createDisk(name string) error {
 	}
 
 	done = true
-	r.diskData[newHeadDisk.name] = newHeadDisk
+	r.diskData[newHeadDisk.name] = &newHeadDisk
 	if newHeadDisk.Parent != "" {
+		r.addChildDisk(newHeadDisk.Parent, newHeadDisk.name)
+
 		r.diskData[newHeadDisk.Parent] = r.diskData[oldHead]
+		r.updateChildDisk(oldHead, newHeadDisk.Parent)
 		r.activeDiskData[len(r.activeDiskData)-1].name = newHeadDisk.Parent
 	}
 	delete(r.diskData, oldHead)
 
 	r.info = info
 	r.volume.files = append(r.volume.files, f)
-	r.activeDiskData = append(r.activeDiskData, newHeadDisk)
+	r.activeDiskData = append(r.activeDiskData, &newHeadDisk)
 
 	return nil
 }
 
+func (r *Replica) addChildDisk(parent, child string) {
+	children, exists := r.diskChildMap[parent]
+	if !exists {
+		children = mapset.NewSet()
+	}
+	children.Add(child)
+	r.diskChildMap[parent] = children
+}
+
+func (r *Replica) rmChildDisk(parent, child string) {
+	children, exists := r.diskChildMap[parent]
+	if !exists {
+		return
+	}
+	if !children.Contains(child) {
+		return
+	}
+	children.Remove(child)
+	if children.Cardinality() == 0 {
+		delete(r.diskChildMap, parent)
+		return
+	}
+	r.diskChildMap[parent] = children
+}
+
+func (r *Replica) updateChildDisk(oldName, newName string) {
+	parent := r.diskData[oldName].Parent
+	r.rmChildDisk(parent, oldName)
+	if newName != "" {
+		r.addChildDisk(parent, newName)
+	}
+}
+
+func (r *Replica) updateParentDisk(name, oldParent string) error {
+	child := r.diskData[name]
+	if oldParent != "" {
+		child.Parent = r.diskData[oldParent].Parent
+	} else {
+		child.Parent = ""
+	}
+	r.diskData[name] = child
+	return r.encodeToFile(child, child.name+metadataSuffix)
+}
+
 func (r *Replica) openFiles() error {
+	// We have live chain, which will be included here
+	// We also need to scan all other disks, and track them properly
 	chain, err := r.Chain()
 	if err != nil {
 		return err
@@ -481,7 +662,7 @@ func (r *Replica) openFiles() error {
 }
 
 func (r *Replica) readMetadata() (bool, error) {
-	r.diskData = map[string]disk{}
+	r.diskData = make(map[string]*disk)
 
 	files, err := ioutil.ReadDir(r.dir)
 	if os.IsNotExist(err) {
@@ -515,12 +696,15 @@ func (r *Replica) readDiskData(file string) error {
 
 	name := file[:len(file)-len(metadataSuffix)]
 	data.name = name
-	r.diskData[name] = data
+	r.diskData[name] = &data
+	if data.Parent != "" {
+		r.addChildDisk(data.Parent, data.name)
+	}
 	return nil
 }
 
 func (r *Replica) unmarshalFile(file string, obj interface{}) error {
-	p := path.Join(r.dir, file)
+	p := r.diskPath(file)
 	f, err := os.Open(p)
 	if err != nil {
 		return err
@@ -548,7 +732,7 @@ func (r *Replica) Delete() error {
 		}
 	}
 
-	os.Remove(path.Join(r.dir, volumeMetaData))
+	os.Remove(r.diskPath(volumeMetaData))
 	return nil
 }
 

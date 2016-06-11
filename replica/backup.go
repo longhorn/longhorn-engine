@@ -165,6 +165,9 @@ func (rb *Backup) findIndex(id string) int {
 	}
 
 	for i, disk := range rb.replica.activeDiskData {
+		if i == 0 {
+			continue
+		}
 		if disk.name == id {
 			return i
 		}
