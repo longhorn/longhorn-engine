@@ -35,9 +35,9 @@ type Replica struct {
 	volume         diffDisk
 	dir            string
 	info           Info
-	diskData       map[string]disk
+	diskData       map[string]*disk
 	diskChildMap   map[string]mapset.Set
-	activeDiskData []disk
+	activeDiskData []*disk
 	readOnly       bool
 }
 
@@ -103,8 +103,8 @@ func construct(readonly bool, size, sectorSize int64, dir, head string, backingF
 
 	r := &Replica{
 		dir:            dir,
-		activeDiskData: make([]disk, 1),
-		diskData:       map[string]disk{},
+		activeDiskData: make([]*disk, 1),
+		diskData:       make(map[string]*disk),
 		diskChildMap:   map[string]mapset.Set{},
 	}
 	r.info.Size = size
@@ -170,9 +170,9 @@ func (r *Replica) insertBackingFile() {
 	}
 
 	d := disk{name: r.info.BackingFile.Name}
-	r.activeDiskData = append([]disk{disk{}, d}, r.activeDiskData[1:]...)
+	r.activeDiskData = append([]*disk{&disk{}, &d}, r.activeDiskData[1:]...)
 	r.volume.files = append([]types.DiffDisk{nil, r.info.BackingFile.Disk}, r.volume.files[1:]...)
-	r.diskData[d.name] = d
+	r.diskData[d.name] = &d
 }
 
 func (r *Replica) SetRebuilding(rebuilding bool) error {
@@ -195,23 +195,14 @@ func (r *Replica) Reload() (*Replica, error) {
 
 func (r *Replica) findDisk(name string) int {
 	for i, d := range r.activeDiskData {
+		if i == 0 {
+			continue
+		}
 		if d.name == name {
 			return i
 		}
 	}
 	return 0
-}
-
-func (r *Replica) relinkChild(index int) error {
-	childData := &r.activeDiskData[index+1]
-	if index == 1 {
-		childData.Parent = ""
-	} else {
-		childData.Parent = r.activeDiskData[index-1].name
-	}
-
-	r.diskData[childData.name] = *childData
-	return r.encodeToFile(*childData, childData.name+metadataSuffix)
 }
 
 func (r *Replica) RemoveDiffDisk(name string, markOnly bool) error {
@@ -262,19 +253,14 @@ func (r *Replica) removeDiskNode(name string) error {
 	childIter := <-children.Iter()
 	child := childIter.(string)
 	r.updateChildDisk(name, child)
-	/*
-		if err := r.updateParentDisk(child, name); err != nil {
-			return err
-		}
-	*/
+	if err := r.updateParentDisk(child, name); err != nil {
+		return err
+	}
 	delete(r.diskData, name)
 
 	index := r.findDisk(name)
 	if index <= 0 {
 		return nil
-	}
-	if err := r.relinkChild(index); err != nil {
-		return err
 	}
 	if err := r.volume.RemoveIndex(index); err != nil {
 		return err
@@ -592,7 +578,7 @@ func (r *Replica) createDisk(name string) error {
 	}
 
 	done = true
-	r.diskData[newHeadDisk.name] = newHeadDisk
+	r.diskData[newHeadDisk.name] = &newHeadDisk
 	if newHeadDisk.Parent != "" {
 		r.addChildDisk(newHeadDisk.Parent, newHeadDisk.name)
 
@@ -604,7 +590,7 @@ func (r *Replica) createDisk(name string) error {
 
 	r.info = info
 	r.volume.files = append(r.volume.files, f)
-	r.activeDiskData = append(r.activeDiskData, newHeadDisk)
+	r.activeDiskData = append(r.activeDiskData, &newHeadDisk)
 
 	return nil
 }
@@ -676,7 +662,7 @@ func (r *Replica) openFiles() error {
 }
 
 func (r *Replica) readMetadata() (bool, error) {
-	r.diskData = map[string]disk{}
+	r.diskData = make(map[string]*disk)
 
 	files, err := ioutil.ReadDir(r.dir)
 	if os.IsNotExist(err) {
@@ -710,7 +696,7 @@ func (r *Replica) readDiskData(file string) error {
 
 	name := file[:len(file)-len(metadataSuffix)]
 	data.name = name
-	r.diskData[name] = data
+	r.diskData[name] = &data
 	if data.Parent != "" {
 		r.addChildDisk(data.Parent, data.name)
 	}
