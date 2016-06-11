@@ -21,7 +21,7 @@ import (
 
 var (
 	pingRetries = 6
-	pingTimeout = 3 * time.Second
+	pingTimeout = 20 * time.Second
 	pingInveral = 2 * time.Second
 
 	timeout        = 30 * time.Second
