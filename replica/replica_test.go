@@ -136,6 +136,62 @@ func (s *TestSuite) TestRevert(c *C) {
 	c.Assert(r.diskChildMap["volume-snap-003.img"], IsNil)
 }
 
+func (s *TestSuite) TestRemoveLeafNode(c *C) {
+	dir, err := ioutil.TempDir("", "replica")
+	c.Assert(err, IsNil)
+	defer os.RemoveAll(dir)
+
+	r, err := New(9, 3, dir, nil)
+	c.Assert(err, IsNil)
+	defer r.Close()
+
+	err = r.Snapshot("000")
+	c.Assert(err, IsNil)
+
+	err = r.Snapshot("001")
+	c.Assert(err, IsNil)
+
+	err = r.Snapshot("002")
+	c.Assert(err, IsNil)
+
+	c.Assert(len(r.activeDiskData), Equals, 5)
+	c.Assert(len(r.volume.files), Equals, 5)
+
+	c.Assert(r.info.Head, Equals, "volume-head-003.img")
+	c.Assert(r.activeDiskData[4].name, Equals, "volume-head-003.img")
+	c.Assert(r.activeDiskData[4].Parent, Equals, "volume-snap-002.img")
+	c.Assert(r.activeDiskData[3].name, Equals, "volume-snap-002.img")
+	c.Assert(r.activeDiskData[3].Parent, Equals, "volume-snap-001.img")
+	c.Assert(r.activeDiskData[2].name, Equals, "volume-snap-001.img")
+	c.Assert(r.activeDiskData[2].Parent, Equals, "volume-snap-000.img")
+	c.Assert(r.activeDiskData[1].name, Equals, "volume-snap-000.img")
+	c.Assert(r.activeDiskData[1].Parent, Equals, "")
+
+	r, err = r.Revert("volume-snap-000.img")
+	c.Assert(err, IsNil)
+
+	c.Assert(r.diskChildMap["volume-snap-000.img"], Not(IsNil))
+	c.Assert(r.diskChildMap["volume-snap-000.img"].Contains("volume-head-004.img"), Equals, true)
+	c.Assert(r.diskChildMap["volume-snap-000.img"].Contains("volume-snap-001.img"), Equals, true)
+	c.Assert(r.diskChildMap["volume-snap-000.img"].Cardinality(), Equals, 2)
+	c.Assert(r.diskChildMap["volume-snap-001.img"], Not(IsNil))
+	c.Assert(r.diskChildMap["volume-snap-001.img"].Contains("volume-snap-002.img"), Equals, true)
+	c.Assert(r.diskChildMap["volume-snap-001.img"].Cardinality(), Equals, 1)
+	c.Assert(r.diskChildMap["volume-snap-002.img"], IsNil)
+
+	err = r.RemoveDiffDisk("volume-snap-002.img")
+	c.Assert(err, IsNil)
+
+	c.Assert(r.diskChildMap["volume-snap-001.img"], IsNil)
+
+	err = r.RemoveDiffDisk("volume-snap-001.img")
+	c.Assert(err, IsNil)
+
+	c.Assert(r.diskChildMap["volume-snap-000.img"], Not(IsNil))
+	c.Assert(r.diskChildMap["volume-snap-000.img"].Contains("volume-head-004.img"), Equals, true)
+	c.Assert(r.diskChildMap["volume-snap-000.img"].Cardinality(), Equals, 1)
+}
+
 /* Disable unit test until we implement this part correctly
 func (s *TestSuite) TestRemoveLast(c *C) {
 	dir, err := ioutil.TempDir("", "replica")

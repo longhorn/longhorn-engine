@@ -206,6 +206,23 @@ func (r *Replica) RemoveDiffDisk(name string) error {
 	r.Lock()
 	defer r.Unlock()
 
+	if name == r.info.Head {
+		return fmt.Errorf("Can not delete the active differencing disk")
+	}
+
+	// If snapshot has no child, then we can safely delete it
+	// And it's definitely not in the live chain
+	children := r.diskChildMap[name]
+	if children == nil {
+		r.updateChildDisk(name, "")
+		delete(r.diskData, name)
+		if err := r.rmDisk(name); err != nil {
+			return err
+		}
+		return nil
+	}
+
+	/* don't update the chain, we just don't want to show it
 	index := r.findDisk(name)
 	if index <= 0 {
 		return nil
@@ -215,7 +232,6 @@ func (r *Replica) RemoveDiffDisk(name string) error {
 		return fmt.Errorf("Can not delete the active differencing disk")
 	}
 
-	/* don't update the chain, we just don't want to show it
 	if err := r.relinkChild(index); err != nil {
 		return err
 	}
@@ -536,7 +552,9 @@ func (r *Replica) rmChildDisk(parent, child string) {
 func (r *Replica) updateChildDisk(oldName, newName string) {
 	parent := r.diskData[oldName].Parent
 	r.rmChildDisk(parent, oldName)
-	r.addChildDisk(parent, newName)
+	if newName != "" {
+		r.addChildDisk(parent, newName)
+	}
 }
 
 func (r *Replica) openFiles() error {
