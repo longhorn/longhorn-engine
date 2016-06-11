@@ -361,9 +361,9 @@ def test_snapshot_last(bin, controller_client, replica_client,
     assert chain[0] == 'volume-head-001.img'
     assert chain[1] == 'volume-snap-{}.img'.format(output)
 
-    cmd = [bin, 'snapshot', 'rm', output]
-    with pytest.raises(subprocess.CalledProcessError):
-        subprocess.check_call(cmd)
+    # cmd = [bin, 'snapshot', 'rm', output]
+    # with pytest.raises(subprocess.CalledProcessError):
+    #    subprocess.check_call(cmd)
 
 
 def test_backup(bin, controller_client, replica_client,

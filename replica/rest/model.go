@@ -99,7 +99,7 @@ func NewReplica(context *api.ApiContext, state replica.State, info replica.Info,
 	r.Size = strconv.FormatInt(info.Size, 10)
 
 	if rep != nil {
-		r.Chain, _ = rep.Chain()
+		r.Chain, _ = rep.DisplayChain()
 	}
 
 	return r

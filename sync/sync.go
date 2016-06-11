@@ -35,11 +35,13 @@ func (t *Task) DeleteSnapshot(snapshot string) error {
 		}
 	}
 
-	for _, replica := range replicas {
-		if err := t.coalesceSnapshot(&replica, snapshot); err != nil {
-			return err
+	/*
+		for _, replica := range replicas {
+			if err := t.coalesceSnapshot(&replica, snapshot); err != nil {
+				return err
+			}
 		}
-	}
+	*/
 
 	for _, replica := range replicas {
 		if err := t.rmDisk(&replica, snapshot); err != nil {
@@ -61,6 +63,8 @@ func (t *Task) rmDisk(replicaInController *rest.Replica, snapshot string) error 
 		return err
 	}
 
+	//TODO coalescing and backup need to check the location of snapshot,
+	//so needs index. should be replaced later.
 	disk, _ := getNameAndIndex(replica.Chain, snapshot)
 	return repClient.RemoveDisk(disk)
 }

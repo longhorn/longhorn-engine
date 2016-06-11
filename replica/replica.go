@@ -51,8 +51,9 @@ type Info struct {
 }
 
 type disk struct {
-	name   string
-	Parent string
+	name    string
+	Parent  string
+	Removed bool
 }
 
 type BackingFile struct {
@@ -211,6 +212,7 @@ func (r *Replica) RemoveDiffDisk(name string) error {
 		return fmt.Errorf("Can not delete the active differencing disk")
 	}
 
+	/* don't update the chain, we just don't want to show it
 	if err := r.relinkChild(index); err != nil {
 		return err
 	}
@@ -225,8 +227,9 @@ func (r *Replica) RemoveDiffDisk(name string) error {
 
 	r.activeDiskData = append(r.activeDiskData[:index], r.activeDiskData[index+1:]...)
 	delete(r.diskData, name)
+	*/
 
-	if err := r.rmDisk(name); err != nil {
+	if err := r.markDiskAsRemoved(name); err != nil {
 		// ignore error deleting files
 		logrus.Errorf("Failed to delete %s: %v", name, err)
 	}
@@ -236,6 +239,24 @@ func (r *Replica) RemoveDiffDisk(name string) error {
 
 func (r *Replica) Info() Info {
 	return r.info
+}
+
+func (r *Replica) DisplayChain() ([]string, error) {
+	result := make([]string, 0, len(r.activeDiskData))
+
+	cur := r.info.Head
+	for cur != "" {
+		disk, ok := r.diskData[cur]
+		if !ok {
+			return nil, fmt.Errorf("Failed to find metadata for %s", cur)
+		}
+		if !disk.Removed {
+			result = append(result, cur)
+		}
+		cur = r.diskData[cur].Parent
+	}
+
+	return result, nil
 }
 
 func (r *Replica) Chain() ([]string, error) {
@@ -341,7 +362,7 @@ func (r *Replica) createNewHead(oldHead, parent string) (types.DiffDisk, disk, e
 		return nil, disk{}, err
 	}
 
-	newDisk := disk{Parent: parent, name: newHeadName}
+	newDisk := disk{Parent: parent, name: newHeadName, Removed: false}
 	err = r.encodeToFile(&newDisk, newHeadName+metadataSuffix)
 	return f, newDisk, err
 }
@@ -364,6 +385,22 @@ func (r *Replica) linkDisk(oldname, newname string) error {
 	}
 
 	return os.Link(r.diskPath(oldname+metadataSuffix), r.diskPath(newname+metadataSuffix))
+}
+
+func (r *Replica) markDiskAsRemoved(name string) error {
+	disk, ok := r.diskData[name]
+	if !ok {
+		return fmt.Errorf("Cannot find disk %v", name)
+	}
+	if stat, err := os.Stat(r.diskPath(name)); err != nil || stat.IsDir() {
+		return fmt.Errorf("Cannot find disk file %v", name)
+	}
+	if stat, err := os.Stat(r.diskPath(name + metadataSuffix)); err != nil || stat.IsDir() {
+		return fmt.Errorf("Cannot find disk metafile %v", name+metadataSuffix)
+	}
+	disk.Removed = true
+	r.diskData[name] = disk
+	return r.encodeToFile(disk, name+metadataSuffix)
 }
 
 func (r *Replica) rmDisk(name string) error {
