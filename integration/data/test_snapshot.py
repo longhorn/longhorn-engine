@@ -1,5 +1,3 @@
-import pytest
-
 import cmd
 import common
 from common import dev, backing_dev  # NOQA
@@ -37,8 +35,7 @@ def test_snapshot_revert(dev):  # NOQA
 
 
 # TODO BUG: https://github.com/rancher/longhorn/issues/108
-@pytest.mark.xfail(strict=True)  # NOQA
-def test_snapshot_rm(dev):
+def test_snapshot_rm(dev):  # NOQA
     offset = 0
     length = 128
 

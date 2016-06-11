@@ -192,7 +192,6 @@ func (s *TestSuite) TestRemoveLeafNode(c *C) {
 	c.Assert(r.diskChildMap["volume-snap-000.img"].Cardinality(), Equals, 1)
 }
 
-/* Disable unit test until we implement this part correctly
 func (s *TestSuite) TestRemoveLast(c *C) {
 	dir, err := ioutil.TempDir("", "replica")
 	c.Assert(err, IsNil)
@@ -219,7 +218,7 @@ func (s *TestSuite) TestRemoveLast(c *C) {
 	c.Assert(r.activeDiskData[1].name, Equals, "volume-snap-000.img")
 	c.Assert(r.activeDiskData[1].Parent, Equals, "")
 
-	err = r.RemoveDiffDisk("volume-snap-000.img")
+	err = r.RemoveDiffDisk("volume-snap-000.img", false)
 	c.Assert(err, IsNil)
 	c.Assert(len(r.activeDiskData), Equals, 3)
 	c.Assert(len(r.volume.files), Equals, 3)
@@ -256,7 +255,7 @@ func (s *TestSuite) TestRemoveMiddle(c *C) {
 	c.Assert(r.activeDiskData[1].name, Equals, "volume-snap-000.img")
 	c.Assert(r.activeDiskData[1].Parent, Equals, "")
 
-	err = r.RemoveDiffDisk("volume-snap-001.img")
+	err = r.RemoveDiffDisk("volume-snap-001.img", false)
 	c.Assert(err, IsNil)
 	c.Assert(len(r.activeDiskData), Equals, 3)
 	c.Assert(len(r.volume.files), Equals, 3)
@@ -266,7 +265,6 @@ func (s *TestSuite) TestRemoveMiddle(c *C) {
 	c.Assert(r.activeDiskData[1].name, Equals, "volume-snap-000.img")
 	c.Assert(r.activeDiskData[1].Parent, Equals, "")
 }
-*/
 
 func (s *TestSuite) TestRemoveFirst(c *C) {
 	dir, err := ioutil.TempDir("", "replica")

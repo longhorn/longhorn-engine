@@ -8,6 +8,7 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/rancher/longhorn/controller/client"
 	"github.com/rancher/longhorn/controller/rest"
+	"github.com/rancher/longhorn/replica"
 	replicaClient "github.com/rancher/longhorn/replica/client"
 )
 
@@ -35,16 +36,8 @@ func (t *Task) DeleteSnapshot(snapshot string) error {
 		}
 	}
 
-	/*
-		for _, replica := range replicas {
-			if err := t.coalesceSnapshot(&replica, snapshot); err != nil {
-				return err
-			}
-		}
-	*/
-
 	for _, replica := range replicas {
-		if err := t.rmDisk(&replica, snapshot, false); err != nil {
+		if err := t.removeSnapshot(&replica, snapshot); err != nil {
 			return err
 		}
 	}
@@ -52,21 +45,13 @@ func (t *Task) DeleteSnapshot(snapshot string) error {
 	return nil
 }
 
-func (t *Task) rmDisk(replicaInController *rest.Replica, snapshot string, markOnly bool) error {
+func (t *Task) rmDisk(replicaInController *rest.Replica, disk string, markOnly bool) error {
 	repClient, err := replicaClient.NewReplicaClient(replicaInController.Address)
 	if err != nil {
 		return err
 	}
 
-	replica, err := repClient.GetReplica()
-	if err != nil {
-		return err
-	}
-
-	//TODO coalescing and backup need to check the location of snapshot,
-	//so needs index. should be replaced later.
-	disk, _ := getNameAndIndex(replica.Chain, snapshot)
-	return repClient.RemoveDisk(disk, false)
+	return repClient.RemoveDisk(disk, markOnly)
 }
 
 func getNameAndIndex(chain []string, snapshot string) (string, int) {
@@ -97,7 +82,7 @@ func (t *Task) isRebuilding(replicaInController *rest.Replica) (bool, error) {
 	return replica.Rebuilding, nil
 }
 
-func (t *Task) coalesceSnapshot(replicaInController *rest.Replica, snapshot string) error {
+func (t *Task) removeSnapshot(replicaInController *rest.Replica, snapshot string) error {
 	if replicaInController.Mode != "RW" {
 		return fmt.Errorf("Can only removed snapshot from replica in mode RW, got %s", replicaInController.Mode)
 	}
@@ -107,28 +92,37 @@ func (t *Task) coalesceSnapshot(replicaInController *rest.Replica, snapshot stri
 		return err
 	}
 
-	replica, err := repClient.GetReplica()
+	output, err := repClient.PrepareRemoveDisk(snapshot)
 	if err != nil {
 		return err
 	}
 
-	_, index := getNameAndIndex(replica.Chain, snapshot)
-
-	switch {
-	case index < 0:
-		return fmt.Errorf("Snapshot %s not found on replica %s", snapshot, replicaInController.Address)
-	case index == 0:
-		return fmt.Errorf("Can not remove the head disk in the chain")
-	case index >= len(replica.Chain)-1:
-		return fmt.Errorf("Can not remove the last disk in the chain")
+	for _, op := range output.Operations {
+		switch op.Action {
+		case replica.OpRemove:
+			logrus.Infof("Removing %s on %s", op.Source, replicaInController.Address)
+			if err := t.rmDisk(replicaInController, op.Source, false); err != nil {
+				return err
+			}
+		case replica.OpMarkAsRemoved:
+			logrus.Infof("Marking %v as removed on %v", op.Source, replicaInController.Address)
+			if err := t.rmDisk(replicaInController, op.Source, true); err != nil {
+				return err
+			}
+		case replica.OpCoalesce:
+			logrus.Infof("Coalescing %v to %v on %v", op.Target, op.Source, replicaInController.Address)
+			if err = repClient.Coalesce(op.Target, op.Source); err != nil {
+				logrus.Errorf("Failed to coalesce %s on %s: %v", snapshot, replicaInController.Address, err)
+				return err
+			}
+			logrus.Infof("Hard-link %v to %v on %v", op.Source, op.Target, replicaInController.Address)
+			if err = repClient.HardLink(op.Source, op.Target); err != nil {
+				logrus.Errorf("Failed to hard-link %v to %v on %v", op.Source, op.Target, replicaInController.Address)
+				return err
+			}
+		}
 	}
 
-	logrus.Infof("Coalescing %s on %s", snapshot, replicaInController.Address)
-	err = repClient.Coalesce(replica.Chain[index], replica.Chain[index+1])
-	if err != nil {
-		logrus.Errorf("Failed to coalesce %s on %s: %v", snapshot, replicaInController.Address, err)
-		return err
-	}
 	return nil
 }
 

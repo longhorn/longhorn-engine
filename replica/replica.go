@@ -230,48 +230,60 @@ func (r *Replica) RemoveDiffDisk(name string, markOnly bool) error {
 		return nil
 	}
 
+	if err := r.removeDiskNode(name); err != nil {
+		return err
+	}
+
+	if err := r.rmDisk(name); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (r *Replica) removeDiskNode(name string) error {
 	// If snapshot has no child, then we can safely delete it
 	// And it's definitely not in the live chain
 	children := r.diskChildMap[name]
 	if children == nil {
 		r.updateChildDisk(name, "")
 		delete(r.diskData, name)
-		if err := r.rmDisk(name); err != nil {
-			return err
-		}
 		return nil
 	}
 
-	/* don't update the chain, we just don't want to show it
+	// If snapshot has more than one child, we cannot really delete it
+	// Caller should call with markOnly=true instead
+	if children.Cardinality() > 1 {
+		return fmt.Errorf("Cannot remove snapshot %v with %v children",
+			name, children.Cardinality())
+	}
+
+	// only one child from here
+	childIter := <-children.Iter()
+	child := childIter.(string)
+	r.updateChildDisk(name, child)
+	/*
+		if err := r.updateParentDisk(child, name); err != nil {
+			return err
+		}
+	*/
+	delete(r.diskData, name)
+
 	index := r.findDisk(name)
 	if index <= 0 {
 		return nil
 	}
-
-	if len(r.activeDiskData)-1 == index {
-		return fmt.Errorf("Can not delete the active differencing disk")
-	}
-
 	if err := r.relinkChild(index); err != nil {
 		return err
 	}
-
 	if err := r.volume.RemoveIndex(index); err != nil {
 		return err
 	}
-
 	if len(r.activeDiskData)-2 == index {
 		r.info.Parent = r.diskData[r.info.Head].Parent
 	}
-
 	r.activeDiskData = append(r.activeDiskData[:index], r.activeDiskData[index+1:]...)
-	delete(r.diskData, name)
-	*/
 
-	if err := r.markDiskAsRemoved(name); err != nil {
-		// ignore error deleting files
-		logrus.Errorf("Failed to delete %s: %v", name, err)
-	}
 	return nil
 }
 
@@ -628,6 +640,17 @@ func (r *Replica) updateChildDisk(oldName, newName string) {
 	if newName != "" {
 		r.addChildDisk(parent, newName)
 	}
+}
+
+func (r *Replica) updateParentDisk(name, oldParent string) error {
+	child := r.diskData[name]
+	if oldParent != "" {
+		child.Parent = r.diskData[oldParent].Parent
+	} else {
+		child.Parent = ""
+	}
+	r.diskData[name] = child
+	return r.encodeToFile(child, child.name+metadataSuffix)
 }
 
 func (r *Replica) openFiles() error {
