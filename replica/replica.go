@@ -144,6 +144,10 @@ func GenerateSnapshotDiskName(name string) string {
 	return fmt.Sprintf(diskName, name)
 }
 
+func (r *Replica) diskPath(name string) string {
+	return path.Join(r.dir, name)
+}
+
 func (r *Replica) insertBackingFile() {
 	if r.info.BackingFile == nil {
 		return
@@ -278,7 +282,7 @@ func (r *Replica) encodeToFile(obj interface{}, file string) error {
 		return nil
 	}
 
-	f, err := os.Create(path.Join(r.dir, file+".tmp"))
+	f, err := os.Create(r.diskPath(file + ".tmp"))
 	if err != nil {
 		return err
 	}
@@ -292,7 +296,7 @@ func (r *Replica) encodeToFile(obj interface{}, file string) error {
 		return err
 	}
 
-	return os.Rename(path.Join(r.dir, file+".tmp"), path.Join(r.dir, file))
+	return os.Rename(r.diskPath(file+".tmp"), r.diskPath(file))
 }
 
 func (r *Replica) nextFile(parsePattern *regexp.Regexp, pattern, parent string) (string, error) {
@@ -310,7 +314,7 @@ func (r *Replica) nextFile(parsePattern *regexp.Regexp, pattern, parent string) 
 }
 
 func (r *Replica) openFile(name string, flag int) (types.DiffDisk, error) {
-	f, err := os.OpenFile(path.Join(r.dir, name), syscall.O_DIRECT|os.O_RDWR|os.O_CREATE|flag, 0666)
+	f, err := os.OpenFile(r.diskPath(name), syscall.O_DIRECT|os.O_RDWR|os.O_CREATE|flag, 0666)
 	if err != nil {
 		return nil, err
 	}
@@ -325,7 +329,7 @@ func (r *Replica) createNewHead(oldHead, parent string) (types.DiffDisk, disk, e
 		return nil, disk{}, err
 	}
 
-	if _, err := os.Stat(path.Join(r.dir, newHeadName)); err == nil {
+	if _, err := os.Stat(r.diskPath(newHeadName)); err == nil {
 		return nil, disk{}, fmt.Errorf("%s already exists", newHeadName)
 	}
 
@@ -333,7 +337,7 @@ func (r *Replica) createNewHead(oldHead, parent string) (types.DiffDisk, disk, e
 	if err != nil {
 		return nil, disk{}, err
 	}
-	if err := syscall.Truncate(path.Join(r.dir, newHeadName), r.info.Size); err != nil {
+	if err := syscall.Truncate(r.diskPath(newHeadName), r.info.Size); err != nil {
 		return nil, disk{}, err
 	}
 
@@ -347,7 +351,7 @@ func (r *Replica) linkDisk(oldname, newname string) error {
 		return nil
 	}
 
-	dest := path.Join(r.dir, newname)
+	dest := r.diskPath(newname)
 	if _, err := os.Stat(dest); err == nil {
 		logrus.Infof("Old file %s exists, deleting", dest)
 		if err := os.Remove(dest); err != nil {
@@ -355,11 +359,11 @@ func (r *Replica) linkDisk(oldname, newname string) error {
 		}
 	}
 
-	if err := os.Link(path.Join(r.dir, oldname), dest); err != nil {
+	if err := os.Link(r.diskPath(oldname), dest); err != nil {
 		return err
 	}
 
-	return os.Link(path.Join(r.dir, oldname+metadataSuffix), path.Join(r.dir, newname+metadataSuffix))
+	return os.Link(r.diskPath(oldname+metadataSuffix), r.diskPath(newname+metadataSuffix))
 }
 
 func (r *Replica) rmDisk(name string) error {
@@ -367,15 +371,15 @@ func (r *Replica) rmDisk(name string) error {
 		return nil
 	}
 
-	lastErr := os.Remove(path.Join(r.dir, name))
-	if err := os.Remove(path.Join(r.dir, name+metadataSuffix)); err != nil {
+	lastErr := os.Remove(r.diskPath(name))
+	if err := os.Remove(r.diskPath(name + metadataSuffix)); err != nil {
 		lastErr = err
 	}
 	return lastErr
 }
 
 func (r *Replica) revertDisk(parent string) (*Replica, error) {
-	if _, err := os.Stat(path.Join(r.dir, parent)); err != nil {
+	if _, err := os.Stat(r.diskPath(parent)); err != nil {
 		return nil, err
 	}
 
@@ -520,7 +524,7 @@ func (r *Replica) readDiskData(file string) error {
 }
 
 func (r *Replica) unmarshalFile(file string, obj interface{}) error {
-	p := path.Join(r.dir, file)
+	p := r.diskPath(file)
 	f, err := os.Open(p)
 	if err != nil {
 		return err
@@ -548,7 +552,7 @@ func (r *Replica) Delete() error {
 		}
 	}
 
-	os.Remove(path.Join(r.dir, volumeMetaData))
+	os.Remove(r.diskPath(volumeMetaData))
 	return nil
 }
 
