@@ -16,7 +16,7 @@ func Main() {
 	verbose := flag.Bool("verbose", false, "verbose mode")
 	daemon := flag.Bool("daemon", false, "daemon mode (run on remote host)")
 	port := flag.Int("port", 5000, "optional daemon port")
-	timeout := flag.Int("timeout", 60, "optional daemon/client timeout (seconds)")
+	timeout := flag.Int("timeout", 120, "optional daemon/client timeout (seconds)")
 	host := flag.String("host", "", "remote host of <DstFile> (requires running daemon)")
 	flag.Usage = func() {
 		const usage = "sync <Options> <SrcFile> [<DstFile>]"
