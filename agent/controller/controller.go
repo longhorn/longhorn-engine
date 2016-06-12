@@ -3,6 +3,7 @@ package controller
 import (
 	"fmt"
 	"io/ioutil"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -376,10 +377,25 @@ func (c *Controller) addReplicasInMetadata() error {
 	return nil
 }
 
+func (c *Controller) testSyncAgent(host string) error {
+	address := fmt.Sprintf("%v:%v", host, 9504)
+	conn, err := net.DialTimeout("tcp", address, time.Second*10)
+	if err != nil {
+		return err
+	}
+	conn.Close()
+	return nil
+}
+
 func (c *Controller) addReplica(r *replica) error {
 	replica, err := r.client.GetReplica()
 	if err != nil {
 		return fmt.Errorf("Error getting replica %v before adding: %v", r.host, err)
+	}
+
+	// Ensure sync-agent is up and running
+	if err := c.testSyncAgent(r.host); err != nil {
+		return fmt.Errorf("Error while testing sync agent connection: %v", err)
 	}
 
 	if _, ok := replica.Actions["create"]; ok {
