@@ -19,6 +19,7 @@ import (
 	"github.com/rancher/longhorn/agent/replica/rest"
 )
 
+// TODO Add logic to purge old entries from these maps
 var restoreMutex = &sync.RWMutex{}
 var restoreMap = make(map[string]*status)
 
@@ -49,6 +50,10 @@ func (s *Server) CreateBackup(rw http.ResponseWriter, req *http.Request) error {
 	if input.UUID == "" {
 		rw.WriteHeader(http.StatusBadRequest)
 		return nil
+	}
+
+	if status := checkStatus(input.UUID, backupMap, backupMutex); status != nil {
+		return apiContext.WriteResource(status)
 	}
 
 	if err := prepareBackupTarget(input.BackupTarget); err != nil {
@@ -125,6 +130,10 @@ func (s *Server) RestoreFromBackup(rw http.ResponseWriter, req *http.Request) er
 		return nil
 	}
 
+	if status := checkStatus(input.UUID, restoreMap, restoreMutex); status != nil {
+		return apiContext.WriteResource(status)
+	}
+
 	if err := prepareBackupTarget(input.BackupTarget); err != nil {
 		return err
 	}
@@ -197,6 +206,12 @@ func (s *Server) GetBackupStatus(rw http.ResponseWriter, req *http.Request) erro
 func (s *Server) GetRestoreStatus(rw http.ResponseWriter, req *http.Request) error {
 	logrus.Infof("Getting restore status")
 	return getStatus(restoreMap, restoreMutex, rw, req)
+}
+
+func checkStatus(id string, statusMap map[string]*status, statusMutex *sync.RWMutex) *status {
+	statusMutex.RLock()
+	defer statusMutex.RUnlock()
+	return statusMap[id]
 }
 
 func getStatus(statusMap map[string]*status, statusMutex *sync.RWMutex, rw http.ResponseWriter, req *http.Request) error {
