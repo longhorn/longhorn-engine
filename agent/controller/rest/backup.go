@@ -53,6 +53,7 @@ func (s *Server) CreateBackup(rw http.ResponseWriter, req *http.Request) error {
 	}
 
 	if status := checkStatus(input.UUID, backupMap, backupMutex); status != nil {
+		logrus.Infof("Found status %v for id %v for backup request.", status, input.UUID)
 		return apiContext.WriteResource(status)
 	}
 
@@ -131,6 +132,7 @@ func (s *Server) RestoreFromBackup(rw http.ResponseWriter, req *http.Request) er
 	}
 
 	if status := checkStatus(input.UUID, restoreMap, restoreMutex); status != nil {
+		logrus.Infof("Found status %v for id %v for restore request.", status, input.UUID)
 		return apiContext.WriteResource(status)
 	}
 
@@ -148,11 +150,13 @@ func (s *Server) RestoreFromBackup(rw http.ResponseWriter, req *http.Request) er
 
 func restore(uuid, location string) (*status, error) {
 	cmd := exec.Command("longhorn", "backup", "restore", location)
+	logrus.Infof("Running restore command: %v", cmd.Args)
 	return doStatusBackedCommand(uuid, "restorestatus", cmd, restoreMap, restoreMutex)
 }
 
 func backup(uuid, snapshot, destination string) (*status, error) {
 	cmd := exec.Command("longhorn", "backup", "create", snapshot, "--dest", destination)
+	logrus.Infof("Running backup command: %v", cmd.Args)
 	return doStatusBackedCommand(uuid, "backupstatus", cmd, backupMap, backupMutex)
 }
 
@@ -176,9 +180,11 @@ func doStatusBackedCommand(id, resourceType string, command *exec.Cmd, statusMap
 
 		err := c.Wait()
 		if err != nil {
+			logrus.Errorf("Error running command %v: %v", command.Args, err)
 			state = "error"
 			message = fmt.Sprintf("Error: %v", err)
 		} else {
+			logrus.Infof("Command %v completed successfuly.", command.Args)
 			state = "done"
 			message = output.String()
 		}
@@ -192,7 +198,7 @@ func doStatusBackedCommand(id, resourceType string, command *exec.Cmd, statusMap
 
 		status.State = state
 		status.Message = message
-		restoreMap[id] = status
+		statusMap[id] = status
 	}(id, command)
 
 	return status, nil
