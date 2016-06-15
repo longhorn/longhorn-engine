@@ -3,6 +3,7 @@ import random
 from os import path
 import os
 import subprocess
+import json
 
 import pytest
 import cattle
@@ -12,6 +13,9 @@ REPLICA = 'tcp://localhost:9502'
 REPLICA2 = 'tcp://localhost:9505'
 
 BACKUP_DEST = '/tmp/longhorn-backup'
+
+VOLUME_NAME = 'test-volume'
+VOLUME_SIZE = str(4 * 1024 * 1024)  # 4M
 
 
 @pytest.fixture
@@ -366,8 +370,8 @@ def test_snapshot_last(bin, controller_client, replica_client,
     subprocess.check_call(cmd)
 
 
-def test_backup(bin, controller_client, replica_client,
-                replica_client2):
+def test_backup_core(bin, controller_client, replica_client,
+                     replica_client2):
     open_replica(replica_client)
     open_replica(replica_client2)
 
@@ -398,6 +402,28 @@ def test_backup(bin, controller_client, replica_client,
            '--dest', "vfs://" + BACKUP_DEST]
     backup2 = subprocess.check_output(cmd).strip()
 
+    cmd = [bin, 'backup', 'inspect', backup1]
+    data = subprocess.check_output(cmd)
+    backup1_info = json.loads(data)
+    assert backup1_info["BackupURL"] == backup1
+    assert backup1_info["VolumeName"] == VOLUME_NAME
+    assert backup1_info["VolumeSize"] == VOLUME_SIZE
+    assert backup1_info["SnapshotName"] == snapshot1
+
+    cmd = [bin, 'backup', 'inspect', backup2]
+    data = subprocess.check_output(cmd)
+    backup2_info = json.loads(data)
+    assert backup2_info["BackupURL"] == backup2
+    assert backup2_info["VolumeName"] == VOLUME_NAME
+    assert backup2_info["VolumeSize"] == VOLUME_SIZE
+    assert backup2_info["SnapshotName"] == snapshot2
+
+    cmd = [bin, 'backup', 'inspect',
+           "vfs:///tmp/longhorn-backup?backup=backup-1234&volume=test-volume"]
+    with pytest.raises(subprocess.CalledProcessError) as e:
+        subprocess.check_call(cmd)
+        assert 'cannot find' in str(e.value)
+
     cmd = [bin, 'backup', 'restore', backup1]
     subprocess.check_call(cmd)
 
@@ -410,3 +436,14 @@ def test_backup(bin, controller_client, replica_client,
     subprocess.check_call(cmd)
 
     assert os.path.exists(BACKUP_DEST)
+
+    cmd = [bin, 'backup', 'inspect',
+           "vfs:///tmp/longhorn-backup?backup=backup-1234&volume=test-volume"]
+    with pytest.raises(subprocess.CalledProcessError) as e:
+        subprocess.check_call(cmd)
+        assert 'cannot find' in str(e.value)
+
+    cmd = [bin, 'backup', 'inspect', "xxx"]
+    with pytest.raises(subprocess.CalledProcessError) as e:
+        subprocess.check_call(cmd)
+        assert 'not supported' in str(e.value)

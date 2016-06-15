@@ -337,6 +337,40 @@ func (c *ReplicaClient) RestoreBackup(backup, snapshotFile string) error {
 		}
 	}
 }
+
+func (c *ReplicaClient) InspectBackup(backup string) (string, error) {
+	var running agent.Process
+	err := c.post(c.syncAgent+"/processes", &agent.Process{
+		ProcessType: "inspectbackup",
+		SrcFile:     backup,
+	}, &running)
+	if err != nil {
+		return "", err
+	}
+
+	start := 250 * time.Millisecond
+	for {
+		err := c.get(running.Links["self"], &running)
+		if err != nil {
+			return "", err
+		}
+
+		switch running.ExitCode {
+		case -2:
+			time.Sleep(start)
+			start = start * 2
+			if start > 1*time.Second {
+				start = 1 * time.Second
+			}
+		case 0:
+			return running.Output, nil
+		default:
+			return "", fmt.Errorf("ExitCode: %d, output: %v",
+				running.ExitCode, running.Output)
+		}
+	}
+}
+
 func (c *ReplicaClient) get(url string, obj interface{}) error {
 	if !strings.HasPrefix(url, "http") {
 		url = c.address + url
