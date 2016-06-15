@@ -17,6 +17,7 @@ import (
 	"github.com/rancher/go-rancher/api"
 	"github.com/rancher/longhorn/agent/controller"
 	"github.com/rancher/longhorn/agent/replica/rest"
+	"regexp"
 )
 
 // TODO Add logic to purge old entries from these maps
@@ -25,6 +26,8 @@ var restoreMap = make(map[string]*status)
 
 var backupMutex = &sync.RWMutex{}
 var backupMap = make(map[string]*status)
+
+var doesntExistRegex = regexp.MustCompile("cannot find.*in objectstore")
 
 func (s *Server) CreateBackup(rw http.ResponseWriter, req *http.Request) error {
 	logrus.Infof("Creating backup")
@@ -94,6 +97,7 @@ func (s *Server) RemoveBackup(rw http.ResponseWriter, req *http.Request) error {
 	}
 
 	if !exists {
+		logrus.Infof("Backup [%v] doesn't exist. Nothing to remove.", input.Location)
 		rw.WriteHeader(http.StatusNoContent)
 		return nil
 	}
@@ -236,8 +240,21 @@ func getStatus(statusMap map[string]*status, statusMutex *sync.RWMutex, rw http.
 	return apiContext.WriteResource(status)
 }
 
-func backupExists(location locationInput) (bool, error) {
-	// TODO Properly implement once we have a way of knowing if a backup exists
+func backupExists(input locationInput) (bool, error) {
+	cmd := exec.Command("longhorn", "backup", "inspect", input.Location)
+	stderr := new(bytes.Buffer)
+	cmd.Stderr = stderr
+	cmd.Stdout = os.Stdout
+	logrus.Infof("Running %v", cmd.Args)
+	if err := cmd.Run(); err != nil {
+		errOutput := stderr.String()
+		if doesntExistRegex.MatchString(errOutput) {
+			return false, nil
+		}
+		logrus.Errorf("Backup inspect error output: %v", errOutput)
+		return false, err
+	}
+
 	return true, nil
 }
 
