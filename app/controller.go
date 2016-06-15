@@ -84,10 +84,20 @@ func startController(c *cli.Context) error {
 
 	control := controller.NewController(name, dynamic.New(factories), frontend)
 	server := rest.NewServer(control)
-	router := http.Handler(rest.NewRouter(server))
-
-	router = handlers.LoggingHandler(os.Stdout, router)
-	router = handlers.ProxyHeaders(router)
+	handler := http.Handler(rest.NewRouter(server))
+	loggingHandler := handlers.LoggingHandler(os.Stdout, handler)
+	wrappedRouter := http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		switch req.Method {
+		case "GET":
+			switch req.URL.Path {
+			case "/v1/volumes", "/v1/replicas":
+				// bypass http logging for frequent control plane verbs/URLs
+				handler.ServeHTTP(rw, req)
+				return
+			}
+		}
+		loggingHandler.ServeHTTP(rw, req)
+	})
 
 	if len(replicas) > 0 {
 		logrus.Infof("Starting with replicas %q", replicas)
@@ -102,5 +112,5 @@ func startController(c *cli.Context) error {
 		control.Shutdown()
 	})
 
-	return http.ListenAndServe(listen, router)
+	return http.ListenAndServe(listen, handlers.ProxyHeaders(wrappedRouter))
 }
