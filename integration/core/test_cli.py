@@ -408,3 +408,5 @@ def test_backup(bin, controller_client, replica_client,
     subprocess.check_call(cmd)
     cmd = [bin, 'backup', 'rm', backup2]
     subprocess.check_call(cmd)
+
+    assert os.path.exists(BACKUP_DEST)
