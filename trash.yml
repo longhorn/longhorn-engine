@@ -29,7 +29,7 @@ import:
 - package: github.com/rancher/go-rancher-metadata
   version: 721b783c9983a17ec0d63d5530337610de9519ec
 - package: github.com/rancher/convoy
-  version: 79b2b778af1441227aa2ca707653c48cc2e8632b
+  version: e06007546b98d850817b1daaf7196c00571ffa52
 - package: github.com/mcuadros/go-version
   version: d52711f8d6bea8dc01efafdb68ad95a4e2606630
 - package: golang.org/x/sys/unix

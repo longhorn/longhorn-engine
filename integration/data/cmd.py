@@ -1,3 +1,4 @@
+import json
 import subprocess
 from os import path
 
@@ -49,3 +50,8 @@ def backup_rm(backup):
 def backup_restore(backup):
     cmd = [_bin(), '--debug', 'backup', 'restore', backup]
     return subprocess.check_output(cmd).strip()
+
+
+def backup_inspect(backup):
+    cmd = [_bin(), '--debug', 'backup', 'inspect', backup]
+    return json.loads(subprocess.check_output(cmd))

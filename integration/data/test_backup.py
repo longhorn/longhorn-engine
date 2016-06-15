@@ -7,6 +7,9 @@ import common
 from common import dev, backing_dev  # NOQA
 from common import read_dev, read_from_backing_file, BACKUP_DEST
 
+VOLUME_NAME = 'test-volume'
+VOLUME_SIZE = str(4 * 1024 * 1024)  # 4M
+
 
 def test_backup(dev):  # NOQA
     offset = 0
@@ -17,18 +20,33 @@ def test_backup(dev):  # NOQA
     snap1 = cmd.snapshot_create()
 
     backup1 = cmd.backup_create(snap1, BACKUP_DEST)
+    backup1_info = cmd.backup_inspect(backup1)
+    assert backup1_info["BackupURL"] == backup1
+    assert backup1_info["VolumeName"] == VOLUME_NAME
+    assert backup1_info["VolumeSize"] == VOLUME_SIZE
+    assert snap1 in backup1_info["SnapshotName"]
 
     snap2_data = common.random_string(length)
     common.verify_data(dev, offset, snap2_data)
     snap2 = cmd.snapshot_create()
 
     backup2 = cmd.backup_create(snap2, BACKUP_DEST)
+    backup2_info = cmd.backup_inspect(backup2)
+    assert backup2_info["BackupURL"] == backup2
+    assert backup2_info["VolumeName"] == VOLUME_NAME
+    assert backup2_info["VolumeSize"] == VOLUME_SIZE
+    assert snap2 in backup2_info["SnapshotName"]
 
     snap3_data = common.random_string(length)
     common.verify_data(dev, offset, snap3_data)
     snap3 = cmd.snapshot_create()
 
     backup3 = cmd.backup_create(snap3, BACKUP_DEST)
+    backup3_info = cmd.backup_inspect(backup3)
+    assert backup3_info["BackupURL"] == backup3
+    assert backup3_info["VolumeName"] == VOLUME_NAME
+    assert backup3_info["VolumeSize"] == VOLUME_SIZE
+    assert snap3 in backup3_info["SnapshotName"]
 
     cmd.backup_restore(backup3)
     readed = read_dev(dev, offset, length)
@@ -37,6 +55,9 @@ def test_backup(dev):  # NOQA
     cmd.backup_rm(backup3)
     with pytest.raises(subprocess.CalledProcessError):
         cmd.backup_restore(backup3)
+    with pytest.raises(subprocess.CalledProcessError) as e:
+        cmd.backup_inspect(backup3)
+        assert 'cannot find' in str(e.value)
 
     cmd.backup_restore(backup1)
     readed = read_dev(dev, offset, length)
@@ -45,6 +66,9 @@ def test_backup(dev):  # NOQA
     cmd.backup_rm(backup1)
     with pytest.raises(subprocess.CalledProcessError):
         cmd.backup_restore(backup1)
+    with pytest.raises(subprocess.CalledProcessError) as e:
+        cmd.backup_inspect(backup1)
+        assert 'cannot find' in str(e.value)
 
     cmd.backup_restore(backup2)
     readed = read_dev(dev, offset, length)
@@ -53,6 +77,9 @@ def test_backup(dev):  # NOQA
     cmd.backup_rm(backup2)
     with pytest.raises(subprocess.CalledProcessError):
         cmd.backup_restore(backup2)
+    with pytest.raises(subprocess.CalledProcessError) as e:
+        cmd.backup_inspect(backup2)
+        assert 'cannot find' in str(e.value)
 
 
 def test_backup_with_backing_file(backing_dev):  # NOQA
@@ -69,6 +96,11 @@ def test_backup_with_backing_file(backing_dev):  # NOQA
     assert before == exists
 
     backup0 = cmd.backup_create(snap0, BACKUP_DEST)
+    backup0_info = cmd.backup_inspect(backup0)
+    assert backup0_info["BackupURL"] == backup0
+    assert backup0_info["VolumeName"] == VOLUME_NAME
+    assert backup0_info["VolumeSize"] == VOLUME_SIZE
+    assert snap0 in backup0_info["SnapshotName"]
 
     test_backup(dev)
 
@@ -79,6 +111,9 @@ def test_backup_with_backing_file(backing_dev):  # NOQA
     cmd.backup_rm(backup0)
     with pytest.raises(subprocess.CalledProcessError):
         cmd.backup_restore(backup0)
+    with pytest.raises(subprocess.CalledProcessError) as e:
+        cmd.backup_inspect(backup0)
+        assert 'cannot find' in str(e.value)
 
 
 def test_backup_hole_with_backing_file(backing_dev):  # NOQA

@@ -4,13 +4,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
-	"runtime"
-	"runtime/debug"
-	"strings"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
 
+	"github.com/rancher/convoy/api"
 	"github.com/rancher/convoy/objectstore"
 	"github.com/rancher/convoy/util"
 	"github.com/rancher/longhorn/replica"
@@ -77,37 +75,9 @@ var (
 	}
 )
 
-// ResponseLogAndError would log the error before call ResponseError()
-func ResponseLogAndError(v interface{}) {
-	if e, ok := v.(*logrus.Entry); ok {
-		e.Error(e.Message)
-		oldFormatter := e.Logger.Formatter
-		logrus.SetFormatter(&logrus.JSONFormatter{})
-		s, err := e.String()
-		logrus.SetFormatter(oldFormatter)
-		if err != nil {
-			fmt.Println(err.Error())
-			return
-		}
-		// Cosmetic since " would be escaped
-		fmt.Println(strings.Replace(s, "\"", "'", -1))
-	} else {
-		e, isErr := v.(error)
-		_, isRuntimeErr := e.(runtime.Error)
-		if isErr && !isRuntimeErr {
-			logrus.Errorf(fmt.Sprint(e))
-			fmt.Println(fmt.Sprint(e))
-		} else {
-			logrus.Errorf("Caught FATAL error: %s", v)
-			debug.PrintStack()
-			fmt.Printf("Caught FATAL error: %s\n", v)
-		}
-	}
-}
-
 func cleanup() {
 	if r := recover(); r != nil {
-		ResponseLogAndError(r)
+		api.ResponseLogAndError(r)
 		os.Exit(1)
 	}
 }
@@ -341,9 +311,12 @@ func doBackupInspect(c *cli.Context) error {
 
 	info, err := objectstore.GetBackupInfo(backupURL)
 	if err != nil {
-		return nil
+		return err
 	}
-	fmt.Println(info)
-
+	data, err := api.ResponseOutput(info)
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(data))
 	return nil
 }

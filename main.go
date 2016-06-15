@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"log"
 	"os"
 	"runtime/pprof"
@@ -22,6 +23,14 @@ func main() {
 	if !reexec.Init() {
 		longhornCli()
 	}
+}
+
+func cmdNotFound(c *cli.Context, command string) {
+	panic(fmt.Errorf("Unrecognized command: %s", command))
+}
+
+func onUsageError(c *cli.Context, err error, isSubcommand bool) error {
+	panic(fmt.Errorf("Usage error, please check your command"))
 }
 
 func longhornCli() {
@@ -62,6 +71,8 @@ func longhornCli() {
 		app.BackupCmd(),
 		app.Journal(),
 	}
+	a.CommandNotFound = cmdNotFound
+	a.OnUsageError = onUsageError
 
 	if err := a.Run(os.Args); err != nil {
 		logrus.Fatal(err)

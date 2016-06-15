@@ -16,6 +16,7 @@ func BackupCmd() cli.Command {
 			BackupCreateCmd(),
 			BackupRestoreCmd(),
 			BackupRmCmd(),
+			BackupInspectCmd(),
 		},
 	}
 }
@@ -57,6 +58,18 @@ func BackupRestoreCmd() cli.Command {
 		Action: func(c *cli.Context) {
 			if err := restoreBackup(c); err != nil {
 				logrus.Fatalf("Error running restore backup command: %v", err)
+			}
+		},
+	}
+}
+
+func BackupInspectCmd() cli.Command {
+	return cli.Command{
+		Name:  "inspect",
+		Usage: "inspect a backup: inspect <backup>",
+		Action: func(c *cli.Context) {
+			if err := inspectBackup(c); err != nil {
+				logrus.Fatalf("Error running inspect backup command: %v", err)
 			}
 		},
 	}
@@ -113,6 +126,24 @@ func restoreBackup(c *cli.Context) error {
 	if err := task.RestoreBackup(backup); err != nil {
 		return err
 	}
+
+	return nil
+}
+
+func inspectBackup(c *cli.Context) error {
+	url := c.GlobalString("url")
+	task := sync.NewTask(url)
+
+	backup := c.Args().First()
+	if backup == "" {
+		return fmt.Errorf("Missing required parameter backup")
+	}
+
+	output, err := task.InspectBackup(backup)
+	if err != nil {
+		return err
+	}
+	fmt.Println(output)
 
 	return nil
 }

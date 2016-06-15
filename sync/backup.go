@@ -101,7 +101,7 @@ func (t *Task) RmBackup(backup string) error {
 
 func (t *Task) rmBackup(replicaInController *rest.Replica, backup string) error {
 	if replicaInController.Mode != "RW" {
-		return fmt.Errorf("Can only create backup from replica in mode RW, got %s", replicaInController.Mode)
+		return fmt.Errorf("Can only remove backup from replica in mode RW, got %s", replicaInController.Mode)
 	}
 
 	repClient, err := replicaClient.NewReplicaClient(replicaInController.Address)
@@ -150,7 +150,7 @@ func (t *Task) RestoreBackup(backup string) error {
 
 func (t *Task) restoreBackup(replicaInController *rest.Replica, backup string, snapshotFile string) error {
 	if replicaInController.Mode != "RW" {
-		return fmt.Errorf("Can only create backup from replica in mode RW, got %s", replicaInController.Mode)
+		return fmt.Errorf("Can only restore backup from replica in mode RW, got %s", replicaInController.Mode)
 	}
 
 	repClient, err := replicaClient.NewReplicaClient(replicaInController.Address)
@@ -165,4 +165,48 @@ func (t *Task) restoreBackup(replicaInController *rest.Replica, backup string, s
 		return err
 	}
 	return nil
+}
+
+func (t *Task) InspectBackup(backup string) (string, error) {
+	var replica *rest.Replica
+
+	replicas, err := t.client.ListReplicas()
+	if err != nil {
+		return "", err
+	}
+
+	for _, r := range replicas {
+		if r.Mode == "RW" {
+			replica = &r
+			break
+		}
+	}
+
+	if replica == nil {
+		return "", fmt.Errorf("Cannot find a suitable replica for inspect backup")
+	}
+
+	result, err := t.inspectBackup(replica, backup)
+	if err != nil {
+		return "", err
+	}
+	return result, nil
+}
+
+func (t *Task) inspectBackup(replicaInController *rest.Replica, backup string) (string, error) {
+	if replicaInController.Mode != "RW" {
+		return "", fmt.Errorf("Can only inspect backup from replica in mode RW, got %s", replicaInController.Mode)
+	}
+
+	repClient, err := replicaClient.NewReplicaClient(replicaInController.Address)
+	if err != nil {
+		return "", err
+	}
+
+	result, err := repClient.InspectBackup(backup)
+	if err != nil {
+		logrus.Errorf("Failed inspect backup %s on %s", backup, replicaInController.Address)
+		return "", err
+	}
+	return result, nil
 }
