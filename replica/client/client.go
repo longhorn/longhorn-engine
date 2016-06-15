@@ -265,7 +265,8 @@ func (c *ReplicaClient) CreateBackup(snapshot, dest, volume string) (string, err
 		case 0:
 			return running.Output, nil
 		default:
-			return "", fmt.Errorf("ExitCode: %d", running.ExitCode)
+			return "", fmt.Errorf("ExitCode: %d, output: %v",
+				running.ExitCode, running.Output)
 		}
 	}
 }
@@ -297,7 +298,8 @@ func (c *ReplicaClient) RmBackup(backup string) error {
 		case 0:
 			return nil
 		default:
-			return fmt.Errorf("ExitCode: %d", running.ExitCode)
+			return fmt.Errorf("ExitCode: %d, output: %v",
+				running.ExitCode, running.Output)
 		}
 	}
 }
@@ -330,7 +332,8 @@ func (c *ReplicaClient) RestoreBackup(backup, snapshotFile string) error {
 		case 0:
 			return nil
 		default:
-			return fmt.Errorf("ExitCode: %d", running.ExitCode)
+			return fmt.Errorf("ExitCode: %d, output: %v",
+				running.ExitCode, running.Output)
 		}
 	}
 }

@@ -244,13 +244,16 @@ func (s *Server) launchBackup(p *Process) error {
 		Pdeathsig: syscall.SIGKILL,
 	}
 	cmd.Stdout = buf
-	cmd.Stderr = os.Stderr
+	cmd.Stderr = os.Stdout
 	if err := cmd.Start(); err != nil {
 		return err
 	}
 
 	logrus.Infof("Running %s %v", cmd.Path, cmd.Args)
 	err := cmd.Wait()
+
+	p.Output = buf.String()
+	fmt.Fprintf(os.Stdout, p.Output)
 	if err != nil {
 		logrus.Infof("Error running %s %v: %v", "sbackup", cmd.Args, err)
 		p.ExitCode = 1
@@ -264,24 +267,28 @@ func (s *Server) launchBackup(p *Process) error {
 	}
 
 	p.ExitCode = 0
-	p.Output = buf.String()
 	logrus.Infof("Done running %s %v, returns %v", "sbackup", cmd.Args, p.Output)
 	return nil
 }
 
 func (s *Server) launchRmBackup(p *Process) error {
+	buf := new(bytes.Buffer)
+
 	cmd := reexec.Command("sbackup", "delete", p.SrcFile)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Pdeathsig: syscall.SIGKILL,
 	}
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+	cmd.Stdout = buf
+	cmd.Stderr = os.Stdout
 	if err := cmd.Start(); err != nil {
 		return err
 	}
 
 	logrus.Infof("Running %s %v", cmd.Path, cmd.Args)
 	err := cmd.Wait()
+
+	p.Output = buf.String()
+	fmt.Fprintf(os.Stdout, p.Output)
 	if err != nil {
 		logrus.Infof("Error running %s %v: %v", "sbackup", cmd.Args, err)
 		p.ExitCode = 1
@@ -300,11 +307,13 @@ func (s *Server) launchRmBackup(p *Process) error {
 }
 
 func (s *Server) launchRestore(p *Process) error {
+	buf := new(bytes.Buffer)
+
 	cmd := reexec.Command("sbackup", "restore", p.SrcFile, "--to", p.DestFile)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Pdeathsig: syscall.SIGKILL,
 	}
-	cmd.Stdout = os.Stdout
+	cmd.Stdout = buf
 	cmd.Stderr = os.Stderr
 	if err := cmd.Start(); err != nil {
 		return err
@@ -312,6 +321,9 @@ func (s *Server) launchRestore(p *Process) error {
 
 	logrus.Infof("Running %s %v", cmd.Path, cmd.Args)
 	err := cmd.Wait()
+
+	p.Output = buf.String()
+	fmt.Fprintf(os.Stdout, p.Output)
 	if err != nil {
 		logrus.Infof("Error running %s %v: %v", "sbackup", cmd.Args, err)
 		p.ExitCode = 1
