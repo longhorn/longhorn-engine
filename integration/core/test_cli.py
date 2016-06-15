@@ -394,17 +394,17 @@ def test_backup(bin, controller_client, replica_client,
 
     assert snapshot2 == 'volume-snap-{}.img'.format(output)
 
-    cmd = [bin, 'create', snapshot2,
+    cmd = [bin, 'backup', 'create', snapshot2,
            '--dest', "vfs://" + BACKUP_DEST]
     backup2 = subprocess.check_output(cmd).strip()
 
-    cmd = [bin, 'restore', backup1]
+    cmd = [bin, 'backup', 'restore', backup1]
     subprocess.check_call(cmd)
 
-    cmd = [bin, 'restore', backup2]
+    cmd = [bin, 'backup', 'restore', backup2]
     subprocess.check_call(cmd)
 
-    cmd = [bin, 'rm', backup1]
+    cmd = [bin, 'backup', 'rm', backup1]
     subprocess.check_call(cmd)
-    cmd = [bin, 'rm', backup2]
+    cmd = [bin, 'backup', 'rm', backup2]
     subprocess.check_call(cmd)

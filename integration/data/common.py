@@ -37,6 +37,7 @@ def _base():
 
 @pytest.fixture()
 def dev(request):
+    prepare_backup_dir(BACKUP_DIR)
     controller = controller_client(request)
     replica = replica_client(request, REPLICA1_SCHEMA)
     replica2 = replica_client(request, REPLICA2_SCHEMA)
