@@ -220,13 +220,9 @@ func start(name string, rw types.ReaderWriterAt) error {
 		if cxt == nil {
 			return errors.New("TCMU ctx is nil")
 		}
-
-		go func() {
-			for {
-				result := C.tcmu_poll_master_fd(cxt)
-				log.Debugln("Poll master fd one more time, last result ", result)
-			}
-		}()
+		// We don't want to poll main fd because devOpen() will be
+		// called once for tcmu_init(). We don't need to listen to
+		// further events for now.
 	}
 
 	return nil
