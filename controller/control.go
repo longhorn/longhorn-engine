@@ -234,6 +234,11 @@ func (c *Controller) Start(addresses ...string) error {
 
 func (c *Controller) WriteAt(b []byte, off int64) (int, error) {
 	c.RLock()
+	if off < 0 || off+int64(len(b)) > c.size {
+		err := fmt.Errorf("EOF: Write of %v bytes at offset %v is beyond volume size %v", len(b), off, c.size)
+		c.RUnlock()
+		return 0, err
+	}
 	n, err := c.backend.WriteAt(b, off)
 	c.RUnlock()
 	if err != nil {
@@ -244,6 +249,11 @@ func (c *Controller) WriteAt(b []byte, off int64) (int, error) {
 
 func (c *Controller) ReadAt(b []byte, off int64) (int, error) {
 	c.RLock()
+	if off < 0 || off+int64(len(b)) > c.size {
+		err := fmt.Errorf("EOF: Read of %v bytes at offset %v is beyond volume size %v", len(b), off, c.size)
+		c.RUnlock()
+		return 0, err
+	}
 	n, err := c.backend.ReadAt(b, off)
 	c.RUnlock()
 	if err != nil {
