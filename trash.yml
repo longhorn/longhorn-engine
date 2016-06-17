@@ -33,7 +33,7 @@ import:
 - package: github.com/mcuadros/go-version
   version: d52711f8d6bea8dc01efafdb68ad95a4e2606630
 - package: golang.org/x/sys/unix
-  version: 7a56174f0086b32866ebd746a794417edbc678a1
+  version: 62bee037599929a6e9146f29d10dd5208c43507d
 - package: github.com/aws/aws-sdk-go/aws
   version: c924893c38ecc04b18d7aab8a7aa561cb8b4c4cc
 - package: github.com/aws/aws-sdk-go/private/endpoints
