@@ -82,14 +82,19 @@ func startReplica(c *cli.Context) error {
 
 	go func() {
 		server := rest.NewServer(s)
-		router := http.Handler(rest.NewRouter(server))
-		loggingHander := handlers.LoggingHandler(os.Stdout, router)
+		handler := http.Handler(rest.NewRouter(server))
+		loggingHandler := handlers.LoggingHandler(os.Stdout, handler)
 		wrappedRouter := http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-			if req.URL.Path == "/ping" {
-				router.ServeHTTP(rw, req)
-			} else {
-				loggingHander.ServeHTTP(rw, req)
+			switch req.Method {
+			case "GET":
+				switch req.URL.Path {
+				case "/ping", "/v1/replicas/1":
+					// bypass http logging for frequent control plane verbs/URLs
+					handler.ServeHTTP(rw, req)
+					return
+				}
 			}
+			loggingHandler.ServeHTTP(rw, req)
 		})
 		logrus.Infof("Listening on control %s", controlAddress)
 		resp <- http.ListenAndServe(controlAddress, wrappedRouter)
