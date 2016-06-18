@@ -24,6 +24,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/rancher/longhorn/types"
+	"golang.org/x/sys/unix"
 )
 
 var (
@@ -33,6 +34,8 @@ var (
 	backend types.ReaderWriterAt
 	cxt     *C.struct_tcmulib_context
 	volume  string
+
+	done chan struct{}
 )
 
 type State struct {
@@ -85,18 +88,51 @@ func devOpen(dev Device) int {
 }
 
 func (s *State) HandleRequest(dev Device) {
-	for true {
-		C.tcmulib_processing_start(dev)
-		cmd := C.tcmulib_get_next_command(dev)
-		for cmd != nil {
-			go s.processCommand(dev, cmd)
-			cmd = C.tcmulib_get_next_command(dev)
+	ch := make(chan bool)
+	finished := false
+	go s.waitForNextCommand(dev, ch)
+	for !finished {
+		select {
+		case <-done:
+			log.Errorln("Handle request finished")
+			finished = true
+		case success := <-ch:
+			if !success {
+				log.Errorln("Fail to wait for next command")
+				finished = true
+				break
+			}
+			C.tcmulib_processing_start(dev)
+			cmd := C.tcmulib_get_next_command(dev)
+			for cmd != nil {
+				go s.processCommand(dev, cmd)
+				cmd = C.tcmulib_get_next_command(dev)
+			}
 		}
-		ret := C.tcmu_wait_for_next_command(dev)
-		if ret != 0 {
-			log.Errorln("Fail to wait for next command", ret)
+	}
+}
+
+func (s *State) waitForNextCommand(dev Device, ch chan bool) {
+	for {
+		pfd := []unix.PollFd{
+			{
+				Fd:      int32(C.tcmu_get_dev_fd(dev)),
+				Events:  unix.POLLIN,
+				Revents: 0,
+			},
+		}
+		_, err := unix.Poll(pfd, -1)
+		if err != nil {
+			log.Errorln("Poll command failed: ", err)
+			ch <- false
 			break
 		}
+		if pfd[0].Revents != 0 && pfd[0].Revents != unix.POLLIN {
+			log.Errorln("Poll received unexpect event: ", pfd[0].Revents)
+			ch <- false
+			break
+		}
+		ch <- true
 	}
 }
 
