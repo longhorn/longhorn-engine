@@ -187,14 +187,28 @@ func TeardownTcmu(volume string) error {
 	var err error
 	for i := 1; i <= teardownAttempts; i++ {
 		logrus.Info("Starting TCMU teardown.")
-		err := teardown(volume)
-		if err == nil {
-			logrus.Info("TCMU teardown successful.")
-			break
-		} else if i < teardownAttempts {
-			logrus.Infof("Error occurred during TCMU teardown. Attempting again after %v second sleep. Error: %v", teardownRetryWait, err)
-			time.Sleep(time.Second * teardownRetryWait)
+		if err := teardown(volume); err != nil {
+			if i < teardownAttempts {
+				logrus.Infof("Error occurred during TCMU teardown. Attempting again after %v second sleep. Error: %v", teardownRetryWait, err)
+				time.Sleep(time.Second * teardownRetryWait)
+				continue
+			} else {
+				break
+			}
 		}
+		stop()
+		if err := finishTeardown(volume); err != nil {
+			if i < teardownAttempts {
+				logrus.Infof("Error occurred during TCMU teardown. Attempting again after %v second sleep. Error: %v", teardownRetryWait, err)
+				time.Sleep(time.Second * teardownRetryWait)
+				continue
+			} else {
+				break
+			}
+
+		}
+		logrus.Info("TCMU teardown successful.")
+		break
 	}
 	return err
 }
@@ -210,14 +224,12 @@ func teardown(volume string) error {
 		/sys/kernel/config/target/loopback/naa.<id>/tpgt_1/lun/lun_0
 		/sys/kernel/config/target/loopback/naa.<id>/tpgt_1
 		/sys/kernel/config/target/loopback/naa.<id>
-		/sys/kernel/config/target/core/user_42/<volume name>
 	*/
 	pathsToRemove := []string{
 		path.Join(lunPath, volume),
 		lunPath,
 		tpgtPath,
 		path.Dir(tpgtPath),
-		path.Join(configDir, volume),
 	}
 
 	for _, p := range pathsToRemove {
@@ -238,6 +250,24 @@ func teardown(volume string) error {
 	return nil
 }
 
+func finishTeardown(volume string) error {
+	/*
+		We're removing:
+		/sys/kernel/config/target/core/user_42/<volume name>
+	*/
+	pathsToRemove := []string{
+		path.Join(configDir, volume),
+	}
+
+	for _, p := range pathsToRemove {
+		err := remove(p)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
 func removeAsync(path string, done chan<- error) {
 	logrus.Infof("Removing: %s", path)
 	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {

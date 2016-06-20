@@ -5,6 +5,7 @@ package tcmu
 
 #include <errno.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <scsi/scsi.h>
 #include <libtcmu.h>
 #include <scsi_defs.h>
@@ -28,14 +29,16 @@ import (
 )
 
 var (
-	log = logrus.WithFields(logrus.Fields{"pkg": "main"})
+	log = logrus.WithFields(logrus.Fields{"pkg": "tcmu"})
 
 	// this is super dirty
 	backend types.ReaderWriterAt
 	cxt     *C.struct_tcmulib_context
 	volume  string
 
-	done chan struct{}
+	done    chan struct{}
+	devFd   int32
+	pipeFds []int
 )
 
 type State struct {
@@ -80,6 +83,7 @@ func devOpen(dev Device) int {
 		return -C.EINVAL
 	}
 	state.volume = id
+	devFd = int32(C.tcmu_get_dev_fd(dev))
 
 	go state.HandleRequest(dev)
 
@@ -98,7 +102,6 @@ func (s *State) HandleRequest(dev Device) {
 			finished = true
 		case success := <-ch:
 			if !success {
-				log.Errorln("Fail to wait for next command")
 				finished = true
 				break
 			}
@@ -116,7 +119,12 @@ func (s *State) waitForNextCommand(dev Device, ch chan bool) {
 	for {
 		pfd := []unix.PollFd{
 			{
-				Fd:      int32(C.tcmu_get_dev_fd(dev)),
+				Fd:      devFd,
+				Events:  unix.POLLIN,
+				Revents: 0,
+			},
+			{
+				Fd:      int32(pipeFds[0]),
 				Events:  unix.POLLIN,
 				Revents: 0,
 			},
@@ -124,6 +132,11 @@ func (s *State) waitForNextCommand(dev Device, ch chan bool) {
 		_, err := unix.Poll(pfd, -1)
 		if err != nil {
 			log.Errorln("Poll command failed: ", err)
+			ch <- false
+			break
+		}
+		if pfd[1].Revents == unix.POLLIN {
+			log.Infoln("Poll command receive finish signal")
 			ch <- false
 			break
 		}
@@ -249,9 +262,14 @@ func devCheckConfig(cfg *C.char, reason **C.char) bool {
 
 func start(name string, rw types.ReaderWriterAt) error {
 	if cxt == nil {
+		done = make(chan struct{})
 		// this is super dirty
 		backend = rw
 		volume = name
+		pipeFds = make([]int, 2)
+		if err := unix.Pipe(pipeFds); err != nil {
+			return err
+		}
 		cxt = C.tcmu_init()
 		if cxt == nil {
 			return errors.New("TCMU ctx is nil")
@@ -262,4 +280,22 @@ func start(name string, rw types.ReaderWriterAt) error {
 	}
 
 	return nil
+}
+
+func stop() {
+	if cxt != nil {
+		// notify HandleRequest() that we're done
+		if _, err := unix.Write(pipeFds[1], []byte{0}); err != nil {
+			log.Errorln("Fail to notify poll for finishing: ", err)
+		}
+		close(done)
+		C.tcmulib_close(cxt)
+		if err := unix.Close(pipeFds[0]); err != nil {
+			log.Errorln("Fail to close pipeFds[0]: ", err)
+		}
+		if err := unix.Close(pipeFds[1]); err != nil {
+			log.Errorln("Fail to close pipeFds[1]: ", err)
+		}
+		cxt = nil
+	}
 }
