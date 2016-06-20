@@ -2,9 +2,12 @@ package util
 
 import (
 	"fmt"
+	"io"
+	"net/http"
 	"regexp"
 	"strconv"
 
+	"github.com/gorilla/handlers"
 	"github.com/satori/go.uuid"
 )
 
@@ -47,4 +50,29 @@ func Contains(arr []string, val string) bool {
 		}
 	}
 	return false
+}
+
+type filteredLoggingHandler struct {
+	filteredPaths  map[string]struct{}
+	handler        http.Handler
+	loggingHandler http.Handler
+}
+
+func FilteredLoggingHandler(filteredPaths map[string]struct{}, writer io.Writer, router http.Handler) http.Handler {
+	return filteredLoggingHandler{
+		filteredPaths:  filteredPaths,
+		handler:        router,
+		loggingHandler: handlers.LoggingHandler(writer, router),
+	}
+}
+
+func (h filteredLoggingHandler) ServeHTTP(w http.ResponseWriter, req *http.Request) {
+	switch req.Method {
+	case "GET":
+		if _, exists := h.filteredPaths[req.URL.Path]; exists {
+			h.handler.ServeHTTP(w, req)
+			return
+		}
+	}
+	h.loggingHandler.ServeHTTP(w, req)
 }

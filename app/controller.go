@@ -16,6 +16,7 @@ import (
 	"github.com/rancher/longhorn/controller"
 	"github.com/rancher/longhorn/controller/rest"
 	"github.com/rancher/longhorn/types"
+	"github.com/rancher/longhorn/util"
 )
 
 var (
@@ -86,7 +87,10 @@ func startController(c *cli.Context) error {
 	server := rest.NewServer(control)
 	router := http.Handler(rest.NewRouter(server))
 
-	router = handlers.LoggingHandler(os.Stdout, router)
+	router = util.FilteredLoggingHandler(map[string]struct{}{
+		"/v1/volumes":  struct{}{},
+		"/v1/replicas": struct{}{},
+	}, os.Stdout, router)
 	router = handlers.ProxyHeaders(router)
 
 	if len(replicas) > 0 {
