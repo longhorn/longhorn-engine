@@ -11,7 +11,6 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
 	"github.com/docker/go-units"
-	"github.com/gorilla/handlers"
 	"github.com/rancher/longhorn/replica"
 	"github.com/rancher/longhorn/replica/rest"
 	"github.com/rancher/longhorn/replica/rpc"
@@ -83,16 +82,12 @@ func startReplica(c *cli.Context) error {
 	go func() {
 		server := rest.NewServer(s)
 		router := http.Handler(rest.NewRouter(server))
-		loggingHander := handlers.LoggingHandler(os.Stdout, router)
-		wrappedRouter := http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-			if req.URL.Path == "/ping" {
-				router.ServeHTTP(rw, req)
-			} else {
-				loggingHander.ServeHTTP(rw, req)
-			}
-		})
+		router = util.FilteredLoggingHandler(map[string]struct{}{
+			"/ping":          struct{}{},
+			"/v1/replicas/1": struct{}{},
+		}, os.Stdout, router)
 		logrus.Infof("Listening on control %s", controlAddress)
-		resp <- http.ListenAndServe(controlAddress, wrappedRouter)
+		resp <- http.ListenAndServe(controlAddress, router)
 	}()
 
 	go func() {
