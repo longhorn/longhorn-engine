@@ -48,43 +48,6 @@ struct tcmulib_context *tcmu_init() {
 	return tcmulib_initialize(&lh_handler, 1, errp);
 }
 
-bool tcmu_poll_master_fd(struct tcmulib_context *cxt) {
-	int ret;
-	struct pollfd pfd;
-
-	pfd.fd = tcmulib_get_master_fd(cxt);
-	pfd.events = POLLIN;
-	pfd.revents = 0;
-
-	ret = poll(&pfd, 1, -1);
-	if (ret < 0) {
-		errp("poll error out with %d", ret);
-		return false;
-	}
-
-	if (pfd.revents) {
-		tcmulib_master_fd_ready(cxt);
-		return true;
-	}
-	return false;
-}
-
-int tcmu_wait_for_next_command(struct tcmu_device *dev) {
-	struct pollfd pfd;
-
-	pfd.fd = tcmu_get_dev_fd(dev);
-	pfd.events = POLLIN;
-	pfd.revents = 0;
-
-	poll(&pfd, 1, -1);
-
-	if (pfd.revents != 0 && pfd.revents != POLLIN) {
-		errp("poll received unexpected revent: 0x%x\n", pfd.revents);
-		return -1;
-	}
-	return 0;
-}
-
 uint8_t tcmucmd_get_cdb_at(struct tcmulib_cmd *cmd, int index) {
 	return cmd->cdb[index];
 }

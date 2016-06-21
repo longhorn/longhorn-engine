@@ -5,6 +5,7 @@ package tcmu
 
 #include <errno.h>
 #include <stdlib.h>
+#include <unistd.h>
 #include <scsi/scsi.h>
 #include <libtcmu.h>
 #include <scsi_defs.h>
@@ -24,15 +25,20 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/rancher/longhorn/types"
+	"golang.org/x/sys/unix"
 )
 
 var (
-	log = logrus.WithFields(logrus.Fields{"pkg": "main"})
+	log = logrus.WithFields(logrus.Fields{"pkg": "tcmu"})
 
 	// this is super dirty
 	backend types.ReaderWriterAt
 	cxt     *C.struct_tcmulib_context
 	volume  string
+
+	done    chan struct{}
+	devFd   int32
+	pipeFds []int
 )
 
 type State struct {
@@ -77,6 +83,7 @@ func devOpen(dev Device) int {
 		return -C.EINVAL
 	}
 	state.volume = id
+	devFd = int32(C.tcmu_get_dev_fd(dev))
 
 	go state.HandleRequest(dev)
 
@@ -85,18 +92,60 @@ func devOpen(dev Device) int {
 }
 
 func (s *State) HandleRequest(dev Device) {
-	for true {
-		C.tcmulib_processing_start(dev)
-		cmd := C.tcmulib_get_next_command(dev)
-		for cmd != nil {
-			go s.processCommand(dev, cmd)
-			cmd = C.tcmulib_get_next_command(dev)
+	ch := make(chan bool)
+	finished := false
+	go s.waitForNextCommand(dev, ch)
+	for !finished {
+		select {
+		case <-done:
+			log.Errorln("Handle request finished")
+			finished = true
+		case success := <-ch:
+			if !success {
+				finished = true
+				break
+			}
+			C.tcmulib_processing_start(dev)
+			cmd := C.tcmulib_get_next_command(dev)
+			for cmd != nil {
+				go s.processCommand(dev, cmd)
+				cmd = C.tcmulib_get_next_command(dev)
+			}
 		}
-		ret := C.tcmu_wait_for_next_command(dev)
-		if ret != 0 {
-			log.Errorln("Fail to wait for next command", ret)
+	}
+}
+
+func (s *State) waitForNextCommand(dev Device, ch chan bool) {
+	for {
+		pfd := []unix.PollFd{
+			{
+				Fd:      devFd,
+				Events:  unix.POLLIN,
+				Revents: 0,
+			},
+			{
+				Fd:      int32(pipeFds[0]),
+				Events:  unix.POLLIN,
+				Revents: 0,
+			},
+		}
+		_, err := unix.Poll(pfd, -1)
+		if err != nil {
+			log.Errorln("Poll command failed: ", err)
+			ch <- false
 			break
 		}
+		if pfd[1].Revents == unix.POLLIN {
+			log.Infoln("Poll command receive finish signal")
+			ch <- false
+			break
+		}
+		if pfd[0].Revents != 0 && pfd[0].Revents != unix.POLLIN {
+			log.Errorln("Poll received unexpect event: ", pfd[0].Revents)
+			ch <- false
+			break
+		}
+		ch <- true
 	}
 }
 
@@ -213,21 +262,40 @@ func devCheckConfig(cfg *C.char, reason **C.char) bool {
 
 func start(name string, rw types.ReaderWriterAt) error {
 	if cxt == nil {
+		done = make(chan struct{})
 		// this is super dirty
 		backend = rw
 		volume = name
+		pipeFds = make([]int, 2)
+		if err := unix.Pipe(pipeFds); err != nil {
+			return err
+		}
 		cxt = C.tcmu_init()
 		if cxt == nil {
 			return errors.New("TCMU ctx is nil")
 		}
-
-		go func() {
-			for {
-				result := C.tcmu_poll_master_fd(cxt)
-				log.Debugln("Poll master fd one more time, last result ", result)
-			}
-		}()
+		// We don't want to poll main fd because devOpen() will be
+		// called once for tcmu_init(). We don't need to listen to
+		// further events for now.
 	}
 
 	return nil
+}
+
+func stop() {
+	if cxt != nil {
+		// notify HandleRequest() that we're done
+		if _, err := unix.Write(pipeFds[1], []byte{0}); err != nil {
+			log.Errorln("Fail to notify poll for finishing: ", err)
+		}
+		close(done)
+		C.tcmulib_close(cxt)
+		if err := unix.Close(pipeFds[0]); err != nil {
+			log.Errorln("Fail to close pipeFds[0]: ", err)
+		}
+		if err := unix.Close(pipeFds[1]); err != nil {
+			log.Errorln("Fail to close pipeFds[1]: ", err)
+		}
+		cxt = nil
+	}
 }

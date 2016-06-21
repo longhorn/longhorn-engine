@@ -36,10 +36,10 @@ func Creat(path string, mode uint32) (fd int, err error) {
 	return Open(path, O_CREAT|O_WRONLY|O_TRUNC, mode)
 }
 
-//sys	linkat(olddirfd int, oldpath string, newdirfd int, newpath string, flags int) (err error)
+//sys	Linkat(olddirfd int, oldpath string, newdirfd int, newpath string, flags int) (err error)
 
 func Link(oldpath string, newpath string) (err error) {
-	return linkat(AT_FDCWD, oldpath, AT_FDCWD, newpath, 0)
+	return Linkat(AT_FDCWD, oldpath, AT_FDCWD, newpath, 0)
 }
 
 func Mkdir(path string, mode uint32) (err error) {
@@ -58,6 +58,15 @@ func Open(path string, mode int, perm uint32) (fd int, err error) {
 
 func Openat(dirfd int, path string, flags int, mode uint32) (fd int, err error) {
 	return openat(dirfd, path, flags|O_LARGEFILE, mode)
+}
+
+//sys	ppoll(fds *PollFd, nfds int, timeout *Timespec, sigmask *Sigset_t) (n int, err error)
+
+func Ppoll(fds []PollFd, timeout *Timespec, sigmask *Sigset_t) (n int, err error) {
+	if len(fds) == 0 {
+		return ppoll(nil, 0, timeout, sigmask)
+	}
+	return ppoll(&fds[0], len(fds), timeout, sigmask)
 }
 
 //sys	readlinkat(dirfd int, path string, buf []byte) (n int, err error)
@@ -392,6 +401,19 @@ func (sa *SockaddrNetlink) sockaddr() (unsafe.Pointer, _Socklen, error) {
 	sa.raw.Pid = sa.Pid
 	sa.raw.Groups = sa.Groups
 	return unsafe.Pointer(&sa.raw), SizeofSockaddrNetlink, nil
+}
+
+type SockaddrHCI struct {
+	Dev     uint16
+	Channel uint16
+	raw     RawSockaddrHCI
+}
+
+func (sa *SockaddrHCI) sockaddr() (unsafe.Pointer, _Socklen, error) {
+	sa.raw.Family = AF_BLUETOOTH
+	sa.raw.Dev = sa.Dev
+	sa.raw.Channel = sa.Channel
+	return unsafe.Pointer(&sa.raw), SizeofSockaddrHCI, nil
 }
 
 func anyToSockaddr(rsa *RawSockaddrAny) (Sockaddr, error) {
@@ -859,7 +881,6 @@ func Mount(source string, target string, fstype string, flags uintptr, data stri
 //sysnb	EpollCreate(size int) (fd int, err error)
 //sysnb	EpollCreate1(flag int) (fd int, err error)
 //sysnb	EpollCtl(epfd int, op int, fd int, event *EpollEvent) (err error)
-//sys	EpollWait(epfd int, events []EpollEvent, msec int) (n int, err error)
 //sys	Exit(code int) = SYS_EXIT_GROUP
 //sys	Faccessat(dirfd int, path string, mode uint32, flags int) (err error)
 //sys	Fallocate(fd int, mode uint32, off int64, len int64) (err error)
@@ -894,7 +915,6 @@ func Getpgrp() (pid int) {
 //sys	Mkdirat(dirfd int, path string, mode uint32) (err error)
 //sys	Mknodat(dirfd int, path string, mode uint32, dev int) (err error)
 //sys	Nanosleep(time *Timespec, leftover *Timespec) (err error)
-//sys	Pause() (err error)
 //sys	PivotRoot(newroot string, putold string) (err error) = SYS_PIVOT_ROOT
 //sysnb prlimit(pid int, resource int, old *Rlimit, newlimit *Rlimit) (err error) = SYS_PRLIMIT64
 //sys   Prctl(option int, arg2 uintptr, arg3 uintptr, arg4 uintptr, arg5 uintptr) (err error)
@@ -1032,8 +1052,6 @@ func Munmap(b []byte) (err error) {
 // Newfstatat
 // Nfsservctl
 // Personality
-// Poll
-// Ppoll
 // Pselect6
 // Ptrace
 // Putpmsg
