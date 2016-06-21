@@ -435,6 +435,102 @@ func (s *TestSuite) TestRemoveOutOfChain(c *C) {
 	c.Assert(r.diskChildMap["volume-snap-002.img"], IsNil)
 }
 
+func (s *TestSuite) TestPrepareRemove(c *C) {
+	dir, err := ioutil.TempDir("", "replica")
+	c.Assert(err, IsNil)
+	defer os.RemoveAll(dir)
+
+	r, err := New(9, 3, dir, nil)
+	c.Assert(err, IsNil)
+	defer r.Close()
+
+	err = r.Snapshot("000")
+	c.Assert(err, IsNil)
+
+	err = r.Snapshot("001")
+	c.Assert(err, IsNil)
+
+	c.Assert(len(r.activeDiskData), Equals, 4)
+	c.Assert(len(r.volume.files), Equals, 4)
+
+	/*
+		volume-snap-000.img
+		volume-snap-001.img
+		volume-head-002.img
+	*/
+
+	actions, err := r.PrepareRemoveDisk("001")
+	c.Assert(err, IsNil)
+	c.Assert(actions, HasLen, 0)
+	c.Assert(r.activeDiskData[2].Removed, Equals, true)
+
+	actions, err = r.PrepareRemoveDisk("volume-snap-000.img")
+	c.Assert(err, IsNil)
+	c.Assert(actions, HasLen, 2)
+	c.Assert(actions[0].Action, Equals, OpCoalesce)
+	c.Assert(actions[0].Source, Equals, "volume-snap-000.img")
+	c.Assert(actions[0].Target, Equals, "volume-snap-001.img")
+	c.Assert(actions[1].Action, Equals, OpRemove)
+	c.Assert(actions[1].Source, Equals, "volume-snap-000.img")
+	c.Assert(r.activeDiskData[1].Removed, Equals, true)
+
+	err = r.Snapshot("002")
+	c.Assert(err, IsNil)
+
+	/*
+		volume-snap-000.img (r)
+		volume-snap-001.img (r)
+		volume-snap-002.img
+		volume-head-003.img
+	*/
+
+	c.Assert(len(r.activeDiskData), Equals, 5)
+	c.Assert(len(r.volume.files), Equals, 5)
+
+	/* https://github.com/rancher/longhorn/issues/184 */
+	actions, err = r.PrepareRemoveDisk("002")
+	c.Assert(err, IsNil)
+	c.Assert(actions, HasLen, 2)
+	c.Assert(actions[0].Action, Equals, OpCoalesce)
+	c.Assert(actions[0].Source, Equals, "volume-snap-001.img")
+	c.Assert(actions[0].Target, Equals, "volume-snap-002.img")
+	c.Assert(actions[1].Action, Equals, OpRemove)
+	c.Assert(actions[1].Source, Equals, "volume-snap-001.img")
+
+	err = r.Snapshot("003")
+	c.Assert(err, IsNil)
+
+	err = r.Snapshot("004")
+	c.Assert(err, IsNil)
+
+	/*
+		volume-snap-000.img (r)
+		volume-snap-001.img (r)
+		volume-snap-002.img (r)
+		volume-snap-003.img
+		volume-snap-004.img
+		volume-head-005.img
+	*/
+
+	c.Assert(len(r.activeDiskData), Equals, 7)
+	c.Assert(len(r.volume.files), Equals, 7)
+
+	actions, err = r.PrepareRemoveDisk("003")
+	c.Assert(err, IsNil)
+	c.Assert(actions, HasLen, 4)
+	c.Assert(actions[0].Action, Equals, OpCoalesce)
+	c.Assert(actions[0].Source, Equals, "volume-snap-002.img")
+	c.Assert(actions[0].Target, Equals, "volume-snap-003.img")
+	c.Assert(actions[1].Action, Equals, OpRemove)
+	c.Assert(actions[1].Source, Equals, "volume-snap-002.img")
+	c.Assert(actions[2].Action, Equals, OpCoalesce)
+	c.Assert(actions[2].Source, Equals, "volume-snap-003.img")
+	c.Assert(actions[2].Target, Equals, "volume-snap-004.img")
+	c.Assert(actions[3].Action, Equals, OpRemove)
+	c.Assert(actions[3].Source, Equals, "volume-snap-003.img")
+	c.Assert(r.activeDiskData[4].Removed, Equals, true)
+}
+
 func byteEquals(c *C, expected, obtained []byte) {
 	c.Assert(len(expected), Equals, len(obtained))
 

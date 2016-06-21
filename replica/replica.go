@@ -267,12 +267,13 @@ func (r *Replica) PrepareRemoveDisk(name string) ([]PrepareRemoveAction, error) 
 	r.Lock()
 	defer r.Unlock()
 
-	action := []PrepareRemoveAction{}
 	disk := name
 
-	if _, exists := r.diskData[disk]; !exists {
+	data, exists := r.diskData[disk]
+	if !exists {
 		disk = GenerateSnapshotDiskName(name)
-		if _, exists := r.diskData[disk]; !exists {
+		data, exists = r.diskData[disk]
+		if !exists {
 			return nil, fmt.Errorf("Can not find snapshot %v", disk)
 		}
 	}
@@ -286,35 +287,62 @@ func (r *Replica) PrepareRemoveDisk(name string) ([]PrepareRemoveAction, error) 
 		return nil, fmt.Errorf("Fail to mark disk %v as removed: %v", disk, err)
 	}
 
-	// 1) leaf node
-	children := r.diskChildMap[disk]
-	if children == nil {
-		action = append(action, PrepareRemoveAction{
-			Action: OpRemove,
-			Source: disk,
-		})
-		return action, nil
+	targetDisks := []string{}
+	if data.Parent != "" {
+		parentData, exists := r.diskData[data.Parent]
+		if !exists {
+			return nil, fmt.Errorf("Can not find snapshot %v's parent %v", disk, data.Parent)
+		}
+		if parentData.Removed {
+			targetDisks = append(targetDisks, parentData.name)
+		}
 	}
+	targetDisks = append(targetDisks, disk)
+	actions, err := r.processPrepareRemoveDisks(targetDisks)
+	if err != nil {
+		return nil, err
+	}
+	return actions, nil
+}
 
-	// 2) has only one child and is not head
-	if children.Cardinality() == 1 {
-		child := (<-children.Iter()).(string)
-		if child != r.info.Head {
-			action = append(action,
-				PrepareRemoveAction{
-					Action: OpCoalesce,
-					Source: disk,
-					Target: child,
-				},
-				PrepareRemoveAction{
-					Action: OpRemove,
-					Source: disk,
-				})
-			return action, nil
+func (r *Replica) processPrepareRemoveDisks(disks []string) ([]PrepareRemoveAction, error) {
+	actions := []PrepareRemoveAction{}
+
+	for _, disk := range disks {
+		if _, exists := r.diskData[disk]; !exists {
+			return nil, fmt.Errorf("Wrong disk %v doesn't exist", disk)
+		}
+
+		children := r.diskChildMap[disk]
+		// 1) leaf node
+		if children == nil {
+			actions = append(actions, PrepareRemoveAction{
+				Action: OpRemove,
+				Source: disk,
+			})
+			continue
+		}
+
+		// 2) has only one child and is not head
+		if children.Cardinality() == 1 {
+			child := (<-children.Iter()).(string)
+			if child != r.info.Head {
+				actions = append(actions,
+					PrepareRemoveAction{
+						Action: OpCoalesce,
+						Source: disk,
+						Target: child,
+					},
+					PrepareRemoveAction{
+						Action: OpRemove,
+						Source: disk,
+					})
+				continue
+			}
 		}
 	}
 
-	return action, nil
+	return actions, nil
 }
 
 func (r *Replica) Info() Info {
