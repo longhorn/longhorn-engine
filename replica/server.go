@@ -177,7 +177,7 @@ func (s *Server) Snapshot(name string) error {
 	return s.r.Snapshot(name)
 }
 
-func (s *Server) RemoveDiffDisk(name string, markOnly bool) error {
+func (s *Server) RemoveDiffDisk(name string) error {
 	s.Lock()
 	defer s.Unlock()
 
@@ -185,8 +185,8 @@ func (s *Server) RemoveDiffDisk(name string, markOnly bool) error {
 		return nil
 	}
 
-	logrus.Infof("Removing disk: %s, markonly %v", name, markOnly)
-	return s.r.RemoveDiffDisk(name, markOnly)
+	logrus.Infof("Removing disk: %s", name)
+	return s.r.RemoveDiffDisk(name)
 }
 
 func (s *Server) PrepareRemoveDisk(name string) ([]PrepareRemoveAction, error) {
