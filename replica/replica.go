@@ -72,9 +72,8 @@ type PrepareRemoveAction struct {
 }
 
 const (
-	OpCoalesce      = "coalesce" // Source is parent, target is child
-	OpRemove        = "remove"
-	OpMarkAsRemoved = "markasremoved"
+	OpCoalesce = "coalesce" // Source is parent, target is child
+	OpRemove   = "remove"
 )
 
 func ReadInfo(dir string) (Info, error) {
@@ -205,20 +204,12 @@ func (r *Replica) findDisk(name string) int {
 	return 0
 }
 
-func (r *Replica) RemoveDiffDisk(name string, markOnly bool) error {
+func (r *Replica) RemoveDiffDisk(name string) error {
 	r.Lock()
 	defer r.Unlock()
 
 	if name == r.info.Head {
 		return fmt.Errorf("Can not delete the active differencing disk")
-	}
-
-	if markOnly {
-		if err := r.markDiskAsRemoved(name); err != nil {
-			// ignore error deleting files
-			logrus.Errorf("Failed to delete %s: %v", name, err)
-		}
-		return nil
 	}
 
 	if err := r.removeDiskNode(name); err != nil {
@@ -243,7 +234,6 @@ func (r *Replica) removeDiskNode(name string) error {
 	}
 
 	// If snapshot has more than one child, we cannot really delete it
-	// Caller should call with markOnly=true instead
 	if children.Cardinality() > 1 {
 		return fmt.Errorf("Cannot remove snapshot %v with %v children",
 			name, children.Cardinality())
@@ -277,12 +267,13 @@ func (r *Replica) PrepareRemoveDisk(name string) ([]PrepareRemoveAction, error) 
 	r.Lock()
 	defer r.Unlock()
 
-	action := []PrepareRemoveAction{}
 	disk := name
 
-	if _, exists := r.diskData[disk]; !exists {
+	data, exists := r.diskData[disk]
+	if !exists {
 		disk = GenerateSnapshotDiskName(name)
-		if _, exists := r.diskData[disk]; !exists {
+		data, exists = r.diskData[disk]
+		if !exists {
 			return nil, fmt.Errorf("Can not find snapshot %v", disk)
 		}
 	}
@@ -291,40 +282,67 @@ func (r *Replica) PrepareRemoveDisk(name string) ([]PrepareRemoveAction, error) 
 		return nil, fmt.Errorf("Can not delete the active differencing disk")
 	}
 
-	// 1) leaf node
-	children := r.diskChildMap[disk]
-	if children == nil {
-		action = append(action, PrepareRemoveAction{
-			Action: OpRemove,
-			Source: disk,
-		})
-		return action, nil
+	logrus.Infof("Mark disk %v as removed", disk)
+	if err := r.markDiskAsRemoved(disk); err != nil {
+		return nil, fmt.Errorf("Fail to mark disk %v as removed: %v", disk, err)
 	}
 
-	// 2) has only one child and is not head
-	if children.Cardinality() == 1 {
-		child := (<-children.Iter()).(string)
-		if child != r.info.Head {
-			action = append(action,
-				PrepareRemoveAction{
-					Action: OpCoalesce,
-					Source: disk,
-					Target: child,
-				},
-				PrepareRemoveAction{
-					Action: OpRemove,
-					Source: disk,
-				})
-			return action, nil
+	targetDisks := []string{}
+	if data.Parent != "" {
+		parentData, exists := r.diskData[data.Parent]
+		if !exists {
+			return nil, fmt.Errorf("Can not find snapshot %v's parent %v", disk, data.Parent)
+		}
+		if parentData.Removed {
+			targetDisks = append(targetDisks, parentData.name)
+		}
+	}
+	targetDisks = append(targetDisks, disk)
+	actions, err := r.processPrepareRemoveDisks(targetDisks)
+	if err != nil {
+		return nil, err
+	}
+	return actions, nil
+}
+
+func (r *Replica) processPrepareRemoveDisks(disks []string) ([]PrepareRemoveAction, error) {
+	actions := []PrepareRemoveAction{}
+
+	for _, disk := range disks {
+		if _, exists := r.diskData[disk]; !exists {
+			return nil, fmt.Errorf("Wrong disk %v doesn't exist", disk)
+		}
+
+		children := r.diskChildMap[disk]
+		// 1) leaf node
+		if children == nil {
+			actions = append(actions, PrepareRemoveAction{
+				Action: OpRemove,
+				Source: disk,
+			})
+			continue
+		}
+
+		// 2) has only one child and is not head
+		if children.Cardinality() == 1 {
+			child := (<-children.Iter()).(string)
+			if child != r.info.Head {
+				actions = append(actions,
+					PrepareRemoveAction{
+						Action: OpCoalesce,
+						Source: disk,
+						Target: child,
+					},
+					PrepareRemoveAction{
+						Action: OpRemove,
+						Source: disk,
+					})
+				continue
+			}
 		}
 	}
 
-	// 3) for other situation, we only mark it as removed
-	action = append(action, PrepareRemoveAction{
-		Action: OpMarkAsRemoved,
-		Source: disk,
-	})
-	return action, nil
+	return actions, nil
 }
 
 func (r *Replica) Info() Info {

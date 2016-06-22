@@ -170,10 +170,7 @@ def test_remove_disk(client):
         assert "Can not delete the active" in e
 
     ops = r.prepareremovedisk(name='001')["operations"]
-    assert len(ops) == 1
-    assert ops[0].action == "markasremoved"
-    assert ops[0].source == "volume-snap-001.img"
-    assert ops[0].target == ""
+    assert len(ops) == 0
 
     r = r.removedisk(name='volume-snap-001.img')
     assert r.state == 'dirty'

@@ -108,15 +108,14 @@ func (c *ReplicaClient) SetRebuilding(rebuilding bool) error {
 	}, nil)
 }
 
-func (c *ReplicaClient) RemoveDisk(disk string, markOnly bool) error {
+func (c *ReplicaClient) RemoveDisk(disk string) error {
 	r, err := c.GetReplica()
 	if err != nil {
 		return err
 	}
 
 	return c.post(r.Actions["removedisk"], &rest.RemoveDiskInput{
-		Name:     disk,
-		MarkOnly: markOnly,
+		Name: disk,
 	}, nil)
 }
 

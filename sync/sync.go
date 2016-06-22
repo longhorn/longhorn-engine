@@ -45,13 +45,13 @@ func (t *Task) DeleteSnapshot(snapshot string) error {
 	return nil
 }
 
-func (t *Task) rmDisk(replicaInController *rest.Replica, disk string, markOnly bool) error {
+func (t *Task) rmDisk(replicaInController *rest.Replica, disk string) error {
 	repClient, err := replicaClient.NewReplicaClient(replicaInController.Address)
 	if err != nil {
 		return err
 	}
 
-	return repClient.RemoveDisk(disk, markOnly)
+	return repClient.RemoveDisk(disk)
 }
 
 func getNameAndIndex(chain []string, snapshot string) (string, int) {
@@ -101,12 +101,7 @@ func (t *Task) removeSnapshot(replicaInController *rest.Replica, snapshot string
 		switch op.Action {
 		case replica.OpRemove:
 			logrus.Infof("Removing %s on %s", op.Source, replicaInController.Address)
-			if err := t.rmDisk(replicaInController, op.Source, false); err != nil {
-				return err
-			}
-		case replica.OpMarkAsRemoved:
-			logrus.Infof("Marking %v as removed on %v", op.Source, replicaInController.Address)
-			if err := t.rmDisk(replicaInController, op.Source, true); err != nil {
+			if err := t.rmDisk(replicaInController, op.Source); err != nil {
 				return err
 			}
 		case replica.OpCoalesce:

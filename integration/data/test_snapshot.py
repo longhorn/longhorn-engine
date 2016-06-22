@@ -84,3 +84,48 @@ def test_snapshot_revert_with_backing_file(backing_dev):  # NOQA
     cmd.snapshot_revert(snap0)
     after = read_dev(dev, offset, length)
     assert before == after
+
+
+def test_snapshot_rm_rolling(dev):  # NOQA
+    offset = 0
+    length = 128
+
+    snap1_data = common.random_string(length)
+    common.verify_data(dev, offset, snap1_data)
+    snap1 = cmd.snapshot_create()
+
+    snapList = cmd.snapshot_ls()
+    assert snap1 in snapList
+
+    cmd.snapshot_rm(snap1)
+
+    snap2_data = common.random_string(length)
+    common.verify_data(dev, offset, snap2_data)
+    snap2 = cmd.snapshot_create()
+
+    snapList = cmd.snapshot_ls()
+    assert snap1 not in snapList
+    assert snap2 in snapList
+
+    # this should trigger real deletion of snap1
+    cmd.snapshot_rm(snap2)
+
+    snap3_data = common.random_string(length)
+    common.verify_data(dev, offset, snap3_data)
+    snap3 = cmd.snapshot_create()
+
+    snap4_data = common.random_string(length)
+    common.verify_data(dev, offset, snap4_data)
+    snap4 = cmd.snapshot_create()
+
+    snapList = cmd.snapshot_ls()
+    assert snap1 not in snapList
+    assert snap2 not in snapList
+    assert snap3 in snapList
+    assert snap4 in snapList
+
+    # this should trigger real deletion of snap2 and snap3
+    cmd.snapshot_rm(snap3)
+
+    readed = read_dev(dev, offset, length)
+    assert readed == snap4_data
