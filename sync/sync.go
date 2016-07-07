@@ -23,6 +23,8 @@ func NewTask(controller string) *Task {
 }
 
 func (t *Task) DeleteSnapshot(snapshot string) error {
+	var err error
+
 	replicas, err := t.client.ListReplicas()
 	if err != nil {
 		return err
@@ -36,8 +38,16 @@ func (t *Task) DeleteSnapshot(snapshot string) error {
 		}
 	}
 
+	ops := make(map[string][]replica.PrepareRemoveAction)
 	for _, replica := range replicas {
-		if err := t.removeSnapshot(&replica, snapshot); err != nil {
+		ops[replica.Address], err = t.prepareRemoveSnapshot(&replica, snapshot)
+		if err != nil {
+			return err
+		}
+	}
+
+	for _, replica := range replicas {
+		if err := t.processRemoveSnapshot(&replica, snapshot, ops[replica.Address]); err != nil {
 			return err
 		}
 	}
@@ -82,7 +92,29 @@ func (t *Task) isRebuilding(replicaInController *rest.Replica) (bool, error) {
 	return replica.Rebuilding, nil
 }
 
-func (t *Task) removeSnapshot(replicaInController *rest.Replica, snapshot string) error {
+func (t *Task) prepareRemoveSnapshot(replicaInController *rest.Replica, snapshot string) ([]replica.PrepareRemoveAction, error) {
+	if replicaInController.Mode != "RW" {
+		return nil, fmt.Errorf("Can only removed snapshot from replica in mode RW, got %s", replicaInController.Mode)
+	}
+
+	repClient, err := replicaClient.NewReplicaClient(replicaInController.Address)
+	if err != nil {
+		return nil, err
+	}
+
+	output, err := repClient.PrepareRemoveDisk(snapshot)
+	if err != nil {
+		return nil, err
+	}
+
+	return output.Operations, nil
+}
+
+func (t *Task) processRemoveSnapshot(replicaInController *rest.Replica, snapshot string, ops []replica.PrepareRemoveAction) error {
+	if len(ops) == 0 {
+		return nil
+	}
+
 	if replicaInController.Mode != "RW" {
 		return fmt.Errorf("Can only removed snapshot from replica in mode RW, got %s", replicaInController.Mode)
 	}
@@ -92,12 +124,7 @@ func (t *Task) removeSnapshot(replicaInController *rest.Replica, snapshot string
 		return err
 	}
 
-	output, err := repClient.PrepareRemoveDisk(snapshot)
-	if err != nil {
-		return err
-	}
-
-	for _, op := range output.Operations {
+	for _, op := range ops {
 		switch op.Action {
 		case replica.OpRemove:
 			logrus.Infof("Removing %s on %s", op.Source, replicaInController.Address)
