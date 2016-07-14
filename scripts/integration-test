@@ -3,6 +3,24 @@ set -e
 
 killall longhorn ssync || true
 
+running=""
+for i in `seq 10`
+do
+	running=`ps aux|grep longhorn|grep -v grep || true`
+	if [ -z "$running" ]
+	then
+		break
+	fi
+	echo Wait one more second for longhorn process to stop
+	sleep 1
+done
+if [ "$running" ]
+then
+	echo Failed to wait for longhorn process stop
+	echo $running
+	exit -1
+fi
+
 temp=$(mktemp -d)
 temp2=$(mktemp -d)
 temp3=$(mktemp -d)
