@@ -58,3 +58,5 @@ import:
   version: c01cf91b011868172fdcd9f41838e80c9d716264
 - package: github.com/deckarep/golang-set
   version: 1f0f4ff8d3fbef9328522993ce71c35890f67554
+- package: github.com/hanwen/go-fuse
+  version: bd746dd8bcc8c059a9d953a786a6156eb83f398e
