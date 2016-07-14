@@ -33,6 +33,12 @@ if [ ! -x ./bin/longhorn ]; then
     ./scripts/build
 fi
 
+
+if [ -d '/host/dev' ]
+then
+	mount --rbind /host/dev /dev
+fi
+
 ./bin/longhorn controller --frontend fuse --enable-backend file test-volume &
 controller_pid=$!
 ./bin/longhorn replica $temp &
