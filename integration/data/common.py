@@ -1,13 +1,16 @@
 import random
 import string
-import base64
 import subprocess
+import hashlib
 
 import os
 from os import path
 
 import pytest
 import cattle
+
+from frontend import restdev
+
 
 REPLICA1 = 'tcp://localhost:9502'
 REPLICA1_SCHEMA = 'http://localhost:9502/v1/schemas'
@@ -19,7 +22,7 @@ BACKED_REPLICA1_SCHEMA = 'http://localhost:9602/v1/schemas'
 BACKED_REPLICA2 = 'tcp://localhost:9605'
 BACKED_REPLICA2_SCHEMA = 'http://localhost:9605/v1/schemas'
 
-SIZE = 1024 * 4096
+SIZE = 4 * 1024 * 1024
 
 BACKUP_DIR = '/tmp/longhorn-backup'
 BACKUP_DEST = 'vfs://' + BACKUP_DIR
@@ -139,22 +142,15 @@ def open_replica(client, backing_file=None):
 
 
 def get_restdev():
-    url = 'http://localhost:9414/v1/schemas'
-    c = cattle.from_env(url=url)
-    dev = c.list_volume()[0]
-    assert dev.name == "test-volume"
-    return dev
+    return restdev("test-volume")
 
 
 def write_dev(dev, offset, data):
-    l = len(data)
-    encoded_data = base64.encodestring(data)
-    dev.write(offset=offset, length=l, data=encoded_data)
+    return dev.writeat(offset, data)
 
 
 def read_dev(dev, offset, length):
-    data = dev.read(offset=offset, length=length)["data"]
-    return base64.decodestring(data)
+    return dev.readat(offset, length)
 
 
 def random_string(length):
@@ -183,3 +179,7 @@ def read_from_backing_file(offset, length):
     data = f.read(length)
     f.close()
     return data
+
+
+def checksum_dev(dev):
+    return hashlib.sha512(dev.readat(0, SIZE)).hexdigest()

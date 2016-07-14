@@ -44,8 +44,8 @@ func NewVolume(context *api.ApiContext, name string) *Volume {
 		Name: name,
 	}
 
-	v.Actions["read"] = context.UrlBuilder.ActionLink(v.Resource, "read")
-	v.Actions["write"] = context.UrlBuilder.ActionLink(v.Resource, "write")
+	v.Actions["readat"] = context.UrlBuilder.ActionLink(v.Resource, "readat")
+	v.Actions["writeat"] = context.UrlBuilder.ActionLink(v.Resource, "writeat")
 	return v
 }
 
@@ -85,11 +85,11 @@ func NewSchema() *client.Schemas {
 
 	volumes := schemas.AddType("volume", Volume{})
 	volumes.ResourceActions = map[string]client.Action{
-		"read": client.Action{
+		"readat": client.Action{
 			Input:  "readInput",
 			Output: "readOutput",
 		},
-		"write": client.Action{
+		"writeat": client.Action{
 			Input:  "writeInput",
 			Output: "writeOutput",
 		},
