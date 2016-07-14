@@ -9,7 +9,7 @@ from os import path
 import pytest
 import cattle
 
-from frontend import restdev
+from frontend import restdev, fusedev
 
 
 REPLICA1 = 'tcp://localhost:9502'
@@ -28,6 +28,8 @@ BACKUP_DIR = '/tmp/longhorn-backup'
 BACKUP_DEST = 'vfs://' + BACKUP_DIR
 
 BACKING_FILE = 'backing_file.raw'
+
+VOLUME_NAME = 'test-volume'
 
 
 def _file(f):
@@ -57,7 +59,7 @@ def dev(request):
         REPLICA2
     ])
     assert v.replicaCount == 2
-    d = get_restdev()
+    d = get_fusedev()
 
     return d
 
@@ -81,7 +83,7 @@ def backing_dev(request):
         BACKED_REPLICA2
     ])
     assert v.replicaCount == 2
-    d = get_restdev()
+    d = get_fusedev()
 
     return d
 
@@ -142,7 +144,11 @@ def open_replica(client, backing_file=None):
 
 
 def get_restdev():
-    return restdev("test-volume")
+    return restdev(VOLUME_NAME)
+
+
+def get_fusedev():
+    return fusedev(VOLUME_NAME)
 
 
 def write_dev(dev, offset, data):
