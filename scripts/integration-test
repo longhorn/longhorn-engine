@@ -68,6 +68,8 @@ ps $replica2_pid
 ps $backing_replica1_pid
 ps $backing_replica2_pid
 
+trap "kill $controller_pid $replica1_pid $replica2_pid $backing_replica1_pid $backing_replica2_pid" EXIT
+
 cd integration
 find -depth -name __pycache__ -o -name "*.pyc" -exec rm -rf {} \;
 if [ -z "$NO_TEST" ]; then
