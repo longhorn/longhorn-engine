@@ -1,6 +1,7 @@
 import random
 import string
 import subprocess
+import hashlib
 
 import os
 from os import path
@@ -21,7 +22,7 @@ BACKED_REPLICA1_SCHEMA = 'http://localhost:9602/v1/schemas'
 BACKED_REPLICA2 = 'tcp://localhost:9605'
 BACKED_REPLICA2_SCHEMA = 'http://localhost:9605/v1/schemas'
 
-SIZE = 1024 * 4096
+SIZE = 4 * 1024 * 1024
 
 BACKUP_DIR = '/tmp/longhorn-backup'
 BACKUP_DEST = 'vfs://' + BACKUP_DIR
@@ -178,3 +179,7 @@ def read_from_backing_file(offset, length):
     data = f.read(length)
     f.close()
     return data
+
+
+def checksum_dev(dev):
+    return hashlib.sha512(dev.readat(0, SIZE)).hexdigest()
