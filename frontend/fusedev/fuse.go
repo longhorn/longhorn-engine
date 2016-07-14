@@ -20,8 +20,6 @@ type FuseFs struct {
 	pathfs.FileSystem
 	Volume string
 	file   *FuseFile
-	lodev  string
-	dev    string
 }
 
 type FuseFile struct {
@@ -41,8 +39,8 @@ var (
 	log = logrus.WithFields(logrus.Fields{"pkg": "fusedev"})
 )
 
-func start(name string, size, sectorSize int64, rw types.ReaderWriterAt) (*FuseFs, error) {
-	fs := &FuseFs{
+func newFuseFs(name string, size, sectorSize int64, rw types.ReaderWriterAt) *FuseFs {
+	return &FuseFs{
 		FileSystem: pathfs.NewDefaultFileSystem(),
 		Volume:     name,
 		file: &FuseFile{
@@ -52,9 +50,17 @@ func start(name string, size, sectorSize int64, rw types.ReaderWriterAt) (*FuseF
 			SectorSize: sectorSize,
 		},
 	}
+
+}
+
+func (fs *FuseFs) Start() error {
 	newFs := pathfs.NewPathNodeFs(fs, nil)
 
-	server, _, err := nodefs.MountRoot(fs.GetMountDir(), newFs.Root(), nil)
+	mountDir := fs.GetMountDir()
+	if err := os.MkdirAll(mountDir, 0700); err != nil {
+		log.Fatal("Cannot create directory ", mountDir)
+	}
+	server, _, err := nodefs.MountRoot(mountDir, newFs.Root(), nil)
 	/*
 		conn := nodefs.NewFileSystemConnector(newFs.Root(), nil)
 		opts := &fuse.MountOptions{
@@ -64,26 +70,44 @@ func start(name string, size, sectorSize int64, rw types.ReaderWriterAt) (*FuseF
 		server, err := fuse.NewServer(conn.RawFS(), fs.GetMountDir(), opts)
 	*/
 	if err != nil {
-		return nil, err
+		return err
 	}
 	// This will be stopped when umount happens
 	go server.Serve()
 
 	if err := fs.createDev(); err != nil {
-		return nil, err
-	}
-	return fs, nil
-
-}
-
-func (fs *FuseFs) Stop() error {
-	if err := fs.removeDev(); err != nil {
-		return err
-	}
-	if err := fs.umountFuse(); err != nil {
 		return err
 	}
 	return nil
+}
+
+func (fs *FuseFs) Stop() {
+	fs.removeDev()
+	fs.umountFuse()
+}
+
+func (fs *FuseFs) getDev() string {
+	return filepath.Join(DevPath, fs.Volume)
+}
+
+func (fs *FuseFs) getLoopbackDev() (string, error) {
+	devs, err := fs.getLoopbackDevs()
+	if err != nil {
+		return "", err
+	}
+	if len(devs) != 1 {
+		return "", fmt.Errorf("Found more than one loopback devices %v", devs)
+	}
+	return devs[0], nil
+}
+
+func (fs *FuseFs) getLoopbackDevs() ([]string, error) {
+	filePath := fs.getImageFileFullPath()
+	devs, err := util.ListLoopbackDevice(filePath)
+	if err != nil {
+		return nil, err
+	}
+	return devs, nil
 }
 
 func (fs *FuseFs) createDev() error {
@@ -91,7 +115,7 @@ func (fs *FuseFs) createDev() error {
 		log.Fatalln("Cannot create directory ", DevPath)
 	}
 
-	dev := filepath.Join(DevPath, fs.Volume)
+	dev := fs.getDev()
 
 	if _, err := os.Stat(dev); err == nil {
 		return fmt.Errorf("Device %s already exists, can not create", dev)
@@ -115,11 +139,16 @@ func (fs *FuseFs) createDev() error {
 		return fmt.Errorf("Fail to wait for %v", path)
 	}
 
-	logrus.Infof("Attaching loopback device %s", fs.lodev)
-	lodev, err := util.AttachLoopbackDevice(path, false)
+	logrus.Infof("Attaching loopback device")
+	_, err := util.AttachLoopbackDevice(path, false)
 	if err != nil {
 		return err
 	}
+	lodev, err := fs.getLoopbackDev()
+	if err != nil {
+		return err
+	}
+	logrus.Infof("Attached loopback device %v", lodev)
 
 	stat := unix.Stat_t{}
 	if err := unix.Stat(lodev, &stat); err != nil {
@@ -131,45 +160,50 @@ func (fs *FuseFs) createDev() error {
 	if err := mknod(dev, major, minor); err != nil {
 		return err
 	}
-	fs.lodev = lodev
-	fs.dev = dev
 	return nil
 }
 
-func (fs *FuseFs) removeDev() error {
-	if fs.dev == "" {
-		return nil
-	}
-
-	logrus.Infof("Removing device %s", fs.dev)
-	if _, err := os.Stat(fs.dev); err == nil {
-		if err := remove(fs.dev); err != nil {
-			return err
+func (fs *FuseFs) removeDev() {
+	dev := fs.getDev()
+	logrus.Infof("Removing device %s", dev)
+	if _, err := os.Stat(dev); err == nil {
+		if err := remove(dev); err != nil {
+			logrus.Errorf("Failed to removing device %s, %v", dev, err)
 		}
 	}
-	fs.dev = ""
 
-	logrus.Infof("Detaching loopback device %s", fs.lodev)
-	if err := util.DetachLoopbackDevice(fs.getImageFileFullPath(), fs.lodev); err != nil {
-		return err
+	lodevs, err := fs.getLoopbackDevs()
+	if err != nil {
+		logrus.Errorf("Failed to get loopback device %v", err)
 	}
-	fs.lodev = ""
-	return nil
+	for _, lodev := range lodevs {
+		logrus.Infof("Detaching loopback device %s", lodev)
+		if err := util.DetachLoopbackDevice(fs.getImageFileFullPath(), lodev); err != nil {
+			logrus.Errorf("Fail to detach loopback device %s: %v", lodev, err)
+		}
+	}
 }
 
-func (fs *FuseFs) umountFuse() error {
-	if err := unix.Unmount(fs.GetMountDir(), 0); err != nil {
-		return err
+func (fs *FuseFs) umountFuse() {
+	if fs.isMounted() {
+		dir := fs.GetMountDir()
+		logrus.Infof("Umounting %s", dir)
+		if err := unix.Unmount(dir, 0); err != nil {
+			logrus.Fatalf("Fail to umounting %s: %v", dir, err)
+		}
 	}
-	return nil
+}
+
+func (fs *FuseFs) isMounted() bool {
+	path := fs.GetMountDir()
+	if _, err := util.Execute("findmnt", []string{path}); err != nil {
+		return false
+	}
+	return true
 }
 
 func (fs *FuseFs) GetMountDir() string {
-	d := filepath.Join(MountBase, fs.Volume)
-	if err := os.MkdirAll(d, 0700); err != nil {
-		log.Fatal("Cannot create directory ", d)
-	}
-	return d
+	return filepath.Join(MountBase, fs.Volume)
 }
 
 func (fs *FuseFs) getImageFileName() string {

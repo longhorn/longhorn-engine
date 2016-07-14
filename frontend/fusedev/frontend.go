@@ -13,29 +13,20 @@ type Fuse struct {
 }
 
 func (f *Fuse) Activate(name string, size, sectorSize int64, rw types.ReaderWriterAt) error {
-	if f.fs != nil {
-		log.Infof("FUSE frontend already activated for %v, shut it down first", name)
-		if err := f.Shutdown(); err != nil {
-			return err
-		}
-	}
-	log.Infof("Activate FUSE frontend for %v, size %v, sector size %v", name, size, sectorSize)
-	fs, err := start(name, size, sectorSize, rw)
-	if err != nil {
+	f.fs = newFuseFs(name, size, sectorSize, rw)
+	if err := f.Shutdown(); err != nil {
 		return err
 	}
-	f.fs = fs
+
+	log.Infof("Activate FUSE frontend for %v, size %v, sector size %v", name, size, sectorSize)
+	if err := f.fs.Start(); err != nil {
+		return err
+	}
 	return nil
 }
 
 func (f *Fuse) Shutdown() error {
-	if f.fs == nil {
-		return nil
-	}
 	log.Infof("Shutdown FUSE frontend for %v", f.fs.Volume)
-	if err := f.fs.Stop(); err != nil {
-		return err
-	}
-	f.fs = nil
+	f.fs.Stop()
 	return nil
 }
