@@ -149,11 +149,11 @@ def get_restdev():
 def write_dev(dev, offset, data):
     l = len(data)
     encoded_data = base64.encodestring(data)
-    dev.write(offset=offset, length=l, data=encoded_data)
+    dev.writeat(offset=offset, length=l, data=encoded_data)
 
 
 def read_dev(dev, offset, length):
-    data = dev.read(offset=offset, length=length)["data"]
+    data = dev.readat(offset=offset, length=length)["data"]
     return base64.decodestring(data)
 
 

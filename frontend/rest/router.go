@@ -31,8 +31,8 @@ func NewRouter(s *Server) *mux.Router {
 	// Volume
 	router.Methods("GET").Path("/v1/volumes").Handler(f(schemas, s.ListVolumes))
 	router.Methods("GET").Path("/v1/volumes/{id}").Handler(f(schemas, s.GetVolume))
-	router.Methods("POST").Path("/v1/volumes/{id}").Queries("action", "read").Handler(f(schemas, s.ReadAt))
-	router.Methods("POST").Path("/v1/volumes/{id}").Queries("action", "write").Handler(f(schemas, s.WriteAt))
+	router.Methods("POST").Path("/v1/volumes/{id}").Queries("action", "readat").Handler(f(schemas, s.ReadAt))
+	router.Methods("POST").Path("/v1/volumes/{id}").Queries("action", "writeat").Handler(f(schemas, s.WriteAt))
 
 	return router
 }
