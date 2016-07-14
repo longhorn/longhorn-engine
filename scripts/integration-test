@@ -16,8 +16,11 @@ if [ ! -x ./bin/longhorn ]; then
 fi
 
 ./bin/longhorn controller --frontend fuse --enable-backend file test-volume &
+controller_pid=$!
 ./bin/longhorn replica $temp &
+replica1_pid=$!
 ./bin/longhorn replica --listen localhost:9505 $temp2 &
+replica2_pid=$!
 
 # replica with 4MB backing file
 backing_file=backing_file.raw
@@ -30,7 +33,16 @@ cp $backing_qcow2 $temp3
 cp $backing_qcow2 $temp4
 
 ./bin/longhorn replica --listen localhost:9602 --backing-file $backing_qcow2 $temp3 &
+backing_replica1_pid=$!
 ./bin/longhorn replica --listen localhost:9605 --backing-file $backing_qcow2 $temp4 &
+backing_replica2_pid=$!
+
+# make sure everything is running before continue integration test
+ps $controller_pid
+ps $replica1_pid
+ps $replica2_pid
+ps $backing_replica1_pid
+ps $backing_replica2_pid
 
 cd integration
 find -depth -name __pycache__ -o -name "*.pyc" -exec rm -rf {} \;
