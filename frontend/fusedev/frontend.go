@@ -27,6 +27,5 @@ func (f *Fuse) Activate(name string, size, sectorSize int64, rw types.ReaderWrit
 
 func (f *Fuse) Shutdown() error {
 	log.Infof("Shutdown FUSE frontend for %v", f.fs.Volume)
-	f.fs.Stop()
-	return nil
+	return f.fs.Stop()
 }

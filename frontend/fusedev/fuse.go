@@ -81,9 +81,14 @@ func (fs *FuseFs) Start() error {
 	return nil
 }
 
-func (fs *FuseFs) Stop() {
-	fs.removeDev()
-	fs.umountFuse()
+func (fs *FuseFs) Stop() error {
+	if err := fs.removeDev(); err != nil {
+		return err
+	}
+	if err := fs.umountFuse(); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (fs *FuseFs) getDev() string {
@@ -163,35 +168,44 @@ func (fs *FuseFs) createDev() error {
 	return nil
 }
 
-func (fs *FuseFs) removeDev() {
+func (fs *FuseFs) removeDev() error {
 	dev := fs.getDev()
 	logrus.Infof("Removing device %s", dev)
 	if _, err := os.Stat(dev); err == nil {
 		if err := remove(dev); err != nil {
-			logrus.Errorf("Failed to removing device %s, %v", dev, err)
+			return fmt.Errorf("Failed to removing device %s, %v", dev, err)
 		}
 	}
 
 	lodevs, err := fs.getLoopbackDevs()
 	if err != nil {
-		logrus.Errorf("Failed to get loopback device %v", err)
+		return fmt.Errorf("Failed to get loopback device %v", err)
 	}
 	for _, lodev := range lodevs {
 		logrus.Infof("Detaching loopback device %s", lodev)
 		if err := util.DetachLoopbackDevice(fs.getImageFileFullPath(), lodev); err != nil {
-			logrus.Errorf("Fail to detach loopback device %s: %v", lodev, err)
+			return fmt.Errorf("Fail to detach loopback device %s: %v", lodev, err)
+		}
+		devs, err := util.ListLoopbackDevice(fs.getImageFileFullPath())
+		if err != nil {
+			return err
+		}
+		if len(devs) != 0 {
+			return fmt.Errorf("Loopback device busy, cannot detach device, devices %v remains", devs)
 		}
 	}
+	return nil
 }
 
-func (fs *FuseFs) umountFuse() {
+func (fs *FuseFs) umountFuse() error {
 	if fs.isMounted() {
 		dir := fs.GetMountDir()
 		logrus.Infof("Umounting %s", dir)
 		if err := unix.Unmount(dir, 0); err != nil {
-			logrus.Fatalf("Fail to umounting %s: %v", dir, err)
+			return fmt.Errorf("Fail to umounting %s: %v", dir, err)
 		}
 	}
+	return nil
 }
 
 func (fs *FuseFs) isMounted() bool {
