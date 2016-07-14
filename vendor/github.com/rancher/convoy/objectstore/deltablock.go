@@ -2,12 +2,13 @@ package objectstore
 
 import (
 	"fmt"
-	"github.com/Sirupsen/logrus"
-	"github.com/rancher/convoy/metadata"
-	"github.com/rancher/convoy/util"
 	"io"
 	"os"
 	"path/filepath"
+
+	"github.com/Sirupsen/logrus"
+	"github.com/rancher/convoy/metadata"
+	"github.com/rancher/convoy/util"
 
 	. "github.com/rancher/convoy/logging"
 )
@@ -239,11 +240,16 @@ func RestoreDeltaBlockBackup(backupURL, volDevName string) error {
 		return err
 	}
 
-	if _, err := loadVolume(srcVolumeName, bsDriver); err != nil {
+	vol, err := loadVolume(srcVolumeName, bsDriver)
+	if err != nil {
 		return generateError(logrus.Fields{
 			LOG_FIELD_VOLUME:     srcVolumeName,
 			LOG_FIELD_BACKUP_URL: backupURL,
 		}, "Volume doesn't exist in objectstore: %v", err)
+	}
+
+	if vol.Size == 0 || vol.Size%DEFAULT_BLOCK_SIZE != 0 {
+		return fmt.Errorf("Read invalid volume size %v", vol.Size)
 	}
 
 	volDev, err := os.Create(volDevName)
@@ -251,6 +257,11 @@ func RestoreDeltaBlockBackup(backupURL, volDevName string) error {
 		return err
 	}
 	defer volDev.Close()
+
+	stat, err := volDev.Stat()
+	if err != nil {
+		return err
+	}
 
 	backup, err := loadBackup(srcBackupName, srcVolumeName, bsDriver)
 	if err != nil {
@@ -283,6 +294,14 @@ func RestoreDeltaBlockBackup(backupURL, volDevName string) error {
 			return err
 		}
 		if _, err := io.CopyN(volDev, r, DEFAULT_BLOCK_SIZE); err != nil {
+			return err
+		}
+	}
+
+	// We want to truncate regular files, but not device
+	if stat.Mode()&os.ModeType == 0 {
+		log.Debugf("Truncate %v to size %v", volDevName, vol.Size)
+		if err := volDev.Truncate(vol.Size); err != nil {
 			return err
 		}
 	}
