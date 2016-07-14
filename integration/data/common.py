@@ -1,6 +1,5 @@
 import random
 import string
-import base64
 import subprocess
 
 import os
@@ -8,6 +7,9 @@ from os import path
 
 import pytest
 import cattle
+
+from frontend import restdev
+
 
 REPLICA1 = 'tcp://localhost:9502'
 REPLICA1_SCHEMA = 'http://localhost:9502/v1/schemas'
@@ -139,22 +141,15 @@ def open_replica(client, backing_file=None):
 
 
 def get_restdev():
-    url = 'http://localhost:9414/v1/schemas'
-    c = cattle.from_env(url=url)
-    dev = c.list_volume()[0]
-    assert dev.name == "test-volume"
-    return dev
+    return restdev("test-volume")
 
 
 def write_dev(dev, offset, data):
-    l = len(data)
-    encoded_data = base64.encodestring(data)
-    dev.writeat(offset=offset, length=l, data=encoded_data)
+    return dev.writeat(offset, data)
 
 
 def read_dev(dev, offset, length):
-    data = dev.readat(offset=offset, length=length)["data"]
-    return base64.decodestring(data)
+    return dev.readat(offset, length)
 
 
 def random_string(length):
