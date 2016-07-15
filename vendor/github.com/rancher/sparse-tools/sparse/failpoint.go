@@ -3,7 +3,7 @@ package sparse
 import (
 	"sync"
 
-	"github.com/rancher/sparse-tools/log"
+	log "github.com/Sirupsen/logrus"
 )
 
 var failFileHashMatch = false

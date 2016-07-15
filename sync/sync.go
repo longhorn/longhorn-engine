@@ -318,17 +318,17 @@ func (t *Task) syncFiles(fromClient *replicaClient.ReplicaClient, toClient *repl
 }
 
 func (t *Task) syncFile(from, to string, fromClient *replicaClient.ReplicaClient, toClient *replicaClient.ReplicaClient) error {
-	host, port, err := toClient.LaunchReceiver()
-	if err != nil {
-		return err
-	}
-
 	if to == "" {
 		to = from
 	}
 
+	host, port, err := toClient.LaunchReceiver(to)
+	if err != nil {
+		return err
+	}
+
 	logrus.Infof("Synchronizing %s to %s@%s:%d", from, to, host, port)
-	err = fromClient.SendFile(from, to, host, port)
+	err = fromClient.SendFile(from, host, port)
 	if err != nil {
 		logrus.Infof("Failed synchronizing %s to %s@%s:%d: %v", from, to, host, port, err)
 	} else {
