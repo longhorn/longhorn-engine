@@ -15,6 +15,7 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/deckarep/golang-set"
 	"github.com/rancher/longhorn/types"
+	"github.com/rancher/sparse-tools/sparse"
 )
 
 const (
@@ -443,13 +444,7 @@ func (r *Replica) nextFile(parsePattern *regexp.Regexp, pattern, parent string) 
 }
 
 func (r *Replica) openFile(name string, flag int) (types.DiffDisk, error) {
-	f, err := os.OpenFile(r.diskPath(name), syscall.O_DIRECT|os.O_RDWR|os.O_CREATE|flag, 0666)
-	if err != nil {
-		return nil, err
-	}
-	return &directFile{
-		File: f,
-	}, nil
+	return sparse.NewDirectFileIoProcessor(r.diskPath(name), os.O_RDWR|flag, 06666, true)
 }
 
 func (r *Replica) createNewHead(oldHead, parent string) (types.DiffDisk, disk, error) {

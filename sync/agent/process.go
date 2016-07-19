@@ -182,11 +182,11 @@ func (s *Server) launchSync(p *Process) error {
 	}
 	if p.SrcFile == "" {
 		args = append(args, "-daemon")
-	} else {
-		args = append(args, p.SrcFile)
 		if p.DestFile != "" {
 			args = append(args, p.DestFile)
 		}
+	} else {
+		args = append(args, p.SrcFile)
 	}
 
 	cmd := reexec.Command(args...)

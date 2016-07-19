@@ -5,12 +5,12 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/rancher/sparse-tools/log"
+	log "github.com/Sirupsen/logrus"
 	"github.com/rancher/sparse-tools/sparse"
 )
 
 func Main() {
-	defaultNonVerboseLogLevel := log.LevelWarn // set if -verbose is false
+	defaultNonVerboseLogLevel := log.DebugLevel // set if -verbose is false
 	// Command line parsing
 	verbose := flag.Bool("verbose", false, "verbose mode")
 	flag.Usage = func() {
@@ -41,8 +41,7 @@ Examples:
 	if *verbose {
 		fmt.Fprintf(os.Stderr, "Folding %s to %s...\n", srcPath, dstPath)
 	} else {
-		log.LevelPush(defaultNonVerboseLogLevel)
-		defer log.LevelPop()
+		log.SetLevel(defaultNonVerboseLogLevel)
 	}
 
 	err := sparse.FoldFile(srcPath, dstPath)

@@ -155,10 +155,11 @@ func (c *ReplicaClient) ReloadReplica() (rest.Replica, error) {
 	return replica, err
 }
 
-func (c *ReplicaClient) LaunchReceiver() (string, int, error) {
+func (c *ReplicaClient) LaunchReceiver(toFilePath string) (string, int, error) {
 	var running agent.Process
 	err := c.post(c.syncAgent+"/processes", &agent.Process{
 		ProcessType: "sync",
+		DestFile:    toFilePath,
 	}, &running)
 	if err != nil {
 		return "", 0, err
@@ -200,13 +201,12 @@ func (c *ReplicaClient) Coalesce(from, to string) error {
 	}
 }
 
-func (c *ReplicaClient) SendFile(from, to, host string, port int) error {
+func (c *ReplicaClient) SendFile(from, host string, port int) error {
 	var running agent.Process
 	err := c.post(c.syncAgent+"/processes", &agent.Process{
 		ProcessType: "sync",
 		Host:        host,
 		SrcFile:     from,
-		DestFile:    to,
 		Port:        port,
 	}, &running)
 	if err != nil {

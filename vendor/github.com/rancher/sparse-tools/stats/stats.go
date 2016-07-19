@@ -8,7 +8,7 @@ import (
 
 	"sync"
 
-	"github.com/rancher/sparse-tools/log"
+	log "github.com/Sirupsen/logrus"
 )
 
 const (
