@@ -191,6 +191,7 @@ func (c *Client) handleResponse(resp *Message) {
 		// can probably optimize away this copy
 		if len(resp.Data) > 0 {
 			copy(req.Data, resp.Data)
+			req.Data = req.Data[:len(resp.Data)]
 		}
 		req.Type = resp.Type
 		req.Complete <- struct{}{}
