@@ -238,14 +238,22 @@ func (s *Server) Close() error {
 
 func (s *Server) WriteAt(buf []byte, offset int64) (int, error) {
 	s.RLock()
+	defer s.RUnlock()
+
+	if s.r == nil {
+		return 0, fmt.Errorf("Volume no longer exist")
+	}
 	i, err := s.r.WriteAt(buf, offset)
-	s.RUnlock()
 	return i, err
 }
 
 func (s *Server) ReadAt(buf []byte, offset int64) (int, error) {
 	s.RLock()
+	defer s.RUnlock()
+
+	if s.r == nil {
+		return 0, fmt.Errorf("Volume no longer exist")
+	}
 	i, err := s.r.ReadAt(buf, offset)
-	s.RUnlock()
 	return i, err
 }

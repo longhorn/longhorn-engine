@@ -5,8 +5,7 @@ ENV PATH /go/bin:$PATH
 ENV DAPPER_DOCKER_SOCKET true
 ENV DAPPER_ENV TAG REPO
 ENV DAPPER_OUTPUT bin
-ENV DAPPER_RUN_ARGS --privileged
-ENV DAPPER_RUN_ARGS --tmpfs /go/src/github.com/rancher/longhorn/integration/.venv:exec --tmpfs /go/src/github.com/rancher/longhorn/integration/.tox:exec
+ENV DAPPER_RUN_ARGS --privileged --tmpfs /go/src/github.com/rancher/longhorn/integration/.venv:exec --tmpfs /go/src/github.com/rancher/longhorn/integration/.tox:exec -v /dev:/host/dev --pid host
 ENV DAPPER_SOURCE /go/src/github.com/rancher/longhorn
 ENV TRASH_CACHE ${DAPPER_SOURCE}/.trash-cache
 WORKDIR ${DAPPER_SOURCE}
@@ -24,7 +23,8 @@ RUN apt-get update && \
         pkg-config \
         psmisc \
         python-tox \
-        qemu-utils
+        qemu-utils \
+        fuse
 
 # Install Go 1.6
 RUN curl -o go.tar.gz https://storage.googleapis.com/golang/go1.6.2.linux-amd64.tar.gz

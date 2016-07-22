@@ -9,7 +9,7 @@ from os import path
 import pytest
 import cattle
 
-from frontend import restdev
+from frontend import restdev, fusedev
 
 
 REPLICA1 = 'tcp://localhost:9502'
@@ -29,6 +29,8 @@ BACKUP_DEST = 'vfs://' + BACKUP_DIR
 
 BACKING_FILE = 'backing_file.raw'
 
+VOLUME_NAME = 'test-volume'
+
 
 def _file(f):
     return path.join(_base(), '../../{}'.format(f))
@@ -41,9 +43,9 @@ def _base():
 @pytest.fixture()
 def dev(request):
     prepare_backup_dir(BACKUP_DIR)
-    controller = controller_client(request)
     replica = replica_client(request, REPLICA1_SCHEMA)
     replica2 = replica_client(request, REPLICA2_SCHEMA)
+    controller = controller_client(request)
 
     open_replica(replica)
     open_replica(replica2)
@@ -57,7 +59,7 @@ def dev(request):
         REPLICA2
     ])
     assert v.replicaCount == 2
-    d = get_restdev()
+    d = get_fusedev()
 
     return d
 
@@ -65,9 +67,9 @@ def dev(request):
 @pytest.fixture()
 def backing_dev(request):
     prepare_backup_dir(BACKUP_DIR)
-    controller = controller_client(request)
     replica = replica_client(request, BACKED_REPLICA1_SCHEMA)
     replica2 = replica_client(request, BACKED_REPLICA2_SCHEMA)
+    controller = controller_client(request)
 
     open_replica(replica)
     open_replica(replica2)
@@ -81,7 +83,7 @@ def backing_dev(request):
         BACKED_REPLICA2
     ])
     assert v.replicaCount == 2
-    d = get_restdev()
+    d = get_fusedev()
 
     return d
 
@@ -142,7 +144,11 @@ def open_replica(client, backing_file=None):
 
 
 def get_restdev():
-    return restdev("test-volume")
+    return restdev(VOLUME_NAME)
+
+
+def get_fusedev():
+    return fusedev(VOLUME_NAME)
 
 
 def write_dev(dev, offset, data):

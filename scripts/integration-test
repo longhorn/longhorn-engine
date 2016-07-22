@@ -1,7 +1,27 @@
 #!/bin/bash
 set -e
 
-killall longhorn ssync || true
+# Don't want to kill longhorn in another namespace for now
+#
+#killall longhorn ssync || true
+#
+#running=""
+#for i in `seq 10`
+#do
+#	running=`ps aux|grep longhorn|grep -v grep || true`
+#	if [ -z "$running" ]
+#	then
+#		break
+#	fi
+#	echo Wait one more second for longhorn process to stop
+#	sleep 1
+#done
+#if [ "$running" ]
+#then
+#	echo Failed to wait for longhorn process stop
+#	echo $running
+#	exit -1
+#fi
 
 temp=$(mktemp -d)
 temp2=$(mktemp -d)
@@ -15,9 +35,18 @@ if [ ! -x ./bin/longhorn ]; then
     ./scripts/build
 fi
 
-./bin/longhorn controller --frontend rest --enable-backend file test-volume &
+
+if [ -d '/host/dev' ]
+then
+	mount --rbind /host/dev /dev
+fi
+
+./bin/longhorn controller --frontend fuse --enable-backend file test-volume &
+controller_pid=$!
 ./bin/longhorn replica $temp &
+replica1_pid=$!
 ./bin/longhorn replica --listen localhost:9505 $temp2 &
+replica2_pid=$!
 
 # replica with 4MB backing file
 backing_file=backing_file.raw
@@ -30,7 +59,18 @@ cp $backing_qcow2 $temp3
 cp $backing_qcow2 $temp4
 
 ./bin/longhorn replica --listen localhost:9602 --backing-file $backing_qcow2 $temp3 &
+backing_replica1_pid=$!
 ./bin/longhorn replica --listen localhost:9605 --backing-file $backing_qcow2 $temp4 &
+backing_replica2_pid=$!
+
+# make sure everything is running before continue integration test
+ps $controller_pid
+ps $replica1_pid
+ps $replica2_pid
+ps $backing_replica1_pid
+ps $backing_replica2_pid
+
+trap "kill $controller_pid $replica1_pid $replica2_pid $backing_replica1_pid $backing_replica2_pid" EXIT
 
 cd integration
 find -depth -name __pycache__ -o -name "*.pyc" -exec rm -rf {} \;

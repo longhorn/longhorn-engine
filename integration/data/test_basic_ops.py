@@ -1,7 +1,6 @@
 import random
 
 import pytest
-import cattle
 
 import common
 from common import dev  # NOQA
@@ -23,12 +22,10 @@ def test_beyond_boundary(dev):  # NOQA
     common.verify_data(dev, SIZE - 128, data)
 
     # out of bounds
-    with pytest.raises(cattle.ApiError) as err:
+    with pytest.raises(IOError) as err:
         write_dev(dev, SIZE, "1")
-        assert 'EOF' in str(err.value)
-    with pytest.raises(cattle.ApiError) as err:
-        read_dev(dev, SIZE, 1)
-        assert 'EOF' in str(err.value)
+        assert 'No space left' in str(err.value)
+    assert len(read_dev(dev, SIZE, 1)) == 0
 
     # normal writes to verify controller/replica survival
     for i in range(0, 10):

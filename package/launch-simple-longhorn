@@ -1,7 +1,4 @@
 set -x
-modprobe configfs
-modprobe target_core_user
-mount -t configfs none /sys/kernel/config
 mount --rbind /host/dev /dev
 
 if [ -z $1 ]
@@ -14,4 +11,4 @@ volume=$1
 
 longhorn replica --size 1g --listen localhost:9502 /volume/ &
 sleep 1
-exec longhorn --debug controller --frontend tcmu --replica tcp://localhost:9502 $volume
+exec longhorn --debug controller --frontend fuse --replica tcp://localhost:9502 $volume

@@ -1,6 +1,10 @@
 import base64
+from os import path
 
 import cattle
+
+
+LONGHORN_DEV_DIR = '/dev/longhorn'
 
 
 class restdev:
@@ -20,3 +24,21 @@ class restdev:
         l = len(data)
         encoded_data = base64.encodestring(data)
         return self.dev.writeat(offset=offset, length=l, data=encoded_data)
+
+
+class fusedev:
+
+    def __init__(self, volume):
+        self.dev = path.join(LONGHORN_DEV_DIR, volume)
+
+    def readat(self, offset, length):
+        with open(self.dev, 'r') as f:
+            f.seek(offset)
+            ret = f.read(length)
+        return ret
+
+    def writeat(self, offset, data):
+        with open(self.dev, 'r+b') as f:
+            f.seek(offset)
+            ret = f.write(data)
+        return ret
