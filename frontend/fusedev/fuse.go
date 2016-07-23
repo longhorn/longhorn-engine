@@ -33,6 +33,9 @@ const (
 	ImageSuffix = ".img"
 	DevPath     = "/dev/longhorn/"
 	MountBase   = "/tmp/longhorn-fuse-mount"
+
+	RetryCounts   = 5
+	RetryInterval = 1 * time.Second
 )
 
 var (
@@ -50,7 +53,6 @@ func newFuseFs(name string, size, sectorSize int64, rw types.ReaderWriterAt) *Fu
 			SectorSize: sectorSize,
 		},
 	}
-
 }
 
 func (fs *FuseFs) Start() error {
@@ -183,14 +185,27 @@ func (fs *FuseFs) removeDev() error {
 	}
 	for _, lodev := range lodevs {
 		logrus.Infof("Detaching loopback device %s", lodev)
-		if err := util.DetachLoopbackDevice(fs.getImageFileFullPath(), lodev); err != nil {
-			return fmt.Errorf("Fail to detach loopback device %s: %v", lodev, err)
+		detached := false
+		devs := []string{}
+		for i := 0; i < RetryCounts; i++ {
+			var err error
+
+			if err := util.DetachLoopbackDevice(fs.getImageFileFullPath(), lodev); err != nil {
+				return fmt.Errorf("Fail to detach loopback device %s: %v", lodev, err)
+			}
+
+			devs, err = util.ListLoopbackDevice(fs.getImageFileFullPath())
+			if err != nil {
+				return err
+			}
+			if len(devs) == 0 {
+				detached = true
+				break
+			}
+			logrus.Infof("Waitting for detaching loopback device", devs)
+			time.Sleep(RetryInterval)
 		}
-		devs, err := util.ListLoopbackDevice(fs.getImageFileFullPath())
-		if err != nil {
-			return err
-		}
-		if len(devs) != 0 {
+		if !detached {
 			return fmt.Errorf("Loopback device busy, cannot detach device, devices %v remains", devs)
 		}
 	}
