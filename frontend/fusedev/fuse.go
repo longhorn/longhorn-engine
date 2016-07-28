@@ -185,15 +185,14 @@ func (fs *FuseFs) removeDev() error {
 	}
 	for _, lodev := range lodevs {
 		logrus.Infof("Detaching loopback device %s", lodev)
+		if err := util.DetachLoopbackDevice(fs.getImageFileFullPath(), lodev); err != nil {
+			return fmt.Errorf("Fail to detach loopback device %s: %v", lodev, err)
+		}
+
 		detached := false
 		devs := []string{}
 		for i := 0; i < RetryCounts; i++ {
 			var err error
-
-			if err := util.DetachLoopbackDevice(fs.getImageFileFullPath(), lodev); err != nil {
-				return fmt.Errorf("Fail to detach loopback device %s: %v", lodev, err)
-			}
-
 			devs, err = util.ListLoopbackDevice(fs.getImageFileFullPath())
 			if err != nil {
 				return err
