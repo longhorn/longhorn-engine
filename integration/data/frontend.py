@@ -17,13 +17,24 @@ class restdev:
         self.dev = dev
 
     def readat(self, offset, length):
-        data = self.dev.readat(offset=offset, length=length)["data"]
+        try:
+            data = self.dev.readat(offset=offset, length=length)["data"]
+        except cattle.ApiError as e:
+            if 'EOF' in str(e):
+                return []
+            raise e
         return base64.decodestring(data)
 
     def writeat(self, offset, data):
         l = len(data)
         encoded_data = base64.encodestring(data)
-        return self.dev.writeat(offset=offset, length=l, data=encoded_data)
+        try:
+            ret = self.dev.writeat(offset=offset, length=l, data=encoded_data)
+        except cattle.ApiError as e:
+            if 'EOF' in str(e):
+                raise IOError('No space left on the disk')
+            raise e
+        return ret
 
 
 class fusedev:

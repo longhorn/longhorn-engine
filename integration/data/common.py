@@ -59,7 +59,7 @@ def dev(request):
         REPLICA2
     ])
     assert v.replicaCount == 2
-    d = get_fusedev()
+    d = get_restdev()
 
     return d
 
@@ -83,7 +83,7 @@ def backing_dev(request):
         BACKED_REPLICA2
     ])
     assert v.replicaCount == 2
-    d = get_fusedev()
+    d = get_restdev()
 
     return d
 
