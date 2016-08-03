@@ -163,11 +163,15 @@ func WriteDataInterval(file FileIoProcessor, dataInterval Interval, data []byte)
 	return nil
 }
 
-func HashDataInterval(file FileIoProcessor, dataInterval Interval) ([]byte, error) {
+func HashFileInterval(file FileIoProcessor, dataInterval Interval) ([]byte, error) {
 	data, err := ReadDataInterval(file, dataInterval)
 	if err != nil {
 		return nil, err
 	}
+	return HashData(data)
+}
+
+func HashData(data []byte) ([]byte, error) {
 	sum := sha512.Sum512(data)
 	return sum[:], nil
 }

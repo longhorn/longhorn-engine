@@ -135,9 +135,9 @@ func (server *SyncServer) doGetChecksum(writer http.ResponseWriter, request *htt
 	if len(exts) == 1 && int64(exts[0].Logical) <= remoteDataInterval.Begin &&
 		int64(exts[0].Logical+exts[0].Length) >= remoteDataInterval.End {
 
-		checksum, err = sparse.HashDataInterval(server.fileIo, remoteDataInterval)
+		checksum, err = sparse.HashFileInterval(server.fileIo, remoteDataInterval)
 		if err != nil {
-			return fmt.Errorf("HashDataInterval locally: %s failed, err: %s", remoteDataInterval, err)
+			return fmt.Errorf("HashFileInterval locally: %s failed, err: %s", remoteDataInterval, err)
 		}
 	}
 
