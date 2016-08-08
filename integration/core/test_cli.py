@@ -339,6 +339,45 @@ def test_snapshot_rm(bin, controller_client, replica_client, replica_client2):
     assert chain[2] == new_chain[1]
 
 
+def test_snapshot_rm_empty(
+        bin, controller_client, replica_client, replica_client2):
+    open_replica(replica_client)
+    open_replica(replica_client2)
+
+    v = controller_client.list_volume()[0]
+    v = v.start(replicas=[
+        REPLICA,
+        REPLICA2,
+    ])
+    assert v.replicaCount == 2
+
+    cmd = [bin, 'snapshot', 'create']
+
+    # first snapshot
+    output1 = subprocess.check_output(cmd).strip()
+    chain = replica_client.list_replica()[0].chain
+    assert len(chain) == 2
+    assert chain[0] == 'volume-head-001.img'
+    assert chain[1] == 'volume-snap-{}.img'.format(output1)
+
+    # second snapshot
+    output2 = subprocess.check_output(cmd).strip()
+    chain = replica_client.list_replica()[0].chain
+    assert len(chain) == 3
+    assert chain[0] == 'volume-head-002.img'
+    assert chain[1] == 'volume-snap-{}.img'.format(output2)
+    assert chain[2] == 'volume-snap-{}.img'.format(output1)
+
+    # remove the first snapshot(empty), it will fold second snapshot(empty)
+    # to the first snapshot(empty) and rename it to second snapshot
+    cmd = [bin, 'snapshot', 'rm', output1]
+    subprocess.check_call(cmd)
+    new_chain = replica_client.list_replica()[0].chain
+    assert len(new_chain) == 2
+    assert chain[0] == new_chain[0]
+    assert chain[1] == new_chain[1]
+
+
 def test_snapshot_last(bin, controller_client, replica_client,
                        replica_client2):
     open_replica(replica_client)
