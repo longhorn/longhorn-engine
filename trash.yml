@@ -25,7 +25,7 @@ import:
 - package: github.com/satori/go.uuid
   version: f9ab0dce87d815821e221626b772e3475a0d2749
 - package: github.com/rancher/sparse-tools
-  version: 02cb785a2eb87b76ec55269346357131944830cd
+  version: 1b461089e2db95e45faeff6bb07f3d599ba4aed6
 - package: github.com/rancher/go-rancher-metadata
   version: 721b783c9983a17ec0d63d5530337610de9519ec
 - package: github.com/rancher/convoy

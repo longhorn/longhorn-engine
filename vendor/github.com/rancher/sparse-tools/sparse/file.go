@@ -185,6 +185,9 @@ func GetFiemapExtents(file FileIoProcessor) ([]Extent, error) {
 }
 
 func GetFiemapRegionExts(file FileIoProcessor, interval Interval) ([]Extent, error) {
+	if interval.End == 0 {
+		return nil, nil
+	}
 	var exts []Extent
 	fiemap := NewFiemapFile(file.GetFile())
 
