@@ -63,6 +63,7 @@ func (lf *LonghornFs) Start() error {
 		fuse.FSName("longhorn"),
 		fuse.Subtype("longhornfs"),
 		fuse.VolumeName(lf.Volume),
+		fuse.AsyncDIO(),
 	)
 	if err != nil {
 		log.Fatal("FUSE: Unable to mount: ", err)

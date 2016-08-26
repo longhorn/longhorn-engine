@@ -209,6 +209,13 @@ func AsyncRead() MountOption {
 	}
 }
 
+func AsyncDIO() MountOption {
+	return func(conf *mountConfig) error {
+		conf.initFlags |= InitAsyncDIO
+		return nil
+	}
+}
+
 // WritebackCache enables the kernel to buffer writes before sending
 // them to the FUSE server. Without this, writethrough caching is
 // used.
