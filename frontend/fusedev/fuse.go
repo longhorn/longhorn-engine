@@ -7,23 +7,23 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/hanwen/go-fuse/fuse"
-	"github.com/hanwen/go-fuse/fuse/nodefs"
-	"github.com/hanwen/go-fuse/fuse/pathfs"
 	"github.com/rancher/convoy/util"
+	"golang.org/x/net/context"
 	"golang.org/x/sys/unix"
+
+	"bazil.org/fuse"
+	"bazil.org/fuse/fs"
 
 	"github.com/rancher/longhorn/types"
 )
 
 type LonghornFs struct {
-	pathfs.FileSystem
+	Conn    *fuse.Conn
 	Volume  string
 	rawFile *RawFrontendFile
 }
 
 type RawFrontendFile struct {
-	nodefs.File
 	Backend    types.ReaderWriterAt
 	Size       int64
 	SectorSize int64
@@ -44,10 +44,8 @@ var (
 
 func newLonghornFs(name string, size, sectorSize int64, rw types.ReaderWriterAt) *LonghornFs {
 	return &LonghornFs{
-		FileSystem: pathfs.NewDefaultFileSystem(),
-		Volume:     name,
+		Volume: name,
 		rawFile: &RawFrontendFile{
-			File:       nodefs.NewDefaultFile(),
 			Backend:    rw,
 			Size:       size,
 			SectorSize: sectorSize,
@@ -56,26 +54,21 @@ func newLonghornFs(name string, size, sectorSize int64, rw types.ReaderWriterAt)
 }
 
 func (lf *LonghornFs) Start() error {
-	newFs := pathfs.NewPathNodeFs(lf, nil)
-
+	var err error
 	mountDir := lf.GetMountDir()
 	if err := os.MkdirAll(mountDir, 0700); err != nil {
-		log.Fatal("Cannot create directory ", mountDir)
+		return fmt.Errorf("Cannot create directory %v", mountDir)
 	}
-	server, _, err := nodefs.MountRoot(mountDir, newFs.Root(), nil)
-	/*
-		conn := nodefs.NewFileSystemConnector(newFs.Root(), nil)
-		opts := &fuse.MountOptions{
-			MaxBackground: 12,
-			Options:       []string{"direct_io"},
-		}
-		server, err := fuse.NewServer(conn.RawFS(), fs.GetMountDir(), opts)
-	*/
+	lf.Conn, err = fuse.Mount(mountDir,
+		fuse.FSName("longhorn"),
+		fuse.Subtype("longhornfs"),
+		fuse.VolumeName(lf.Volume),
+	)
 	if err != nil {
-		return err
+		log.Fatal(err)
 	}
-	// This will be stopped when umount happens
-	go server.Serve()
+
+	go lf.startFs()
 
 	if err := lf.createDev(); err != nil {
 		return err
@@ -83,7 +76,21 @@ func (lf *LonghornFs) Start() error {
 	return nil
 }
 
+func (lf *LonghornFs) startFs() {
+	if err := fs.Serve(lf.Conn, lf); err != nil {
+		log.Fatal(err)
+	}
+
+	<-lf.Conn.Ready
+	if err := lf.Conn.MountError; err != nil {
+		log.Fatal(err)
+	}
+}
+
 func (lf *LonghornFs) Stop() error {
+	if lf.Conn != nil {
+		defer lf.Conn.Close()
+	}
 	if err := lf.removeDev(); err != nil {
 		return err
 	}
@@ -242,59 +249,65 @@ func (lf *LonghornFs) getImageFileFullPath() string {
 	return filepath.Join(lf.GetMountDir(), lf.getImageFileName())
 }
 
-func (lf *LonghornFs) GetAttr(name string, context *fuse.Context) (*fuse.Attr, fuse.Status) {
-	switch name {
-	case lf.getImageFileName():
-		return &fuse.Attr{
-			Mode: fuse.S_IFREG | 0644, Size: uint64(lf.rawFile.Size),
-		}, fuse.OK
-	case "":
-		return &fuse.Attr{
-			Mode: fuse.S_IFDIR | 0755,
-		}, fuse.OK
+func (lf *LonghornFs) Root() (fs.Node, error) {
+	return lf, nil
+}
+
+func (lf *LonghornFs) Attr(cxt context.Context, a *fuse.Attr) error {
+	a.Inode = 1
+	a.Mode = os.ModeDir | 0555
+	return nil
+}
+
+func (lf *LonghornFs) Lookup(cxt context.Context, name string) (fs.Node, error) {
+	if name == lf.getImageFileName() {
+		return lf.rawFile, nil
 	}
 	return nil, fuse.ENOENT
 }
 
-func (lf *LonghornFs) OpenDir(name string, context *fuse.Context) ([]fuse.DirEntry, fuse.Status) {
-	if name == "" {
-		return []fuse.DirEntry{{Name: lf.getImageFileName(), Mode: fuse.S_IFREG}}, fuse.OK
-	}
-	return nil, fuse.ENOENT
+func (lf *LonghornFs) ReadDirAll(cxt context.Context) ([]fuse.Dirent, error) {
+	return []fuse.Dirent{
+		{Inode: 2, Name: lf.getImageFileName(), Type: fuse.DT_File},
+	}, nil
 }
 
-func (lf *LonghornFs) Open(name string, flags uint32, context *fuse.Context) (nodefs.File, fuse.Status) {
-	if name != lf.getImageFileName() {
-		return nil, fuse.ENOENT
-	}
-	return lf.rawFile, fuse.OK
+func (f *RawFrontendFile) Attr(ctx context.Context, a *fuse.Attr) error {
+	a.Inode = 2
+	a.Mode = 0444
+	a.Size = uint64(f.Size)
+	return nil
 }
 
-func (f *RawFrontendFile) Read(dest []byte, off int64) (fuse.ReadResult, fuse.Status) {
-	l := int64(len(dest))
-	if off+l > f.Size {
-		l = f.Size - off
+func (f *RawFrontendFile) Open(cxt context.Context, req *fuse.OpenRequest, resp *fuse.OpenResponse) (fs.Handle, error) {
+	return f, nil
+}
+
+func (f *RawFrontendFile) Read(cxt context.Context, req *fuse.ReadRequest, resp *fuse.ReadResponse) error {
+	l := int64(req.Size)
+	if req.Offset+l > f.Size {
+		l = f.Size - req.Offset
 	}
-	_, err := f.Backend.ReadAt(dest[:l], off)
+	_, err := f.Backend.ReadAt(resp.Data[:l], req.Offset)
 	if err != nil {
-		log.Errorln("read failed: ", err.Error())
-		return nil, fuse.EIO
+		return fmt.Errorf("read failed: %v", err)
 	}
-	return fuse.ReadResultData(dest[:l]), fuse.OK
+	resp.Data = resp.Data[:l]
+	return nil
 }
 
-func (f *RawFrontendFile) Write(data []byte, off int64) (uint32, fuse.Status) {
-	l := int64(len(data))
-	if off+l > f.Size {
-		l = f.Size - off
+func (f *RawFrontendFile) Write(cxt context.Context, req *fuse.WriteRequest, resp *fuse.WriteResponse) error {
+	l := int64(len(req.Data))
+	if req.Offset+l > f.Size {
+		l = f.Size - req.Offset
 	}
 
-	written, err := f.Backend.WriteAt(data[:l], off)
+	_, err := f.Backend.WriteAt(req.Data[:l], req.Offset)
 	if err != nil {
-		log.Errorln("write failed: ", err.Error())
-		return 0, fuse.EIO
+		return fmt.Errorf("write failed: %v", err)
 	}
-	return uint32(written), fuse.OK
+	resp.Size = int(l)
+	return nil
 }
 
 func mknod(device string, major, minor int) error {
