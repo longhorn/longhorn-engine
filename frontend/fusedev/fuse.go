@@ -65,7 +65,7 @@ func (lf *LonghornFs) Start() error {
 		fuse.VolumeName(lf.Volume),
 	)
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal("FUSE: Unable to mount: ", err)
 	}
 
 	go lf.startFs()
@@ -78,16 +78,28 @@ func (lf *LonghornFs) Start() error {
 
 func (lf *LonghornFs) startFs() {
 	if err := fs.Serve(lf.Conn, lf); err != nil {
-		log.Fatal(err)
+		// Likely caused by umount, so ignore it for now
+		if err == unix.EBADF {
+			log.Warnf("Serve return ", err)
+		} else {
+			log.Fatal("FUSE: Unable to serve: ", err)
+		}
 	}
 
 	<-lf.Conn.Ready
 	if err := lf.Conn.MountError; err != nil {
-		log.Fatal(err)
+		log.Fatal("FUSE: Mount error occured: ", err)
 	}
 }
 
 func (lf *LonghornFs) Stop() error {
+	if err := lf.initStop(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (lf *LonghornFs) initStop() error {
 	if lf.Conn != nil {
 		defer lf.Conn.Close()
 	}

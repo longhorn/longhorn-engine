@@ -13,11 +13,11 @@ type Fuse struct {
 }
 
 func (f *Fuse) Activate(name string, size, sectorSize int64, rw types.ReaderWriterAt) error {
-	f.lf = newLonghornFs(name, size, sectorSize, rw)
 	if err := f.Shutdown(); err != nil {
 		return err
 	}
 
+	f.lf = newLonghornFs(name, size, sectorSize, rw)
 	log.Infof("Activate FUSE frontend for %v, size %v, sector size %v", name, size, sectorSize)
 	if err := f.lf.Start(); err != nil {
 		return err
