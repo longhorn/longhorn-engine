@@ -18,11 +18,11 @@ import (
 
 type LonghornFs struct {
 	pathfs.FileSystem
-	Volume string
-	file   *FuseFile
+	Volume  string
+	rawFile *RawFrontendFile
 }
 
-type FuseFile struct {
+type RawFrontendFile struct {
 	nodefs.File
 	Backend    types.ReaderWriterAt
 	Size       int64
@@ -46,7 +46,7 @@ func newLonghornFs(name string, size, sectorSize int64, rw types.ReaderWriterAt)
 	return &LonghornFs{
 		FileSystem: pathfs.NewDefaultFileSystem(),
 		Volume:     name,
-		file: &FuseFile{
+		rawFile: &RawFrontendFile{
 			File:       nodefs.NewDefaultFile(),
 			Backend:    rw,
 			Size:       size,
@@ -246,7 +246,7 @@ func (lf *LonghornFs) GetAttr(name string, context *fuse.Context) (*fuse.Attr, f
 	switch name {
 	case lf.getImageFileName():
 		return &fuse.Attr{
-			Mode: fuse.S_IFREG | 0644, Size: uint64(lf.file.Size),
+			Mode: fuse.S_IFREG | 0644, Size: uint64(lf.rawFile.Size),
 		}, fuse.OK
 	case "":
 		return &fuse.Attr{
@@ -267,10 +267,10 @@ func (lf *LonghornFs) Open(name string, flags uint32, context *fuse.Context) (no
 	if name != lf.getImageFileName() {
 		return nil, fuse.ENOENT
 	}
-	return lf.file, fuse.OK
+	return lf.rawFile, fuse.OK
 }
 
-func (f *FuseFile) Read(dest []byte, off int64) (fuse.ReadResult, fuse.Status) {
+func (f *RawFrontendFile) Read(dest []byte, off int64) (fuse.ReadResult, fuse.Status) {
 	l := int64(len(dest))
 	if off+l > f.Size {
 		l = f.Size - off
@@ -283,7 +283,7 @@ func (f *FuseFile) Read(dest []byte, off int64) (fuse.ReadResult, fuse.Status) {
 	return fuse.ReadResultData(dest[:l]), fuse.OK
 }
 
-func (f *FuseFile) Write(data []byte, off int64) (uint32, fuse.Status) {
+func (f *RawFrontendFile) Write(data []byte, off int64) (uint32, fuse.Status) {
 	l := int64(len(data))
 	if off+l > f.Size {
 		l = f.Size - off
