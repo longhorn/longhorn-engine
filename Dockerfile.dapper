@@ -13,20 +13,9 @@ WORKDIR ${DAPPER_SOURCE}
 # Install packages
 RUN sed -i "s/http:\/\/archive.ubuntu.com\/ubuntu\//mirror:\/\/mirrors.ubuntu.com\/mirrors.txt/g" /etc/apt/sources.list && \
     apt-get update && \
-    apt-get install -y \
-        cmake \
-        curl \
-        git \
-        libglib2.0-dev \
-        libkmod-dev \
-        libnl-genl-3-dev \
-        linux-libc-dev \
-        pkg-config \
-        psmisc \
-        python-tox \
-        qemu-utils \
-        fuse \
-        python-dev
+    apt-get install -y cmake curl git \
+        libglib2.0-dev libkmod-dev libnl-genl-3-dev linux-libc-dev pkg-config psmisc python-tox qemu-utils fuse python-dev \
+        devscripts debhelper bash-completion librdmacm-dev libibverbs-dev xsltproc docbook-xsl
 
 # Install Go
 RUN curl -o go.tar.gz https://storage.googleapis.com/golang/go1.7.linux-amd64.tar.gz
@@ -73,6 +62,13 @@ RUN cd /usr/src/libqcow-20160123 && \
 RUN cd /usr/src/libqcow-20160123 && \
     make -j$(nproc) && \
     make install
+
+# Build TGT
+RUN cd /usr/src && \
+    git clone https://github.com/yasker/tgt.git && \
+    cd tgt && \
+    git checkout 2cee9922fcc030b347477e020b3b7aebc4518b6f && \
+    ./scripts/build-pkg.sh deb
 
 VOLUME /tmp
 ENV TMPDIR /tmp
