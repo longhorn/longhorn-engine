@@ -11,7 +11,8 @@ ENV TRASH_CACHE ${DAPPER_SOURCE}/.trash-cache
 WORKDIR ${DAPPER_SOURCE}
 
 # Install packages
-RUN apt-get update && \
+RUN sed -i "s/http:\/\/archive.ubuntu.com\/ubuntu\//mirror:\/\/mirrors.ubuntu.com\/mirrors.txt/g" /etc/apt/sources.list && \
+    apt-get update && \
     apt-get install -y \
         cmake \
         curl \
