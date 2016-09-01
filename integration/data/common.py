@@ -10,6 +10,7 @@ import pytest
 import cattle
 
 from frontend import restdev, fusedev
+from frontend import PAGE_SIZE  # NOQA
 
 
 REPLICA1 = 'tcp://localhost:9502'

@@ -7,23 +7,23 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/hanwen/go-fuse/fuse"
-	"github.com/hanwen/go-fuse/fuse/nodefs"
-	"github.com/hanwen/go-fuse/fuse/pathfs"
 	"github.com/rancher/convoy/util"
+	"golang.org/x/net/context"
 	"golang.org/x/sys/unix"
+
+	"bazil.org/fuse"
+	"bazil.org/fuse/fs"
 
 	"github.com/rancher/longhorn/types"
 )
 
-type FuseFs struct {
-	pathfs.FileSystem
-	Volume string
-	file   *FuseFile
+type LonghornFs struct {
+	Conn    *fuse.Conn
+	Volume  string
+	rawFile *RawFrontendFile
 }
 
-type FuseFile struct {
-	nodefs.File
+type RawFrontendFile struct {
 	Backend    types.ReaderWriterAt
 	Size       int64
 	SectorSize int64
@@ -42,12 +42,10 @@ var (
 	log = logrus.WithFields(logrus.Fields{"pkg": "fusedev"})
 )
 
-func newFuseFs(name string, size, sectorSize int64, rw types.ReaderWriterAt) *FuseFs {
-	return &FuseFs{
-		FileSystem: pathfs.NewDefaultFileSystem(),
-		Volume:     name,
-		file: &FuseFile{
-			File:       nodefs.NewDefaultFile(),
+func newLonghornFs(name string, size, sectorSize int64, rw types.ReaderWriterAt) *LonghornFs {
+	return &LonghornFs{
+		Volume: name,
+		rawFile: &RawFrontendFile{
 			Backend:    rw,
 			Size:       size,
 			SectorSize: sectorSize,
@@ -55,50 +53,72 @@ func newFuseFs(name string, size, sectorSize int64, rw types.ReaderWriterAt) *Fu
 	}
 }
 
-func (fs *FuseFs) Start() error {
-	newFs := pathfs.NewPathNodeFs(fs, nil)
-
-	mountDir := fs.GetMountDir()
+func (lf *LonghornFs) Start() error {
+	var err error
+	mountDir := lf.GetMountDir()
 	if err := os.MkdirAll(mountDir, 0700); err != nil {
-		log.Fatal("Cannot create directory ", mountDir)
+		return fmt.Errorf("Cannot create directory %v", mountDir)
 	}
-	server, _, err := nodefs.MountRoot(mountDir, newFs.Root(), nil)
-	/*
-		conn := nodefs.NewFileSystemConnector(newFs.Root(), nil)
-		opts := &fuse.MountOptions{
-			MaxBackground: 12,
-			Options:       []string{"direct_io"},
-		}
-		server, err := fuse.NewServer(conn.RawFS(), fs.GetMountDir(), opts)
-	*/
+	lf.Conn, err = fuse.Mount(mountDir,
+		fuse.FSName("longhorn"),
+		fuse.Subtype("longhornfs"),
+		fuse.VolumeName(lf.Volume),
+		fuse.AsyncDIO(),
+	)
 	if err != nil {
-		return err
+		log.Fatal("FUSE: Unable to mount: ", err)
 	}
-	// This will be stopped when umount happens
-	go server.Serve()
 
-	if err := fs.createDev(); err != nil {
-		return err
-	}
-	return nil
-}
+	go lf.startFs()
 
-func (fs *FuseFs) Stop() error {
-	if err := fs.removeDev(); err != nil {
-		return err
-	}
-	if err := fs.umountFuse(); err != nil {
+	if err := lf.createDev(); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (fs *FuseFs) getDev() string {
-	return filepath.Join(DevPath, fs.Volume)
+func (lf *LonghornFs) startFs() {
+	if err := fs.Serve(lf.Conn, lf); err != nil {
+		// Likely caused by umount, so ignore it for now
+		if err == unix.EBADF {
+			log.Warnf("Serve return ", err)
+		} else {
+			log.Fatal("FUSE: Unable to serve: ", err)
+		}
+	}
+
+	<-lf.Conn.Ready
+	if err := lf.Conn.MountError; err != nil {
+		log.Fatal("FUSE: Mount error occured: ", err)
+	}
 }
 
-func (fs *FuseFs) getLoopbackDev() (string, error) {
-	devs, err := fs.getLoopbackDevs()
+func (lf *LonghornFs) Stop() error {
+	if err := lf.initStop(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (lf *LonghornFs) initStop() error {
+	if lf.Conn != nil {
+		defer lf.Conn.Close()
+	}
+	if err := lf.removeDev(); err != nil {
+		return err
+	}
+	if err := lf.umountFuse(); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (lf *LonghornFs) getDev() string {
+	return filepath.Join(DevPath, lf.Volume)
+}
+
+func (lf *LonghornFs) getLoopbackDev() (string, error) {
+	devs, err := lf.getLoopbackDevs()
 	if err != nil {
 		return "", err
 	}
@@ -108,8 +128,8 @@ func (fs *FuseFs) getLoopbackDev() (string, error) {
 	return devs[0], nil
 }
 
-func (fs *FuseFs) getLoopbackDevs() ([]string, error) {
-	filePath := fs.getImageFileFullPath()
+func (lf *LonghornFs) getLoopbackDevs() ([]string, error) {
+	filePath := lf.getImageFileFullPath()
 	devs, err := util.ListLoopbackDevice(filePath)
 	if err != nil {
 		return nil, err
@@ -117,19 +137,19 @@ func (fs *FuseFs) getLoopbackDevs() ([]string, error) {
 	return devs, nil
 }
 
-func (fs *FuseFs) createDev() error {
+func (lf *LonghornFs) createDev() error {
 	if err := os.MkdirAll(DevPath, 0700); err != nil {
 		log.Fatalln("Cannot create directory ", DevPath)
 	}
 
-	dev := fs.getDev()
+	dev := lf.getDev()
 
 	if _, err := os.Stat(dev); err == nil {
 		return fmt.Errorf("Device %s already exists, can not create", dev)
 	}
 
 	found := false
-	path := fs.getImageFileFullPath()
+	path := lf.getImageFileFullPath()
 	for i := 0; i < 30; i++ {
 		var err error
 		matches, err := filepath.Glob(path)
@@ -151,7 +171,7 @@ func (fs *FuseFs) createDev() error {
 	if err != nil {
 		return err
 	}
-	lodev, err := fs.getLoopbackDev()
+	lodev, err := lf.getLoopbackDev()
 	if err != nil {
 		return err
 	}
@@ -170,8 +190,8 @@ func (fs *FuseFs) createDev() error {
 	return nil
 }
 
-func (fs *FuseFs) removeDev() error {
-	dev := fs.getDev()
+func (lf *LonghornFs) removeDev() error {
+	dev := lf.getDev()
 	logrus.Infof("Removing device %s", dev)
 	if _, err := os.Stat(dev); err == nil {
 		if err := remove(dev); err != nil {
@@ -179,13 +199,13 @@ func (fs *FuseFs) removeDev() error {
 		}
 	}
 
-	lodevs, err := fs.getLoopbackDevs()
+	lodevs, err := lf.getLoopbackDevs()
 	if err != nil {
 		return fmt.Errorf("Failed to get loopback device %v", err)
 	}
 	for _, lodev := range lodevs {
 		logrus.Infof("Detaching loopback device %s", lodev)
-		if err := util.DetachLoopbackDevice(fs.getImageFileFullPath(), lodev); err != nil {
+		if err := util.DetachLoopbackDevice(lf.getImageFileFullPath(), lodev); err != nil {
 			return fmt.Errorf("Fail to detach loopback device %s: %v", lodev, err)
 		}
 
@@ -193,7 +213,7 @@ func (fs *FuseFs) removeDev() error {
 		devs := []string{}
 		for i := 0; i < RetryCounts; i++ {
 			var err error
-			devs, err = util.ListLoopbackDevice(fs.getImageFileFullPath())
+			devs, err = util.ListLoopbackDevice(lf.getImageFileFullPath())
 			if err != nil {
 				return err
 			}
@@ -211,9 +231,9 @@ func (fs *FuseFs) removeDev() error {
 	return nil
 }
 
-func (fs *FuseFs) umountFuse() error {
-	if fs.isMounted() {
-		dir := fs.GetMountDir()
+func (lf *LonghornFs) umountFuse() error {
+	if lf.isMounted() {
+		dir := lf.GetMountDir()
 		logrus.Infof("Umounting %s", dir)
 		if err := unix.Unmount(dir, 0); err != nil {
 			return fmt.Errorf("Fail to umounting %s: %v", dir, err)
@@ -222,79 +242,85 @@ func (fs *FuseFs) umountFuse() error {
 	return nil
 }
 
-func (fs *FuseFs) isMounted() bool {
-	path := fs.GetMountDir()
+func (lf *LonghornFs) isMounted() bool {
+	path := lf.GetMountDir()
 	if _, err := util.Execute("findmnt", []string{path}); err != nil {
 		return false
 	}
 	return true
 }
 
-func (fs *FuseFs) GetMountDir() string {
-	return filepath.Join(MountBase, fs.Volume)
+func (lf *LonghornFs) GetMountDir() string {
+	return filepath.Join(MountBase, lf.Volume)
 }
 
-func (fs *FuseFs) getImageFileName() string {
-	return fs.Volume + ImageSuffix
+func (lf *LonghornFs) getImageFileName() string {
+	return lf.Volume + ImageSuffix
 }
 
-func (fs *FuseFs) getImageFileFullPath() string {
-	return filepath.Join(fs.GetMountDir(), fs.getImageFileName())
+func (lf *LonghornFs) getImageFileFullPath() string {
+	return filepath.Join(lf.GetMountDir(), lf.getImageFileName())
 }
 
-func (fs *FuseFs) GetAttr(name string, context *fuse.Context) (*fuse.Attr, fuse.Status) {
-	switch name {
-	case fs.getImageFileName():
-		return &fuse.Attr{
-			Mode: fuse.S_IFREG | 0644, Size: uint64(fs.file.Size),
-		}, fuse.OK
-	case "":
-		return &fuse.Attr{
-			Mode: fuse.S_IFDIR | 0755,
-		}, fuse.OK
+func (lf *LonghornFs) Root() (fs.Node, error) {
+	return lf, nil
+}
+
+func (lf *LonghornFs) Attr(cxt context.Context, a *fuse.Attr) error {
+	a.Inode = 1
+	a.Mode = os.ModeDir | 0555
+	return nil
+}
+
+func (lf *LonghornFs) Lookup(cxt context.Context, name string) (fs.Node, error) {
+	if name == lf.getImageFileName() {
+		return lf.rawFile, nil
 	}
 	return nil, fuse.ENOENT
 }
 
-func (fs *FuseFs) OpenDir(name string, context *fuse.Context) ([]fuse.DirEntry, fuse.Status) {
-	if name == "" {
-		return []fuse.DirEntry{{Name: fs.getImageFileName(), Mode: fuse.S_IFREG}}, fuse.OK
-	}
-	return nil, fuse.ENOENT
+func (lf *LonghornFs) ReadDirAll(cxt context.Context) ([]fuse.Dirent, error) {
+	return []fuse.Dirent{
+		{Inode: 2, Name: lf.getImageFileName(), Type: fuse.DT_File},
+	}, nil
 }
 
-func (fs *FuseFs) Open(name string, flags uint32, context *fuse.Context) (nodefs.File, fuse.Status) {
-	if name != fs.getImageFileName() {
-		return nil, fuse.ENOENT
-	}
-	return fs.file, fuse.OK
+func (f *RawFrontendFile) Attr(ctx context.Context, a *fuse.Attr) error {
+	a.Inode = 2
+	a.Mode = 0444
+	a.Size = uint64(f.Size)
+	return nil
 }
 
-func (f *FuseFile) Read(dest []byte, off int64) (fuse.ReadResult, fuse.Status) {
-	l := int64(len(dest))
-	if off+l > f.Size {
-		l = f.Size - off
+func (f *RawFrontendFile) Open(cxt context.Context, req *fuse.OpenRequest, resp *fuse.OpenResponse) (fs.Handle, error) {
+	return f, nil
+}
+
+func (f *RawFrontendFile) Read(cxt context.Context, req *fuse.ReadRequest, resp *fuse.ReadResponse) error {
+	l := int64(req.Size)
+	if req.Offset+l > f.Size {
+		l = f.Size - req.Offset
 	}
-	_, err := f.Backend.ReadAt(dest[:l], off)
+	_, err := f.Backend.ReadAt(resp.Data[:l], req.Offset)
 	if err != nil {
-		log.Errorln("read failed: ", err.Error())
-		return nil, fuse.EIO
+		return fmt.Errorf("read failed: %v", err)
 	}
-	return fuse.ReadResultData(dest[:l]), fuse.OK
+	resp.Data = resp.Data[:l]
+	return nil
 }
 
-func (f *FuseFile) Write(data []byte, off int64) (uint32, fuse.Status) {
-	l := int64(len(data))
-	if off+l > f.Size {
-		l = f.Size - off
+func (f *RawFrontendFile) Write(cxt context.Context, req *fuse.WriteRequest, resp *fuse.WriteResponse) error {
+	l := int64(len(req.Data))
+	if req.Offset+l > f.Size {
+		l = f.Size - req.Offset
 	}
 
-	written, err := f.Backend.WriteAt(data[:l], off)
+	_, err := f.Backend.WriteAt(req.Data[:l], req.Offset)
 	if err != nil {
-		log.Errorln("write failed: ", err.Error())
-		return 0, fuse.EIO
+		return fmt.Errorf("write failed: %v", err)
 	}
-	return uint32(written), fuse.OK
+	resp.Size = int(l)
+	return nil
 }
 
 func mknod(device string, major, minor int) error {

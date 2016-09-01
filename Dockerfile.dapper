@@ -24,7 +24,8 @@ RUN apt-get update && \
         psmisc \
         python-tox \
         qemu-utils \
-        fuse
+        fuse \
+        python-dev
 
 # Install Go 1.6
 RUN curl -o go.tar.gz https://storage.googleapis.com/golang/go1.6.2.linux-amd64.tar.gz

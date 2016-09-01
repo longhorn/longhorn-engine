@@ -1,14 +1,25 @@
+#!/bin/bash
+
 set -x
 mount --rbind /host/dev /dev
 
-if [ -z $1 ]
+volume=$1
+frontend=$2
+
+if [ -z $volume ]
 then
-	echo Need a volume name as first parameter
+        echo "Usage: launch-simple-longhorn <volume_name> <frontend> "
+        echo "<volume_name>: Required. User defined volume name"
+        echo "<frontend>: Optional. By default 'tcmu'. "
 	exit -1
 fi
 
-volume=$1
+if [ -z $frontend ]
+then
+        echo Use default frontend TCMU
+        frontend="tcmu"
+fi
 
 longhorn replica --size 1g --listen localhost:9502 /volume/ &
 sleep 1
-exec longhorn --debug controller --frontend tcmu --replica tcp://localhost:9502 $volume
+exec longhorn controller --frontend $frontend --replica tcp://localhost:9502 $volume
