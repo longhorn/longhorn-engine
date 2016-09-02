@@ -222,8 +222,9 @@ func GetFiemapRegionExts(file FileIoProcessor, interval Interval) ([]Extent, err
 
 	// last ext should have the FIEMAP_EXTENT_LAST set, otherwise we don't get all exts
 	if exts[len(exts)-1].Flags&FIEMAP_EXTENT_LAST == 0 {
-		return exts, fmt.Errorf("The exts returned by fiemap are not complete")
+		fileInfo, _ := file.Stat()
+		extCount, _, _ := fiemap.FiemapRegion(0, uint64(0), uint64(fileInfo.Size()))
+		return exts, fmt.Errorf("The exts returned by fiemap are not complete, file exts count: %d, region exts count: %d", extCount, len(exts))
 	}
-
 	return exts, nil
 }
