@@ -9,6 +9,8 @@ import (
 
 	"github.com/gorilla/handlers"
 	"github.com/satori/go.uuid"
+	"github.com/yasker/go-iscsi-helper/iscsi"
+	iutil "github.com/yasker/go-iscsi-helper/util"
 )
 
 var (
@@ -75,4 +77,93 @@ func (h filteredLoggingHandler) ServeHTTP(w http.ResponseWriter, req *http.Reque
 		}
 	}
 	h.loggingHandler.ServeHTTP(w, req)
+}
+
+type ScsiDevice struct {
+	Target      string
+	TargetID    int
+	LunID       int
+	Device      string
+	Portal      string
+	BackingFile string
+}
+
+func NewScsiDevice(name, backingFile string) (*ScsiDevice, error) {
+	dev := &ScsiDevice{
+		Target:      "iqn.2014-07.com.rancher:" + name,
+		TargetID:    1,
+		LunID:       1,
+		BackingFile: backingFile,
+	}
+	ips, err := iutil.GetLocalIPs()
+	if err != nil {
+		return nil, err
+	}
+	dev.Portal = ips[0]
+	return dev, nil
+}
+
+func (dev *ScsiDevice) Startup() error {
+	ne, err := iutil.NewNamespaceExecutor("/host/proc/1/ns/")
+	if err != nil {
+		return err
+	}
+
+	// Setup target
+	if err := iscsi.StartDaemon(); err != nil {
+		return err
+	}
+	if err := iscsi.CreateTarget(dev.TargetID, dev.Target); err != nil {
+		return err
+	}
+	if err := iscsi.AddLunBackedByFile(dev.TargetID, dev.LunID, dev.BackingFile); err != nil {
+		return err
+	}
+	if err := iscsi.BindInitiator(dev.TargetID, "ALL"); err != nil {
+		return err
+	}
+
+	// Setup initiator
+	if err := iscsi.DiscoverTarget(dev.Portal, dev.Target, ne); err != nil {
+		return err
+	}
+	if err := iscsi.LoginTarget(dev.Portal, dev.Target, ne); err != nil {
+		return err
+	}
+	if dev.Device, err = iscsi.GetDevice(dev.Portal, dev.Target, dev.LunID, ne); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (dev *ScsiDevice) Shutdown() error {
+	if dev.Device == "" {
+		return fmt.Errorf("SCSI Device is already down")
+	}
+
+	ne, err := iutil.NewNamespaceExecutor("/host/proc/1/ns/")
+	if err != nil {
+		return err
+	}
+
+	// Teardown initiator
+	if err := iscsi.LogoutTarget(dev.Portal, dev.Target, ne); err != nil {
+		return err
+	}
+	dev.Device = ""
+	if err := iscsi.DeleteDiscoveredTarget(dev.Portal, dev.Target, ne); err != nil {
+		return err
+	}
+
+	// Teardown target
+	if err := iscsi.UnbindInitiator(dev.TargetID, "ALL"); err != nil {
+		return err
+	}
+	if err := iscsi.DeleteLun(dev.TargetID, dev.LunID); err != nil {
+		return err
+	}
+	if err := iscsi.DeleteTarget(dev.TargetID); err != nil {
+		return err
+	}
+	return nil
 }
