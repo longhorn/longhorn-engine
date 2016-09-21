@@ -1,7 +1,9 @@
 package iscsi
 
 import (
+	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/rancher/convoy/util"
 )
@@ -53,6 +55,28 @@ func AddLunBackedByFile(tid int, lun int, backingFile string) error {
 		"--tid", strconv.Itoa(tid),
 		"--lun", strconv.Itoa(lun),
 		"-b", backingFile,
+	}
+	_, err := util.Execute(tgtBinary, opts)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+// AddLunBackedByAIOFile will add a LUN in an existing target, which backing by
+// specified file, using AIO backing-store
+func AddLunBackedByAIOFile(tid int, lun int, backingFile string) error {
+	if !CheckTargetForBackingStore("aio") {
+		return fmt.Errorf("Backing-store aio is not supported")
+	}
+	opts := []string{
+		"--lld", "iscsi",
+		"--op", "new",
+		"--mode", "logicalunit",
+		"--tid", strconv.Itoa(tid),
+		"--lun", strconv.Itoa(lun),
+		"-b", backingFile,
+		"--bstype", "aio",
 	}
 	_, err := util.Execute(tgtBinary, opts)
 	if err != nil {
@@ -118,4 +142,17 @@ func StartDaemon() error {
 		return err
 	}
 	return nil
+}
+
+func CheckTargetForBackingStore(name string) bool {
+	opts := []string{
+		"--lld", "iscsi",
+		"--op", "show",
+		"--mode", "system",
+	}
+	output, err := util.Execute(tgtBinary, opts)
+	if err != nil {
+		return false
+	}
+	return strings.Contains(output, " "+name)
 }

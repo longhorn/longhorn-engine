@@ -63,4 +63,4 @@ import:
 - package: golang.org/x/net/context
   version: 31df19d69da8728e9220def59b80ee577c3e48bf
 - package: github.com/yasker/go-iscsi-helper
-  version: 9d43b5b232ad51582b70b0200b7ff5b67a11da65
+  version: a0011be003f3248128506b0e43fbb0658a8f61f3

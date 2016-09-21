@@ -116,7 +116,7 @@ func (dev *ScsiDevice) Startup() error {
 	if err := iscsi.CreateTarget(dev.TargetID, dev.Target); err != nil {
 		return err
 	}
-	if err := iscsi.AddLunBackedByFile(dev.TargetID, dev.LunID, dev.BackingFile); err != nil {
+	if err := iscsi.AddLunBackedByAIOFile(dev.TargetID, dev.LunID, dev.BackingFile); err != nil {
 		return err
 	}
 	if err := iscsi.BindInitiator(dev.TargetID, "ALL"); err != nil {
