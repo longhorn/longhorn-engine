@@ -63,11 +63,11 @@ func AddLunBackedByFile(tid int, lun int, backingFile string) error {
 	return nil
 }
 
-// AddLunBackedByAIOFile will add a LUN in an existing target, which backing by
+// AddLun will add a LUN in an existing target, which backing by
 // specified file, using AIO backing-store
-func AddLunBackedByAIOFile(tid int, lun int, backingFile string) error {
-	if !CheckTargetForBackingStore("aio") {
-		return fmt.Errorf("Backing-store aio is not supported")
+func AddLun(tid int, lun int, backingFile string, bstype string, bsopts string) error {
+	if !CheckTargetForBackingStore(bstype) {
+		return fmt.Errorf("Backing-store %s is not supported", bstype)
 	}
 	opts := []string{
 		"--lld", "iscsi",
@@ -76,7 +76,10 @@ func AddLunBackedByAIOFile(tid int, lun int, backingFile string) error {
 		"--tid", strconv.Itoa(tid),
 		"--lun", strconv.Itoa(lun),
 		"-b", backingFile,
-		"--bstype", "aio",
+		"--bstype", bstype,
+	}
+	if bsopts != "" {
+		opts = append(opts, "\""+bsopts+"\"")
 	}
 	_, err := util.Execute(tgtBinary, opts)
 	if err != nil {

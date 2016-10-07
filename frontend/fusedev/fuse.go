@@ -151,7 +151,7 @@ func (lf *LonghornFs) createDev() error {
 	}
 
 	if lf.scsiDev == nil {
-		scsiDev, err := util.NewScsiDevice(lf.Volume, path)
+		scsiDev, err := util.NewScsiDevice(lf.Volume, path, "aio", "")
 		if err != nil {
 			return err
 		}

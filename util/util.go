@@ -86,14 +86,18 @@ type ScsiDevice struct {
 	Device      string
 	Portal      string
 	BackingFile string
+	BSType      string
+	BSOpts      string
 }
 
-func NewScsiDevice(name, backingFile string) (*ScsiDevice, error) {
+func NewScsiDevice(name, backingFile, bsType, bsOpts string) (*ScsiDevice, error) {
 	dev := &ScsiDevice{
 		Target:      "iqn.2014-07.com.rancher:" + name,
 		TargetID:    1,
 		LunID:       1,
 		BackingFile: backingFile,
+		BSType:      bsType,
+		BSOpts:      bsOpts,
 	}
 	ips, err := iutil.GetLocalIPs()
 	if err != nil {
@@ -116,7 +120,7 @@ func (dev *ScsiDevice) Startup() error {
 	if err := iscsi.CreateTarget(dev.TargetID, dev.Target); err != nil {
 		return err
 	}
-	if err := iscsi.AddLunBackedByAIOFile(dev.TargetID, dev.LunID, dev.BackingFile); err != nil {
+	if err := iscsi.AddLun(dev.TargetID, dev.LunID, dev.BackingFile, dev.BSType, dev.BSOpts); err != nil {
 		return err
 	}
 	if err := iscsi.BindInitiator(dev.TargetID, "ALL"); err != nil {
