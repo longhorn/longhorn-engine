@@ -38,7 +38,7 @@ RUN curl -sL https://get.docker.com/builds/Linux/x86_64/docker-1.9.1 > /usr/bin/
 RUN cd /usr/src && \
     git clone https://github.com/yasker/tgt.git && \
     cd tgt && \
-    git checkout ec01080ee9ed3484ca27e70b2b71808618e8338a && \
+    git checkout 4574d18db4eeebb0f761fe272ccbe1e3ff681b7f && \
     ./scripts/build-pkg.sh deb && \
     dpkg -i ./pkg/tgt_*.deb
 

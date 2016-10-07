@@ -4,13 +4,17 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"regexp"
 	"strconv"
+	"time"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/gorilla/handlers"
 	"github.com/satori/go.uuid"
 	"github.com/yasker/go-iscsi-helper/iscsi"
 	iutil "github.com/yasker/go-iscsi-helper/util"
+	"golang.org/x/sys/unix"
 )
 
 var (
@@ -114,7 +118,7 @@ func (dev *ScsiDevice) Startup() error {
 	}
 
 	// Setup target
-	if err := iscsi.StartDaemon(); err != nil {
+	if err := iscsi.StartDaemon(false); err != nil {
 		return err
 	}
 	if err := iscsi.CreateTarget(dev.TargetID, dev.Target); err != nil {
@@ -170,4 +174,56 @@ func (dev *ScsiDevice) Shutdown() error {
 		return err
 	}
 	return nil
+}
+
+func DuplicateDevice(src, dest string) error {
+	stat := unix.Stat_t{}
+	if err := unix.Stat(src, &stat); err != nil {
+		return err
+	}
+	major := int(stat.Rdev / 256)
+	minor := int(stat.Rdev % 256)
+	if err := mknod(dest, major, minor); err != nil {
+		return err
+	}
+	return nil
+}
+
+func mknod(device string, major, minor int) error {
+	var fileMode os.FileMode = 0600
+	fileMode |= unix.S_IFBLK
+	dev := int((major << 8) | (minor & 0xff) | ((minor & 0xfff00) << 12))
+
+	logrus.Infof("Creating device %s %d:%d", device, major, minor)
+	return unix.Mknod(device, uint32(fileMode), dev)
+}
+
+func RemoveDevice(dev string) error {
+	if _, err := os.Stat(dev); err == nil {
+		if err := remove(dev); err != nil {
+			return fmt.Errorf("Failed to removing device %s, %v", dev, err)
+		}
+	}
+	return nil
+}
+
+func removeAsync(path string, done chan<- error) {
+	logrus.Infof("Removing: %s", path)
+	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+		logrus.Errorf("Unable to remove: %v", path)
+		done <- err
+	}
+	logrus.Debugf("Removed: %s", path)
+	done <- nil
+}
+
+func remove(path string) error {
+	done := make(chan error)
+	go removeAsync(path, done)
+	select {
+	case err := <-done:
+		return err
+	case <-time.After(30 * time.Second):
+		return fmt.Errorf("Timeout trying to delete %s.", path)
+	}
 }

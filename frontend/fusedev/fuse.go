@@ -161,14 +161,7 @@ func (lf *LonghornFs) createDev() error {
 		return err
 	}
 
-	stat := unix.Stat_t{}
-	if err := unix.Stat(lf.scsiDev.Device, &stat); err != nil {
-		return err
-	}
-	major := int(stat.Rdev / 256)
-	minor := int(stat.Rdev % 256)
-	logrus.Infof("Creating device %s %d:%d", dev, major, minor)
-	if err := mknod(dev, major, minor); err != nil {
+	if err := util.DuplicateDevice(lf.scsiDev.Device, dev); err != nil {
 		return err
 	}
 	return nil
@@ -177,10 +170,8 @@ func (lf *LonghornFs) createDev() error {
 func (lf *LonghornFs) removeDev() error {
 	dev := lf.getDev()
 	logrus.Infof("Removing device %s", dev)
-	if _, err := os.Stat(dev); err == nil {
-		if err := remove(dev); err != nil {
-			return fmt.Errorf("Failed to removing device %s, %v", dev, err)
-		}
+	if err := util.RemoveDevice(dev); err != nil {
+		return err
 	}
 
 	if lf.scsiDev.Device != "" {
@@ -281,33 +272,4 @@ func (f *RawFrontendFile) Write(cxt context.Context, req *fuse.WriteRequest, res
 	}
 	resp.Size = int(l)
 	return nil
-}
-
-func mknod(device string, major, minor int) error {
-	var fileMode os.FileMode = 0600
-	fileMode |= unix.S_IFBLK
-	dev := int((major << 8) | (minor & 0xff) | ((minor & 0xfff00) << 12))
-
-	return unix.Mknod(device, uint32(fileMode), dev)
-}
-
-func removeAsync(path string, done chan<- error) {
-	logrus.Infof("Removing: %s", path)
-	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
-		logrus.Errorf("Unable to remove: %v", path)
-		done <- err
-	}
-	logrus.Debugf("Removed: %s", path)
-	done <- nil
-}
-
-func remove(path string) error {
-	done := make(chan error)
-	go removeAsync(path, done)
-	select {
-	case err := <-done:
-		return err
-	case <-time.After(30 * time.Second):
-		return fmt.Errorf("Timeout trying to delete %s.", path)
-	}
 }

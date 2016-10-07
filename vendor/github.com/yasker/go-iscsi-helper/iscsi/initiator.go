@@ -10,11 +10,13 @@ import (
 	"github.com/yasker/go-iscsi-helper/util"
 )
 
+var (
+	DeviceWaitRetryCounts   = 5
+	DeviceWaitRetryInterval = 1 * time.Second
+)
+
 const (
 	iscsiBinary = "iscsiadm"
-
-	retryInterval = 1 * time.Second
-	retryMax      = 5
 )
 
 func DiscoverTarget(ip, target string, ne *util.NamespaceExecutor) error {
@@ -79,12 +81,12 @@ func GetDevice(ip, target string, lun int, ne *util.NamespaceExecutor) (string, 
 	var err error
 
 	dev := ""
-	for i := 0; i < retryMax; i++ {
+	for i := 0; i < DeviceWaitRetryCounts; i++ {
 		dev, err = findScsiDevice(ip, target, lun, ne)
 		if err == nil {
 			break
 		}
-		time.Sleep(retryInterval)
+		time.Sleep(DeviceWaitRetryInterval)
 	}
 	if err != nil {
 		return "", err
