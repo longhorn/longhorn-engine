@@ -19,6 +19,17 @@ const (
 	iscsiBinary = "iscsiadm"
 )
 
+func CheckForInitiatorExistence(ne *util.NamespaceExecutor) error {
+	opts := []string{
+		"--version",
+	}
+	_, err := ne.Execute(iscsiBinary, opts)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func DiscoverTarget(ip, target string, ne *util.NamespaceExecutor) error {
 	opts := []string{
 		"-m", "discovery",

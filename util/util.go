@@ -117,6 +117,10 @@ func (dev *ScsiDevice) Startup() error {
 		return err
 	}
 
+	if err := iscsi.CheckForInitiatorExistence(ne); err != nil {
+		return err
+	}
+
 	// Setup target
 	if err := iscsi.StartDaemon(false); err != nil {
 		return err
@@ -151,6 +155,10 @@ func (dev *ScsiDevice) Shutdown() error {
 
 	ne, err := iutil.NewNamespaceExecutor("/host/proc/1/ns/")
 	if err != nil {
+		return err
+	}
+
+	if err := iscsi.CheckForInitiatorExistence(ne); err != nil {
 		return err
 	}
 
