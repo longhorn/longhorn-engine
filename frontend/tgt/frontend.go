@@ -58,16 +58,20 @@ func (t *Tgt) Activate(name string, size, sectorSize int64, rw types.ReaderWrite
 }
 
 func (t *Tgt) Shutdown() error {
-	dev := t.getDev()
-	logrus.Infof("Removing device %s", dev)
-	if err := util.RemoveDevice(dev); err != nil {
-		return err
+	if t.Volume != "" {
+		dev := t.getDev()
+		if err := util.RemoveDevice(dev); err != nil {
+			return err
+		}
+		t.Volume = ""
 	}
+
 	if t.scsiDevice != nil {
 		logrus.Infof("Shutdown SCSI device at %v", t.scsiDevice.Device)
 		if err := t.scsiDevice.Shutdown(); err != nil {
 			return err
 		}
+		t.scsiDevice = nil
 	}
 	if t.socketServer != nil {
 		//log.Infof("Shutdown TGT socket server for %v", t.Volume)

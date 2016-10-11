@@ -216,12 +216,10 @@ func RemoveDevice(dev string) error {
 }
 
 func removeAsync(path string, done chan<- error) {
-	logrus.Infof("Removing: %s", path)
 	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
 		logrus.Errorf("Unable to remove: %v", path)
 		done <- err
 	}
-	logrus.Debugf("Removed: %s", path)
 	done <- nil
 }
 

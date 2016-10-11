@@ -14,6 +14,8 @@ import (
 var (
 	TgtdRetryCounts   = 5
 	TgtdRetryInterval = 1 * time.Second
+
+	daemonIsRunning = false
 )
 
 const (
@@ -148,6 +150,10 @@ func UnbindInitiator(tid int, initiator string) error {
 
 // StartDaemon will start tgtd daemon, prepare for further commands
 func StartDaemon(debug bool) error {
+	if daemonIsRunning {
+		return nil
+	}
+
 	logFile := "/var/log/tgtd.log"
 	logf, err := os.Create(logFile)
 	if err != nil {
@@ -156,15 +162,15 @@ func StartDaemon(debug bool) error {
 	go startDaemon(logf, debug)
 
 	// Wait until daemon is up
-	done := false
+	daemonIsRunning = false
 	for i := 0; i < TgtdRetryCounts; i++ {
 		if CheckTargetForBackingStore("rdwr") {
-			done = true
+			daemonIsRunning = true
 			break
 		}
 		time.Sleep(TgtdRetryInterval)
 	}
-	if !done {
+	if !daemonIsRunning {
 		return fmt.Errorf("Fail to start tgtd daemon")
 	}
 	return nil
