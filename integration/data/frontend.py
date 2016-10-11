@@ -84,7 +84,7 @@ class restdev:
         return ret
 
 
-class fusedev:
+class blockdev:
 
     def __init__(self, volume):
         self.dev = path.join(LONGHORN_DEV_DIR, volume)

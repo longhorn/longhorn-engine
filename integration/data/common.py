@@ -9,7 +9,7 @@ from os import path
 import pytest
 import cattle
 
-from frontend import restdev, fusedev
+from frontend import restdev, blockdev
 from frontend import PAGE_SIZE  # NOQA
 
 
@@ -60,7 +60,7 @@ def dev(request):
         REPLICA2
     ])
     assert v.replicaCount == 2
-    d = get_restdev()
+    d = get_blockdev()
 
     return d
 
@@ -84,7 +84,7 @@ def backing_dev(request):
         BACKED_REPLICA2
     ])
     assert v.replicaCount == 2
-    d = get_restdev()
+    d = get_blockdev()
 
     return d
 
@@ -148,8 +148,8 @@ def get_restdev():
     return restdev(VOLUME_NAME)
 
 
-def get_fusedev():
-    return fusedev(VOLUME_NAME)
+def get_blockdev():
+    return blockdev(VOLUME_NAME)
 
 
 def write_dev(dev, offset, data):
