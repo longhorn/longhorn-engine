@@ -46,6 +46,7 @@ Examples:
 
 	err := sparse.FoldFile(srcPath, dstPath)
 	if err != nil {
+		log.Errorf("failed to fold file: %s to: %s, err: %v", srcPath, dstPath, err)
 		os.Exit(1)
 	}
 }

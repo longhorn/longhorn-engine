@@ -56,7 +56,7 @@ func coalesce(parentFileIo FileIoProcessor, childFileIo FileIoProcessor) error {
 	}
 	exts, err := GetFiemapExtents(childFileIo)
 	if err != nil {
-		log.Errorf("Failed to GetFiemapExtents of childFile filename: %v", childFileIo.Name())
+		log.Errorf("Failed to GetFiemapExtents of childFile filename: %s, err: %v", childFileIo.Name(), err)
 		return err
 	}
 	for _, e := range exts {
