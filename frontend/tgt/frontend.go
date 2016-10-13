@@ -28,12 +28,13 @@ type Tgt struct {
 	Size       int64
 	SectorSize int
 
+	isUp         bool
 	socketPath   string
 	socketServer *rpc.Server
 	scsiDevice   *util.ScsiDevice
 }
 
-func (t *Tgt) Activate(name string, size, sectorSize int64, rw types.ReaderWriterAt) error {
+func (t *Tgt) Startup(name string, size, sectorSize int64, rw types.ReaderWriterAt) error {
 	if err := t.Shutdown(); err != nil {
 		return err
 	}
@@ -53,6 +54,8 @@ func (t *Tgt) Activate(name string, size, sectorSize int64, rw types.ReaderWrite
 	if err := t.createDev(); err != nil {
 		return err
 	}
+
+	t.isUp = true
 
 	return nil
 }
@@ -78,7 +81,16 @@ func (t *Tgt) Shutdown() error {
 		// TODO: In fact we don't know how to shutdown socket server, there is
 		// no way yet
 	}
+	t.isUp = false
+
 	return nil
+}
+
+func (t *Tgt) State() types.State {
+	if t.isUp {
+		return types.StateUp
+	}
+	return types.StateDown
 }
 
 func (t *Tgt) getSocketPath() string {

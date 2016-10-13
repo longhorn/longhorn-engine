@@ -32,9 +32,10 @@ func New() types.Frontend {
 
 type Tcmu struct {
 	volume string
+	isUp   bool
 }
 
-func (t *Tcmu) Activate(name string, size, sectorSize int64, rw types.ReaderWriterAt) error {
+func (t *Tcmu) Startup(name string, size, sectorSize int64, rw types.ReaderWriterAt) error {
 	t.volume = name
 
 	t.Shutdown()
@@ -47,11 +48,26 @@ func (t *Tcmu) Activate(name string, size, sectorSize int64, rw types.ReaderWrit
 		return err
 	}
 
-	return PostEnableTcmu(name)
+	if err := PostEnableTcmu(name); err != nil {
+		return err
+	}
+	t.isUp = true
+	return nil
 }
 
 func (t *Tcmu) Shutdown() error {
-	return TeardownTcmu(t.volume)
+	if err := TeardownTcmu(t.volume); err != nil {
+		return err
+	}
+	t.isUp = false
+	return nil
+}
+
+func (t *Tcmu) State() types.State {
+	if t.isUp {
+		return types.StateUp
+	}
+	return types.StateDown
 }
 
 func PreEnableTcmu(volume string, size, sectorSize int64) error {

@@ -6,6 +6,9 @@ const (
 	WO  = Mode("WO")
 	RW  = Mode("RW")
 	ERR = Mode("ERR")
+
+	StateUp   = State("Up")
+	StateDown = State("Down")
 )
 
 type ReaderWriterAt interface {
@@ -47,12 +50,15 @@ type Server interface {
 
 type Mode string
 
+type State string
+
 type Replica struct {
 	Address string
 	Mode    Mode
 }
 
 type Frontend interface {
-	Activate(name string, size, sectorSize int64, rw ReaderWriterAt) error
+	Startup(name string, size, sectorSize int64, rw ReaderWriterAt) error
 	Shutdown() error
+	State() State
 }

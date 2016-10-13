@@ -170,9 +170,9 @@ func (c *Controller) setReplicaModeNoLock(address string, mode types.Mode) {
 
 func (c *Controller) startFrontend() error {
 	if len(c.replicas) > 0 && c.frontend != nil {
-		if err := c.frontend.Activate(c.Name, c.size, c.sectorSize, c); err != nil {
+		if err := c.frontend.Startup(c.Name, c.size, c.sectorSize, c); err != nil {
 			// FATAL
-			logrus.Fatalf("Failed to activate frontend: %v", err)
+			logrus.Fatalf("Failed to start up frontend: %v", err)
 			// This will never be reached
 			return err
 		}
