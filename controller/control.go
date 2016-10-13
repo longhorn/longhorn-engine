@@ -130,6 +130,9 @@ func (c *Controller) RemoveReplica(address string) error {
 
 	for i, r := range c.replicas {
 		if r.Address == address {
+			if len(c.replicas) == 1 && c.frontend.State() == types.StateUp {
+				return fmt.Errorf("Cannot remove last replica if volume is up")
+			}
 			c.replicas = append(c.replicas[:i], c.replicas[i+1:]...)
 			c.backend.RemoveBackend(r.Address)
 		}

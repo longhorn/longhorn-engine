@@ -15,6 +15,9 @@ def client(request):
 
 
 def cleanup(client):
+    v = client.list_volume()[0]
+    if v.replicaCount != 0:
+        v = v.shutdown()
     for r in client.list_replica():
         client.delete(r)
     return client
