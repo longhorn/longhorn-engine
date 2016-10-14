@@ -9,38 +9,47 @@ A microservice that does micro things.
 
 ## Running
 
-You need to be running RancherOS v0.4.4 (all kernel patches are not yet fully upstreamed).
+You can choose either TGT or TCMU frontend. TGT frontend is recommended. TGT
+can work with majority of the Linux distributions, while TCMU can work with
+RancherOS v0.4.4 and above only.
+
+Host need to have `docker` installed. Run following command to check:
+```
+docker info
+```
+
+### With TGT frontend
+
+User need to make sure the host has `iscsiadm` installed. Run following command to check:
+```
+iscsiadm --version
+```
+
+To start Longhorn with an single replica, run following command:
+```
+docker run --privileged -v /dev:/host/dev -v /proc:/host/proc rancher/longhorn launch-simple-longhorn vol-name 10g tgt
+```
+
+That will create the device `/dev/longhorn/vol-name`
+
+### With TCMU frontend
+
+You need to be running RancherOS v0.4.4 (all kernel patches are upstreamed but only available after Linux v4.5).
 Also ensure that TCMU is enabled:
 
     modprobe target_core_user
     mount -t configfs none /sys/kernel/config
 
-Then run
-
-    ./bin/longhorn replica --size 10g /opt/volume
-    ./bin/longhorn replica --size 10g --listen localhost:9505 /opt/volume2
-    ./bin/longhorn controller --frontend tcmu --replica tcp://localhost:9502 --replica tcp://localhost:9505 vol-name
+To start Longhorn with an single replica, run following command:
+```
+docker run --privileged -v /dev:/host/dev -v /proc:/host/proc -v /sys/kernel/config:/sys/kernel/config rancher/longhorn launch-simple-longhorn vol-name 10g tcmu
+```
 
 That will create the device `/dev/longhorn/vol-name`
 
-## Ports
+### Longhorn with multiple replicas
 
-Each replica uses three consequetive ports.  By default they are 9502, 9503, and 9504.  They are used for
-controll channel, data channel, and sync communication respectively.
-
-## CLI
-
-List replicas
-
-    longhorn ls
-
-Remove replica
-
-    longhorn rm tcp://localhost:9502
-
-Add replica
-
-    longhorn add tcp://localhost:9502
+To be documented.
 
 ## License
 Copyright (c) 2014-2016 [Rancher Labs, Inc.](http://rancher.com)
