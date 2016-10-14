@@ -49,7 +49,23 @@ That will create the device `/dev/longhorn/vol-name`
 
 ### Longhorn with multiple replicas
 
-To be documented.
+In order to start Longhorn with multiple replicas, you need to setup a network between Longhorn replica container and controller container. Here we use Docker(v1.10 or later) network feature to demostrate that:
+
+##### 1. Create a network named `longhorn-net`
+```
+docker network create --subnet=172.18.0.0/16 longhorn-net
+```
+##### 2. Add two replicas to the network, suppose their IPs are `172.18.0.2` and `172.18.0.3`:
+```
+docker run --net longhorn-net --ip 172.18.0.2 -p 9502:9504 -v /volume rancher/longhorn launch replica --listen 172.18.0.2:9502 --size 10g /volume
+docker run --net longhorn-net --ip 172.18.0.3 -p 9502:9504 -v /volume rancher/longhorn launch replica --listen 172.18.0.3:9502 --size 10g /volume
+```
+Notice you need to expose port 9502 to 9504 for Longhorn controller to communicate with replica.
+##### 3. Start Longhorn controller. Take TGT for example:
+```
+docker run --net longhorn-net --privileged -v /dev:/host/dev -v /proc:/host/proc rancher/longhorn launch controller --frontend tgt --replica tcp://172.18.0.2:9502 --replica tcp://172.18.0.3:9502 vol-name
+```
+Now you will have device `/dev/longhorn/vol-name`.
 
 ## License
 Copyright (c) 2014-2016 [Rancher Labs, Inc.](http://rancher.com)
