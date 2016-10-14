@@ -5,31 +5,22 @@ ENV PATH /go/bin:$PATH
 ENV DAPPER_DOCKER_SOCKET true
 ENV DAPPER_ENV TAG REPO
 ENV DAPPER_OUTPUT bin
-ENV DAPPER_RUN_ARGS --privileged --tmpfs /go/src/github.com/rancher/longhorn/integration/.venv:exec --tmpfs /go/src/github.com/rancher/longhorn/integration/.tox:exec -v /dev:/host/dev --pid host
+ENV DAPPER_RUN_ARGS --privileged --tmpfs /go/src/github.com/rancher/longhorn/integration/.venv:exec --tmpfs /go/src/github.com/rancher/longhorn/integration/.tox:exec -v /dev:/host/dev -v /proc:/host/proc
 ENV DAPPER_SOURCE /go/src/github.com/rancher/longhorn
 ENV TRASH_CACHE ${DAPPER_SOURCE}/.trash-cache
 WORKDIR ${DAPPER_SOURCE}
 
 # Install packages
-RUN apt-get update && \
-    apt-get install -y \
-        cmake \
-        curl \
-        git \
-        libglib2.0-dev \
-        libkmod-dev \
-        libnl-genl-3-dev \
-        linux-libc-dev \
-        pkg-config \
-        psmisc \
-        python-tox \
-        qemu-utils \
-        fuse \
-        python-dev
+RUN sed -i "s/http:\/\/archive.ubuntu.com\/ubuntu\//mirror:\/\/mirrors.ubuntu.com\/mirrors.txt/g" /etc/apt/sources.list && \
+    apt-get update && \
+    apt-get install -y cmake curl git \
+        libglib2.0-dev libkmod-dev libnl-genl-3-dev linux-libc-dev pkg-config psmisc python-tox qemu-utils fuse python-dev \
+        devscripts debhelper bash-completion librdmacm-dev libibverbs-dev xsltproc docbook-xsl \
+        libconfig-general-perl libaio-dev libc6-dev
 
-# Install Go 1.6
-RUN curl -o go.tar.gz https://storage.googleapis.com/golang/go1.6.2.linux-amd64.tar.gz
-RUN echo 'e40c36ae71756198478624ed1bb4ce17597b3c19d243f3f0899bb5740d56212a  go.tar.gz' | sha256sum -c && \
+# Install Go
+RUN curl -o go.tar.gz https://storage.googleapis.com/golang/go1.7.linux-amd64.tar.gz
+RUN echo '702ad90f705365227e902b42d91dd1a40e48ca7f67a2f4b2fd052aaa4295cd95 go.tar.gz' | sha256sum -c && \
     tar xzf go.tar.gz -C /usr/local && \
     rm go.tar.gz
 RUN mkdir -p /go
@@ -72,6 +63,14 @@ RUN cd /usr/src/libqcow-20160123 && \
 RUN cd /usr/src/libqcow-20160123 && \
     make -j$(nproc) && \
     make install
+
+# Build TGT
+RUN cd /usr/src && \
+    git clone https://github.com/yasker/tgt.git && \
+    cd tgt && \
+    git checkout e101b78e28b40a06d04467925d3fbd17985fdc73 && \
+    ./scripts/build-pkg.sh deb && \
+    dpkg -i ./pkg/tgt_*.deb
 
 VOLUME /tmp
 ENV TMPDIR /tmp

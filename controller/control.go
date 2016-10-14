@@ -130,6 +130,9 @@ func (c *Controller) RemoveReplica(address string) error {
 
 	for i, r := range c.replicas {
 		if r.Address == address {
+			if len(c.replicas) == 1 && c.frontend.State() == types.StateUp {
+				return fmt.Errorf("Cannot remove last replica if volume is up")
+			}
 			c.replicas = append(c.replicas[:i], c.replicas[i+1:]...)
 			c.backend.RemoveBackend(r.Address)
 		}
@@ -170,9 +173,9 @@ func (c *Controller) setReplicaModeNoLock(address string, mode types.Mode) {
 
 func (c *Controller) startFrontend() error {
 	if len(c.replicas) > 0 && c.frontend != nil {
-		if err := c.frontend.Activate(c.Name, c.size, c.sectorSize, c); err != nil {
+		if err := c.frontend.Startup(c.Name, c.size, c.sectorSize, c); err != nil {
 			// FATAL
-			logrus.Fatalf("Failed to activate frontend: %v", err)
+			logrus.Fatalf("Failed to start up frontend: %v", err)
 			// This will never be reached
 			return err
 		}

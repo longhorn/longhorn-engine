@@ -14,6 +14,7 @@ fi
 
 cp ../bin/longhorn* .
 cp /usr/local/bin/docker-longhorn-driver .
+cp /usr/src/tgt/pkg/tgt_*.deb .
 docker build -t ${REPO}/longhorn:${TAG} .
 
 echo Built ${REPO}/longhorn:${TAG}

@@ -17,14 +17,16 @@ type Device struct {
 	Name       string
 	Size       int64
 	SectorSize int64
-	backend    types.ReaderWriterAt
+
+	isUp    bool
+	backend types.ReaderWriterAt
 }
 
 func New() types.Frontend {
 	return &Device{}
 }
 
-func (d *Device) Activate(name string, size, sectorSize int64, rw types.ReaderWriterAt) error {
+func (d *Device) Startup(name string, size, sectorSize int64, rw types.ReaderWriterAt) error {
 	d.Name = name
 	d.backend = rw
 	d.Size = size
@@ -34,6 +36,7 @@ func (d *Device) Activate(name string, size, sectorSize int64, rw types.ReaderWr
 		return err
 	}
 
+	d.isUp = true
 	return nil
 }
 
@@ -57,5 +60,13 @@ func (d *Device) start() error {
 }
 
 func (d *Device) stop() error {
+	d.isUp = false
 	return nil
+}
+
+func (d *Device) State() types.State {
+	if d.isUp {
+		return types.StateUp
+	}
+	return types.StateDown
 }

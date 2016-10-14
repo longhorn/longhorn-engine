@@ -4,11 +4,17 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"regexp"
 	"strconv"
+	"time"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/gorilla/handlers"
 	"github.com/satori/go.uuid"
+	"github.com/yasker/go-iscsi-helper/iscsi"
+	iutil "github.com/yasker/go-iscsi-helper/util"
+	"golang.org/x/sys/unix"
 )
 
 var (
@@ -75,4 +81,155 @@ func (h filteredLoggingHandler) ServeHTTP(w http.ResponseWriter, req *http.Reque
 		}
 	}
 	h.loggingHandler.ServeHTTP(w, req)
+}
+
+type ScsiDevice struct {
+	Target      string
+	TargetID    int
+	LunID       int
+	Device      string
+	Portal      string
+	BackingFile string
+	BSType      string
+	BSOpts      string
+}
+
+func NewScsiDevice(name, backingFile, bsType, bsOpts string) (*ScsiDevice, error) {
+	dev := &ScsiDevice{
+		Target:      "iqn.2014-07.com.rancher:" + name,
+		TargetID:    1,
+		LunID:       1,
+		BackingFile: backingFile,
+		BSType:      bsType,
+		BSOpts:      bsOpts,
+	}
+	ips, err := iutil.GetLocalIPs()
+	if err != nil {
+		return nil, err
+	}
+	dev.Portal = ips[0]
+	return dev, nil
+}
+
+func (dev *ScsiDevice) Startup() error {
+	ne, err := iutil.NewNamespaceExecutor("/host/proc/1/ns/")
+	if err != nil {
+		return err
+	}
+
+	if err := iscsi.CheckForInitiatorExistence(ne); err != nil {
+		return err
+	}
+
+	// Setup target
+	if err := iscsi.StartDaemon(false); err != nil {
+		return err
+	}
+	if err := iscsi.CreateTarget(dev.TargetID, dev.Target); err != nil {
+		return err
+	}
+	if err := iscsi.AddLun(dev.TargetID, dev.LunID, dev.BackingFile, dev.BSType, dev.BSOpts); err != nil {
+		return err
+	}
+	if err := iscsi.BindInitiator(dev.TargetID, "ALL"); err != nil {
+		return err
+	}
+
+	// Setup initiator
+	if err := iscsi.DiscoverTarget(dev.Portal, dev.Target, ne); err != nil {
+		return err
+	}
+	if err := iscsi.LoginTarget(dev.Portal, dev.Target, ne); err != nil {
+		return err
+	}
+	if dev.Device, err = iscsi.GetDevice(dev.Portal, dev.Target, dev.LunID, ne); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (dev *ScsiDevice) Shutdown() error {
+	if dev.Device == "" {
+		return fmt.Errorf("SCSI Device is already down")
+	}
+
+	ne, err := iutil.NewNamespaceExecutor("/host/proc/1/ns/")
+	if err != nil {
+		return err
+	}
+
+	if err := iscsi.CheckForInitiatorExistence(ne); err != nil {
+		return err
+	}
+
+	// Teardown initiator
+	if err := iscsi.LogoutTarget(dev.Portal, dev.Target, ne); err != nil {
+		return err
+	}
+	dev.Device = ""
+	if err := iscsi.DeleteDiscoveredTarget(dev.Portal, dev.Target, ne); err != nil {
+		return err
+	}
+
+	// Teardown target
+	if err := iscsi.UnbindInitiator(dev.TargetID, "ALL"); err != nil {
+		return err
+	}
+	if err := iscsi.DeleteLun(dev.TargetID, dev.LunID); err != nil {
+		return err
+	}
+	if err := iscsi.DeleteTarget(dev.TargetID); err != nil {
+		return err
+	}
+	return nil
+}
+
+func DuplicateDevice(src, dest string) error {
+	stat := unix.Stat_t{}
+	if err := unix.Stat(src, &stat); err != nil {
+		return err
+	}
+	major := int(stat.Rdev / 256)
+	minor := int(stat.Rdev % 256)
+	if err := mknod(dest, major, minor); err != nil {
+		return err
+	}
+	return nil
+}
+
+func mknod(device string, major, minor int) error {
+	var fileMode os.FileMode = 0600
+	fileMode |= unix.S_IFBLK
+	dev := int((major << 8) | (minor & 0xff) | ((minor & 0xfff00) << 12))
+
+	logrus.Infof("Creating device %s %d:%d", device, major, minor)
+	return unix.Mknod(device, uint32(fileMode), dev)
+}
+
+func RemoveDevice(dev string) error {
+	if _, err := os.Stat(dev); err == nil {
+		if err := remove(dev); err != nil {
+			return fmt.Errorf("Failed to removing device %s, %v", dev, err)
+		}
+	}
+	return nil
+}
+
+func removeAsync(path string, done chan<- error) {
+	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+		logrus.Errorf("Unable to remove: %v", path)
+		done <- err
+	}
+	done <- nil
+}
+
+func remove(path string) error {
+	done := make(chan error)
+	go removeAsync(path, done)
+	select {
+	case err := <-done:
+		return err
+	case <-time.After(30 * time.Second):
+		return fmt.Errorf("Timeout trying to delete %s.", path)
+	}
 }

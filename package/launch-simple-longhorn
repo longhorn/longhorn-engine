@@ -1,10 +1,12 @@
 #!/bin/bash
 
 set -x
+set -e
 mount --rbind /host/dev /dev
 
 volume=$1
-frontend=$2
+size=$2
+frontend=$3
 
 if [ -z $volume ]
 then
@@ -14,12 +16,18 @@ then
 	exit -1
 fi
 
+if [ -z $size ]
+then
+        echo Use default size 1g
+        size="1g"
+fi
+
 if [ -z $frontend ]
 then
         echo Use default frontend TCMU
         frontend="tcmu"
 fi
 
-longhorn replica --size 1g --listen localhost:9502 /volume/ &
+longhorn replica --size $size --listen localhost:9502 /volume/ &
 sleep 1
 exec longhorn controller --frontend $frontend --replica tcp://localhost:9502 $volume
