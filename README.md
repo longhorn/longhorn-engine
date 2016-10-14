@@ -27,7 +27,7 @@ iscsiadm --version
 
 To start Longhorn with an single replica, run following command:
 ```
-docker run --privileged -v /dev:/host/dev -v /proc:/host/proc rancher/longhorn launch-simple-longhorn vol-name 10g tgt
+docker run --privileged -v /dev:/host/dev -v /proc:/host/proc -v /volume rancher/longhorn launch-simple-longhorn vol-name 10g tgt
 ```
 
 That will create the device `/dev/longhorn/vol-name`
@@ -42,7 +42,7 @@ Also ensure that TCMU is enabled:
 
 To start Longhorn with an single replica, run following command:
 ```
-docker run --privileged -v /dev:/host/dev -v /proc:/host/proc -v /sys/kernel/config:/sys/kernel/config rancher/longhorn launch-simple-longhorn vol-name 10g tcmu
+docker run --privileged -v /dev:/host/dev -v /proc:/host/proc -v /sys/kernel/config:/sys/kernel/config -v /volume rancher/longhorn launch-simple-longhorn vol-name 10g tcmu
 ```
 
 That will create the device `/dev/longhorn/vol-name`
