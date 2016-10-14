@@ -187,12 +187,12 @@ func (dev *ScsiDevice) Shutdown() error {
 func DuplicateDevice(src, dest string) error {
 	stat := unix.Stat_t{}
 	if err := unix.Stat(src, &stat); err != nil {
-		return err
+		return fmt.Errorf("Cannot find %s: %v", src, err)
 	}
 	major := int(stat.Rdev / 256)
 	minor := int(stat.Rdev % 256)
 	if err := mknod(dest, major, minor); err != nil {
-		return err
+		return fmt.Errorf("Cannot duplicate device %s to %s", src, dest)
 	}
 	return nil
 }
