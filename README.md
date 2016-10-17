@@ -57,8 +57,8 @@ docker network create --subnet=172.18.0.0/16 longhorn-net
 ```
 ##### 2. Add two replicas to the network, suppose their IPs are `172.18.0.2` and `172.18.0.3`:
 ```
-docker run --net longhorn-net --ip 172.18.0.2 -p 9502:9504 -v /volume rancher/longhorn launch replica --listen 172.18.0.2:9502 --size 10g /volume
-docker run --net longhorn-net --ip 172.18.0.3 -p 9502:9504 -v /volume rancher/longhorn launch replica --listen 172.18.0.3:9502 --size 10g /volume
+docker run --net longhorn-net --ip 172.18.0.2 --expose 9502-9504 -v /volume rancher/longhorn launch replica --listen 172.18.0.2:9502 --size 10g /volume
+docker run --net longhorn-net --ip 172.18.0.3 --expose 9502-9504 -v /volume rancher/longhorn launch replica --listen 172.18.0.3:9502 --size 10g /volume
 ```
 Notice you need to expose port 9502 to 9504 for Longhorn controller to communicate with replica.
 ##### 3. Start Longhorn controller. Take TGT for example:
