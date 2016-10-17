@@ -1,14 +1,34 @@
 #!/bin/bash
 
-set -x
-
 if [ "$1" == "controller" ]; then
-  if [ ! -d /sys/kernel/config ]; then
-    modprobe target_core_user
-  fi
+        mount --rbind /host/dev /dev
 
-  mount --rbind /host/dev /dev
-  mount -t configfs none /sys/kernel/config
+        frontend=
+        fe=0
+        for i in "$@"
+        do
+                if [ $fe -eq 1 ]
+                then
+                        frontend=$i
+                        break
+                fi
+                case $i in
+                        --frontend)
+                                fe=1
+                                ;;
+                        *)
+                                ;;
+                esac
+        done
+
+        if [ "$frontend" == "tcmu" ]
+        then
+                echo "Prepare for TCMU"
+                if [ ! -d /sys/kernel/config ]; then
+                        modprobe target_core_user
+                fi
+                mount -t configfs none /sys/kernel/config
+        fi
 fi
 
 exec longhorn "$@"
