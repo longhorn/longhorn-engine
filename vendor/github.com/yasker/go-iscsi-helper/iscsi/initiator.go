@@ -105,6 +105,27 @@ func GetDevice(ip, target string, lun int, ne *util.NamespaceExecutor) (string, 
 	return strings.TrimSpace(dev), nil
 }
 
+func IsTargetLoggedIn(ip, target string, ne *util.NamespaceExecutor) bool {
+	opts := []string{
+		"-m", "session",
+	}
+	output, err := ne.Execute(iscsiBinary, opts)
+	if err != nil {
+		return false
+	}
+
+	found := false
+	scanner := bufio.NewScanner(strings.NewReader(output))
+	for scanner.Scan() {
+		if strings.Contains(scanner.Text(), ip) && strings.Contains(scanner.Text(), " "+target+" ") {
+			found = true
+			break
+		}
+	}
+
+	return found
+}
+
 func findScsiDevice(ip, target string, lun int, ne *util.NamespaceExecutor) (string, error) {
 	dev := ""
 

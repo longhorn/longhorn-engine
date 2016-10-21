@@ -35,13 +35,13 @@ type Tgt struct {
 }
 
 func (t *Tgt) Startup(name string, size, sectorSize int64, rw types.ReaderWriterAt) error {
-	if err := t.Shutdown(); err != nil {
-		return err
-	}
-
 	t.Volume = name
 	t.Size = size
 	t.SectorSize = int(sectorSize)
+
+	if err := t.Shutdown(); err != nil {
+		return err
+	}
 
 	if err := t.startSocketServer(rw); err != nil {
 		return err
@@ -66,16 +66,11 @@ func (t *Tgt) Shutdown() error {
 		if err := util.RemoveDevice(dev); err != nil {
 			return err
 		}
-		t.Volume = ""
-	}
-
-	if t.scsiDevice != nil {
-		logrus.Infof("Shutdown SCSI device at %v", t.scsiDevice.Device)
-		if err := t.scsiDevice.Shutdown(); err != nil {
+		if err := util.StopScsi(t.Volume); err != nil {
 			return err
 		}
-		t.scsiDevice = nil
 	}
+
 	if t.socketServer != nil {
 		//log.Infof("Shutdown TGT socket server for %v", t.Volume)
 		// TODO: In fact we don't know how to shutdown socket server, there is
@@ -158,7 +153,7 @@ func (t *Tgt) startScsiDevice() error {
 		}
 		t.scsiDevice = scsiDev
 	}
-	if err := t.scsiDevice.Startup(); err != nil {
+	if err := util.StartScsi(t.scsiDevice); err != nil {
 		return err
 	}
 	logrus.Infof("SCSI device %s created", t.scsiDevice.Device)
