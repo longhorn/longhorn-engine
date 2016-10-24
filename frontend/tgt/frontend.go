@@ -64,10 +64,10 @@ func (t *Tgt) Shutdown() error {
 	if t.Volume != "" {
 		dev := t.getDev()
 		if err := util.RemoveDevice(dev); err != nil {
-			return err
+			return fmt.Errorf("Fail to remove device %s: %v", dev, err)
 		}
 		if err := util.StopScsi(t.Volume); err != nil {
-			return err
+			return fmt.Errorf("Fail to stop SCSI device: %v", err)
 		}
 	}
 

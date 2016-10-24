@@ -113,13 +113,21 @@ func IsTargetLoggedIn(ip, target string, ne *util.NamespaceExecutor) bool {
 	if err != nil {
 		return false
 	}
-
+	/* It will looks like:
+		tcp: [463] 172.17.0.2:3260,1 iqn.2014-07.com.rancher:test-volume
+	or:
+		tcp: [463] 172.17.0.2:3260,1 iqn.2014-07.com.rancher:test-volume (non-flash)
+	*/
 	found := false
 	scanner := bufio.NewScanner(strings.NewReader(output))
 	for scanner.Scan() {
-		if strings.Contains(scanner.Text(), ip) && strings.Contains(scanner.Text(), " "+target+" ") {
-			found = true
-			break
+		line := scanner.Text()
+		if strings.Contains(line, ip+":") {
+			if strings.HasSuffix(line, " "+target) ||
+				strings.Contains(scanner.Text(), " "+target+" ") {
+				found = true
+				break
+			}
 		}
 	}
 

@@ -161,10 +161,10 @@ func StartScsi(dev *ScsiDevice) error {
 func StopScsi(volumeName string) error {
 	target := GetTargetName(volumeName)
 	if err := LogoutTarget(target); err != nil {
-		return err
+		return fmt.Errorf("Fail to logout target: %v", err)
 	}
 	if err := DeleteTarget(target); err != nil {
-		return err
+		return fmt.Errorf("Fail to delete target: %v", err)
 	}
 	return nil
 }
