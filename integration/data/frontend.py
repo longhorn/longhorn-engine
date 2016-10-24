@@ -1,6 +1,7 @@
 import base64
 import os
 from os import path
+import stat
 import mmap
 import directio
 
@@ -71,7 +72,6 @@ class restdev:
                 return []
             raise e
         return base64.decodestring(data)
-
     def writeat(self, offset, data):
         l = len(data)
         encoded_data = base64.encodestring(data)
@@ -82,6 +82,9 @@ class restdev:
                 raise IOError('No space left on the disk')
             raise e
         return ret
+
+    def ready(self):
+        return True
 
 
 class blockdev:
@@ -98,3 +101,11 @@ class blockdev:
 
     def writeat(self, offset, data):
         return writeat_direct(self.dev, offset, data)
+
+    def ready(self):
+        if not os.path.exists(self.dev):
+            return False
+        mode = os.stat(self.dev).st_mode
+        if not stat.S_ISBLK(mode):
+            return False
+        return True
