@@ -3,10 +3,12 @@ package util
 import (
 	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
 	"os"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Sirupsen/logrus"
@@ -22,6 +24,9 @@ var (
 
 	TargetID    = 1
 	TargetLunID = 1
+
+	RetryCounts   = 5
+	RetryInterval = 3000 //ms
 )
 
 func ParseAddresses(name string) (string, string, string, error) {
@@ -179,15 +184,34 @@ func LogoutTarget(target string) error {
 		return err
 	}
 
+	if err := iscsi.CheckForInitiatorExistence(ne); err != nil {
+		return err
+	}
 	if iscsi.IsTargetLoggedIn(ip, target, ne) {
 		logrus.Infof("Shutdown SCSI device for %v:%v", ip, target)
-		if err := iscsi.CheckForInitiatorExistence(ne); err != nil {
-			return err
-		}
 		if err := iscsi.LogoutTarget(ip, target, ne); err != nil {
 			return err
 		}
-		if err := iscsi.DeleteDiscoveredTarget(ip, target, ne); err != nil {
+		/*
+		 * Immediately delete target after logout may result in error:
+		 *
+		 * "Could not execute operation on all records: encountered
+		 * iSCSI database failure" in iscsiadm
+		 *
+		 * This happenes especially there are other iscsiadm db
+		 * operations go on at the same time.
+		 * Retry to workaround this issue. Also treat "exit status
+		 * 21"(no record found) as valid result
+		 */
+		for i := 0; i < RetryCounts; i++ {
+			err = iscsi.DeleteDiscoveredTarget(ip, target, ne)
+			if err == nil || strings.Contains(err.Error(), "exit status 21") {
+				err = nil
+				break
+			}
+			time.Sleep(time.Duration(rand.Intn(RetryInterval)) * time.Millisecond)
+		}
+		if err != nil {
 			return err
 		}
 	}
