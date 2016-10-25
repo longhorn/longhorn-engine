@@ -32,22 +32,45 @@ func (s *Server) Handle() error {
 	return s.read()
 }
 
+func (s *Server) readFromWire(ret chan<- error) {
+	msg, err := s.wire.Read()
+	if err == io.EOF {
+		ret <- err
+		return
+	} else if err != nil {
+		logrus.Errorf("Failed to read: %v", err)
+		ret <- err
+		return
+	}
+	switch msg.Type {
+	case TypeRead:
+		go s.handleRead(msg)
+	case TypeWrite:
+		go s.handleWrite(msg)
+	}
+	ret <- nil
+}
+
 func (s *Server) read() error {
+	ret := make(chan error)
 	for {
-		msg, err := s.wire.Read()
-		if err == io.EOF {
-			return err
-		} else if err != nil {
-			logrus.Errorf("Failed to read: %v", err)
-			return err
-		}
-		switch msg.Type {
-		case TypeRead:
-			go s.handleRead(msg)
-		case TypeWrite:
-			go s.handleWrite(msg)
+		go s.readFromWire(ret)
+
+		select {
+		case err := <-ret:
+			if err != nil {
+				return err
+			}
+			continue
+		case <-s.done:
+			logrus.Debugf("RPC server stopped")
+			return nil
 		}
 	}
+}
+
+func (s *Server) Stop() {
+	s.done <- struct{}{}
 }
 
 func (s *Server) handleRead(msg *Message) {

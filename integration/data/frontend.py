@@ -72,6 +72,7 @@ class restdev:
                 return []
             raise e
         return base64.decodestring(data)
+
     def writeat(self, offset, data):
         l = len(data)
         encoded_data = base64.encodestring(data)

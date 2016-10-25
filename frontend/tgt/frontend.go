@@ -66,15 +66,14 @@ func (t *Tgt) Shutdown() error {
 		if err := util.RemoveDevice(dev); err != nil {
 			return fmt.Errorf("Fail to remove device %s: %v", dev, err)
 		}
+		if t.socketServer != nil {
+			logrus.Infof("Shutdown TGT socket server for %v", t.Volume)
+			t.socketServer.Stop()
+			t.socketServer = nil
+		}
 		if err := util.StopScsi(t.Volume); err != nil {
 			return fmt.Errorf("Fail to stop SCSI device: %v", err)
 		}
-	}
-
-	if t.socketServer != nil {
-		//log.Infof("Shutdown TGT socket server for %v", t.Volume)
-		// TODO: In fact we don't know how to shutdown socket server, there is
-		// no way yet
 	}
 	t.isUp = false
 
