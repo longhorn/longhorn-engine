@@ -2,6 +2,7 @@ import random
 import string
 import subprocess
 import hashlib
+import time
 
 import os
 from os import path
@@ -152,7 +153,12 @@ def get_restdev():
 
 
 def get_blockdev():
-    return blockdev(VOLUME_NAME)
+    dev = blockdev(VOLUME_NAME)
+    for i in range(10):
+        if not dev.ready():
+            time.sleep(1)
+    assert dev.ready()
+    return dev
 
 
 def write_dev(dev, offset, data):

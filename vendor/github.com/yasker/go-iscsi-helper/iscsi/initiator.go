@@ -105,6 +105,35 @@ func GetDevice(ip, target string, lun int, ne *util.NamespaceExecutor) (string, 
 	return strings.TrimSpace(dev), nil
 }
 
+func IsTargetLoggedIn(ip, target string, ne *util.NamespaceExecutor) bool {
+	opts := []string{
+		"-m", "session",
+	}
+	output, err := ne.Execute(iscsiBinary, opts)
+	if err != nil {
+		return false
+	}
+	/* It will looks like:
+		tcp: [463] 172.17.0.2:3260,1 iqn.2014-07.com.rancher:test-volume
+	or:
+		tcp: [463] 172.17.0.2:3260,1 iqn.2014-07.com.rancher:test-volume (non-flash)
+	*/
+	found := false
+	scanner := bufio.NewScanner(strings.NewReader(output))
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.Contains(line, ip+":") {
+			if strings.HasSuffix(line, " "+target) ||
+				strings.Contains(scanner.Text(), " "+target+" ") {
+				found = true
+				break
+			}
+		}
+	}
+
+	return found
+}
+
 func findScsiDevice(ip, target string, lun int, ne *util.NamespaceExecutor) (string, error) {
 	dev := ""
 

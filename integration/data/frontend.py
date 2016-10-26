@@ -1,6 +1,7 @@
 import base64
 import os
 from os import path
+import stat
 import mmap
 import directio
 
@@ -83,6 +84,9 @@ class restdev:
             raise e
         return ret
 
+    def ready(self):
+        return True
+
 
 class blockdev:
 
@@ -98,3 +102,11 @@ class blockdev:
 
     def writeat(self, offset, data):
         return writeat_direct(self.dev, offset, data)
+
+    def ready(self):
+        if not os.path.exists(self.dev):
+            return False
+        mode = os.stat(self.dev).st_mode
+        if not stat.S_ISBLK(mode):
+            return False
+        return True

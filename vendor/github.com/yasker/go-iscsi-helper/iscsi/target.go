@@ -1,6 +1,7 @@
 package iscsi
 
 import (
+	"bufio"
 	"fmt"
 	"os"
 	"os/exec"
@@ -204,4 +205,39 @@ func CheckTargetForBackingStore(name string) bool {
 		return false
 	}
 	return strings.Contains(output, " "+name)
+}
+
+// GetTargetTid If returned TID is -1, then target doesn't exist, but we won't
+// return error
+func GetTargetTid(name string) (int, error) {
+	opts := []string{
+		"--lld", "iscsi",
+		"--op", "show",
+		"--mode", "target",
+	}
+	output, err := util.Execute(tgtBinary, opts)
+	if err != nil {
+		return -1, err
+	}
+	/* Output will looks like:
+	Target 1: iqn.2016-08.com.example:a
+		System information:
+		...
+	Target 2: iqn.2016-08.com.example:b
+		System information:
+		...
+	*/
+	tid := -1
+	scanner := bufio.NewScanner(strings.NewReader(output))
+	for scanner.Scan() {
+		if strings.HasSuffix(scanner.Text(), " "+name) {
+			tidString := strings.Fields(strings.Split(scanner.Text(), ":")[0])[1]
+			tid, err = strconv.Atoi(tidString)
+			if err != nil {
+				return -1, fmt.Errorf("BUG: Fail to parse %s, %v", tidString, err)
+			}
+			break
+		}
+	}
+	return tid, nil
 }

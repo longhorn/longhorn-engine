@@ -35,13 +35,13 @@ type Tgt struct {
 }
 
 func (t *Tgt) Startup(name string, size, sectorSize int64, rw types.ReaderWriterAt) error {
-	if err := t.Shutdown(); err != nil {
-		return err
-	}
-
 	t.Volume = name
 	t.Size = size
 	t.SectorSize = int(sectorSize)
+
+	if err := t.Shutdown(); err != nil {
+		return err
+	}
 
 	if err := t.startSocketServer(rw); err != nil {
 		return err
@@ -64,22 +64,16 @@ func (t *Tgt) Shutdown() error {
 	if t.Volume != "" {
 		dev := t.getDev()
 		if err := util.RemoveDevice(dev); err != nil {
-			return err
+			return fmt.Errorf("Fail to remove device %s: %v", dev, err)
 		}
-		t.Volume = ""
-	}
-
-	if t.scsiDevice != nil {
-		logrus.Infof("Shutdown SCSI device at %v", t.scsiDevice.Device)
-		if err := t.scsiDevice.Shutdown(); err != nil {
-			return err
+		if t.socketServer != nil {
+			logrus.Infof("Shutdown TGT socket server for %v", t.Volume)
+			t.socketServer.Stop()
+			t.socketServer = nil
 		}
-		t.scsiDevice = nil
-	}
-	if t.socketServer != nil {
-		//log.Infof("Shutdown TGT socket server for %v", t.Volume)
-		// TODO: In fact we don't know how to shutdown socket server, there is
-		// no way yet
+		if err := util.StopScsi(t.Volume); err != nil {
+			return fmt.Errorf("Fail to stop SCSI device: %v", err)
+		}
 	}
 	t.isUp = false
 
@@ -158,7 +152,7 @@ func (t *Tgt) startScsiDevice() error {
 		}
 		t.scsiDevice = scsiDev
 	}
-	if err := t.scsiDevice.Startup(); err != nil {
+	if err := util.StartScsi(t.scsiDevice); err != nil {
 		return err
 	}
 	logrus.Infof("SCSI device %s created", t.scsiDevice.Device)

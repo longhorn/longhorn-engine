@@ -3,10 +3,12 @@ package util
 import (
 	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
 	"os"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Sirupsen/logrus"
@@ -19,6 +21,12 @@ import (
 
 var (
 	parsePattern = regexp.MustCompile(`(.*):(\d+)`)
+
+	TargetID    = 1
+	TargetLunID = 1
+
+	RetryCounts   = 5
+	RetryInterval = 3000 //ms
 )
 
 func ParseAddresses(name string) (string, string, string, error) {
@@ -85,10 +93,7 @@ func (h filteredLoggingHandler) ServeHTTP(w http.ResponseWriter, req *http.Reque
 
 type ScsiDevice struct {
 	Target      string
-	TargetID    int
-	LunID       int
 	Device      string
-	Portal      string
 	BackingFile string
 	BSType      string
 	BSOpts      string
@@ -96,28 +101,38 @@ type ScsiDevice struct {
 
 func NewScsiDevice(name, backingFile, bsType, bsOpts string) (*ScsiDevice, error) {
 	dev := &ScsiDevice{
-		Target:      "iqn.2014-07.com.rancher:" + name,
-		TargetID:    1,
-		LunID:       1,
+		Target:      GetTargetName(name),
 		BackingFile: backingFile,
 		BSType:      bsType,
 		BSOpts:      bsOpts,
 	}
-	ips, err := iutil.GetLocalIPs()
-	if err != nil {
-		return nil, err
-	}
-	dev.Portal = ips[0]
 	return dev, nil
 }
 
-func (dev *ScsiDevice) Startup() error {
+func GetTargetName(name string) string {
+	return "iqn.2014-07.com.rancher:" + name
+}
+
+func GetLocalIP() (string, error) {
+	ips, err := iutil.GetLocalIPs()
+	if err != nil {
+		return "", err
+	}
+	return ips[0], nil
+}
+
+func StartScsi(dev *ScsiDevice) error {
 	ne, err := iutil.NewNamespaceExecutor("/host/proc/1/ns/")
 	if err != nil {
 		return err
 	}
 
 	if err := iscsi.CheckForInitiatorExistence(ne); err != nil {
+		return err
+	}
+
+	localIP, err := GetLocalIP()
+	if err != nil {
 		return err
 	}
 
@@ -125,35 +140,46 @@ func (dev *ScsiDevice) Startup() error {
 	if err := iscsi.StartDaemon(false); err != nil {
 		return err
 	}
-	if err := iscsi.CreateTarget(dev.TargetID, dev.Target); err != nil {
+	if err := iscsi.CreateTarget(TargetID, dev.Target); err != nil {
 		return err
 	}
-	if err := iscsi.AddLun(dev.TargetID, dev.LunID, dev.BackingFile, dev.BSType, dev.BSOpts); err != nil {
+	if err := iscsi.AddLun(TargetID, TargetLunID, dev.BackingFile, dev.BSType, dev.BSOpts); err != nil {
 		return err
 	}
-	if err := iscsi.BindInitiator(dev.TargetID, "ALL"); err != nil {
+	if err := iscsi.BindInitiator(TargetID, "ALL"); err != nil {
 		return err
 	}
 
 	// Setup initiator
-	if err := iscsi.DiscoverTarget(dev.Portal, dev.Target, ne); err != nil {
+	if err := iscsi.DiscoverTarget(localIP, dev.Target, ne); err != nil {
 		return err
 	}
-	if err := iscsi.LoginTarget(dev.Portal, dev.Target, ne); err != nil {
+	if err := iscsi.LoginTarget(localIP, dev.Target, ne); err != nil {
 		return err
 	}
-	if dev.Device, err = iscsi.GetDevice(dev.Portal, dev.Target, dev.LunID, ne); err != nil {
+	if dev.Device, err = iscsi.GetDevice(localIP, dev.Target, TargetLunID, ne); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (dev *ScsiDevice) Shutdown() error {
-	if dev.Device == "" {
-		return fmt.Errorf("SCSI Device is already down")
+func StopScsi(volumeName string) error {
+	target := GetTargetName(volumeName)
+	if err := LogoutTarget(target); err != nil {
+		return fmt.Errorf("Fail to logout target: %v", err)
 	}
+	if err := DeleteTarget(target); err != nil {
+		return fmt.Errorf("Fail to delete target: %v", err)
+	}
+	return nil
+}
 
+func LogoutTarget(target string) error {
 	ne, err := iutil.NewNamespaceExecutor("/host/proc/1/ns/")
+	if err != nil {
+		return err
+	}
+	ip, err := GetLocalIP()
 	if err != nil {
 		return err
 	}
@@ -161,25 +187,52 @@ func (dev *ScsiDevice) Shutdown() error {
 	if err := iscsi.CheckForInitiatorExistence(ne); err != nil {
 		return err
 	}
+	if iscsi.IsTargetLoggedIn(ip, target, ne) {
+		logrus.Infof("Shutdown SCSI device for %v:%v", ip, target)
+		if err := iscsi.LogoutTarget(ip, target, ne); err != nil {
+			return err
+		}
+		/*
+		 * Immediately delete target after logout may result in error:
+		 *
+		 * "Could not execute operation on all records: encountered
+		 * iSCSI database failure" in iscsiadm
+		 *
+		 * This happenes especially there are other iscsiadm db
+		 * operations go on at the same time.
+		 * Retry to workaround this issue. Also treat "exit status
+		 * 21"(no record found) as valid result
+		 */
+		for i := 0; i < RetryCounts; i++ {
+			err = iscsi.DeleteDiscoveredTarget(ip, target, ne)
+			if err == nil || strings.Contains(err.Error(), "exit status 21") {
+				err = nil
+				break
+			}
+			time.Sleep(time.Duration(rand.Intn(RetryInterval)) * time.Millisecond)
+		}
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
 
-	// Teardown initiator
-	if err := iscsi.LogoutTarget(dev.Portal, dev.Target, ne); err != nil {
-		return err
-	}
-	dev.Device = ""
-	if err := iscsi.DeleteDiscoveredTarget(dev.Portal, dev.Target, ne); err != nil {
-		return err
-	}
-
-	// Teardown target
-	if err := iscsi.UnbindInitiator(dev.TargetID, "ALL"); err != nil {
-		return err
-	}
-	if err := iscsi.DeleteLun(dev.TargetID, dev.LunID); err != nil {
-		return err
-	}
-	if err := iscsi.DeleteTarget(dev.TargetID); err != nil {
-		return err
+func DeleteTarget(target string) error {
+	if tid, err := iscsi.GetTargetTid(target); err == nil && tid != -1 {
+		if tid != TargetID {
+			logrus.Fatalf("BUG: Invalid TID %v found for %v", tid, target)
+		}
+		logrus.Infof("Shutdown SCSI target %v", target)
+		if err := iscsi.UnbindInitiator(TargetID, "ALL"); err != nil {
+			return err
+		}
+		if err := iscsi.DeleteLun(TargetID, TargetLunID); err != nil {
+			return err
+		}
+		if err := iscsi.DeleteTarget(TargetID); err != nil {
+			return err
+		}
 	}
 	return nil
 }
