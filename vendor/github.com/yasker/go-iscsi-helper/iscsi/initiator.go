@@ -74,12 +74,15 @@ func LoginTarget(ip, target string, ne *util.NamespaceExecutor) error {
 	return nil
 }
 
+// LogoutTarget will logout all sessions if ip == ""
 func LogoutTarget(ip, target string, ne *util.NamespaceExecutor) error {
 	opts := []string{
 		"-m", "node",
 		"-T", target,
-		"-p", ip,
 		"--logout",
+	}
+	if ip != "" {
+		opts = append(opts, "-p", ip)
 	}
 	_, err := ne.Execute(iscsiBinary, opts)
 	if err != nil {
@@ -105,6 +108,7 @@ func GetDevice(ip, target string, lun int, ne *util.NamespaceExecutor) (string, 
 	return strings.TrimSpace(dev), nil
 }
 
+// IsTargetLoggedIn check all portals if ip == ""
 func IsTargetLoggedIn(ip, target string, ne *util.NamespaceExecutor) bool {
 	opts := []string{
 		"-m", "session",
