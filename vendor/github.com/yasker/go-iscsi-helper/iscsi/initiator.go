@@ -40,6 +40,15 @@ func DiscoverTarget(ip, target string, ne *util.NamespaceExecutor) error {
 	if err != nil {
 		return err
 	}
+	// Sometime iscsiadm won't return error but showing e.g.:
+	//  iscsiadm: Could not stat /etc/iscsi/nodes//,3260,-1/default to
+	//  delete node: No such file or directory\n\niscsiadm: Could not
+	//  add/update [tcp:[hw=,ip=,net_if=,iscsi_if=default] 172.18.0.5,3260,1
+	//  iqn.2014-07.com.rancher:vol9]\n172.18.0.5:3260,1
+	//  iqn.2014-07.com.rancher:vol9\n"
+	if strings.Contains(output, "Could not") {
+		return fmt.Errorf("Cannot discover target: %s", output)
+	}
 	if !strings.Contains(output, target) {
 		return fmt.Errorf("Cannot find target %s in discovered targets %s", target, output)
 	}
@@ -58,6 +67,19 @@ func DeleteDiscoveredTarget(ip, target string, ne *util.NamespaceExecutor) error
 		return err
 	}
 	return nil
+}
+
+func IsTargetDiscovered(ip, target string, ne *util.NamespaceExecutor) bool {
+	opts := []string{
+		"-m", "node",
+		"-T", target,
+		"-p", ip,
+	}
+	_, err := ne.Execute(iscsiBinary, opts)
+	if err != nil {
+		return false
+	}
+	return true
 }
 
 func LoginTarget(ip, target string, ne *util.NamespaceExecutor) error {

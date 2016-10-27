@@ -3,7 +3,6 @@ package util
 import (
 	"fmt"
 	"io"
-	"math/rand"
 	"net/http"
 	"os"
 	"regexp"
@@ -26,7 +25,7 @@ var (
 	TargetLunID = 1
 
 	RetryCounts   = 5
-	RetryInterval = 3000 //ms
+	RetryInterval = 3
 )
 
 func ParseAddresses(name string) (string, string, string, error) {
@@ -188,6 +187,8 @@ func LogoutTarget(target string) error {
 		return err
 	}
 	if iscsi.IsTargetLoggedIn(ip, target, ne) {
+		var err error
+
 		logrus.Infof("Shutdown SCSI device for %v:%v", ip, target)
 		if err := iscsi.LogoutTarget(ip, target, ne); err != nil {
 			return err
@@ -204,12 +205,17 @@ func LogoutTarget(target string) error {
 		 * 21"(no record found) as valid result
 		 */
 		for i := 0; i < RetryCounts; i++ {
+			if !iscsi.IsTargetDiscovered(ip, target, ne) {
+				err = nil
+				break
+			}
+
 			err = iscsi.DeleteDiscoveredTarget(ip, target, ne)
 			if err == nil || strings.Contains(err.Error(), "exit status 21") {
 				err = nil
 				break
 			}
-			time.Sleep(time.Duration(rand.Intn(RetryInterval)) * time.Millisecond)
+			time.Sleep(time.Duration(RetryInterval) * time.Second)
 		}
 		if err != nil {
 			return err
