@@ -193,7 +193,14 @@ func findScsiDevice(ip, target string, lun int, ne *util.NamespaceExecutor) (str
 	inTarget := false
 	inLun := false
 	for scanner.Scan() {
-		if !inTarget && strings.Contains(scanner.Text(), targetLine) {
+		/* Target line can be:
+			Target: iqn.2016-09.com.rancher:for.all (non-flash)
+		or:
+			Target: iqn.2016-09.com.rancher:for.all
+		*/
+		if !inTarget &&
+			(strings.Contains(scanner.Text(), targetLine+" ") ||
+				strings.HasSuffix(scanner.Text(), targetLine)) {
 			inTarget = true
 			continue
 		}
@@ -205,7 +212,7 @@ func findScsiDevice(ip, target string, lun int, ne *util.NamespaceExecutor) (str
 		if inLun {
 			line := scanner.Text()
 			if !strings.Contains(line, diskPrefix) {
-				return "", fmt.Errorf("Invalid output format, cannot find disk in: %s", line)
+				return "", fmt.Errorf("Invalid output format, cannot find disk in: %s\n %s", line, output)
 			}
 			line = strings.TrimSpace(strings.Split(line, stateLine)[0])
 			line = strings.TrimPrefix(line, diskPrefix)
