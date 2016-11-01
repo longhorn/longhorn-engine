@@ -3,6 +3,7 @@ package iscsi
 import (
 	"bufio"
 	"fmt"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -13,6 +14,11 @@ import (
 var (
 	DeviceWaitRetryCounts   = 5
 	DeviceWaitRetryInterval = 1 * time.Second
+
+	ScsiNodesDirs = []string{
+		"/etc/iscsi/nodes/",
+		"/var/lib/iscsi/nodes/",
+	}
 )
 
 const (
@@ -225,4 +231,37 @@ func findScsiDevice(ip, target string, lun int, ne *util.NamespaceExecutor) (str
 	}
 	dev = "/dev/" + dev
 	return dev, nil
+}
+
+func CleanupScsiNodes(target string, ne *util.NamespaceExecutor) error {
+	for _, dir := range ScsiNodesDirs {
+		if _, err := ne.Execute("ls", []string{dir}); err != nil {
+			continue
+		}
+		targetDir := filepath.Join(dir, target)
+		if _, err := ne.Execute("ls", []string{targetDir}); err != nil {
+			continue
+		}
+		// Remove all empty files in the directory
+		output, err := ne.Execute("find", []string{targetDir})
+		if err != nil {
+			return fmt.Errorf("Failed to search SCSI directory %v: %v", targetDir, err)
+		}
+		scanner := bufio.NewScanner(strings.NewReader(output))
+		for scanner.Scan() {
+			file := scanner.Text()
+			output, err := ne.Execute("stat", []string{file})
+			if err != nil {
+				return fmt.Errorf("Failed to check SCSI node file %v: %v", file, err)
+			}
+			if strings.Contains(output, "regular empty file") {
+				if _, err := ne.Execute("rm", []string{file}); err != nil {
+					return fmt.Errorf("Failed to cleanup empty SCSI node file %v: %v", file, err)
+				}
+				// We're trying to clean up the upper level directory as well, but won't mind if we fail
+				ne.Execute("rmdir", []string{filepath.Dir(file)})
+			}
+		}
+	}
+	return nil
 }

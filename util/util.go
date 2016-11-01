@@ -109,7 +109,7 @@ func NewScsiDevice(name, backingFile, bsType, bsOpts string) (*ScsiDevice, error
 }
 
 func GetTargetName(name string) string {
-	return "iqn.2014-07.com.rancher:" + name
+	return "iqn.2014-09.com.rancher:" + name
 }
 
 func GetLocalIP() (string, error) {
@@ -150,8 +150,24 @@ func StartScsi(dev *ScsiDevice) error {
 	}
 
 	// Setup initiator
-	if err := iscsi.DiscoverTarget(localIP, dev.Target, ne); err != nil {
-		return err
+	err = nil
+	for i := 0; i < RetryCounts; i++ {
+		err = iscsi.DiscoverTarget(localIP, dev.Target, ne)
+		if iscsi.IsTargetDiscovered(localIP, dev.Target, ne) {
+			break
+		}
+
+		logrus.Warnf("FAIL to discover %v", err)
+		// This is a trick to recover from the case. Remove the
+		// empty entries in /etc/iscsi/nodes/<target_name>. If one of the entry
+		// is empty it will triggered the issue.
+		if err := iscsi.CleanupScsiNodes(dev.Target, ne); err != nil {
+			logrus.Warnf("Fail to cleanup nodes for %v: %v", dev.Target, err)
+		} else {
+			logrus.Warnf("Nodes cleaned up for %v", dev.Target)
+		}
+
+		time.Sleep(time.Duration(RetryInterval) * time.Second)
 	}
 	if err := iscsi.LoginTarget(localIP, dev.Target, ne); err != nil {
 		return err
