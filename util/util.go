@@ -175,6 +175,18 @@ func StartScsi(dev *ScsiDevice) error {
 	if dev.Device, err = iscsi.GetDevice(localIP, dev.Target, TargetLunID, ne); err != nil {
 		return err
 	}
+
+	deviceFound := false
+	for i := 0; i < RetryCounts; i++ {
+		if st, err := os.Stat(dev.Device); err == nil && (st.Mode()&os.ModeDevice != 0) {
+			deviceFound = true
+			break
+		}
+		time.Sleep(time.Duration(RetryInterval) * time.Second)
+	}
+	if !deviceFound {
+		return fmt.Errorf("Failed to wait for device %s to show up", dev.Device)
+	}
 	return nil
 }
 
@@ -262,7 +274,7 @@ func DeleteTarget(target string) error {
 func DuplicateDevice(src, dest string) error {
 	stat := unix.Stat_t{}
 	if err := unix.Stat(src, &stat); err != nil {
-		return fmt.Errorf("Cannot find %s: %v", src, err)
+		return fmt.Errorf("Cannot duplicate device because cannot find %s: %v", src, err)
 	}
 	major := int(stat.Rdev / 256)
 	minor := int(stat.Rdev % 256)
