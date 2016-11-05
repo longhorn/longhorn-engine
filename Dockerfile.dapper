@@ -68,7 +68,7 @@ RUN cd /usr/src/libqcow-20160123 && \
 RUN cd /usr/src && \
     git clone https://github.com/yasker/tgt.git && \
     cd tgt && \
-    git checkout e101b78e28b40a06d04467925d3fbd17985fdc73 && \
+    git checkout 1f116a1bf03c4ec16a0a1294189a5f802739f343 && \
     ./scripts/build-pkg.sh deb && \
     dpkg -i ./pkg/tgt_*.deb
 
