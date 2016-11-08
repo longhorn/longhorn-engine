@@ -59,4 +59,4 @@ import:
 - package: github.com/deckarep/golang-set
   version: 1f0f4ff8d3fbef9328522993ce71c35890f67554
 - package: github.com/yasker/go-iscsi-helper
-  version: 58912b2918090b07fb15f078f37eecbee61300d1
+  version: a95ec6c0750d3426e3fd0b10f6f0f50721fe75cf

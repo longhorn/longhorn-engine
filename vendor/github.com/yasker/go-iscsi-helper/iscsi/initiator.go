@@ -193,10 +193,13 @@ func findScsiDevice(ip, target string, lun int, ne *util.NamespaceExecutor) (str
 	*/
 	scanner := bufio.NewScanner(strings.NewReader(output))
 	targetLine := "Target: " + target
+	ipLine := " " + ip + ":"
 	lunLine := "Lun: " + strconv.Itoa(lun)
 	diskPrefix := "Attached scsi disk"
 	stateLine := "State:"
+
 	inTarget := false
+	inIP := false
 	inLun := false
 	for scanner.Scan() {
 		/* Target line can be:
@@ -210,7 +213,11 @@ func findScsiDevice(ip, target string, lun int, ne *util.NamespaceExecutor) (str
 			inTarget = true
 			continue
 		}
-		if inTarget && strings.Contains(scanner.Text(), lunLine) {
+		if inTarget && strings.Contains(scanner.Text(), ipLine) {
+			inIP = true
+			continue
+		}
+		if inIP && strings.Contains(scanner.Text(), lunLine) {
 			inLun = true
 			continue
 		}
