@@ -3,7 +3,6 @@ package util
 import (
 	"fmt"
 	"io"
-	"math/rand"
 	"net/http"
 	"os"
 	"regexp"
@@ -26,7 +25,7 @@ var (
 	TargetLunID = 1
 
 	RetryCounts   = 5
-	RetryInterval = 3000 //ms
+	RetryInterval = 3
 )
 
 func ParseAddresses(name string) (string, string, string, error) {
@@ -110,7 +109,7 @@ func NewScsiDevice(name, backingFile, bsType, bsOpts string) (*ScsiDevice, error
 }
 
 func GetTargetName(name string) string {
-	return "iqn.2014-07.com.rancher:" + name
+	return "iqn.2014-09.com.rancher:" + name
 }
 
 func GetLocalIP() (string, error) {
@@ -151,14 +150,42 @@ func StartScsi(dev *ScsiDevice) error {
 	}
 
 	// Setup initiator
-	if err := iscsi.DiscoverTarget(localIP, dev.Target, ne); err != nil {
-		return err
+	err = nil
+	for i := 0; i < RetryCounts; i++ {
+		err = iscsi.DiscoverTarget(localIP, dev.Target, ne)
+		if iscsi.IsTargetDiscovered(localIP, dev.Target, ne) {
+			break
+		}
+
+		logrus.Warnf("FAIL to discover %v", err)
+		// This is a trick to recover from the case. Remove the
+		// empty entries in /etc/iscsi/nodes/<target_name>. If one of the entry
+		// is empty it will triggered the issue.
+		if err := iscsi.CleanupScsiNodes(dev.Target, ne); err != nil {
+			logrus.Warnf("Fail to cleanup nodes for %v: %v", dev.Target, err)
+		} else {
+			logrus.Warnf("Nodes cleaned up for %v", dev.Target)
+		}
+
+		time.Sleep(time.Duration(RetryInterval) * time.Second)
 	}
 	if err := iscsi.LoginTarget(localIP, dev.Target, ne); err != nil {
 		return err
 	}
 	if dev.Device, err = iscsi.GetDevice(localIP, dev.Target, TargetLunID, ne); err != nil {
 		return err
+	}
+
+	deviceFound := false
+	for i := 0; i < RetryCounts; i++ {
+		if st, err := os.Stat(dev.Device); err == nil && (st.Mode()&os.ModeDevice != 0) {
+			deviceFound = true
+			break
+		}
+		time.Sleep(time.Duration(RetryInterval) * time.Second)
+	}
+	if !deviceFound {
+		return fmt.Errorf("Failed to wait for device %s to show up", dev.Device)
 	}
 	return nil
 }
@@ -188,6 +215,8 @@ func LogoutTarget(target string) error {
 		return err
 	}
 	if iscsi.IsTargetLoggedIn(ip, target, ne) {
+		var err error
+
 		logrus.Infof("Shutdown SCSI device for %v:%v", ip, target)
 		if err := iscsi.LogoutTarget(ip, target, ne); err != nil {
 			return err
@@ -204,12 +233,17 @@ func LogoutTarget(target string) error {
 		 * 21"(no record found) as valid result
 		 */
 		for i := 0; i < RetryCounts; i++ {
+			if !iscsi.IsTargetDiscovered(ip, target, ne) {
+				err = nil
+				break
+			}
+
 			err = iscsi.DeleteDiscoveredTarget(ip, target, ne)
 			if err == nil || strings.Contains(err.Error(), "exit status 21") {
 				err = nil
 				break
 			}
-			time.Sleep(time.Duration(rand.Intn(RetryInterval)) * time.Millisecond)
+			time.Sleep(time.Duration(RetryInterval) * time.Second)
 		}
 		if err != nil {
 			return err
@@ -240,7 +274,7 @@ func DeleteTarget(target string) error {
 func DuplicateDevice(src, dest string) error {
 	stat := unix.Stat_t{}
 	if err := unix.Stat(src, &stat); err != nil {
-		return fmt.Errorf("Cannot find %s: %v", src, err)
+		return fmt.Errorf("Cannot duplicate device because cannot find %s: %v", src, err)
 	}
 	major := int(stat.Rdev / 256)
 	minor := int(stat.Rdev % 256)

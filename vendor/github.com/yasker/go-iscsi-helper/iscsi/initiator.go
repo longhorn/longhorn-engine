@@ -3,6 +3,7 @@ package iscsi
 import (
 	"bufio"
 	"fmt"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -13,6 +14,11 @@ import (
 var (
 	DeviceWaitRetryCounts   = 5
 	DeviceWaitRetryInterval = 1 * time.Second
+
+	ScsiNodesDirs = []string{
+		"/etc/iscsi/nodes/",
+		"/var/lib/iscsi/nodes/",
+	}
 )
 
 const (
@@ -40,6 +46,15 @@ func DiscoverTarget(ip, target string, ne *util.NamespaceExecutor) error {
 	if err != nil {
 		return err
 	}
+	// Sometime iscsiadm won't return error but showing e.g.:
+	//  iscsiadm: Could not stat /etc/iscsi/nodes//,3260,-1/default to
+	//  delete node: No such file or directory\n\niscsiadm: Could not
+	//  add/update [tcp:[hw=,ip=,net_if=,iscsi_if=default] 172.18.0.5,3260,1
+	//  iqn.2014-07.com.rancher:vol9]\n172.18.0.5:3260,1
+	//  iqn.2014-07.com.rancher:vol9\n"
+	if strings.Contains(output, "Could not") {
+		return fmt.Errorf("Cannot discover target: %s", output)
+	}
 	if !strings.Contains(output, target) {
 		return fmt.Errorf("Cannot find target %s in discovered targets %s", target, output)
 	}
@@ -58,6 +73,19 @@ func DeleteDiscoveredTarget(ip, target string, ne *util.NamespaceExecutor) error
 		return err
 	}
 	return nil
+}
+
+func IsTargetDiscovered(ip, target string, ne *util.NamespaceExecutor) bool {
+	opts := []string{
+		"-m", "node",
+		"-T", target,
+		"-p", ip,
+	}
+	_, err := ne.Execute(iscsiBinary, opts)
+	if err != nil {
+		return false
+	}
+	return true
 }
 
 func LoginTarget(ip, target string, ne *util.NamespaceExecutor) error {
@@ -171,7 +199,14 @@ func findScsiDevice(ip, target string, lun int, ne *util.NamespaceExecutor) (str
 	inTarget := false
 	inLun := false
 	for scanner.Scan() {
-		if !inTarget && strings.Contains(scanner.Text(), targetLine) {
+		/* Target line can be:
+			Target: iqn.2016-09.com.rancher:for.all (non-flash)
+		or:
+			Target: iqn.2016-09.com.rancher:for.all
+		*/
+		if !inTarget &&
+			(strings.Contains(scanner.Text(), targetLine+" ") ||
+				strings.HasSuffix(scanner.Text(), targetLine)) {
 			inTarget = true
 			continue
 		}
@@ -183,7 +218,7 @@ func findScsiDevice(ip, target string, lun int, ne *util.NamespaceExecutor) (str
 		if inLun {
 			line := scanner.Text()
 			if !strings.Contains(line, diskPrefix) {
-				return "", fmt.Errorf("Invalid output format, cannot find disk in: %s", line)
+				return "", fmt.Errorf("Invalid output format, cannot find disk in: %s\n %s", line, output)
 			}
 			line = strings.TrimSpace(strings.Split(line, stateLine)[0])
 			line = strings.TrimPrefix(line, diskPrefix)
@@ -196,4 +231,37 @@ func findScsiDevice(ip, target string, lun int, ne *util.NamespaceExecutor) (str
 	}
 	dev = "/dev/" + dev
 	return dev, nil
+}
+
+func CleanupScsiNodes(target string, ne *util.NamespaceExecutor) error {
+	for _, dir := range ScsiNodesDirs {
+		if _, err := ne.Execute("ls", []string{dir}); err != nil {
+			continue
+		}
+		targetDir := filepath.Join(dir, target)
+		if _, err := ne.Execute("ls", []string{targetDir}); err != nil {
+			continue
+		}
+		// Remove all empty files in the directory
+		output, err := ne.Execute("find", []string{targetDir})
+		if err != nil {
+			return fmt.Errorf("Failed to search SCSI directory %v: %v", targetDir, err)
+		}
+		scanner := bufio.NewScanner(strings.NewReader(output))
+		for scanner.Scan() {
+			file := scanner.Text()
+			output, err := ne.Execute("stat", []string{file})
+			if err != nil {
+				return fmt.Errorf("Failed to check SCSI node file %v: %v", file, err)
+			}
+			if strings.Contains(output, "regular empty file") {
+				if _, err := ne.Execute("rm", []string{file}); err != nil {
+					return fmt.Errorf("Failed to cleanup empty SCSI node file %v: %v", file, err)
+				}
+				// We're trying to clean up the upper level directory as well, but won't mind if we fail
+				ne.Execute("rmdir", []string{filepath.Dir(file)})
+			}
+		}
+	}
+	return nil
 }
