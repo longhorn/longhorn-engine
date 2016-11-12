@@ -216,10 +216,35 @@ func LogoutTarget(target string) error {
 	}
 	if iscsi.IsTargetLoggedIn(ip, target, ne) {
 		var err error
+		loggingOut := false
 
 		logrus.Infof("Shutdown SCSI device for %v:%v", ip, target)
-		if err := iscsi.LogoutTarget(ip, target, ne); err != nil {
-			return err
+		for i := 0; i < RetryCounts; i++ {
+			err = iscsi.LogoutTarget(ip, target, ne)
+			if err == nil {
+				break
+			}
+			// The timeout for response may return in the future,
+			// check session to know if it's logged out or not
+			if strings.Contains(err.Error(), "Timeout executing: ") {
+				loggingOut = true
+				break
+			}
+			time.Sleep(time.Duration(RetryInterval) * time.Second)
+		}
+		// Wait for device to logout
+		if loggingOut {
+			logrus.Infof("Logout SCSI device timeout, waiting for logout complete")
+			for i := 0; i < RetryCounts; i++ {
+				if !iscsi.IsTargetLoggedIn(ip, target, ne) {
+					err = nil
+					break
+				}
+				time.Sleep(time.Duration(RetryInterval) * time.Second)
+			}
+		}
+		if err != nil {
+			return fmt.Errorf("Failed to logout target: %v", err)
 		}
 		/*
 		 * Immediately delete target after logout may result in error:
