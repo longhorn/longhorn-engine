@@ -240,7 +240,7 @@ func LogoutTarget(target string) error {
 					err = nil
 					break
 				}
-				time.Sleep(time.Duration(RetryInterval) * time.Second)
+				time.Sleep(time.Duration(30) * time.Second)
 			}
 		}
 		if err != nil {
