@@ -80,26 +80,35 @@ func (r *replicator) RemoveBackend(address string) {
 }
 
 func (r *replicator) ReadAt(buf []byte, off int64) (int, error) {
+	var (
+		n   int
+		err error
+	)
+
 	if !r.backendsAvailable {
 		return 0, ErrNoBackend
 	}
 
+	readersLen := len(r.readers)
+	r.next = (r.next + 1) % readersLen
 	index := r.next
-	r.next++
-	if index >= len(r.readers) {
-		r.next = 0
-		index = 0
+	retError := &BackendError{
+		Errors: map[string]error{},
 	}
-	n, err := r.readers[index].ReadAt(buf, off)
-	if err != nil {
-		logrus.Error("Replicator.ReadAt:", index, err)
-		return n, &BackendError{
-			Errors: map[string]error{
-				r.readerIndex[index]: err,
-			},
+	for i := 0; i < readersLen; i++ {
+		reader := r.readers[index]
+		n, err = reader.ReadAt(buf, off)
+		if err == nil {
+			break
 		}
+		logrus.Error("Replicator.ReadAt:", index, err)
+		retError.Errors[r.readerIndex[index]] = err
+		index = (index + 1) % readersLen
 	}
-	return n, err
+	if len(retError.Errors) != 0 {
+		return n, retError
+	}
+	return n, nil
 }
 
 func (r *replicator) WriteAt(p []byte, off int64) (int, error) {
