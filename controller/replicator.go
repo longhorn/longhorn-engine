@@ -172,27 +172,29 @@ func (r *replicator) SetMode(address string, mode types.Mode) {
 }
 
 func (r *replicator) Snapshot(name string) error {
-	for _, wrapper := range r.backends {
-		if wrapper.mode == types.ERR {
-			return errors.New("Can not snapshot while a replica is in ERR")
+	retError := &BackendError{
+		Errors: map[string]error{},
+	}
+	wg := sync.WaitGroup{}
+
+	for addr, backend := range r.backends {
+		if backend.mode != types.ERR {
+			wg.Add(1)
+			go func(backend types.Backend) {
+				if err := backend.Snapshot(name); err != nil {
+					retError.Errors[addr] = err
+				}
+				wg.Done()
+			}(backend.backend)
 		}
 	}
 
-	var lastErr error
-	wg := sync.WaitGroup{}
-
-	for _, backend := range r.backends {
-		wg.Add(1)
-		go func(backend types.Backend) {
-			if err := backend.Snapshot(name); err != nil {
-				lastErr = err
-			}
-			wg.Done()
-		}(backend.backend)
-	}
-
 	wg.Wait()
-	return lastErr
+
+	if len(retError.Errors) != 0 {
+		return retError
+	}
+	return nil
 }
 
 func (r *replicator) Close() error {
