@@ -13,7 +13,6 @@ import (
 	"syscall"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/deckarep/golang-set"
 	"github.com/rancher/longhorn/types"
 	"github.com/rancher/sparse-tools/sparse"
 )
@@ -37,7 +36,7 @@ type Replica struct {
 	dir             string
 	info            Info
 	diskData        map[string]*disk
-	diskChildrenMap map[string]mapset.Set
+	diskChildrenMap map[string]map[string]bool
 	activeDiskData  []*disk
 	readOnly        bool
 }
@@ -105,7 +104,7 @@ func construct(readonly bool, size, sectorSize int64, dir, head string, backingF
 		dir:             dir,
 		activeDiskData:  make([]*disk, 1),
 		diskData:        make(map[string]*disk),
-		diskChildrenMap: map[string]mapset.Set{},
+		diskChildrenMap: map[string]map[string]bool{},
 	}
 	r.info.Size = size
 	r.info.SectorSize = sectorSize
@@ -227,22 +226,23 @@ func (r *Replica) RemoveDiffDisk(name string) error {
 func (r *Replica) removeDiskNode(name string) error {
 	// If snapshot has no child, then we can safely delete it
 	// And it's definitely not in the live chain
-	children := r.diskChildrenMap[name]
-	if children == nil {
+	children, exists := r.diskChildrenMap[name]
+	if !exists {
 		r.updateChildDisk(name, "")
 		delete(r.diskData, name)
 		return nil
 	}
 
 	// If snapshot has more than one child, we cannot really delete it
-	if children.Cardinality() > 1 {
+	if len(children) > 1 {
 		return fmt.Errorf("Cannot remove snapshot %v with %v children",
-			name, children.Cardinality())
+			name, len(children))
 	}
 
 	// only one child from here
-	childIter := <-children.Iter()
-	child := childIter.(string)
+	var child string
+	for child = range children {
+	}
 	r.updateChildDisk(name, child)
 	if err := r.updateParentDisk(child, name); err != nil {
 		return err
@@ -325,8 +325,11 @@ func (r *Replica) processPrepareRemoveDisks(disks []string) ([]PrepareRemoveActi
 		}
 
 		// 2) has only one child and is not head
-		if children.Cardinality() == 1 {
-			child := (<-children.Iter()).(string)
+		if len(children) == 1 {
+			var child string
+			// Get the only element in children
+			for child = range children {
+			}
 			if child != r.info.Head {
 				actions = append(actions,
 					PrepareRemoveAction{
@@ -611,9 +614,9 @@ func (r *Replica) createDisk(name string) error {
 func (r *Replica) addChildDisk(parent, child string) {
 	children, exists := r.diskChildrenMap[parent]
 	if !exists {
-		children = mapset.NewSet()
+		children = map[string]bool{}
 	}
-	children.Add(child)
+	children[child] = true
 	r.diskChildrenMap[parent] = children
 }
 
@@ -622,11 +625,11 @@ func (r *Replica) rmChildDisk(parent, child string) {
 	if !exists {
 		return
 	}
-	if !children.Contains(child) {
+	if _, exists := children[child]; !exists {
 		return
 	}
-	children.Remove(child)
-	if children.Cardinality() == 0 {
+	delete(children, child)
+	if len(children) == 0 {
 		delete(r.diskChildrenMap, parent)
 		return
 	}
