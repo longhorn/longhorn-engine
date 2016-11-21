@@ -278,20 +278,20 @@ func (t *Task) syncFiles(fromClient *replicaClient.ReplicaClient, toClient *repl
 	fromHead := ""
 	toHead := ""
 
-	for _, i := range from.Chain {
-		if strings.Contains(i, "volume-head") {
+	for _, disk := range from.Disks {
+		if strings.Contains(disk, "volume-head") {
 			if fromHead != "" {
-				return fmt.Errorf("More than one head volume found in the from replica %s, %s", fromHead, i)
+				return fmt.Errorf("More than one head volume found in the from replica %s, %s", fromHead, disk)
 			}
-			fromHead = i
+			fromHead = disk
 			continue
 		}
 
-		if err := t.syncFile(i, "", fromClient, toClient); err != nil {
+		if err := t.syncFile(disk, "", fromClient, toClient); err != nil {
 			return err
 		}
 
-		if err := t.syncFile(i+".meta", "", fromClient, toClient); err != nil {
+		if err := t.syncFile(disk+".meta", "", fromClient, toClient); err != nil {
 			return err
 		}
 	}

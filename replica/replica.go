@@ -114,6 +114,7 @@ func construct(readonly bool, size, sectorSize int64, dir, head string, backingF
 	}
 	r.volume.sectorSize = defaultSectorSize
 
+	// Scan all the disks to build the disk map
 	exists, err := r.readMetadata()
 	if err != nil {
 		return nil, err
@@ -137,7 +138,7 @@ func construct(readonly bool, size, sectorSize int64, dir, head string, backingF
 	}
 
 	if exists {
-		if err := r.openFiles(); err != nil {
+		if err := r.openLiveChain(); err != nil {
 			return nil, err
 		}
 	} else if size <= 0 {
@@ -655,9 +656,7 @@ func (r *Replica) updateParentDisk(name, oldParent string) error {
 	return r.encodeToFile(child, child.name+metadataSuffix)
 }
 
-func (r *Replica) openFiles() error {
-	// We have live chain, which will be included here
-	// We also need to scan all other disks, and track them properly
+func (r *Replica) openLiveChain() error {
 	chain, err := r.Chain()
 	if err != nil {
 		return err
