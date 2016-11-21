@@ -33,13 +33,13 @@ var (
 
 type Replica struct {
 	sync.RWMutex
-	volume         diffDisk
-	dir            string
-	info           Info
-	diskData       map[string]*disk
-	diskChildMap   map[string]mapset.Set
-	activeDiskData []*disk
-	readOnly       bool
+	volume          diffDisk
+	dir             string
+	info            Info
+	diskData        map[string]*disk
+	diskChildrenMap map[string]mapset.Set
+	activeDiskData  []*disk
+	readOnly        bool
 }
 
 type Info struct {
@@ -102,10 +102,10 @@ func construct(readonly bool, size, sectorSize int64, dir, head string, backingF
 	}
 
 	r := &Replica{
-		dir:            dir,
-		activeDiskData: make([]*disk, 1),
-		diskData:       make(map[string]*disk),
-		diskChildMap:   map[string]mapset.Set{},
+		dir:             dir,
+		activeDiskData:  make([]*disk, 1),
+		diskData:        make(map[string]*disk),
+		diskChildrenMap: map[string]mapset.Set{},
 	}
 	r.info.Size = size
 	r.info.SectorSize = sectorSize
@@ -170,7 +170,7 @@ func (r *Replica) insertBackingFile() {
 	}
 
 	d := disk{name: r.info.BackingFile.Name}
-	r.activeDiskData = append([]*disk{&disk{}, &d}, r.activeDiskData[1:]...)
+	r.activeDiskData = append([]*disk{{}, &d}, r.activeDiskData[1:]...)
 	r.volume.files = append([]types.DiffDisk{nil, r.info.BackingFile.Disk}, r.volume.files[1:]...)
 	r.diskData[d.name] = &d
 }
@@ -227,7 +227,7 @@ func (r *Replica) RemoveDiffDisk(name string) error {
 func (r *Replica) removeDiskNode(name string) error {
 	// If snapshot has no child, then we can safely delete it
 	// And it's definitely not in the live chain
-	children := r.diskChildMap[name]
+	children := r.diskChildrenMap[name]
 	if children == nil {
 		r.updateChildDisk(name, "")
 		delete(r.diskData, name)
@@ -314,7 +314,7 @@ func (r *Replica) processPrepareRemoveDisks(disks []string) ([]PrepareRemoveActi
 			return nil, fmt.Errorf("Wrong disk %v doesn't exist", disk)
 		}
 
-		children := r.diskChildMap[disk]
+		children := r.diskChildrenMap[disk]
 		// 1) leaf node
 		if children == nil {
 			actions = append(actions, PrepareRemoveAction{
@@ -540,7 +540,7 @@ func (r *Replica) revertDisk(parent string) (*Replica, error) {
 		return nil, err
 	}
 
-	// Need to execute before r.Reload() to update r.diskChildMap
+	// Need to execute before r.Reload() to update r.diskChildrenMap
 	r.rmDisk(oldHead)
 
 	rNew, err := r.Reload()
@@ -609,16 +609,16 @@ func (r *Replica) createDisk(name string) error {
 }
 
 func (r *Replica) addChildDisk(parent, child string) {
-	children, exists := r.diskChildMap[parent]
+	children, exists := r.diskChildrenMap[parent]
 	if !exists {
 		children = mapset.NewSet()
 	}
 	children.Add(child)
-	r.diskChildMap[parent] = children
+	r.diskChildrenMap[parent] = children
 }
 
 func (r *Replica) rmChildDisk(parent, child string) {
-	children, exists := r.diskChildMap[parent]
+	children, exists := r.diskChildrenMap[parent]
 	if !exists {
 		return
 	}
@@ -627,10 +627,10 @@ func (r *Replica) rmChildDisk(parent, child string) {
 	}
 	children.Remove(child)
 	if children.Cardinality() == 0 {
-		delete(r.diskChildMap, parent)
+		delete(r.diskChildrenMap, parent)
 		return
 	}
-	r.diskChildMap[parent] = children
+	r.diskChildrenMap[parent] = children
 }
 
 func (r *Replica) updateChildDisk(oldName, newName string) {
