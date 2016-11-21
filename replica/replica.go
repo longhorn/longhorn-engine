@@ -784,3 +784,7 @@ func (r *Replica) ReadAt(buf []byte, offset int64) (int, error) {
 	r.RUnlock()
 	return c, err
 }
+
+func (r *Replica) ShowDiskChildrenMap() map[string]map[string]bool {
+	return r.diskChildrenMap
+}

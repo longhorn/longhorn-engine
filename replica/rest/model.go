@@ -10,14 +10,15 @@ import (
 
 type Replica struct {
 	client.Resource
-	Dirty      bool     `json:"dirty"`
-	Rebuilding bool     `json:"rebuilding"`
-	Head       string   `json:"head"`
-	Parent     string   `json:"parent"`
-	Size       string   `json:"size"`
-	SectorSize int64    `json:"sectorSize"`
-	State      string   `json:"state"`
-	Chain      []string `json:"chain"`
+	Dirty           bool                       `json:"dirty"`
+	Rebuilding      bool                       `json:"rebuilding"`
+	Head            string                     `json:"head"`
+	Parent          string                     `json:"parent"`
+	Size            string                     `json:"size"`
+	SectorSize      int64                      `json:"sectorSize"`
+	State           string                     `json:"state"`
+	Chain           []string                   `json:"chain"`
+	DiskChildrenMap map[string]map[string]bool `json:"diskchildrenmap"`
 }
 
 type CreateInput struct {
@@ -113,6 +114,7 @@ func NewReplica(context *api.ApiContext, state replica.State, info replica.Info,
 
 	if rep != nil {
 		r.Chain, _ = rep.DisplayChain()
+		r.DiskChildrenMap = rep.ShowDiskChildrenMap()
 	}
 
 	return r
@@ -135,36 +137,36 @@ func NewSchema() *client.Schemas {
 
 	replica.ResourceMethods = []string{"GET", "DELETE"}
 	replica.ResourceActions = map[string]client.Action{
-		"close": client.Action{
+		"close": {
 			Output: "replica",
 		},
-		"open": client.Action{
+		"open": {
 			Output: "replica",
 		},
-		"reload": client.Action{
+		"reload": {
 			Output: "replica",
 		},
-		"snapshot": client.Action{
+		"snapshot": {
 			Input:  "snapshotInput",
 			Output: "replica",
 		},
-		"removedisk": client.Action{
+		"removedisk": {
 			Input:  "removediskInput",
 			Output: "replica",
 		},
-		"setrebuilding": client.Action{
+		"setrebuilding": {
 			Input:  "rebuildingInput",
 			Output: "replica",
 		},
-		"create": client.Action{
+		"create": {
 			Input:  "createInput",
 			Output: "replica",
 		},
-		"revert": client.Action{
+		"revert": {
 			Input:  "revertInput",
 			Output: "replica",
 		},
-		"prepareremovedisk": client.Action{
+		"prepareremovedisk": {
 			Input:  "prepareRemoveDiskInput",
 			Output: "prepareRemoveDiskOutput",
 		},

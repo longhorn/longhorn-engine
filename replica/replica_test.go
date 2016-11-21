@@ -70,6 +70,14 @@ func (s *TestSuite) TestSnapshot(c *C) {
 	c.Assert(len(r.diskChildrenMap["volume-snap-001.img"]), Equals, 1)
 	c.Assert(r.diskChildrenMap["volume-snap-001.img"]["volume-head-002.img"], Equals, true)
 	c.Assert(r.diskChildrenMap["volume-head-002.img"], IsNil)
+
+	dcm := r.ShowDiskChildrenMap()
+	c.Assert(len(dcm), Equals, 3)
+	c.Assert(len(dcm["volume-snap-000.img"]), Equals, 1)
+	c.Assert(dcm["volume-snap-000.img"]["volume-snap-001.img"], Equals, true)
+	c.Assert(len(dcm["volume-snap-001.img"]), Equals, 1)
+	c.Assert(dcm["volume-snap-001.img"]["volume-head-002.img"], Equals, true)
+	c.Assert(dcm["volume-head-002.img"], IsNil)
 }
 
 func (s *TestSuite) TestRevert(c *C) {
