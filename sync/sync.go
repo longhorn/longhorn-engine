@@ -12,6 +12,10 @@ import (
 	replicaClient "github.com/rancher/longhorn/replica/client"
 )
 
+var (
+	RetryCounts = 3
+)
+
 type Task struct {
 	client *client.ControllerClient
 }
@@ -182,7 +186,7 @@ func (t *Task) AddReplica(replica string) error {
 		return err
 	}
 
-	if err := t.syncFiles(fromClient, toClient); err != nil {
+	if err = t.syncFiles(fromClient, toClient); err != nil {
 		return err
 	}
 
@@ -310,11 +314,35 @@ func (t *Task) syncFiles(fromClient *replicaClient.ReplicaClient, toClient *repl
 		return fmt.Errorf("Failed to find both source and destination head volumes, %s, %s", fromHead, toHead)
 	}
 
-	if err := t.syncFile(fromHead+".meta", toHead+".meta", fromClient, toClient); err != nil {
-		return err
+	for i := 0; i < RetryCounts; i++ {
+		err = t.syncFile(fromHead+".meta", toHead+".meta", fromClient, toClient)
+		if err == nil {
+			break
+		}
+
+		logrus.Warnf("Retry sync volume head since may caused by snapshot in progress: %v",
+			fromHead, toHead, err)
+
+		from, ferr := fromClient.GetReplica()
+		if ferr != nil {
+			return ferr
+		}
+
+		fromHead = ""
+		for _, disk := range from.Disks {
+			if strings.Contains(disk, "volume-head") {
+				if fromHead != "" {
+					return fmt.Errorf("More than one head volume found in the from replica %s, %s",
+						fromHead, disk)
+				}
+				fromHead = disk
+				continue
+			}
+		}
+		logrus.Warnf("Sync current volume head %s to %s", fromHead, toHead)
 	}
 
-	return nil
+	return err
 }
 
 func (t *Task) syncFile(from, to string, fromClient *replicaClient.ReplicaClient, toClient *replicaClient.ReplicaClient) error {
