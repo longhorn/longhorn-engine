@@ -157,6 +157,21 @@ func (s *TestSuite) TestRevert(c *C) {
 	c.Assert(r.diskData["volume-snap-003.img"].Parent, Equals, "volume-snap-000.img")
 	c.Assert(r.diskData["volume-head-005.img"].Parent, Equals, "volume-snap-001.img")
 
+	disks := r.ListDisks()
+	c.Assert(len(disks), Equals, 4)
+	verifyDisks := map[string]bool{
+		"volume-snap-000.img": false,
+		"volume-snap-001.img": false,
+		"volume-snap-003.img": false,
+		"volume-head-005.img": false,
+	}
+	for _, disk := range disks {
+		value, exists := verifyDisks[disk]
+		c.Assert(exists, Equals, true)
+		c.Assert(value, Equals, false)
+		verifyDisks[disk] = true
+	}
+
 	c.Assert(len(r.diskChildrenMap["volume-snap-001.img"]), Equals, 1)
 	c.Assert(r.diskChildrenMap["volume-snap-001.img"]["volume-head-005.img"], Equals, true)
 	c.Assert(r.diskChildrenMap["volume-snap-003.img"], IsNil)

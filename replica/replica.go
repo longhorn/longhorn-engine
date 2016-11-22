@@ -785,6 +785,14 @@ func (r *Replica) ReadAt(buf []byte, offset int64) (int, error) {
 	return c, err
 }
 
+func (r *Replica) ListDisks() []string {
+	result := []string{}
+	for disk := range r.diskData {
+		result = append(result, disk)
+	}
+	return result
+}
+
 func (r *Replica) ShowDiskChildrenMap() map[string]map[string]bool {
 	return r.diskChildrenMap
 }
