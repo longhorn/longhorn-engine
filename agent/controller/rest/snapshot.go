@@ -32,7 +32,7 @@ func (s *Server) GetSnapshot(rw http.ResponseWriter, req *http.Request) error {
 	vars := mux.Vars(req)
 	id, ok := vars["id"]
 	if !ok {
-		return fmt.Errorf("Snapshot id not supplied.")
+		return fmt.Errorf("snapshot id not supplied")
 	}
 
 	snap, err := s.getSnapshot(apiContext, id)
@@ -71,7 +71,7 @@ func (s *Server) DeleteSnapshot(rw http.ResponseWriter, req *http.Request) error
 	vars := mux.Vars(req)
 	id, ok := vars["id"]
 	if !ok {
-		return fmt.Errorf("Snapshot id not supplied.")
+		return fmt.Errorf("snapshot id not supplied")
 	}
 
 	snapshot, err := s.getSnapshot(apiContext, id)

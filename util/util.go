@@ -342,6 +342,6 @@ func remove(path string) error {
 	case err := <-done:
 		return err
 	case <-time.After(30 * time.Second):
-		return fmt.Errorf("Timeout trying to delete %s.", path)
+		return fmt.Errorf("timeout trying to delete %s", path)
 	}
 }

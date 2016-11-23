@@ -331,18 +331,18 @@ func (c *Controller) retryErroredReplicas() error {
 func (c *Controller) removeAndAdd(replica rest.Replica, replicaMD *replica) error {
 	logrus.Infof("Removing errored replica %v for re-add.", replica.Address)
 	if _, err := c.client.DeleteReplica(replica.Address); err != nil {
-		return fmt.Errorf("Error removing errored replica %v: %v.", replica.Address, err)
+		return fmt.Errorf("error removing errored replica %v: %v", replica.Address, err)
 	}
 
 	freshReplica, err := replicaMD.client.GetReplica()
 	if err != nil {
-		return fmt.Errorf("Error getting replica %v during removeAndAdd: %v.", replica.Address, err)
+		return fmt.Errorf("error getting replica %v during removeAndAdd: %v", replica.Address, err)
 	}
 
 	if _, ok := freshReplica.Actions["close"]; ok {
 		err := replicaMD.client.Close()
 		if err != nil {
-			return fmt.Errorf("Error closing replica %v before adding: %v.", replica.Address, err)
+			return fmt.Errorf("error closing replica %v before adding: %v", replica.Address, err)
 		}
 	}
 
