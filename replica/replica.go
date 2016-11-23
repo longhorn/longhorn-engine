@@ -13,18 +13,18 @@ import (
 	"syscall"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/deckarep/golang-set"
 	"github.com/rancher/longhorn/types"
 	"github.com/rancher/sparse-tools/sparse"
 )
 
 const (
-	metadataSuffix    = ".meta"
-	imgSuffix         = ".img"
-	volumeMetaData    = "volume.meta"
-	defaultSectorSize = 4096
-	headName          = "volume-head-%03d.img"
-	diskName          = "volume-snap-%s.img"
+	metadataSuffix     = ".meta"
+	imgSuffix          = ".img"
+	volumeMetaData     = "volume.meta"
+	defaultSectorSize  = 4096
+	headName           = "volume-head-%03d.img"
+	diskName           = "volume-snap-%s.img"
+	maximumChainLength = 250
 )
 
 var (
@@ -33,13 +33,13 @@ var (
 
 type Replica struct {
 	sync.RWMutex
-	volume         diffDisk
-	dir            string
-	info           Info
-	diskData       map[string]*disk
-	diskChildMap   map[string]mapset.Set
-	activeDiskData []*disk
-	readOnly       bool
+	volume          diffDisk
+	dir             string
+	info            Info
+	diskData        map[string]*disk
+	diskChildrenMap map[string]map[string]bool
+	activeDiskData  []*disk
+	readOnly        bool
 }
 
 type Info struct {
@@ -102,10 +102,10 @@ func construct(readonly bool, size, sectorSize int64, dir, head string, backingF
 	}
 
 	r := &Replica{
-		dir:            dir,
-		activeDiskData: make([]*disk, 1),
-		diskData:       make(map[string]*disk),
-		diskChildMap:   map[string]mapset.Set{},
+		dir:             dir,
+		activeDiskData:  make([]*disk, 1),
+		diskData:        make(map[string]*disk),
+		diskChildrenMap: map[string]map[string]bool{},
 	}
 	r.info.Size = size
 	r.info.SectorSize = sectorSize
@@ -115,6 +115,7 @@ func construct(readonly bool, size, sectorSize int64, dir, head string, backingF
 	}
 	r.volume.sectorSize = defaultSectorSize
 
+	// Scan all the disks to build the disk map
 	exists, err := r.readMetadata()
 	if err != nil {
 		return nil, err
@@ -138,7 +139,7 @@ func construct(readonly bool, size, sectorSize int64, dir, head string, backingF
 	}
 
 	if exists {
-		if err := r.openFiles(); err != nil {
+		if err := r.openLiveChain(); err != nil {
 			return nil, err
 		}
 	} else if size <= 0 {
@@ -170,7 +171,7 @@ func (r *Replica) insertBackingFile() {
 	}
 
 	d := disk{name: r.info.BackingFile.Name}
-	r.activeDiskData = append([]*disk{&disk{}, &d}, r.activeDiskData[1:]...)
+	r.activeDiskData = append([]*disk{{}, &d}, r.activeDiskData[1:]...)
 	r.volume.files = append([]types.DiffDisk{nil, r.info.BackingFile.Disk}, r.volume.files[1:]...)
 	r.diskData[d.name] = &d
 }
@@ -227,22 +228,23 @@ func (r *Replica) RemoveDiffDisk(name string) error {
 func (r *Replica) removeDiskNode(name string) error {
 	// If snapshot has no child, then we can safely delete it
 	// And it's definitely not in the live chain
-	children := r.diskChildMap[name]
-	if children == nil {
+	children, exists := r.diskChildrenMap[name]
+	if !exists {
 		r.updateChildDisk(name, "")
 		delete(r.diskData, name)
 		return nil
 	}
 
 	// If snapshot has more than one child, we cannot really delete it
-	if children.Cardinality() > 1 {
+	if len(children) > 1 {
 		return fmt.Errorf("Cannot remove snapshot %v with %v children",
-			name, children.Cardinality())
+			name, len(children))
 	}
 
 	// only one child from here
-	childIter := <-children.Iter()
-	child := childIter.(string)
+	var child string
+	for child = range children {
+	}
 	r.updateChildDisk(name, child)
 	if err := r.updateParentDisk(child, name); err != nil {
 		return err
@@ -314,7 +316,7 @@ func (r *Replica) processPrepareRemoveDisks(disks []string) ([]PrepareRemoveActi
 			return nil, fmt.Errorf("Wrong disk %v doesn't exist", disk)
 		}
 
-		children := r.diskChildMap[disk]
+		children := r.diskChildrenMap[disk]
 		// 1) leaf node
 		if children == nil {
 			actions = append(actions, PrepareRemoveAction{
@@ -325,8 +327,11 @@ func (r *Replica) processPrepareRemoveDisks(disks []string) ([]PrepareRemoveActi
 		}
 
 		// 2) has only one child and is not head
-		if children.Cardinality() == 1 {
-			child := (<-children.Iter()).(string)
+		if len(children) == 1 {
+			var child string
+			// Get the only element in children
+			for child = range children {
+			}
 			if child != r.info.Head {
 				actions = append(actions,
 					PrepareRemoveAction{
@@ -540,7 +545,7 @@ func (r *Replica) revertDisk(parent string) (*Replica, error) {
 		return nil, err
 	}
 
-	// Need to execute before r.Reload() to update r.diskChildMap
+	// Need to execute before r.Reload() to update r.diskChildrenMap
 	r.rmDisk(oldHead)
 
 	rNew, err := r.Reload()
@@ -553,6 +558,10 @@ func (r *Replica) revertDisk(parent string) (*Replica, error) {
 func (r *Replica) createDisk(name string) error {
 	if r.readOnly {
 		return fmt.Errorf("Can not create disk on read-only replica")
+	}
+
+	if len(r.activeDiskData)+1 > maximumChainLength {
+		return fmt.Errorf("Too many active disks: %v", len(r.activeDiskData)+1)
 	}
 
 	done := false
@@ -609,28 +618,28 @@ func (r *Replica) createDisk(name string) error {
 }
 
 func (r *Replica) addChildDisk(parent, child string) {
-	children, exists := r.diskChildMap[parent]
+	children, exists := r.diskChildrenMap[parent]
 	if !exists {
-		children = mapset.NewSet()
+		children = map[string]bool{}
 	}
-	children.Add(child)
-	r.diskChildMap[parent] = children
+	children[child] = true
+	r.diskChildrenMap[parent] = children
 }
 
 func (r *Replica) rmChildDisk(parent, child string) {
-	children, exists := r.diskChildMap[parent]
+	children, exists := r.diskChildrenMap[parent]
 	if !exists {
 		return
 	}
-	if !children.Contains(child) {
+	if _, exists := children[child]; !exists {
 		return
 	}
-	children.Remove(child)
-	if children.Cardinality() == 0 {
-		delete(r.diskChildMap, parent)
+	delete(children, child)
+	if len(children) == 0 {
+		delete(r.diskChildrenMap, parent)
 		return
 	}
-	r.diskChildMap[parent] = children
+	r.diskChildrenMap[parent] = children
 }
 
 func (r *Replica) updateChildDisk(oldName, newName string) {
@@ -652,12 +661,14 @@ func (r *Replica) updateParentDisk(name, oldParent string) error {
 	return r.encodeToFile(child, child.name+metadataSuffix)
 }
 
-func (r *Replica) openFiles() error {
-	// We have live chain, which will be included here
-	// We also need to scan all other disks, and track them properly
+func (r *Replica) openLiveChain() error {
 	chain, err := r.Chain()
 	if err != nil {
 		return err
+	}
+
+	if len(chain) > maximumChainLength {
+		return fmt.Errorf("Live chain is too long: %v", len(chain))
 	}
 
 	for i := len(chain) - 1; i >= 0; i-- {
@@ -780,4 +791,20 @@ func (r *Replica) ReadAt(buf []byte, offset int64) (int, error) {
 	c, err := r.volume.ReadAt(buf, offset)
 	r.RUnlock()
 	return c, err
+}
+
+func (r *Replica) ListDisks() []string {
+	result := []string{}
+	for disk := range r.diskData {
+		result = append(result, disk)
+	}
+	return result
+}
+
+func (r *Replica) ShowDiskChildrenMap() map[string]map[string]bool {
+	return r.diskChildrenMap
+}
+
+func (r *Replica) GetRemainSnapshotCounts() int {
+	return maximumChainLength - len(r.activeDiskData)
 }

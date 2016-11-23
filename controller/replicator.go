@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"strings"
 	"sync"
 
@@ -80,26 +81,35 @@ func (r *replicator) RemoveBackend(address string) {
 }
 
 func (r *replicator) ReadAt(buf []byte, off int64) (int, error) {
+	var (
+		n   int
+		err error
+	)
+
 	if !r.backendsAvailable {
 		return 0, ErrNoBackend
 	}
 
+	readersLen := len(r.readers)
+	r.next = (r.next + 1) % readersLen
 	index := r.next
-	r.next++
-	if index >= len(r.readers) {
-		r.next = 0
-		index = 0
+	retError := &BackendError{
+		Errors: map[string]error{},
 	}
-	n, err := r.readers[index].ReadAt(buf, off)
-	if err != nil {
-		logrus.Error("Replicator.ReadAt:", index, err)
-		return n, &BackendError{
-			Errors: map[string]error{
-				r.readerIndex[index]: err,
-			},
+	for i := 0; i < readersLen; i++ {
+		reader := r.readers[index]
+		n, err = reader.ReadAt(buf, off)
+		if err == nil {
+			break
 		}
+		logrus.Error("Replicator.ReadAt:", index, err)
+		retError.Errors[r.readerIndex[index]] = err
+		index = (index + 1) % readersLen
 	}
-	return n, err
+	if len(retError.Errors) != 0 {
+		return n, retError
+	}
+	return n, nil
 }
 
 func (r *replicator) WriteAt(p []byte, off int64) (int, error) {
@@ -163,27 +173,29 @@ func (r *replicator) SetMode(address string, mode types.Mode) {
 }
 
 func (r *replicator) Snapshot(name string) error {
-	for _, wrapper := range r.backends {
-		if wrapper.mode == types.ERR {
-			return errors.New("Can not snapshot while a replica is in ERR")
+	retError := &BackendError{
+		Errors: map[string]error{},
+	}
+	wg := sync.WaitGroup{}
+
+	for addr, backend := range r.backends {
+		if backend.mode != types.ERR {
+			wg.Add(1)
+			go func(backend types.Backend) {
+				if err := backend.Snapshot(name); err != nil {
+					retError.Errors[addr] = err
+				}
+				wg.Done()
+			}(backend.backend)
 		}
 	}
 
-	var lastErr error
-	wg := sync.WaitGroup{}
-
-	for _, backend := range r.backends {
-		wg.Add(1)
-		go func(backend types.Backend) {
-			if err := backend.Snapshot(name); err != nil {
-				lastErr = err
-			}
-			wg.Done()
-		}(backend.backend)
-	}
-
 	wg.Wait()
-	return lastErr
+
+	if len(retError.Errors) != 0 {
+		return retError
+	}
+	return nil
 }
 
 func (r *replicator) Close() error {
@@ -216,4 +228,29 @@ func (r *replicator) reset(full bool) {
 type backendWrapper struct {
 	backend types.Backend
 	mode    types.Mode
+}
+
+func (r *replicator) RemainSnapshots() (int, error) {
+	// addReplica may call here even without any backend
+	if len(r.backends) == 0 {
+		return 1, nil
+	}
+
+	ret := math.MaxInt32
+	for _, backend := range r.backends {
+		if backend.mode == types.ERR {
+			continue
+		}
+		// ignore error and try next one. We can deal with all
+		// error situation later
+		if remain, err := backend.backend.RemainSnapshots(); err == nil {
+			if remain < ret {
+				ret = remain
+			}
+		}
+	}
+	if ret == math.MaxInt32 {
+		return 0, fmt.Errorf("Cannot get valid result for remain snapshot")
+	}
+	return ret, nil
 }

@@ -39,6 +39,10 @@ func (f *Wrapper) SectorSize() (int64, error) {
 	return 4096, nil
 }
 
+func (f *Wrapper) RemainSnapshots() (int, error) {
+	return 1, nil
+}
+
 func (ff *Factory) Create(address string) (types.Backend, error) {
 	logrus.Infof("Creating file: %s", address)
 	file, err := os.OpenFile(address, os.O_RDWR|os.O_CREATE, 0600)

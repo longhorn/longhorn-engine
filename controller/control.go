@@ -80,7 +80,13 @@ func (c *Controller) Snapshot(name string) (string, error) {
 		name = util.UUID()
 	}
 
-	return name, c.backend.Snapshot(name)
+	if remain, err := c.backend.RemainSnapshots(); err != nil {
+		return "", err
+	} else if remain <= 0 {
+		return "", fmt.Errorf("Too many snapshots created")
+	}
+
+	return name, c.handleErrorNoLock(c.backend.Snapshot(name))
 }
 
 func (c *Controller) addReplicaNoLock(newBackend types.Backend, address string, snapshot bool) error {
@@ -90,6 +96,12 @@ func (c *Controller) addReplicaNoLock(newBackend types.Backend, address string, 
 
 	if snapshot {
 		uuid := util.UUID()
+
+		if remain, err := c.backend.RemainSnapshots(); err != nil {
+			return err
+		} else if remain <= 0 {
+			return fmt.Errorf("Too many snapshots created")
+		}
 
 		if err := c.backend.Snapshot(uuid); err != nil {
 			newBackend.Close()
@@ -265,9 +277,8 @@ func (c *Controller) ReadAt(b []byte, off int64) (int, error) {
 	return n, err
 }
 
-func (c *Controller) handleError(err error) error {
+func (c *Controller) handleErrorNoLock(err error) error {
 	if bErr, ok := err.(*BackendError); ok {
-		c.Lock()
 		if len(bErr.Errors) > 0 {
 			for address, replicaErr := range bErr.Errors {
 				logrus.Errorf("Setting replica %s to ERR due to: %v", address, replicaErr)
@@ -282,12 +293,17 @@ func (c *Controller) handleError(err error) error {
 				}
 			}
 		}
-		c.Unlock()
 	}
 	if err != nil {
 		logrus.Errorf("I/O error: %v", err)
 	}
 	return err
+}
+
+func (c *Controller) handleError(err error) error {
+	c.Lock()
+	defer c.Unlock()
+	return c.handleErrorNoLock(err)
 }
 
 func (c *Controller) reset() {

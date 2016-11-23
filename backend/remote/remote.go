@@ -109,6 +109,14 @@ func (r *Remote) SectorSize() (int64, error) {
 	return replica.SectorSize, nil
 }
 
+func (r *Remote) RemainSnapshots() (int, error) {
+	replica, err := r.info()
+	if err != nil {
+		return 0, err
+	}
+	return replica.RemainSnapshots, nil
+}
+
 func (r *Remote) info() (rest.Replica, error) {
 	var replica rest.Replica
 	req, err := http.NewRequest("GET", r.replicaURL, nil)

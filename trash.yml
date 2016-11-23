@@ -56,7 +56,5 @@ import:
   version: afbd495e5aaea13597b5e14fe514ddeaa4d76fc3
 - package: github.com/jmespath/go-jmespath
   version: c01cf91b011868172fdcd9f41838e80c9d716264
-- package: github.com/deckarep/golang-set
-  version: 1f0f4ff8d3fbef9328522993ce71c35890f67554
 - package: github.com/yasker/go-iscsi-helper
   version: a95ec6c0750d3426e3fd0b10f6f0f50721fe75cf
