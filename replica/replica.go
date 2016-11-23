@@ -18,12 +18,13 @@ import (
 )
 
 const (
-	metadataSuffix    = ".meta"
-	imgSuffix         = ".img"
-	volumeMetaData    = "volume.meta"
-	defaultSectorSize = 4096
-	headName          = "volume-head-%03d.img"
-	diskName          = "volume-snap-%s.img"
+	metadataSuffix     = ".meta"
+	imgSuffix          = ".img"
+	volumeMetaData     = "volume.meta"
+	defaultSectorSize  = 4096
+	headName           = "volume-head-%03d.img"
+	diskName           = "volume-snap-%s.img"
+	maximumChainLength = 250
 )
 
 var (
@@ -559,6 +560,10 @@ func (r *Replica) createDisk(name string) error {
 		return fmt.Errorf("Can not create disk on read-only replica")
 	}
 
+	if len(r.activeDiskData)+1 > maximumChainLength {
+		return fmt.Errorf("Too many active disks: %v", len(r.activeDiskData)+1)
+	}
+
 	done := false
 	oldHead := r.info.Head
 	newSnapName := GenerateSnapshotDiskName(name)
@@ -660,6 +665,10 @@ func (r *Replica) openLiveChain() error {
 	chain, err := r.Chain()
 	if err != nil {
 		return err
+	}
+
+	if len(chain) > maximumChainLength {
+		return fmt.Errorf("Live chain is too long: %v", len(chain))
 	}
 
 	for i := len(chain) - 1; i >= 0; i-- {
