@@ -804,3 +804,7 @@ func (r *Replica) ListDisks() []string {
 func (r *Replica) ShowDiskChildrenMap() map[string]map[string]bool {
 	return r.diskChildrenMap
 }
+
+func (r *Replica) GetRemainSnapshotCounts() int {
+	return maximumChainLength - len(r.activeDiskData)
+}

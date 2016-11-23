@@ -4,6 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"strings"
 	"sync"
 
@@ -227,4 +228,29 @@ func (r *replicator) reset(full bool) {
 type backendWrapper struct {
 	backend types.Backend
 	mode    types.Mode
+}
+
+func (r *replicator) RemainSnapshots() (int, error) {
+	// addReplica may call here even without any backend
+	if len(r.backends) == 0 {
+		return 1, nil
+	}
+
+	ret := math.MaxInt32
+	for _, backend := range r.backends {
+		if backend.mode == types.ERR {
+			continue
+		}
+		// ignore error and try next one. We can deal with all
+		// error situation later
+		if remain, err := backend.backend.RemainSnapshots(); err == nil {
+			if remain < ret {
+				ret = remain
+			}
+		}
+	}
+	if ret == math.MaxInt32 {
+		return 0, fmt.Errorf("Cannot get valid result for remain snapshot")
+	}
+	return ret, nil
 }

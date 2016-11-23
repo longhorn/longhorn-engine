@@ -28,6 +28,7 @@ type Backend interface {
 	Snapshot(name string) error
 	Size() (int64, error)
 	SectorSize() (int64, error)
+	RemainSnapshots() (int, error)
 }
 
 type BackendFactory interface {

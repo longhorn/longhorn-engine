@@ -80,6 +80,12 @@ func (c *Controller) Snapshot(name string) (string, error) {
 		name = util.UUID()
 	}
 
+	if remain, err := c.backend.RemainSnapshots(); err != nil {
+		return "", err
+	} else if remain <= 0 {
+		return "", fmt.Errorf("Too many snapshots created")
+	}
+
 	return name, c.handleErrorNoLock(c.backend.Snapshot(name))
 }
 
@@ -90,6 +96,12 @@ func (c *Controller) addReplicaNoLock(newBackend types.Backend, address string, 
 
 	if snapshot {
 		uuid := util.UUID()
+
+		if remain, err := c.backend.RemainSnapshots(); err != nil {
+			return err
+		} else if remain <= 0 {
+			return fmt.Errorf("Too many snapshots created")
+		}
 
 		if err := c.backend.Snapshot(uuid); err != nil {
 			newBackend.Close()

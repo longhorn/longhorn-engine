@@ -20,6 +20,7 @@ type Replica struct {
 	Chain           []string                   `json:"chain"`
 	Disks           []string                   `json:"disks"`
 	DiskChildrenMap map[string]map[string]bool `json:"diskchildrenmap"`
+	RemainSnapshots int                        `json:"remainsnapshots"`
 }
 
 type CreateInput struct {
@@ -117,6 +118,7 @@ func NewReplica(context *api.ApiContext, state replica.State, info replica.Info,
 		r.Chain, _ = rep.DisplayChain()
 		r.Disks = rep.ListDisks()
 		r.DiskChildrenMap = rep.ShowDiskChildrenMap()
+		r.RemainSnapshots = rep.GetRemainSnapshotCounts()
 	}
 
 	return r
