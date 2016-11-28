@@ -41,6 +41,10 @@ func lsReplica(c *cli.Context) error {
 	tw := tabwriter.NewWriter(os.Stdout, 0, 20, 1, ' ', 0)
 	fmt.Fprintf(tw, format, "ADDRESS", "MODE", "CHAIN")
 	for _, r := range reps {
+		if r.Mode == "ERR" {
+			fmt.Fprintf(tw, format, r.Address, r.Mode, "")
+			continue
+		}
 		chain := interface{}("")
 		chainList, err := getChain(r.Address)
 		if err == nil {
