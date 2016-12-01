@@ -142,7 +142,9 @@ func LogoutTarget(target string) error {
 		logrus.Infof("Shutdown SCSI device for %v:%v", ip, target)
 		for i := 0; i < RetryCounts; i++ {
 			err = iscsi.LogoutTarget(ip, target, ne)
-			if err == nil {
+			// Ignore Not Found error
+			if err == nil || strings.Contains(err.Error(), "exit status 21") {
+				err = nil
 				break
 			}
 			// The timeout for response may return in the future,
@@ -185,6 +187,7 @@ func LogoutTarget(target string) error {
 			}
 
 			err = iscsi.DeleteDiscoveredTarget(ip, target, ne)
+			// Ignore Not Found error
 			if err == nil || strings.Contains(err.Error(), "exit status 21") {
 				err = nil
 				break
