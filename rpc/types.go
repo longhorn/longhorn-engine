@@ -8,6 +8,7 @@ const (
 	TypeResponse
 	TypeError
 	TypeEOF
+	TypeClose
 
 	messageSize     = (32 + 32 + 32 + 64) / 8 //TODO: unused?
 	readBufferSize  = 8096

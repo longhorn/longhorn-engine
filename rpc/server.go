@@ -103,6 +103,11 @@ func (s *Server) write() {
 				logrus.Errorf("Failed to write: %v", err)
 			}
 		case <-s.done:
+			msg := &Message{
+				Type: TypeClose,
+			}
+			//Best effort to notify client to close connection
+			s.wire.Write(msg)
 			break
 		}
 	}
