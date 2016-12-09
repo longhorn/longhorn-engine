@@ -64,11 +64,19 @@ RUN cd /usr/src/libqcow-20160123 && \
     make -j$(nproc) && \
     make install
 
+# Build liblonghorn
+RUN cd /usr/src && \
+    git clone https://github.com/yasker/liblonghorn.git && \
+    cd liblonghorn && \
+    git checkout ab004d2a922bc7a2bbb0a2b3ac8e5f6ff389507f && \
+    make deb && \
+    dpkg -i ./pkg/liblonghorn_*.deb
+
 # Build TGT
 RUN cd /usr/src && \
     git clone https://github.com/yasker/tgt.git && \
     cd tgt && \
-    git checkout 1f116a1bf03c4ec16a0a1294189a5f802739f343 && \
+    git checkout 6475d1ddf4ff0ac1421a96725f3d472cbb2985c7 && \
     ./scripts/build-pkg.sh deb && \
     dpkg -i ./pkg/tgt_*.deb
 
