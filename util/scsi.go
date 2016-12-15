@@ -9,6 +9,13 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/yasker/go-iscsi-helper/iscsi"
 	iutil "github.com/yasker/go-iscsi-helper/util"
+	"github.com/yasker/nsfilelock"
+)
+
+const (
+	HostNamespace = "/host/proc/1/ns/"
+	LockFile      = "/var/run/longhorn-iscsi.lock"
+	LockTimeout   = 120 * time.Second
 )
 
 type ScsiDevice struct {
@@ -42,7 +49,13 @@ func GetLocalIP() (string, error) {
 }
 
 func StartScsi(dev *ScsiDevice) error {
-	ne, err := iutil.NewNamespaceExecutor("/host/proc/1/ns/")
+	lock := nsfilelock.NewLockWithTimeout(HostNamespace, LockFile, LockTimeout)
+	if err := lock.Lock(); err != nil {
+		return fmt.Errorf("Fail to lock: %v", err)
+	}
+	defer lock.Unlock()
+
+	ne, err := iutil.NewNamespaceExecutor(HostNamespace)
 	if err != nil {
 		return err
 	}
@@ -78,7 +91,7 @@ func StartScsi(dev *ScsiDevice) error {
 			break
 		}
 
-		logrus.Warnf("FAIL to discover %v", err)
+		logrus.Warnf("FAIL to discover due to %v", err)
 		// This is a trick to recover from the case. Remove the
 		// empty entries in /etc/iscsi/nodes/<target_name>. If one of the entry
 		// is empty it will triggered the issue.
@@ -112,6 +125,12 @@ func StartScsi(dev *ScsiDevice) error {
 }
 
 func StopScsi(volumeName string) error {
+	lock := nsfilelock.NewLockWithTimeout(HostNamespace, LockFile, LockTimeout)
+	if err := lock.Lock(); err != nil {
+		return fmt.Errorf("Fail to lock: %v", err)
+	}
+	defer lock.Unlock()
+
 	target := GetTargetName(volumeName)
 	if err := LogoutTarget(target); err != nil {
 		return fmt.Errorf("Fail to logout target: %v", err)
@@ -123,7 +142,7 @@ func StopScsi(volumeName string) error {
 }
 
 func LogoutTarget(target string) error {
-	ne, err := iutil.NewNamespaceExecutor("/host/proc/1/ns/")
+	ne, err := iutil.NewNamespaceExecutor(HostNamespace)
 	if err != nil {
 		return err
 	}
