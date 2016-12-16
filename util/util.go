@@ -14,12 +14,6 @@ import (
 
 var (
 	parsePattern = regexp.MustCompile(`(.*):(\d+)`)
-
-	TargetID    = 1
-	TargetLunID = 1
-
-	RetryCounts   = 5
-	RetryInterval = 3
 )
 
 func ParseAddresses(name string) (string, string, string, error) {

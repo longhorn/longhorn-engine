@@ -1,4 +1,4 @@
-package util
+package tgt
 
 import (
 	"fmt"
@@ -12,10 +12,16 @@ import (
 	"github.com/yasker/nsfilelock"
 )
 
-const (
+var (
 	HostNamespace = "/host/proc/1/ns/"
 	LockFile      = "/var/run/longhorn-iscsi.lock"
 	LockTimeout   = 120 * time.Second
+
+	TargetID    = 1
+	TargetLunID = 1
+
+	RetryCounts   = 5
+	RetryInterval = 3
 )
 
 type ScsiDevice struct {
