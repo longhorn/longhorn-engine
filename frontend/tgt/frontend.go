@@ -31,7 +31,7 @@ type Tgt struct {
 	isUp         bool
 	socketPath   string
 	socketServer *rpc.Server
-	scsiDevice   *util.ScsiDevice
+	scsiDevice   *ScsiDevice
 }
 
 func (t *Tgt) Startup(name string, size, sectorSize int64, rw types.ReaderWriterAt) error {
@@ -71,7 +71,7 @@ func (t *Tgt) Shutdown() error {
 			t.socketServer.Stop()
 			t.socketServer = nil
 		}
-		if err := util.StopScsi(t.Volume); err != nil {
+		if err := StopScsi(t.Volume); err != nil {
 			return fmt.Errorf("Fail to stop SCSI device: %v", err)
 		}
 	}
@@ -146,13 +146,13 @@ func (t *Tgt) getDev() string {
 func (t *Tgt) startScsiDevice() error {
 	if t.scsiDevice == nil {
 		bsOpts := fmt.Sprintf("size=%v", t.Size)
-		scsiDev, err := util.NewScsiDevice(t.Volume, t.socketPath, "longhorn", bsOpts)
+		scsiDev, err := NewScsiDevice(t.Volume, t.socketPath, "longhorn", bsOpts)
 		if err != nil {
 			return err
 		}
 		t.scsiDevice = scsiDev
 	}
-	if err := util.StartScsi(t.scsiDevice); err != nil {
+	if err := StartScsi(t.scsiDevice); err != nil {
 		return err
 	}
 	logrus.Infof("SCSI device %s created", t.scsiDevice.Device)
