@@ -114,6 +114,9 @@ func (r *Remote) RemainSnapshots() (int, error) {
 	if err != nil {
 		return 0, err
 	}
+	if replica.State != "open" && replica.State != "dirty" && replica.State != "rebuilding" {
+		return 0, fmt.Errorf("Invalid state %v for counting snapshots", replica.State)
+	}
 	return replica.RemainSnapshots, nil
 }
 
