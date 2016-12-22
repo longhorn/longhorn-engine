@@ -181,12 +181,12 @@ func (r *replicator) Snapshot(name string) error {
 	for addr, backend := range r.backends {
 		if backend.mode != types.ERR {
 			wg.Add(1)
-			go func(backend types.Backend) {
+			go func(address string, backend types.Backend) {
 				if err := backend.Snapshot(name); err != nil {
-					retError.Errors[addr] = err
+					retError.Errors[address] = err
 				}
 				wg.Done()
-			}(backend.backend)
+			}(addr, backend.backend)
 		}
 	}
 
