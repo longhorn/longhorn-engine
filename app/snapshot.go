@@ -144,6 +144,11 @@ func lsSnapshot(c *cli.Context) error {
 			if err != nil {
 				return err
 			}
+			// Replica can just started and haven't prepare the head
+			// file yet
+			if len(chain) == 0 {
+				break
+			}
 			snapshots = chain[1:]
 			continue
 		}
