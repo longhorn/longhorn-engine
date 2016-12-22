@@ -282,7 +282,11 @@ func (t *Task) syncFiles(fromClient *replicaClient.ReplicaClient, toClient *repl
 	fromHead := ""
 	toHead := ""
 
-	for _, disk := range from.Disks {
+	// Find the head from chain, since there is a gap between create the new
+	// head and remove the old head, which means there can be two heads in
+	// the same replica for a brief moment. Better check the chain for who's
+	// current head.
+	for _, disk := range from.Chain {
 		if strings.Contains(disk, "volume-head") {
 			if fromHead != "" {
 				return fmt.Errorf("More than one head volume found in the from replica %s, %s", fromHead, disk)
@@ -290,7 +294,12 @@ func (t *Task) syncFiles(fromClient *replicaClient.ReplicaClient, toClient *repl
 			fromHead = disk
 			continue
 		}
+	}
 
+	for _, disk := range from.Disks {
+		if strings.Contains(disk, "volume-head") {
+			continue
+		}
 		if err := t.syncFile(disk, "", fromClient, toClient); err != nil {
 			return err
 		}
@@ -329,7 +338,7 @@ func (t *Task) syncFiles(fromClient *replicaClient.ReplicaClient, toClient *repl
 		}
 
 		fromHead = ""
-		for _, disk := range from.Disks {
+		for _, disk := range from.Chain {
 			if strings.Contains(disk, "volume-head") {
 				if fromHead != "" {
 					return fmt.Errorf("More than one head volume found in the from replica %s, %s",
