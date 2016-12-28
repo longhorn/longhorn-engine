@@ -1,4 +1,8 @@
 FROM ubuntu:16.04
+# FROM arm=armhf/ubuntu:16.04
+
+ARG DAPPER_HOST_ARCH=amd64
+ENV HOST_ARCH=${DAPPER_HOST_ARCH} ARCH=${DAPPER_HOST_ARCH}
 
 # Setup environment
 ENV PATH /go/bin:$PATH
@@ -13,27 +17,26 @@ WORKDIR ${DAPPER_SOURCE}
 # Install packages
 RUN sed -i "s/http:\/\/archive.ubuntu.com\/ubuntu\//mirror:\/\/mirrors.ubuntu.com\/mirrors.txt/g" /etc/apt/sources.list && \
     apt-get update && \
-    apt-get install -y cmake curl git \
+    apt-get install -y cmake wget curl git less file \
         libglib2.0-dev libkmod-dev libnl-genl-3-dev linux-libc-dev pkg-config psmisc python-tox qemu-utils fuse python-dev \
         devscripts debhelper bash-completion librdmacm-dev libibverbs-dev xsltproc docbook-xsl \
         libconfig-general-perl libaio-dev libc6-dev
 
-# Install Go
-RUN curl -o go.tar.gz https://storage.googleapis.com/golang/go1.7.linux-amd64.tar.gz
-RUN echo '702ad90f705365227e902b42d91dd1a40e48ca7f67a2f4b2fd052aaa4295cd95 go.tar.gz' | sha256sum -c && \
-    tar xzf go.tar.gz -C /usr/local && \
-    rm go.tar.gz
-RUN mkdir -p /go
-ENV PATH $PATH:/usr/local/go/bin
-ENV GOPATH=/go
+# needed for ${!var} substitution
+RUN rm -f /bin/sh && ln -s /bin/bash /bin/sh
 
-# Go tools
-RUN go get github.com/rancher/trash
-RUN go get github.com/golang/lint/golint
+# Install Go & tools
+ENV GOLANG_ARCH_amd64=amd64 GOLANG_ARCH_arm=armv6l GOLANG_ARCH=GOLANG_ARCH_${ARCH} \
+    GOPATH=/go PATH=/go/bin:/usr/local/go/bin:${PATH} SHELL=/bin/bash
+RUN wget -O - https://storage.googleapis.com/golang/go1.7.4.linux-${!GOLANG_ARCH}.tar.gz | tar -xzf - -C /usr/local && \
+    go get github.com/rancher/trash && go get github.com/golang/lint/golint
 
 # Docker
-RUN curl -sL https://get.docker.com/builds/Linux/x86_64/docker-1.9.1 > /usr/bin/docker && \
-    chmod +x /usr/bin/docker
+ENV DOCKER_URL_amd64=https://get.docker.com/builds/Linux/x86_64/docker-1.10.3 \
+    DOCKER_URL_arm=https://github.com/rancher/docker/releases/download/v1.10.3-ros1/docker-1.10.3_arm \
+    DOCKER_URL=DOCKER_URL_${ARCH}
+
+RUN wget -O /usr/bin/docker ${!DOCKER_URL} && chmod +x /usr/bin/docker
 
 # Build TCMU
 RUN cd /usr/src && \
@@ -47,17 +50,8 @@ RUN cd /usr/src/tcmu-runner && \
     cp scsi_defs.h /usr/local/include && \
     cp libtcmu_static.a /usr/local/lib/libtcmu.a
 
-# Install longhorn Docker driver
-RUN GOPATH=/tmp/docker-longhorn-driver && \
-    mkdir -p $GOPATH/src/github.com/rancher && \
-    cd $GOPATH/src/github.com/rancher && \
-    git clone https://github.com/rancher/docker-longhorn-driver.git && \
-    cd docker-longhorn-driver && \
-    git checkout ea7bf49977adb179a2d767f8a5dcf3ec380a34a2 && \
-    go build -o /usr/local/bin/docker-longhorn-driver
-
 # Install libqcow
-RUN curl -sfL https://github.com/libyal/libqcow/releases/download/20160123/libqcow-alpha-20160123.tar.gz | tar xvzf - -C /usr/src
+RUN wget -O - https://github.com/libyal/libqcow/releases/download/20160123/libqcow-alpha-20160123.tar.gz | tar xvzf - -C /usr/src
 RUN cd /usr/src/libqcow-20160123 && \
     ./configure
 RUN cd /usr/src/libqcow-20160123 && \

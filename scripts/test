@@ -5,10 +5,9 @@ cd $(dirname $0)/..
 
 echo Running tests
 
-if [ ! -x ./bin/longhorn ]; then
-    ./scripts/build
-fi
+PACKAGES="$(find . -name '*.go' | xargs -I{} dirname {} | sort -u | grep -Ev '(.git|.trash-cache|vendor|bin)')"
 
-PACKAGES=". $(find -name '*.go' | xargs -I{} dirname {} |  cut -f2 -d/ | sort -u | grep -Ev '(^\.$|.git|.trash-cache|vendor|bin)' | sed -e 's!^!./!' -e 's!$!/...!')"
+echo Packages: ${PACKAGES}
 
-go test -race -cover -tags=test ${PACKAGES}
+[ "${ARCH}" == "amd64" ] && RACE=-race
+go test ${RACE} -cover -tags="test qcow" ${PACKAGES}
