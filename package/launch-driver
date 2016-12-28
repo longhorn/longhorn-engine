@@ -1,9 +1,0 @@
-#!/usr/bin/env bash
-
-set -e -x
-
-if [ "$1" == "volumedriver" ]; then
-    /usr/bin/share-mnt /var/lib/rancher/longhorn -- docker-longhorn-driver "$@"
-else
-    docker-longhorn-driver "$@"
-fi
