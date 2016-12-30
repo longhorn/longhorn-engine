@@ -76,7 +76,7 @@ func NewVolume(context *api.ApiContext, name string, replicas int) *Volume {
 	return v
 }
 
-func NewReplica(address string, mode types.Mode) *Replica {
+func NewReplica(context *api.ApiContext, address string, mode types.Mode) *Replica {
 	return &Replica{
 		Resource: client.Resource{
 			Id:   EncodeID(address),
@@ -125,18 +125,18 @@ func NewSchema() *client.Schemas {
 
 	volumes := schemas.AddType("volume", Volume{})
 	volumes.ResourceActions = map[string]client.Action{
-		"revert": client.Action{
+		"revert": {
 			Input:  "revertInput",
 			Output: "volume",
 		},
-		"start": client.Action{
+		"start": {
 			Input:  "startInput",
 			Output: "volume",
 		},
-		"shutdown": client.Action{
+		"shutdown": {
 			Output: "volume",
 		},
-		"snapshot": client.Action{
+		"snapshot": {
 			Input:  "snapshotInput",
 			Output: "snapshotOutput",
 		},
