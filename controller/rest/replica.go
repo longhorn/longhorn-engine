@@ -106,3 +106,29 @@ func (s *Server) CheckReplica(rw http.ResponseWriter, req *http.Request) error {
 
 	return s.GetReplica(rw, req)
 }
+
+func (s *Server) PrepareRebuildReplica(rw http.ResponseWriter, req *http.Request) error {
+	vars := mux.Vars(req)
+	id, err := DencodeID(vars["id"])
+	if err != nil {
+		rw.WriteHeader(http.StatusNotFound)
+		return nil
+	}
+
+	disks, err := s.c.PrepareRebuildReplica(id)
+	if err != nil {
+		return err
+	}
+
+	apiContext := api.GetApiContext(req)
+	resp := &PrepareRebuildOutput{
+		Resource: client.Resource{
+			Id:   id,
+			Type: "prepareRebuildOutput",
+		},
+		Disks: disks,
+	}
+
+	apiContext.Write(&resp)
+	return nil
+}

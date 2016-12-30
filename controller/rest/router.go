@@ -30,6 +30,7 @@ func NewRouter(s *Server) *mux.Router {
 	router.Methods("GET").Path("/v1/replicas/{id}").Handler(f(schemas, s.GetReplica))
 	router.Methods("POST").Path("/v1/replicas").Handler(f(schemas, s.CreateReplica))
 	router.Methods("POST").Path("/v1/replicas/{id}").Queries("action", "check").Handler(f(schemas, s.CheckReplica))
+	router.Methods("POST").Path("/v1/replicas/{id}").Queries("action", "preparerebuild").Handler(f(schemas, s.PrepareRebuildReplica))
 	router.Methods("DELETE").Path("/v1/replicas/{id}").Handler(f(schemas, s.DeleteReplica))
 	router.Methods("PUT").Path("/v1/replicas/{id}").Handler(f(schemas, s.UpdateReplica))
 

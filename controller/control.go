@@ -237,6 +237,26 @@ func (c *Controller) CheckReplica(address string) error {
 	return nil
 }
 
+func (c *Controller) PrepareRebuildReplica(address string) ([]string, error) {
+	c.Lock()
+	defer c.Unlock()
+
+	replica, rwReplica, err := c.getCurrentAndRWReplica(address)
+	if err != nil {
+		return nil, err
+	}
+	if replica.Mode != types.WO {
+		return nil, fmt.Errorf("Invalid mode %v for replica %v to prepare rebuild", replica.Mode, address)
+	}
+
+	rwChain, err := getReplicaChain(rwReplica.Address)
+	if err != nil {
+		return nil, err
+	}
+
+	return rwChain[1:], nil
+}
+
 func (c *Controller) SetReplicaMode(address string, mode types.Mode) error {
 	switch mode {
 	case types.ERR:

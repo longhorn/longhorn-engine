@@ -152,6 +152,16 @@ func (c *ControllerClient) CheckReplica(address string) error {
 	return c.post(replica.Actions["check"], &replica, nil)
 }
 
+func (c *ControllerClient) PrepareRebuild(address string) (*rest.PrepareRebuildOutput, error) {
+	var output rest.PrepareRebuildOutput
+	replica, err := c.GetReplica(address)
+	if err != nil {
+		return nil, err
+	}
+	err = c.post(replica.Actions["preparerebuild"], &replica, &output)
+	return &output, err
+}
+
 func (c *ControllerClient) GetVolume() (*rest.Volume, error) {
 	var volumes rest.VolumeCollection
 

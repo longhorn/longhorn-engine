@@ -185,7 +185,12 @@ func (t *Task) AddReplica(replica string) error {
 		return err
 	}
 
-	if err = t.syncFiles(fromClient, toClient); err != nil {
+	output, err := t.client.PrepareRebuild(rest.EncodeID(replica))
+	if err != nil {
+		return err
+	}
+
+	if err = t.syncFiles(fromClient, toClient, output.Disks); err != nil {
 		return err
 	}
 
@@ -238,7 +243,7 @@ func (t *Task) reloadAndCheck(address string, repClient *replicaClient.ReplicaCl
 	return nil
 }
 
-func (t *Task) syncFiles(fromClient *replicaClient.ReplicaClient, toClient *replicaClient.ReplicaClient) error {
+func (t *Task) syncFiles(fromClient *replicaClient.ReplicaClient, toClient *replicaClient.ReplicaClient, disks []string) error {
 	from, err := fromClient.GetReplica()
 	if err != nil {
 		return err
@@ -270,9 +275,9 @@ func (t *Task) syncFiles(fromClient *replicaClient.ReplicaClient, toClient *repl
 		}
 	}
 
-	for _, disk := range from.Disks {
+	for _, disk := range disks {
 		if strings.Contains(disk, "volume-head") {
-			continue
+			return fmt.Errorf("Disk list shouldn't contain volume-head")
 		}
 		if err := t.syncFile(disk, "", fromClient, toClient); err != nil {
 			return err
