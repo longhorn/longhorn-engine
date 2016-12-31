@@ -244,37 +244,11 @@ func (t *Task) reloadAndCheck(address string, repClient *replicaClient.ReplicaCl
 }
 
 func (t *Task) syncFiles(fromClient *replicaClient.ReplicaClient, toClient *replicaClient.ReplicaClient, disks []string) error {
-	from, err := fromClient.GetReplica()
-	if err != nil {
-		return err
-	}
-
 	if err := toClient.SetRebuilding(true); err != nil {
 		return err
 	}
 
-	to, err := toClient.GetReplica()
-	if err != nil {
-		return err
-	}
-
-	fromHead := ""
-	toHead := ""
-
-	// Find the head from chain, since there is a gap between create the new
-	// head and remove the old head, which means there can be two heads in
-	// the same replica for a brief moment. Better check the chain for who's
-	// current head.
-	for _, disk := range from.Chain {
-		if strings.Contains(disk, "volume-head") {
-			if fromHead != "" {
-				return fmt.Errorf("More than one head volume found in the from replica %s, %s", fromHead, disk)
-			}
-			fromHead = disk
-			continue
-		}
-	}
-
+	// volume head has been synced by PrepareRebuild()
 	for _, disk := range disks {
 		if strings.Contains(disk, "volume-head") {
 			return fmt.Errorf("Disk list shouldn't contain volume-head")
@@ -288,49 +262,7 @@ func (t *Task) syncFiles(fromClient *replicaClient.ReplicaClient, toClient *repl
 		}
 	}
 
-	for _, i := range to.Chain {
-		if strings.Contains(i, "volume-head") {
-			if toHead != "" {
-				return fmt.Errorf("More than one head volume found in the to replica %s, %s", toHead, i)
-			}
-			toHead = i
-			continue
-		}
-	}
-
-	if fromHead == "" || toHead == "" {
-		return fmt.Errorf("Failed to find both source and destination head volumes, %s, %s", fromHead, toHead)
-	}
-
-	for i := 0; i < RetryCounts; i++ {
-		err = t.syncFile(fromHead+".meta", toHead+".meta", fromClient, toClient)
-		if err == nil {
-			break
-		}
-
-		logrus.Warnf("Retry sync volume head since may caused by snapshot in progress: %v",
-			fromHead, toHead, err)
-
-		from, ferr := fromClient.GetReplica()
-		if ferr != nil {
-			return ferr
-		}
-
-		fromHead = ""
-		for _, disk := range from.Chain {
-			if strings.Contains(disk, "volume-head") {
-				if fromHead != "" {
-					return fmt.Errorf("More than one head volume found in the from replica %s, %s",
-						fromHead, disk)
-				}
-				fromHead = disk
-				continue
-			}
-		}
-		logrus.Warnf("Sync current volume head %s to %s", fromHead, toHead)
-	}
-
-	return err
+	return nil
 }
 
 func (t *Task) syncFile(from, to string, fromClient *replicaClient.ReplicaClient, toClient *replicaClient.ReplicaClient) error {

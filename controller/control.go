@@ -237,6 +237,39 @@ func (c *Controller) CheckReplica(address string) error {
 	return nil
 }
 
+func syncFile(from, to string, fromReplica, toReplica *types.Replica) error {
+	if to == "" {
+		to = from
+	}
+
+	fromClient, err := client.NewReplicaClient(fromReplica.Address)
+	if err != nil {
+		return fmt.Errorf("Cannot get replica client for %v: %v",
+			fromReplica.Address, err)
+	}
+
+	toClient, err := client.NewReplicaClient(toReplica.Address)
+	if err != nil {
+		return fmt.Errorf("Cannot get replica client for %v: %v",
+			toReplica.Address, err)
+	}
+
+	host, port, err := toClient.LaunchReceiver(to)
+	if err != nil {
+		return err
+	}
+
+	logrus.Infof("Synchronizing %s to %s@%s:%d", from, to, host, port)
+	err = fromClient.SendFile(from, host, port)
+	if err != nil {
+		logrus.Infof("Failed synchronizing %s to %s@%s:%d: %v", from, to, host, port, err)
+	} else {
+		logrus.Infof("Done synchronizing %s to %s@%s:%d", from, to, host, port)
+	}
+
+	return err
+}
+
 func (c *Controller) PrepareRebuildReplica(address string) ([]string, error) {
 	c.Lock()
 	defer c.Unlock()
@@ -251,6 +284,18 @@ func (c *Controller) PrepareRebuildReplica(address string) ([]string, error) {
 
 	rwChain, err := getReplicaChain(rwReplica.Address)
 	if err != nil {
+		return nil, err
+	}
+
+	fromHead := rwChain[0]
+
+	chain, err := getReplicaChain(address)
+	if err != nil {
+		return nil, err
+	}
+	toHead := chain[0]
+
+	if err := syncFile(fromHead+".meta", toHead+".meta", rwReplica, replica); err != nil {
 		return nil, err
 	}
 
