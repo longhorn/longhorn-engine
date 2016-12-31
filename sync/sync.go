@@ -2,7 +2,6 @@ package sync
 
 import (
 	"fmt"
-	"reflect"
 	"strings"
 
 	"github.com/Sirupsen/logrus"
@@ -190,11 +189,11 @@ func (t *Task) AddReplica(replica string) error {
 		return err
 	}
 
-	if err := t.reloadAndCheck(fromClient, toClient); err != nil {
+	if err := t.reloadAndCheck(replica, toClient); err != nil {
 		return err
 	}
 
-	return t.setRw(replica)
+	return nil
 }
 
 func (t *Task) checkAndResetFailedRebuild(address string) error {
@@ -223,45 +222,20 @@ func (t *Task) checkAndResetFailedRebuild(address string) error {
 	return nil
 }
 
-func (t *Task) setRw(replica string) error {
-	to, err := t.getToReplica(replica)
+func (t *Task) reloadAndCheck(address string, repClient *replicaClient.ReplicaClient) error {
+	_, err := repClient.ReloadReplica()
 	if err != nil {
 		return err
 	}
 
-	to.Mode = "RW"
-
-	to, err = t.client.UpdateReplica(to)
-	if err != nil {
+	if err := t.client.CheckReplica(rest.EncodeID(address)); err != nil {
 		return err
 	}
 
-	if to.Mode != "RW" {
-		return fmt.Errorf("Failed to set replica to RW, in mode %s", to.Mode)
+	if err := repClient.SetRebuilding(false); err != nil {
+		return err
 	}
-
 	return nil
-}
-
-func (t *Task) reloadAndCheck(fromClient *replicaClient.ReplicaClient, toClient *replicaClient.ReplicaClient) error {
-	from, err := fromClient.GetReplica()
-	if err != nil {
-		return err
-	}
-
-	to, err := toClient.ReloadReplica()
-	if err != nil {
-		return err
-	}
-
-	fromChain := from.Chain[1:]
-	toChain := to.Chain[1:]
-
-	if !reflect.DeepEqual(fromChain, toChain) {
-		return fmt.Errorf("Chains are not equal: %v != %v", fromChain, toChain)
-	}
-
-	return toClient.SetRebuilding(false)
 }
 
 func (t *Task) syncFiles(fromClient *replicaClient.ReplicaClient, toClient *replicaClient.ReplicaClient) error {

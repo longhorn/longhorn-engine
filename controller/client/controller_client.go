@@ -138,6 +138,20 @@ func (c *ControllerClient) UpdateReplica(replica rest.Replica) (rest.Replica, er
 	return resp, err
 }
 
+func (c *ControllerClient) GetReplica(address string) (*rest.Replica, error) {
+	resp := &rest.Replica{}
+	err := c.get("/replicas/"+address, &resp)
+	return resp, err
+}
+
+func (c *ControllerClient) CheckReplica(address string) error {
+	replica, err := c.GetReplica(address)
+	if err != nil {
+		return err
+	}
+	return c.post(replica.Actions["check"], &replica, nil)
+}
+
 func (c *ControllerClient) GetVolume() (*rest.Volume, error) {
 	var volumes rest.VolumeCollection
 

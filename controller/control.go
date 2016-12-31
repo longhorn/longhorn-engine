@@ -2,9 +2,11 @@ package controller
 
 import (
 	"fmt"
+	"reflect"
 	"sync"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/rancher/longhorn/replica/client"
 	"github.com/rancher/longhorn/types"
 	"github.com/rancher/longhorn/util"
 )
@@ -155,6 +157,84 @@ func (c *Controller) RemoveReplica(address string) error {
 
 func (c *Controller) ListReplicas() []types.Replica {
 	return c.replicas
+}
+
+func getReplicaChain(address string) ([]string, error) {
+	repClient, err := client.NewReplicaClient(address)
+	if err != nil {
+		return nil, fmt.Errorf("Cannot get replica client for %v: %v",
+			address, err)
+	}
+
+	rep, err := repClient.GetReplica()
+	if err != nil {
+		return nil, fmt.Errorf("Cannot get replica for %v: %v",
+			address, err)
+	}
+	return rep.Chain, nil
+}
+
+func (c *Controller) getCurrentAndRWReplica(address string) (*types.Replica, *types.Replica, error) {
+	var (
+		current, rwReplica *types.Replica
+	)
+
+	for i := range c.replicas {
+		if c.replicas[i].Address == address {
+			current = &c.replicas[i]
+		} else if c.replicas[i].Mode == types.RW {
+			rwReplica = &c.replicas[i]
+		}
+	}
+	if current == nil {
+		return nil, nil, fmt.Errorf("Cannot find replica %v", address)
+	}
+	if rwReplica == nil {
+		return nil, nil, fmt.Errorf("Cannot find any healthy replica")
+	}
+
+	return current, rwReplica, nil
+}
+
+func (c *Controller) CheckReplica(address string) error {
+	// Prevent snapshot happenes at the same time, well at least no
+	// controller involved
+	c.Lock()
+	defer c.Unlock()
+
+	replica, rwReplica, err := c.getCurrentAndRWReplica(address)
+	if err != nil {
+		return err
+	}
+
+	if replica.Mode == types.RW {
+		return nil
+	}
+	if replica.Mode != types.WO {
+		return fmt.Errorf("Invalid mode %v for replica %v to check", replica.Mode, address)
+	}
+
+	rwChain, err := getReplicaChain(rwReplica.Address)
+	if err != nil {
+		return err
+	}
+	// Don't need to compare the volume head disk
+	rwChain = rwChain[1:]
+
+	chain, err := getReplicaChain(address)
+	if err != nil {
+		return err
+	}
+	chain = chain[1:]
+
+	if !reflect.DeepEqual(rwChain, chain) {
+		return fmt.Errorf("Replica %v's chain not equal to RW replica %v's chain",
+			address, rwReplica.Address)
+	}
+
+	logrus.Debugf("WO replica %v's chain verified, update mode to RW", address)
+	c.setReplicaModeNoLock(address, types.RW)
+	return nil
 }
 
 func (c *Controller) SetReplicaMode(address string, mode types.Mode) error {

@@ -77,14 +77,17 @@ func NewVolume(context *api.ApiContext, name string, replicas int) *Volume {
 }
 
 func NewReplica(context *api.ApiContext, address string, mode types.Mode) *Replica {
-	return &Replica{
+	r := &Replica{
 		Resource: client.Resource{
-			Id:   EncodeID(address),
-			Type: "replica",
+			Id:      EncodeID(address),
+			Type:    "replica",
+			Actions: map[string]string{},
 		},
 		Address: address,
 		Mode:    string(mode),
 	}
+	r.Actions["check"] = context.UrlBuilder.ActionLink(r.Resource, "check")
+	return r
 }
 
 func DencodeID(id string) (string, error) {
