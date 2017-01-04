@@ -31,6 +31,11 @@ type ReplicaCollection struct {
 	Data []Replica `json:"data"`
 }
 
+type DiskCollection struct {
+	client.Collection
+	Data []string `json:"data"`
+}
+
 type StartInput struct {
 	client.Resource
 	Replicas []string `json:"replicas"`
@@ -55,6 +60,11 @@ type JournalInput struct {
 	Limit int `json:"limit"`
 }
 
+type PrepareRebuildOutput struct {
+	client.Resource
+	Disks []string `json:"disks"`
+}
+
 func NewVolume(context *api.ApiContext, name string, replicas int) *Volume {
 	v := &Volume{
 		Resource: client.Resource{
@@ -76,15 +86,19 @@ func NewVolume(context *api.ApiContext, name string, replicas int) *Volume {
 	return v
 }
 
-func NewReplica(address string, mode types.Mode) *Replica {
-	return &Replica{
+func NewReplica(context *api.ApiContext, address string, mode types.Mode) *Replica {
+	r := &Replica{
 		Resource: client.Resource{
-			Id:   EncodeID(address),
-			Type: "replica",
+			Id:      EncodeID(address),
+			Type:    "replica",
+			Actions: map[string]string{},
 		},
 		Address: address,
 		Mode:    string(mode),
 	}
+	r.Actions["check"] = context.UrlBuilder.ActionLink(r.Resource, "check")
+	r.Actions["preparerebuild"] = context.UrlBuilder.ActionLink(r.Resource, "preparerebuild")
+	return r
 }
 
 func DencodeID(id string) (string, error) {
@@ -110,10 +124,16 @@ func NewSchema() *client.Schemas {
 	schemas.AddType("snapshotInput", SnapshotInput{})
 	schemas.AddType("revertInput", RevertInput{})
 	schemas.AddType("journalInput", JournalInput{})
+	schemas.AddType("prepareRebuildOutput", PrepareRebuildOutput{})
 
 	replica := schemas.AddType("replica", Replica{})
 	replica.CollectionMethods = []string{"GET", "POST"}
 	replica.ResourceMethods = []string{"GET", "PUT"}
+	replica.ResourceActions = map[string]client.Action{
+		"preparerebuild": {
+			Output: "prepareRebuildOutput",
+		},
+	}
 
 	f := replica.ResourceFields["address"]
 	f.Create = true
@@ -125,18 +145,18 @@ func NewSchema() *client.Schemas {
 
 	volumes := schemas.AddType("volume", Volume{})
 	volumes.ResourceActions = map[string]client.Action{
-		"revert": client.Action{
+		"revert": {
 			Input:  "revertInput",
 			Output: "volume",
 		},
-		"start": client.Action{
+		"start": {
 			Input:  "startInput",
 			Output: "volume",
 		},
-		"shutdown": client.Action{
+		"shutdown": {
 			Output: "volume",
 		},
-		"snapshot": client.Action{
+		"snapshot": {
 			Input:  "snapshotInput",
 			Output: "snapshotOutput",
 		},

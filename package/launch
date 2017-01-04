@@ -1,25 +1,29 @@
 #!/bin/bash
 
-if [ "$1" == "controller" ]; then
-        mount --rbind /host/dev /dev
+is_controller=0
+fe=0
+frontend=
+for i in "$@"
+do
+        if [ $fe -eq 1 ]
+        then
+                frontend=$i
+                break
+        fi
+        case $i in
+                controller)
+                        is_controller=1
+                        ;;
+                --frontend)
+                        fe=1
+                        ;;
+                *)
+                        ;;
+        esac
+done
 
-        frontend=
-        fe=0
-        for i in "$@"
-        do
-                if [ $fe -eq 1 ]
-                then
-                        frontend=$i
-                        break
-                fi
-                case $i in
-                        --frontend)
-                                fe=1
-                                ;;
-                        *)
-                                ;;
-                esac
-        done
+if [ $is_controller -eq 1 ]; then
+        mount --rbind /host/dev /dev
 
         if [ "$frontend" == "tcmu" ]
         then

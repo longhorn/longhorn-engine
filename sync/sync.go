@@ -2,7 +2,6 @@ package sync
 
 import (
 	"fmt"
-	"reflect"
 	"strings"
 
 	"github.com/Sirupsen/logrus"
@@ -186,15 +185,20 @@ func (t *Task) AddReplica(replica string) error {
 		return err
 	}
 
-	if err = t.syncFiles(fromClient, toClient); err != nil {
+	output, err := t.client.PrepareRebuild(rest.EncodeID(replica))
+	if err != nil {
 		return err
 	}
 
-	if err := t.reloadAndCheck(fromClient, toClient); err != nil {
+	if err = t.syncFiles(fromClient, toClient, output.Disks); err != nil {
 		return err
 	}
 
-	return t.setRw(replica)
+	if err := t.reloadAndCheck(replica, toClient); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (t *Task) checkAndResetFailedRebuild(address string) error {
@@ -223,82 +227,31 @@ func (t *Task) checkAndResetFailedRebuild(address string) error {
 	return nil
 }
 
-func (t *Task) setRw(replica string) error {
-	to, err := t.getToReplica(replica)
+func (t *Task) reloadAndCheck(address string, repClient *replicaClient.ReplicaClient) error {
+	_, err := repClient.ReloadReplica()
 	if err != nil {
 		return err
 	}
 
-	to.Mode = "RW"
-
-	to, err = t.client.UpdateReplica(to)
-	if err != nil {
+	if err := t.client.CheckReplica(rest.EncodeID(address)); err != nil {
 		return err
 	}
 
-	if to.Mode != "RW" {
-		return fmt.Errorf("Failed to set replica to RW, in mode %s", to.Mode)
+	if err := repClient.SetRebuilding(false); err != nil {
+		return err
 	}
-
 	return nil
 }
 
-func (t *Task) reloadAndCheck(fromClient *replicaClient.ReplicaClient, toClient *replicaClient.ReplicaClient) error {
-	from, err := fromClient.GetReplica()
-	if err != nil {
-		return err
-	}
-
-	to, err := toClient.ReloadReplica()
-	if err != nil {
-		return err
-	}
-
-	fromChain := from.Chain[1:]
-	toChain := to.Chain[1:]
-
-	if !reflect.DeepEqual(fromChain, toChain) {
-		return fmt.Errorf("Chains are not equal: %v != %v", fromChain, toChain)
-	}
-
-	return toClient.SetRebuilding(false)
-}
-
-func (t *Task) syncFiles(fromClient *replicaClient.ReplicaClient, toClient *replicaClient.ReplicaClient) error {
-	from, err := fromClient.GetReplica()
-	if err != nil {
-		return err
-	}
-
+func (t *Task) syncFiles(fromClient *replicaClient.ReplicaClient, toClient *replicaClient.ReplicaClient, disks []string) error {
 	if err := toClient.SetRebuilding(true); err != nil {
 		return err
 	}
 
-	to, err := toClient.GetReplica()
-	if err != nil {
-		return err
-	}
-
-	fromHead := ""
-	toHead := ""
-
-	// Find the head from chain, since there is a gap between create the new
-	// head and remove the old head, which means there can be two heads in
-	// the same replica for a brief moment. Better check the chain for who's
-	// current head.
-	for _, disk := range from.Chain {
+	// volume head has been synced by PrepareRebuild()
+	for _, disk := range disks {
 		if strings.Contains(disk, "volume-head") {
-			if fromHead != "" {
-				return fmt.Errorf("More than one head volume found in the from replica %s, %s", fromHead, disk)
-			}
-			fromHead = disk
-			continue
-		}
-	}
-
-	for _, disk := range from.Disks {
-		if strings.Contains(disk, "volume-head") {
-			continue
+			return fmt.Errorf("Disk list shouldn't contain volume-head")
 		}
 		if err := t.syncFile(disk, "", fromClient, toClient); err != nil {
 			return err
@@ -309,49 +262,7 @@ func (t *Task) syncFiles(fromClient *replicaClient.ReplicaClient, toClient *repl
 		}
 	}
 
-	for _, i := range to.Chain {
-		if strings.Contains(i, "volume-head") {
-			if toHead != "" {
-				return fmt.Errorf("More than one head volume found in the to replica %s, %s", toHead, i)
-			}
-			toHead = i
-			continue
-		}
-	}
-
-	if fromHead == "" || toHead == "" {
-		return fmt.Errorf("Failed to find both source and destination head volumes, %s, %s", fromHead, toHead)
-	}
-
-	for i := 0; i < RetryCounts; i++ {
-		err = t.syncFile(fromHead+".meta", toHead+".meta", fromClient, toClient)
-		if err == nil {
-			break
-		}
-
-		logrus.Warnf("Retry sync volume head since may caused by snapshot in progress: %v",
-			fromHead, toHead, err)
-
-		from, ferr := fromClient.GetReplica()
-		if ferr != nil {
-			return ferr
-		}
-
-		fromHead = ""
-		for _, disk := range from.Chain {
-			if strings.Contains(disk, "volume-head") {
-				if fromHead != "" {
-					return fmt.Errorf("More than one head volume found in the from replica %s, %s",
-						fromHead, disk)
-				}
-				fromHead = disk
-				continue
-			}
-		}
-		logrus.Warnf("Sync current volume head %s to %s", fromHead, toHead)
-	}
-
-	return err
+	return nil
 }
 
 func (t *Task) syncFile(from, to string, fromClient *replicaClient.ReplicaClient, toClient *replicaClient.ReplicaClient) error {

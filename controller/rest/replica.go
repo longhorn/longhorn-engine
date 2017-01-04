@@ -13,7 +13,7 @@ func (s *Server) ListReplicas(rw http.ResponseWriter, req *http.Request) error {
 	apiContext := api.GetApiContext(req)
 	resp := client.GenericCollection{}
 	for _, r := range s.c.ListReplicas() {
-		resp.Data = append(resp.Data, NewReplica(r.Address, r.Mode))
+		resp.Data = append(resp.Data, NewReplica(apiContext, r.Address, r.Mode))
 	}
 
 	resp.ResourceType = "replica"
@@ -34,7 +34,7 @@ func (s *Server) GetReplica(rw http.ResponseWriter, req *http.Request) error {
 		return nil
 	}
 
-	apiContext.Write(s.getReplica(id))
+	apiContext.Write(s.getReplica(apiContext, id))
 	return nil
 }
 
@@ -49,14 +49,14 @@ func (s *Server) CreateReplica(rw http.ResponseWriter, req *http.Request) error 
 		return err
 	}
 
-	apiContext.Write(s.getReplica(replica.Address))
+	apiContext.Write(s.getReplica(apiContext, replica.Address))
 	return nil
 }
 
-func (s *Server) getReplica(id string) *Replica {
+func (s *Server) getReplica(context *api.ApiContext, id string) *Replica {
 	for _, r := range s.c.ListReplicas() {
 		if r.Address == id {
-			return NewReplica(r.Address, r.Mode)
+			return NewReplica(context, r.Address, r.Mode)
 		}
 	}
 	return nil
@@ -89,6 +89,46 @@ func (s *Server) UpdateReplica(rw http.ResponseWriter, req *http.Request) error 
 		return err
 	}
 
-	apiContext.Write(s.getReplica(id))
+	return s.GetReplica(rw, req)
+}
+
+func (s *Server) CheckReplica(rw http.ResponseWriter, req *http.Request) error {
+	vars := mux.Vars(req)
+	id, err := DencodeID(vars["id"])
+	if err != nil {
+		rw.WriteHeader(http.StatusNotFound)
+		return nil
+	}
+
+	if err := s.c.CheckReplica(id); err != nil {
+		return err
+	}
+
+	return s.GetReplica(rw, req)
+}
+
+func (s *Server) PrepareRebuildReplica(rw http.ResponseWriter, req *http.Request) error {
+	vars := mux.Vars(req)
+	id, err := DencodeID(vars["id"])
+	if err != nil {
+		rw.WriteHeader(http.StatusNotFound)
+		return nil
+	}
+
+	disks, err := s.c.PrepareRebuildReplica(id)
+	if err != nil {
+		return err
+	}
+
+	apiContext := api.GetApiContext(req)
+	resp := &PrepareRebuildOutput{
+		Resource: client.Resource{
+			Id:   id,
+			Type: "prepareRebuildOutput",
+		},
+		Disks: disks,
+	}
+
+	apiContext.Write(&resp)
 	return nil
 }
