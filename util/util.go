@@ -7,9 +7,12 @@ import (
 	"os"
 	"regexp"
 	"strconv"
+	"time"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/gorilla/handlers"
 	"github.com/satori/go.uuid"
+	"golang.org/x/sys/unix"
 )
 
 var (
@@ -79,22 +82,51 @@ func (h filteredLoggingHandler) ServeHTTP(w http.ResponseWriter, req *http.Reque
 }
 
 func DuplicateDevice(src, dest string) error {
-	if st, err := os.Stat(src); err != nil {
+	stat := unix.Stat_t{}
+	if err := unix.Stat(src, &stat); err != nil {
 		return fmt.Errorf("Cannot duplicate device because cannot find %s: %v", src, err)
-	} else if st.Mode()&os.ModeDevice == 0 {
-		return fmt.Errorf("Device %s is not a block device", src)
 	}
-	if err := os.Symlink(src, dest); err != nil {
-		return fmt.Errorf("Cannot duplicate device %s to %s: %v", src, dest, err)
+	major := int(stat.Rdev / 256)
+	minor := int(stat.Rdev % 256)
+	if err := mknod(dest, major, minor); err != nil {
+		return fmt.Errorf("Cannot duplicate device %s to %s", src, dest)
 	}
 	return nil
 }
 
+func mknod(device string, major, minor int) error {
+	var fileMode os.FileMode = 0600
+	fileMode |= unix.S_IFBLK
+	dev := int((major << 8) | (minor & 0xff) | ((minor & 0xfff00) << 12))
+
+	logrus.Infof("Creating device %s %d:%d", device, major, minor)
+	return unix.Mknod(device, uint32(fileMode), dev)
+}
+
 func RemoveDevice(dev string) error {
 	if _, err := os.Stat(dev); err == nil {
-		if err := os.Remove(dev); err != nil {
+		if err := remove(dev); err != nil {
 			return fmt.Errorf("Failed to removing device %s, %v", dev, err)
 		}
 	}
 	return nil
+}
+
+func removeAsync(path string, done chan<- error) {
+	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+		logrus.Errorf("Unable to remove: %v", path)
+		done <- err
+	}
+	done <- nil
+}
+
+func remove(path string) error {
+	done := make(chan error)
+	go removeAsync(path, done)
+	select {
+	case err := <-done:
+		return err
+	case <-time.After(30 * time.Second):
+		return fmt.Errorf("timeout trying to delete %s", path)
+	}
 }
