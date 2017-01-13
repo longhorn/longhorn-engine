@@ -3,7 +3,8 @@ RUN sed -i "s/http:\/\/archive.ubuntu.com\/ubuntu\//mirror:\/\/mirrors.ubuntu.co
 	apt-get update && apt-get install -y kmod curl nfs-common fuse \
         libibverbs1 librdmacm1 libconfig-general-perl libaio1
 
-COPY longhorn launch copy-binary launch-with-vm-backing-file launch-simple-longhorn /usr/bin/
+COPY longhorn launch copy-binary launch-with-vm-backing-file launch-simple-longhorn /usr/local/bin/
 COPY tgt_*.deb /opt/
 RUN dpkg -i /opt/tgt_*.deb
+VOLUME /usr/local/bin
 CMD ["longhorn"]
