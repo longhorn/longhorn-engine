@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/rancher/longhorn/util"
 	"github.com/yasker/go-iscsi-helper/iscsi"
 	iutil "github.com/yasker/go-iscsi-helper/util"
 	"github.com/yasker/nsfilelock"
@@ -43,7 +44,7 @@ func NewScsiDevice(name, backingFile, bsType, bsOpts string) (*ScsiDevice, error
 }
 
 func GetTargetName(name string) string {
-	return "iqn.2014-09.com.rancher:" + name
+	return "iqn.2014-09.com.rancher:" + util.Volume2ISCSIName(name)
 }
 
 func GetLocalIP() (string, error) {

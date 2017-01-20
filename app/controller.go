@@ -57,6 +57,10 @@ func startController(c *cli.Context) error {
 	}
 	name := c.Args()[0]
 
+	if !util.ValidVolumeName(name) {
+		return errors.New("invalid target name")
+	}
+
 	listen := c.String("listen")
 	backends := c.StringSlice("enable-backend")
 	replicas := c.StringSlice("replica")
@@ -88,8 +92,8 @@ func startController(c *cli.Context) error {
 	router := http.Handler(rest.NewRouter(server))
 
 	router = util.FilteredLoggingHandler(map[string]struct{}{
-		"/v1/volumes":  struct{}{},
-		"/v1/replicas": struct{}{},
+		"/v1/volumes":  {},
+		"/v1/replicas": {},
 	}, os.Stdout, router)
 	router = handlers.ProxyHeaders(router)
 

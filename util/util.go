@@ -7,6 +7,7 @@ import (
 	"os"
 	"regexp"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Sirupsen/logrus"
@@ -16,7 +17,8 @@ import (
 )
 
 var (
-	parsePattern = regexp.MustCompile(`(.*):(\d+)`)
+	MaximumVolumeNameSize = 64
+	parsePattern          = regexp.MustCompile(`(.*):(\d+)`)
 )
 
 func ParseAddresses(name string) (string, string, string, error) {
@@ -129,4 +131,16 @@ func remove(path string) error {
 	case <-time.After(30 * time.Second):
 		return fmt.Errorf("timeout trying to delete %s", path)
 	}
+}
+
+func ValidVolumeName(name string) bool {
+	if len(name) > MaximumVolumeNameSize {
+		return false
+	}
+	validName := regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.-]+$`)
+	return validName.MatchString(name)
+}
+
+func Volume2ISCSIName(name string) string {
+	return strings.Replace(name, "_", ":", -1)
 }

@@ -7,7 +7,7 @@ import common
 from common import dev, backing_dev  # NOQA
 from common import read_dev, read_from_backing_file, BACKUP_DEST
 
-VOLUME_NAME = 'test-volume'
+VOLUME_NAME = 'test-volume_1.0'
 VOLUME_SIZE = str(4 * 1024 * 1024)  # 4M
 
 
