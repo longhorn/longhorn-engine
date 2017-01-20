@@ -14,7 +14,7 @@ REPLICA2 = 'tcp://localhost:9505'
 
 BACKUP_DEST = '/tmp/longhorn-backup'
 
-VOLUME_NAME = 'test-volume'
+VOLUME_NAME = 'test-volume_1.0'
 VOLUME_SIZE = str(4 * 1024 * 1024)  # 4M
 
 
@@ -461,7 +461,8 @@ def test_backup_core(bin, controller_client, replica_client,
     assert backup2_info["SnapshotName"] == snapshot2
 
     cmd = [bin, 'backup', 'inspect',
-           "vfs:///tmp/longhorn-backup?backup=backup-1234&volume=test-volume"]
+           "vfs:///tmp/longhorn-backup?backup=backup-1234"
+           + "&volume=test-volume_1.0"]
     with pytest.raises(subprocess.CalledProcessError) as e:
         subprocess.check_call(cmd)
         assert 'cannot find' in str(e.value)
@@ -480,7 +481,8 @@ def test_backup_core(bin, controller_client, replica_client,
     assert os.path.exists(BACKUP_DEST)
 
     cmd = [bin, 'backup', 'inspect',
-           "vfs:///tmp/longhorn-backup?backup=backup-1234&volume=test-volume"]
+           "vfs:///tmp/longhorn-backup?backup=backup-1234"
+           + "&volume=test-volume_1.0"]
     with pytest.raises(subprocess.CalledProcessError) as e:
         subprocess.check_call(cmd)
         assert 'cannot find' in str(e.value)

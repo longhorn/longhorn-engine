@@ -31,7 +31,7 @@ BACKUP_DEST = 'vfs://' + BACKUP_DIR
 
 BACKING_FILE = 'backing_file.raw'
 
-VOLUME_NAME = 'test-volume'
+VOLUME_NAME = 'test-volume_1.0'
 
 
 def _file(f):
