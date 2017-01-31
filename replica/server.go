@@ -257,3 +257,13 @@ func (s *Server) ReadAt(buf []byte, offset int64) (int, error) {
 	i, err := s.r.ReadAt(buf, offset)
 	return i, err
 }
+
+func (s *Server) SetRevisionCounter(counter int64) error {
+	s.Lock()
+	defer s.Unlock()
+
+	if s.r == nil {
+		return nil
+	}
+	return s.r.SetRevisionCounter(counter)
+}

@@ -765,6 +765,7 @@ func (r *Replica) Delete() error {
 	}
 
 	os.Remove(r.diskPath(volumeMetaData))
+	os.Remove(r.diskPath(revisionCounterFile))
 	return nil
 }
 

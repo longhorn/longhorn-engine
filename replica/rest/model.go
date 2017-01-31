@@ -21,6 +21,7 @@ type Replica struct {
 	Disks           []string                   `json:"disks"`
 	DiskChildrenMap map[string]map[string]bool `json:"diskchildrenmap"`
 	RemainSnapshots int                        `json:"remainsnapshots"`
+	RevisionCounter int64                      `json:"revisioncounter"`
 }
 
 type CreateInput struct {
@@ -58,6 +59,11 @@ type PrepareRemoveDiskOutput struct {
 	Operations []replica.PrepareRemoveAction `json:"operations"`
 }
 
+type RevisionCounter struct {
+	client.Resource
+	Counter int64 `json:"counter"`
+}
+
 func NewReplica(context *api.ApiContext, state replica.State, info replica.Info, rep *replica.Replica) *Replica {
 	r := &Replica{
 		Resource: client.Resource{
@@ -82,6 +88,7 @@ func NewReplica(context *api.ApiContext, state replica.State, info replica.Info,
 		actions["removedisk"] = true
 		actions["revert"] = true
 		actions["prepareremovedisk"] = true
+		actions["setrevisioncounter"] = true
 	case replica.Closed:
 		actions["open"] = true
 		actions["removedisk"] = true
@@ -100,6 +107,7 @@ func NewReplica(context *api.ApiContext, state replica.State, info replica.Info,
 		actions["setrebuilding"] = true
 		actions["close"] = true
 		actions["reload"] = true
+		actions["setrevisioncounter"] = true
 	case replica.Error:
 	}
 
@@ -119,6 +127,7 @@ func NewReplica(context *api.ApiContext, state replica.State, info replica.Info,
 		r.Disks = rep.ListDisks()
 		r.DiskChildrenMap = rep.ShowDiskChildrenMap()
 		r.RemainSnapshots = rep.GetRemainSnapshotCounts()
+		r.RevisionCounter = rep.GetRevisionCounter()
 	}
 
 	return r
@@ -137,6 +146,7 @@ func NewSchema() *client.Schemas {
 	schemas.AddType("revertInput", RevertInput{})
 	schemas.AddType("prepareRemoveDiskInput", PrepareRemoveDiskInput{})
 	schemas.AddType("prepareRemoveDiskOutput", PrepareRemoveDiskOutput{})
+	schemas.AddType("revisionCounter", RevisionCounter{})
 	replica := schemas.AddType("replica", Replica{})
 
 	replica.ResourceMethods = []string{"GET", "DELETE"}
@@ -173,6 +183,9 @@ func NewSchema() *client.Schemas {
 		"prepareremovedisk": {
 			Input:  "prepareRemoveDiskInput",
 			Output: "prepareRemoveDiskOutput",
+		},
+		"setrevisioncounter": {
+			Input: "revisionCounter",
 		},
 	}
 

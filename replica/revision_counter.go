@@ -7,16 +7,21 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/rancher/sparse-tools/sparse"
 )
 
 const (
-	revisionCacheFile             = "revision.counter"
-	revisionFileMode  os.FileMode = 0600
-	revisionBlockSize             = 4096
+	revisionCounterFile             = "revision.counter"
+	revisionFileMode    os.FileMode = 0600
+	revisionBlockSize               = 4096
 )
 
 func (r *Replica) readRevisionCounter() (int64, error) {
+	if r.revisionFile == nil {
+		return 0, fmt.Errorf("BUG: revision file wasn't initialized")
+	}
+
 	buf := make([]byte, revisionBlockSize)
 	_, err := r.revisionFile.ReadAt(buf, 0)
 	if err != nil && err != io.EOF {
@@ -30,6 +35,10 @@ func (r *Replica) readRevisionCounter() (int64, error) {
 }
 
 func (r *Replica) writeRevisionCounter(counter int64) error {
+	if r.revisionFile == nil {
+		return fmt.Errorf("BUG: revision file wasn't initialized")
+	}
+
 	buf := make([]byte, revisionBlockSize)
 	copy(buf, []byte(strconv.FormatInt(counter, 10)))
 	_, err := r.revisionFile.WriteAt(buf, 0)
@@ -41,7 +50,7 @@ func (r *Replica) writeRevisionCounter(counter int64) error {
 
 func (r *Replica) openRevisionFile(isCreate bool) error {
 	var err error
-	r.revisionFile, err = sparse.NewDirectFileIoProcessor(r.diskPath(revisionCacheFile), os.O_RDWR, revisionFileMode, isCreate)
+	r.revisionFile, err = sparse.NewDirectFileIoProcessor(r.diskPath(revisionCounterFile), os.O_RDWR, revisionFileMode, isCreate)
 	return err
 }
 
@@ -49,7 +58,7 @@ func (r *Replica) initRevisionCounter() error {
 	r.revisionLock.Lock()
 	defer r.revisionLock.Unlock()
 
-	if _, err := os.Stat(r.diskPath(revisionCacheFile)); err != nil {
+	if _, err := os.Stat(r.diskPath(revisionCounterFile)); err != nil {
 		if !os.IsNotExist(err) {
 			return err
 		}
@@ -75,19 +84,21 @@ func (r *Replica) initRevisionCounter() error {
 	return nil
 }
 
-func (r *Replica) getRevisionCounter() (int64, error) {
+func (r *Replica) GetRevisionCounter() int64 {
 	r.revisionLock.Lock()
 	defer r.revisionLock.Unlock()
 
 	counter, err := r.readRevisionCounter()
 	if err != nil {
-		return 0, err
+		logrus.Error("Fail to get revision counter: ", err)
+		// -1 will result in the replica to be discarded
+		return -1
 	}
 	r.revisionCache = counter
-	return counter, nil
+	return counter
 }
 
-func (r *Replica) setRevisionCounter(counter int64) error {
+func (r *Replica) SetRevisionCounter(counter int64) error {
 	r.revisionLock.Lock()
 	defer r.revisionLock.Unlock()
 
@@ -100,5 +111,5 @@ func (r *Replica) setRevisionCounter(counter int64) error {
 }
 
 func (r *Replica) increaseRevisionCounter() error {
-	return r.setRevisionCounter(r.revisionCache + 1)
+	return r.SetRevisionCounter(r.revisionCache + 1)
 }
