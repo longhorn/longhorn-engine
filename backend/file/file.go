@@ -43,6 +43,14 @@ func (f *Wrapper) RemainSnapshots() (int, error) {
 	return 1, nil
 }
 
+func (f *Wrapper) GetRevisionCounter() (int64, error) {
+	return 1, nil
+}
+
+func (f *Wrapper) SetRevisionCounter(counter int64) error {
+	return nil
+}
+
 func (ff *Factory) Create(address string) (types.Backend, error) {
 	logrus.Infof("Creating file: %s", address)
 	file, err := os.OpenFile(address, os.O_RDWR|os.O_CREATE, 0600)

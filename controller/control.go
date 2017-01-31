@@ -232,6 +232,14 @@ func (c *Controller) CheckReplica(address string) error {
 			address, rwReplica.Address)
 	}
 
+	counter, err := c.backend.GetRevisionCounter(rwReplica.Address)
+	if err != nil || counter == -1 {
+		return fmt.Errorf("Failed to get revision counter of RW Replica %v: counter %v, err %v",
+			rwReplica.Address, counter, err)
+
+	}
+	c.backend.SetRevisionCounter(address, counter)
+
 	logrus.Debugf("WO replica %v's chain verified, update mode to RW", address)
 	c.setReplicaModeNoLock(address, types.RW)
 	return nil
@@ -273,6 +281,8 @@ func syncFile(from, to string, fromReplica, toReplica *types.Replica) error {
 func (c *Controller) PrepareRebuildReplica(address string) ([]string, error) {
 	c.Lock()
 	defer c.Unlock()
+
+	c.backend.SetRevisionCounter(address, 0)
 
 	replica, rwReplica, err := c.getCurrentAndRWReplica(address)
 	if err != nil {
