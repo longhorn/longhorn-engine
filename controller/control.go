@@ -351,6 +351,8 @@ func (c *Controller) startFrontend() error {
 }
 
 func (c *Controller) Start(addresses ...string) error {
+	var expectedRevision int64
+
 	c.Lock()
 	defer c.Unlock()
 
@@ -396,7 +398,28 @@ func (c *Controller) Start(addresses ...string) error {
 		if err := c.addReplicaNoLock(newBackend, address, false); err != nil {
 			return err
 		}
+		// We will validate this later
 		c.setReplicaModeNoLock(address, types.RW)
+	}
+
+	revisionCounters := make(map[string]int64)
+	for _, r := range c.replicas {
+		counter, err := c.backend.GetRevisionCounter(r.Address)
+		if err != nil {
+			return err
+		}
+		if counter > expectedRevision {
+			expectedRevision = counter
+		}
+		revisionCounters[r.Address] = counter
+	}
+
+	for address, counter := range revisionCounters {
+		if counter != expectedRevision {
+			logrus.Errorf("Revision conflict detected! Expect %v, got %v in replica %v. Mark as ERR",
+				expectedRevision, counter, address)
+			c.setReplicaModeNoLock(address, types.ERR)
+		}
 	}
 
 	return nil
