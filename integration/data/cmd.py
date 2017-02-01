@@ -55,3 +55,8 @@ def backup_restore(backup):
 def backup_inspect(backup):
     cmd = [_bin(), '--debug', 'backup', 'inspect', backup]
     return json.loads(subprocess.check_output(cmd))
+
+
+def add_replica(url):
+    cmd = [_bin(), '--debug', 'add', url]
+    return subprocess.check_output(cmd).strip()
