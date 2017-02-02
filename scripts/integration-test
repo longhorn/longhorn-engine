@@ -42,11 +42,11 @@ then
 fi
 
 ./bin/longhorn controller --frontend tgt --enable-backend file test-volume_1.0 &
-controller_pid=$!
+pid_controller=$!
 ./bin/longhorn replica $temp &
-replica1_pid=$!
+pid_replica1=$!
 ./bin/longhorn replica --listen localhost:9505 $temp2 &
-replica2_pid=$!
+pid_replica2=$!
 
 # replica with 4MB backing file
 backing_file=backing_file.raw
@@ -59,18 +59,18 @@ cp $backing_qcow2 $temp3
 cp $backing_qcow2 $temp4
 
 ./bin/longhorn replica --listen localhost:9602 --backing-file $backing_qcow2 $temp3 &
-backing_replica1_pid=$!
+pid_backing_replica1=$!
 ./bin/longhorn replica --listen localhost:9605 --backing-file $backing_qcow2 $temp4 &
-backing_replica2_pid=$!
+pid_backing_replica2=$!
 
 # make sure everything is running before continue integration test
-ps $controller_pid
-ps $replica1_pid
-ps $replica2_pid
-ps $backing_replica1_pid
-ps $backing_replica2_pid
+ps $pid_controller
+ps $pid_replica1
+ps $pid_replica2
+ps $pid_backing_replica1
+ps $pid_backing_replica2
 
-trap "kill $controller_pid $replica1_pid $replica2_pid $backing_replica1_pid $backing_replica2_pid" EXIT
+trap "kill $pid_controller $pid_replica1 $pid_replica2 $pid_backing_replica1 $pid_backing_replica2" EXIT
 
 cd integration
 find -depth -name __pycache__ -o -name "*.pyc" -exec rm -rf {} \;
