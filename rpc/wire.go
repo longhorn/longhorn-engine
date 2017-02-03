@@ -3,6 +3,7 @@ package rpc
 import (
 	"bufio"
 	"encoding/binary"
+	"fmt"
 	"io"
 	"net"
 )
@@ -22,6 +23,9 @@ func NewWire(conn net.Conn) *Wire {
 }
 
 func (w *Wire) Write(msg *Message) error {
+	if err := binary.Write(w.writer, binary.LittleEndian, msg.MagicVersion); err != nil {
+		return err
+	}
 	if err := binary.Write(w.writer, binary.LittleEndian, msg.Seq); err != nil {
 		return err
 	}
@@ -48,6 +52,12 @@ func (w *Wire) Read() (*Message, error) {
 		length uint32
 	)
 
+	if err := binary.Read(w.reader, binary.LittleEndian, &msg.MagicVersion); err != nil {
+		return nil, err
+	}
+	if msg.MagicVersion != MagicVersion {
+		return nil, fmt.Errorf("Wrong API version received: 0x%x", &msg.MagicVersion)
+	}
 	if err := binary.Read(w.reader, binary.LittleEndian, &msg.Seq); err != nil {
 		return nil, err
 	}

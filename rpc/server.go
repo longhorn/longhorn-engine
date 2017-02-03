@@ -84,6 +84,7 @@ func (s *Server) handleWrite(msg *Message) {
 }
 
 func (s *Server) pushResponse(count int, msg *Message, err error) {
+	msg.MagicVersion = MagicVersion
 	msg.Type = TypeResponse
 	if err == io.EOF {
 		msg.Data = msg.Data[:count]
