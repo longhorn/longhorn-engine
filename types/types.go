@@ -29,6 +29,8 @@ type Backend interface {
 	Size() (int64, error)
 	SectorSize() (int64, error)
 	RemainSnapshots() (int, error)
+	GetRevisionCounter() (int64, error)
+	SetRevisionCounter(counter int64) error
 }
 
 type BackendFactory interface {

@@ -145,3 +145,12 @@ func (s *Server) CloseReplica(rw http.ResponseWriter, req *http.Request) error {
 func (s *Server) DeleteReplica(rw http.ResponseWriter, req *http.Request) error {
 	return s.doOp(req, s.s.Delete())
 }
+
+func (s *Server) SetRevisionCounter(rw http.ResponseWriter, req *http.Request) error {
+	var input RevisionCounter
+	apiContext := api.GetApiContext(req)
+	if err := apiContext.Read(&input); err != nil && err != io.EOF {
+		return err
+	}
+	return s.doOp(req, s.s.SetRevisionCounter(input.Counter))
+}

@@ -40,6 +40,10 @@ type Replica struct {
 	diskChildrenMap map[string]map[string]bool
 	activeDiskData  []*disk
 	readOnly        bool
+
+	revisionLock  sync.Mutex
+	revisionCache int64
+	revisionFile  *sparse.DirectFileIoProcessor
 }
 
 type Info struct {
@@ -118,6 +122,10 @@ func construct(readonly bool, size, sectorSize int64, dir, head string, backingF
 	// Scan all the disks to build the disk map
 	exists, err := r.readMetadata()
 	if err != nil {
+		return nil, err
+	}
+
+	if err := r.initRevisionCounter(); err != nil {
 		return nil, err
 	}
 
@@ -757,6 +765,7 @@ func (r *Replica) Delete() error {
 	}
 
 	os.Remove(r.diskPath(volumeMetaData))
+	os.Remove(r.diskPath(revisionCounterFile))
 	return nil
 }
 
@@ -783,7 +792,13 @@ func (r *Replica) WriteAt(buf []byte, offset int64) (int, error) {
 	r.info.Dirty = true
 	c, err := r.volume.WriteAt(buf, offset)
 	r.RUnlock()
-	return c, err
+	if err != nil {
+		return c, err
+	}
+	if err := r.increaseRevisionCounter(); err != nil {
+		return c, err
+	}
+	return c, nil
 }
 
 func (r *Replica) ReadAt(buf []byte, offset int64) (int, error) {

@@ -120,6 +120,42 @@ func (r *Remote) RemainSnapshots() (int, error) {
 	return replica.RemainSnapshots, nil
 }
 
+func (r *Remote) GetRevisionCounter() (int64, error) {
+	replica, err := r.info()
+	if err != nil {
+		return 0, err
+	}
+	if replica.State != "open" && replica.State != "dirty" {
+		return 0, fmt.Errorf("Invalid state %v for getting revision counter", replica.State)
+	}
+	return replica.RevisionCounter, nil
+}
+
+func (r *Remote) SetRevisionCounter(counter int64) error {
+	body := &bytes.Buffer{}
+	if err := json.NewEncoder(body).Encode(&map[string]int64{"counter": counter}); err != nil {
+		return err
+	}
+
+	req, err := http.NewRequest("POST", r.replicaURL+"?action=setrevisioncounter", body)
+	if err != nil {
+		return err
+	}
+	req.Header.Add("Content-Type", "application/json")
+
+	resp, err := r.httpClient.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("Bad status: %d %s", resp.StatusCode, resp.Status)
+	}
+
+	return nil
+}
+
 func (r *Remote) info() (rest.Replica, error) {
 	var replica rest.Replica
 	req, err := http.NewRequest("GET", r.replicaURL, nil)

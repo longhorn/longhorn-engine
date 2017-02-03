@@ -90,6 +90,11 @@ def backing_dev(request):
     return d
 
 
+@pytest.fixture()
+def controller(request):
+    return controller_client(request)
+
+
 def controller_client(request):
     url = 'http://localhost:9501/v1/schemas'
     c = cattle.from_env(url=url)
@@ -106,6 +111,16 @@ def cleanup_controller(client):
     for r in client.list_replica():
         client.delete(r)
     return client
+
+
+@pytest.fixture()
+def replica1(request):
+    return replica_client(request, REPLICA1_SCHEMA)
+
+
+@pytest.fixture()
+def replica2(request):
+    return replica_client(request, REPLICA2_SCHEMA)
 
 
 def replica_client(request, url):
@@ -199,3 +214,28 @@ def read_from_backing_file(offset, length):
 
 def checksum_dev(dev):
     return hashlib.sha512(dev.readat(0, SIZE)).hexdigest()
+
+
+def verify_loop(dev, times, offset, length):
+    for i in range(0, times):
+        data = random_string(length)
+        verify_data(dev, offset, data)
+
+
+def verify_replica_state(c, index, state):
+    for i in range(10):
+        replicas = c.list_replica()
+        assert len(replicas) == 2
+
+        if replicas[index].mode == state:
+            break
+
+        time.sleep(0.2)
+
+    assert replicas[index].mode == state
+
+
+def verify_read(dev, offset, data):
+    for i in range(10):
+        readed = read_dev(dev, offset, len(data))
+        assert data == readed
