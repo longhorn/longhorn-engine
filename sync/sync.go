@@ -194,7 +194,7 @@ func (t *Task) AddReplica(replica string) error {
 		return err
 	}
 
-	if err := t.reloadAndCheck(replica, toClient); err != nil {
+	if err := t.reloadAndVerify(replica, toClient); err != nil {
 		return err
 	}
 
@@ -227,13 +227,13 @@ func (t *Task) checkAndResetFailedRebuild(address string) error {
 	return nil
 }
 
-func (t *Task) reloadAndCheck(address string, repClient *replicaClient.ReplicaClient) error {
+func (t *Task) reloadAndVerify(address string, repClient *replicaClient.ReplicaClient) error {
 	_, err := repClient.ReloadReplica()
 	if err != nil {
 		return err
 	}
 
-	if err := t.client.CheckReplica(rest.EncodeID(address)); err != nil {
+	if err := t.client.VerifyRebuildReplica(rest.EncodeID(address)); err != nil {
 		return err
 	}
 

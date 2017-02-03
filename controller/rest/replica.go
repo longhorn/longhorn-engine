@@ -92,21 +92,6 @@ func (s *Server) UpdateReplica(rw http.ResponseWriter, req *http.Request) error 
 	return s.GetReplica(rw, req)
 }
 
-func (s *Server) CheckReplica(rw http.ResponseWriter, req *http.Request) error {
-	vars := mux.Vars(req)
-	id, err := DencodeID(vars["id"])
-	if err != nil {
-		rw.WriteHeader(http.StatusNotFound)
-		return nil
-	}
-
-	if err := s.c.CheckReplica(id); err != nil {
-		return err
-	}
-
-	return s.GetReplica(rw, req)
-}
-
 func (s *Server) PrepareRebuildReplica(rw http.ResponseWriter, req *http.Request) error {
 	vars := mux.Vars(req)
 	id, err := DencodeID(vars["id"])
@@ -131,4 +116,19 @@ func (s *Server) PrepareRebuildReplica(rw http.ResponseWriter, req *http.Request
 
 	apiContext.Write(&resp)
 	return nil
+}
+
+func (s *Server) VerifyRebuildReplica(rw http.ResponseWriter, req *http.Request) error {
+	vars := mux.Vars(req)
+	id, err := DencodeID(vars["id"])
+	if err != nil {
+		rw.WriteHeader(http.StatusNotFound)
+		return nil
+	}
+
+	if err := s.c.VerifyRebuildReplica(id); err != nil {
+		return err
+	}
+
+	return s.GetReplica(rw, req)
 }

@@ -196,7 +196,7 @@ func (c *Controller) getCurrentAndRWReplica(address string) (*types.Replica, *ty
 	return current, rwReplica, nil
 }
 
-func (c *Controller) CheckReplica(address string) error {
+func (c *Controller) VerifyRebuildReplica(address string) error {
 	// Prevent snapshot happenes at the same time, well at least no
 	// controller involved
 	c.Lock()
