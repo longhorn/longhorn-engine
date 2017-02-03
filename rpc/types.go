@@ -15,9 +15,14 @@ const (
 	writeBufferSize = 8096
 )
 
+const (
+	MagicVersion = uint16(0x1b01) // LongHorn01
+)
+
 type Message struct {
 	Complete chan struct{}
 
+	MagicVersion uint16
 	Seq          uint32
 	Type         uint32
 	Offset       int64

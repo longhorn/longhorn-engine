@@ -165,6 +165,7 @@ func (c *Client) handleRequest(req *Message) {
 		return
 	}
 
+	req.MagicVersion = MagicVersion
 	req.Seq = c.nextSeq()
 	c.messages[req.Seq] = req
 	c.send <- req
