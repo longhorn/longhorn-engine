@@ -144,12 +144,12 @@ func (c *ControllerClient) GetReplica(address string) (*rest.Replica, error) {
 	return resp, err
 }
 
-func (c *ControllerClient) CheckReplica(address string) error {
+func (c *ControllerClient) VerifyRebuildReplica(address string) error {
 	replica, err := c.GetReplica(address)
 	if err != nil {
 		return err
 	}
-	return c.post(replica.Actions["check"], &replica, nil)
+	return c.post(replica.Actions["verifyrebuild"], &replica, nil)
 }
 
 func (c *ControllerClient) PrepareRebuild(address string) (*rest.PrepareRebuildOutput, error) {
