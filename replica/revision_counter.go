@@ -80,6 +80,7 @@ func (r *Replica) initRevisionCounter() error {
 	// Don't use r.revisionCache directly
 	// r.revisionCache is an internal cache, to avoid read from disk
 	// everytime when counter needs to be updated.
+	// And it's protected by revisionLock
 	r.revisionCache = counter
 	return nil
 }
@@ -111,5 +112,13 @@ func (r *Replica) SetRevisionCounter(counter int64) error {
 }
 
 func (r *Replica) increaseRevisionCounter() error {
-	return r.SetRevisionCounter(r.revisionCache + 1)
+	r.revisionLock.Lock()
+	defer r.revisionLock.Unlock()
+
+	if err := r.writeRevisionCounter(r.revisionCache + 1); err != nil {
+		return err
+	}
+
+	r.revisionCache++
+	return nil
 }

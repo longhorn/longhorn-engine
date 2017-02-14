@@ -4,7 +4,7 @@ import cmd
 import common
 from common import controller, replica1, replica2 # NOQA
 from common import open_replica, get_blockdev, cleanup_replica
-from common import verify_read, verify_data
+from common import verify_read, verify_data, data_verifier
 
 def test_ha_single_replica_failure(controller, replica1, replica2):  # NOQA
     open_replica(replica1)
@@ -33,7 +33,7 @@ def test_ha_single_replica_failure(controller, replica1, replica2):  # NOQA
 
     cleanup_replica(replica2)
 
-    thread = threading.Thread(target=data_verifier, args=(dev, 10))
+    thread = threading.Thread(target=data_verifier, args=(dev, 10, 1024, 128))
     thread.start()
 
     common.verify_replica_state(controller, 1, "ERR")
@@ -70,7 +70,7 @@ def test_ha_single_replica_rebuild(controller, replica1, replica2):  # NOQA
     # Cleanup replica2
     cleanup_replica(replica2)
 
-    thread = threading.Thread(target=data_verifier, args=(dev, 10))
+    thread = threading.Thread(target=data_verifier, args=(dev, 10, 1024, 128))
     thread.start()
 
     common.verify_replica_state(controller, 1, "ERR")
@@ -85,7 +85,7 @@ def test_ha_single_replica_rebuild(controller, replica1, replica2):  # NOQA
     common.open_replica(replica2)
     cmd.add_replica(common.REPLICA2)
 
-    thread = threading.Thread(target=data_verifier, args=(dev, 10))
+    thread = threading.Thread(target=data_verifier, args=(dev, 10, 1024, 128))
     thread.start()
 
     common.verify_replica_state(controller, 1, "RW")
@@ -124,7 +124,7 @@ def test_ha_double_replica_rebuild(controller, replica1, replica2):  # NOQA
     assert r2.revisioncounter == 1
     r2.close()
 
-    thread = threading.Thread(target=data_verifier, args=(dev, 10))
+    thread = threading.Thread(target=data_verifier, args=(dev, 10, 1024, 128))
     thread.start()
 
     common.verify_replica_state(controller, 1, "ERR")
@@ -174,7 +174,7 @@ def test_ha_double_replica_rebuild(controller, replica1, replica2):  # NOQA
 
     cmd.add_replica(common.REPLICA2)
 
-    thread = threading.Thread(target=data_verifier, args=(dev, 10))
+    thread = threading.Thread(target=data_verifier, args=(dev, 10, 1024, 128))
     thread.start()
 
     common.verify_replica_state(controller, 1, "RW")
@@ -190,5 +190,31 @@ def test_ha_double_replica_rebuild(controller, replica1, replica2):  # NOQA
     assert r2.revisioncounter == 22  # must be in sync with r1
 
 
-def data_verifier(dev, times):
-    common.verify_loop(dev, times, 1024, 128)
+def test_ha_revision_counter_consistency(controller, replica1, replica2):  # NOQA
+    open_replica(replica1)
+    open_replica(replica2)
+
+    replicas = controller.list_replica()
+    assert len(replicas) == 0
+
+    v = controller.list_volume()[0]
+    v = v.start(replicas=[
+        common.REPLICA1,
+        common.REPLICA2
+    ])
+    assert v.replicaCount == 2
+
+    replicas = controller.list_replica()
+    assert len(replicas) == 2
+    assert replicas[0].mode == "RW"
+    assert replicas[1].mode == "RW"
+
+    dev = get_blockdev()
+
+    common.verify_async(dev, 10, 128, 100)
+
+    r1 = replica1.list_replica()[0]
+    r2 = replica2.list_replica()[0]
+    # kernel can merge requests so backend may not receive 1000 writes
+    assert r1.revisioncounter > 0
+    assert r1.revisioncounter == r2.revisioncounter

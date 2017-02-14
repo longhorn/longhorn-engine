@@ -3,6 +3,7 @@ import string
 import subprocess
 import hashlib
 import time
+import threading
 
 import os
 from os import path
@@ -216,8 +217,12 @@ def checksum_dev(dev):
     return hashlib.sha512(dev.readat(0, SIZE)).hexdigest()
 
 
+def data_verifier(dev, times, offset, length):
+    verify_loop(dev, times, offset, length)
+
+
 def verify_loop(dev, times, offset, length):
-    for i in range(0, times):
+    for i in range(times):
         data = random_string(length)
         verify_data(dev, offset, data)
 
@@ -239,3 +244,17 @@ def verify_read(dev, offset, data):
     for i in range(10):
         readed = read_dev(dev, offset, len(data))
         assert data == readed
+
+
+def verify_async(dev, times, length, count):
+    assert length * count < SIZE
+
+    threads = []
+    for i in range(count):
+        t = threading.Thread(target=data_verifier,
+                             args=(dev, times, i * PAGE_SIZE, length))
+        t.start()
+        threads.append(t)
+
+    for i in range(count):
+        threads[i].join()
