@@ -34,6 +34,8 @@ BACKING_FILE = 'backing_file.raw'
 
 VOLUME_NAME = 'test-volume_1.0'
 
+thread_failed = False
+
 
 def _file(f):
     return path.join(_base(), '../../{}'.format(f))
@@ -218,7 +220,12 @@ def checksum_dev(dev):
 
 
 def data_verifier(dev, times, offset, length):
-    verify_loop(dev, times, offset, length)
+    try:
+        verify_loop(dev, times, offset, length)
+    except Exception as ex:
+        global thread_failed
+        thread_failed = True
+        raise ex
 
 
 def verify_loop(dev, times, offset, length):
@@ -258,3 +265,8 @@ def verify_async(dev, times, length, count):
 
     for i in range(count):
         threads[i].join()
+
+    global thread_failed
+    if thread_failed:
+        thread_failed = False
+        raise Exception("data_verifier thread failed")

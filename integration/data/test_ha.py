@@ -1,10 +1,9 @@
-import threading
-
 import cmd
 import common
 from common import controller, replica1, replica2 # NOQA
 from common import open_replica, get_blockdev, cleanup_replica
-from common import verify_read, verify_data, data_verifier
+from common import verify_read, verify_data, verify_async
+
 
 def test_ha_single_replica_failure(controller, replica1, replica2):  # NOQA
     open_replica(replica1)
@@ -28,17 +27,14 @@ def test_ha_single_replica_failure(controller, replica1, replica2):  # NOQA
     dev = get_blockdev()
 
     data = common.random_string(128)
-    data_offset = 0
+    data_offset = 1024
     verify_data(dev, data_offset, data)
 
     cleanup_replica(replica2)
 
-    thread = threading.Thread(target=data_verifier, args=(dev, 10, 1024, 128))
-    thread.start()
+    verify_async(dev, 10, 128, 1)
 
     common.verify_replica_state(controller, 1, "ERR")
-
-    thread.join()
 
     verify_read(dev, data_offset, data)
 
@@ -64,18 +60,15 @@ def test_ha_single_replica_rebuild(controller, replica1, replica2):  # NOQA
     dev = get_blockdev()
 
     data = common.random_string(128)
-    data_offset = 0
+    data_offset = 1024
     verify_data(dev, data_offset, data)
 
     # Cleanup replica2
     cleanup_replica(replica2)
 
-    thread = threading.Thread(target=data_verifier, args=(dev, 10, 1024, 128))
-    thread.start()
+    verify_async(dev, 10, 128, 1)
 
     common.verify_replica_state(controller, 1, "ERR")
-
-    thread.join()
 
     verify_read(dev, data_offset, data)
 
@@ -85,12 +78,9 @@ def test_ha_single_replica_rebuild(controller, replica1, replica2):  # NOQA
     common.open_replica(replica2)
     cmd.add_replica(common.REPLICA2)
 
-    thread = threading.Thread(target=data_verifier, args=(dev, 10, 1024, 128))
-    thread.start()
+    verify_async(dev, 10, 128, 1)
 
     common.verify_replica_state(controller, 1, "RW")
-
-    thread.join()
 
     verify_read(dev, data_offset, data)
 
@@ -116,7 +106,7 @@ def test_ha_double_replica_rebuild(controller, replica1, replica2):  # NOQA
     dev = get_blockdev()
 
     data1 = common.random_string(128)
-    data1_offset = 0
+    data1_offset = 1024
     verify_data(dev, data1_offset, data1)
 
     # Close replica2
@@ -124,14 +114,11 @@ def test_ha_double_replica_rebuild(controller, replica1, replica2):  # NOQA
     assert r2.revisioncounter == 1
     r2.close()
 
-    thread = threading.Thread(target=data_verifier, args=(dev, 10, 1024, 128))
-    thread.start()
+    verify_async(dev, 10, 128, 1)
 
     common.verify_replica_state(controller, 1, "ERR")
 
     verify_read(dev, data1_offset, data1)
-
-    thread.join()
 
     data2 = common.random_string(128)
     data2_offset = 512
@@ -174,12 +161,9 @@ def test_ha_double_replica_rebuild(controller, replica1, replica2):  # NOQA
 
     cmd.add_replica(common.REPLICA2)
 
-    thread = threading.Thread(target=data_verifier, args=(dev, 10, 1024, 128))
-    thread.start()
+    verify_async(dev, 10, 128, 1)
 
     common.verify_replica_state(controller, 1, "RW")
-
-    thread.join()
 
     verify_read(dev, data1_offset, data1)
     verify_read(dev, data2_offset, data2)
