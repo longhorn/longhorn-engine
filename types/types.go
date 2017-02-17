@@ -22,6 +22,8 @@ type DiffDisk interface {
 	Fd() uintptr
 }
 
+type MonitorChannel chan error
+
 type Backend interface {
 	ReaderWriterAt
 	io.Closer
@@ -31,6 +33,7 @@ type Backend interface {
 	RemainSnapshots() (int, error)
 	GetRevisionCounter() (int64, error)
 	SetRevisionCounter(counter int64) error
+	GetMonitorChannel() MonitorChannel
 }
 
 type BackendFactory interface {
