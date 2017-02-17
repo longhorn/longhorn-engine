@@ -220,6 +220,8 @@ func (c *Controller) Start(addresses ...string) error {
 			return err
 		}
 
+		go c.monitoring(address, newBackend)
+
 		newSize, err := newBackend.Size()
 		if err != nil {
 			return err
@@ -377,4 +379,18 @@ func (c *Controller) Shutdown() error {
 
 func (c *Controller) Size() (int64, error) {
 	return c.size, nil
+}
+
+func (c *Controller) monitoring(address string, backend types.Backend) {
+	monitorChan := backend.GetMonitorChannel()
+
+	if monitorChan == nil {
+		return
+	}
+
+	err := <-monitorChan
+	if err != nil {
+		logrus.Errorf("Backend %v monitoring failed, mark as ERR", address)
+		c.SetReplicaMode(address, types.ERR)
+	}
 }

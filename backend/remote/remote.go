@@ -38,15 +38,15 @@ type Factory struct {
 
 type Remote struct {
 	types.ReaderWriterAt
-	name       string
-	pingURL    string
-	replicaURL string
-	httpClient *http.Client
-	closeChan  chan struct{}
+	name        string
+	pingURL     string
+	replicaURL  string
+	httpClient  *http.Client
+	closeChan   chan struct{}
+	monitorChan types.MonitorChannel
 }
 
 func (r *Remote) Close() error {
-	r.closeChan <- struct{}{}
 	logrus.Infof("Closing: %s", r.name)
 	return r.doAction("close", "")
 }
@@ -192,7 +192,8 @@ func (rf *Factory) Create(address string) (types.Backend, error) {
 		httpClient: &http.Client{
 			Timeout: timeout,
 		},
-		closeChan: make(chan struct{}, 1),
+		closeChan:   make(chan struct{}, 1),
+		monitorChan: make(types.MonitorChannel),
 	}
 
 	replica, err := r.info()
@@ -225,10 +226,14 @@ func (r *Remote) monitorPing(client *rpc.Client) error {
 	ticker := time.NewTicker(pingInveral)
 	defer ticker.Stop()
 
+	//bug here, if replica was marked as ERR in normal situation, this
+	//thread still won't exit until it failed multiple times of ping
+	// at least the channel should be closed
 	retry := 0
 	for {
 		select {
 		case <-r.closeChan:
+			r.monitorChan <- nil
 			return nil
 		case <-ticker.C:
 			if err := r.Ping(client); err == nil {
@@ -242,6 +247,7 @@ func (r *Remote) monitorPing(client *rpc.Client) error {
 					logrus.Errorf("Failed to get ping response from replica %v; error: %v", r.replicaURL, err)
 					journal.PrintLimited(1000) //flush automatically upon error
 					client.SetError(err)
+					r.monitorChan <- err
 					return err
 				}
 			}
@@ -276,4 +282,8 @@ func (r *Remote) Ping(client *rpc.Client) error {
 		journal.RemovePendingOp(opID, false)
 		return ErrPingTimeout
 	}
+}
+
+func (r *Remote) GetMonitorChannel() types.MonitorChannel {
+	return r.monitorChan
 }
