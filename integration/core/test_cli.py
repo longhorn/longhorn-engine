@@ -203,6 +203,37 @@ def test_replica_add_after_rebuild_failed(bin, controller_client,
         assert r.mode == 'RW'
 
 
+def test_replica_failure_detection(bin, controller_client,
+                                   replica_client, replica_client2):
+    open_replica(replica_client)
+    open_replica(replica_client2)
+
+    v = controller_client.list_volume()[0]
+    v = v.start(replicas=[
+        REPLICA,
+        REPLICA2,
+    ])
+    assert v.replicaCount == 2
+
+    # wait for initial read/write period to pass
+    time.sleep(2)
+
+    cleanup_replica(replica_client)
+
+    detected = False
+    for i in range(10):
+        replicas = controller_client.list_replica()
+        assert len(replicas) == 2
+        for r in replicas:
+            if r.address == REPLICA and r.mode == 'ERR':
+                detected = True
+                break
+        if detected:
+            break
+        time.sleep(1)
+    assert detected
+
+
 def test_revert(bin, controller_client, replica_client, replica_client2):
     open_replica(replica_client)
     open_replica(replica_client2)
