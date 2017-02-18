@@ -3,7 +3,6 @@ package remote
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -16,17 +15,12 @@ import (
 	"github.com/rancher/longhorn/rpc"
 	"github.com/rancher/longhorn/types"
 	"github.com/rancher/longhorn/util"
-	journal "github.com/rancher/sparse-tools/stats"
 )
 
 var (
-	pingRetries = 6
-	pingTimeout = 20 * time.Second
-	pingInveral = 2 * time.Second
-
-	timeout        = 30 * time.Second
-	requestBuffer  = 1024
-	ErrPingTimeout = errors.New("Ping timeout")
+	pingInveral   = 2 * time.Second
+	timeout       = 30 * time.Second
+	requestBuffer = 1024
 )
 
 func New() types.BackendFactory {
@@ -229,58 +223,18 @@ func (r *Remote) monitorPing(client *rpc.Client) error {
 	//bug here, if replica was marked as ERR in normal situation, this
 	//thread still won't exit until it failed multiple times of ping
 	// at least the channel should be closed
-	retry := 0
 	for {
 		select {
 		case <-r.closeChan:
 			r.monitorChan <- nil
 			return nil
 		case <-ticker.C:
-			if err := r.Ping(client); err == nil {
-				retry = 0 // reset on success
-			} else {
-				if retry < pingRetries {
-					retry++
-					logrus.Errorf("Ping retry %v on replica %v; error: %v", retry, r.replicaURL, err)
-					journal.PrintLimited(1000) //flush automatically upon retry
-				} else {
-					logrus.Errorf("Failed to get ping response from replica %v; error: %v", r.replicaURL, err)
-					journal.PrintLimited(1000) //flush automatically upon error
-					client.SetError(err)
-					r.monitorChan <- err
-					return err
-				}
+			if err := client.Ping(); err != nil {
+				client.SetError(err)
+				r.monitorChan <- err
+				return err
 			}
 		}
-	}
-}
-
-func (r *Remote) Ping(client *rpc.Client) error {
-	ret := make(chan error, 1)
-	// use replica data addr for ping target tracking
-	opID := journal.InsertPendingOp(time.Now(), client.TargetID(), journal.OpPing, 0)
-
-	go func() {
-		resp, err := r.httpClient.Get(r.pingURL)
-		if err != nil {
-			ret <- err
-			return
-		}
-		defer resp.Body.Close()
-		if resp.StatusCode != 200 {
-			ret <- fmt.Errorf("Non-200 response %d from ping to %s", resp.StatusCode, r.name)
-			return
-		}
-		ret <- nil
-	}()
-
-	select {
-	case err := <-ret:
-		journal.RemovePendingOp(opID, err == nil)
-		return err
-	case <-time.After(pingTimeout):
-		journal.RemovePendingOp(opID, false)
-		return ErrPingTimeout
 	}
 }
 
