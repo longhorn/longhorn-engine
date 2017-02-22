@@ -209,6 +209,9 @@ func (c *Client) handleResponse(resp *Message) {
 		delete(c.messages, resp.Seq)
 		// can probably optimize away this copy
 		if len(resp.Data) > 0 {
+			if resp.Type == TypeError {
+				req.Data = make([]byte, len(resp.Data))
+			}
 			copy(req.Data, resp.Data)
 			req.Data = req.Data[:len(resp.Data)]
 		}
