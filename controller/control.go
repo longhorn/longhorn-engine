@@ -175,10 +175,16 @@ func (c *Controller) SetReplicaMode(address string, mode types.Mode) error {
 
 func (c *Controller) setReplicaModeNoLock(address string, mode types.Mode) {
 	for i, r := range c.replicas {
-		if r.Mode != types.ERR && r.Address == address {
-			r.Mode = mode
-			c.replicas[i] = r
-			c.backend.SetMode(address, mode)
+		if r.Address == address {
+			if r.Mode != types.ERR {
+				logrus.Infof("Set replica %v to mode %v", address, mode)
+				r.Mode = mode
+				c.replicas[i] = r
+				c.backend.SetMode(address, mode)
+			} else {
+				logrus.Infof("Ignore set replica %v to mode %v due to it's ERR",
+					address, mode)
+			}
 		}
 	}
 }
