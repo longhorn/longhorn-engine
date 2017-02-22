@@ -65,3 +65,7 @@ func (ff *Factory) Create(address string) (types.Backend, error) {
 func (f *Wrapper) GetMonitorChannel() types.MonitorChannel {
 	return nil
 }
+
+func (f *Wrapper) PingResponse() error {
+	return nil
+}

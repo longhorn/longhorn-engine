@@ -267,3 +267,11 @@ func (s *Server) SetRevisionCounter(counter int64) error {
 	}
 	return s.r.SetRevisionCounter(counter)
 }
+
+func (s *Server) PingResponse() error {
+	state, _ := s.Status()
+	if state != Open && state != Dirty && state != Rebuilding {
+		return fmt.Errorf("ping failure: replica state %v", state)
+	}
+	return nil
+}

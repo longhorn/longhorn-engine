@@ -12,10 +12,10 @@ type Server struct {
 	wire      *Wire
 	responses chan *Message
 	done      chan struct{}
-	data      types.ReaderWriterAt
+	data      types.DataProcessor
 }
 
-func NewServer(conn net.Conn, data types.ReaderWriterAt) *Server {
+func NewServer(conn net.Conn, data types.DataProcessor) *Server {
 	return &Server{
 		wire:      NewWire(conn),
 		responses: make(chan *Message, 1024),
@@ -86,7 +86,8 @@ func (s *Server) handleWrite(msg *Message) {
 }
 
 func (s *Server) handlePing(msg *Message) {
-	s.pushResponse(0, msg, nil)
+	err := s.data.PingResponse()
+	s.pushResponse(0, msg, err)
 }
 
 func (s *Server) pushResponse(count int, msg *Message, err error) {

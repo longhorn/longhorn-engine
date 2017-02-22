@@ -68,3 +68,8 @@ type Frontend interface {
 	Shutdown() error
 	State() State
 }
+
+type DataProcessor interface {
+	ReaderWriterAt
+	PingResponse() error
+}
