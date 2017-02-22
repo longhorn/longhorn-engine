@@ -390,7 +390,7 @@ func (c *Controller) monitoring(address string, backend types.Backend) {
 
 	err := <-monitorChan
 	if err != nil {
-		logrus.Errorf("Backend %v monitoring failed, mark as ERR", address)
+		logrus.Errorf("Backend %v monitoring failed, mark as ERR: %v", address, err)
 		c.SetReplicaMode(address, types.ERR)
 	}
 }

@@ -131,12 +131,34 @@ func (t *Tgt) startSocketServerListen(rw types.ReaderWriterAt) error {
 func (t *Tgt) handleServerConnection(c net.Conn, rw types.ReaderWriterAt) {
 	defer c.Close()
 
-	server := rpc.NewServer(c, rw)
+	server := rpc.NewServer(c, NewDataProcessorWrapper(rw))
 	if err := server.Handle(); err != nil && err != io.EOF {
 		logrus.Errorln("Fail to handle socket server connection due to ", err)
 	} else if err == io.EOF {
 		logrus.Warnln("Socket server connection closed")
 	}
+}
+
+type DataProcessorWrapper struct {
+	rw types.ReaderWriterAt
+}
+
+func NewDataProcessorWrapper(rw types.ReaderWriterAt) DataProcessorWrapper {
+	return DataProcessorWrapper{
+		rw: rw,
+	}
+}
+
+func (d DataProcessorWrapper) ReadAt(p []byte, off int64) (n int, err error) {
+	return d.rw.ReadAt(p, off)
+}
+
+func (d DataProcessorWrapper) WriteAt(p []byte, off int64) (n int, err error) {
+	return d.rw.WriteAt(p, off)
+}
+
+func (d DataProcessorWrapper) PingResponse() error {
+	return nil
 }
 
 func (t *Tgt) getDev() string {
