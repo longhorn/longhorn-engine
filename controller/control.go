@@ -120,6 +120,8 @@ func (c *Controller) addReplicaNoLock(newBackend types.Backend, address string, 
 
 	c.backend.AddBackend(address, newBackend)
 
+	go c.monitoring(address, newBackend)
+
 	return nil
 }
 
@@ -225,8 +227,6 @@ func (c *Controller) Start(addresses ...string) error {
 		if err != nil {
 			return err
 		}
-
-		go c.monitoring(address, newBackend)
 
 		newSize, err := newBackend.Size()
 		if err != nil {
