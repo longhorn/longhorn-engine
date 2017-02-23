@@ -69,3 +69,6 @@ func (f *Wrapper) GetMonitorChannel() types.MonitorChannel {
 func (f *Wrapper) PingResponse() error {
 	return nil
 }
+
+func (f *Wrapper) StopMonitoring() {
+}

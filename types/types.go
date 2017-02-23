@@ -34,6 +34,7 @@ type Backend interface {
 	GetRevisionCounter() (int64, error)
 	SetRevisionCounter(counter int64) error
 	GetMonitorChannel() MonitorChannel
+	StopMonitoring()
 }
 
 type BackendFactory interface {

@@ -169,6 +169,10 @@ func (r *replicator) SetMode(address string, mode types.Mode) {
 	}
 	b.mode = mode
 	r.backends[address] = b
+	if mode == types.ERR {
+		b.backend.StopMonitoring()
+	}
+
 	r.buildReadWriters()
 }
 
