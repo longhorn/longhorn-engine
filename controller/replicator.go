@@ -75,7 +75,8 @@ func (r *replicator) RemoveBackend(address string) {
 
 	logrus.Infof("Removing backend: %s", address)
 
-	backend.backend.Close()
+	// We cannot wait for it's return because peer may not exists anymore
+	go backend.backend.Close()
 	delete(r.backends, address)
 	r.buildReadWriters()
 }
