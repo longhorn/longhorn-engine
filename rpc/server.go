@@ -19,7 +19,7 @@ func NewServer(conn net.Conn, data types.DataProcessor) *Server {
 	return &Server{
 		wire:      NewWire(conn),
 		responses: make(chan *Message, 1024),
-		done:      make(chan struct{}),
+		done:      make(chan struct{}, 5),
 		data:      data,
 	}
 }
