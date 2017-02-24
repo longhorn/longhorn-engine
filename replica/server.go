@@ -133,6 +133,9 @@ func (s *Server) Status() (State, Info) {
 }
 
 func (s *Server) SetRebuilding(rebuilding bool) error {
+	s.Lock()
+	defer s.Unlock()
+
 	state, _ := s.Status()
 	// Must be Open/Dirty to set true or must be Rebuilding to set false
 	if (rebuilding && state != Open && state != Dirty) ||
