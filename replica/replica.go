@@ -364,6 +364,9 @@ func (r *Replica) Info() Info {
 }
 
 func (r *Replica) DisplayChain() ([]string, error) {
+	r.RLock()
+	defer r.RUnlock()
+
 	result := make([]string, 0, len(r.activeDiskData))
 
 	cur := r.info.Head
@@ -382,6 +385,9 @@ func (r *Replica) DisplayChain() ([]string, error) {
 }
 
 func (r *Replica) Chain() ([]string, error) {
+	r.RLock()
+	defer r.RUnlock()
+
 	result := make([]string, 0, len(r.activeDiskData))
 
 	cur := r.info.Head
@@ -809,6 +815,9 @@ func (r *Replica) ReadAt(buf []byte, offset int64) (int, error) {
 }
 
 func (r *Replica) ListDisks() []string {
+	r.RLock()
+	defer r.RUnlock()
+
 	result := []string{}
 	for disk := range r.diskData {
 		result = append(result, disk)
@@ -817,9 +826,22 @@ func (r *Replica) ListDisks() []string {
 }
 
 func (r *Replica) ShowDiskChildrenMap() map[string]map[string]bool {
-	return r.diskChildrenMap
+	r.RLock()
+	defer r.RUnlock()
+
+	result := make(map[string]map[string]bool)
+	for disk := range r.diskChildrenMap {
+		result[disk] = make(map[string]bool)
+		for child := range r.diskChildrenMap[disk] {
+			result[disk][child] = r.diskChildrenMap[disk][child]
+		}
+	}
+	return result
 }
 
 func (r *Replica) GetRemainSnapshotCounts() int {
+	r.RLock()
+	defer r.RUnlock()
+
 	return maximumChainLength - len(r.activeDiskData)
 }
