@@ -185,6 +185,10 @@ func (t *Task) AddReplica(replica string) error {
 		return err
 	}
 
+	if err := toClient.SetRebuilding(true); err != nil {
+		return err
+	}
+
 	output, err := t.client.PrepareRebuild(rest.EncodeID(replica))
 	if err != nil {
 		return err
@@ -244,10 +248,6 @@ func (t *Task) reloadAndVerify(address string, repClient *replicaClient.ReplicaC
 }
 
 func (t *Task) syncFiles(fromClient *replicaClient.ReplicaClient, toClient *replicaClient.ReplicaClient, disks []string) error {
-	if err := toClient.SetRebuilding(true); err != nil {
-		return err
-	}
-
 	// volume head has been synced by PrepareRebuild()
 	for _, disk := range disks {
 		if strings.Contains(disk, "volume-head") {

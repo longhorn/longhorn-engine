@@ -47,8 +47,8 @@ func (c *Controller) getCurrentAndRWReplica(address string) (*types.Replica, *ty
 }
 
 func (c *Controller) VerifyRebuildReplica(address string) error {
-	// Prevent snapshot happenes at the same time, well at least no
-	// controller involved
+	// Prevent snapshot happenes at the same time, as well as prevent
+	// writing from happening since we're updating revision counter
 	c.Lock()
 	defer c.Unlock()
 
@@ -88,7 +88,9 @@ func (c *Controller) VerifyRebuildReplica(address string) error {
 			rwReplica.Address, counter, err)
 
 	}
-	c.backend.SetRevisionCounter(address, counter)
+	if err := c.backend.SetRevisionCounter(address, counter); err != nil {
+		return fmt.Errorf("Fail to set revision counter for %v: %v", address, err)
+	}
 
 	logrus.Debugf("WO replica %v's chain verified, update mode to RW", address)
 	c.setReplicaModeNoLock(address, types.RW)
@@ -132,7 +134,9 @@ func (c *Controller) PrepareRebuildReplica(address string) ([]string, error) {
 	c.Lock()
 	defer c.Unlock()
 
-	c.backend.SetRevisionCounter(address, 0)
+	if err := c.backend.SetRevisionCounter(address, 0); err != nil {
+		return nil, fmt.Errorf("Fail to set revision counter for %v: %v", address, err)
+	}
 
 	replica, rwReplica, err := c.getCurrentAndRWReplica(address)
 	if err != nil {

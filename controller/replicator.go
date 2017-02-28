@@ -266,9 +266,13 @@ func (r *replicator) SetRevisionCounter(address string, counter int64) error {
 		return fmt.Errorf("Cannot find backend %v", address)
 	}
 
-	logrus.Infof("Setting backend revision counter: %s", address)
+	if err := backend.backend.SetRevisionCounter(counter); err != nil {
+		return err
+	}
 
-	return backend.backend.SetRevisionCounter(counter)
+	logrus.Infof("Set backend %s revision counter to %v", address, counter)
+
+	return nil
 }
 
 func (r *replicator) GetRevisionCounter(address string) (int64, error) {
@@ -277,7 +281,11 @@ func (r *replicator) GetRevisionCounter(address string) (int64, error) {
 		return -1, fmt.Errorf("Cannot find backend %v", address)
 	}
 
-	logrus.Infof("Getting backend revision counter: %s", address)
+	counter, err := backend.backend.GetRevisionCounter()
+	if err != nil {
+		return 0, err
+	}
+	logrus.Infof("Get backend %s revision counter %v", address, counter)
 
-	return backend.backend.GetRevisionCounter()
+	return counter, nil
 }
