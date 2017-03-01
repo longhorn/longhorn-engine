@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
@@ -8,7 +9,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/rancher/go-rancher/api"
 	"github.com/rancher/go-rancher/client"
-	"github.com/rancher/longhorn/util"
 )
 
 func (s *Server) ListReplicas(rw http.ResponseWriter, req *http.Request) error {
@@ -118,7 +118,7 @@ func (s *Server) SnapshotReplica(rw http.ResponseWriter, req *http.Request) erro
 
 	name := input.Name
 	if name == "" {
-		name = util.UUID()
+		return fmt.Errorf("Cannot accept empty snapshot name")
 	}
 
 	return s.doOp(req, s.s.Snapshot(name))
