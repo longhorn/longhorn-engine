@@ -58,9 +58,10 @@ type Info struct {
 }
 
 type disk struct {
-	Name    string
-	Parent  string
-	Removed bool
+	Name        string
+	Parent      string
+	Removed     bool
+	UserCreated bool
 }
 
 type BackingFile struct {
@@ -153,7 +154,7 @@ func construct(readonly bool, size, sectorSize int64, dir, head string, backingF
 	} else if size <= 0 {
 		return nil, os.ErrNotExist
 	} else {
-		if err := r.createDisk("000"); err != nil {
+		if err := r.createDisk("000", false); err != nil {
 			return nil, err
 		}
 	}
@@ -484,7 +485,7 @@ func (r *Replica) createNewHead(oldHead, parent string) (types.DiffDisk, disk, e
 		return nil, disk{}, err
 	}
 
-	newDisk := disk{Parent: parent, Name: newHeadName, Removed: false}
+	newDisk := disk{Parent: parent, Name: newHeadName, Removed: false, UserCreated: false}
 	err = r.encodeToFile(&newDisk, newHeadName+metadataSuffix)
 	return f, newDisk, err
 }
@@ -569,7 +570,7 @@ func (r *Replica) revertDisk(parent string) (*Replica, error) {
 	return rNew, nil
 }
 
-func (r *Replica) createDisk(name string) error {
+func (r *Replica) createDisk(name string, userCreated bool) error {
 	if r.readOnly {
 		return fmt.Errorf("Can not create disk on read-only replica")
 	}
@@ -617,8 +618,12 @@ func (r *Replica) createDisk(name string) error {
 	r.diskData[newHeadDisk.Name] = &newHeadDisk
 	if newSnapName != "" {
 		r.addChildDisk(newSnapName, newHeadDisk.Name)
-
 		r.diskData[newSnapName] = r.diskData[oldHead]
+		r.diskData[newSnapName].UserCreated = userCreated
+		if err := r.encodeToFile(r.diskData[newSnapName], newSnapName+metadataSuffix); err != nil {
+			return err
+		}
+
 		r.updateChildDisk(oldHead, newSnapName)
 		r.activeDiskData[len(r.activeDiskData)-1].Name = newSnapName
 	}
@@ -775,11 +780,11 @@ func (r *Replica) Delete() error {
 	return nil
 }
 
-func (r *Replica) Snapshot(name string) error {
+func (r *Replica) Snapshot(name string, userCreated bool) error {
 	r.Lock()
 	defer r.Unlock()
 
-	return r.createDisk(name)
+	return r.createDisk(name, userCreated)
 }
 
 func (r *Replica) Revert(name string) (*Replica, error) {

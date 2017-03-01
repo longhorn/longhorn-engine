@@ -41,7 +41,8 @@ type RebuildingInput struct {
 
 type SnapshotInput struct {
 	client.Resource
-	Name string `json:"Name"`
+	Name        string `json:"name"`
+	UserCreated bool   `json:"usercreated"`
 }
 
 type RemoveDiskInput struct {
