@@ -168,7 +168,7 @@ func (rb *Backup) findIndex(id string) int {
 		if i == 0 {
 			continue
 		}
-		if disk.name == id {
+		if disk.Name == id {
 			return i
 		}
 	}
