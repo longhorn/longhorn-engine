@@ -98,7 +98,7 @@ func (s *TestSuite) testBackupWithBackups(c *C, backingFile *BackingFile) {
 	fill(buf, 1)
 	_, err = r.WriteAt(buf, mb)
 	c.Assert(err, IsNil)
-	err = r.Snapshot("001")
+	err = r.Snapshot("001", true)
 
 	c.Assert(err, IsNil)
 	fill(buf, 2)
@@ -106,7 +106,7 @@ func (s *TestSuite) testBackupWithBackups(c *C, backingFile *BackingFile) {
 	c.Assert(err, IsNil)
 	_, err = r.WriteAt(buf, 4*mb)
 	c.Assert(err, IsNil)
-	err = r.Snapshot("002")
+	err = r.Snapshot("002", true)
 
 	c.Assert(err, IsNil)
 	fill(buf, 3)
@@ -114,7 +114,7 @@ func (s *TestSuite) testBackupWithBackups(c *C, backingFile *BackingFile) {
 	c.Assert(err, IsNil)
 	_, err = r.WriteAt(buf, 8*mb)
 	c.Assert(err, IsNil)
-	err = r.Snapshot("003")
+	err = r.Snapshot("003", true)
 
 	c.Assert(err, IsNil)
 	buf = make([]byte, 10*mb)

@@ -121,7 +121,7 @@ func (s *Server) SnapshotReplica(rw http.ResponseWriter, req *http.Request) erro
 		return fmt.Errorf("Cannot accept empty snapshot name")
 	}
 
-	return s.doOp(req, s.s.Snapshot(name))
+	return s.doOp(req, s.s.Snapshot(name, input.UserCreated))
 }
 
 func (s *Server) RevertReplica(rw http.ResponseWriter, req *http.Request) error {

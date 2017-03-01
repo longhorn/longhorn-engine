@@ -177,7 +177,7 @@ func (r *replicator) SetMode(address string, mode types.Mode) {
 	r.buildReadWriters()
 }
 
-func (r *replicator) Snapshot(name string) error {
+func (r *replicator) Snapshot(name string, userCreated bool) error {
 	retErrorLock := sync.Mutex{}
 	retError := &BackendError{
 		Errors: map[string]error{},
@@ -188,7 +188,7 @@ func (r *replicator) Snapshot(name string) error {
 		if backend.mode != types.ERR {
 			wg.Add(1)
 			go func(address string, backend types.Backend) {
-				if err := backend.Snapshot(name); err != nil {
+				if err := backend.Snapshot(name, userCreated); err != nil {
 					retErrorLock.Lock()
 					retError.Errors[address] = err
 					retErrorLock.Unlock()
