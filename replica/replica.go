@@ -58,7 +58,7 @@ type Info struct {
 }
 
 type disk struct {
-	name    string
+	Name    string
 	Parent  string
 	Removed bool
 }
@@ -178,10 +178,10 @@ func (r *Replica) insertBackingFile() {
 		return
 	}
 
-	d := disk{name: r.info.BackingFile.Name}
+	d := disk{Name: r.info.BackingFile.Name}
 	r.activeDiskData = append([]*disk{{}, &d}, r.activeDiskData[1:]...)
 	r.volume.files = append([]types.DiffDisk{nil, r.info.BackingFile.Disk}, r.volume.files[1:]...)
-	r.diskData[d.name] = &d
+	r.diskData[d.Name] = &d
 }
 
 func (r *Replica) SetRebuilding(rebuilding bool) error {
@@ -207,7 +207,7 @@ func (r *Replica) findDisk(name string) int {
 		if i == 0 {
 			continue
 		}
-		if d.name == name {
+		if d.Name == name {
 			return i
 		}
 	}
@@ -305,7 +305,7 @@ func (r *Replica) PrepareRemoveDisk(name string) ([]PrepareRemoveAction, error) 
 			return nil, fmt.Errorf("Can not find snapshot %v's parent %v", disk, data.Parent)
 		}
 		if parentData.Removed {
-			targetDisks = append(targetDisks, parentData.name)
+			targetDisks = append(targetDisks, parentData.Name)
 		}
 	}
 	targetDisks = append(targetDisks, disk)
@@ -484,7 +484,7 @@ func (r *Replica) createNewHead(oldHead, parent string) (types.DiffDisk, disk, e
 		return nil, disk{}, err
 	}
 
-	newDisk := disk{Parent: parent, name: newHeadName, Removed: false}
+	newDisk := disk{Parent: parent, Name: newHeadName, Removed: false}
 	err = r.encodeToFile(&newDisk, newHeadName+metadataSuffix)
 	return f, newDisk, err
 }
@@ -550,7 +550,7 @@ func (r *Replica) revertDisk(parent string) (*Replica, error) {
 	defer f.Close()
 
 	info := r.info
-	info.Head = newHeadDisk.name
+	info.Head = newHeadDisk.Name
 	info.Dirty = true
 	info.Parent = newHeadDisk.Parent
 
@@ -592,7 +592,7 @@ func (r *Replica) createDisk(name string) error {
 	}
 	defer func() {
 		if !done {
-			r.rmDisk(newHeadDisk.name)
+			r.rmDisk(newHeadDisk.Name)
 			r.rmDisk(newHeadDisk.Parent)
 			f.Close()
 			return
@@ -605,7 +605,7 @@ func (r *Replica) createDisk(name string) error {
 	}
 
 	info := r.info
-	info.Head = newHeadDisk.name
+	info.Head = newHeadDisk.Name
 	info.Dirty = true
 	info.Parent = newHeadDisk.Parent
 
@@ -614,13 +614,13 @@ func (r *Replica) createDisk(name string) error {
 	}
 
 	done = true
-	r.diskData[newHeadDisk.name] = &newHeadDisk
+	r.diskData[newHeadDisk.Name] = &newHeadDisk
 	if newHeadDisk.Parent != "" {
-		r.addChildDisk(newHeadDisk.Parent, newHeadDisk.name)
+		r.addChildDisk(newHeadDisk.Parent, newHeadDisk.Name)
 
 		r.diskData[newHeadDisk.Parent] = r.diskData[oldHead]
 		r.updateChildDisk(oldHead, newHeadDisk.Parent)
-		r.activeDiskData[len(r.activeDiskData)-1].name = newHeadDisk.Parent
+		r.activeDiskData[len(r.activeDiskData)-1].Name = newHeadDisk.Parent
 	}
 	delete(r.diskData, oldHead)
 
@@ -672,7 +672,7 @@ func (r *Replica) updateParentDisk(name, oldParent string) error {
 		child.Parent = ""
 	}
 	r.diskData[name] = child
-	return r.encodeToFile(child, child.name+metadataSuffix)
+	return r.encodeToFile(child, child.Name+metadataSuffix)
 }
 
 func (r *Replica) openLiveChain() error {
@@ -733,10 +733,10 @@ func (r *Replica) readDiskData(file string) error {
 	}
 
 	name := file[:len(file)-len(metadataSuffix)]
-	data.name = name
+	data.Name = name
 	r.diskData[name] = &data
 	if data.Parent != "" {
-		r.addChildDisk(data.Parent, data.name)
+		r.addChildDisk(data.Parent, data.Name)
 	}
 	return nil
 }
