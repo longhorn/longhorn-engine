@@ -43,24 +43,24 @@ type Remote struct {
 func (r *Remote) Close() error {
 	logrus.Infof("Closing: %s", r.name)
 	r.StopMonitoring()
-	return r.doAction("close", "")
+	return r.doAction("close", nil)
 }
 
 func (r *Remote) open() error {
 	logrus.Infof("Opening: %s", r.name)
-	return r.doAction("open", "")
+	return r.doAction("open", nil)
 }
 
 func (r *Remote) Snapshot(name string) error {
 	logrus.Infof("Snapshot: %s %s", r.name, name)
-	return r.doAction("snapshot", name)
+	return r.doAction("snapshot", &map[string]string{"name": name})
 }
 
-func (r *Remote) doAction(action, name string) error {
+func (r *Remote) doAction(action string, obj interface{}) error {
 	body := io.Reader(nil)
-	if name != "" {
+	if obj != nil {
 		buffer := &bytes.Buffer{}
-		if err := json.NewEncoder(buffer).Encode(&map[string]string{"name": name}); err != nil {
+		if err := json.NewEncoder(buffer).Encode(obj); err != nil {
 			return err
 		}
 		body = buffer
@@ -71,7 +71,7 @@ func (r *Remote) doAction(action, name string) error {
 		return err
 	}
 
-	if name != "" {
+	if obj != nil {
 		req.Header.Add("Content-Type", "application/json")
 	}
 
@@ -127,28 +127,8 @@ func (r *Remote) GetRevisionCounter() (int64, error) {
 }
 
 func (r *Remote) SetRevisionCounter(counter int64) error {
-	body := &bytes.Buffer{}
-	if err := json.NewEncoder(body).Encode(&map[string]int64{"counter": counter}); err != nil {
-		return err
-	}
-
-	req, err := http.NewRequest("POST", r.replicaURL+"?action=setrevisioncounter", body)
-	if err != nil {
-		return err
-	}
-	req.Header.Add("Content-Type", "application/json")
-
-	resp, err := r.httpClient.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("Bad status: %d %s", resp.StatusCode, resp.Status)
-	}
-
-	return nil
+	logrus.Infof("Set revision counter of %s to : %v", r.name, counter)
+	return r.doAction("setrevisioncounter", &map[string]int64{"counter": counter})
 }
 
 func (r *Remote) info() (rest.Replica, error) {
