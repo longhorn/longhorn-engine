@@ -22,8 +22,12 @@ const (
 	imgSuffix          = ".img"
 	volumeMetaData     = "volume.meta"
 	defaultSectorSize  = 4096
-	headName           = "volume-head-%03d.img"
-	diskName           = "volume-snap-%s.img"
+	headPrefix         = "volume-head-"
+	headSuffix         = ".img"
+	headName           = headPrefix + "%03d" + headSuffix
+	diskPrefix         = "volume-snap-"
+	diskSuffix         = ".img"
+	diskName           = diskPrefix + "%s" + diskSuffix
 	maximumChainLength = 250
 )
 
@@ -176,6 +180,22 @@ func construct(readonly bool, size, sectorSize int64, dir, head string, backingF
 
 func GenerateSnapshotDiskName(name string) string {
 	return fmt.Sprintf(diskName, name)
+}
+
+func GetSnapshotNameFromDiskName(diskName string) (string, error) {
+	if !strings.HasPrefix(diskName, diskPrefix) || !strings.HasSuffix(diskName, diskSuffix) {
+		return "", fmt.Errorf("Invalid snapshot disk name %v", diskName)
+	}
+	result := strings.TrimPrefix(diskName, diskPrefix)
+	result = strings.TrimSuffix(result, diskSuffix)
+	return result, nil
+}
+
+func IsHeadDisk(diskName string) bool {
+	if strings.HasPrefix(diskName, headPrefix) && strings.HasSuffix(diskName, headSuffix) {
+		return true
+	}
+	return false
 }
 
 func (r *Replica) diskPath(name string) string {

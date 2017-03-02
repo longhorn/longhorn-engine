@@ -318,6 +318,45 @@ def test_snapshot_ls(bin, controller_client, replica_client, replica_client2):
 '''.format(snap2.id, snap.id)
 
 
+def test_snapshot_detail(bin, controller_client,
+                         replica_client, replica_client2):
+    open_replica(replica_client)
+    open_replica(replica_client2)
+
+    v = controller_client.list_volume()[0]
+    v = v.start(replicas=[
+        REPLICA,
+        REPLICA2,
+    ])
+    assert v.replicaCount == 2
+
+    snap = v.snapshot()
+    assert snap.id != ''
+
+    snap2 = v.snapshot()
+    assert snap2.id != ''
+
+    cmd = [bin, '--debug', 'snapshot', 'detail']
+    output = subprocess.check_output(cmd)
+    details = json.loads(output)
+
+    assert len(details) == 2
+
+    snap2_details = details[snap2.id]
+    assert snap2_details["name"] == snap2.id
+    assert snap2_details["parent"] == snap.id
+    assert snap2_details["children"] == []
+    assert snap2_details["removed"] is False
+    assert snap2_details["usercreated"] is True
+
+    snap_details = details[snap.id]
+    assert snap_details["name"] == snap.id
+    assert snap_details["parent"] == ""
+    assert snap_details["children"] == [snap2.id]
+    assert snap_details["removed"] is False
+    assert snap_details["usercreated"] is True
+
+
 def test_snapshot_create(bin, controller_client, replica_client,
                          replica_client2):
     open_replica(replica_client)
