@@ -593,21 +593,21 @@ func (r *Replica) createDisk(name string) error {
 	defer func() {
 		if !done {
 			r.rmDisk(newHeadDisk.Name)
-			r.rmDisk(newHeadDisk.Parent)
+			r.rmDisk(newSnapName)
 			f.Close()
 			return
 		}
 		r.rmDisk(oldHead)
 	}()
 
-	if err := r.linkDisk(r.info.Head, newHeadDisk.Parent); err != nil {
+	if err := r.linkDisk(r.info.Head, newSnapName); err != nil {
 		return err
 	}
 
 	info := r.info
 	info.Head = newHeadDisk.Name
 	info.Dirty = true
-	info.Parent = newHeadDisk.Parent
+	info.Parent = newSnapName
 
 	if err := r.encodeToFile(&info, volumeMetaData); err != nil {
 		return err
@@ -615,12 +615,12 @@ func (r *Replica) createDisk(name string) error {
 
 	done = true
 	r.diskData[newHeadDisk.Name] = &newHeadDisk
-	if newHeadDisk.Parent != "" {
-		r.addChildDisk(newHeadDisk.Parent, newHeadDisk.Name)
+	if newSnapName != "" {
+		r.addChildDisk(newSnapName, newHeadDisk.Name)
 
-		r.diskData[newHeadDisk.Parent] = r.diskData[oldHead]
-		r.updateChildDisk(oldHead, newHeadDisk.Parent)
-		r.activeDiskData[len(r.activeDiskData)-1].Name = newHeadDisk.Parent
+		r.diskData[newSnapName] = r.diskData[oldHead]
+		r.updateChildDisk(oldHead, newSnapName)
+		r.activeDiskData[len(r.activeDiskData)-1].Name = newSnapName
 	}
 	delete(r.diskData, oldHead)
 
