@@ -1,6 +1,7 @@
 package app
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
@@ -8,6 +9,8 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
+	"github.com/rancher/longhorn/replica"
+	replicaClient "github.com/rancher/longhorn/replica/client"
 	"github.com/rancher/longhorn/sync"
 	"github.com/rancher/longhorn/util"
 )
@@ -21,6 +24,7 @@ func SnapshotCmd() cli.Command {
 			SnapshotRevertCmd(),
 			SnapshotLsCmd(),
 			SnapshotRmCmd(),
+			SnapshotDetailCmd(),
 		},
 		Action: func(c *cli.Context) {
 			if err := lsSnapshot(c); err != nil {
@@ -69,6 +73,17 @@ func SnapshotLsCmd() cli.Command {
 		Action: func(c *cli.Context) {
 			if err := lsSnapshot(c); err != nil {
 				logrus.Fatalf("Error running ls snapshot command: %v", err)
+			}
+		},
+	}
+}
+
+func SnapshotDetailCmd() cli.Command {
+	return cli.Command{
+		Name: "detail",
+		Action: func(c *cli.Context) {
+			if err := detailSnapshot(c); err != nil {
+				logrus.Fatalf("Error running detail snapshot command: %v", err)
 			}
 		},
 	}
@@ -173,4 +188,86 @@ func lsSnapshot(c *cli.Context) error {
 	tw.Flush()
 
 	return nil
+}
+
+func detailSnapshot(c *cli.Context) error {
+	var output []byte
+
+	outputDisks := make(map[string]replica.DiskInfo)
+	cli := getCli(c)
+
+	replicas, err := cli.ListReplicas()
+	if err != nil {
+		return err
+	}
+
+	for _, r := range replicas {
+		if r.Mode != "RW" {
+			continue
+		}
+
+		disks, err := getDisks(r.Address)
+		if err != nil {
+			return err
+		}
+
+		for name, disk := range disks {
+			if replica.IsHeadDisk(name) {
+				continue
+			}
+			snapshot, err := replica.GetSnapshotNameFromDiskName(name)
+			if err != nil {
+				return err
+			}
+			children := []string{}
+			for _, childDisk := range disk.Children {
+				if !replica.IsHeadDisk(childDisk) {
+					child, err := replica.GetSnapshotNameFromDiskName(childDisk)
+					if err != nil {
+						return err
+					}
+					children = append(children, child)
+				}
+			}
+			parent := ""
+			if disk.Parent != "" {
+				parent, err = replica.GetSnapshotNameFromDiskName(disk.Parent)
+				if err != nil {
+					return err
+				}
+			}
+			outputDisks[snapshot] = replica.DiskInfo{
+				Name:        snapshot,
+				Parent:      parent,
+				Removed:     disk.Removed,
+				UserCreated: disk.UserCreated,
+				Children:    children,
+			}
+		}
+
+		output, err = json.MarshalIndent(outputDisks, "", "\t")
+		if err != nil {
+			return err
+		}
+	}
+
+	if output == nil {
+		return fmt.Errorf("Cannot find suitable replica for snapshot details")
+	}
+	fmt.Println(string(output))
+	return nil
+}
+
+func getDisks(address string) (map[string]replica.DiskInfo, error) {
+	repClient, err := replicaClient.NewReplicaClient(address)
+	if err != nil {
+		return nil, err
+	}
+
+	r, err := repClient.GetReplica()
+	if err != nil {
+		return nil, err
+	}
+
+	return r.Disks, err
 }
