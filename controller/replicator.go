@@ -178,6 +178,7 @@ func (r *replicator) SetMode(address string, mode types.Mode) {
 }
 
 func (r *replicator) Snapshot(name string) error {
+	retErrorLock := sync.Mutex{}
 	retError := &BackendError{
 		Errors: map[string]error{},
 	}
@@ -188,7 +189,9 @@ func (r *replicator) Snapshot(name string) error {
 			wg.Add(1)
 			go func(address string, backend types.Backend) {
 				if err := backend.Snapshot(name); err != nil {
+					retErrorLock.Lock()
 					retError.Errors[address] = err
+					retErrorLock.Unlock()
 				}
 				wg.Done()
 			}(addr, backend.backend)
