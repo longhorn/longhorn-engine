@@ -134,7 +134,7 @@ func lsSnapshot(c *cli.Context) error {
 	first := true
 	snapshots := []string{}
 	for _, r := range replicas {
-		if r.Mode == "ERR" {
+		if r.Mode != "RW" {
 			continue
 		}
 
