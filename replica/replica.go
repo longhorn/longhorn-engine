@@ -77,6 +77,14 @@ type PrepareRemoveAction struct {
 	Target string `json:"target"`
 }
 
+type DiskInfo struct {
+	Name        string   `json:"name"`
+	Parent      string   `json:"parent"`
+	Children    []string `json:"children"`
+	Removed     bool     `json:"removed"`
+	UserCreated bool     `json:"usercreated"`
+}
+
 const (
 	OpCoalesce = "coalesce" // Source is parent, target is child
 	OpRemove   = "remove"
@@ -819,27 +827,24 @@ func (r *Replica) ReadAt(buf []byte, offset int64) (int, error) {
 	return c, err
 }
 
-func (r *Replica) ListDisks() []string {
+func (r *Replica) ListDisks() map[string]DiskInfo {
 	r.RLock()
 	defer r.RUnlock()
 
-	result := []string{}
-	for disk := range r.diskData {
-		result = append(result, disk)
-	}
-	return result
-}
-
-func (r *Replica) ShowDiskChildrenMap() map[string]map[string]bool {
-	r.RLock()
-	defer r.RUnlock()
-
-	result := make(map[string]map[string]bool)
-	for disk := range r.diskChildrenMap {
-		result[disk] = make(map[string]bool)
-		for child := range r.diskChildrenMap[disk] {
-			result[disk][child] = r.diskChildrenMap[disk][child]
+	result := map[string]DiskInfo{}
+	for _, disk := range r.diskData {
+		diskInfo := DiskInfo{
+			Name:        disk.Name,
+			Parent:      disk.Parent,
+			Removed:     disk.Removed,
+			UserCreated: disk.UserCreated,
 		}
+		children := []string{}
+		for child := range r.diskChildrenMap[disk.Name] {
+			children = append(children, child)
+		}
+		diskInfo.Children = children
+		result[disk.Name] = diskInfo
 	}
 	return result
 }
