@@ -77,13 +77,24 @@ func (s *TestSuite) TestSnapshot(c *C) {
 	c.Assert(r.diskChildrenMap["volume-snap-001.img"]["volume-head-002.img"], Equals, true)
 	c.Assert(r.diskChildrenMap["volume-head-002.img"], IsNil)
 
-	dcm := r.ShowDiskChildrenMap()
-	c.Assert(len(dcm), Equals, 3)
-	c.Assert(len(dcm["volume-snap-000.img"]), Equals, 1)
-	c.Assert(dcm["volume-snap-000.img"]["volume-snap-001.img"], Equals, true)
-	c.Assert(len(dcm["volume-snap-001.img"]), Equals, 1)
-	c.Assert(dcm["volume-snap-001.img"]["volume-head-002.img"], Equals, true)
-	c.Assert(dcm["volume-head-002.img"], IsNil)
+	disks := r.ListDisks()
+	c.Assert(len(disks), Equals, 3)
+	c.Assert(disks["volume-snap-000.img"].Parent, Equals, "")
+	c.Assert(disks["volume-snap-000.img"].UserCreated, Equals, true)
+	c.Assert(disks["volume-snap-000.img"].Removed, Equals, false)
+	c.Assert(len(disks["volume-snap-000.img"].Children), Equals, 1)
+	c.Assert(disks["volume-snap-000.img"].Children[0], Equals, "volume-snap-001.img")
+
+	c.Assert(disks["volume-snap-001.img"].Parent, Equals, "volume-snap-000.img")
+	c.Assert(disks["volume-snap-001.img"].UserCreated, Equals, true)
+	c.Assert(disks["volume-snap-001.img"].Removed, Equals, false)
+	c.Assert(len(disks["volume-snap-001.img"].Children), Equals, 1)
+	c.Assert(disks["volume-snap-001.img"].Children[0], Equals, "volume-head-002.img")
+
+	c.Assert(disks["volume-head-002.img"].Parent, Equals, "volume-snap-001.img")
+	c.Assert(disks["volume-head-002.img"].UserCreated, Equals, false)
+	c.Assert(disks["volume-head-002.img"].Removed, Equals, false)
+	c.Assert(len(disks["volume-head-002.img"].Children), Equals, 0)
 }
 
 func (s *TestSuite) TestRevert(c *C) {
@@ -175,11 +186,11 @@ func (s *TestSuite) TestRevert(c *C) {
 		"volume-snap-003.img": false,
 		"volume-head-005.img": false,
 	}
-	for _, disk := range disks {
-		value, exists := verifyDisks[disk]
+	for name := range disks {
+		value, exists := verifyDisks[name]
 		c.Assert(exists, Equals, true)
 		c.Assert(value, Equals, false)
-		verifyDisks[disk] = true
+		verifyDisks[name] = true
 	}
 
 	c.Assert(len(r.diskChildrenMap["volume-snap-001.img"]), Equals, 1)
