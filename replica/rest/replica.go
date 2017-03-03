@@ -116,12 +116,15 @@ func (s *Server) SnapshotReplica(rw http.ResponseWriter, req *http.Request) erro
 		return err
 	}
 
-	name := input.Name
-	if name == "" {
+	if input.Name == "" {
 		return fmt.Errorf("Cannot accept empty snapshot name")
 	}
 
-	return s.doOp(req, s.s.Snapshot(name, input.UserCreated))
+	if input.Created == "" {
+		return fmt.Errorf("Need to specific created time")
+	}
+
+	return s.doOp(req, s.s.Snapshot(input.Name, input.UserCreated, input.Created))
 }
 
 func (s *Server) RevertReplica(rw http.ResponseWriter, req *http.Request) error {
@@ -131,7 +134,15 @@ func (s *Server) RevertReplica(rw http.ResponseWriter, req *http.Request) error 
 		return err
 	}
 
-	return s.doOp(req, s.s.Revert(input.Name))
+	if input.Name == "" {
+		return fmt.Errorf("Cannot accept empty snapshot name")
+	}
+
+	if input.Created == "" {
+		return fmt.Errorf("Need to specific created time")
+	}
+
+	return s.doOp(req, s.s.Revert(input.Name, input.Created))
 }
 
 func (s *Server) ReloadReplica(rw http.ResponseWriter, req *http.Request) error {

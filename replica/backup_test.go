@@ -5,6 +5,7 @@ import (
 	"os"
 	"path"
 
+	"github.com/rancher/longhorn/util"
 	. "gopkg.in/check.v1"
 )
 
@@ -98,7 +99,9 @@ func (s *TestSuite) testBackupWithBackups(c *C, backingFile *BackingFile) {
 	fill(buf, 1)
 	_, err = r.WriteAt(buf, mb)
 	c.Assert(err, IsNil)
-	err = r.Snapshot("001", true)
+
+	createdTime1 := util.Now()
+	err = r.Snapshot("001", true, createdTime1)
 
 	c.Assert(err, IsNil)
 	fill(buf, 2)
@@ -106,7 +109,9 @@ func (s *TestSuite) testBackupWithBackups(c *C, backingFile *BackingFile) {
 	c.Assert(err, IsNil)
 	_, err = r.WriteAt(buf, 4*mb)
 	c.Assert(err, IsNil)
-	err = r.Snapshot("002", true)
+
+	createdTime2 := util.Now()
+	err = r.Snapshot("002", true, createdTime2)
 
 	c.Assert(err, IsNil)
 	fill(buf, 3)
@@ -114,7 +119,8 @@ func (s *TestSuite) testBackupWithBackups(c *C, backingFile *BackingFile) {
 	c.Assert(err, IsNil)
 	_, err = r.WriteAt(buf, 8*mb)
 	c.Assert(err, IsNil)
-	err = r.Snapshot("003", true)
+	createdTime3 := util.Now()
+	err = r.Snapshot("003", true, createdTime3)
 
 	c.Assert(err, IsNil)
 	buf = make([]byte, 10*mb)

@@ -150,7 +150,7 @@ func (s *Server) Replica() *Replica {
 	return s.r
 }
 
-func (s *Server) Revert(name string) error {
+func (s *Server) Revert(name, created string) error {
 	s.Lock()
 	defer s.Unlock()
 
@@ -158,8 +158,8 @@ func (s *Server) Revert(name string) error {
 		return nil
 	}
 
-	logrus.Infof("Reverting to snapshot [%s] on volume", name)
-	r, err := s.r.Revert(name)
+	logrus.Infof("Reverting to snapshot [%s] on volume at %s", name, created)
+	r, err := s.r.Revert(name, created)
 	if err != nil {
 		return err
 	}
@@ -168,7 +168,7 @@ func (s *Server) Revert(name string) error {
 	return nil
 }
 
-func (s *Server) Snapshot(name string, userCreated bool) error {
+func (s *Server) Snapshot(name string, userCreated bool, createdTime string) error {
 	s.Lock()
 	defer s.Unlock()
 
@@ -176,8 +176,9 @@ func (s *Server) Snapshot(name string, userCreated bool) error {
 		return nil
 	}
 
-	logrus.Infof("Snapshotting [%s] volume, user created %v", name, userCreated)
-	return s.r.Snapshot(name, userCreated)
+	logrus.Infof("Snapshotting [%s] volume, user created %v, created time %v",
+		name, userCreated, createdTime)
+	return s.r.Snapshot(name, userCreated, createdTime)
 }
 
 func (s *Server) RemoveDiffDisk(name string) error {

@@ -30,7 +30,8 @@ type CreateInput struct {
 
 type RevertInput struct {
 	client.Resource
-	Name string `json:"name"`
+	Name    string `json:"name"`
+	Created string `json:"created"`
 }
 
 type RebuildingInput struct {
@@ -42,6 +43,7 @@ type SnapshotInput struct {
 	client.Resource
 	Name        string `json:"name"`
 	UserCreated bool   `json:"usercreated"`
+	Created     string `json:"created"`
 }
 
 type RemoveDiskInput struct {

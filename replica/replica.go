@@ -14,6 +14,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/rancher/longhorn/types"
+	"github.com/rancher/longhorn/util"
 	"github.com/rancher/sparse-tools/sparse"
 )
 
@@ -66,6 +67,7 @@ type disk struct {
 	Parent      string
 	Removed     bool
 	UserCreated bool
+	Created     string
 }
 
 type BackingFile struct {
@@ -87,6 +89,7 @@ type DiskInfo struct {
 	Children    []string `json:"children"`
 	Removed     bool     `json:"removed"`
 	UserCreated bool     `json:"usercreated"`
+	Created     string   `json:"created"`
 }
 
 const (
@@ -166,7 +169,7 @@ func construct(readonly bool, size, sectorSize int64, dir, head string, backingF
 	} else if size <= 0 {
 		return nil, os.ErrNotExist
 	} else {
-		if err := r.createDisk("000", false); err != nil {
+		if err := r.createDisk("000", false, util.Now()); err != nil {
 			return nil, err
 		}
 	}
@@ -495,7 +498,7 @@ func (r *Replica) openFile(name string, flag int) (types.DiffDisk, error) {
 	return sparse.NewDirectFileIoProcessor(r.diskPath(name), os.O_RDWR|flag, 06666, true)
 }
 
-func (r *Replica) createNewHead(oldHead, parent string) (types.DiffDisk, disk, error) {
+func (r *Replica) createNewHead(oldHead, parent, created string) (types.DiffDisk, disk, error) {
 	newHeadName, err := r.nextFile(diskPattern, headName, oldHead)
 	if err != nil {
 		return nil, disk{}, err
@@ -513,7 +516,13 @@ func (r *Replica) createNewHead(oldHead, parent string) (types.DiffDisk, disk, e
 		return nil, disk{}, err
 	}
 
-	newDisk := disk{Parent: parent, Name: newHeadName, Removed: false, UserCreated: false}
+	newDisk := disk{
+		Parent:      parent,
+		Name:        newHeadName,
+		Removed:     false,
+		UserCreated: false,
+		Created:     created,
+	}
 	err = r.encodeToFile(&newDisk, newHeadName+metadataSuffix)
 	return f, newDisk, err
 }
@@ -566,13 +575,13 @@ func (r *Replica) rmDisk(name string) error {
 	return lastErr
 }
 
-func (r *Replica) revertDisk(parent string) (*Replica, error) {
+func (r *Replica) revertDisk(parent, created string) (*Replica, error) {
 	if _, err := os.Stat(r.diskPath(parent)); err != nil {
 		return nil, err
 	}
 
 	oldHead := r.info.Head
-	f, newHeadDisk, err := r.createNewHead(oldHead, parent)
+	f, newHeadDisk, err := r.createNewHead(oldHead, parent, created)
 	if err != nil {
 		return nil, err
 	}
@@ -598,7 +607,7 @@ func (r *Replica) revertDisk(parent string) (*Replica, error) {
 	return rNew, nil
 }
 
-func (r *Replica) createDisk(name string, userCreated bool) error {
+func (r *Replica) createDisk(name string, userCreated bool, created string) error {
 	if r.readOnly {
 		return fmt.Errorf("Can not create disk on read-only replica")
 	}
@@ -615,7 +624,7 @@ func (r *Replica) createDisk(name string, userCreated bool) error {
 		newSnapName = ""
 	}
 
-	f, newHeadDisk, err := r.createNewHead(oldHead, newSnapName)
+	f, newHeadDisk, err := r.createNewHead(oldHead, newSnapName, created)
 	if err != nil {
 		return err
 	}
@@ -648,6 +657,7 @@ func (r *Replica) createDisk(name string, userCreated bool) error {
 		r.addChildDisk(newSnapName, newHeadDisk.Name)
 		r.diskData[newSnapName] = r.diskData[oldHead]
 		r.diskData[newSnapName].UserCreated = userCreated
+		r.diskData[newSnapName].Created = created
 		if err := r.encodeToFile(r.diskData[newSnapName], newSnapName+metadataSuffix); err != nil {
 			return err
 		}
@@ -808,18 +818,18 @@ func (r *Replica) Delete() error {
 	return nil
 }
 
-func (r *Replica) Snapshot(name string, userCreated bool) error {
+func (r *Replica) Snapshot(name string, userCreated bool, created string) error {
 	r.Lock()
 	defer r.Unlock()
 
-	return r.createDisk(name, userCreated)
+	return r.createDisk(name, userCreated, created)
 }
 
-func (r *Replica) Revert(name string) (*Replica, error) {
+func (r *Replica) Revert(name, created string) (*Replica, error) {
 	r.Lock()
 	defer r.Unlock()
 
-	return r.revertDisk(name)
+	return r.revertDisk(name, created)
 }
 
 func (r *Replica) WriteAt(buf []byte, offset int64) (int, error) {
@@ -858,6 +868,7 @@ func (r *Replica) ListDisks() map[string]DiskInfo {
 			Parent:      disk.Parent,
 			Removed:     disk.Removed,
 			UserCreated: disk.UserCreated,
+			Created:     disk.Created,
 		}
 		children := []string{}
 		for child := range r.diskChildrenMap[disk.Name] {

@@ -242,6 +242,7 @@ func detailSnapshot(c *cli.Context) error {
 				Removed:     disk.Removed,
 				UserCreated: disk.UserCreated,
 				Children:    children,
+				Created:     disk.Created,
 			}
 		}
 

@@ -23,7 +23,7 @@ func (f *Wrapper) Close() error {
 	return f.File.Close()
 }
 
-func (f *Wrapper) Snapshot(name string, userCreated bool) error {
+func (f *Wrapper) Snapshot(name string, userCreated bool, created string) error {
 	return nil
 }
 

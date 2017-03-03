@@ -51,10 +51,15 @@ func (r *Remote) open() error {
 	return r.doAction("open", nil)
 }
 
-func (r *Remote) Snapshot(name string, userCreated bool) error {
-	logrus.Infof("Snapshot: %s %s UserCreated %v", r.name, name, userCreated)
+func (r *Remote) Snapshot(name string, userCreated bool, created string) error {
+	logrus.Infof("Snapshot: %s %s UserCreated %v Created at %v",
+		r.name, name, userCreated, created)
 	return r.doAction("snapshot",
-		&map[string]interface{}{"name": name, "usercreated": userCreated})
+		&map[string]interface{}{
+			"name":        name,
+			"usercreated": userCreated,
+			"created":     created,
+		})
 }
 
 func (r *Remote) doAction(action string, obj interface{}) error {

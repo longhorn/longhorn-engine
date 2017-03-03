@@ -77,14 +77,15 @@ func (c *ReplicaClient) Create(size string) error {
 	}, nil)
 }
 
-func (c *ReplicaClient) Revert(name string) error {
+func (c *ReplicaClient) Revert(name, created string) error {
 	r, err := c.GetReplica()
 	if err != nil {
 		return err
 	}
 
 	return c.post(r.Actions["revert"], rest.RevertInput{
-		Name: name,
+		Name:    name,
+		Created: created,
 	}, nil)
 }
 

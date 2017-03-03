@@ -1,5 +1,6 @@
 import time
 import random
+import datetime
 
 import pytest
 import cattle
@@ -129,14 +130,14 @@ def test_snapshot(client):
     assert r.parent == ''
     assert r.head == 'volume-head-000.img'
 
-    r = r.snapshot(name='000')
+    r = r.snapshot(name='000', created=datetime.datetime.utcnow().isoformat())
     assert r.state == 'dirty'
     assert r.dirty
     assert not r.rebuilding
     assert r.size == str(1024*4096)
     assert r.sectorSize == 512
 
-    r = r.snapshot(name='001')
+    r = r.snapshot(name='001', created=datetime.datetime.utcnow().isoformat())
 
     assert r.state == 'dirty'
     assert r.dirty
@@ -156,8 +157,8 @@ def test_remove_disk(client):
     r = replicas[0]
     r = r.create(size=str(1024*4096))
     r = r.open()
-    r = r.snapshot(name='000')
-    r = r.snapshot(name='001')
+    r = r.snapshot(name='000', created=datetime.datetime.utcnow().isoformat())
+    r = r.snapshot(name='001', created=datetime.datetime.utcnow().isoformat())
     assert r.chain == ['volume-head-002.img', 'volume-snap-001.img',
                        'volume-snap-000.img']
 
@@ -189,8 +190,8 @@ def test_remove_last_disk(client):
     r = replicas[0]
     r = r.create(size=str(1024*4096))
     r = r.open()
-    r = r.snapshot(name='000')
-    r = r.snapshot(name='001')
+    r = r.snapshot(name='000', created=datetime.datetime.utcnow().isoformat())
+    r = r.snapshot(name='001', created=datetime.datetime.utcnow().isoformat())
     assert r.chain == ['volume-head-002.img', 'volume-snap-001.img',
                        'volume-snap-000.img']
 
@@ -220,9 +221,9 @@ def test_reload(client):
     r = r.create(size=str(1024*4096))
     r = r.open()
     assert r.chain == ['volume-head-000.img']
-    r = r.snapshot(name='000')
+    r = r.snapshot(name='000', created=datetime.datetime.utcnow().isoformat())
     assert r.chain == ['volume-head-001.img', 'volume-snap-000.img']
-    r = r.snapshot(name='001')
+    r = r.snapshot(name='001', created=datetime.datetime.utcnow().isoformat())
     assert r.chain == ['volume-head-002.img', 'volume-snap-001.img',
                        'volume-snap-000.img']
 
@@ -280,7 +281,7 @@ def test_rebuilding(client):
     r = replicas[0]
     r = r.create(size=str(1024*4096))
     r = r.open()
-    r = r.snapshot(name='001')
+    r = r.snapshot(name='001', created=datetime.datetime.utcnow().isoformat())
     assert r.state == 'dirty'
     assert not r.rebuilding
     assert r.size == str(1024*4096)
@@ -324,7 +325,7 @@ def test_not_rebuilding(client):
     r = replicas[0]
     r = r.create(size=str(1024*4096))
     r = r.open()
-    r = r.snapshot(name='001')
+    r = r.snapshot(name='001', created=datetime.datetime.utcnow().isoformat())
     assert r.state == 'dirty'
     assert not r.rebuilding
     assert r.size == str(1024*4096)

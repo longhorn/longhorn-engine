@@ -4,6 +4,7 @@ from os import path
 import os
 import subprocess
 import json
+import datetime
 
 import pytest
 import cattle
@@ -129,6 +130,11 @@ def test_replica_add_start(bin, controller_client, replica_client):
     assert volume.replicaCount == 1
 
 
+def getNow():
+    time.sleep(1)
+    return datetime.datetime.utcnow().replace(microsecond=0).isoformat()
+
+
 def test_replica_add_rebuild(bin, controller_client, replica_client,
                              replica_client2):
     open_replica(replica_client)
@@ -138,8 +144,10 @@ def test_replica_add_rebuild(bin, controller_client, replica_client,
     snap1 = "001"
     r = replica_client.list_replica()[0]
     r = r.open()
-    r = r.snapshot(name=snap0)
-    r = r.snapshot(name=snap1, usercreated=True)
+    createtime0 = getNow()
+    r = r.snapshot(name=snap0, created=createtime0)
+    createtime1 = getNow()
+    r = r.snapshot(name=snap1, usercreated=True, created=createtime1)
 
     l = replica_client2.list_replica()[0]
 
@@ -194,6 +202,7 @@ def test_replica_add_rebuild(bin, controller_client, replica_client,
     assert snap1_details["children"] == [snapreb]
     assert snap1_details["removed"] is False
     assert snap1_details["usercreated"] is True
+    assert snap1_details["created"] == createtime1
 
     snap0_details = details[snap0]
     assert snap0_details["name"] == snap0
@@ -201,6 +210,7 @@ def test_replica_add_rebuild(bin, controller_client, replica_client,
     assert snap0_details["children"] == [snap1]
     assert snap0_details["removed"] is False
     assert snap0_details["usercreated"] is False
+    assert snap0_details["created"] == createtime0
 
 
 def test_replica_add_after_rebuild_failed(bin, controller_client,
@@ -210,7 +220,7 @@ def test_replica_add_after_rebuild_failed(bin, controller_client,
 
     r = replica_client.list_replica()[0]
     r = r.open()
-    r = r.snapshot(name='000')
+    r = r.snapshot(name='000', created=datetime.datetime.utcnow().isoformat())
     r.close()
 
     cmd = [bin, '--debug', 'add-replica', REPLICA]
@@ -382,6 +392,7 @@ def test_snapshot_detail(bin, controller_client,
     assert snap2_details["children"] == []
     assert snap2_details["removed"] is False
     assert snap2_details["usercreated"] is True
+    assert snap2_details["created"] != ""
 
     snap_details = details[snap.id]
     assert snap_details["name"] == snap.id
@@ -389,6 +400,7 @@ def test_snapshot_detail(bin, controller_client,
     assert snap_details["children"] == [snap2.id]
     assert snap_details["removed"] is False
     assert snap_details["usercreated"] is True
+    assert snap_details["created"] != ""
 
 
 def test_snapshot_create(bin, controller_client, replica_client,

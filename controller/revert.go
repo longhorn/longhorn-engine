@@ -7,6 +7,7 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/rancher/longhorn/replica/client"
 	"github.com/rancher/longhorn/types"
+	"github.com/rancher/longhorn/util"
 )
 
 func (c *Controller) Revert(name string) error {
@@ -42,9 +43,10 @@ func (c *Controller) Revert(name string) error {
 	defer c.Unlock()
 
 	minimalSuccess := false
+	now := util.Now()
 	for address, client := range clients {
-		logrus.Infof("Reverting to snapshot %s on %s", name, address)
-		if err := client.Revert(name); err != nil {
+		logrus.Infof("Reverting to snapshot %s on %s at %s", name, address, now)
+		if err := client.Revert(name, now); err != nil {
 			logrus.Errorf("Error on reverting to %s on %s: %v", name, address, err)
 			c.setReplicaModeNoLock(address, types.ERR)
 		} else {
