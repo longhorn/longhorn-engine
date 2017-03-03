@@ -134,10 +134,12 @@ def test_replica_add_rebuild(bin, controller_client, replica_client,
     open_replica(replica_client)
     open_replica(replica_client2)
 
+    snap0 = "000"
+    snap1 = "001"
     r = replica_client.list_replica()[0]
     r = r.open()
-    r = r.snapshot(name='000')
-    r = r.snapshot(name='001')
+    r = r.snapshot(name=snap0)
+    r = r.snapshot(name=snap1, usercreated=True)
 
     l = replica_client2.list_replica()[0]
 
@@ -167,6 +169,38 @@ def test_replica_add_rebuild(bin, controller_client, replica_client,
 
     for r in replicas:
         assert r.mode == 'RW'
+
+    cmd = [bin, '--debug', 'snapshot', 'detail']
+    output = subprocess.check_output(cmd)
+    details = json.loads(output)
+
+    # two existing snapshots and one system snapshot due to rebuild
+    assert len(details) == 3
+    for name in details:
+        if name != snap0 and name != snap1:
+            snapreb = name
+            break
+
+    snapreb_details = details[snapreb]
+    assert snapreb_details["name"] == snapreb
+    assert snapreb_details["parent"] == snap1
+    assert snapreb_details["children"] == []
+    assert snapreb_details["removed"] is False
+    assert snapreb_details["usercreated"] is False
+
+    snap1_details = details[snap1]
+    assert snap1_details["name"] == snap1
+    assert snap1_details["parent"] == snap0
+    assert snap1_details["children"] == [snapreb]
+    assert snap1_details["removed"] is False
+    assert snap1_details["usercreated"] is True
+
+    snap0_details = details[snap0]
+    assert snap0_details["name"] == snap0
+    assert snap0_details["parent"] == ""
+    assert snap0_details["children"] == [snap1]
+    assert snap0_details["removed"] is False
+    assert snap0_details["usercreated"] is False
 
 
 def test_replica_add_after_rebuild_failed(bin, controller_client,
