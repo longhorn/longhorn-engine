@@ -24,7 +24,7 @@ func SnapshotCmd() cli.Command {
 			SnapshotRevertCmd(),
 			SnapshotLsCmd(),
 			SnapshotRmCmd(),
-			SnapshotDetailCmd(),
+			SnapshotInfoCmd(),
 		},
 		Action: func(c *cli.Context) {
 			if err := lsSnapshot(c); err != nil {
@@ -78,12 +78,12 @@ func SnapshotLsCmd() cli.Command {
 	}
 }
 
-func SnapshotDetailCmd() cli.Command {
+func SnapshotInfoCmd() cli.Command {
 	return cli.Command{
-		Name: "detail",
+		Name: "info",
 		Action: func(c *cli.Context) {
-			if err := detailSnapshot(c); err != nil {
-				logrus.Fatalf("Error running detail snapshot command: %v", err)
+			if err := infoSnapshot(c); err != nil {
+				logrus.Fatalf("Error running snapshot info command: %v", err)
 			}
 		},
 	}
@@ -190,7 +190,7 @@ func lsSnapshot(c *cli.Context) error {
 	return nil
 }
 
-func detailSnapshot(c *cli.Context) error {
+func infoSnapshot(c *cli.Context) error {
 	var output []byte
 
 	outputDisks := make(map[string]replica.DiskInfo)
@@ -253,7 +253,7 @@ func detailSnapshot(c *cli.Context) error {
 	}
 
 	if output == nil {
-		return fmt.Errorf("Cannot find suitable replica for snapshot details")
+		return fmt.Errorf("Cannot find suitable replica for snapshot info")
 	}
 	fmt.Println(string(output))
 	return nil

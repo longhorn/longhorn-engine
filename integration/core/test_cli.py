@@ -178,39 +178,39 @@ def test_replica_add_rebuild(bin, controller_client, replica_client,
     for r in replicas:
         assert r.mode == 'RW'
 
-    cmd = [bin, '--debug', 'snapshot', 'detail']
+    cmd = [bin, '--debug', 'snapshot', 'info']
     output = subprocess.check_output(cmd)
-    details = json.loads(output)
+    info = json.loads(output)
 
     # two existing snapshots and one system snapshot due to rebuild
-    assert len(details) == 3
-    for name in details:
+    assert len(info) == 3
+    for name in info:
         if name != snap0 and name != snap1:
             snapreb = name
             break
 
-    snapreb_details = details[snapreb]
-    assert snapreb_details["name"] == snapreb
-    assert snapreb_details["parent"] == snap1
-    assert snapreb_details["children"] == []
-    assert snapreb_details["removed"] is False
-    assert snapreb_details["usercreated"] is False
+    snapreb_info = info[snapreb]
+    assert snapreb_info["name"] == snapreb
+    assert snapreb_info["parent"] == snap1
+    assert snapreb_info["children"] == []
+    assert snapreb_info["removed"] is False
+    assert snapreb_info["usercreated"] is False
 
-    snap1_details = details[snap1]
-    assert snap1_details["name"] == snap1
-    assert snap1_details["parent"] == snap0
-    assert snap1_details["children"] == [snapreb]
-    assert snap1_details["removed"] is False
-    assert snap1_details["usercreated"] is True
-    assert snap1_details["created"] == createtime1
+    snap1_info = info[snap1]
+    assert snap1_info["name"] == snap1
+    assert snap1_info["parent"] == snap0
+    assert snap1_info["children"] == [snapreb]
+    assert snap1_info["removed"] is False
+    assert snap1_info["usercreated"] is True
+    assert snap1_info["created"] == createtime1
 
-    snap0_details = details[snap0]
-    assert snap0_details["name"] == snap0
-    assert snap0_details["parent"] == ""
-    assert snap0_details["children"] == [snap1]
-    assert snap0_details["removed"] is False
-    assert snap0_details["usercreated"] is False
-    assert snap0_details["created"] == createtime0
+    snap0_info = info[snap0]
+    assert snap0_info["name"] == snap0
+    assert snap0_info["parent"] == ""
+    assert snap0_info["children"] == [snap1]
+    assert snap0_info["removed"] is False
+    assert snap0_info["usercreated"] is False
+    assert snap0_info["created"] == createtime0
 
 
 def test_replica_add_after_rebuild_failed(bin, controller_client,
@@ -362,8 +362,8 @@ def test_snapshot_ls(bin, controller_client, replica_client, replica_client2):
 '''.format(snap2.id, snap.id)
 
 
-def test_snapshot_detail(bin, controller_client,
-                         replica_client, replica_client2):
+def test_snapshot_info(bin, controller_client,
+                       replica_client, replica_client2):
     open_replica(replica_client)
     open_replica(replica_client2)
 
@@ -380,27 +380,27 @@ def test_snapshot_detail(bin, controller_client,
     snap2 = v.snapshot()
     assert snap2.id != ''
 
-    cmd = [bin, '--debug', 'snapshot', 'detail']
+    cmd = [bin, '--debug', 'snapshot', 'info']
     output = subprocess.check_output(cmd)
-    details = json.loads(output)
+    info = json.loads(output)
 
-    assert len(details) == 2
+    assert len(info) == 2
 
-    snap2_details = details[snap2.id]
-    assert snap2_details["name"] == snap2.id
-    assert snap2_details["parent"] == snap.id
-    assert snap2_details["children"] == []
-    assert snap2_details["removed"] is False
-    assert snap2_details["usercreated"] is True
-    assert snap2_details["created"] != ""
+    snap2_info = info[snap2.id]
+    assert snap2_info["name"] == snap2.id
+    assert snap2_info["parent"] == snap.id
+    assert snap2_info["children"] == []
+    assert snap2_info["removed"] is False
+    assert snap2_info["usercreated"] is True
+    assert snap2_info["created"] != ""
 
-    snap_details = details[snap.id]
-    assert snap_details["name"] == snap.id
-    assert snap_details["parent"] == ""
-    assert snap_details["children"] == [snap2.id]
-    assert snap_details["removed"] is False
-    assert snap_details["usercreated"] is True
-    assert snap_details["created"] != ""
+    snap_info = info[snap.id]
+    assert snap_info["name"] == snap.id
+    assert snap_info["parent"] == ""
+    assert snap_info["children"] == [snap2.id]
+    assert snap_info["removed"] is False
+    assert snap_info["usercreated"] is True
+    assert snap_info["created"] != ""
 
 
 def test_snapshot_create(bin, controller_client, replica_client,
