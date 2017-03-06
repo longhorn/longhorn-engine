@@ -1,4 +1,4 @@
-package metadata
+package backupstore
 
 type Mapping struct {
 	Offset int64

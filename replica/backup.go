@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/rancher/convoy/metadata"
+	"github.com/yasker/backupstore"
 )
 
 const (
@@ -109,7 +109,7 @@ func (rb *Backup) CloseSnapshot(id, volumeID string) error {
 	return err
 }
 
-func (rb *Backup) CompareSnapshot(id, compareID, volumeID string) (*metadata.Mappings, error) {
+func (rb *Backup) CompareSnapshot(id, compareID, volumeID string) (*backupstore.Mappings, error) {
 	if err := rb.assertOpen(id, volumeID); err != nil {
 		return nil, err
 	}
@@ -127,10 +127,10 @@ func (rb *Backup) CompareSnapshot(id, compareID, volumeID string) (*metadata.Map
 		return nil, fmt.Errorf("Failed to find snapshot %s in chain", compareID)
 	}
 
-	mappings := &metadata.Mappings{
+	mappings := &backupstore.Mappings{
 		BlockSize: snapBlockSize,
 	}
-	mapping := metadata.Mapping{
+	mapping := backupstore.Mapping{
 		Offset: -1,
 	}
 
@@ -144,7 +144,7 @@ func (rb *Backup) CompareSnapshot(id, compareID, volumeID string) (*metadata.Map
 			// align
 			offset -= (offset % snapBlockSize)
 			if mapping.Offset != offset {
-				mapping = metadata.Mapping{
+				mapping = backupstore.Mapping{
 					Offset: offset,
 					Size:   snapBlockSize,
 				}

@@ -12,8 +12,8 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
 
-	"github.com/rancher/convoy/objectstore"
 	"github.com/rancher/longhorn/replica"
+	"github.com/yasker/backupstore"
 )
 
 const (
@@ -26,7 +26,7 @@ var (
 
 	backupCreateCmd = cli.Command{
 		Name:  "create",
-		Usage: "create a backup in objectstore: create <snapshot>",
+		Usage: "create a backup in backupstore: create <snapshot>",
 		Flags: []cli.Flag{
 			cli.StringFlag{
 				Name:  "dest",
@@ -54,13 +54,13 @@ var (
 
 	backupDeleteCmd = cli.Command{
 		Name:   "delete",
-		Usage:  "delete a backup in objectstore: delete <backup>",
+		Usage:  "delete a backup in backupstore: delete <backup>",
 		Action: cmdBackupDelete,
 	}
 
 	backupListCmd = cli.Command{
 		Name:  "list",
-		Usage: "list backups in objectstore: list <dest>",
+		Usage: "list backups in backupstore: list <dest>",
 		Flags: []cli.Flag{
 			cli.StringFlag{
 				Name:  "volume",
@@ -194,19 +194,19 @@ func doBackupCreate(c *cli.Context) error {
 	}
 	replicaBackup := replica.NewBackup(backingFile)
 
-	volume := &objectstore.Volume{
+	volume := &backupstore.Volume{
 		Name:        volumeName,
 		Driver:      DRIVERNAME,
 		Size:        volumeInfo.Size,
 		CreatedTime: Now(),
 	}
-	snapshot := &objectstore.Snapshot{
+	snapshot := &backupstore.Snapshot{
 		Name:        snapshotName,
 		CreatedTime: Now(),
 	}
 
 	log.Debugf("Starting backup for %v, snapshot %v, dest %v", volume, snapshot, destURL)
-	backupURL, err := objectstore.CreateDeltaBlockBackup(volume, snapshot, destURL, replicaBackup)
+	backupURL, err := backupstore.CreateDeltaBlockBackup(volume, snapshot, destURL, replicaBackup)
 	if err != nil {
 		return err
 	}
@@ -230,7 +230,7 @@ func doBackupDelete(c *cli.Context) error {
 	}
 	backupURL = UnescapeURL(backupURL)
 
-	if err := objectstore.DeleteDeltaBlockBackup(backupURL); err != nil {
+	if err := backupstore.DeleteDeltaBlockBackup(backupURL); err != nil {
 		return err
 	}
 	return nil
@@ -257,7 +257,7 @@ func doBackupRestore(c *cli.Context) error {
 		return RequiredMissingError("to")
 	}
 
-	if err := objectstore.RestoreDeltaBlockBackup(backupURL, toFile); err != nil {
+	if err := backupstore.RestoreDeltaBlockBackup(backupURL, toFile); err != nil {
 		return err
 	}
 
@@ -305,7 +305,7 @@ func doBackupList(c *cli.Context) error {
 
 	volumeName := c.String("volume")
 
-	list, err := objectstore.List(volumeName, destURL, DRIVERNAME)
+	list, err := backupstore.List(volumeName, destURL, DRIVERNAME)
 	if err != nil {
 		return err
 	}
@@ -331,7 +331,7 @@ func doBackupInspect(c *cli.Context) error {
 	}
 	backupURL = UnescapeURL(backupURL)
 
-	info, err := objectstore.GetBackupInfo(backupURL)
+	info, err := backupstore.GetBackupInfo(backupURL)
 	if err != nil {
 		return err
 	}

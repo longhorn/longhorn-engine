@@ -9,15 +9,15 @@ import (
 	"strings"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/rancher/convoy/objectstore"
-	"github.com/rancher/convoy/util"
+	"github.com/yasker/backupstore"
+	"github.com/yasker/backupstore/util"
 )
 
 var (
 	log = logrus.WithFields(logrus.Fields{"pkg": "vfs"})
 )
 
-type VfsObjectStoreDriver struct {
+type VfsBackupStoreDriver struct {
 	destURL string
 	path    string
 }
@@ -31,11 +31,13 @@ const (
 )
 
 func init() {
-	objectstore.RegisterDriver(KIND, initFunc)
+	if err := backupstore.RegisterDriver(KIND, initFunc); err != nil {
+		panic(err)
+	}
 }
 
-func initFunc(destURL string) (objectstore.ObjectStoreDriver, error) {
-	b := &VfsObjectStoreDriver{}
+func initFunc(destURL string) (backupstore.BackupStoreDriver, error) {
+	b := &VfsBackupStoreDriver{}
 	u, err := url.Parse(destURL)
 	if err != nil {
 		return nil, err
@@ -63,26 +65,26 @@ func initFunc(destURL string) (objectstore.ObjectStoreDriver, error) {
 	return b, nil
 }
 
-func (v *VfsObjectStoreDriver) updatePath(path string) string {
+func (v *VfsBackupStoreDriver) updatePath(path string) string {
 	return filepath.Join(v.path, path)
 }
 
-func (v *VfsObjectStoreDriver) preparePath(file string) error {
+func (v *VfsBackupStoreDriver) preparePath(file string) error {
 	if err := os.MkdirAll(filepath.Dir(v.updatePath(file)), os.ModeDir|0700); err != nil {
 		return err
 	}
 	return nil
 }
 
-func (v *VfsObjectStoreDriver) Kind() string {
+func (v *VfsBackupStoreDriver) Kind() string {
 	return KIND
 }
 
-func (v *VfsObjectStoreDriver) GetURL() string {
+func (v *VfsBackupStoreDriver) GetURL() string {
 	return v.destURL
 }
 
-func (v *VfsObjectStoreDriver) FileSize(filePath string) int64 {
+func (v *VfsBackupStoreDriver) FileSize(filePath string) int64 {
 	file := v.updatePath(filePath)
 	st, err := os.Stat(file)
 	if err != nil || st.IsDir() {
@@ -91,11 +93,11 @@ func (v *VfsObjectStoreDriver) FileSize(filePath string) int64 {
 	return st.Size()
 }
 
-func (v *VfsObjectStoreDriver) FileExists(filePath string) bool {
+func (v *VfsBackupStoreDriver) FileExists(filePath string) bool {
 	return v.FileSize(filePath) >= 0
 }
 
-func (v *VfsObjectStoreDriver) Remove(names ...string) error {
+func (v *VfsBackupStoreDriver) Remove(names ...string) error {
 	for _, name := range names {
 		if err := os.RemoveAll(v.updatePath(name)); err != nil {
 			return err
@@ -104,8 +106,8 @@ func (v *VfsObjectStoreDriver) Remove(names ...string) error {
 		dir := v.updatePath(name)
 		for i := 0; i < MAX_CLEANUP_LEVEL; i++ {
 			dir = filepath.Dir(dir)
-			// Don't clean above OBJECTSTORE_BASE
-			if strings.HasSuffix(dir, objectstore.OBJECTSTORE_BASE) {
+			// Don't clean above BACKUPSTORE_BASE
+			if strings.HasSuffix(dir, backupstore.BACKUPSTORE_BASE) {
 				break
 			}
 			// If directory is not empty, then we don't need to continue
@@ -117,7 +119,7 @@ func (v *VfsObjectStoreDriver) Remove(names ...string) error {
 	return nil
 }
 
-func (v *VfsObjectStoreDriver) Read(src string) (io.ReadCloser, error) {
+func (v *VfsBackupStoreDriver) Read(src string) (io.ReadCloser, error) {
 	file, err := os.Open(v.updatePath(src))
 	if err != nil {
 		return nil, err
@@ -125,7 +127,7 @@ func (v *VfsObjectStoreDriver) Read(src string) (io.ReadCloser, error) {
 	return file, nil
 }
 
-func (v *VfsObjectStoreDriver) Write(dst string, rs io.ReadSeeker) error {
+func (v *VfsBackupStoreDriver) Write(dst string, rs io.ReadSeeker) error {
 	tmpFile := dst + ".tmp"
 	if v.FileExists(tmpFile) {
 		v.Remove(tmpFile)
@@ -149,7 +151,7 @@ func (v *VfsObjectStoreDriver) Write(dst string, rs io.ReadSeeker) error {
 	return os.Rename(v.updatePath(tmpFile), v.updatePath(dst))
 }
 
-func (v *VfsObjectStoreDriver) List(path string) ([]string, error) {
+func (v *VfsBackupStoreDriver) List(path string) ([]string, error) {
 	out, err := util.Execute("ls", []string{"-1", v.updatePath(path)})
 	if err != nil {
 		return nil, err
@@ -162,7 +164,7 @@ func (v *VfsObjectStoreDriver) List(path string) ([]string, error) {
 	return result, nil
 }
 
-func (v *VfsObjectStoreDriver) Upload(src, dst string) error {
+func (v *VfsBackupStoreDriver) Upload(src, dst string) error {
 	tmpDst := dst + ".tmp"
 	if v.FileExists(tmpDst) {
 		v.Remove(tmpDst)
@@ -181,7 +183,7 @@ func (v *VfsObjectStoreDriver) Upload(src, dst string) error {
 	return nil
 }
 
-func (v *VfsObjectStoreDriver) Download(src, dst string) error {
+func (v *VfsBackupStoreDriver) Download(src, dst string) error {
 	_, err := util.Execute("cp", []string{v.updatePath(src), dst})
 	if err != nil {
 		return err

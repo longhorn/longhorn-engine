@@ -2,14 +2,19 @@ package util
 
 import (
 	"fmt"
+	"log"
 	"net"
+	"os/exec"
 	"path/filepath"
-
-	cutil "github.com/rancher/convoy/util"
+	"time"
 )
 
 const (
 	NSBinary = "nsenter"
+)
+
+var (
+	cmdTimeout = time.Minute // one minute by default
 )
 
 func GetLocalIPs() ([]string, error) {
@@ -42,13 +47,13 @@ func NewNamespaceExecutor(ns string) (*NamespaceExecutor, error) {
 	}
 	mntNS := filepath.Join(ns, "mnt")
 	netNS := filepath.Join(ns, "net")
-	if _, err := cutil.Execute(NSBinary, []string{"-V"}); err != nil {
+	if _, err := Execute(NSBinary, []string{"-V"}); err != nil {
 		return nil, fmt.Errorf("Cannot find nsenter for namespace switching")
 	}
-	if _, err := cutil.Execute(NSBinary, []string{"--mount=" + mntNS, "mount"}); err != nil {
+	if _, err := Execute(NSBinary, []string{"--mount=" + mntNS, "mount"}); err != nil {
 		return nil, fmt.Errorf("Invalid mount namespace %v, error %v", mntNS, err)
 	}
-	if _, err := cutil.Execute(NSBinary, []string{"--net=" + netNS, "ip", "addr"}); err != nil {
+	if _, err := Execute(NSBinary, []string{"--net=" + netNS, "ip", "addr"}); err != nil {
 		return nil, fmt.Errorf("Invalid net namespace %v, error %v", netNS, err)
 	}
 	return ne, nil
@@ -56,7 +61,7 @@ func NewNamespaceExecutor(ns string) (*NamespaceExecutor, error) {
 
 func (ne *NamespaceExecutor) Execute(name string, args []string) (string, error) {
 	if ne.ns == "" {
-		return cutil.Execute(name, args)
+		return Execute(name, args)
 	}
 	cmdArgs := []string{
 		"--mount=" + filepath.Join(ne.ns, "mnt"),
@@ -64,5 +69,34 @@ func (ne *NamespaceExecutor) Execute(name string, args []string) (string, error)
 		name,
 	}
 	cmdArgs = append(cmdArgs, args...)
-	return cutil.Execute(NSBinary, cmdArgs)
+	return Execute(NSBinary, cmdArgs)
+}
+
+func Execute(binary string, args []string) (string, error) {
+	var output []byte
+	var err error
+	cmd := exec.Command(binary, args...)
+	done := make(chan struct{})
+
+	go func() {
+		output, err = cmd.CombinedOutput()
+		done <- struct{}{}
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(cmdTimeout):
+		if cmd.Process != nil {
+			if err := cmd.Process.Kill(); err != nil {
+				log.Printf("Problem killing process pid=%v: %s", cmd.Process.Pid, err)
+			}
+
+		}
+		return "", fmt.Errorf("Timeout executing: %v %v, output %v, error %v", binary, args, string(output), err)
+	}
+
+	if err != nil {
+		return "", fmt.Errorf("Failed to execute: %v %v, output %v, error %v", binary, args, string(output), err)
+	}
+	return string(output), nil
 }
