@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rancher/convoy/util"
+	"github.com/yasker/go-iscsi-helper/util"
 )
 
 var (

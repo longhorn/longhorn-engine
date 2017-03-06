@@ -9,14 +9,14 @@ import (
 	"strings"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/rancher/convoy/objectstore"
+	"github.com/yasker/backupstore"
 )
 
 var (
 	log = logrus.WithFields(logrus.Fields{"pkg": "s3"})
 )
 
-type S3ObjectStoreDriver struct {
+type S3BackupStoreDriver struct {
 	destURL string
 	path    string
 	service S3Service
@@ -27,11 +27,13 @@ const (
 )
 
 func init() {
-	objectstore.RegisterDriver(KIND, initFunc)
+	if err := backupstore.RegisterDriver(KIND, initFunc); err != nil {
+		panic(err)
+	}
 }
 
-func initFunc(destURL string) (objectstore.ObjectStoreDriver, error) {
-	b := &S3ObjectStoreDriver{}
+func initFunc(destURL string) (backupstore.BackupStoreDriver, error) {
+	b := &S3BackupStoreDriver{}
 
 	u, err := url.Parse(destURL)
 	if err != nil {
@@ -72,19 +74,19 @@ func initFunc(destURL string) (objectstore.ObjectStoreDriver, error) {
 	return b, nil
 }
 
-func (s *S3ObjectStoreDriver) Kind() string {
+func (s *S3BackupStoreDriver) Kind() string {
 	return KIND
 }
 
-func (s *S3ObjectStoreDriver) GetURL() string {
+func (s *S3BackupStoreDriver) GetURL() string {
 	return s.destURL
 }
 
-func (s *S3ObjectStoreDriver) updatePath(path string) string {
+func (s *S3BackupStoreDriver) updatePath(path string) string {
 	return filepath.Join(s.path, path)
 }
 
-func (s *S3ObjectStoreDriver) List(listPath string) ([]string, error) {
+func (s *S3BackupStoreDriver) List(listPath string) ([]string, error) {
 	var result []string
 
 	path := s.updatePath(listPath) + "/"
@@ -117,11 +119,11 @@ func (s *S3ObjectStoreDriver) List(listPath string) ([]string, error) {
 	return result, nil
 }
 
-func (s *S3ObjectStoreDriver) FileExists(filePath string) bool {
+func (s *S3BackupStoreDriver) FileExists(filePath string) bool {
 	return s.FileSize(filePath) >= 0
 }
 
-func (s *S3ObjectStoreDriver) FileSize(filePath string) int64 {
+func (s *S3BackupStoreDriver) FileSize(filePath string) int64 {
 	path := s.updatePath(filePath)
 	head, err := s.service.HeadObject(path)
 	if err != nil {
@@ -133,7 +135,7 @@ func (s *S3ObjectStoreDriver) FileSize(filePath string) int64 {
 	return *head.ContentLength
 }
 
-func (s *S3ObjectStoreDriver) Remove(names ...string) error {
+func (s *S3BackupStoreDriver) Remove(names ...string) error {
 	if len(names) == 0 {
 		return nil
 	}
@@ -144,7 +146,7 @@ func (s *S3ObjectStoreDriver) Remove(names ...string) error {
 	return s.service.DeleteObjects(paths)
 }
 
-func (s *S3ObjectStoreDriver) Read(src string) (io.ReadCloser, error) {
+func (s *S3BackupStoreDriver) Read(src string) (io.ReadCloser, error) {
 	path := s.updatePath(src)
 	rc, err := s.service.GetObject(path)
 	if err != nil {
@@ -153,12 +155,12 @@ func (s *S3ObjectStoreDriver) Read(src string) (io.ReadCloser, error) {
 	return rc, nil
 }
 
-func (s *S3ObjectStoreDriver) Write(dst string, rs io.ReadSeeker) error {
+func (s *S3BackupStoreDriver) Write(dst string, rs io.ReadSeeker) error {
 	path := s.updatePath(dst)
 	return s.service.PutObject(path, rs)
 }
 
-func (s *S3ObjectStoreDriver) Upload(src, dst string) error {
+func (s *S3BackupStoreDriver) Upload(src, dst string) error {
 	file, err := os.Open(src)
 	if err != nil {
 		return nil
@@ -168,7 +170,7 @@ func (s *S3ObjectStoreDriver) Upload(src, dst string) error {
 	return s.service.PutObject(path, file)
 }
 
-func (s *S3ObjectStoreDriver) Download(src, dst string) error {
+func (s *S3BackupStoreDriver) Download(src, dst string) error {
 	if _, err := os.Stat(dst); err != nil {
 		os.Remove(dst)
 	}

@@ -1,13 +1,13 @@
-package objectstore
+package backupstore
 
 import (
 	"fmt"
 	"path/filepath"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/rancher/convoy/util"
+	"github.com/yasker/backupstore/util"
 
-	. "github.com/rancher/convoy/logging"
+	. "github.com/yasker/backupstore/logging"
 )
 
 const (
@@ -24,7 +24,7 @@ func getSingleFileBackupFilePath(sfBackup *Backup) string {
 }
 
 func CreateSingleFileBackup(volume *Volume, snapshot *Snapshot, filePath, destURL string) (string, error) {
-	driver, err := GetObjectStoreDriver(destURL)
+	driver, err := GetBackupStoreDriver(destURL)
 	if err != nil {
 		return "", err
 	}
@@ -74,7 +74,7 @@ func CreateSingleFileBackup(volume *Volume, snapshot *Snapshot, filePath, destUR
 }
 
 func RestoreSingleFileBackup(backupURL, path string) (string, error) {
-	driver, err := GetObjectStoreDriver(backupURL)
+	driver, err := GetBackupStoreDriver(backupURL)
 	if err != nil {
 		return "", err
 	}
@@ -88,7 +88,7 @@ func RestoreSingleFileBackup(backupURL, path string) (string, error) {
 		return "", generateError(logrus.Fields{
 			LOG_FIELD_VOLUME:     srcVolumeName,
 			LOG_FIELD_BACKUP_URL: backupURL,
-		}, "Volume doesn't exist in objectstore: %v", err)
+		}, "Volume doesn't exist in backupstore: %v", err)
 	}
 
 	backup, err := loadBackup(srcBackupName, srcVolumeName, driver)
@@ -105,7 +105,7 @@ func RestoreSingleFileBackup(backupURL, path string) (string, error) {
 }
 
 func DeleteSingleFileBackup(backupURL string) error {
-	driver, err := GetObjectStoreDriver(backupURL)
+	driver, err := GetBackupStoreDriver(backupURL)
 	if err != nil {
 		return err
 	}
@@ -117,7 +117,7 @@ func DeleteSingleFileBackup(backupURL string) error {
 
 	_, err = loadVolume(volumeName, driver)
 	if err != nil {
-		return fmt.Errorf("Cannot find volume %v in objectstore", volumeName, err)
+		return fmt.Errorf("Cannot find volume %v in backupstore", volumeName, err)
 	}
 
 	backup, err := loadBackup(backupName, volumeName, driver)

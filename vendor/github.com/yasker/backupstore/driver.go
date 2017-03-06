@@ -1,4 +1,4 @@
-package objectstore
+package backupstore
 
 import (
 	"fmt"
@@ -7,12 +7,12 @@ import (
 
 	"github.com/Sirupsen/logrus"
 
-	. "github.com/rancher/convoy/logging"
+	. "github.com/yasker/backupstore/logging"
 )
 
-type InitFunc func(destURL string) (ObjectStoreDriver, error)
+type InitFunc func(destURL string) (BackupStoreDriver, error)
 
-type ObjectStoreDriver interface {
+type BackupStoreDriver interface {
 	Kind() string
 	GetURL() string
 	FileExists(filePath string) bool
@@ -30,11 +30,11 @@ var (
 )
 
 var (
-	log = logrus.WithFields(logrus.Fields{"pkg": "objectstore"})
+	log = logrus.WithFields(logrus.Fields{"pkg": "backupstore"})
 )
 
 func generateError(fields logrus.Fields, format string, v ...interface{}) error {
-	return ErrorWithFields("objectstore", fields, format, v)
+	return ErrorWithFields("backupstore", fields, format, v)
 }
 
 func init() {
@@ -49,7 +49,7 @@ func RegisterDriver(kind string, initFunc InitFunc) error {
 	return nil
 }
 
-func GetObjectStoreDriver(destURL string) (ObjectStoreDriver, error) {
+func GetBackupStoreDriver(destURL string) (BackupStoreDriver, error) {
 	if destURL == "" {
 		return nil, fmt.Errorf("Destination URL hasn't been specified")
 	}

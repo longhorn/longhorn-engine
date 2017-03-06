@@ -1,4 +1,4 @@
-package objectstore
+package backupstore
 
 import (
 	"fmt"
@@ -7,10 +7,9 @@ import (
 	"path/filepath"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/rancher/convoy/metadata"
-	"github.com/rancher/convoy/util"
+	"github.com/yasker/backupstore/util"
 
-	. "github.com/rancher/convoy/logging"
+	. "github.com/yasker/backupstore/logging"
 )
 
 type BlockMapping struct {
@@ -20,7 +19,7 @@ type BlockMapping struct {
 
 type DeltaBlockBackupOperations interface {
 	HasSnapshot(id, volumeID string) bool
-	CompareSnapshot(id, compareID, volumeID string) (*metadata.Mappings, error)
+	CompareSnapshot(id, compareID, volumeID string) (*Mappings, error)
 	OpenSnapshot(id, volumeID string) error
 	ReadSnapshot(id, volumeID string, start int64, data []byte) error
 	CloseSnapshot(id, volumeID string) error
@@ -39,7 +38,7 @@ func CreateDeltaBlockBackup(volume *Volume, snapshot *Snapshot, destURL string, 
 		return "", fmt.Errorf("Missing DeltaBlockBackupOperations")
 	}
 
-	bsDriver, err := GetObjectStoreDriver(destURL)
+	bsDriver, err := GetBackupStoreDriver(destURL)
 	if err != nil {
 		return "", err
 	}
@@ -48,7 +47,7 @@ func CreateDeltaBlockBackup(volume *Volume, snapshot *Snapshot, destURL string, 
 		return "", err
 	}
 
-	// Update volume from objectstore
+	// Update volume from backupstore
 	volume, err = loadVolume(volume.Name, bsDriver)
 	if err != nil {
 		return "", err
@@ -75,7 +74,7 @@ func CreateDeltaBlockBackup(volume *Volume, snapshot *Snapshot, destURL string, 
 			lastSnapshotName = ""
 			log.Debug("Would create full snapshot metadata")
 		} else if !deltaOps.HasSnapshot(lastSnapshotName, volume.Name) {
-			// It's possible that the snapshot in objectstore doesn't exist
+			// It's possible that the snapshot in backupstore doesn't exist
 			// in local storage
 			lastSnapshotName = ""
 			log.WithFields(logrus.Fields{
@@ -230,7 +229,7 @@ func mergeSnapshotMap(deltaBackup, lastBackup *Backup) *Backup {
 }
 
 func RestoreDeltaBlockBackup(backupURL, volDevName string) error {
-	bsDriver, err := GetObjectStoreDriver(backupURL)
+	bsDriver, err := GetBackupStoreDriver(backupURL)
 	if err != nil {
 		return err
 	}
@@ -245,7 +244,7 @@ func RestoreDeltaBlockBackup(backupURL, volDevName string) error {
 		return generateError(logrus.Fields{
 			LOG_FIELD_VOLUME:     srcVolumeName,
 			LOG_FIELD_BACKUP_URL: backupURL,
-		}, "Volume doesn't exist in objectstore: %v", err)
+		}, "Volume doesn't exist in backupstore: %v", err)
 	}
 
 	if vol.Size == 0 || vol.Size%DEFAULT_BLOCK_SIZE != 0 {
@@ -310,7 +309,7 @@ func RestoreDeltaBlockBackup(backupURL, volDevName string) error {
 }
 
 func DeleteDeltaBlockBackup(backupURL string) error {
-	bsDriver, err := GetObjectStoreDriver(backupURL)
+	bsDriver, err := GetBackupStoreDriver(backupURL)
 	if err != nil {
 		return err
 	}
@@ -322,7 +321,7 @@ func DeleteDeltaBlockBackup(backupURL string) error {
 
 	v, err := loadVolume(volumeName, bsDriver)
 	if err != nil {
-		return fmt.Errorf("Cannot find volume %v in objectstore", volumeName, err)
+		return fmt.Errorf("Cannot find volume %v in backupstore", volumeName, err)
 	}
 
 	backup, err := loadBackup(backupName, volumeName, bsDriver)
@@ -389,7 +388,7 @@ func DeleteDeltaBlockBackup(backupURL string) error {
 	log.Debug("Removed unused blocks for volume ", volumeName)
 
 	log.Debug("GC completed")
-	log.Debug("Removed objectstore backup ", backupName)
+	log.Debug("Removed backupstore backup ", backupName)
 
 	return nil
 }

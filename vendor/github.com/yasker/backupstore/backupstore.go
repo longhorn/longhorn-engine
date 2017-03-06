@@ -1,11 +1,11 @@
-package objectstore
+package backupstore
 
 import (
 	"fmt"
 	"net/url"
 	"strconv"
 
-	"github.com/rancher/convoy/util"
+	"github.com/yasker/backupstore/util"
 )
 
 type Volume struct {
@@ -33,7 +33,7 @@ type Backup struct {
 	SingleFile BackupFile     `json:",omitempty"`
 }
 
-func addVolume(volume *Volume, driver ObjectStoreDriver) error {
+func addVolume(volume *Volume, driver BackupStoreDriver) error {
 	if volumeExists(volume.Name, driver) {
 		return nil
 	}
@@ -42,22 +42,22 @@ func addVolume(volume *Volume, driver ObjectStoreDriver) error {
 		log.Error("Fail add volume ", volume.Name)
 		return err
 	}
-	log.Debug("Added objectstore volume ", volume.Name)
+	log.Debug("Added backupstore volume ", volume.Name)
 
 	return nil
 }
 
-func removeVolume(volumeName string, driver ObjectStoreDriver) error {
+func removeVolume(volumeName string, driver BackupStoreDriver) error {
 	if !volumeExists(volumeName, driver) {
-		return fmt.Errorf("Volume %v doesn't exist in objectstore", volumeName)
+		return fmt.Errorf("Volume %v doesn't exist in backupstore", volumeName)
 	}
 
 	volumeDir := getVolumePath(volumeName)
 	if err := driver.Remove(volumeDir); err != nil {
 		return err
 	}
-	log.Debug("Removed volume directory in objectstore: ", volumeDir)
-	log.Debug("Removed objectstore volume ", volumeName)
+	log.Debug("Removed volume directory in backupstore: ", volumeDir)
+	log.Debug("Removed backupstore volume ", volumeName)
 
 	return nil
 }
@@ -83,7 +83,7 @@ func decodeBackupURL(backupURL string) (string, string, error) {
 	return backupName, volumeName, nil
 }
 
-func addListVolume(resp map[string]map[string]string, volumeName string, driver ObjectStoreDriver, storageDriverName string) error {
+func addListVolume(resp map[string]map[string]string, volumeName string, driver BackupStoreDriver, storageDriverName string) error {
 	if volumeName == "" {
 		return fmt.Errorf("Invalid empty volume Name")
 	}
@@ -114,7 +114,7 @@ func addListVolume(resp map[string]map[string]string, volumeName string, driver 
 }
 
 func List(volumeName, destURL, storageDriverName string) (map[string]map[string]string, error) {
-	driver, err := GetObjectStoreDriver(destURL)
+	driver, err := GetBackupStoreDriver(destURL)
 	if err != nil {
 		return nil, err
 	}
@@ -152,7 +152,7 @@ func fillBackupInfo(backup *Backup, volume *Volume, destURL string) map[string]s
 }
 
 func GetBackupInfo(backupURL string) (map[string]string, error) {
-	driver, err := GetObjectStoreDriver(backupURL)
+	driver, err := GetBackupStoreDriver(backupURL)
 	if err != nil {
 		return nil, err
 	}
@@ -178,7 +178,7 @@ func LoadVolume(backupURL string) (*Volume, error) {
 	if err != nil {
 		return nil, err
 	}
-	driver, err := GetObjectStoreDriver(backupURL)
+	driver, err := GetBackupStoreDriver(backupURL)
 	if err != nil {
 		return nil, err
 	}
