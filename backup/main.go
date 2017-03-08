@@ -4,11 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"runtime"
+	"runtime/debug"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
 
-	"github.com/rancher/convoy/api"
 	"github.com/rancher/convoy/objectstore"
 	"github.com/rancher/convoy/util"
 	"github.com/rancher/longhorn/replica"
@@ -32,7 +33,7 @@ var (
 			},
 			cli.StringFlag{
 				Name:  "volume",
-				Usage: "volume path, the base name will be used as volume name",
+				Usage: "volume name",
 			},
 		},
 		Action: cmdBackupCreate,
@@ -77,7 +78,7 @@ var (
 
 func cleanup() {
 	if r := recover(); r != nil {
-		api.ResponseLogAndError(r)
+		ResponseLogAndError(r)
 		os.Exit(1)
 	}
 }
@@ -105,6 +106,37 @@ func Main() {
 	app.Run(os.Args)
 }
 
+type ErrorResponse struct {
+	Error string
+}
+
+func ResponseLogAndError(v interface{}) {
+	if e, ok := v.(*logrus.Entry); ok {
+		e.Error(e.Message)
+		fmt.Println(e.Message)
+	} else {
+		e, isErr := v.(error)
+		_, isRuntimeErr := e.(runtime.Error)
+		if isErr && !isRuntimeErr {
+			logrus.Errorf(fmt.Sprint(e))
+			fmt.Println(fmt.Sprint(e))
+		} else {
+			logrus.Errorf("Caught FATAL error: %s", v)
+			debug.PrintStack()
+			fmt.Println("Caught FATAL error: %s", v)
+		}
+	}
+}
+
+// ResponseOutput would generate a JSON format byte array of object for output
+func ResponseOutput(v interface{}) ([]byte, error) {
+	j, err := json.MarshalIndent(v, "", "\t")
+	if err != nil {
+		return nil, err
+	}
+	return j, nil
+}
+
 func getName(c *cli.Context, key string, required bool) (string, error) {
 	var err error
 	var name string
@@ -124,14 +156,6 @@ func getName(c *cli.Context, key string, required bool) (string, error) {
 		return "", err
 	}
 	return name, nil
-}
-
-func ResponseOutput(v interface{}) ([]byte, error) {
-	j, err := json.MarshalIndent(v, "", "\t")
-	if err != nil {
-		return nil, err
-	}
-	return j, nil
 }
 
 func cmdBackupCreate(c *cli.Context) {
@@ -313,7 +337,7 @@ func doBackupInspect(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	data, err := api.ResponseOutput(info)
+	data, err := ResponseOutput(info)
 	if err != nil {
 		return err
 	}
