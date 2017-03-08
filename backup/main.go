@@ -6,12 +6,13 @@ import (
 	"os"
 	"runtime"
 	"runtime/debug"
+	"strings"
+	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
 
 	"github.com/rancher/convoy/objectstore"
-	"github.com/rancher/convoy/util"
 	"github.com/rancher/longhorn/replica"
 )
 
@@ -123,7 +124,7 @@ func ResponseLogAndError(v interface{}) {
 		} else {
 			logrus.Errorf("Caught FATAL error: %s", v)
 			debug.PrintStack()
-			fmt.Println("Caught FATAL error: %s", v)
+			fmt.Println("Caught FATAL error: ", v)
 		}
 	}
 }
@@ -137,25 +138,8 @@ func ResponseOutput(v interface{}) ([]byte, error) {
 	return j, nil
 }
 
-func getName(c *cli.Context, key string, required bool) (string, error) {
-	var err error
-	var name string
-	if key == "" {
-		name = c.Args().First()
-	} else {
-		name, err = util.GetFlag(c, key, required, err)
-		if err != nil {
-			return "", err
-		}
-	}
-	if name == "" && !required {
-		return "", nil
-	}
-
-	if err := util.CheckName(name); err != nil {
-		return "", err
-	}
-	return name, nil
+func RequiredMissingError(name string) error {
+	return fmt.Errorf("Cannot find valid required parameter: %v", name)
 }
 
 func cmdBackupCreate(c *cli.Context) {
@@ -170,19 +154,22 @@ func doBackupCreate(c *cli.Context) error {
 		backingFile *replica.BackingFile
 	)
 
-	destURL, err := util.GetFlag(c, "dest", true, err)
-	if err != nil {
-		return err
+	if c.NArg() == 0 {
+		return RequiredMissingError("snapshot name")
+	}
+	snapshotName := c.Args()[0]
+	if snapshotName == "" {
+		return RequiredMissingError("snapshot name")
 	}
 
-	snapshotName, err := getName(c, "", true)
-	if err != nil {
-		return err
+	destURL := c.String("dest")
+	if destURL == "" {
+		return RequiredMissingError("dest")
 	}
 
-	volumeName, err := util.GetFlag(c, "volume", true, err)
-	if err != nil {
-		return err
+	volumeName := c.String("volume")
+	if volumeName == "" {
+		return RequiredMissingError("volume")
 	}
 
 	dir, err := os.Getwd()
@@ -211,11 +198,11 @@ func doBackupCreate(c *cli.Context) error {
 		Name:        volumeName,
 		Driver:      DRIVERNAME,
 		Size:        volumeInfo.Size,
-		CreatedTime: util.Now(),
+		CreatedTime: Now(),
 	}
 	snapshot := &objectstore.Snapshot{
 		Name:        snapshotName,
-		CreatedTime: util.Now(),
+		CreatedTime: Now(),
 	}
 
 	log.Debugf("Starting backup for %v, snapshot %v, dest %v", volume, snapshot, destURL)
@@ -234,12 +221,14 @@ func cmdBackupDelete(c *cli.Context) {
 }
 
 func doBackupDelete(c *cli.Context) error {
-	var err error
-	backupURL, err := util.GetFlag(c, "", true, err)
-	if err != nil {
-		return err
+	if c.NArg() == 0 {
+		return RequiredMissingError("backup URL")
 	}
-	backupURL = util.UnescapeURL(backupURL)
+	backupURL := c.Args()[0]
+	if backupURL == "" {
+		return RequiredMissingError("backup URL")
+	}
+	backupURL = UnescapeURL(backupURL)
 
 	if err := objectstore.DeleteDeltaBlockBackup(backupURL); err != nil {
 		return err
@@ -254,16 +243,18 @@ func cmdBackupRestore(c *cli.Context) {
 }
 
 func doBackupRestore(c *cli.Context) error {
-	var err error
-	backupURL, err := util.GetFlag(c, "", true, err)
-	if err != nil {
-		return err
+	if c.NArg() == 0 {
+		return RequiredMissingError("backup URL")
 	}
-	backupURL = util.UnescapeURL(backupURL)
+	backupURL := c.Args()[0]
+	if backupURL == "" {
+		return RequiredMissingError("backup URL")
+	}
+	backupURL = UnescapeURL(backupURL)
 
-	toFile, err := util.GetFlag(c, "to", true, err)
-	if err != nil {
-		return err
+	toFile := c.String("to")
+	if toFile == "" {
+		return RequiredMissingError("to")
 	}
 
 	if err := objectstore.RestoreDeltaBlockBackup(backupURL, toFile); err != nil {
@@ -304,12 +295,16 @@ func cmdBackupList(c *cli.Context) {
 func doBackupList(c *cli.Context) error {
 	var err error
 
-	destURL, err := util.GetFlag(c, "", true, err)
-	volumeName, err := util.GetName(c, "volume", false, err)
-	if err != nil {
-		return err
-
+	if c.NArg() == 0 {
+		return RequiredMissingError("dest URL")
 	}
+	destURL := c.Args()[0]
+	if destURL == "" {
+		return RequiredMissingError("dest URL")
+	}
+
+	volumeName := c.String("volume")
+
 	list, err := objectstore.List(volumeName, destURL, DRIVERNAME)
 	if err != nil {
 		return err
@@ -327,11 +322,14 @@ func cmdBackupInspect(c *cli.Context) {
 func doBackupInspect(c *cli.Context) error {
 	var err error
 
-	backupURL, err := util.GetFlag(c, "", true, err)
-	if err != nil {
-		return err
+	if c.NArg() == 0 {
+		return RequiredMissingError("backup URL")
 	}
-	backupURL = util.UnescapeURL(backupURL)
+	backupURL := c.Args()[0]
+	if backupURL == "" {
+		return RequiredMissingError("backup URL")
+	}
+	backupURL = UnescapeURL(backupURL)
 
 	info, err := objectstore.GetBackupInfo(backupURL)
 	if err != nil {
@@ -343,4 +341,15 @@ func doBackupInspect(c *cli.Context) error {
 	}
 	fmt.Println(string(data))
 	return nil
+}
+
+func UnescapeURL(url string) string {
+	// Deal with escape in url inputed from bash
+	result := strings.Replace(url, "\\u0026", "&", 1)
+	result = strings.Replace(result, "u0026", "&", 1)
+	return result
+}
+
+func Now() string {
+	return time.Now().UTC().Format(time.RFC3339)
 }
