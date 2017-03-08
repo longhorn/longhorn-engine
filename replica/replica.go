@@ -95,6 +95,7 @@ type DiskInfo struct {
 const (
 	OpCoalesce = "coalesce" // Source is parent, target is child
 	OpRemove   = "remove"
+	OpReplace  = "replace"
 )
 
 func ReadInfo(dir string) (Info, error) {
@@ -265,6 +266,49 @@ func (r *Replica) RemoveDiffDisk(name string) error {
 	return nil
 }
 
+func (r *Replica) hardlinkDisk(target, source string) error {
+	if _, err := os.Stat(r.diskPath(source)); err != nil {
+		return fmt.Errorf("Cannot find source of replacing: %v", source)
+	}
+
+	if _, err := os.Stat(r.diskPath(target)); err == nil {
+		logrus.Infof("Old file %s exists, deleting", target)
+		if err := os.Remove(r.diskPath(target)); err != nil {
+			return fmt.Errorf("Fail to remove %s: %v", target, err)
+		}
+	}
+
+	if err := os.Link(r.diskPath(source), r.diskPath(target)); err != nil {
+		return fmt.Errorf("Fail to link %s to %s", source, target)
+	}
+	return nil
+}
+
+func (r *Replica) ReplaceDisk(target, source string) error {
+	r.Lock()
+	defer r.Unlock()
+
+	if target == r.info.Head {
+		return fmt.Errorf("Can not replace the active differencing disk")
+	}
+
+	if err := r.hardlinkDisk(target, source); err != nil {
+		return err
+	}
+
+	if err := r.removeDiskNode(source); err != nil {
+		return err
+	}
+
+	if err := r.rmDisk(source); err != nil {
+		return err
+	}
+
+	logrus.Infof("Done replacing %v with %v", target, source)
+
+	return nil
+}
+
 func (r *Replica) removeDiskNode(name string) error {
 	// If snapshot has no child, then we can safely delete it
 	// And it's definitely not in the live chain
@@ -380,8 +424,9 @@ func (r *Replica) processPrepareRemoveDisks(disks []string) ([]PrepareRemoveActi
 						Target: child,
 					},
 					PrepareRemoveAction{
-						Action: OpRemove,
+						Action: OpReplace,
 						Source: disk,
+						Target: child,
 					})
 				continue
 			}

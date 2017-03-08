@@ -131,8 +131,6 @@ func (s *Server) launch(p *Process) error {
 		return s.launchInspectBackup(p)
 	case "listbackup":
 		return s.launchListBackup(p)
-	case "hardlink":
-		return s.launchHardLink(p)
 	}
 	return fmt.Errorf("Unknown process type %s", p.ProcessType)
 }
@@ -342,33 +340,6 @@ func (s *Server) launchRestore(p *Process) error {
 
 	p.ExitCode = 0
 	logrus.Infof("Done running %s %v", "sbackup", cmd.Args)
-	return nil
-}
-
-func (s *Server) launchHardLink(p *Process) error {
-	oldName := p.SrcFile
-	newName := p.DestFile
-
-	if oldName == "" {
-		p.ExitCode = 0
-		return nil
-	}
-
-	if _, err := os.Stat(newName); err == nil {
-		logrus.Infof("Old file %s exists, deleting", newName)
-		if err := os.Remove(newName); err != nil {
-			p.ExitCode = 1
-			return err
-		}
-	}
-
-	if err := os.Link(oldName, newName); err != nil {
-		p.ExitCode = 1
-		return err
-	}
-
-	p.ExitCode = 0
-	logrus.Infof("Done running %s %v %v", "hardlink", oldName, newName)
 	return nil
 }
 

@@ -67,6 +67,15 @@ func (t *Task) rmDisk(replicaInController *rest.Replica, disk string) error {
 	return repClient.RemoveDisk(disk)
 }
 
+func (t *Task) replaceDisk(replicaInController *rest.Replica, target, source string) error {
+	repClient, err := replicaClient.NewReplicaClient(replicaInController.Address)
+	if err != nil {
+		return err
+	}
+
+	return repClient.ReplaceDisk(target, source)
+}
+
 func getNameAndIndex(chain []string, snapshot string) (string, int) {
 	index := find(chain, snapshot)
 	if index < 0 {
@@ -140,9 +149,10 @@ func (t *Task) processRemoveSnapshot(replicaInController *rest.Replica, snapshot
 				logrus.Errorf("Failed to coalesce %s on %s: %v", snapshot, replicaInController.Address, err)
 				return err
 			}
-			logrus.Infof("Hard-link %v to %v on %v", op.Source, op.Target, replicaInController.Address)
-			if err = repClient.HardLink(op.Source, op.Target); err != nil {
-				logrus.Errorf("Failed to hard-link %v to %v on %v", op.Source, op.Target, replicaInController.Address)
+		case replica.OpReplace:
+			logrus.Infof("Replace %v with %v on %v", op.Target, op.Source, replicaInController.Address)
+			if err = t.replaceDisk(replicaInController, op.Target, op.Source); err != nil {
+				logrus.Errorf("Failed to replace %v with %v on %v", op.Target, op.Source, replicaInController.Address)
 				return err
 			}
 		}

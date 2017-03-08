@@ -89,6 +89,16 @@ func (s *Server) RemoveDisk(rw http.ResponseWriter, req *http.Request) error {
 	return s.doOp(req, s.s.RemoveDiffDisk(input.Name))
 }
 
+func (s *Server) ReplaceDisk(rw http.ResponseWriter, req *http.Request) error {
+	var input ReplaceDiskInput
+	apiContext := api.GetApiContext(req)
+	if err := apiContext.Read(&input); err != nil {
+		return err
+	}
+
+	return s.doOp(req, s.s.ReplaceDisk(input.Target, input.Source))
+}
+
 func (s *Server) PrepareRemoveDisk(rw http.ResponseWriter, req *http.Request) error {
 	var input PrepareRemoveDiskInput
 	apiContext := api.GetApiContext(req)

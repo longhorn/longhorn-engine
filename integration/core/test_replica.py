@@ -200,8 +200,9 @@ def test_remove_last_disk(client):
     assert ops[0].action == "coalesce"
     assert ops[0].source == "volume-snap-000.img"
     assert ops[0].target == "volume-snap-001.img"
-    assert ops[1].action == "remove"
+    assert ops[1].action == "replace"
     assert ops[1].source == "volume-snap-000.img"
+    assert ops[1].target == "volume-snap-001.img"
 
     r = r.removedisk(name='volume-snap-000.img')
     assert r.state == 'dirty'

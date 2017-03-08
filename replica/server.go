@@ -193,6 +193,18 @@ func (s *Server) RemoveDiffDisk(name string) error {
 	return s.r.RemoveDiffDisk(name)
 }
 
+func (s *Server) ReplaceDisk(target, source string) error {
+	s.Lock()
+	defer s.Unlock()
+
+	if s.r == nil {
+		return nil
+	}
+
+	logrus.Infof("Replacing disk %v with %v", target, source)
+	return s.r.ReplaceDisk(target, source)
+}
+
 func (s *Server) PrepareRemoveDisk(name string) ([]PrepareRemoveAction, error) {
 	s.Lock()
 	defer s.Unlock()

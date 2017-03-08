@@ -120,6 +120,18 @@ func (c *ReplicaClient) RemoveDisk(disk string) error {
 	}, nil)
 }
 
+func (c *ReplicaClient) ReplaceDisk(target, source string) error {
+	r, err := c.GetReplica()
+	if err != nil {
+		return err
+	}
+
+	return c.post(r.Actions["replacedisk"], &rest.ReplaceDiskInput{
+		Target: target,
+		Source: source,
+	}, nil)
+}
+
 func (c *ReplicaClient) PrepareRemoveDisk(disk string) (rest.PrepareRemoveDiskOutput, error) {
 	var output rest.PrepareRemoveDiskOutput
 	r, err := c.GetReplica()
