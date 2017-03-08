@@ -106,8 +106,8 @@ func (v *VfsBackupStoreDriver) Remove(names ...string) error {
 		dir := v.updatePath(name)
 		for i := 0; i < MAX_CLEANUP_LEVEL; i++ {
 			dir = filepath.Dir(dir)
-			// Don't clean above BACKUPSTORE_BASE
-			if strings.HasSuffix(dir, backupstore.BACKUPSTORE_BASE) {
+			// Don't clean above backupstore base
+			if strings.HasSuffix(dir, backupstore.GetBackupstoreBase()) {
 				break
 			}
 			// If directory is not empty, then we don't need to continue

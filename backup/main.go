@@ -18,6 +18,8 @@ import (
 
 const (
 	DRIVERNAME = "longhorn"
+
+	BackupstoreBase = "longhorn-backupstore"
 )
 
 var (
@@ -94,6 +96,8 @@ func Main() {
 		log.Fatalf("Cannot get running directory: %s", err)
 	}
 	log.Debugf("Currently running at %v, assume as volume dir", dir)
+
+	backupstore.SetBackupstoreBase(BackupstoreBase)
 
 	app := cli.NewApp()
 	app.Version = VERSION
