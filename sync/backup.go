@@ -210,3 +210,53 @@ func (t *Task) inspectBackup(replicaInController *rest.Replica, backup string) (
 	}
 	return result, nil
 }
+
+func (t *Task) ListBackup(destURL string) (string, error) {
+	var replica *rest.Replica
+
+	volume, err := t.client.GetVolume()
+	if err != nil {
+		return "", err
+	}
+
+	replicas, err := t.client.ListReplicas()
+	if err != nil {
+		return "", err
+	}
+
+	for _, r := range replicas {
+		if r.Mode == "RW" {
+			replica = &r
+			break
+		}
+	}
+
+	if replica == nil {
+		return "", fmt.Errorf("Cannot find a suitable replica for list backup")
+	}
+
+	result, err := t.listBackup(replica, destURL, volume.Name)
+	if err != nil {
+		return "", err
+	}
+	return result, nil
+}
+
+func (t *Task) listBackup(replicaInController *rest.Replica, destURL, volume string) (string, error) {
+	if replicaInController.Mode != "RW" {
+		return "", fmt.Errorf("Can only list backup from replica in mode RW, got %s", replicaInController.Mode)
+	}
+
+	repClient, err := replicaClient.NewReplicaClient(replicaInController.Address)
+	if err != nil {
+		return "", err
+	}
+
+	result, err := repClient.ListBackup(destURL, volume)
+	if err != nil {
+		logrus.Errorf("Failed to list backup %s with volume %s on %s",
+			destURL, volume, replicaInController.Address)
+		return "", err
+	}
+	return result, nil
+}

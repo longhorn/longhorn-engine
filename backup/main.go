@@ -313,7 +313,11 @@ func doBackupList(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(list)
+	data, err := ResponseOutput(list)
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(data))
 	return nil
 }
 

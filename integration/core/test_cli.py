@@ -576,6 +576,12 @@ def test_backup_core(bin, controller_client, replica_client,
     assert backup2_info["VolumeSize"] == VOLUME_SIZE
     assert backup2_info["SnapshotName"] == snapshot2
 
+    cmd = [bin, 'backup', 'ls', "vfs://" + BACKUP_DEST]
+    data = subprocess.check_output(cmd).strip()
+    backup_list = json.loads(data)
+    assert backup_list[backup1] == backup1_info
+    assert backup_list[backup2] == backup2_info
+
     cmd = [bin, 'backup', 'inspect',
            "vfs:///tmp/longhorn-backup?backup=backup-1234"
            + "&volume=test-volume_1.0"]

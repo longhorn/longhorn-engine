@@ -129,6 +129,8 @@ func (s *Server) launch(p *Process) error {
 		return s.launchRestore(p)
 	case "inspectbackup":
 		return s.launchInspectBackup(p)
+	case "listbackup":
+		return s.launchListBackup(p)
 	case "hardlink":
 		return s.launchHardLink(p)
 	}
@@ -374,6 +376,45 @@ func (s *Server) launchInspectBackup(p *Process) error {
 	buf := new(bytes.Buffer)
 
 	cmd := reexec.Command("sbackup", "inspect", p.SrcFile)
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Pdeathsig: syscall.SIGKILL,
+	}
+	cmd.Stdout = buf
+	cmd.Stderr = os.Stderr
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+
+	logrus.Infof("Running %s %v", cmd.Path, cmd.Args)
+	err := cmd.Wait()
+
+	p.Output = buf.String()
+	fmt.Fprintf(os.Stdout, p.Output)
+	if err != nil {
+		logrus.Infof("Error running %s %v: %v", "sbackup", cmd.Args, err)
+		p.ExitCode = 1
+		if exitError, ok := err.(*exec.ExitError); ok {
+			if waitStatus, ok := exitError.Sys().(syscall.WaitStatus); ok {
+				logrus.Infof("Error running %s %v: %v", "sbackup", cmd.Args, waitStatus.ExitStatus())
+				p.ExitCode = waitStatus.ExitStatus()
+			}
+		}
+		return err
+	}
+
+	p.ExitCode = 0
+	logrus.Infof("Done running %s %v", "sbackup", cmd.Args)
+	return nil
+}
+
+func (s *Server) launchListBackup(p *Process) error {
+	buf := new(bytes.Buffer)
+
+	cmdline := []string{"sbackup", "list", p.SrcFile}
+	if p.DestFile != "" {
+		cmdline = append(cmdline, "--volume", p.DestFile)
+	}
+	cmd := reexec.Command(cmdline...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Pdeathsig: syscall.SIGKILL,
 	}
