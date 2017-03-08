@@ -33,6 +33,18 @@ type Backup struct {
 	SingleFile BackupFile     `json:",omitempty"`
 }
 
+var (
+	backupstoreBase = "backupstore"
+)
+
+func SetBackupstoreBase(base string) {
+	backupstoreBase = base
+}
+
+func GetBackupstoreBase() string {
+	return backupstoreBase
+}
+
 func addVolume(volume *Volume, driver BackupStoreDriver) error {
 	if volumeExists(volume.Name, driver) {
 		return nil

@@ -13,7 +13,6 @@ import (
 )
 
 const (
-	BACKUPSTORE_BASE       = "convoy-objectstore"
 	VOLUME_SEPARATE_LAYER1 = 2
 	VOLUME_SEPARATE_LAYER2 = 4
 
@@ -94,7 +93,7 @@ func getVolumePath(volumeName string) string {
 	}
 	volumeLayer1 := name[0:VOLUME_SEPARATE_LAYER1]
 	volumeLayer2 := name[VOLUME_SEPARATE_LAYER1:VOLUME_SEPARATE_LAYER2]
-	return filepath.Join(BACKUPSTORE_BASE, VOLUME_DIRECTORY, volumeLayer1, volumeLayer2, name)
+	return filepath.Join(backupstoreBase, VOLUME_DIRECTORY, volumeLayer1, volumeLayer2, name)
 }
 
 func getVolumeFilePath(volumeName string) string {
@@ -106,7 +105,7 @@ func getVolumeFilePath(volumeName string) string {
 func getVolumeNames(driver BackupStoreDriver) ([]string, error) {
 	names := []string{}
 
-	volumePathBase := filepath.Join(BACKUPSTORE_BASE, VOLUME_DIRECTORY)
+	volumePathBase := filepath.Join(backupstoreBase, VOLUME_DIRECTORY)
 	lv1Dirs, err := driver.List(volumePathBase)
 	// Directory doesn't exist
 	if err != nil {
