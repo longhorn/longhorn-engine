@@ -236,7 +236,7 @@ func infoSnapshot(c *cli.Context) error {
 					return err
 				}
 			}
-			outputDisks[snapshot] = replica.DiskInfo{
+			info := replica.DiskInfo{
 				Name:        snapshot,
 				Parent:      parent,
 				Removed:     disk.Removed,
@@ -244,12 +244,23 @@ func infoSnapshot(c *cli.Context) error {
 				Children:    children,
 				Created:     disk.Created,
 			}
+			if _, exists := outputDisks[snapshot]; !exists {
+				outputDisks[snapshot] = info
+			} else {
+				// Consolidate the result of snapshot in removing process
+				if info.Removed && !outputDisks[snapshot].Removed {
+					t := outputDisks[snapshot]
+					t.Removed = true
+					outputDisks[snapshot] = t
+				}
+			}
 		}
 
-		output, err = json.MarshalIndent(outputDisks, "", "\t")
-		if err != nil {
-			return err
-		}
+	}
+
+	output, err = json.MarshalIndent(outputDisks, "", "\t")
+	if err != nil {
+		return err
 	}
 
 	if output == nil {
