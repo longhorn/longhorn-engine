@@ -13,6 +13,7 @@ import (
 	"github.com/codegangsta/cli"
 
 	"github.com/rancher/longhorn/replica"
+	"github.com/rancher/longhorn/util"
 	"github.com/yasker/backupstore"
 )
 
@@ -175,6 +176,9 @@ func doBackupCreate(c *cli.Context) error {
 	if volumeName == "" {
 		return RequiredMissingError("volume")
 	}
+	if !util.ValidVolumeName(volumeName) {
+		return fmt.Errorf("Invalid volume name %v for backup", volumeName)
+	}
 
 	dir, err := os.Getwd()
 	if err != nil {
@@ -308,6 +312,9 @@ func doBackupList(c *cli.Context) error {
 	}
 
 	volumeName := c.String("volume")
+	if volumeName != "" && !util.ValidVolumeName(volumeName) {
+		return fmt.Errorf("Invalid volume name %v for backup", volumeName)
+	}
 
 	list, err := backupstore.List(volumeName, destURL, DRIVERNAME)
 	if err != nil {

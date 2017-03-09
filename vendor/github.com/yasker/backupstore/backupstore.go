@@ -50,6 +50,10 @@ func addVolume(volume *Volume, driver BackupStoreDriver) error {
 		return nil
 	}
 
+	if !util.ValidateName(volume.Name) {
+		return fmt.Errorf("Invalid volume name %v", volume.Name)
+	}
+
 	if err := saveVolume(volume, driver); err != nil {
 		log.Error("Fail add volume ", volume.Name)
 		return err
@@ -60,6 +64,10 @@ func addVolume(volume *Volume, driver BackupStoreDriver) error {
 }
 
 func removeVolume(volumeName string, driver BackupStoreDriver) error {
+	if !util.ValidateName(volumeName) {
+		return fmt.Errorf("Invalid volume name %v", volumeName)
+	}
+
 	if !volumeExists(volumeName, driver) {
 		return fmt.Errorf("Volume %v doesn't exist in backupstore", volumeName)
 	}
@@ -98,6 +106,10 @@ func decodeBackupURL(backupURL string) (string, string, error) {
 func addListVolume(resp map[string]map[string]string, volumeName string, driver BackupStoreDriver, storageDriverName string) error {
 	if volumeName == "" {
 		return fmt.Errorf("Invalid empty volume Name")
+	}
+
+	if !util.ValidateName(volumeName) {
+		return fmt.Errorf("Invalid volume name %v", volumeName)
 	}
 
 	backupNames, err := getBackupNamesForVolume(volumeName, driver)
