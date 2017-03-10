@@ -37,6 +37,11 @@ def snapshot_ls():
     return subprocess.check_output(cmd)
 
 
+def snapshot_info():
+    cmd = [_bin(), '--debug', 'snapshot', 'info']
+    return subprocess.check_output(cmd)
+
+
 def backup_create(snapshot, dest):
     cmd = [_bin(), '--debug', 'backup', 'create', snapshot, '--dest', dest]
     return subprocess.check_output(cmd).strip()

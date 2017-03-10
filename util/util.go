@@ -8,6 +8,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/Sirupsen/logrus"
@@ -19,6 +20,10 @@ import (
 var (
 	MaximumVolumeNameSize = 64
 	parsePattern          = regexp.MustCompile(`(.*):(\d+)`)
+)
+
+const (
+	BlockSizeLinux = 512
 )
 
 func ParseAddresses(name string) (string, string, string, error) {
@@ -147,4 +152,13 @@ func Volume2ISCSIName(name string) string {
 
 func Now() string {
 	return time.Now().UTC().Format(time.RFC3339)
+}
+
+func GetFileActualSize(file string) int64 {
+	var st syscall.Stat_t
+	if err := syscall.Stat(file, &st); err != nil {
+		logrus.Errorf("Fail to get size of file %v", file)
+		return -1
+	}
+	return st.Blocks * BlockSizeLinux
 }

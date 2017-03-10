@@ -1,3 +1,4 @@
+import json
 import cmd
 import common
 from common import dev, backing_dev  # NOQA
@@ -123,6 +124,12 @@ def test_snapshot_rm_rolling(dev):  # NOQA
     assert snap2 not in snapList
     assert snap3 in snapList
     assert snap4 in snapList
+
+    output = cmd.snapshot_info()
+    info = json.loads(output)
+
+    assert info[snap3]["size"] == "4096"
+    assert info[snap4]["size"] == "4096"
 
     # this should trigger real deletion of snap2 and snap3
     cmd.snapshot_rm(snap3)

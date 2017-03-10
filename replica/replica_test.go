@@ -104,6 +104,7 @@ func (s *TestSuite) TestSnapshot(c *C) {
 	c.Assert(len(disks["volume-snap-000.img"].Children), Equals, 1)
 	c.Assert(disks["volume-snap-000.img"].Children[0], Equals, "volume-snap-001.img")
 	c.Assert(disks["volume-snap-000.img"].Created, Equals, createdTime0)
+	c.Assert(disks["volume-snap-000.img"].Size, Equals, "0")
 
 	c.Assert(disks["volume-snap-001.img"].Parent, Equals, "volume-snap-000.img")
 	c.Assert(disks["volume-snap-001.img"].UserCreated, Equals, true)
@@ -111,12 +112,14 @@ func (s *TestSuite) TestSnapshot(c *C) {
 	c.Assert(len(disks["volume-snap-001.img"].Children), Equals, 1)
 	c.Assert(disks["volume-snap-001.img"].Children[0], Equals, "volume-head-002.img")
 	c.Assert(disks["volume-snap-001.img"].Created, Equals, createdTime1)
+	c.Assert(disks["volume-snap-001.img"].Size, Equals, "0")
 
 	c.Assert(disks["volume-head-002.img"].Parent, Equals, "volume-snap-001.img")
 	c.Assert(disks["volume-head-002.img"].UserCreated, Equals, false)
 	c.Assert(disks["volume-head-002.img"].Removed, Equals, false)
 	c.Assert(len(disks["volume-head-002.img"].Children), Equals, 0)
 	c.Assert(disks["volume-head-002.img"].Created, Equals, createdTime1)
+	c.Assert(disks["volume-head-002.img"].Size, Equals, "0")
 }
 
 func (s *TestSuite) TestRevert(c *C) {

@@ -90,6 +90,7 @@ type DiskInfo struct {
 	Removed     bool     `json:"removed"`
 	UserCreated bool     `json:"usercreated"`
 	Created     string   `json:"created"`
+	Size        string   `json:"size"`
 }
 
 const (
@@ -908,12 +909,14 @@ func (r *Replica) ListDisks() map[string]DiskInfo {
 
 	result := map[string]DiskInfo{}
 	for _, disk := range r.diskData {
+		diskSize := strconv.FormatInt(r.getDiskSize(disk.Name), 10)
 		diskInfo := DiskInfo{
 			Name:        disk.Name,
 			Parent:      disk.Parent,
 			Removed:     disk.Removed,
 			UserCreated: disk.UserCreated,
 			Created:     disk.Created,
+			Size:        diskSize,
 		}
 		children := []string{}
 		for child := range r.diskChildrenMap[disk.Name] {
@@ -930,4 +933,8 @@ func (r *Replica) GetRemainSnapshotCounts() int {
 	defer r.RUnlock()
 
 	return maximumChainLength - len(r.activeDiskData)
+}
+
+func (r *Replica) getDiskSize(disk string) int64 {
+	return util.GetFileActualSize(r.diskPath(disk))
 }

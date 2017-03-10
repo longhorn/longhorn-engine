@@ -251,6 +251,7 @@ func infoSnapshot(c *cli.Context) error {
 				UserCreated: disk.UserCreated,
 				Children:    children,
 				Created:     disk.Created,
+				Size:        disk.Size,
 			}
 			if _, exists := outputDisks[snapshot]; !exists {
 				outputDisks[snapshot] = info

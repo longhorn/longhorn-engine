@@ -197,6 +197,7 @@ def test_replica_add_rebuild(bin, controller_client, replica_client,
     assert head_info["children"] == []
     assert head_info["removed"] is False
     assert head_info["usercreated"] is False
+    assert head_info["size"] == "0"
 
     snapreb_info = info[snapreb]
     assert snapreb_info["name"] == snapreb
@@ -204,6 +205,7 @@ def test_replica_add_rebuild(bin, controller_client, replica_client,
     assert snapreb_info["children"] == [volumehead]
     assert snapreb_info["removed"] is False
     assert snapreb_info["usercreated"] is False
+    assert snapreb_info["size"] == "0"
 
     snap1_info = info[snap1]
     assert snap1_info["name"] == snap1
@@ -212,6 +214,7 @@ def test_replica_add_rebuild(bin, controller_client, replica_client,
     assert snap1_info["removed"] is False
     assert snap1_info["usercreated"] is True
     assert snap1_info["created"] == createtime1
+    assert snap1_info["size"] == "0"
 
     snap0_info = info[snap0]
     assert snap0_info["name"] == snap0
@@ -220,6 +223,7 @@ def test_replica_add_rebuild(bin, controller_client, replica_client,
     assert snap0_info["removed"] is False
     assert snap0_info["usercreated"] is False
     assert snap0_info["created"] == createtime0
+    assert snap0_info["size"] == "0"
 
 
 def test_replica_add_after_rebuild_failed(bin, controller_client,
