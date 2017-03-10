@@ -15,6 +15,8 @@ import (
 	"github.com/rancher/longhorn/util"
 )
 
+const VolumeHeadName = "volume-head"
+
 func SnapshotCmd() cli.Command {
 	return cli.Command{
 		Name:      "snapshots",
@@ -212,22 +214,28 @@ func infoSnapshot(c *cli.Context) error {
 		}
 
 		for name, disk := range disks {
-			if replica.IsHeadDisk(name) {
-				continue
-			}
-			snapshot, err := replica.GetSnapshotNameFromDiskName(name)
-			if err != nil {
-				return err
+			snapshot := ""
+
+			if !replica.IsHeadDisk(name) {
+				snapshot, err = replica.GetSnapshotNameFromDiskName(name)
+				if err != nil {
+					return err
+				}
+			} else {
+				snapshot = VolumeHeadName
 			}
 			children := []string{}
 			for _, childDisk := range disk.Children {
+				child := ""
 				if !replica.IsHeadDisk(childDisk) {
-					child, err := replica.GetSnapshotNameFromDiskName(childDisk)
+					child, err = replica.GetSnapshotNameFromDiskName(childDisk)
 					if err != nil {
 						return err
 					}
-					children = append(children, child)
+				} else {
+					child = VolumeHeadName
 				}
+				children = append(children, child)
 			}
 			parent := ""
 			if disk.Parent != "" {

@@ -183,16 +183,25 @@ def test_replica_add_rebuild(bin, controller_client, replica_client,
     info = json.loads(output)
 
     # two existing snapshots and one system snapshot due to rebuild
-    assert len(info) == 3
+    # and volume-head
+    volumehead = "volume-head"
+    assert len(info) == 4
     for name in info:
-        if name != snap0 and name != snap1:
+        if name != snap0 and name != snap1 and name != volumehead:
             snapreb = name
             break
+
+    head_info = info[volumehead]
+    assert head_info["name"] == volumehead
+    assert head_info["parent"] == snapreb
+    assert head_info["children"] == []
+    assert head_info["removed"] is False
+    assert head_info["usercreated"] is False
 
     snapreb_info = info[snapreb]
     assert snapreb_info["name"] == snapreb
     assert snapreb_info["parent"] == snap1
-    assert snapreb_info["children"] == []
+    assert snapreb_info["children"] == [volumehead]
     assert snapreb_info["removed"] is False
     assert snapreb_info["usercreated"] is False
 
@@ -384,12 +393,22 @@ def test_snapshot_info(bin, controller_client,
     output = subprocess.check_output(cmd)
     info = json.loads(output)
 
-    assert len(info) == 2
+    assert len(info) == 3
+
+    volumehead = "volume-head"
+
+    head_info = info[volumehead]
+    assert head_info["name"] == volumehead
+    assert head_info["parent"] == snap2.id
+    assert head_info["children"] == []
+    assert head_info["removed"] is False
+    assert head_info["usercreated"] is False
+    assert head_info["created"] != ""
 
     snap2_info = info[snap2.id]
     assert snap2_info["name"] == snap2.id
     assert snap2_info["parent"] == snap.id
-    assert snap2_info["children"] == []
+    assert snap2_info["children"] == [volumehead]
     assert snap2_info["removed"] is False
     assert snap2_info["usercreated"] is True
     assert snap2_info["created"] != ""
