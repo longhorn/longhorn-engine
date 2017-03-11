@@ -9,6 +9,7 @@ from common import read_dev, read_from_backing_file, BACKUP_DEST
 
 VOLUME_NAME = 'test-volume_1.0'
 VOLUME_SIZE = str(4 * 1024 * 1024)  # 4M
+BLOCK_SIZE = str(2 * 1024 * 1024)  # 2M
 
 
 def test_backup(dev):  # NOQA
@@ -25,6 +26,7 @@ def test_backup(dev):  # NOQA
     assert backup1_info["BackupURL"] == backup1
     assert backup1_info["VolumeName"] == VOLUME_NAME
     assert backup1_info["VolumeSize"] == VOLUME_SIZE
+    assert backup1_info["Size"] == BLOCK_SIZE
     assert snap1 in backup1_info["SnapshotName"]
 
     snap2_data = common.random_string(length)
@@ -37,6 +39,7 @@ def test_backup(dev):  # NOQA
     assert backup2_info["BackupURL"] == backup2
     assert backup2_info["VolumeName"] == VOLUME_NAME
     assert backup2_info["VolumeSize"] == VOLUME_SIZE
+    assert backup2_info["Size"] == BLOCK_SIZE
     assert snap2 in backup2_info["SnapshotName"]
 
     snap3_data = common.random_string(length)
@@ -49,6 +52,7 @@ def test_backup(dev):  # NOQA
     assert backup3_info["BackupURL"] == backup3
     assert backup3_info["VolumeName"] == VOLUME_NAME
     assert backup3_info["VolumeSize"] == VOLUME_SIZE
+    assert backup3_info["Size"] == BLOCK_SIZE
     assert snap3 in backup3_info["SnapshotName"]
 
     cmd.backup_restore(backup3)

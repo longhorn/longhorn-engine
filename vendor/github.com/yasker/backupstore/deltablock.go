@@ -178,6 +178,7 @@ func CreateDeltaBlockBackup(volume *Volume, snapshot *Snapshot, destURL string, 
 	backup.SnapshotName = snapshot.Name
 	backup.SnapshotCreatedAt = snapshot.CreatedTime
 	backup.CreatedTime = util.Now()
+	backup.Size = int64(len(backup.Blocks)) * DEFAULT_BLOCK_SIZE
 
 	if err := saveBackup(backup, bsDriver); err != nil {
 		return "", err
