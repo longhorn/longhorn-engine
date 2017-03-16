@@ -6,9 +6,9 @@ import (
 	"text/tabwriter"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/codegangsta/cli"
 	"github.com/rancher/longhorn/controller/client"
 	replicaClient "github.com/rancher/longhorn/replica/client"
+	"github.com/urfave/cli"
 )
 
 func LsReplicaCmd() cli.Command {

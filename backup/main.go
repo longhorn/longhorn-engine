@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/codegangsta/cli"
+	"github.com/urfave/cli"
 
 	"github.com/rancher/longhorn/replica"
 	"github.com/rancher/longhorn/util"

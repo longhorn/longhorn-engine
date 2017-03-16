@@ -8,7 +8,6 @@ import (
 	"os"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/codegangsta/cli"
 	"github.com/gorilla/handlers"
 	"github.com/rancher/longhorn/backend/dynamic"
 	"github.com/rancher/longhorn/backend/file"
@@ -17,6 +16,7 @@ import (
 	"github.com/rancher/longhorn/controller/rest"
 	"github.com/rancher/longhorn/types"
 	"github.com/rancher/longhorn/util"
+	"github.com/urfave/cli"
 )
 
 var (

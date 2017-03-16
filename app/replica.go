@@ -9,12 +9,12 @@ import (
 	"syscall"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/codegangsta/cli"
 	"github.com/docker/go-units"
 	"github.com/rancher/longhorn/replica"
 	"github.com/rancher/longhorn/replica/rest"
 	"github.com/rancher/longhorn/replica/rpc"
 	"github.com/rancher/longhorn/util"
+	"github.com/urfave/cli"
 )
 
 func ReplicaCmd() cli.Command {
@@ -83,8 +83,8 @@ func startReplica(c *cli.Context) error {
 		server := rest.NewServer(s)
 		router := http.Handler(rest.NewRouter(server))
 		router = util.FilteredLoggingHandler(map[string]struct{}{
-			"/ping":          struct{}{},
-			"/v1/replicas/1": struct{}{},
+			"/ping":          {},
+			"/v1/replicas/1": {},
 		}, os.Stdout, router)
 		logrus.Infof("Listening on control %s", controlAddress)
 		resp <- http.ListenAndServe(controlAddress, router)

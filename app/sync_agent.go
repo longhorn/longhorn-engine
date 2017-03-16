@@ -7,8 +7,8 @@ import (
 	"strings"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/codegangsta/cli"
 	"github.com/rancher/longhorn/sync/agent"
+	"github.com/urfave/cli"
 )
 
 func SyncAgentCmd() cli.Command {

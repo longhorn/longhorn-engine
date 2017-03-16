@@ -4,8 +4,8 @@ import (
 	"fmt"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/codegangsta/cli"
 	"github.com/rancher/longhorn/sync"
+	"github.com/urfave/cli"
 )
 
 func BackupCmd() cli.Command {

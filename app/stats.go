@@ -2,7 +2,7 @@ package app
 
 import (
 	"github.com/Sirupsen/logrus"
-	"github.com/codegangsta/cli"
+	"github.com/urfave/cli"
 )
 
 // Journal flush operations since last flush

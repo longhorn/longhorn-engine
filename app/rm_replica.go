@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/codegangsta/cli"
+	"github.com/urfave/cli"
 )
 
 func RmReplicaCmd() cli.Command {
