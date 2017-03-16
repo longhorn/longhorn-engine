@@ -1,0 +1,139 @@
+package cmd
+
+import (
+	"encoding/json"
+	"fmt"
+	"runtime"
+	"runtime/debug"
+
+	"github.com/Sirupsen/logrus"
+	"github.com/urfave/cli"
+
+	"github.com/yasker/backupstore"
+	"github.com/yasker/backupstore/util"
+)
+
+var (
+	BackupListCmd = cli.Command{
+		Name:  "list",
+		Usage: "list backups in backupstore: list <dest>",
+		Flags: []cli.Flag{
+			cli.StringFlag{
+				Name:  "volume",
+				Usage: "volume name",
+			},
+			cli.BoolFlag{
+				Name:  "volume-only",
+				Usage: "specify if only need list volumes without backup details",
+			},
+		},
+		Action: cmdBackupList,
+	}
+
+	BackupInspectCmd = cli.Command{
+		Name:   "inspect",
+		Usage:  "inspect a backup: inspect <backup>",
+		Action: cmdBackupInspect,
+	}
+)
+
+func cmdBackupList(c *cli.Context) {
+	if err := doBackupList(c); err != nil {
+		panic(err)
+	}
+}
+
+func doBackupList(c *cli.Context) error {
+	var err error
+
+	if c.NArg() == 0 {
+		return RequiredMissingError("dest URL")
+	}
+	destURL := c.Args()[0]
+	if destURL == "" {
+		return RequiredMissingError("dest URL")
+	}
+
+	volumeName := c.String("volume")
+	if volumeName != "" && !util.ValidateName(volumeName) {
+		return fmt.Errorf("Invalid volume name %v for backup", volumeName)
+	}
+
+	volumeOnly := c.Bool("volume-only")
+
+	list, err := backupstore.List(volumeName, destURL, volumeOnly)
+	if err != nil {
+		return err
+	}
+	data, err := ResponseOutput(list)
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(data))
+	return nil
+}
+
+func cmdBackupInspect(c *cli.Context) {
+	if err := doBackupInspect(c); err != nil {
+		panic(err)
+	}
+}
+
+func doBackupInspect(c *cli.Context) error {
+	var err error
+
+	if c.NArg() == 0 {
+		return RequiredMissingError("backup URL")
+	}
+	backupURL := c.Args()[0]
+	if backupURL == "" {
+		return RequiredMissingError("backup URL")
+	}
+	backupURL = util.UnescapeURL(backupURL)
+
+	info, err := backupstore.InspectBackup(backupURL)
+	if err != nil {
+		return err
+	}
+	data, err := ResponseOutput(info)
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(data))
+	return nil
+}
+
+type ErrorResponse struct {
+	Error string
+}
+
+func ResponseLogAndError(v interface{}) {
+	if e, ok := v.(*logrus.Entry); ok {
+		e.Error(e.Message)
+		fmt.Println(e.Message)
+	} else {
+		e, isErr := v.(error)
+		_, isRuntimeErr := e.(runtime.Error)
+		if isErr && !isRuntimeErr {
+			logrus.Errorf(fmt.Sprint(e))
+			fmt.Println(fmt.Sprint(e))
+		} else {
+			logrus.Errorf("Caught FATAL error: %s", v)
+			debug.PrintStack()
+			fmt.Println("Caught FATAL error: ", v)
+		}
+	}
+}
+
+// ResponseOutput would generate a JSON format byte array of object for output
+func ResponseOutput(v interface{}) ([]byte, error) {
+	j, err := json.MarshalIndent(v, "", "\t")
+	if err != nil {
+		return nil, err
+	}
+	return j, nil
+}
+
+func RequiredMissingError(name string) error {
+	return fmt.Errorf("Cannot find valid required parameter: %v", name)
+}

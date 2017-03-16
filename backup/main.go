@@ -15,11 +15,10 @@ import (
 	"github.com/rancher/longhorn/replica"
 	"github.com/rancher/longhorn/util"
 	"github.com/yasker/backupstore"
+	"github.com/yasker/backupstore/cmd"
 )
 
 const (
-	DRIVERNAME = "longhorn"
-
 	BackupstoreBase = "longhorn-backupstore"
 )
 
@@ -60,24 +59,6 @@ var (
 		Usage:  "delete a backup in backupstore: delete <backup>",
 		Action: cmdBackupDelete,
 	}
-
-	backupListCmd = cli.Command{
-		Name:  "list",
-		Usage: "list backups in backupstore: list <dest>",
-		Flags: []cli.Flag{
-			cli.StringFlag{
-				Name:  "volume",
-				Usage: "volume name",
-			},
-		},
-		Action: cmdBackupList,
-	}
-
-	backupInspectCmd = cli.Command{
-		Name:   "inspect",
-		Usage:  "inspect a backup: inspect <backup>",
-		Action: cmdBackupInspect,
-	}
 )
 
 func cleanup() {
@@ -106,8 +87,8 @@ func Main() {
 		backupCreateCmd,
 		backupRestoreCmd,
 		backupDeleteCmd,
-		backupListCmd,
-		backupInspectCmd,
+		cmd.BackupListCmd,
+		cmd.BackupInspectCmd,
 	}
 	app.Run(os.Args)
 }
@@ -204,7 +185,6 @@ func doBackupCreate(c *cli.Context) error {
 
 	volume := &backupstore.Volume{
 		Name:        volumeName,
-		Driver:      DRIVERNAME,
 		Size:        volumeInfo.Size,
 		CreatedTime: Now(),
 	}
@@ -292,70 +272,6 @@ func createNewSnapshotMetafile(file string) error {
 	}
 
 	return os.Rename(file+".tmp", file)
-}
-
-func cmdBackupList(c *cli.Context) {
-	if err := doBackupList(c); err != nil {
-		panic(err)
-	}
-}
-
-func doBackupList(c *cli.Context) error {
-	var err error
-
-	if c.NArg() == 0 {
-		return RequiredMissingError("dest URL")
-	}
-	destURL := c.Args()[0]
-	if destURL == "" {
-		return RequiredMissingError("dest URL")
-	}
-
-	volumeName := c.String("volume")
-	if volumeName != "" && !util.ValidVolumeName(volumeName) {
-		return fmt.Errorf("Invalid volume name %v for backup", volumeName)
-	}
-
-	list, err := backupstore.List(volumeName, destURL, DRIVERNAME)
-	if err != nil {
-		return err
-	}
-	data, err := ResponseOutput(list)
-	if err != nil {
-		return err
-	}
-	fmt.Println(string(data))
-	return nil
-}
-
-func cmdBackupInspect(c *cli.Context) {
-	if err := doBackupInspect(c); err != nil {
-		panic(err)
-	}
-}
-
-func doBackupInspect(c *cli.Context) error {
-	var err error
-
-	if c.NArg() == 0 {
-		return RequiredMissingError("backup URL")
-	}
-	backupURL := c.Args()[0]
-	if backupURL == "" {
-		return RequiredMissingError("backup URL")
-	}
-	backupURL = UnescapeURL(backupURL)
-
-	info, err := backupstore.GetBackupInfo(backupURL)
-	if err != nil {
-		return err
-	}
-	data, err := ResponseOutput(info)
-	if err != nil {
-		return err
-	}
-	fmt.Println(string(data))
-	return nil
 }
 
 func UnescapeURL(url string) string {

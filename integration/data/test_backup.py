@@ -23,7 +23,7 @@ def test_backup(dev):  # NOQA
 
     backup1 = cmd.backup_create(snap1, BACKUP_DEST)
     backup1_info = cmd.backup_inspect(backup1)
-    assert backup1_info["BackupURL"] == backup1
+    assert backup1_info["URL"] == backup1
     assert backup1_info["VolumeName"] == VOLUME_NAME
     assert backup1_info["VolumeSize"] == VOLUME_SIZE
     assert backup1_info["Size"] == BLOCK_SIZE
@@ -36,7 +36,7 @@ def test_backup(dev):  # NOQA
 
     backup2 = cmd.backup_create(snap2, BACKUP_DEST)
     backup2_info = cmd.backup_inspect(backup2)
-    assert backup2_info["BackupURL"] == backup2
+    assert backup2_info["URL"] == backup2
     assert backup2_info["VolumeName"] == VOLUME_NAME
     assert backup2_info["VolumeSize"] == VOLUME_SIZE
     assert backup2_info["Size"] == BLOCK_SIZE
@@ -49,7 +49,7 @@ def test_backup(dev):  # NOQA
 
     backup3 = cmd.backup_create(snap3, BACKUP_DEST)
     backup3_info = cmd.backup_inspect(backup3)
-    assert backup3_info["BackupURL"] == backup3
+    assert backup3_info["URL"] == backup3
     assert backup3_info["VolumeName"] == VOLUME_NAME
     assert backup3_info["VolumeSize"] == VOLUME_SIZE
     assert backup3_info["Size"] == BLOCK_SIZE
@@ -111,7 +111,7 @@ def test_backup_with_backing_file(backing_dev):  # NOQA
 
     backup0 = cmd.backup_create(snap0, BACKUP_DEST)
     backup0_info = cmd.backup_inspect(backup0)
-    assert backup0_info["BackupURL"] == backup0
+    assert backup0_info["URL"] == backup0
     assert backup0_info["VolumeName"] == VOLUME_NAME
     assert backup0_info["VolumeSize"] == VOLUME_SIZE
     assert snap0 in backup0_info["SnapshotName"]

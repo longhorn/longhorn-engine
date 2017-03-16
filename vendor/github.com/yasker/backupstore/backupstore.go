@@ -3,17 +3,16 @@ package backupstore
 import (
 	"fmt"
 	"net/url"
-	"strconv"
 
 	"github.com/yasker/backupstore/util"
 )
 
 type Volume struct {
 	Name           string
-	Driver         string
 	Size           int64 `json:",string"`
 	CreatedTime    string
 	LastBackupName string
+	BlockCount     int64 `json:",string"`
 }
 
 type Snapshot struct {
@@ -23,7 +22,6 @@ type Snapshot struct {
 
 type Backup struct {
 	Name              string
-	Driver            string
 	VolumeName        string
 	SnapshotName      string
 	SnapshotCreatedAt string
@@ -102,101 +100,6 @@ func decodeBackupURL(backupURL string) (string, string, error) {
 		return "", "", fmt.Errorf("Invalid name parsed, got %v and %v", backupName, volumeName)
 	}
 	return backupName, volumeName, nil
-}
-
-func addListVolume(resp map[string]map[string]string, volumeName string, driver BackupStoreDriver, storageDriverName string) error {
-	if volumeName == "" {
-		return fmt.Errorf("Invalid empty volume Name")
-	}
-
-	if !util.ValidateName(volumeName) {
-		return fmt.Errorf("Invalid volume name %v", volumeName)
-	}
-
-	backupNames, err := getBackupNamesForVolume(volumeName, driver)
-	if err != nil {
-		return err
-	}
-
-	volume, err := loadVolume(volumeName, driver)
-	if err != nil {
-		return err
-	}
-	//Skip any volumes not owned by specified storage driver
-	if volume.Driver != storageDriverName {
-		return nil
-	}
-
-	for _, backupName := range backupNames {
-		backup, err := loadBackup(backupName, volumeName, driver)
-		if err != nil {
-			return err
-		}
-		r := fillBackupInfo(backup, volume, driver.GetURL())
-		resp[r["BackupURL"]] = r
-	}
-	return nil
-}
-
-func List(volumeName, destURL, storageDriverName string) (map[string]map[string]string, error) {
-	driver, err := GetBackupStoreDriver(destURL)
-	if err != nil {
-		return nil, err
-	}
-	resp := make(map[string]map[string]string)
-	if volumeName != "" {
-		if err = addListVolume(resp, volumeName, driver, storageDriverName); err != nil {
-			return nil, err
-		}
-	} else {
-		volumeNames, err := getVolumeNames(driver)
-		if err != nil {
-			return nil, err
-		}
-		for _, volumeName := range volumeNames {
-			if err := addListVolume(resp, volumeName, driver, storageDriverName); err != nil {
-				return nil, err
-			}
-		}
-	}
-	return resp, nil
-}
-
-func fillBackupInfo(backup *Backup, volume *Volume, destURL string) map[string]string {
-	return map[string]string{
-		"BackupName":        backup.Name,
-		"BackupURL":         encodeBackupURL(backup.Name, backup.VolumeName, destURL),
-		"DriverName":        volume.Driver,
-		"VolumeName":        backup.VolumeName,
-		"VolumeSize":        strconv.FormatInt(volume.Size, 10),
-		"VolumeCreatedAt":   volume.CreatedTime,
-		"SnapshotName":      backup.SnapshotName,
-		"SnapshotCreatedAt": backup.SnapshotCreatedAt,
-		"CreatedTime":       backup.CreatedTime,
-		"Size":              strconv.FormatInt(backup.Size, 10),
-	}
-}
-
-func GetBackupInfo(backupURL string) (map[string]string, error) {
-	driver, err := GetBackupStoreDriver(backupURL)
-	if err != nil {
-		return nil, err
-	}
-	backupName, volumeName, err := decodeBackupURL(backupURL)
-	if err != nil {
-		return nil, err
-	}
-
-	volume, err := loadVolume(volumeName, driver)
-	if err != nil {
-		return nil, err
-	}
-
-	backup, err := loadBackup(backupName, volumeName, driver)
-	if err != nil {
-		return nil, err
-	}
-	return fillBackupInfo(backup, volume, driver.GetURL()), nil
 }
 
 func LoadVolume(backupURL string) (*Volume, error) {

@@ -586,7 +586,7 @@ def test_backup_core(bin, controller_client, replica_client,
     cmd = [bin, 'backup', 'inspect', backup1]
     data = subprocess.check_output(cmd)
     backup1_info = json.loads(data)
-    assert backup1_info["BackupURL"] == backup1
+    assert backup1_info["URL"] == backup1
     assert backup1_info["VolumeName"] == VOLUME_NAME
     assert backup1_info["VolumeSize"] == VOLUME_SIZE
     assert backup1_info["SnapshotName"] == snapshot1
@@ -594,16 +594,25 @@ def test_backup_core(bin, controller_client, replica_client,
     cmd = [bin, 'backup', 'inspect', backup2]
     data = subprocess.check_output(cmd)
     backup2_info = json.loads(data)
-    assert backup2_info["BackupURL"] == backup2
+    assert backup2_info["URL"] == backup2
     assert backup2_info["VolumeName"] == VOLUME_NAME
     assert backup2_info["VolumeSize"] == VOLUME_SIZE
     assert backup2_info["SnapshotName"] == snapshot2
 
     cmd = [bin, 'backup', 'ls', "vfs://" + BACKUP_DEST]
     data = subprocess.check_output(cmd).strip()
-    backup_list = json.loads(data)
-    assert backup_list[backup1] == backup1_info
-    assert backup_list[backup2] == backup2_info
+    volume_info = json.loads(data)[VOLUME_NAME]
+    assert volume_info["Name"] == VOLUME_NAME
+    assert volume_info["Size"] == VOLUME_SIZE
+    backup_list = volume_info["Backups"]
+    assert backup_list[backup1]["URL"] == backup1_info["URL"]
+    assert backup_list[backup1]["SnapshotName"] == backup1_info["SnapshotName"]
+    assert backup_list[backup1]["Size"] == backup1_info["Size"]
+    assert backup_list[backup1]["Created"] == backup1_info["Created"]
+    assert backup_list[backup2]["URL"] == backup2_info["URL"]
+    assert backup_list[backup2]["SnapshotName"] == backup2_info["SnapshotName"]
+    assert backup_list[backup2]["Size"] == backup2_info["Size"]
+    assert backup_list[backup2]["Created"] == backup2_info["Created"]
 
     cmd = [bin, 'backup', 'inspect',
            "vfs:///tmp/longhorn-backup?backup=backup-1234"
