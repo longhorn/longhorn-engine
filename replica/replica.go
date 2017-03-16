@@ -396,9 +396,8 @@ func (r *Replica) PrepareRemoveDisk(name string) ([]PrepareRemoveAction, error) 
 		return nil, fmt.Errorf("Can not delete the active differencing disk")
 	}
 
-	logrus.Infof("Mark disk %v as removed", disk)
-	if err := r.markDiskAsRemoved(disk); err != nil {
-		return nil, fmt.Errorf("Fail to mark disk %v as removed: %v", disk, err)
+	if !data.Removed {
+		return nil, fmt.Errorf("Disk %v hasn't been marked as removed", disk)
 	}
 
 	targetDisks := []string{}

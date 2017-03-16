@@ -533,10 +533,17 @@ func (s *TestSuite) TestPrepareRemove(c *C) {
 		volume-head-002.img
 	*/
 
+	err = r.MarkDiskAsRemoved("001")
+	c.Assert(err, IsNil)
+	c.Assert(r.activeDiskData[2].Removed, Equals, true)
+
 	actions, err := r.PrepareRemoveDisk("001")
 	c.Assert(err, IsNil)
 	c.Assert(actions, HasLen, 0)
-	c.Assert(r.activeDiskData[2].Removed, Equals, true)
+
+	err = r.MarkDiskAsRemoved("volume-snap-000.img")
+	c.Assert(err, IsNil)
+	c.Assert(r.activeDiskData[1].Removed, Equals, true)
 
 	actions, err = r.PrepareRemoveDisk("volume-snap-000.img")
 	c.Assert(err, IsNil)
@@ -547,7 +554,6 @@ func (s *TestSuite) TestPrepareRemove(c *C) {
 	c.Assert(actions[1].Action, Equals, OpReplace)
 	c.Assert(actions[1].Source, Equals, "volume-snap-000.img")
 	c.Assert(actions[1].Target, Equals, "volume-snap-001.img")
-	c.Assert(r.activeDiskData[1].Removed, Equals, true)
 
 	err = r.Snapshot("002", true, now)
 	c.Assert(err, IsNil)
@@ -563,6 +569,10 @@ func (s *TestSuite) TestPrepareRemove(c *C) {
 	c.Assert(len(r.volume.files), Equals, 5)
 
 	/* https://github.com/rancher/longhorn/issues/184 */
+	err = r.MarkDiskAsRemoved("002")
+	c.Assert(err, IsNil)
+	c.Assert(r.activeDiskData[3].Removed, Equals, true)
+
 	actions, err = r.PrepareRemoveDisk("002")
 	c.Assert(err, IsNil)
 	c.Assert(actions, HasLen, 2)
@@ -591,6 +601,10 @@ func (s *TestSuite) TestPrepareRemove(c *C) {
 	c.Assert(len(r.activeDiskData), Equals, 7)
 	c.Assert(len(r.volume.files), Equals, 7)
 
+	err = r.MarkDiskAsRemoved("003")
+	c.Assert(err, IsNil)
+	c.Assert(r.activeDiskData[4].Removed, Equals, true)
+
 	actions, err = r.PrepareRemoveDisk("003")
 	c.Assert(err, IsNil)
 	c.Assert(actions, HasLen, 4)
@@ -606,7 +620,6 @@ func (s *TestSuite) TestPrepareRemove(c *C) {
 	c.Assert(actions[3].Action, Equals, OpReplace)
 	c.Assert(actions[3].Source, Equals, "volume-snap-003.img")
 	c.Assert(actions[3].Target, Equals, "volume-snap-004.img")
-	c.Assert(r.activeDiskData[4].Removed, Equals, true)
 }
 
 func byteEquals(c *C, expected, obtained []byte) {

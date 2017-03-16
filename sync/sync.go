@@ -43,6 +43,10 @@ func (t *Task) DeleteSnapshot(snapshot string) error {
 
 	ops := make(map[string][]replica.PrepareRemoveAction)
 	for _, replica := range replicas {
+		if err = t.markSnapshotAsRemoved(&replica, snapshot); err != nil {
+			return err
+		}
+
 		ops[replica.Address], err = t.prepareRemoveSnapshot(&replica, snapshot)
 		if err != nil {
 			return err
@@ -120,6 +124,23 @@ func (t *Task) prepareRemoveSnapshot(replicaInController *rest.Replica, snapshot
 	}
 
 	return output.Operations, nil
+}
+
+func (t *Task) markSnapshotAsRemoved(replicaInController *rest.Replica, snapshot string) error {
+	if replicaInController.Mode != "RW" {
+		return fmt.Errorf("Can only mark snapshot as removed from replica in mode RW, got %s", replicaInController.Mode)
+	}
+
+	repClient, err := replicaClient.NewReplicaClient(replicaInController.Address)
+	if err != nil {
+		return err
+	}
+
+	if err := repClient.MarkDiskAsRemoved(snapshot); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (t *Task) processRemoveSnapshot(replicaInController *rest.Replica, snapshot string, ops []replica.PrepareRemoveAction) error {
