@@ -129,9 +129,7 @@ func rmSnapshot(c *cli.Context) error {
 	task := sync.NewTask(url)
 
 	for _, name := range c.Args() {
-		if err := task.DeleteSnapshot(name); err == nil {
-			fmt.Printf("deleted %s\n", name)
-		} else {
+		if err := task.DeleteSnapshot(name); err != nil {
 			lastErr = err
 			fmt.Fprintf(os.Stderr, "Failed to delete %s: %v\n", name, err)
 		}

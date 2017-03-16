@@ -41,20 +41,8 @@ func (t *Task) DeleteSnapshot(snapshot string) error {
 		}
 	}
 
-	ops := make(map[string][]replica.PrepareRemoveAction)
 	for _, replica := range replicas {
 		if err = t.markSnapshotAsRemoved(&replica, snapshot); err != nil {
-			return err
-		}
-
-		ops[replica.Address], err = t.prepareRemoveSnapshot(&replica, snapshot)
-		if err != nil {
-			return err
-		}
-	}
-
-	for _, replica := range replicas {
-		if err := t.processRemoveSnapshot(&replica, snapshot, ops[replica.Address]); err != nil {
 			return err
 		}
 	}
