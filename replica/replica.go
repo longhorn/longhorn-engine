@@ -267,6 +267,32 @@ func (r *Replica) RemoveDiffDisk(name string) error {
 	return nil
 }
 
+func (r *Replica) MarkDiskAsRemoved(name string) error {
+	r.Lock()
+	defer r.Unlock()
+
+	disk := name
+
+	_, exists := r.diskData[disk]
+	if !exists {
+		disk = GenerateSnapshotDiskName(name)
+		_, exists = r.diskData[disk]
+		if !exists {
+			return fmt.Errorf("Can not find snapshot %v", disk)
+		}
+	}
+
+	if disk == r.info.Head {
+		return fmt.Errorf("Can not mark the active differencing disk as removed")
+	}
+
+	if err := r.markDiskAsRemoved(disk); err != nil {
+		return fmt.Errorf("Fail to mark disk %v as removed: %v", disk, err)
+	}
+
+	return nil
+}
+
 func (r *Replica) hardlinkDisk(target, source string) error {
 	if _, err := os.Stat(r.diskPath(source)); err != nil {
 		return fmt.Errorf("Cannot find source of replacing: %v", source)
