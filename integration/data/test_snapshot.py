@@ -1,7 +1,8 @@
 import cmd
 import common
 from common import dev, backing_dev  # NOQA
-from common import read_dev, read_from_backing_file
+from common import read_dev, read_from_backing_file, VOLUME_HEAD
+from snapshot_tree import snapshot_tree_build
 
 
 def test_snapshot_revert(dev):  # NOQA
@@ -53,6 +54,7 @@ def test_snapshot_rm_basic(dev):  # NOQA
 
     info = cmd.snapshot_info()
     assert len(info) == 4
+    assert VOLUME_HEAD in info
     assert snap1 in info
     assert snap2 in info
     assert snap3 in info
@@ -173,3 +175,66 @@ def test_snapshot_rm_rolling(dev):  # NOQA
 
     readed = read_dev(dev, offset, length)
     assert readed == snap5_data
+
+
+def test_snapshot_tree_basic(dev):  # NOQA
+    offset = 0
+    length = 128
+
+    snap, snap_data = snapshot_tree_build(dev, offset, length)
+
+    cmd.snapshot_revert(snap["1b"])
+    cmd.snapshot_rm(snap["0a"])
+    cmd.snapshot_rm(snap["0b"])
+    cmd.snapshot_rm(snap["1c"])
+    cmd.snapshot_rm(snap["2a"])
+    cmd.snapshot_rm(snap["2b"])
+    cmd.snapshot_rm(snap["2c"])
+    cmd.snapshot_rm(snap["3a"])
+    cmd.snapshot_rm(snap["3b"])
+    cmd.snapshot_rm(snap["3c"])
+    cmd.snapshot_purge()
+
+    # the result should looks like this
+    # snap["0b"](r) -> snap["0c"]
+    #   \-> snap["1a"] -> snap["1b"] -> head
+    info = cmd.snapshot_info()
+    assert len(info) == 5
+
+    assert snap["0b"] in info
+    assert info[snap["0b"]]["parent"] == ""
+    assert len(info[snap["0b"]]["children"]) == 2
+    assert snap["0c"] in info[snap["0b"]]["children"]
+    assert snap["1a"] in info[snap["0b"]]["children"]
+    assert info[snap["0b"]]["removed"] is True
+
+    assert snap["0c"] in info
+    assert info[snap["0c"]]["parent"] == snap["0b"]
+    assert info[snap["0c"]]["children"] == []
+
+    assert snap["1a"] in info
+    assert info[snap["1a"]]["parent"] == snap["0b"]
+    assert info[snap["1a"]]["children"] == [snap["1b"]]
+
+    assert snap["1b"] in info
+    assert info[snap["1b"]]["parent"] == snap["1a"]
+    assert info[snap["1b"]]["children"] == [VOLUME_HEAD]
+
+    assert VOLUME_HEAD in info
+    assert info[VOLUME_HEAD]["parent"] == snap["1b"]
+
+    snap_data["0b"] = common.random_string(length)
+    common.verify_data(dev, offset, snap_data["0b"])
+    snap["0b"] = cmd.snapshot_create()
+
+    snap_data["0c"] = common.random_string(length)
+    common.verify_data(dev, offset, snap_data["0c"])
+    snap["0c"] = cmd.snapshot_create()
+
+    snap_data["1a"] = common.random_string(length)
+    common.verify_data(dev, offset, snap_data["1a"])
+    snap["1a"] = cmd.snapshot_create()
+
+    snap_data["1b"] = common.random_string(length)
+    common.verify_data(dev, offset, snap_data["1b"])
+    snap["1b"] = cmd.snapshot_create()

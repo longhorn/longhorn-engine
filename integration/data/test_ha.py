@@ -3,6 +3,7 @@ import common
 from common import controller, replica1, replica2 # NOQA
 from common import open_replica, get_blockdev, cleanup_replica
 from common import verify_read, verify_data, verify_async, VOLUME_HEAD
+from snapshot_tree import snapshot_tree_build, snapshot_tree_verify
 
 
 def test_ha_single_replica_failure(controller, replica1, replica2):  # NOQA
@@ -220,3 +221,55 @@ def test_ha_revision_counter_consistency(controller, replica1, replica2):  # NOQ
     # kernel can merge requests so backend may not receive 1000 writes
     assert r1.revisioncounter > 0
     assert r1.revisioncounter == r2.revisioncounter
+
+
+def test_snapshot_tree_rebuild(controller, replica1, replica2):  # NOQA
+    offset = 0
+    length = 128
+
+    open_replica(replica1)
+    open_replica(replica2)
+
+    replicas = controller.list_replica()
+    assert len(replicas) == 0
+
+    v = controller.list_volume()[0]
+    v = v.start(replicas=[
+        common.REPLICA1,
+        common.REPLICA2
+    ])
+    assert v.replicaCount == 2
+
+    replicas = controller.list_replica()
+    assert len(replicas) == 2
+    assert replicas[0].mode == "RW"
+    assert replicas[1].mode == "RW"
+
+    dev = get_blockdev()
+
+    snap, snap_data = snapshot_tree_build(dev, offset, length)
+
+    data = common.random_string(128)
+    data_offset = 1024
+    verify_data(dev, data_offset, data)
+
+    # Cleanup replica2
+    cleanup_replica(replica2)
+
+    verify_async(dev, 10, 128, 1)
+
+    common.verify_replica_state(controller, 1, "ERR")
+
+    verify_read(dev, data_offset, data)
+
+    controller.delete(replicas[1])
+
+    # Rebuild replica2
+    common.open_replica(replica2)
+    cmd.add_replica(common.REPLICA2)
+
+    verify_async(dev, 10, 128, 1)
+
+    common.verify_replica_state(controller, 1, "RW")
+
+    snapshot_tree_verify(dev, offset, length, snap, snap_data)
