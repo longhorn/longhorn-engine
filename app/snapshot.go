@@ -8,14 +8,10 @@ import (
 	"text/tabwriter"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/rancher/longhorn/replica"
-	replicaClient "github.com/rancher/longhorn/replica/client"
 	"github.com/rancher/longhorn/sync"
 	"github.com/rancher/longhorn/util"
 	"github.com/urfave/cli"
 )
-
-const VolumeHeadName = "volume-head"
 
 func SnapshotCmd() cli.Command {
 	return cli.Command{
@@ -193,7 +189,6 @@ func lsSnapshot(c *cli.Context) error {
 func infoSnapshot(c *cli.Context) error {
 	var output []byte
 
-	outputDisks := make(map[string]replica.DiskInfo)
 	cli := getCli(c)
 
 	replicas, err := cli.ListReplicas()
@@ -201,68 +196,9 @@ func infoSnapshot(c *cli.Context) error {
 		return err
 	}
 
-	for _, r := range replicas {
-		if r.Mode != "RW" {
-			continue
-		}
-
-		disks, err := getDisks(r.Address)
-		if err != nil {
-			return err
-		}
-
-		for name, disk := range disks {
-			snapshot := ""
-
-			if !replica.IsHeadDisk(name) {
-				snapshot, err = replica.GetSnapshotNameFromDiskName(name)
-				if err != nil {
-					return err
-				}
-			} else {
-				snapshot = VolumeHeadName
-			}
-			children := []string{}
-			for _, childDisk := range disk.Children {
-				child := ""
-				if !replica.IsHeadDisk(childDisk) {
-					child, err = replica.GetSnapshotNameFromDiskName(childDisk)
-					if err != nil {
-						return err
-					}
-				} else {
-					child = VolumeHeadName
-				}
-				children = append(children, child)
-			}
-			parent := ""
-			if disk.Parent != "" {
-				parent, err = replica.GetSnapshotNameFromDiskName(disk.Parent)
-				if err != nil {
-					return err
-				}
-			}
-			info := replica.DiskInfo{
-				Name:        snapshot,
-				Parent:      parent,
-				Removed:     disk.Removed,
-				UserCreated: disk.UserCreated,
-				Children:    children,
-				Created:     disk.Created,
-				Size:        disk.Size,
-			}
-			if _, exists := outputDisks[snapshot]; !exists {
-				outputDisks[snapshot] = info
-			} else {
-				// Consolidate the result of snapshot in removing process
-				if info.Removed && !outputDisks[snapshot].Removed {
-					t := outputDisks[snapshot]
-					t.Removed = true
-					outputDisks[snapshot] = t
-				}
-			}
-		}
-
+	outputDisks, err := sync.GetSnapshotsInfo(replicas)
+	if err != nil {
+		return err
 	}
 
 	output, err = json.MarshalIndent(outputDisks, "", "\t")
@@ -275,18 +211,4 @@ func infoSnapshot(c *cli.Context) error {
 	}
 	fmt.Println(string(output))
 	return nil
-}
-
-func getDisks(address string) (map[string]replica.DiskInfo, error) {
-	repClient, err := replicaClient.NewReplicaClient(address)
-	if err != nil {
-		return nil, err
-	}
-
-	r, err := repClient.GetReplica()
-	if err != nil {
-		return nil, err
-	}
-
-	return r.Disks, err
 }
