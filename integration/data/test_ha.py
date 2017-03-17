@@ -2,7 +2,7 @@ import cmd
 import common
 from common import controller, replica1, replica2 # NOQA
 from common import open_replica, get_blockdev, cleanup_replica
-from common import verify_read, verify_data, verify_async
+from common import verify_read, verify_data, verify_async, VOLUME_HEAD
 
 
 def test_ha_single_replica_failure(controller, replica1, replica2):  # NOQA
@@ -83,6 +83,24 @@ def test_ha_single_replica_rebuild(controller, replica1, replica2):  # NOQA
     common.verify_replica_state(controller, 1, "RW")
 
     verify_read(dev, data_offset, data)
+
+    # WORKAROUND for unable to remove the parent of volume head
+    newsnap = cmd.snapshot_create()
+
+    info = cmd.snapshot_info()
+    assert len(info) == 3
+    sysnap = info[newsnap]["parent"]
+    assert info[sysnap]["parent"] == ""
+    assert info[sysnap]["children"] == [newsnap]
+    assert info[sysnap]["usercreated"] is False
+    assert info[sysnap]["removed"] is False
+
+    cmd.snapshot_purge()
+    info = cmd.snapshot_info()
+    assert len(info) == 2
+    assert info[newsnap] is not None
+    assert info[VOLUME_HEAD] is not None
+
 
 def test_ha_double_replica_rebuild(controller, replica1, replica2):  # NOQA
     open_replica(replica1)

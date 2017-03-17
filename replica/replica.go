@@ -400,65 +400,53 @@ func (r *Replica) PrepareRemoveDisk(name string) ([]PrepareRemoveAction, error) 
 		return nil, fmt.Errorf("Disk %v hasn't been marked as removed", disk)
 	}
 
-	targetDisks := []string{}
-	if data.Parent != "" {
-		parentData, exists := r.diskData[data.Parent]
-		if !exists {
-			return nil, fmt.Errorf("Can not find snapshot %v's parent %v", disk, data.Parent)
-		}
-		if parentData.Removed {
-			targetDisks = append(targetDisks, parentData.Name)
-		}
-	}
-	targetDisks = append(targetDisks, disk)
-	actions, err := r.processPrepareRemoveDisks(targetDisks)
+	actions, err := r.processPrepareRemoveDisks(disk)
 	if err != nil {
 		return nil, err
 	}
 	return actions, nil
 }
 
-func (r *Replica) processPrepareRemoveDisks(disks []string) ([]PrepareRemoveAction, error) {
+func (r *Replica) processPrepareRemoveDisks(disk string) ([]PrepareRemoveAction, error) {
 	actions := []PrepareRemoveAction{}
 
-	for _, disk := range disks {
-		if _, exists := r.diskData[disk]; !exists {
-			return nil, fmt.Errorf("Wrong disk %v doesn't exist", disk)
-		}
+	if _, exists := r.diskData[disk]; !exists {
+		return nil, fmt.Errorf("Wrong disk %v doesn't exist", disk)
+	}
 
-		children := r.diskChildrenMap[disk]
-		// 1) leaf node
-		if children == nil {
-			actions = append(actions, PrepareRemoveAction{
-				Action: OpRemove,
-				Source: disk,
-			})
-			continue
-		}
+	children := r.diskChildrenMap[disk]
+	// 1) leaf node
+	if children == nil {
+		actions = append(actions, PrepareRemoveAction{
+			Action: OpRemove,
+			Source: disk,
+		})
+		return actions, nil
+	}
 
-		// 2) has only one child and is not head
-		if len(children) == 1 {
-			var child string
-			// Get the only element in children
-			for child = range children {
-			}
-			if child != r.info.Head {
-				actions = append(actions,
-					PrepareRemoveAction{
-						Action: OpCoalesce,
-						Source: disk,
-						Target: child,
-					},
-					PrepareRemoveAction{
-						Action: OpReplace,
-						Source: disk,
-						Target: child,
-					})
-				continue
-			}
+	// 2) has only one child and is not head
+	if len(children) == 1 {
+		var child string
+		// Get the only element in children
+		for child = range children {
+		}
+		if child != r.info.Head {
+			actions = append(actions,
+				PrepareRemoveAction{
+					Action: OpCoalesce,
+					Source: disk,
+					Target: child,
+				},
+				PrepareRemoveAction{
+					Action: OpReplace,
+					Source: disk,
+					Target: child,
+				})
+			return actions, nil
 		}
 	}
 
+	logrus.Infof("Currently snapshot %v doesn't meet criteria to be removed, skip it for now", disk)
 	return actions, nil
 }
 

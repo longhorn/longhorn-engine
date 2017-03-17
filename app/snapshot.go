@@ -22,6 +22,7 @@ func SnapshotCmd() cli.Command {
 			SnapshotRevertCmd(),
 			SnapshotLsCmd(),
 			SnapshotRmCmd(),
+			SnapshotPurgeCmd(),
 			SnapshotInfoCmd(),
 		},
 		Action: func(c *cli.Context) {
@@ -60,6 +61,17 @@ func SnapshotRmCmd() cli.Command {
 		Action: func(c *cli.Context) {
 			if err := rmSnapshot(c); err != nil {
 				logrus.Fatalf("Error running rm snapshot command: %v", err)
+			}
+		},
+	}
+}
+
+func SnapshotPurgeCmd() cli.Command {
+	return cli.Command{
+		Name: "purge",
+		Action: func(c *cli.Context) {
+			if err := purgeSnapshot(c); err != nil {
+				logrus.Fatalf("Error running purge snapshot command: %v", err)
 			}
 		},
 	}
@@ -132,6 +144,17 @@ func rmSnapshot(c *cli.Context) error {
 	}
 
 	return lastErr
+}
+
+func purgeSnapshot(c *cli.Context) error {
+	url := c.GlobalString("url")
+	task := sync.NewTask(url)
+
+	if err := task.PurgeSnapshots(); err != nil {
+		return fmt.Errorf("Failed to purge snapshots: %v", err)
+	}
+
+	return nil
 }
 
 func lsSnapshot(c *cli.Context) error {

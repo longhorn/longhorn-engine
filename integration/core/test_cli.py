@@ -18,6 +18,8 @@ BACKUP_DEST = '/tmp/longhorn-backup'
 VOLUME_NAME = 'test-volume_1.0'
 VOLUME_SIZE = str(4 * 1024 * 1024)  # 4M
 
+VOLUME_HEAD = "volume-head"
+
 
 @pytest.fixture
 def controller_client(request):
@@ -645,3 +647,113 @@ def test_backup_core(bin, controller_client, replica_client,
     with pytest.raises(subprocess.CalledProcessError) as e:
         subprocess.check_call(cmd)
         assert 'not supported' in str(e.value)
+
+
+def test_snapshot_purge_basic(bin, controller_client,
+                              replica_client, replica_client2):
+    open_replica(replica_client)
+    open_replica(replica_client2)
+
+    v = controller_client.list_volume()[0]
+    v = v.start(replicas=[
+        REPLICA,
+        REPLICA2,
+    ])
+    assert v.replicaCount == 2
+
+    cmd = [bin, 'snapshot', 'create']
+    snap0 = subprocess.check_output(cmd).strip()
+    snap1 = subprocess.check_output(cmd).strip()
+
+    chain = replica_client.list_replica()[0].chain
+    assert len(chain) == 3
+    assert chain[0] == 'volume-head-002.img'
+    assert chain[1] == 'volume-snap-{}.img'.format(snap1)
+    assert chain[2] == 'volume-snap-{}.img'.format(snap0)
+
+    cmd = [bin, 'snapshot', 'rm', snap0]
+    subprocess.check_call(cmd)
+
+    new_chain = replica_client.list_replica()[0].chain
+    assert len(new_chain) == 2
+    assert chain[0] == new_chain[0]
+    assert chain[1] == new_chain[1]
+
+    cmd = [bin, 'snapshot', 'info']
+    output = subprocess.check_output(cmd)
+    info = json.loads(output)
+
+    assert len(info) == 3
+    assert info[snap0]["parent"] == ""
+    assert info[snap0]["removed"] is True
+    assert info[snap1]["parent"] == snap0
+    assert info[snap1]["removed"] is False
+    assert info[VOLUME_HEAD]["parent"] == snap1
+
+    cmd = [bin, 'snapshot', 'purge']
+    subprocess.check_call(cmd)
+
+    cmd = [bin, 'snapshot', 'info']
+    output = subprocess.check_output(cmd)
+    info = json.loads(output)
+
+    assert len(info) == 2
+    assert snap0 not in info
+    assert info[snap1]["parent"] == ""
+
+
+def test_snapshot_purge_head_parent(bin, controller_client,
+                                    replica_client, replica_client2):
+    open_replica(replica_client)
+    open_replica(replica_client2)
+
+    v = controller_client.list_volume()[0]
+    v = v.start(replicas=[
+        REPLICA,
+        REPLICA2,
+    ])
+    assert v.replicaCount == 2
+
+    cmd = [bin, 'snapshot', 'create']
+    snap0 = subprocess.check_output(cmd).strip()
+    snap1 = subprocess.check_output(cmd).strip()
+
+    chain = replica_client.list_replica()[0].chain
+    assert len(chain) == 3
+    assert chain[0] == 'volume-head-002.img'
+    assert chain[1] == 'volume-snap-{}.img'.format(snap1)
+    assert chain[2] == 'volume-snap-{}.img'.format(snap0)
+
+    cmd = [bin, 'snapshot', 'rm', snap1]
+    subprocess.check_call(cmd)
+
+    new_chain = replica_client.list_replica()[0].chain
+    assert len(new_chain) == 2
+    assert chain[0] == new_chain[0]
+    assert chain[2] == new_chain[1]
+
+    cmd = [bin, 'snapshot', 'info']
+    output = subprocess.check_output(cmd)
+    info = json.loads(output)
+
+    assert len(info) == 3
+    assert info[snap0]["parent"] == ""
+    assert info[snap0]["removed"] is False
+    assert info[snap1]["parent"] == snap0
+    assert info[snap1]["removed"] is True
+    assert info[VOLUME_HEAD]["parent"] == snap1
+
+    cmd = [bin, 'snapshot', 'purge']
+    subprocess.check_call(cmd)
+
+    cmd = [bin, 'snapshot', 'info']
+    output = subprocess.check_output(cmd)
+    info = json.loads(output)
+
+    # Current we're unable to purge the head's parent
+    assert len(info) == 3
+    assert info[snap0]["parent"] == ""
+    assert info[snap0]["removed"] is False
+    assert info[snap1]["parent"] == snap0
+    assert info[snap1]["removed"] is True
+    assert info[VOLUME_HEAD]["parent"] == snap1

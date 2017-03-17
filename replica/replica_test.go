@@ -575,13 +575,7 @@ func (s *TestSuite) TestPrepareRemove(c *C) {
 
 	actions, err = r.PrepareRemoveDisk("002")
 	c.Assert(err, IsNil)
-	c.Assert(actions, HasLen, 2)
-	c.Assert(actions[0].Action, Equals, OpCoalesce)
-	c.Assert(actions[0].Source, Equals, "volume-snap-001.img")
-	c.Assert(actions[0].Target, Equals, "volume-snap-002.img")
-	c.Assert(actions[1].Action, Equals, OpReplace)
-	c.Assert(actions[1].Source, Equals, "volume-snap-001.img")
-	c.Assert(actions[1].Target, Equals, "volume-snap-002.img")
+	c.Assert(actions, HasLen, 0)
 
 	err = r.Snapshot("003", true, now)
 	c.Assert(err, IsNil)
@@ -605,21 +599,25 @@ func (s *TestSuite) TestPrepareRemove(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(r.activeDiskData[4].Removed, Equals, true)
 
-	actions, err = r.PrepareRemoveDisk("003")
+	actions, err = r.PrepareRemoveDisk("002")
 	c.Assert(err, IsNil)
-	c.Assert(actions, HasLen, 4)
+	c.Assert(actions, HasLen, 2)
 	c.Assert(actions[0].Action, Equals, OpCoalesce)
 	c.Assert(actions[0].Source, Equals, "volume-snap-002.img")
 	c.Assert(actions[0].Target, Equals, "volume-snap-003.img")
 	c.Assert(actions[1].Action, Equals, OpReplace)
 	c.Assert(actions[1].Source, Equals, "volume-snap-002.img")
 	c.Assert(actions[1].Target, Equals, "volume-snap-003.img")
-	c.Assert(actions[2].Action, Equals, OpCoalesce)
-	c.Assert(actions[2].Source, Equals, "volume-snap-003.img")
-	c.Assert(actions[2].Target, Equals, "volume-snap-004.img")
-	c.Assert(actions[3].Action, Equals, OpReplace)
-	c.Assert(actions[3].Source, Equals, "volume-snap-003.img")
-	c.Assert(actions[3].Target, Equals, "volume-snap-004.img")
+
+	actions, err = r.PrepareRemoveDisk("003")
+	c.Assert(err, IsNil)
+	c.Assert(actions, HasLen, 2)
+	c.Assert(actions[0].Action, Equals, OpCoalesce)
+	c.Assert(actions[0].Source, Equals, "volume-snap-003.img")
+	c.Assert(actions[0].Target, Equals, "volume-snap-004.img")
+	c.Assert(actions[1].Action, Equals, OpReplace)
+	c.Assert(actions[1].Source, Equals, "volume-snap-003.img")
+	c.Assert(actions[1].Target, Equals, "volume-snap-004.img")
 }
 
 func byteEquals(c *C, expected, obtained []byte) {

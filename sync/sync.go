@@ -50,6 +50,88 @@ func (t *Task) DeleteSnapshot(snapshot string) error {
 	return nil
 }
 
+func (t *Task) PurgeSnapshots() error {
+	var err error
+
+	leaves := []string{}
+
+	replicas, err := t.client.ListReplicas()
+	if err != nil {
+		return err
+	}
+
+	for _, r := range replicas {
+		if ok, err := t.isRebuilding(&r); err != nil {
+			return err
+		} else if ok {
+			return fmt.Errorf("Can not purge snapshots because %s is rebuilding", r.Address)
+		}
+	}
+
+	snapshotsInfo, err := GetSnapshotsInfo(replicas)
+	if err != nil {
+		return err
+	}
+	for snapshot, info := range snapshotsInfo {
+		if len(info.Children) == 0 {
+			leaves = append(leaves, snapshot)
+		}
+		if info.Name == VolumeHeadName {
+			continue
+		}
+		// Mark system generated snapshots as removed
+		if !info.UserCreated && !info.Removed {
+			for _, replica := range replicas {
+				if err = t.markSnapshotAsRemoved(&replica, snapshot); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	snapshotsInfo, err = GetSnapshotsInfo(replicas)
+	if err != nil {
+		return err
+	}
+	for _, leaf := range leaves {
+		// Somehow the leaf was removed during the process
+		if _, ok := snapshotsInfo[leaf]; !ok {
+			continue
+		}
+		snapshot := leaf
+		for snapshot != "" {
+			// Snapshot already removed? Skip to the next leaf
+			info, ok := snapshotsInfo[snapshot]
+			if !ok {
+				break
+			}
+			if info.Removed {
+				if info.Name == VolumeHeadName {
+					return fmt.Errorf("BUG: Volume head was marked as removed")
+				}
+
+				for _, replica := range replicas {
+					ops, err := t.prepareRemoveSnapshot(&replica, snapshot)
+					if err != nil {
+						return err
+					}
+					if err := t.processRemoveSnapshot(&replica, snapshot, ops); err != nil {
+						return err
+					}
+				}
+			}
+			snapshot = info.Parent
+		}
+		// Update snapshotInfo in case some nodes have been removed
+		snapshotsInfo, err = GetSnapshotsInfo(replicas)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
 func (t *Task) rmDisk(replicaInController *rest.Replica, disk string) error {
 	repClient, err := replicaClient.NewReplicaClient(replicaInController.Address)
 	if err != nil {
