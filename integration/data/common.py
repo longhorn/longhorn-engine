@@ -33,6 +33,7 @@ BACKUP_DEST = 'vfs://' + BACKUP_DIR
 BACKING_FILE = 'backing_file.raw'
 
 VOLUME_NAME = 'test-volume_1.0'
+VOLUME_HEAD = 'volume-head'
 
 thread_failed = False
 

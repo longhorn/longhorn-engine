@@ -267,6 +267,32 @@ func (r *Replica) RemoveDiffDisk(name string) error {
 	return nil
 }
 
+func (r *Replica) MarkDiskAsRemoved(name string) error {
+	r.Lock()
+	defer r.Unlock()
+
+	disk := name
+
+	_, exists := r.diskData[disk]
+	if !exists {
+		disk = GenerateSnapshotDiskName(name)
+		_, exists = r.diskData[disk]
+		if !exists {
+			return fmt.Errorf("Can not find snapshot %v", disk)
+		}
+	}
+
+	if disk == r.info.Head {
+		return fmt.Errorf("Can not mark the active differencing disk as removed")
+	}
+
+	if err := r.markDiskAsRemoved(disk); err != nil {
+		return fmt.Errorf("Fail to mark disk %v as removed: %v", disk, err)
+	}
+
+	return nil
+}
+
 func (r *Replica) hardlinkDisk(target, source string) error {
 	if _, err := os.Stat(r.diskPath(source)); err != nil {
 		return fmt.Errorf("Cannot find source of replacing: %v", source)
@@ -370,70 +396,57 @@ func (r *Replica) PrepareRemoveDisk(name string) ([]PrepareRemoveAction, error) 
 		return nil, fmt.Errorf("Can not delete the active differencing disk")
 	}
 
-	logrus.Infof("Mark disk %v as removed", disk)
-	if err := r.markDiskAsRemoved(disk); err != nil {
-		return nil, fmt.Errorf("Fail to mark disk %v as removed: %v", disk, err)
+	if !data.Removed {
+		return nil, fmt.Errorf("Disk %v hasn't been marked as removed", disk)
 	}
 
-	targetDisks := []string{}
-	if data.Parent != "" {
-		parentData, exists := r.diskData[data.Parent]
-		if !exists {
-			return nil, fmt.Errorf("Can not find snapshot %v's parent %v", disk, data.Parent)
-		}
-		if parentData.Removed {
-			targetDisks = append(targetDisks, parentData.Name)
-		}
-	}
-	targetDisks = append(targetDisks, disk)
-	actions, err := r.processPrepareRemoveDisks(targetDisks)
+	actions, err := r.processPrepareRemoveDisks(disk)
 	if err != nil {
 		return nil, err
 	}
 	return actions, nil
 }
 
-func (r *Replica) processPrepareRemoveDisks(disks []string) ([]PrepareRemoveAction, error) {
+func (r *Replica) processPrepareRemoveDisks(disk string) ([]PrepareRemoveAction, error) {
 	actions := []PrepareRemoveAction{}
 
-	for _, disk := range disks {
-		if _, exists := r.diskData[disk]; !exists {
-			return nil, fmt.Errorf("Wrong disk %v doesn't exist", disk)
-		}
+	if _, exists := r.diskData[disk]; !exists {
+		return nil, fmt.Errorf("Wrong disk %v doesn't exist", disk)
+	}
 
-		children := r.diskChildrenMap[disk]
-		// 1) leaf node
-		if children == nil {
-			actions = append(actions, PrepareRemoveAction{
-				Action: OpRemove,
-				Source: disk,
-			})
-			continue
-		}
+	children := r.diskChildrenMap[disk]
+	// 1) leaf node
+	if children == nil {
+		actions = append(actions, PrepareRemoveAction{
+			Action: OpRemove,
+			Source: disk,
+		})
+		return actions, nil
+	}
 
-		// 2) has only one child and is not head
-		if len(children) == 1 {
-			var child string
-			// Get the only element in children
-			for child = range children {
-			}
-			if child != r.info.Head {
-				actions = append(actions,
-					PrepareRemoveAction{
-						Action: OpCoalesce,
-						Source: disk,
-						Target: child,
-					},
-					PrepareRemoveAction{
-						Action: OpReplace,
-						Source: disk,
-						Target: child,
-					})
-				continue
-			}
+	// 2) has only one child and is not head
+	if len(children) == 1 {
+		var child string
+		// Get the only element in children
+		for child = range children {
+		}
+		if child != r.info.Head {
+			actions = append(actions,
+				PrepareRemoveAction{
+					Action: OpCoalesce,
+					Source: disk,
+					Target: child,
+				},
+				PrepareRemoveAction{
+					Action: OpReplace,
+					Source: disk,
+					Target: child,
+				})
+			return actions, nil
 		}
 	}
 
+	logrus.Infof("Currently snapshot %v doesn't meet criteria to be removed, skip it for now", disk)
 	return actions, nil
 }
 

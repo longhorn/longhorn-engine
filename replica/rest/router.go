@@ -54,13 +54,14 @@ func NewRouter(s *Server) *mux.Router {
 		"snapshot":           s.SnapshotReplica,
 		"open":               s.OpenReplica,
 		"close":              s.CloseReplica,
-		"removedisk":         s.RemoveDisk,
-		"replacedisk":        s.ReplaceDisk,
 		"setrebuilding":      s.SetRebuilding,
 		"create":             s.Create,
 		"revert":             s.RevertReplica,
-		"prepareremovedisk":  s.PrepareRemoveDisk,
 		"setrevisioncounter": s.SetRevisionCounter,
+		"markdiskasremoved":  s.MarkDiskAsRemoved,
+		"prepareremovedisk":  s.PrepareRemoveDisk,
+		"removedisk":         s.RemoveDisk,
+		"replacedisk":        s.ReplaceDisk,
 	}
 
 	for name, action := range actions {

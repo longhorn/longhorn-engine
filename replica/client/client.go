@@ -145,6 +145,17 @@ func (c *ReplicaClient) PrepareRemoveDisk(disk string) (rest.PrepareRemoveDiskOu
 	return output, err
 }
 
+func (c *ReplicaClient) MarkDiskAsRemoved(disk string) error {
+	r, err := c.GetReplica()
+	if err != nil {
+		return err
+	}
+
+	return c.post(r.Actions["markdiskasremoved"], &rest.MarkDiskAsRemovedInput{
+		Name: disk,
+	}, nil)
+}
+
 func (c *ReplicaClient) OpenReplica() error {
 	r, err := c.GetReplica()
 	if err != nil {

@@ -163,13 +163,22 @@ def test_remove_disk(client):
                        'volume-snap-000.img']
 
     with pytest.raises(cattle.ApiError) as e:
+        r.markdiskasremoved(name='003')
+        assert "Can not find snapshot" in e
+
+    with pytest.raises(cattle.ApiError) as e:
         r.prepareremovedisk(name='003')
         assert "Can not find snapshot" in e
+
+    with pytest.raises(cattle.ApiError) as e:
+        r.markdiskasremoved(name='volume-head-002.img')
+        assert "Can not mark the active" in e
 
     with pytest.raises(cattle.ApiError) as e:
         r.prepareremovedisk(name='volume-head-002.img')
         assert "Can not delete the active" in e
 
+    r.markdiskasremoved(name='001')
     ops = r.prepareremovedisk(name='001')["operations"]
     assert len(ops) == 0
 
@@ -195,6 +204,7 @@ def test_remove_last_disk(client):
     assert r.chain == ['volume-head-002.img', 'volume-snap-001.img',
                        'volume-snap-000.img']
 
+    r.markdiskasremoved(name='volume-snap-000.img')
     ops = r.prepareremovedisk(name='volume-snap-000.img')["operations"]
     assert len(ops) == 2
     assert ops[0].action == "coalesce"

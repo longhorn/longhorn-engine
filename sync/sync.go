@@ -41,16 +41,90 @@ func (t *Task) DeleteSnapshot(snapshot string) error {
 		}
 	}
 
-	ops := make(map[string][]replica.PrepareRemoveAction)
 	for _, replica := range replicas {
-		ops[replica.Address], err = t.prepareRemoveSnapshot(&replica, snapshot)
-		if err != nil {
+		if err = t.markSnapshotAsRemoved(&replica, snapshot); err != nil {
 			return err
 		}
 	}
 
-	for _, replica := range replicas {
-		if err := t.processRemoveSnapshot(&replica, snapshot, ops[replica.Address]); err != nil {
+	return nil
+}
+
+func (t *Task) PurgeSnapshots() error {
+	var err error
+
+	leaves := []string{}
+
+	replicas, err := t.client.ListReplicas()
+	if err != nil {
+		return err
+	}
+
+	for _, r := range replicas {
+		if ok, err := t.isRebuilding(&r); err != nil {
+			return err
+		} else if ok {
+			return fmt.Errorf("Can not purge snapshots because %s is rebuilding", r.Address)
+		}
+	}
+
+	snapshotsInfo, err := GetSnapshotsInfo(replicas)
+	if err != nil {
+		return err
+	}
+	for snapshot, info := range snapshotsInfo {
+		if len(info.Children) == 0 {
+			leaves = append(leaves, snapshot)
+		}
+		if info.Name == VolumeHeadName {
+			continue
+		}
+		// Mark system generated snapshots as removed
+		if !info.UserCreated && !info.Removed {
+			for _, replica := range replicas {
+				if err = t.markSnapshotAsRemoved(&replica, snapshot); err != nil {
+					return err
+				}
+			}
+		}
+	}
+
+	snapshotsInfo, err = GetSnapshotsInfo(replicas)
+	if err != nil {
+		return err
+	}
+	for _, leaf := range leaves {
+		// Somehow the leaf was removed during the process
+		if _, ok := snapshotsInfo[leaf]; !ok {
+			continue
+		}
+		snapshot := leaf
+		for snapshot != "" {
+			// Snapshot already removed? Skip to the next leaf
+			info, ok := snapshotsInfo[snapshot]
+			if !ok {
+				break
+			}
+			if info.Removed {
+				if info.Name == VolumeHeadName {
+					return fmt.Errorf("BUG: Volume head was marked as removed")
+				}
+
+				for _, replica := range replicas {
+					ops, err := t.prepareRemoveSnapshot(&replica, snapshot)
+					if err != nil {
+						return err
+					}
+					if err := t.processRemoveSnapshot(&replica, snapshot, ops); err != nil {
+						return err
+					}
+				}
+			}
+			snapshot = info.Parent
+		}
+		// Update snapshotInfo in case some nodes have been removed
+		snapshotsInfo, err = GetSnapshotsInfo(replicas)
+		if err != nil {
 			return err
 		}
 	}
@@ -120,6 +194,23 @@ func (t *Task) prepareRemoveSnapshot(replicaInController *rest.Replica, snapshot
 	}
 
 	return output.Operations, nil
+}
+
+func (t *Task) markSnapshotAsRemoved(replicaInController *rest.Replica, snapshot string) error {
+	if replicaInController.Mode != "RW" {
+		return fmt.Errorf("Can only mark snapshot as removed from replica in mode RW, got %s", replicaInController.Mode)
+	}
+
+	repClient, err := replicaClient.NewReplicaClient(replicaInController.Address)
+	if err != nil {
+		return err
+	}
+
+	if err := repClient.MarkDiskAsRemoved(snapshot); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 func (t *Task) processRemoveSnapshot(replicaInController *rest.Replica, snapshot string, ops []replica.PrepareRemoveAction) error {
@@ -353,4 +444,88 @@ func (t *Task) getToReplica(address string) (rest.Replica, error) {
 	}
 
 	return rest.Replica{}, fmt.Errorf("Failed to find target replica to copy to")
+}
+
+const VolumeHeadName = "volume-head"
+
+func getDisks(address string) (map[string]replica.DiskInfo, error) {
+	repClient, err := replicaClient.NewReplicaClient(address)
+	if err != nil {
+		return nil, err
+	}
+
+	r, err := repClient.GetReplica()
+	if err != nil {
+		return nil, err
+	}
+
+	return r.Disks, err
+}
+
+func GetSnapshotsInfo(replicas []rest.Replica) (map[string]replica.DiskInfo, error) {
+	outputDisks := make(map[string]replica.DiskInfo)
+	for _, r := range replicas {
+		if r.Mode != "RW" {
+			continue
+		}
+
+		disks, err := getDisks(r.Address)
+		if err != nil {
+			return nil, err
+		}
+
+		for name, disk := range disks {
+			snapshot := ""
+
+			if !replica.IsHeadDisk(name) {
+				snapshot, err = replica.GetSnapshotNameFromDiskName(name)
+				if err != nil {
+					return nil, err
+				}
+			} else {
+				snapshot = VolumeHeadName
+			}
+			children := []string{}
+			for _, childDisk := range disk.Children {
+				child := ""
+				if !replica.IsHeadDisk(childDisk) {
+					child, err = replica.GetSnapshotNameFromDiskName(childDisk)
+					if err != nil {
+						return nil, err
+					}
+				} else {
+					child = VolumeHeadName
+				}
+				children = append(children, child)
+			}
+			parent := ""
+			if disk.Parent != "" {
+				parent, err = replica.GetSnapshotNameFromDiskName(disk.Parent)
+				if err != nil {
+					return nil, err
+				}
+			}
+			info := replica.DiskInfo{
+				Name:        snapshot,
+				Parent:      parent,
+				Removed:     disk.Removed,
+				UserCreated: disk.UserCreated,
+				Children:    children,
+				Created:     disk.Created,
+				Size:        disk.Size,
+			}
+			if _, exists := outputDisks[snapshot]; !exists {
+				outputDisks[snapshot] = info
+			} else {
+				// Consolidate the result of snapshot in removing process
+				if info.Removed && !outputDisks[snapshot].Removed {
+					t := outputDisks[snapshot]
+					t.Removed = true
+					outputDisks[snapshot] = t
+				}
+			}
+		}
+
+	}
+	return outputDisks, nil
 }

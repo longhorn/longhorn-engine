@@ -205,6 +205,18 @@ func (s *Server) ReplaceDisk(target, source string) error {
 	return s.r.ReplaceDisk(target, source)
 }
 
+func (s *Server) MarkDiskAsRemoved(name string) error {
+	s.Lock()
+	defer s.Unlock()
+
+	if s.r == nil {
+		return nil
+	}
+
+	logrus.Infof("Marking disk %v as removed", name)
+	return s.r.MarkDiskAsRemoved(name)
+}
+
 func (s *Server) PrepareRemoveDisk(name string) ([]PrepareRemoveAction, error) {
 	s.Lock()
 	defer s.Unlock()
