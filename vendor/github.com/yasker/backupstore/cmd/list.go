@@ -13,10 +13,11 @@ import (
 	"github.com/yasker/backupstore/util"
 )
 
-var (
-	BackupListCmd = cli.Command{
-		Name:  "list",
-		Usage: "list backups in backupstore: list <dest>",
+func BackupListCmd() cli.Command {
+	return cli.Command{
+		Name:    "list",
+		Aliases: []string{"ls"},
+		Usage:   "list backups in backupstore: list <dest>",
 		Flags: []cli.Flag{
 			cli.StringFlag{
 				Name:  "volume",
@@ -29,13 +30,15 @@ var (
 		},
 		Action: cmdBackupList,
 	}
+}
 
-	BackupInspectCmd = cli.Command{
+func BackupInspectCmd() cli.Command {
+	return cli.Command{
 		Name:   "inspect",
 		Usage:  "inspect a backup: inspect <backup>",
 		Action: cmdBackupInspect,
 	}
-)
+}
 
 func cmdBackupList(c *cli.Context) {
 	if err := doBackupList(c); err != nil {

@@ -4,8 +4,10 @@ import (
 	"fmt"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/rancher/longhorn/sync"
 	"github.com/urfave/cli"
+
+	"github.com/rancher/longhorn/sync"
+	"github.com/yasker/backupstore/cmd"
 )
 
 func BackupCmd() cli.Command {
@@ -15,9 +17,9 @@ func BackupCmd() cli.Command {
 		Subcommands: []cli.Command{
 			BackupCreateCmd(),
 			BackupRestoreCmd(),
-			BackupRmCmd(),
-			BackupInspectCmd(),
-			BackupListCmd(),
+			cmd.BackupRemoveCmd(),
+			cmd.BackupListCmd(),
+			cmd.BackupInspectCmd(),
 		},
 	}
 }
@@ -40,18 +42,6 @@ func BackupCreateCmd() cli.Command {
 	}
 }
 
-func BackupRmCmd() cli.Command {
-	return cli.Command{
-		Name:  "rm",
-		Usage: "remove a backup in objectstore: rm <backup>",
-		Action: func(c *cli.Context) {
-			if err := rmBackup(c); err != nil {
-				logrus.Fatalf("Error running rm backup command: %v", err)
-			}
-		},
-	}
-}
-
 func BackupRestoreCmd() cli.Command {
 	return cli.Command{
 		Name:  "restore",
@@ -59,31 +49,6 @@ func BackupRestoreCmd() cli.Command {
 		Action: func(c *cli.Context) {
 			if err := restoreBackup(c); err != nil {
 				logrus.Fatalf("Error running restore backup command: %v", err)
-			}
-		},
-	}
-}
-
-func BackupInspectCmd() cli.Command {
-	return cli.Command{
-		Name:  "inspect",
-		Usage: "inspect a backup: inspect <backup>",
-		Action: func(c *cli.Context) {
-			if err := inspectBackup(c); err != nil {
-				logrus.Fatalf("Error running inspect backup command: %v", err)
-			}
-		},
-	}
-}
-
-func BackupListCmd() cli.Command {
-	return cli.Command{
-		Name:      "list",
-		ShortName: "ls",
-		Usage:     "list backup: list <dest>",
-		Action: func(c *cli.Context) {
-			if err := listBackup(c); err != nil {
-				logrus.Fatalf("Error running inspect backup command: %v", err)
 			}
 		},
 	}
@@ -112,22 +77,6 @@ func createBackup(c *cli.Context) error {
 	return nil
 }
 
-func rmBackup(c *cli.Context) error {
-	url := c.GlobalString("url")
-	task := sync.NewTask(url)
-
-	backup := c.Args().First()
-	if backup == "" {
-		return fmt.Errorf("Missing required parameter backup")
-	}
-
-	if err := task.RmBackup(backup); err != nil {
-		return err
-	}
-
-	return nil
-}
-
 func restoreBackup(c *cli.Context) error {
 	url := c.GlobalString("url")
 	task := sync.NewTask(url)
@@ -140,42 +89,6 @@ func restoreBackup(c *cli.Context) error {
 	if err := task.RestoreBackup(backup); err != nil {
 		return err
 	}
-
-	return nil
-}
-
-func inspectBackup(c *cli.Context) error {
-	url := c.GlobalString("url")
-	task := sync.NewTask(url)
-
-	backup := c.Args().First()
-	if backup == "" {
-		return fmt.Errorf("Missing required parameter backup")
-	}
-
-	output, err := task.InspectBackup(backup)
-	if err != nil {
-		return err
-	}
-	fmt.Println(output)
-
-	return nil
-}
-
-func listBackup(c *cli.Context) error {
-	url := c.GlobalString("url")
-	task := sync.NewTask(url)
-
-	destURL := c.Args().First()
-	if destURL == "" {
-		return fmt.Errorf("Missing required parameter <dest>")
-	}
-
-	output, err := task.ListBackup(destURL)
-	if err != nil {
-		return err
-	}
-	fmt.Println(output)
 
 	return nil
 }

@@ -15,11 +15,6 @@ import (
 	"github.com/rancher/longhorn/replica"
 	"github.com/rancher/longhorn/util"
 	"github.com/yasker/backupstore"
-	"github.com/yasker/backupstore/cmd"
-)
-
-const (
-	BackupstoreBase = "longhorn-backupstore"
 )
 
 var (
@@ -53,12 +48,6 @@ var (
 		},
 		Action: cmdBackupRestore,
 	}
-
-	backupDeleteCmd = cli.Command{
-		Name:   "delete",
-		Usage:  "delete a backup in backupstore: delete <backup>",
-		Action: cmdBackupDelete,
-	}
 )
 
 func cleanup() {
@@ -79,16 +68,11 @@ func Main() {
 	}
 	log.Debugf("Currently running at %v, assume as volume dir", dir)
 
-	backupstore.SetBackupstoreBase(BackupstoreBase)
-
 	app := cli.NewApp()
 	app.Version = VERSION
 	app.Commands = []cli.Command{
 		backupCreateCmd,
 		backupRestoreCmd,
-		backupDeleteCmd,
-		cmd.BackupListCmd,
-		cmd.BackupInspectCmd,
 	}
 	app.Run(os.Args)
 }
@@ -199,28 +183,6 @@ func doBackupCreate(c *cli.Context) error {
 		return err
 	}
 	fmt.Println(backupURL)
-	return nil
-}
-
-func cmdBackupDelete(c *cli.Context) {
-	if err := doBackupDelete(c); err != nil {
-		panic(err)
-	}
-}
-
-func doBackupDelete(c *cli.Context) error {
-	if c.NArg() == 0 {
-		return RequiredMissingError("backup URL")
-	}
-	backupURL := c.Args()[0]
-	if backupURL == "" {
-		return RequiredMissingError("backup URL")
-	}
-	backupURL = UnescapeURL(backupURL)
-
-	if err := backupstore.DeleteDeltaBlockBackup(backupURL); err != nil {
-		return err
-	}
 	return nil
 }
 
