@@ -76,6 +76,7 @@ func (s *Server) Stop() {
 }
 
 func (s *Server) handleRead(msg *Message) {
+	msg.Data = make([]byte, msg.Size)
 	c, err := s.data.ReadAt(msg.Data, msg.Offset)
 	s.pushResponse(c, msg, err)
 }
@@ -92,13 +93,20 @@ func (s *Server) handlePing(msg *Message) {
 
 func (s *Server) pushResponse(count int, msg *Message, err error) {
 	msg.MagicVersion = MagicVersion
+	msg.Size = uint32(len(msg.Data))
+	if msg.Type == TypeWrite {
+		msg.Data = nil
+	}
+
 	msg.Type = TypeResponse
 	if err == io.EOF {
-		msg.Data = msg.Data[:count]
 		msg.Type = TypeEOF
+		msg.Data = msg.Data[:count]
+		msg.Size = uint32(len(msg.Data))
 	} else if err != nil {
 		msg.Type = TypeError
 		msg.Data = []byte(err.Error())
+		msg.Size = uint32(len(msg.Data))
 	}
 	s.responses <- msg
 }

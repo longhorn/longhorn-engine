@@ -86,7 +86,12 @@ func (c *Client) operation(op uint32, buf []byte, offset int64) (int, error) {
 			Complete: make(chan struct{}, 1),
 			Type:     op,
 			Offset:   offset,
-			Data:     buf,
+			Size:     uint32(len(buf)),
+			Data:     nil,
+		}
+
+		if op == TypeWrite {
+			msg.Data = buf
 		}
 
 		timeout := func(op uint32) <-chan time.Time {
@@ -103,25 +108,29 @@ func (c *Client) operation(op uint32, buf []byte, offset int64) (int, error) {
 
 		select {
 		case <-msg.Complete:
+			// Only copy the message if a read is requested
+			if op == TypeRead && (msg.Type == TypeResponse || msg.Type == TypeEOF) {
+				copy(buf, msg.Data)
+			}
 			if msg.Type == TypeError {
 				return 0, errors.New(string(msg.Data))
 			}
 			if msg.Type == TypeEOF {
-				return len(msg.Data), io.EOF
+				return int(msg.Size), io.EOF
 			}
-			return len(msg.Data), nil
+			return int(msg.Size), nil
 		case <-timeout:
 			switch msg.Type {
 			case TypeRead:
-				logrus.Errorln("Read timeout on replcia", c.TargetID(), "seq=", msg.Seq, "size=", len(msg.Data)/1024, "(kB)")
+				logrus.Errorln("Read timeout on replcia", c.TargetID(), "seq=", msg.Seq, "size=", msg.Size/1024, "(kB)")
 			case TypeWrite:
-				logrus.Errorln("Write timeout on replica", c.TargetID(), "seq=", msg.Seq, "size=", len(msg.Data)/1024, "(kB)")
+				logrus.Errorln("Write timeout on replica", c.TargetID(), "seq=", msg.Seq, "size=", msg.Size/1024, "(kB)")
 			case TypePing:
 				logrus.Errorln("Ping timeout on replica", c.TargetID(), "seq=", msg.Seq)
 			}
 			if retry < opRetries {
 				retry++
-				logrus.Errorln("Retry ", retry, "on replica", c.TargetID(), "seq=", msg.Seq, "size=", len(msg.Data)/1024, "(kB)")
+				logrus.Errorln("Retry ", retry, "on replica", c.TargetID(), "seq=", msg.Seq, "size=", msg.Size/1024, "(kB)")
 			} else {
 				err := ErrRWTimeout
 				if msg.Type == TypePing {
@@ -172,9 +181,9 @@ func (c *Client) replyError(req *Message) {
 func (c *Client) handleRequest(req *Message) {
 	switch req.Type {
 	case TypeRead:
-		req.ID = journal.InsertPendingOp(time.Now(), c.TargetID(), journal.OpRead, len(req.Data))
+		req.ID = journal.InsertPendingOp(time.Now(), c.TargetID(), journal.OpRead, int(req.Size))
 	case TypeWrite:
-		req.ID = journal.InsertPendingOp(time.Now(), c.TargetID(), journal.OpWrite, len(req.Data))
+		req.ID = journal.InsertPendingOp(time.Now(), c.TargetID(), journal.OpWrite, int(req.Size))
 	case TypePing:
 		req.ID = journal.InsertPendingOp(time.Now(), c.TargetID(), journal.OpPing, 0)
 	}
@@ -207,15 +216,9 @@ func (c *Client) handleResponse(resp *Message) {
 
 		journal.RemovePendingOp(req.ID, true)
 		delete(c.messages, resp.Seq)
-		// can probably optimize away this copy
-		if len(resp.Data) > 0 {
-			if resp.Type == TypeError {
-				req.Data = make([]byte, len(resp.Data))
-			}
-			copy(req.Data, resp.Data)
-			req.Data = req.Data[:len(resp.Data)]
-		}
 		req.Type = resp.Type
+		req.Size = resp.Size
+		req.Data = resp.Data
 		req.Complete <- struct{}{}
 	}
 }

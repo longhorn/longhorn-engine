@@ -35,6 +35,9 @@ func (w *Wire) Write(msg *Message) error {
 	if err := binary.Write(w.writer, binary.LittleEndian, msg.Offset); err != nil {
 		return err
 	}
+	if err := binary.Write(w.writer, binary.LittleEndian, msg.Size); err != nil {
+		return err
+	}
 	if err := binary.Write(w.writer, binary.LittleEndian, uint32(len(msg.Data))); err != nil {
 		return err
 	}
@@ -55,25 +58,26 @@ func (w *Wire) Read() (*Message, error) {
 	if err := binary.Read(w.reader, binary.LittleEndian, &msg.MagicVersion); err != nil {
 		return nil, err
 	}
+
 	if msg.MagicVersion != MagicVersion {
 		return nil, fmt.Errorf("Wrong API version received: 0x%x", &msg.MagicVersion)
 	}
+
 	if err := binary.Read(w.reader, binary.LittleEndian, &msg.Seq); err != nil {
 		return nil, err
 	}
-
 	if err := binary.Read(w.reader, binary.LittleEndian, &msg.Type); err != nil {
 		return nil, err
 	}
-
 	if err := binary.Read(w.reader, binary.LittleEndian, &msg.Offset); err != nil {
 		return nil, err
 	}
-
+	if err := binary.Read(w.reader, binary.LittleEndian, &msg.Size); err != nil {
+		return nil, err
+	}
 	if err := binary.Read(w.reader, binary.LittleEndian, &length); err != nil {
 		return nil, err
 	}
-
 	if length > 0 {
 		msg.Data = make([]byte, length)
 		if _, err := io.ReadFull(w.reader, msg.Data); err != nil {

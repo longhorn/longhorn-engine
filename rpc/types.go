@@ -27,6 +27,7 @@ type Message struct {
 	Seq          uint32
 	Type         uint32
 	Offset       int64
+	Size         uint32
 	Data         []byte
 	transportErr error
 
