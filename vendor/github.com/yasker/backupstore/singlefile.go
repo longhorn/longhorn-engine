@@ -39,11 +39,11 @@ func CreateSingleFileBackup(volume *Volume, snapshot *Snapshot, filePath, destUR
 	}
 
 	log.WithFields(logrus.Fields{
-		LOG_FIELD_REASON:   LOG_REASON_START,
-		LOG_FIELD_EVENT:    LOG_EVENT_BACKUP,
-		LOG_FIELD_OBJECT:   LOG_OBJECT_SNAPSHOT,
-		LOG_FIELD_SNAPSHOT: snapshot.Name,
-		LOG_FIELD_FILEPATH: filePath,
+		LogFieldReason:   LogReasonStart,
+		LogFieldEvent:    LogEventBackup,
+		LogFieldObject:   LogObjectSnapshot,
+		LogFieldSnapshot: snapshot.Name,
+		LogFieldFilepath: filePath,
 	}).Debug("Creating backup")
 
 	backup := &Backup{
@@ -64,10 +64,10 @@ func CreateSingleFileBackup(volume *Volume, snapshot *Snapshot, filePath, destUR
 	}
 
 	log.WithFields(logrus.Fields{
-		LOG_FIELD_REASON:   LOG_REASON_COMPLETE,
-		LOG_FIELD_EVENT:    LOG_EVENT_BACKUP,
-		LOG_FIELD_OBJECT:   LOG_OBJECT_SNAPSHOT,
-		LOG_FIELD_SNAPSHOT: snapshot.Name,
+		LogFieldReason:   LogReasonComplete,
+		LogFieldEvent:    LogEventBackup,
+		LogFieldObject:   LogObjectSnapshot,
+		LogFieldSnapshot: snapshot.Name,
 	}).Debug("Created backup")
 
 	return encodeBackupURL(backup.Name, volume.Name, destURL), nil
@@ -86,8 +86,8 @@ func RestoreSingleFileBackup(backupURL, path string) (string, error) {
 
 	if _, err := loadVolume(srcVolumeName, driver); err != nil {
 		return "", generateError(logrus.Fields{
-			LOG_FIELD_VOLUME:     srcVolumeName,
-			LOG_FIELD_BACKUP_URL: backupURL,
+			LogFieldVolume:     srcVolumeName,
+			LogEventBackupURL: backupURL,
 		}, "Volume doesn't exist in backupstore: %v", err)
 	}
 

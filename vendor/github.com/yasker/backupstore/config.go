@@ -40,19 +40,19 @@ func loadConfigInBackupStore(filePath string, driver BackupStoreDriver, v interf
 	defer rc.Close()
 
 	log.WithFields(logrus.Fields{
-		LOG_FIELD_REASON:   LOG_REASON_START,
-		LOG_FIELD_OBJECT:   LOG_OBJECT_CONFIG,
-		LOG_FIELD_KIND:     driver.Kind(),
-		LOG_FIELD_FILEPATH: filePath,
+		LogFieldReason:   LogReasonStart,
+		LogFieldObject:   LogObjectConfig,
+		LogFieldKind:     driver.Kind(),
+		LogFieldFilepath: filePath,
 	}).Debug()
 	if err := json.NewDecoder(rc).Decode(v); err != nil {
 		return err
 	}
 	log.WithFields(logrus.Fields{
-		LOG_FIELD_REASON:   LOG_REASON_COMPLETE,
-		LOG_FIELD_OBJECT:   LOG_OBJECT_CONFIG,
-		LOG_FIELD_KIND:     driver.Kind(),
-		LOG_FIELD_FILEPATH: filePath,
+		LogFieldReason:   LogReasonComplete,
+		LogFieldObject:   LogObjectConfig,
+		LogFieldKind:     driver.Kind(),
+		LogFieldFilepath: filePath,
 	}).Debug()
 	return nil
 }
@@ -63,19 +63,19 @@ func saveConfigInBackupStore(filePath string, driver BackupStoreDriver, v interf
 		return err
 	}
 	log.WithFields(logrus.Fields{
-		LOG_FIELD_REASON:   LOG_REASON_START,
-		LOG_FIELD_OBJECT:   LOG_OBJECT_CONFIG,
-		LOG_FIELD_KIND:     driver.Kind(),
-		LOG_FIELD_FILEPATH: filePath,
+		LogFieldReason:   LogReasonStart,
+		LogFieldObject:   LogObjectConfig,
+		LogFieldKind:     driver.Kind(),
+		LogFieldFilepath: filePath,
 	}).Debug()
 	if err := driver.Write(filePath, bytes.NewReader(j)); err != nil {
 		return err
 	}
 	log.WithFields(logrus.Fields{
-		LOG_FIELD_REASON:   LOG_REASON_COMPLETE,
-		LOG_FIELD_OBJECT:   LOG_OBJECT_CONFIG,
-		LOG_FIELD_KIND:     driver.Kind(),
-		LOG_FIELD_FILEPATH: filePath,
+		LogFieldReason:   LogReasonComplete,
+		LogFieldObject:   LogObjectConfig,
+		LogFieldKind:     driver.Kind(),
+		LogFieldFilepath: filePath,
 	}).Debug()
 	return nil
 }

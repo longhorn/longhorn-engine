@@ -78,20 +78,20 @@ func CreateDeltaBlockBackup(volume *Volume, snapshot *Snapshot, destURL string, 
 			// in local storage
 			lastSnapshotName = ""
 			log.WithFields(logrus.Fields{
-				LOG_FIELD_REASON:   LOG_REASON_FALLBACK,
-				LOG_FIELD_OBJECT:   LOG_OBJECT_SNAPSHOT,
-				LOG_FIELD_SNAPSHOT: lastSnapshotName,
-				LOG_FIELD_VOLUME:   volume.Name,
+				LogFieldReason:   LogReasonFallback,
+				LogFieldObject:   LogObjectSnapshot,
+				LogFieldSnapshot: lastSnapshotName,
+				LogFieldVolume:   volume.Name,
 			}).Debug("Cannot find last snapshot in local storage, would process with full backup")
 		}
 	}
 
 	log.WithFields(logrus.Fields{
-		LOG_FIELD_REASON:        LOG_REASON_START,
-		LOG_FIELD_OBJECT:        LOG_OBJECT_SNAPSHOT,
-		LOG_FIELD_EVENT:         LOG_EVENT_COMPARE,
-		LOG_FIELD_SNAPSHOT:      snapshot.Name,
-		LOG_FIELD_LAST_SNAPSHOT: lastSnapshotName,
+		LogFieldReason:        LogReasonStart,
+		LogFieldObject:        LogObjectSnapshot,
+		LogFieldEvent:         LogEventCompare,
+		LogFieldSnapshot:      snapshot.Name,
+		LogFieldLastSnapshot: lastSnapshotName,
 	}).Debug("Generating snapshot changed blocks metadata")
 
 	delta, err := deltaOps.CompareSnapshot(snapshot.Name, lastSnapshotName, volume.Name)
@@ -102,18 +102,18 @@ func CreateDeltaBlockBackup(volume *Volume, snapshot *Snapshot, destURL string, 
 		return "", fmt.Errorf("Currently doesn't support different block sizes driver other than %v", DEFAULT_BLOCK_SIZE)
 	}
 	log.WithFields(logrus.Fields{
-		LOG_FIELD_REASON:        LOG_REASON_COMPLETE,
-		LOG_FIELD_OBJECT:        LOG_OBJECT_SNAPSHOT,
-		LOG_FIELD_EVENT:         LOG_EVENT_COMPARE,
-		LOG_FIELD_SNAPSHOT:      snapshot.Name,
-		LOG_FIELD_LAST_SNAPSHOT: lastSnapshotName,
+		LogFieldReason:        LogReasonComplete,
+		LogFieldObject:        LogObjectSnapshot,
+		LogFieldEvent:         LogEventCompare,
+		LogFieldSnapshot:      snapshot.Name,
+		LogFieldLastSnapshot: lastSnapshotName,
 	}).Debug("Generated snapshot changed blocks metadata")
 
 	log.WithFields(logrus.Fields{
-		LOG_FIELD_REASON:   LOG_REASON_START,
-		LOG_FIELD_EVENT:    LOG_EVENT_BACKUP,
-		LOG_FIELD_OBJECT:   LOG_OBJECT_SNAPSHOT,
-		LOG_FIELD_SNAPSHOT: snapshot.Name,
+		LogFieldReason:   LogReasonStart,
+		LogFieldEvent:    LogEventBackup,
+		LogFieldObject:   LogObjectSnapshot,
+		LogFieldSnapshot: snapshot.Name,
 	}).Debug("Creating backup")
 
 	deltaBackup := &Backup{
@@ -170,10 +170,10 @@ func CreateDeltaBlockBackup(volume *Volume, snapshot *Snapshot, destURL string, 
 	}
 
 	log.WithFields(logrus.Fields{
-		LOG_FIELD_REASON:   LOG_REASON_COMPLETE,
-		LOG_FIELD_EVENT:    LOG_EVENT_BACKUP,
-		LOG_FIELD_OBJECT:   LOG_OBJECT_SNAPSHOT,
-		LOG_FIELD_SNAPSHOT: snapshot.Name,
+		LogFieldReason:   LogReasonComplete,
+		LogFieldEvent:    LogEventBackup,
+		LogFieldObject:   LogObjectSnapshot,
+		LogFieldSnapshot: snapshot.Name,
 	}).Debug("Created snapshot changed blocks")
 
 	backup := mergeSnapshotMap(deltaBackup, lastBackup)
@@ -252,8 +252,8 @@ func RestoreDeltaBlockBackup(backupURL, volDevName string) error {
 	vol, err := loadVolume(srcVolumeName, bsDriver)
 	if err != nil {
 		return generateError(logrus.Fields{
-			LOG_FIELD_VOLUME:     srcVolumeName,
-			LOG_FIELD_BACKUP_URL: backupURL,
+			LogFieldVolume:     srcVolumeName,
+			LogEventBackupURL: backupURL,
 		}, "Volume doesn't exist in backupstore: %v", err)
 	}
 
@@ -278,13 +278,13 @@ func RestoreDeltaBlockBackup(backupURL, volDevName string) error {
 	}
 
 	log.WithFields(logrus.Fields{
-		LOG_FIELD_REASON:      LOG_REASON_START,
-		LOG_FIELD_EVENT:       LOG_EVENT_RESTORE,
-		LOG_FIELD_OBJECT:      LOG_FIELD_SNAPSHOT,
-		LOG_FIELD_SNAPSHOT:    srcBackupName,
-		LOG_FIELD_ORIN_VOLUME: srcVolumeName,
-		LOG_FIELD_VOLUME_DEV:  volDevName,
-		LOG_FIELD_BACKUP_URL:  backupURL,
+		LogFieldReason:      LogReasonStart,
+		LogFieldEvent:       LogEventRestore,
+		LogFieldObject:      LogFieldSnapshot,
+		LogFieldSnapshot:    srcBackupName,
+		LogFieldOrigVolume: srcVolumeName,
+		LogFieldVolumeDev:  volDevName,
+		LogEventBackupURL:  backupURL,
 	}).Debug()
 	blkCounts := len(backup.Blocks)
 	for i, block := range backup.Blocks {

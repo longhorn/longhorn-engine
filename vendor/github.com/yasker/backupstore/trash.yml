@@ -42,3 +42,7 @@ import:
 
 - package: gopkg.in/check.v1
   version: 4f90aeace3a26ad7021961c297b22c42160c7b25
+
+- package: github.com/urfave/cli
+  version: 71f57d300dd6a780ac1856c005c4b518cfd498ec
+

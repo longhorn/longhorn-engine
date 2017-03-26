@@ -10,16 +10,16 @@ import (
 	"github.com/aws/aws-sdk-go/service/s3"
 )
 
-type S3Service struct {
+type Service struct {
 	Region string
 	Bucket string
 }
 
-func (s *S3Service) New() (*s3.S3, error) {
+func (s *Service) New() (*s3.S3, error) {
 	return s3.New(session.New(), &aws.Config{Region: &s.Region}), nil
 }
 
-func (s *S3Service) Close() {
+func (s *Service) Close() {
 }
 
 func parseAwsError(resp string, err error) error {
@@ -34,7 +34,7 @@ func parseAwsError(resp string, err error) error {
 	return err
 }
 
-func (s *S3Service) ListObjects(key, delimiter string) ([]*s3.Object, []*s3.CommonPrefix, error) {
+func (s *Service) ListObjects(key, delimiter string) ([]*s3.Object, []*s3.CommonPrefix, error) {
 	svc, err := s.New()
 	if err != nil {
 		return nil, nil, err
@@ -54,7 +54,7 @@ func (s *S3Service) ListObjects(key, delimiter string) ([]*s3.Object, []*s3.Comm
 	return resp.Contents, resp.CommonPrefixes, nil
 }
 
-func (s *S3Service) HeadObject(key string) (*s3.HeadObjectOutput, error) {
+func (s *Service) HeadObject(key string) (*s3.HeadObjectOutput, error) {
 	svc, err := s.New()
 	if err != nil {
 		return nil, err
@@ -71,7 +71,7 @@ func (s *S3Service) HeadObject(key string) (*s3.HeadObjectOutput, error) {
 	return resp, nil
 }
 
-func (s *S3Service) PutObject(key string, reader io.ReadSeeker) error {
+func (s *Service) PutObject(key string, reader io.ReadSeeker) error {
 	svc, err := s.New()
 	if err != nil {
 		return err
@@ -91,7 +91,7 @@ func (s *S3Service) PutObject(key string, reader io.ReadSeeker) error {
 	return nil
 }
 
-func (s *S3Service) GetObject(key string) (io.ReadCloser, error) {
+func (s *Service) GetObject(key string) (io.ReadCloser, error) {
 	svc, err := s.New()
 	if err != nil {
 		return nil, err
@@ -111,7 +111,7 @@ func (s *S3Service) GetObject(key string) (io.ReadCloser, error) {
 	return resp.Body, nil
 }
 
-func (s *S3Service) DeleteObjects(keys []string) error {
+func (s *Service) DeleteObjects(keys []string) error {
 	var keyList []string
 	totalSize := 0
 	for _, key := range keys {
