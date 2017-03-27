@@ -199,3 +199,9 @@ def snapshot_tree_verify_data(dev, offset, length, snap, snap_data):
 def snapshot_tree_verify(dev, offset, length, snap, snap_data, strict=False):
     snapshot_tree_verify_relationship(snap, strict)
     snapshot_tree_verify_data(dev, offset, length, snap, snap_data)
+
+
+def snapshot_tree_verify_backup_node(dev, offset, length, backup, data, name):
+    cmd.backup_restore(backup[name])
+    readed = read_dev(dev, offset, length)
+    assert readed == data[name]

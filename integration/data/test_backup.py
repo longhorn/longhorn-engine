@@ -6,6 +6,7 @@ import cmd
 import common
 from common import dev, backing_dev  # NOQA
 from common import read_dev, read_from_backing_file, BACKUP_DEST
+from snapshot_tree import snapshot_tree_build, snapshot_tree_verify_backup_node
 
 VOLUME_NAME = 'test-volume_1.0'
 VOLUME_SIZE = str(4 * 1024 * 1024)  # 4M
@@ -180,3 +181,25 @@ def test_backup_hole_with_backing_file(backing_dev):  # NOQA
     assert readed == hole_data_backup2
     c = common.checksum_dev(dev)
     assert c == snap2_checksum
+
+
+def test_snapshot_tree_backup(dev):  # NOQA
+    offset = 0
+    length = 128
+    backup = {}
+
+    snap, data = snapshot_tree_build(dev, offset, length)
+
+    backup["0b"] = cmd.backup_create(snap["0b"], BACKUP_DEST)
+    backup["0c"] = cmd.backup_create(snap["0c"], BACKUP_DEST)
+    backup["1c"] = cmd.backup_create(snap["1c"], BACKUP_DEST)
+    backup["2b"] = cmd.backup_create(snap["2b"], BACKUP_DEST)
+    backup["2c"] = cmd.backup_create(snap["2c"], BACKUP_DEST)
+    backup["3c"] = cmd.backup_create(snap["3c"], BACKUP_DEST)
+
+    snapshot_tree_verify_backup_node(dev, offset, length, backup, data, "0b")
+    snapshot_tree_verify_backup_node(dev, offset, length, backup, data, "0c")
+    snapshot_tree_verify_backup_node(dev, offset, length, backup, data, "1c")
+    snapshot_tree_verify_backup_node(dev, offset, length, backup, data, "2b")
+    snapshot_tree_verify_backup_node(dev, offset, length, backup, data, "2c")
+    snapshot_tree_verify_backup_node(dev, offset, length, backup, data, "3c")

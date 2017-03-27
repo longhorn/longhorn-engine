@@ -13,6 +13,10 @@ import (
 func (t *Task) CreateBackup(snapshot, dest string) (string, error) {
 	var replica *rest.Replica
 
+	if snapshot == VolumeHeadName {
+		return "", fmt.Errorf("Can not backup the head disk in the chain")
+	}
+
 	volume, err := t.client.GetVolume()
 	if err != nil {
 		return "", err
@@ -56,12 +60,12 @@ func (t *Task) createBackup(replicaInController *rest.Replica, snapshot, dest, v
 		return "", err
 	}
 
-	snapshotName, index := getNameAndIndex(replica.Chain, snapshot)
-	switch {
-	case index < 0:
-		return "", fmt.Errorf("Snapshot %s not found on replica %s", snapshot, replicaInController.Address)
-	case index == 0:
-		return "", fmt.Errorf("Can not backup the head disk in the chain")
+	snapshotName := snapshot
+	if _, ok := replica.Disks[snapshotName]; !ok {
+		snapshotName = "volume-snap-" + snapshot + ".img"
+		if _, ok := replica.Disks[snapshotName]; !ok {
+			return "", fmt.Errorf("Snapshot %s not found on replica %s", snapshotName, replicaInController.Address)
+		}
 	}
 
 	logrus.Infof("Backing up %s on %s, to %s", snapshotName, replicaInController.Address, dest)
