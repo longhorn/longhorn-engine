@@ -2,7 +2,7 @@ import cmd
 import common
 from common import dev, backing_dev  # NOQA
 from common import read_dev, read_from_backing_file, VOLUME_HEAD
-from snapshot_tree import snapshot_tree_build
+from snapshot_tree import snapshot_tree_build, snapshot_tree_verify_node
 
 
 def test_snapshot_revert(dev):  # NOQA
@@ -181,7 +181,7 @@ def test_snapshot_tree_basic(dev):  # NOQA
     offset = 0
     length = 128
 
-    snap, snap_data = snapshot_tree_build(dev, offset, length)
+    snap, data = snapshot_tree_build(dev, offset, length)
 
     cmd.snapshot_revert(snap["1b"])
     cmd.snapshot_rm(snap["0a"])
@@ -223,18 +223,7 @@ def test_snapshot_tree_basic(dev):  # NOQA
     assert VOLUME_HEAD in info
     assert info[VOLUME_HEAD]["parent"] == snap["1b"]
 
-    snap_data["0b"] = common.random_string(length)
-    common.verify_data(dev, offset, snap_data["0b"])
-    snap["0b"] = cmd.snapshot_create()
-
-    snap_data["0c"] = common.random_string(length)
-    common.verify_data(dev, offset, snap_data["0c"])
-    snap["0c"] = cmd.snapshot_create()
-
-    snap_data["1a"] = common.random_string(length)
-    common.verify_data(dev, offset, snap_data["1a"])
-    snap["1a"] = cmd.snapshot_create()
-
-    snap_data["1b"] = common.random_string(length)
-    common.verify_data(dev, offset, snap_data["1b"])
-    snap["1b"] = cmd.snapshot_create()
+    snapshot_tree_verify_node(dev, offset, length, snap, data, "0b")
+    snapshot_tree_verify_node(dev, offset, length, snap, data, "0c")
+    snapshot_tree_verify_node(dev, offset, length, snap, data, "1a")
+    snapshot_tree_verify_node(dev, offset, length, snap, data, "1b")

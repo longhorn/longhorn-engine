@@ -10,64 +10,43 @@ def snapshot_tree_build(dev, offset, length, strict=True):
     #                       \-> snap["3a"] -> snap["3b"] -> snap["3c"] -> head
 
     snap = {}
-    snap_data = {}
+    data = {}
 
-    snap_data["0a"] = common.random_string(length)
-    common.verify_data(dev, offset, snap_data["0a"])
-    snap["0a"] = cmd.snapshot_create()
-
-    snap_data["0b"] = common.random_string(length)
-    common.verify_data(dev, offset, snap_data["0b"])
-    snap["0b"] = cmd.snapshot_create()
-
-    snap_data["0c"] = common.random_string(length)
-    common.verify_data(dev, offset, snap_data["0c"])
-    snap["0c"] = cmd.snapshot_create()
+    snapshot_tree_create_node(dev, offset, length, snap, data, "0a")
+    snapshot_tree_create_node(dev, offset, length, snap, data, "0b")
+    snapshot_tree_create_node(dev, offset, length, snap, data, "0c")
 
     cmd.snapshot_revert(snap["0b"])
 
-    snap_data["1a"] = common.random_string(length)
-    common.verify_data(dev, offset, snap_data["1a"])
-    snap["1a"] = cmd.snapshot_create()
-
-    snap_data["1b"] = common.random_string(length)
-    common.verify_data(dev, offset, snap_data["1b"])
-    snap["1b"] = cmd.snapshot_create()
-
-    snap_data["1c"] = common.random_string(length)
-    common.verify_data(dev, offset, snap_data["1c"])
-    snap["1c"] = cmd.snapshot_create()
+    snapshot_tree_create_node(dev, offset, length, snap, data, "1a")
+    snapshot_tree_create_node(dev, offset, length, snap, data, "1b")
+    snapshot_tree_create_node(dev, offset, length, snap, data, "1c")
 
     cmd.snapshot_revert(snap["0b"])
 
-    snap_data["2a"] = common.random_string(length)
-    common.verify_data(dev, offset, snap_data["2a"])
-    snap["2a"] = cmd.snapshot_create()
-
-    snap_data["2b"] = common.random_string(length)
-    common.verify_data(dev, offset, snap_data["2b"])
-    snap["2b"] = cmd.snapshot_create()
-
-    snap_data["2c"] = common.random_string(length)
-    common.verify_data(dev, offset, snap_data["2c"])
-    snap["2c"] = cmd.snapshot_create()
+    snapshot_tree_create_node(dev, offset, length, snap, data, "2a")
+    snapshot_tree_create_node(dev, offset, length, snap, data, "2b")
+    snapshot_tree_create_node(dev, offset, length, snap, data, "2c")
 
     cmd.snapshot_revert(snap["2a"])
 
-    snap_data["3a"] = common.random_string(length)
-    common.verify_data(dev, offset, snap_data["3a"])
-    snap["3a"] = cmd.snapshot_create()
+    snapshot_tree_create_node(dev, offset, length, snap, data, "3a")
+    snapshot_tree_create_node(dev, offset, length, snap, data, "3b")
+    snapshot_tree_create_node(dev, offset, length, snap, data, "3c")
 
-    snap_data["3b"] = common.random_string(length)
-    common.verify_data(dev, offset, snap_data["3b"])
-    snap["3b"] = cmd.snapshot_create()
+    snapshot_tree_verify(dev, offset, length, snap, data, strict)
+    return snap, data
 
-    snap_data["3c"] = common.random_string(length)
-    common.verify_data(dev, offset, snap_data["3c"])
-    snap["3c"] = cmd.snapshot_create()
 
-    snapshot_tree_verify(dev, offset, length, snap, snap_data, strict)
-    return snap, snap_data
+def snapshot_tree_create_node(dev, offset, length, snap, data, name):
+    data[name] = common.random_string(length)
+    common.verify_data(dev, offset, data[name])
+    snap[name] = cmd.snapshot_create()
+
+
+def snapshot_tree_verify(dev, offset, length, snap, data, strict=False):
+    snapshot_tree_verify_relationship(snap, strict)
+    snapshot_tree_verify_data(dev, offset, length, snap, data)
 
 
 # snapshot_tree_verify_relationship won't check head or initial snapshot if
@@ -146,59 +125,25 @@ def snapshot_tree_verify_relationship(snap, strict):
            snap["2a"], snap["0b"], snap["0a"])
 
 
-def snapshot_tree_verify_data(dev, offset, length, snap, snap_data):
-    cmd.snapshot_revert(snap["0a"])
+def snapshot_tree_verify_data(dev, offset, length, snap, data):
+    snapshot_tree_verify_node(dev, offset, length, snap, data, "0a")
+    snapshot_tree_verify_node(dev, offset, length, snap, data, "0b")
+    snapshot_tree_verify_node(dev, offset, length, snap, data, "0c")
+    snapshot_tree_verify_node(dev, offset, length, snap, data, "1a")
+    snapshot_tree_verify_node(dev, offset, length, snap, data, "1b")
+    snapshot_tree_verify_node(dev, offset, length, snap, data, "1c")
+    snapshot_tree_verify_node(dev, offset, length, snap, data, "2a")
+    snapshot_tree_verify_node(dev, offset, length, snap, data, "2b")
+    snapshot_tree_verify_node(dev, offset, length, snap, data, "2c")
+    snapshot_tree_verify_node(dev, offset, length, snap, data, "3a")
+    snapshot_tree_verify_node(dev, offset, length, snap, data, "3b")
+    snapshot_tree_verify_node(dev, offset, length, snap, data, "3c")
+
+
+def snapshot_tree_verify_node(dev, offset, length, snap, data, name):
+    cmd.snapshot_revert(snap[name])
     readed = read_dev(dev, offset, length)
-    assert readed == snap_data["0a"]
-
-    cmd.snapshot_revert(snap["0b"])
-    readed = read_dev(dev, offset, length)
-    assert readed == snap_data["0b"]
-
-    cmd.snapshot_revert(snap["0c"])
-    readed = read_dev(dev, offset, length)
-    assert readed == snap_data["0c"]
-
-    cmd.snapshot_revert(snap["1a"])
-    readed = read_dev(dev, offset, length)
-    assert readed == snap_data["1a"]
-
-    cmd.snapshot_revert(snap["1b"])
-    readed = read_dev(dev, offset, length)
-    assert readed == snap_data["1b"]
-
-    cmd.snapshot_revert(snap["1c"])
-    readed = read_dev(dev, offset, length)
-    assert readed == snap_data["1c"]
-
-    cmd.snapshot_revert(snap["2a"])
-    readed = read_dev(dev, offset, length)
-    assert readed == snap_data["2a"]
-
-    cmd.snapshot_revert(snap["2b"])
-    readed = read_dev(dev, offset, length)
-    assert readed == snap_data["2b"]
-
-    cmd.snapshot_revert(snap["2c"])
-    readed = read_dev(dev, offset, length)
-    assert readed == snap_data["2c"]
-
-    cmd.snapshot_revert(snap["3a"])
-    readed = read_dev(dev, offset, length)
-    assert readed == snap_data["3a"]
-
-    cmd.snapshot_revert(snap["3b"])
-    readed = read_dev(dev, offset, length)
-    assert readed == snap_data["3b"]
-
-    cmd.snapshot_revert(snap["3c"])
-    readed = read_dev(dev, offset, length)
-    assert readed == snap_data["3c"]
-
-
-def snapshot_tree_verify(dev, offset, length, snap, snap_data, strict=False):
-    snapshot_tree_verify_relationship(snap, strict)
-    snapshot_tree_verify_data(dev, offset, length, snap, snap_data)
+    assert readed == data[name]
 
 
 def snapshot_tree_verify_backup_node(dev, offset, length, backup, data, name):
