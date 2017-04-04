@@ -34,7 +34,8 @@ func NewBackup(backingFile *BackingFile) *Backup {
 	}
 }
 
-func (rb *Backup) HasSnapshot(id, volumeID string) bool {
+func (rb *Backup) HasSnapshot(snapID, volumeID string) bool {
+	id := GenerateSnapshotDiskName(snapID)
 	//TODO Check current in the volume directory of volumeID
 	if err := rb.assertOpen(id, volumeID); err != nil {
 		return false
@@ -47,7 +48,9 @@ func (rb *Backup) HasSnapshot(id, volumeID string) bool {
 	return true
 }
 
-func (rb *Backup) OpenSnapshot(id, volumeID string) error {
+func (rb *Backup) OpenSnapshot(snapID, volumeID string) error {
+	id := GenerateSnapshotDiskName(snapID)
+
 	if rb.volumeID == volumeID && rb.snapshotID == id {
 		return nil
 	}
@@ -79,7 +82,8 @@ func (rb *Backup) assertOpen(id, volumeID string) error {
 	return nil
 }
 
-func (rb *Backup) ReadSnapshot(id, volumeID string, start int64, data []byte) error {
+func (rb *Backup) ReadSnapshot(snapID, volumeID string, start int64, data []byte) error {
+	id := GenerateSnapshotDiskName(snapID)
 	if err := rb.assertOpen(id, volumeID); err != nil {
 		return err
 	}
@@ -92,7 +96,8 @@ func (rb *Backup) ReadSnapshot(id, volumeID string, start int64, data []byte) er
 	return err
 }
 
-func (rb *Backup) CloseSnapshot(id, volumeID string) error {
+func (rb *Backup) CloseSnapshot(snapID, volumeID string) error {
+	id := GenerateSnapshotDiskName(snapID)
 	if rb.volumeID == "" {
 		return nil
 	}
@@ -109,7 +114,13 @@ func (rb *Backup) CloseSnapshot(id, volumeID string) error {
 	return err
 }
 
-func (rb *Backup) CompareSnapshot(id, compareID, volumeID string) (*backupstore.Mappings, error) {
+func (rb *Backup) CompareSnapshot(snapID, compareSnapID, volumeID string) (*backupstore.Mappings, error) {
+	id := GenerateSnapshotDiskName(snapID)
+	compareID := ""
+	if compareSnapID != "" {
+		compareID = GenerateSnapshotDiskName(compareSnapID)
+	}
+
 	if err := rb.assertOpen(id, volumeID); err != nil {
 		return nil, err
 	}

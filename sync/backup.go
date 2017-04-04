@@ -55,24 +55,21 @@ func (t *Task) createBackup(replicaInController *rest.Replica, snapshot, dest, v
 		return "", err
 	}
 
-	replica, err := repClient.GetReplica()
+	rep, err := repClient.GetReplica()
 	if err != nil {
 		return "", err
 	}
 
-	snapshotName := snapshot
-	if _, ok := replica.Disks[snapshotName]; !ok {
-		snapshotName = "volume-snap-" + snapshot + ".img"
-		if _, ok := replica.Disks[snapshotName]; !ok {
-			return "", fmt.Errorf("Snapshot %s not found on replica %s", snapshotName, replicaInController.Address)
-		}
+	diskName := replica.GenerateSnapshotDiskName(snapshot)
+	if _, ok := rep.Disks[diskName]; !ok {
+		return "", fmt.Errorf("Snapshot disk %s not found on replica %s", diskName, replicaInController.Address)
 	}
 
-	logrus.Infof("Backing up %s on %s, to %s", snapshotName, replicaInController.Address, dest)
+	logrus.Infof("Backing up %s on %s, to %s", snapshot, replicaInController.Address, dest)
 
-	backup, err := repClient.CreateBackup(snapshotName, dest, volumeName)
+	backup, err := repClient.CreateBackup(snapshot, dest, volumeName)
 	if err != nil {
-		logrus.Errorf("Failed backing up %s on %s to %s", snapshotName, replicaInController.Address, dest)
+		logrus.Errorf("Failed backing up %s on %s to %s", snapshot, replicaInController.Address, dest)
 		return "", err
 	}
 	return backup, nil

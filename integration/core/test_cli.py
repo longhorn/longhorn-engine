@@ -566,20 +566,20 @@ def test_backup_core(bin, controller_client, replica_client,
     assert v.replicaCount == 2
 
     cmd = [bin, 'snapshot', 'create']
-    output = subprocess.check_output(cmd).strip()
-    snapshot1 = replica_client.list_replica()[0].chain[1]
+    snapshot1 = subprocess.check_output(cmd).strip()
+    output = replica_client.list_replica()[0].chain[1]
 
-    assert snapshot1 == 'volume-snap-{}.img'.format(output)
+    assert output == 'volume-snap-{}.img'.format(snapshot1)
 
     cmd = [bin, 'backup', 'create', snapshot1,
            '--dest', "vfs://" + BACKUP_DEST]
     backup1 = subprocess.check_output(cmd).strip()
 
     cmd = [bin, 'snapshot', 'create']
-    output = subprocess.check_output(cmd).strip()
-    snapshot2 = replica_client.list_replica()[0].chain[1]
+    snapshot2 = subprocess.check_output(cmd).strip()
+    output = replica_client.list_replica()[0].chain[1]
 
-    assert snapshot2 == 'volume-snap-{}.img'.format(output)
+    assert output == 'volume-snap-{}.img'.format(snapshot2)
 
     cmd = [bin, 'backup', 'create', snapshot2,
            '--dest', "vfs://" + BACKUP_DEST]

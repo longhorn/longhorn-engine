@@ -30,15 +30,18 @@ func (s *TestSuite) TestBackup(c *C) {
 	_, err = r.WriteAt(buf, mb)
 	c.Assert(err, IsNil)
 
-	chain, err := r.Chain()
-	c.Assert(err, IsNil)
-
 	rb := NewBackup(nil)
 	volume := "test"
-	err = rb.OpenSnapshot(chain[0], volume)
+
+	snap := "000"
+	createdTime := util.Now()
+	err = r.Snapshot(snap, true, createdTime)
 	c.Assert(err, IsNil)
 
-	mappings, err := rb.CompareSnapshot(chain[0], "", volume)
+	err = rb.OpenSnapshot(snap, volume)
+	c.Assert(err, IsNil)
+
+	mappings, err := rb.CompareSnapshot(snap, "", volume)
 	c.Assert(err, IsNil)
 	c.Assert(len(mappings.Mappings), Equals, 2)
 	c.Assert(mappings.BlockSize, Equals, int64(2*mb))
@@ -100,27 +103,29 @@ func (s *TestSuite) testBackupWithBackups(c *C, backingFile *BackingFile) {
 	_, err = r.WriteAt(buf, mb)
 	c.Assert(err, IsNil)
 
+	snap1 := "001"
 	createdTime1 := util.Now()
-	err = r.Snapshot("001", true, createdTime1)
+	err = r.Snapshot(snap1, true, createdTime1)
 
+	snap2 := "002"
 	c.Assert(err, IsNil)
 	fill(buf, 2)
 	_, err = r.WriteAt(buf, 0)
 	c.Assert(err, IsNil)
 	_, err = r.WriteAt(buf, 4*mb)
 	c.Assert(err, IsNil)
-
 	createdTime2 := util.Now()
-	err = r.Snapshot("002", true, createdTime2)
-
+	err = r.Snapshot(snap2, true, createdTime2)
 	c.Assert(err, IsNil)
+
+	snap3 := "003"
 	fill(buf, 3)
 	_, err = r.WriteAt(buf, 4*mb)
 	c.Assert(err, IsNil)
 	_, err = r.WriteAt(buf, 8*mb)
 	c.Assert(err, IsNil)
 	createdTime3 := util.Now()
-	err = r.Snapshot("003", true, createdTime3)
+	err = r.Snapshot(snap3, true, createdTime3)
 
 	c.Assert(err, IsNil)
 	buf = make([]byte, 10*mb)
@@ -128,12 +133,11 @@ func (s *TestSuite) testBackupWithBackups(c *C, backingFile *BackingFile) {
 	_, err = r.WriteAt(buf, 0)
 	c.Assert(err, IsNil)
 
-	chain, err := r.Chain()
-
 	rb := NewBackup(backingFile)
 
 	// Test 003 -> ""
-	err = rb.OpenSnapshot(chain[1], volume)
+	c.Assert(err, IsNil)
+	err = rb.OpenSnapshot(snap3, volume)
 	c.Assert(err, IsNil)
 
 	// Test read 003
@@ -147,11 +151,11 @@ func (s *TestSuite) testBackupWithBackups(c *C, backingFile *BackingFile) {
 		fill(expected[3*mb:4*mb], 9)
 		fill(expected[6*mb:8*mb], 9)
 	}
-	err = rb.ReadSnapshot(chain[1], volume, 0, readBuf)
+	err = rb.ReadSnapshot(snap3, volume, 0, readBuf)
 	c.Assert(err, IsNil)
 	md5Equals(c, readBuf, expected)
 
-	mappings, err := rb.CompareSnapshot(chain[1], "", volume)
+	mappings, err := rb.CompareSnapshot(snap3, "", volume)
 	c.Assert(err, IsNil)
 	c.Assert(len(mappings.Mappings), Equals, 4)
 	c.Assert(mappings.BlockSize, Equals, int64(2*mb))
@@ -164,12 +168,12 @@ func (s *TestSuite) testBackupWithBackups(c *C, backingFile *BackingFile) {
 	c.Assert(mappings.Mappings[3].Offset, Equals, int64(8*mb))
 	c.Assert(mappings.Mappings[3].Size, Equals, int64(2*mb))
 
-	err = rb.CloseSnapshot(chain[1], volume)
+	err = rb.CloseSnapshot(snap3, volume)
 	c.Assert(err, IsNil)
 
 	// Test 003 -> 002
-	err = rb.OpenSnapshot(chain[1], volume)
-	mappings, err = rb.CompareSnapshot(chain[1], chain[2], volume)
+	err = rb.OpenSnapshot(snap3, volume)
+	mappings, err = rb.CompareSnapshot(snap3, snap2, volume)
 	c.Assert(err, IsNil)
 	c.Assert(len(mappings.Mappings), Equals, 2)
 	c.Assert(mappings.BlockSize, Equals, int64(2*mb))
@@ -177,10 +181,10 @@ func (s *TestSuite) testBackupWithBackups(c *C, backingFile *BackingFile) {
 	c.Assert(mappings.Mappings[0].Size, Equals, int64(2*mb))
 	c.Assert(mappings.Mappings[1].Offset, Equals, int64(8*mb))
 	c.Assert(mappings.Mappings[1].Size, Equals, int64(2*mb))
-	err = rb.CloseSnapshot(chain[1], volume)
+	err = rb.CloseSnapshot(snap3, volume)
 
 	// Test 002 -> 001
-	err = rb.OpenSnapshot(chain[2], volume)
+	err = rb.OpenSnapshot(snap2, volume)
 	c.Assert(err, IsNil)
 
 	// Test read 002
@@ -193,11 +197,11 @@ func (s *TestSuite) testBackupWithBackups(c *C, backingFile *BackingFile) {
 		fill(expected[3*mb:4*mb], 9)
 		fill(expected[6*mb:10*mb], 9)
 	}
-	err = rb.ReadSnapshot(chain[2], volume, 0, readBuf)
+	err = rb.ReadSnapshot(snap2, volume, 0, readBuf)
 	c.Assert(err, IsNil)
 	md5Equals(c, readBuf, expected)
 
-	mappings, err = rb.CompareSnapshot(chain[2], chain[3], volume)
+	mappings, err = rb.CompareSnapshot(snap2, snap1, volume)
 	c.Assert(err, IsNil)
 	c.Assert(len(mappings.Mappings), Equals, 2)
 	c.Assert(mappings.BlockSize, Equals, int64(2*mb))
@@ -205,13 +209,13 @@ func (s *TestSuite) testBackupWithBackups(c *C, backingFile *BackingFile) {
 	c.Assert(mappings.Mappings[0].Size, Equals, int64(2*mb))
 	c.Assert(mappings.Mappings[1].Offset, Equals, int64(4*mb))
 	c.Assert(mappings.Mappings[1].Size, Equals, int64(2*mb))
-	err = rb.CloseSnapshot(chain[2], volume)
+	err = rb.CloseSnapshot(snap2, volume)
 	c.Assert(err, IsNil)
 
 	// Test 002 -> ""
-	err = rb.OpenSnapshot(chain[2], volume)
+	err = rb.OpenSnapshot(snap2, volume)
 	c.Assert(err, IsNil)
-	mappings, err = rb.CompareSnapshot(chain[2], "", volume)
+	mappings, err = rb.CompareSnapshot(snap2, "", volume)
 	c.Assert(err, IsNil)
 	c.Assert(len(mappings.Mappings), Equals, 3)
 	c.Assert(mappings.BlockSize, Equals, int64(2*mb))
@@ -221,11 +225,11 @@ func (s *TestSuite) testBackupWithBackups(c *C, backingFile *BackingFile) {
 	c.Assert(mappings.Mappings[1].Size, Equals, int64(2*mb))
 	c.Assert(mappings.Mappings[2].Offset, Equals, int64(4*mb))
 	c.Assert(mappings.Mappings[2].Size, Equals, int64(2*mb))
-	err = rb.CloseSnapshot(chain[2], volume)
+	err = rb.CloseSnapshot(snap2, volume)
 	c.Assert(err, IsNil)
 
 	// Test 001 -> ""
-	err = rb.OpenSnapshot(chain[3], volume)
+	err = rb.OpenSnapshot(snap1, volume)
 	c.Assert(err, IsNil)
 
 	// Test read 001
@@ -236,11 +240,11 @@ func (s *TestSuite) testBackupWithBackups(c *C, backingFile *BackingFile) {
 		fill(expected[:mb], 9)
 		fill(expected[3*mb:10*mb], 9)
 	}
-	err = rb.ReadSnapshot(chain[3], volume, 0, readBuf)
+	err = rb.ReadSnapshot(snap1, volume, 0, readBuf)
 	c.Assert(err, IsNil)
 	md5Equals(c, readBuf, expected)
 
-	mappings, err = rb.CompareSnapshot(chain[3], "", volume)
+	mappings, err = rb.CompareSnapshot(snap1, "", volume)
 	c.Assert(err, IsNil)
 	c.Assert(len(mappings.Mappings), Equals, 2)
 	c.Assert(mappings.BlockSize, Equals, int64(2*mb))
@@ -248,6 +252,6 @@ func (s *TestSuite) testBackupWithBackups(c *C, backingFile *BackingFile) {
 	c.Assert(mappings.Mappings[0].Size, Equals, int64(2*mb))
 	c.Assert(mappings.Mappings[1].Offset, Equals, int64(2*mb))
 	c.Assert(mappings.Mappings[1].Size, Equals, int64(2*mb))
-	err = rb.CloseSnapshot(chain[3], volume)
+	err = rb.CloseSnapshot(snap1, volume)
 	c.Assert(err, IsNil)
 }
