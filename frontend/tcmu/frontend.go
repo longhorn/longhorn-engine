@@ -70,6 +70,13 @@ func (t *Tcmu) State() types.State {
 	return types.StateDown
 }
 
+func (t *Tcmu) Show() string {
+	if t.isUp {
+		return devPath + t.volume
+	}
+	return ""
+}
+
 func PreEnableTcmu(volume string, size, sectorSize int64) error {
 	err := writeLines(path.Join(configDir, volume, "control"), []string{
 		fmt.Sprintf("dev_size=%d", size),

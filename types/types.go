@@ -68,6 +68,7 @@ type Frontend interface {
 	Startup(name string, size, sectorSize int64, rw ReaderWriterAt) error
 	Shutdown() error
 	State() State
+	Show() string
 }
 
 type DataProcessor interface {

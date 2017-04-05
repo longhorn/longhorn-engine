@@ -1,10 +1,13 @@
 import random
+from os import path
 
 import pytest
 
 import common
 from common import dev  # NOQA
-from common import PAGE_SIZE, SIZE, read_dev, write_dev
+from common import PAGE_SIZE, SIZE  # NOQA
+from common import controller, replica1, replica2, read_dev, write_dev  # NOQA
+
 
 
 def test_basic_rw(dev):  # NOQA
@@ -32,3 +35,20 @@ def test_beyond_boundary(dev):  # NOQA
 
     # normal writes to verify controller/replica survival
     test_basic_rw(dev)
+
+
+def test_frontend_show(controller, replica1, replica2):  # NOQA
+    common.open_replica(replica1)
+    common.open_replica(replica2)
+
+    replicas = controller.list_replica()
+    assert len(replicas) == 0
+
+    v = controller.list_volume()[0]
+    v = v.start(replicas=[
+        common.REPLICA1,
+        common.REPLICA2
+    ])
+
+    assert v["frontend"] == path.join(common.LONGHORN_DEV_DIR,
+                                      common.VOLUME_NAME)

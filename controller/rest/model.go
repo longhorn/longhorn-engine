@@ -19,6 +19,7 @@ type Volume struct {
 	client.Resource
 	Name         string `json:"name"`
 	ReplicaCount int    `json:"replicaCount"`
+	Frontend     string `json:"frontend"`
 }
 
 type VolumeCollection struct {
@@ -65,7 +66,7 @@ type PrepareRebuildOutput struct {
 	Disks []string `json:"disks"`
 }
 
-func NewVolume(context *api.ApiContext, name string, replicas int) *Volume {
+func NewVolume(context *api.ApiContext, name, frontend string, replicas int) *Volume {
 	v := &Volume{
 		Resource: client.Resource{
 			Id:      EncodeID(name),
@@ -74,6 +75,7 @@ func NewVolume(context *api.ApiContext, name string, replicas int) *Volume {
 		},
 		Name:         name,
 		ReplicaCount: replicas,
+		Frontend:     frontend,
 	}
 
 	if replicas == 0 {

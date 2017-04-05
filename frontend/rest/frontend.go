@@ -70,3 +70,10 @@ func (d *Device) State() types.State {
 	}
 	return types.StateDown
 }
+
+func (d *Device) Show() string {
+	if d.isUp {
+		return "http://localhost:9414"
+	}
+	return ""
+}
