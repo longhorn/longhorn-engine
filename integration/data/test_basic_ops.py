@@ -3,6 +3,7 @@ from os import path
 
 import pytest
 
+import cmd
 import common
 from common import dev  # NOQA
 from common import PAGE_SIZE, SIZE  # NOQA
@@ -52,3 +53,7 @@ def test_frontend_show(controller, replica1, replica2):  # NOQA
 
     assert v["frontend"] == path.join(common.LONGHORN_DEV_DIR,
                                       common.VOLUME_NAME)
+
+    info = cmd.info()
+    assert info["name"] == common.VOLUME_NAME
+    assert info["frontend"] == v["frontend"]

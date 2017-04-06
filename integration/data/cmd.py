@@ -17,6 +17,11 @@ def _bin():
     return c
 
 
+def info():
+    cmd = [_bin(), '--debug', 'info']
+    return json.loads(subprocess.check_output(cmd))
+
+
 def snapshot_create():
     cmd = [_bin(), '--debug', 'snapshot', 'create']
     return subprocess.check_output(cmd).strip()

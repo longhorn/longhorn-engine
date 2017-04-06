@@ -99,6 +99,7 @@ func longhornCli() {
 		app.SnapshotCmd(),
 		app.BackupCmd(),
 		app.Journal(),
+		app.InfoCmd(),
 	}
 	a.CommandNotFound = cmdNotFound
 	a.OnUsageError = onUsageError
