@@ -51,9 +51,9 @@ def test_frontend_show(controller, replica1, replica2):  # NOQA
         common.REPLICA2
     ])
 
-    assert v["frontend"] == path.join(common.LONGHORN_DEV_DIR,
+    assert v["endpoint"] == path.join(common.LONGHORN_DEV_DIR,
                                       common.VOLUME_NAME)
 
     info = cmd.info()
     assert info["name"] == common.VOLUME_NAME
-    assert info["frontend"] == v["frontend"]
+    assert info["endpoint"] == v["endpoint"]

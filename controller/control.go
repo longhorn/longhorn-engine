@@ -405,6 +405,6 @@ func (c *Controller) monitoring(address string, backend types.Backend) {
 	logrus.Infof("Monitoring stopped %v", address)
 }
 
-func (c *Controller) Frontend() string {
-	return c.frontend.Show()
+func (c *Controller) Endpoint() string {
+	return c.frontend.Endpoint()
 }

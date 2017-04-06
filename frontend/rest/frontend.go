@@ -71,7 +71,7 @@ func (d *Device) State() types.State {
 	return types.StateDown
 }
 
-func (d *Device) Show() string {
+func (d *Device) Endpoint() string {
 	if d.isUp {
 		return "http://localhost:9414"
 	}

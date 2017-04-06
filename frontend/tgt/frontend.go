@@ -87,7 +87,7 @@ func (t *Tgt) State() types.State {
 	return types.StateDown
 }
 
-func (t *Tgt) Show() string {
+func (t *Tgt) Endpoint() string {
 	if t.isUp {
 		return t.getDev()
 	}

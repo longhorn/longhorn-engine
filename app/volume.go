@@ -11,7 +11,7 @@ import (
 type VolumeInfo struct {
 	Name         string `json:"name"`
 	ReplicaCount int    `json:"replicaCount"`
-	Frontend     string `json:"frontend"`
+	Endpoint     string `json:"endpoint"`
 }
 
 func InfoCmd() cli.Command {
@@ -36,7 +36,7 @@ func info(c *cli.Context) error {
 	info := VolumeInfo{
 		Name:         volume.Name,
 		ReplicaCount: volume.ReplicaCount,
-		Frontend:     volume.Frontend,
+		Endpoint:     volume.Endpoint,
 	}
 
 	output, err := json.MarshalIndent(info, "", "\t")

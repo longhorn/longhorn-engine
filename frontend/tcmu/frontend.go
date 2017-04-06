@@ -70,7 +70,7 @@ func (t *Tcmu) State() types.State {
 	return types.StateDown
 }
 
-func (t *Tcmu) Show() string {
+func (t *Tcmu) Endpoint() string {
 	if t.isUp {
 		return devPath + t.volume
 	}
