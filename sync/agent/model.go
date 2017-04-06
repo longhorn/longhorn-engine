@@ -16,6 +16,7 @@ type Process struct {
 	ExitCode    int       `json:"exitCode"`
 	Output      string    `json:"output"`
 	Created     time.Time `json:"created"`
+	Labels      []string  `json:"labels"`
 }
 
 type ProcessCollection struct {

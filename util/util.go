@@ -162,3 +162,24 @@ func GetFileActualSize(file string) int64 {
 	}
 	return st.Blocks * BlockSizeLinux
 }
+
+func ParseLabels(labels []string) (map[string]string, error) {
+	result := map[string]string{}
+	for _, label := range labels {
+		kv := strings.Split(label, "=")
+		if len(kv) != 2 {
+			return nil, fmt.Errorf("Invalid label not in <key>=<value> format %v", label)
+		}
+		key := kv[0]
+		value := kv[1]
+		//Well, we should rename that ValidVolumeName
+		if !ValidVolumeName(key) {
+			return nil, fmt.Errorf("Invalid key %v for label %v", key, label)
+		}
+		if !ValidVolumeName(value) {
+			return nil, fmt.Errorf("Invalid value %v for label %v", value, label)
+		}
+		result[key] = value
+	}
+	return result, nil
+}

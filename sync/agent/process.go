@@ -240,8 +240,13 @@ func (s *Server) nextPort() (int, error) {
 func (s *Server) launchBackup(p *Process) error {
 	buf := new(bytes.Buffer)
 
-	cmd := reexec.Command("sbackup", "create", p.SrcFile, "--dest", p.DestFile,
-		"--volume", p.Host)
+	cmdline := []string{"sbackup", "create", p.SrcFile,
+		"--dest", p.DestFile,
+		"--volume", p.Host}
+	for _, label := range p.Labels {
+		cmdline = append(cmdline, "--label", label)
+	}
+	cmd := reexec.Command(cmdline...)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Pdeathsig: syscall.SIGKILL,
 	}

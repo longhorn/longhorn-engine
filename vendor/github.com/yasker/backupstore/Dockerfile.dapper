@@ -7,6 +7,7 @@ ENV DAPPER_ENV TAG REPO
 ENV DAPPER_OUTPUT bin
 ENV DAPPER_RUN_ARGS --privileged -v /dev:/host/dev -v /proc:/host/proc
 ENV DAPPER_SOURCE /go/src/github.com/yasker/backupstore
+ENV DAPPER_DOCKER_SOCKET true
 ENV TRASH_CACHE ${DAPPER_SOURCE}/.trash-cache
 WORKDIR ${DAPPER_SOURCE}
 

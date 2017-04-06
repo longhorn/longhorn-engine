@@ -4,10 +4,13 @@ import (
 	"fmt"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 
-	"github.com/rancher/longhorn/sync"
 	"github.com/yasker/backupstore/cmd"
+
+	"github.com/rancher/longhorn/sync"
+	"github.com/rancher/longhorn/util"
 )
 
 func BackupCmd() cli.Command {
@@ -32,6 +35,10 @@ func BackupCreateCmd() cli.Command {
 			cli.StringFlag{
 				Name:  "dest",
 				Usage: "destination of backup if driver supports, would be url like s3://bucket@region/path/ or vfs:///path/",
+			},
+			cli.StringSliceFlag{
+				Name:  "label",
+				Usage: "specify labels for backup, in the format of `--label key1=value1 --label key2=value2`",
 			},
 		},
 		Action: func(c *cli.Context) {
@@ -68,7 +75,15 @@ func createBackup(c *cli.Context) error {
 		return fmt.Errorf("Missing required parameter snapshot")
 	}
 
-	backup, err := task.CreateBackup(snapshot, dest)
+	labels := c.StringSlice("label")
+	if labels != nil {
+		// Only validate it here, the real parse is done at backend
+		if _, err := util.ParseLabels(labels); err != nil {
+			return errors.Wrap(err, "cannot parse backup labels")
+		}
+	}
+
+	backup, err := task.CreateBackup(snapshot, dest, labels)
 	if err != nil {
 		return err
 	}

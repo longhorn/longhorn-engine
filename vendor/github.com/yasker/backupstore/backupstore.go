@@ -27,6 +27,7 @@ type Backup struct {
 	SnapshotCreatedAt string
 	CreatedTime       string
 	Size              int64 `json:",string"`
+	Labels            map[string]string
 
 	Blocks     []BlockMapping `json:",omitempty"`
 	SingleFile BackupFile     `json:",omitempty"`

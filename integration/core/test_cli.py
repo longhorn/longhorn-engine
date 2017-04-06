@@ -572,7 +572,9 @@ def test_backup_core(bin, controller_client, replica_client,
     assert output == 'volume-snap-{}.img'.format(snapshot1)
 
     cmd = [bin, 'backup', 'create', snapshot1,
-           '--dest', "vfs://" + BACKUP_DEST]
+           '--dest', "vfs://" + BACKUP_DEST,
+           '--label', 'name=backup1',
+           '--label', 'type=vfs']
     backup1 = subprocess.check_output(cmd).strip()
 
     cmd = [bin, 'snapshot', 'create']
@@ -592,6 +594,9 @@ def test_backup_core(bin, controller_client, replica_client,
     assert backup1_info["VolumeName"] == VOLUME_NAME
     assert backup1_info["VolumeSize"] == VOLUME_SIZE
     assert backup1_info["SnapshotName"] == snapshot1
+    assert len(backup1_info["Labels"]) == 2
+    assert backup1_info["Labels"]["name"] == "backup1"
+    assert backup1_info["Labels"]["type"] == "vfs"
 
     cmd = [bin, 'backup', 'inspect', backup2]
     data = subprocess.check_output(cmd)
@@ -600,6 +605,7 @@ def test_backup_core(bin, controller_client, replica_client,
     assert backup2_info["VolumeName"] == VOLUME_NAME
     assert backup2_info["VolumeSize"] == VOLUME_SIZE
     assert backup2_info["SnapshotName"] == snapshot2
+    assert len(backup2_info["Labels"]) == 0
 
     cmd = [bin, 'backup', 'ls', "vfs://" + BACKUP_DEST]
     data = subprocess.check_output(cmd).strip()

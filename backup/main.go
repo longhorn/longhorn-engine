@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 
 	"github.com/rancher/longhorn/replica"
@@ -32,6 +33,10 @@ var (
 			cli.StringFlag{
 				Name:  "volume",
 				Usage: "volume name",
+			},
+			cli.StringSliceFlag{
+				Name:  "label",
+				Usage: "specify labels for backup, in the format of `--label key1=value1 --label key2=value2`",
 			},
 		},
 		Action: cmdBackupCreate,
@@ -122,6 +127,7 @@ func doBackupCreate(c *cli.Context) error {
 	var (
 		err         error
 		backingFile *replica.BackingFile
+		labelMap    map[string]string
 	)
 
 	if c.NArg() == 0 {
@@ -143,6 +149,13 @@ func doBackupCreate(c *cli.Context) error {
 	}
 	if !util.ValidVolumeName(volumeName) {
 		return fmt.Errorf("Invalid volume name %v for backup", volumeName)
+	}
+	labels := c.StringSlice("label")
+	if labels != nil {
+		labelMap, err = util.ParseLabels(labels)
+		if err != nil {
+			return errors.Wrap(err, "cannot parse backup labels")
+		}
 	}
 
 	dir, err := os.Getwd()
@@ -178,7 +191,14 @@ func doBackupCreate(c *cli.Context) error {
 	}
 
 	log.Debugf("Starting backup for %v, snapshot %v, dest %v", volume, snapshot, destURL)
-	backupURL, err := backupstore.CreateDeltaBlockBackup(volume, snapshot, destURL, replicaBackup)
+	config := &backupstore.DeltaBackupConfig{
+		Volume:   volume,
+		Snapshot: snapshot,
+		DestURL:  destURL,
+		DeltaOps: replicaBackup,
+		Labels:   labelMap,
+	}
+	backupURL, err := backupstore.CreateDeltaBlockBackup(config)
 	if err != nil {
 		return err
 	}

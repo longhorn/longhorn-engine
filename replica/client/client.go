@@ -259,13 +259,14 @@ func (c *ReplicaClient) SendFile(from, host string, port int) error {
 	}
 }
 
-func (c *ReplicaClient) CreateBackup(snapshot, dest, volume string) (string, error) {
+func (c *ReplicaClient) CreateBackup(snapshot, dest, volume string, labels []string) (string, error) {
 	var running agent.Process
 	err := c.post(c.syncAgent+"/processes", &agent.Process{
 		ProcessType: "backup",
 		SrcFile:     snapshot,
 		DestFile:    dest,
 		Host:        volume,
+		Labels:      labels,
 	}, &running)
 	if err != nil {
 		return "", err
