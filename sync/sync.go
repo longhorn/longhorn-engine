@@ -513,6 +513,7 @@ func GetSnapshotsInfo(replicas []rest.Replica) (map[string]replica.DiskInfo, err
 				Children:    children,
 				Created:     disk.Created,
 				Size:        disk.Size,
+				Labels:      disk.Labels,
 			}
 			if _, exists := outputDisks[snapshot]; !exists {
 				outputDisks[snapshot] = info

@@ -86,7 +86,7 @@ func (s *Server) SnapshotVolume(rw http.ResponseWriter, req *http.Request) error
 		return err
 	}
 
-	name, err := s.c.Snapshot(input.Name)
+	name, err := s.c.Snapshot(input.Name, input.Labels)
 	if err != nil {
 		return err
 	}

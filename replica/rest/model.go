@@ -41,9 +41,10 @@ type RebuildingInput struct {
 
 type SnapshotInput struct {
 	client.Resource
-	Name        string `json:"name"`
-	UserCreated bool   `json:"usercreated"`
-	Created     string `json:"created"`
+	Name        string            `json:"name"`
+	UserCreated bool              `json:"usercreated"`
+	Created     string            `json:"created"`
+	Labels      map[string]string `json:"labels"`
 }
 
 type RemoveDiskInput struct {

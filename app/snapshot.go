@@ -8,9 +8,11 @@ import (
 	"text/tabwriter"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/pkg/errors"
+	"github.com/urfave/cli"
+
 	"github.com/rancher/longhorn/sync"
 	"github.com/rancher/longhorn/util"
-	"github.com/urfave/cli"
 )
 
 func SnapshotCmd() cli.Command {
@@ -36,6 +38,12 @@ func SnapshotCmd() cli.Command {
 func SnapshotCreateCmd() cli.Command {
 	return cli.Command{
 		Name: "create",
+		Flags: []cli.Flag{
+			cli.StringSliceFlag{
+				Name:  "label",
+				Usage: "specify labels, in the format of `--label key1=value1 --label key2=value2`",
+			},
+		},
 		Action: func(c *cli.Context) {
 			if err := createSnapshot(c); err != nil {
 				logrus.Fatalf("Error running create snapshot command: %v", err)
@@ -100,13 +108,26 @@ func SnapshotInfoCmd() cli.Command {
 }
 
 func createSnapshot(c *cli.Context) error {
+	var (
+		labelMap map[string]string
+		err      error
+	)
 	cli := getCli(c)
 
 	var name string
 	if len(c.Args()) > 0 {
 		name = c.Args()[0]
 	}
-	id, err := cli.Snapshot(name)
+
+	labels := c.StringSlice("label")
+	if labels != nil {
+		labelMap, err = util.ParseLabels(labels)
+		if err != nil {
+			return errors.Wrap(err, "cannot parse backup labels")
+		}
+	}
+
+	id, err := cli.Snapshot(name, labelMap)
 	if err != nil {
 		return err
 	}

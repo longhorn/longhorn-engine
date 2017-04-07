@@ -27,7 +27,7 @@ type MonitorChannel chan error
 type Backend interface {
 	ReaderWriterAt
 	io.Closer
-	Snapshot(name string, userCreated bool, created string) error
+	Snapshot(name string, userCreated bool, created string, labels map[string]string) error
 	Size() (int64, error)
 	SectorSize() (int64, error)
 	RemainSnapshots() (int, error)

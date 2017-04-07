@@ -130,12 +130,15 @@ def test_snapshot(client):
     assert r.parent == ''
     assert r.head == 'volume-head-000.img'
 
-    r = r.snapshot(name='000', created=datetime.datetime.utcnow().isoformat())
+    r = r.snapshot(name='000', created=datetime.datetime.utcnow().isoformat(),
+                   labels={"name": "000", "key": "value"})
     assert r.state == 'dirty'
     assert r.dirty
     assert not r.rebuilding
     assert r.size == str(1024*4096)
     assert r.sectorSize == 512
+    assert r.disks["volume-snap-000.img"].labels["name"] == "000"
+    assert r.disks["volume-snap-000.img"].labels["key"] == "value"
 
     r = r.snapshot(name='001', created=datetime.datetime.utcnow().isoformat())
 

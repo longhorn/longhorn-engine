@@ -68,6 +68,7 @@ type disk struct {
 	Removed     bool
 	UserCreated bool
 	Created     string
+	Labels      map[string]string
 }
 
 type BackingFile struct {
@@ -84,13 +85,14 @@ type PrepareRemoveAction struct {
 }
 
 type DiskInfo struct {
-	Name        string   `json:"name"`
-	Parent      string   `json:"parent"`
-	Children    []string `json:"children"`
-	Removed     bool     `json:"removed"`
-	UserCreated bool     `json:"usercreated"`
-	Created     string   `json:"created"`
-	Size        string   `json:"size"`
+	Name        string            `json:"name"`
+	Parent      string            `json:"parent"`
+	Children    []string          `json:"children"`
+	Removed     bool              `json:"removed"`
+	UserCreated bool              `json:"usercreated"`
+	Created     string            `json:"created"`
+	Size        string            `json:"size"`
+	Labels      map[string]string `json:"labels"`
 }
 
 const (
@@ -171,7 +173,7 @@ func construct(readonly bool, size, sectorSize int64, dir, head string, backingF
 	} else if size <= 0 {
 		return nil, os.ErrNotExist
 	} else {
-		if err := r.createDisk("000", false, util.Now()); err != nil {
+		if err := r.createDisk("000", false, util.Now(), nil); err != nil {
 			return nil, err
 		}
 	}
@@ -666,7 +668,7 @@ func (r *Replica) revertDisk(parent, created string) (*Replica, error) {
 	return rNew, nil
 }
 
-func (r *Replica) createDisk(name string, userCreated bool, created string) error {
+func (r *Replica) createDisk(name string, userCreated bool, created string, labels map[string]string) error {
 	if r.readOnly {
 		return fmt.Errorf("Can not create disk on read-only replica")
 	}
@@ -717,6 +719,7 @@ func (r *Replica) createDisk(name string, userCreated bool, created string) erro
 		r.diskData[newSnapName] = r.diskData[oldHead]
 		r.diskData[newSnapName].UserCreated = userCreated
 		r.diskData[newSnapName].Created = created
+		r.diskData[newSnapName].Labels = labels
 		if err := r.encodeToFile(r.diskData[newSnapName], newSnapName+metadataSuffix); err != nil {
 			return err
 		}
@@ -877,11 +880,11 @@ func (r *Replica) Delete() error {
 	return nil
 }
 
-func (r *Replica) Snapshot(name string, userCreated bool, created string) error {
+func (r *Replica) Snapshot(name string, userCreated bool, created string, labels map[string]string) error {
 	r.Lock()
 	defer r.Unlock()
 
-	return r.createDisk(name, userCreated, created)
+	return r.createDisk(name, userCreated, created, labels)
 }
 
 func (r *Replica) Revert(name, created string) (*Replica, error) {
@@ -930,6 +933,11 @@ func (r *Replica) ListDisks() map[string]DiskInfo {
 			UserCreated: disk.UserCreated,
 			Created:     disk.Created,
 			Size:        diskSize,
+			Labels:      disk.Labels,
+		}
+		// Avoid inconsisent entry
+		if disk.Labels == nil {
+			diskInfo.Labels = map[string]string{}
 		}
 		children := []string{}
 		for child := range r.diskChildrenMap[disk.Name] {

@@ -57,14 +57,15 @@ func (c *ControllerClient) RevertVolume(name string) (*rest.Volume, error) {
 	return output, err
 }
 
-func (c *ControllerClient) Snapshot(name string) (string, error) {
+func (c *ControllerClient) Snapshot(name string, labels map[string]string) (string, error) {
 	volume, err := c.GetVolume()
 	if err != nil {
 		return "", err
 	}
 
 	input := &rest.SnapshotInput{
-		Name: name,
+		Name:   name,
+		Labels: labels,
 	}
 	output := &rest.SnapshotOutput{}
 	err = c.post(volume.Actions["snapshot"], input, output)

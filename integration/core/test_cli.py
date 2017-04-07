@@ -147,7 +147,8 @@ def test_replica_add_rebuild(bin, controller_client, replica_client,
     r = replica_client.list_replica()[0]
     r = r.open()
     createtime0 = getNow()
-    r = r.snapshot(name=snap0, created=createtime0)
+    r = r.snapshot(name=snap0, created=createtime0,
+                   labels={"name": "snap0", "key": "value"})
     createtime1 = getNow()
     r = r.snapshot(name=snap1, usercreated=True, created=createtime1)
 
@@ -226,6 +227,8 @@ def test_replica_add_rebuild(bin, controller_client, replica_client,
     assert snap0_info["usercreated"] is False
     assert snap0_info["created"] == createtime0
     assert snap0_info["size"] == "0"
+    assert snap0_info["labels"]["name"] == "snap0"
+    assert snap0_info["labels"]["key"] == "value"
 
 
 def test_replica_add_after_rebuild_failed(bin, controller_client,
@@ -392,7 +395,7 @@ def test_snapshot_info(bin, controller_client,
     snap = v.snapshot()
     assert snap.id != ''
 
-    snap2 = v.snapshot()
+    snap2 = v.snapshot(labels={"name": "snap", "key": "value"})
     assert snap2.id != ''
 
     cmd = [bin, '--debug', 'snapshot', 'info']
@@ -410,6 +413,7 @@ def test_snapshot_info(bin, controller_client,
     assert head_info["removed"] is False
     assert head_info["usercreated"] is False
     assert head_info["created"] != ""
+    assert len(head_info["labels"]) == 0
 
     snap2_info = info[snap2.id]
     assert snap2_info["name"] == snap2.id
@@ -418,6 +422,8 @@ def test_snapshot_info(bin, controller_client,
     assert snap2_info["removed"] is False
     assert snap2_info["usercreated"] is True
     assert snap2_info["created"] != ""
+    assert snap2_info["labels"]["name"] == "snap"
+    assert snap2_info["labels"]["key"] == "value"
 
     snap_info = info[snap.id]
     assert snap_info["name"] == snap.id
@@ -426,6 +432,7 @@ def test_snapshot_info(bin, controller_client,
     assert snap_info["removed"] is False
     assert snap_info["usercreated"] is True
     assert snap_info["created"] != ""
+    assert len(snap_info["labels"]) == 0
 
 
 def test_snapshot_create(bin, controller_client, replica_client,
@@ -441,17 +448,37 @@ def test_snapshot_create(bin, controller_client, replica_client,
     assert v.replicaCount == 2
 
     cmd = [bin, 'snapshot', 'create']
-    output = subprocess.check_output(cmd).strip()
+    snap0 = subprocess.check_output(cmd).strip()
     expected = replica_client.list_replica()[0].chain[1]
+    assert expected == 'volume-snap-{}.img'.format(snap0)
 
-    assert expected == 'volume-snap-{}.img'.format(output)
+    cmd = [bin, 'snapshot', 'create',
+           '--label', 'name=snap1', '--label', 'key=value']
+    snap1 = subprocess.check_output(cmd).strip()
 
     cmd = [bin, '--debug', 'snapshot', 'ls']
     ls_output = subprocess.check_output(cmd)
 
     assert ls_output == '''ID
 {}
-'''.format(output)
+{}
+'''.format(snap1, snap0)
+
+    cmd = [bin, 'snapshot', 'info']
+    output = subprocess.check_output(cmd)
+    info = json.loads(output)
+
+    assert len(info) == 3
+    assert info[snap0]["parent"] == ""
+    assert info[snap0]["removed"] is False
+    assert len(info[snap0]["labels"]) == 0
+    assert info[snap1]["parent"] == snap0
+    assert info[snap1]["removed"] is False
+    assert len(info[snap1]["labels"]) == 2
+    assert info[snap1]["labels"]["name"] == "snap1"
+    assert info[snap1]["labels"]["key"] == "value"
+    assert info[VOLUME_HEAD]["parent"] == snap1
+    assert len(info[VOLUME_HEAD]["labels"]) == 0
 
 
 def test_snapshot_rm(bin, controller_client, replica_client, replica_client2):

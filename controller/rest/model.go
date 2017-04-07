@@ -48,7 +48,8 @@ type SnapshotOutput struct {
 
 type SnapshotInput struct {
 	client.Resource
-	Name string `json:"name"`
+	Name   string            `json:"name"`
+	Labels map[string]string `json:"labels"`
 }
 
 type RevertInput struct {

@@ -144,7 +144,7 @@ func (s *Server) SnapshotReplica(rw http.ResponseWriter, req *http.Request) erro
 		return fmt.Errorf("Need to specific created time")
 	}
 
-	return s.doOp(req, s.s.Snapshot(input.Name, input.UserCreated, input.Created))
+	return s.doOp(req, s.s.Snapshot(input.Name, input.UserCreated, input.Created, input.Labels))
 }
 
 func (s *Server) RevertReplica(rw http.ResponseWriter, req *http.Request) error {

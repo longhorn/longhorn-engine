@@ -52,11 +52,12 @@ func (s *TestSuite) TestSnapshot(c *C) {
 
 	createdTime0 := getNow()
 
-	err = r.Snapshot("000", true, createdTime0)
+	labels := map[string]string{"name": "000", "key": "value"}
+	err = r.Snapshot("000", true, createdTime0, labels)
 	c.Assert(err, IsNil)
 
 	createdTime1 := getNow()
-	err = r.Snapshot("001", true, createdTime1)
+	err = r.Snapshot("001", true, createdTime1, nil)
 	c.Assert(err, IsNil)
 
 	c.Assert(len(r.activeDiskData), Equals, 4)
@@ -77,11 +78,13 @@ func (s *TestSuite) TestSnapshot(c *C) {
 	c.Assert(r.activeDiskData[1].UserCreated, Equals, true)
 	c.Assert(r.activeDiskData[1].Parent, Equals, "")
 	c.Assert(r.activeDiskData[1].Created, Equals, createdTime0)
+	c.Assert(r.activeDiskData[1].Labels, DeepEquals, labels)
 
 	c.Assert(len(r.diskData), Equals, 3)
 	c.Assert(r.diskData["volume-snap-000.img"].Parent, Equals, "")
 	c.Assert(r.diskData["volume-snap-000.img"].UserCreated, Equals, true)
 	c.Assert(r.diskData["volume-snap-000.img"].Created, Equals, createdTime0)
+	c.Assert(r.diskData["volume-snap-000.img"].Labels, DeepEquals, labels)
 	c.Assert(r.diskData["volume-snap-001.img"].Parent, Equals, "volume-snap-000.img")
 	c.Assert(r.diskData["volume-snap-001.img"].UserCreated, Equals, true)
 	c.Assert(r.diskData["volume-snap-001.img"].Created, Equals, createdTime1)
@@ -105,6 +108,7 @@ func (s *TestSuite) TestSnapshot(c *C) {
 	c.Assert(disks["volume-snap-000.img"].Children[0], Equals, "volume-snap-001.img")
 	c.Assert(disks["volume-snap-000.img"].Created, Equals, createdTime0)
 	c.Assert(disks["volume-snap-000.img"].Size, Equals, "0")
+	c.Assert(disks["volume-snap-000.img"].Labels, DeepEquals, labels)
 
 	c.Assert(disks["volume-snap-001.img"].Parent, Equals, "volume-snap-000.img")
 	c.Assert(disks["volume-snap-001.img"].UserCreated, Equals, true)
@@ -132,11 +136,11 @@ func (s *TestSuite) TestRevert(c *C) {
 	defer r.Close()
 
 	createdTime0 := getNow()
-	err = r.Snapshot("000", true, createdTime0)
+	err = r.Snapshot("000", true, createdTime0, nil)
 	c.Assert(err, IsNil)
 
 	createdTime1 := getNow()
-	err = r.Snapshot("001", true, createdTime1)
+	err = r.Snapshot("001", true, createdTime1, nil)
 	c.Assert(err, IsNil)
 
 	c.Assert(len(r.activeDiskData), Equals, 4)
@@ -174,7 +178,7 @@ func (s *TestSuite) TestRevert(c *C) {
 	c.Assert(r.diskChildrenMap["volume-head-003.img"], IsNil)
 
 	createdTime3 := getNow()
-	err = r.Snapshot("003", true, createdTime3)
+	err = r.Snapshot("003", true, createdTime3, nil)
 	c.Assert(err, IsNil)
 
 	c.Assert(len(r.diskData), Equals, 4)
@@ -244,13 +248,13 @@ func (s *TestSuite) TestRemoveLeafNode(c *C) {
 	defer r.Close()
 
 	now := getNow()
-	err = r.Snapshot("000", true, now)
+	err = r.Snapshot("000", true, now, nil)
 	c.Assert(err, IsNil)
 
-	err = r.Snapshot("001", true, now)
+	err = r.Snapshot("001", true, now, nil)
 	c.Assert(err, IsNil)
 
-	err = r.Snapshot("002", true, now)
+	err = r.Snapshot("002", true, now, nil)
 	c.Assert(err, IsNil)
 
 	c.Assert(len(r.activeDiskData), Equals, 5)
@@ -319,10 +323,10 @@ func (s *TestSuite) TestRemoveLast(c *C) {
 	defer r.Close()
 
 	now := getNow()
-	err = r.Snapshot("000", true, now)
+	err = r.Snapshot("000", true, now, nil)
 	c.Assert(err, IsNil)
 
-	err = r.Snapshot("001", true, now)
+	err = r.Snapshot("001", true, now, nil)
 	c.Assert(err, IsNil)
 
 	c.Assert(len(r.activeDiskData), Equals, 4)
@@ -365,10 +369,10 @@ func (s *TestSuite) TestRemoveMiddle(c *C) {
 	defer r.Close()
 
 	now := getNow()
-	err = r.Snapshot("000", true, now)
+	err = r.Snapshot("000", true, now, nil)
 	c.Assert(err, IsNil)
 
-	err = r.Snapshot("001", true, now)
+	err = r.Snapshot("001", true, now, nil)
 	c.Assert(err, IsNil)
 
 	c.Assert(len(r.activeDiskData), Equals, 4)
@@ -411,10 +415,10 @@ func (s *TestSuite) TestRemoveFirst(c *C) {
 	defer r.Close()
 
 	now := getNow()
-	err = r.Snapshot("000", true, now)
+	err = r.Snapshot("000", true, now, nil)
 	c.Assert(err, IsNil)
 
-	err = r.Snapshot("001", true, now)
+	err = r.Snapshot("001", true, now, nil)
 	c.Assert(err, IsNil)
 
 	c.Assert(len(r.activeDiskData), Equals, 4)
@@ -442,13 +446,13 @@ func (s *TestSuite) TestRemoveOutOfChain(c *C) {
 	defer r.Close()
 
 	now := getNow()
-	err = r.Snapshot("000", true, now)
+	err = r.Snapshot("000", true, now, nil)
 	c.Assert(err, IsNil)
 
-	err = r.Snapshot("001", true, now)
+	err = r.Snapshot("001", true, now, nil)
 	c.Assert(err, IsNil)
 
-	err = r.Snapshot("002", true, now)
+	err = r.Snapshot("002", true, now, nil)
 	c.Assert(err, IsNil)
 
 	c.Assert(len(r.activeDiskData), Equals, 5)
@@ -518,10 +522,10 @@ func (s *TestSuite) TestPrepareRemove(c *C) {
 	defer r.Close()
 
 	now := getNow()
-	err = r.Snapshot("000", true, now)
+	err = r.Snapshot("000", true, now, nil)
 	c.Assert(err, IsNil)
 
-	err = r.Snapshot("001", true, now)
+	err = r.Snapshot("001", true, now, nil)
 	c.Assert(err, IsNil)
 
 	c.Assert(len(r.activeDiskData), Equals, 4)
@@ -555,7 +559,7 @@ func (s *TestSuite) TestPrepareRemove(c *C) {
 	c.Assert(actions[1].Source, Equals, "volume-snap-000.img")
 	c.Assert(actions[1].Target, Equals, "volume-snap-001.img")
 
-	err = r.Snapshot("002", true, now)
+	err = r.Snapshot("002", true, now, nil)
 	c.Assert(err, IsNil)
 
 	/*
@@ -577,10 +581,10 @@ func (s *TestSuite) TestPrepareRemove(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(actions, HasLen, 0)
 
-	err = r.Snapshot("003", true, now)
+	err = r.Snapshot("003", true, now, nil)
 	c.Assert(err, IsNil)
 
-	err = r.Snapshot("004", true, now)
+	err = r.Snapshot("004", true, now, nil)
 	c.Assert(err, IsNil)
 
 	/*
@@ -699,19 +703,19 @@ func (s *TestSuite) TestSnapshotReadWrite(c *C) {
 	count, err := r.WriteAt(buf, 0)
 	c.Assert(err, IsNil)
 	c.Assert(count, Equals, 3*b)
-	err = r.Snapshot("000", true, getNow())
+	err = r.Snapshot("000", true, getNow(), nil)
 	c.Assert(err, IsNil)
 
 	fill(buf[b:2*b], 2)
 	count, err = r.WriteAt(buf[b:2*b], b)
 	c.Assert(count, Equals, b)
-	err = r.Snapshot("001", true, getNow())
+	err = r.Snapshot("001", true, getNow(), nil)
 	c.Assert(err, IsNil)
 
 	fill(buf[:b], 1)
 	count, err = r.WriteAt(buf[:b], 0)
 	c.Assert(count, Equals, b)
-	err = r.Snapshot("002", true, getNow())
+	err = r.Snapshot("002", true, getNow(), nil)
 	c.Assert(err, IsNil)
 
 	readBuf := make([]byte, 3*b)
@@ -790,7 +794,7 @@ func (s *TestSuite) partialWriteRead(c *C, totalLength, writeLength, writeOffset
 	_, err = r.WriteAt(buf, 0)
 	c.Assert(err, IsNil)
 
-	err = r.Snapshot("000", true, getNow())
+	err = r.Snapshot("000", true, getNow(), nil)
 	c.Assert(err, IsNil)
 
 	buf = make([]byte, writeLength)
@@ -838,7 +842,7 @@ func (s *TestSuite) testPartialRead(c *C, totalLength int64, readBuf []byte, off
 	for i := int64(0); i < totalLength; i += b {
 		buf := make([]byte, totalLength-i)
 		fill(buf, byte(i/b+1))
-		err := r.Snapshot(strconv.Itoa(int(i)), true, getNow())
+		err := r.Snapshot(strconv.Itoa(int(i)), true, getNow(), nil)
 		c.Assert(err, IsNil)
 		_, err = r.WriteAt(buf, i)
 		c.Assert(err, IsNil)
