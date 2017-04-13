@@ -6,6 +6,7 @@ import (
 	"net"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"time"
 )
 
@@ -17,20 +18,46 @@ var (
 	cmdTimeout = time.Minute // one minute by default
 )
 
-func GetLocalIPs() ([]string, error) {
-	results := []string{}
-	addrs, err := net.InterfaceAddrs()
-	if err != nil {
-		return nil, err
-	}
+func getIPFromAddrs(addrs []net.Addr) string {
 	for _, addr := range addrs {
 		if ip, ok := addr.(*net.IPNet); ok && !ip.IP.IsLoopback() {
 			if ip.IP.To4() != nil {
-				results = append(results, ip.IP.String())
+				return strings.Split(ip.IP.String(), "/")[0]
 			}
 		}
 	}
-	return results, nil
+	return ""
+}
+
+func GetIPToHost() (string, error) {
+	ifaces, err := net.Interfaces()
+	if err != nil {
+		return "", err
+	}
+	// TODO: This is a workaround, we want to get the interface IP connect
+	// to the host, it's likely eth1 with one network attached to the host.
+	for _, iface := range ifaces {
+		if iface.Name == "eth1" {
+			addrs, err := iface.Addrs()
+			if err != nil {
+				return "", err
+			}
+			ip := getIPFromAddrs(addrs)
+			if ip != "" {
+				return ip, nil
+			}
+		}
+	}
+	// And there is no eth1, so get the first real ip
+	addrs, err := net.InterfaceAddrs()
+	if err != nil {
+		return "", err
+	}
+	ip := getIPFromAddrs(addrs)
+	if ip != "" {
+		return ip, nil
+	}
+	return "", fmt.Errorf("Cannot find IP connect to the host")
 }
 
 type NamespaceExecutor struct {

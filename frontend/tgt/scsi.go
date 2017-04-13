@@ -47,14 +47,6 @@ func GetTargetName(name string) string {
 	return "iqn.2014-09.com.rancher:" + util.Volume2ISCSIName(name)
 }
 
-func GetLocalIP() (string, error) {
-	ips, err := iutil.GetLocalIPs()
-	if err != nil {
-		return "", err
-	}
-	return ips[0], nil
-}
-
 func StartScsi(dev *ScsiDevice) error {
 	lock := nsfilelock.NewLockWithTimeout(HostNamespace, LockFile, LockTimeout)
 	if err := lock.Lock(); err != nil {
@@ -71,7 +63,7 @@ func StartScsi(dev *ScsiDevice) error {
 		return err
 	}
 
-	localIP, err := GetLocalIP()
+	localIP, err := iutil.GetIPToHost()
 	if err != nil {
 		return err
 	}
@@ -153,7 +145,7 @@ func LogoutTarget(target string) error {
 	if err != nil {
 		return err
 	}
-	ip, err := GetLocalIP()
+	ip, err := iutil.GetIPToHost()
 	if err != nil {
 		return err
 	}
