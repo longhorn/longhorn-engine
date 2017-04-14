@@ -5,8 +5,8 @@ import (
 	"sync"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/rancher/longhorn/types"
-	"github.com/rancher/longhorn/util"
+	"github.com/rancher/longhorn-engine/types"
+	"github.com/rancher/longhorn-engine/util"
 )
 
 type Controller struct {

@@ -6,8 +6,8 @@ import (
 	"text/tabwriter"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/rancher/longhorn/controller/client"
-	replicaClient "github.com/rancher/longhorn/replica/client"
+	"github.com/rancher/longhorn-engine/controller/client"
+	replicaClient "github.com/rancher/longhorn-engine/replica/client"
 	"github.com/urfave/cli"
 )
 

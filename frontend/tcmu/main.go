@@ -24,7 +24,7 @@ import (
 	"unsafe"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/rancher/longhorn/types"
+	"github.com/rancher/longhorn-engine/types"
 	"golang.org/x/sys/unix"
 )
 

@@ -10,7 +10,7 @@ import (
 	"strings"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/rancher/longhorn/controller/rest"
+	"github.com/rancher/longhorn-engine/controller/rest"
 )
 
 type ControllerClient struct {

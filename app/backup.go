@@ -9,8 +9,8 @@ import (
 
 	"github.com/yasker/backupstore/cmd"
 
-	"github.com/rancher/longhorn/sync"
-	"github.com/rancher/longhorn/util"
+	"github.com/rancher/longhorn-engine/sync"
+	"github.com/rancher/longhorn-engine/util"
 )
 
 func BackupCmd() cli.Command {

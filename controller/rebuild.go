@@ -5,8 +5,8 @@ import (
 	"reflect"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/rancher/longhorn/replica/client"
-	"github.com/rancher/longhorn/types"
+	"github.com/rancher/longhorn-engine/replica/client"
+	"github.com/rancher/longhorn-engine/types"
 )
 
 func getReplicaChain(address string) ([]string, error) {

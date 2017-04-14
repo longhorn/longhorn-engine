@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/rancher/longhorn/types"
+	"github.com/rancher/longhorn-engine/types"
 )
 
 const (

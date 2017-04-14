@@ -5,7 +5,7 @@ package backup
 import (
 	"fmt"
 
-	"github.com/rancher/longhorn/replica"
+	"github.com/rancher/longhorn-engine/replica"
 )
 
 func openBackingFile(file string) (*replica.BackingFile, error) {

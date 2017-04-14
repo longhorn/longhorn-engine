@@ -10,7 +10,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/rancher/longhorn/util"
+	"github.com/rancher/longhorn-engine/util"
 	. "gopkg.in/check.v1"
 )
 
@@ -572,7 +572,7 @@ func (s *TestSuite) TestPrepareRemove(c *C) {
 	c.Assert(len(r.activeDiskData), Equals, 5)
 	c.Assert(len(r.volume.files), Equals, 5)
 
-	/* https://github.com/rancher/longhorn/issues/184 */
+	/* https://github.com/rancher/longhorn-engine/issues/184 */
 	err = r.MarkDiskAsRemoved("002")
 	c.Assert(err, IsNil)
 	c.Assert(r.activeDiskData[3].Removed, Equals, true)

@@ -5,8 +5,8 @@ import (
 
 	"github.com/rancher/go-rancher/api"
 	"github.com/rancher/go-rancher/client"
-	"github.com/rancher/longhorn/controller"
-	"github.com/rancher/longhorn/types"
+	"github.com/rancher/longhorn-engine/controller"
+	"github.com/rancher/longhorn-engine/types"
 )
 
 type Replica struct {

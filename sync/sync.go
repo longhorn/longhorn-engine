@@ -5,10 +5,10 @@ import (
 	"strings"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/rancher/longhorn/controller/client"
-	"github.com/rancher/longhorn/controller/rest"
-	"github.com/rancher/longhorn/replica"
-	replicaClient "github.com/rancher/longhorn/replica/client"
+	"github.com/rancher/longhorn-engine/controller/client"
+	"github.com/rancher/longhorn-engine/controller/rest"
+	"github.com/rancher/longhorn-engine/replica"
+	replicaClient "github.com/rancher/longhorn-engine/replica/client"
 )
 
 var (

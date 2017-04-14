@@ -4,7 +4,7 @@ import (
 	"os"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/rancher/longhorn/types"
+	"github.com/rancher/longhorn-engine/types"
 )
 
 func New() types.BackendFactory {

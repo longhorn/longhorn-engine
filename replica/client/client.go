@@ -12,8 +12,8 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/rancher/longhorn/replica/rest"
-	"github.com/rancher/longhorn/sync/agent"
+	"github.com/rancher/longhorn-engine/replica/rest"
+	"github.com/rancher/longhorn-engine/sync/agent"
 )
 
 type ReplicaClient struct {

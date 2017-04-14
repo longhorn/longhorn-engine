@@ -5,9 +5,9 @@ import (
 	"strings"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/rancher/longhorn/replica/client"
-	"github.com/rancher/longhorn/types"
-	"github.com/rancher/longhorn/util"
+	"github.com/rancher/longhorn-engine/replica/client"
+	"github.com/rancher/longhorn-engine/types"
+	"github.com/rancher/longhorn-engine/util"
 )
 
 func (c *Controller) Revert(name string) error {

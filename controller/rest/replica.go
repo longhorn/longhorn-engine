@@ -6,7 +6,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/rancher/go-rancher/api"
 	"github.com/rancher/go-rancher/client"
-	"github.com/rancher/longhorn/types"
+	"github.com/rancher/longhorn-engine/types"
 )
 
 func (s *Server) ListReplicas(rw http.ResponseWriter, req *http.Request) error {

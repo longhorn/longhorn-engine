@@ -10,10 +10,10 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/go-units"
-	"github.com/rancher/longhorn/replica"
-	"github.com/rancher/longhorn/replica/rest"
-	"github.com/rancher/longhorn/replica/rpc"
-	"github.com/rancher/longhorn/util"
+	"github.com/rancher/longhorn-engine/replica"
+	"github.com/rancher/longhorn-engine/replica/rest"
+	"github.com/rancher/longhorn-engine/replica/rpc"
+	"github.com/rancher/longhorn-engine/util"
 	"github.com/urfave/cli"
 )
 

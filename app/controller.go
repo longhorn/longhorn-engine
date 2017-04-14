@@ -9,13 +9,13 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/gorilla/handlers"
-	"github.com/rancher/longhorn/backend/dynamic"
-	"github.com/rancher/longhorn/backend/file"
-	"github.com/rancher/longhorn/backend/remote"
-	"github.com/rancher/longhorn/controller"
-	"github.com/rancher/longhorn/controller/rest"
-	"github.com/rancher/longhorn/types"
-	"github.com/rancher/longhorn/util"
+	"github.com/rancher/longhorn-engine/backend/dynamic"
+	"github.com/rancher/longhorn-engine/backend/file"
+	"github.com/rancher/longhorn-engine/backend/remote"
+	"github.com/rancher/longhorn-engine/controller"
+	"github.com/rancher/longhorn-engine/controller/rest"
+	"github.com/rancher/longhorn-engine/types"
+	"github.com/rancher/longhorn-engine/util"
 	"github.com/urfave/cli"
 )
 

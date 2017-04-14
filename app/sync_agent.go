@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/rancher/longhorn/sync/agent"
+	"github.com/rancher/longhorn-engine/sync/agent"
 	"github.com/urfave/cli"
 )
 

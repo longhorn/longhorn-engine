@@ -11,10 +11,10 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/rancher/longhorn/replica/rest"
-	"github.com/rancher/longhorn/rpc"
-	"github.com/rancher/longhorn/types"
-	"github.com/rancher/longhorn/util"
+	"github.com/rancher/longhorn-engine/replica/rest"
+	"github.com/rancher/longhorn-engine/rpc"
+	"github.com/rancher/longhorn-engine/types"
+	"github.com/rancher/longhorn-engine/util"
 )
 
 var (

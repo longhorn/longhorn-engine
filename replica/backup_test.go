@@ -5,7 +5,7 @@ import (
 	"os"
 	"path"
 
-	"github.com/rancher/longhorn/util"
+	"github.com/rancher/longhorn-engine/util"
 	. "gopkg.in/check.v1"
 )
 

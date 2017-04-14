@@ -4,7 +4,7 @@ import (
 	"errors"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/rancher/longhorn/sync"
+	"github.com/rancher/longhorn-engine/sync"
 	"github.com/urfave/cli"
 )
 

@@ -11,8 +11,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 
-	"github.com/rancher/longhorn/sync"
-	"github.com/rancher/longhorn/util"
+	"github.com/rancher/longhorn-engine/sync"
+	"github.com/rancher/longhorn-engine/util"
 )
 
 func SnapshotCmd() cli.Command {
