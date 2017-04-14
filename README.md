@@ -1,4 +1,4 @@
-Longhorn [![Build Status](https://drone.rancher.io/api/badges/rancher/longhorn/status.svg)](https://drone.rancher.io/rancher/longhorn)
+Longhorn [![Build Status](https://drone.rancher.io/api/badges/rancher/longhorn-engine/status.svg)](https://drone.rancher.io/rancher/longhorn-engine)
 ========
 
 A micro-service block storage solution.
