@@ -59,7 +59,7 @@ RUN cd /usr/src/libqcow-20160123 && \
 
 # Build liblonghorn
 RUN cd /usr/src && \
-    git clone https://github.com/yasker/liblonghorn.git && \
+    git clone https://github.com/rancher/liblonghorn.git && \
     cd liblonghorn && \
     git checkout 242a979d694401d2c467d68c74daf48421a526c0 && \
     make deb && \
@@ -67,7 +67,7 @@ RUN cd /usr/src && \
 
 # Build TGT
 RUN cd /usr/src && \
-    git clone https://github.com/yasker/tgt.git && \
+    git clone https://github.com/rancher/tgt.git && \
     cd tgt && \
     git checkout 6475d1ddf4ff0ac1421a96725f3d472cbb2985c7 && \
     ./scripts/build-pkg.sh deb && \
