@@ -8,9 +8,9 @@ import (
 	"strings"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/yasker/backupstore"
-	"github.com/yasker/backupstore/fsops"
-	"github.com/yasker/backupstore/util"
+	"github.com/rancher/backupstore"
+	"github.com/rancher/backupstore/fsops"
+	"github.com/rancher/backupstore/util"
 )
 
 var (

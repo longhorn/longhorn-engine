@@ -9,7 +9,7 @@ import (
 	"strings"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/yasker/backupstore"
+	"github.com/rancher/backupstore"
 )
 
 var (

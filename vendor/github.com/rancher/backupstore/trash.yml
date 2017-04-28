@@ -1,4 +1,4 @@
-package: github.com/yasker/backupstore
+package: github.com/rancher/backupstore
 
 import:
 - package: github.com/Sirupsen/logrus

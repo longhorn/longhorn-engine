@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/yasker/backupstore"
-	"github.com/yasker/backupstore/fsops"
+	"github.com/rancher/backupstore"
+	"github.com/rancher/backupstore/fsops"
 )
 
 var (

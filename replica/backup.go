@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/yasker/backupstore"
+	"github.com/rancher/backupstore"
 )
 
 const (

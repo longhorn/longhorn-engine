@@ -7,7 +7,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 
-	"github.com/yasker/backupstore/cmd"
+	"github.com/rancher/backupstore/cmd"
 
 	"github.com/rancher/longhorn-engine/sync"
 	"github.com/rancher/longhorn-engine/util"

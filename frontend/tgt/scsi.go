@@ -7,9 +7,9 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/rancher/go-iscsi-helper/iscsi"
+	iutil "github.com/rancher/go-iscsi-helper/util"
 	"github.com/rancher/longhorn-engine/util"
-	"github.com/yasker/go-iscsi-helper/iscsi"
-	iutil "github.com/yasker/go-iscsi-helper/util"
 	"github.com/yasker/nsfilelock"
 )
 

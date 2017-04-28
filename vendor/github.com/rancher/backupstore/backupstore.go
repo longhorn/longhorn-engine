@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"net/url"
 
-	"github.com/yasker/backupstore/util"
+	"github.com/rancher/backupstore/util"
 )
 
 type Volume struct {

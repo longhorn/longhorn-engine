@@ -3,8 +3,8 @@ package cmd
 import (
 	"github.com/urfave/cli"
 
-	"github.com/yasker/backupstore"
-	"github.com/yasker/backupstore/util"
+	"github.com/rancher/backupstore"
+	"github.com/rancher/backupstore/util"
 )
 
 func BackupRemoveCmd() cli.Command {

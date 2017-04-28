@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/yasker/backupstore/util"
+	"github.com/rancher/backupstore/util"
 
-	. "github.com/yasker/backupstore/logging"
+	. "github.com/rancher/backupstore/logging"
 )
 
 const (

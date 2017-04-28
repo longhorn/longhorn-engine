@@ -3,7 +3,7 @@ package backupstore
 import (
 	"fmt"
 
-	"github.com/yasker/backupstore/util"
+	"github.com/rancher/backupstore/util"
 )
 
 type VolumeInfo struct {
