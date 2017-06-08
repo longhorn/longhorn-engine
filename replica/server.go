@@ -320,9 +320,13 @@ func (s *Server) Restore(url, name string) (err error) {
 	if url == "" || name == "" {
 		return fmt.Errorf("require backup URL and new snapshot name")
 	}
-	state, _ := s.Status()
-	if state != Initial {
-		return fmt.Errorf("must be in initial state to restore")
+	snapName := diskPrefix + name
+	// TODO Don't use `s.dir` directly
+	toFile := filepath.Join(s.dir, snapName)
+
+	if _, err := os.Stat(toFile + ".meta"); err == nil {
+		logrus.Warnf("Found existing restored snapshot, skip restoring")
+		return nil
 	}
 
 	backupURL := util.UnescapeURL(url)
@@ -339,9 +343,6 @@ func (s *Server) Restore(url, name string) (err error) {
 		return err
 	}
 
-	snapName := diskPrefix + name
-	// TODO Don't use `s.dir` directly
-	toFile := filepath.Join(s.dir, snapName)
 	if err := backupstore.RestoreDeltaBlockBackup(backupURL, toFile); err != nil {
 		return err
 	}
