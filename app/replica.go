@@ -37,6 +37,14 @@ func ReplicaCmd() cli.Command {
 				Name:  "size",
 				Usage: "Volume size in bytes or human readable 42kb, 42mb, 42gb",
 			},
+			cli.StringFlag{
+				Name:  "restore-from",
+				Usage: "specify backup to be restored, must be used with --restore-name",
+			},
+			cli.StringFlag{
+				Name:  "restore-name",
+				Usage: "specify the snapshot name for restore, must be used with --restore-from",
+			},
 		},
 		Action: func(c *cli.Context) {
 			if err := startReplica(c); err != nil {
@@ -60,8 +68,16 @@ func startReplica(c *cli.Context) error {
 	s := replica.NewServer(dir, backingFile, 512)
 
 	address := c.String("listen")
+
 	size := c.String("size")
-	if size != "" {
+	restoreURL := c.String("restore-from")
+	restoreName := c.String("restore-name")
+
+	if restoreURL != "" && restoreName != "" {
+		if err := s.Restore(restoreURL, restoreName); err != nil {
+			return err
+		}
+	} else if size != "" {
 		size, err := units.RAMInBytes(size)
 		if err != nil {
 			return err

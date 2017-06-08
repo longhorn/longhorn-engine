@@ -6,8 +6,6 @@ import (
 	"os"
 	"runtime"
 	"runtime/debug"
-	"strings"
-	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/pkg/errors"
@@ -184,11 +182,11 @@ func doBackupCreate(c *cli.Context) error {
 	volume := &backupstore.Volume{
 		Name:        volumeName,
 		Size:        volumeInfo.Size,
-		CreatedTime: Now(),
+		CreatedTime: util.Now(),
 	}
 	snapshot := &backupstore.Snapshot{
 		Name:        snapshotName,
-		CreatedTime: Now(),
+		CreatedTime: util.Now(),
 	}
 
 	log.Debugf("Starting backup for %v, snapshot %v, dest %v", volume, snapshot, destURL)
@@ -221,7 +219,7 @@ func doBackupRestore(c *cli.Context) error {
 	if backupURL == "" {
 		return RequiredMissingError("backup URL")
 	}
-	backupURL = UnescapeURL(backupURL)
+	backupURL = util.UnescapeURL(backupURL)
 
 	toFile := c.String("to")
 	if toFile == "" {
@@ -255,15 +253,4 @@ func createNewSnapshotMetafile(file string) error {
 	}
 
 	return os.Rename(file+".tmp", file)
-}
-
-func UnescapeURL(url string) string {
-	// Deal with escape in url inputed from bash
-	result := strings.Replace(url, "\\u0026", "&", 1)
-	result = strings.Replace(result, "u0026", "&", 1)
-	return result
-}
-
-func Now() string {
-	return time.Now().UTC().Format(time.RFC3339)
 }

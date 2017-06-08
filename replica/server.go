@@ -3,9 +3,14 @@ package replica
 import (
 	"fmt"
 	"os"
+	"path/filepath"
 	"sync"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/pkg/errors"
+	"github.com/rancher/backupstore"
+
+	"github.com/rancher/longhorn-engine/util"
 )
 
 const (
@@ -302,4 +307,72 @@ func (s *Server) PingResponse() error {
 		return fmt.Errorf("ping failure: replica state %v", state)
 	}
 	return nil
+}
+
+func (s *Server) Restore(url, name string) (err error) {
+	defer func() {
+		err = errors.Wrapf(err, "fail to restore url %v to snapshot %v", url, name)
+	}()
+
+	s.Lock()
+	defer s.Unlock()
+
+	if url == "" || name == "" {
+		return fmt.Errorf("require backup URL and new snapshot name")
+	}
+	state, _ := s.Status()
+	if state != Initial {
+		return fmt.Errorf("must be in initial state to restore")
+	}
+
+	backupURL := util.UnescapeURL(url)
+	info, err := backupstore.InspectBackup(backupURL)
+	if err != nil {
+		return err
+	}
+
+	size := info.VolumeSize
+	sectorSize := s.getSectorSize()
+
+	r, err := New(size, sectorSize, s.dir, s.backing)
+	if err != nil {
+		return err
+	}
+
+	snapName := diskPrefix + name
+	// TODO Don't use `s.dir` directly
+	toFile := filepath.Join(s.dir, snapName)
+	if err := backupstore.RestoreDeltaBlockBackup(backupURL, toFile); err != nil {
+		return err
+	}
+
+	// TODO don't manually create metadata file
+	if err := createNewSnapshotMetafile(toFile + ".meta"); err != nil {
+		return err
+	}
+
+	r, err = r.Revert(snapName, util.Now())
+	if err != nil {
+		return err
+	}
+	return r.Close()
+}
+
+func createNewSnapshotMetafile(file string) error {
+	f, err := os.Create(file + ".tmp")
+	if err != nil {
+		return err
+	}
+	defer f.Close()
+
+	content := "{\"Parent\":\"\"}\n"
+	if _, err := f.Write([]byte(content)); err != nil {
+		return err
+	}
+
+	if err := f.Close(); err != nil {
+		return err
+	}
+
+	return os.Rename(file+".tmp", file)
 }
