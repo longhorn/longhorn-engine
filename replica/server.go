@@ -320,6 +320,13 @@ func (s *Server) Restore(url, name string) (err error) {
 	if url == "" || name == "" {
 		return fmt.Errorf("require backup URL and new snapshot name")
 	}
+
+	state, _ := s.Status()
+	if state != Initial {
+		logrus.Warnf("Ignore restore command, volume is not in initial state")
+		return nil
+	}
+
 	snapName := diskPrefix + name
 	// TODO Don't use `s.dir` directly
 	toFile := filepath.Join(s.dir, snapName)
