@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/Sirupsen/logrus"
@@ -328,6 +329,9 @@ func (s *Server) Restore(url, name string) (err error) {
 	}
 
 	snapName := diskPrefix + name
+	if !strings.HasSuffix(snapName, diskSuffix) {
+		snapName = snapName + diskSuffix
+	}
 	// TODO Don't use `s.dir` directly
 	toFile := filepath.Join(s.dir, snapName)
 
@@ -354,8 +358,15 @@ func (s *Server) Restore(url, name string) (err error) {
 		return err
 	}
 
-	// TODO don't manually create metadata file
-	if err := createNewSnapshotMetafile(toFile + ".meta"); err != nil {
+	newDisk := disk{
+		Parent:      "",
+		Name:        snapName,
+		Removed:     false,
+		UserCreated: false,
+		Created:     util.Now(),
+	}
+
+	if err := r.encodeToFile(newDisk, snapName+metadataSuffix); err != nil {
 		return err
 	}
 
@@ -364,23 +375,4 @@ func (s *Server) Restore(url, name string) (err error) {
 		return err
 	}
 	return r.Close()
-}
-
-func createNewSnapshotMetafile(file string) error {
-	f, err := os.Create(file + ".tmp")
-	if err != nil {
-		return err
-	}
-	defer f.Close()
-
-	content := "{\"Parent\":\"\"}\n"
-	if _, err := f.Write([]byte(content)); err != nil {
-		return err
-	}
-
-	if err := f.Close(); err != nil {
-		return err
-	}
-
-	return os.Rename(file+".tmp", file)
 }
