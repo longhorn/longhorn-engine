@@ -1,5 +1,5 @@
 cattle==0.5.1
 directio==1.2
 
-flake8
+flake8==3.4.0
 pytest==2.3.5
