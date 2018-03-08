@@ -210,15 +210,15 @@ def test_snapshot_tree_basic(dev):  # NOQA
 
     assert snap["0c"] in info
     assert info[snap["0c"]]["parent"] == snap["0b"]
-    assert info[snap["0c"]]["children"] == []
+    assert not info[snap["0c"]]["children"]
 
     assert snap["1a"] in info
     assert info[snap["1a"]]["parent"] == snap["0b"]
-    assert info[snap["1a"]]["children"] == [snap["1b"]]
+    assert snap["1b"] in info[snap["1a"]]["children"]
 
     assert snap["1b"] in info
     assert info[snap["1b"]]["parent"] == snap["1a"]
-    assert info[snap["1b"]]["children"] == [VOLUME_HEAD]
+    assert VOLUME_HEAD in info[snap["1b"]]["children"]
 
     assert VOLUME_HEAD in info
     assert info[VOLUME_HEAD]["parent"] == snap["1b"]
