@@ -105,7 +105,7 @@ func (s *TestSuite) TestSnapshot(c *C) {
 	c.Assert(disks["volume-snap-000.img"].UserCreated, Equals, true)
 	c.Assert(disks["volume-snap-000.img"].Removed, Equals, false)
 	c.Assert(len(disks["volume-snap-000.img"].Children), Equals, 1)
-	c.Assert(disks["volume-snap-000.img"].Children[0], Equals, "volume-snap-001.img")
+	c.Assert(disks["volume-snap-000.img"].Children["volume-snap-001.img"], Equals, struct{}{})
 	c.Assert(disks["volume-snap-000.img"].Created, Equals, createdTime0)
 	c.Assert(disks["volume-snap-000.img"].Size, Equals, "0")
 	c.Assert(disks["volume-snap-000.img"].Labels, DeepEquals, labels)
@@ -114,7 +114,7 @@ func (s *TestSuite) TestSnapshot(c *C) {
 	c.Assert(disks["volume-snap-001.img"].UserCreated, Equals, true)
 	c.Assert(disks["volume-snap-001.img"].Removed, Equals, false)
 	c.Assert(len(disks["volume-snap-001.img"].Children), Equals, 1)
-	c.Assert(disks["volume-snap-001.img"].Children[0], Equals, "volume-head-002.img")
+	c.Assert(disks["volume-snap-001.img"].Children["volume-head-002.img"], Equals, struct{}{})
 	c.Assert(disks["volume-snap-001.img"].Created, Equals, createdTime1)
 	c.Assert(disks["volume-snap-001.img"].Size, Equals, "0")
 

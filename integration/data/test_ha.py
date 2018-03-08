@@ -92,7 +92,7 @@ def test_ha_single_replica_rebuild(controller, replica1, replica2):  # NOQA
     assert len(info) == 3
     sysnap = info[newsnap]["parent"]
     assert info[sysnap]["parent"] == ""
-    assert info[sysnap]["children"] == [newsnap]
+    assert newsnap in info[sysnap]["children"]
     assert info[sysnap]["usercreated"] is False
     assert info[sysnap]["removed"] is False
 

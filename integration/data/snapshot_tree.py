@@ -55,7 +55,7 @@ def snapshot_tree_verify_relationship(snap, strict):
     info = cmd.snapshot_info()
 
     assert snap["0a"] in info
-    assert info[snap["0a"]]["children"] == [snap["0b"]]
+    assert snap["0b"] in info[snap["0a"]]["children"]
 
     assert snap["0b"] in info
     assert info[snap["0b"]]["parent"] == snap["0a"]
@@ -66,19 +66,19 @@ def snapshot_tree_verify_relationship(snap, strict):
 
     assert snap["0c"] in info
     assert info[snap["0c"]]["parent"] == snap["0b"]
-    assert info[snap["0c"]]["children"] == []
+    assert not info[snap["0c"]]["children"]
 
     assert snap["1a"] in info
     assert info[snap["1a"]]["parent"] == snap["0b"]
-    assert info[snap["1a"]]["children"] == [snap["1b"]]
+    assert snap["1b"] in info[snap["1a"]]["children"]
 
     assert snap["1b"] in info
     assert info[snap["1b"]]["parent"] == snap["1a"]
-    assert info[snap["1b"]]["children"] == [snap["1c"]]
+    assert snap["1c"] in info[snap["1b"]]["children"]
 
     assert snap["1c"] in info
     assert info[snap["1c"]]["parent"] == snap["1b"]
-    assert info[snap["1c"]]["children"] == []
+    assert not info[snap["1c"]]["children"]
 
     assert snap["2a"] in info
     assert info[snap["2a"]]["parent"] == snap["0b"]
@@ -88,19 +88,19 @@ def snapshot_tree_verify_relationship(snap, strict):
 
     assert snap["2b"] in info
     assert info[snap["2b"]]["parent"] == snap["2a"]
-    assert info[snap["2b"]]["children"] == [snap["2c"]]
+    assert snap["2c"] in info[snap["2b"]]["children"]
 
     assert snap["2c"] in info
     assert info[snap["2c"]]["parent"] == snap["2b"]
-    assert info[snap["2c"]]["children"] == []
+    assert not info[snap["2c"]]["children"]
 
     assert snap["3a"] in info
     assert info[snap["3a"]]["parent"] == snap["2a"]
-    assert info[snap["3a"]]["children"] == [snap["3b"]]
+    assert snap["3b"] in info[snap["3a"]]["children"]
 
     assert snap["3b"] in info
     assert info[snap["3b"]]["parent"] == snap["3a"]
-    assert info[snap["3b"]]["children"] == [snap["3c"]]
+    assert snap["3c"] in info[snap["3b"]]["children"]
 
     assert snap["3c"] in info
     assert info[snap["3c"]]["parent"] == snap["3b"]
@@ -108,10 +108,10 @@ def snapshot_tree_verify_relationship(snap, strict):
     if strict:
         assert len(info) == 13
         assert info[snap["0a"]]["parent"] == ""
-        assert info[snap["3c"]]["children"] == [VOLUME_HEAD]
+        assert VOLUME_HEAD in info[snap["3c"]]["children"]
         assert VOLUME_HEAD in info
         assert info[VOLUME_HEAD]["parent"] == snap["3c"]
-        assert info[VOLUME_HEAD]["children"] == []
+        assert not info[VOLUME_HEAD]["children"]
 
         output = cmd.snapshot_ls()
         assert output == '''ID

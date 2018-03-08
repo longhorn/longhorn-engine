@@ -197,7 +197,7 @@ def test_replica_add_rebuild(bin, controller_client, replica_client,
     head_info = info[volumehead]
     assert head_info["name"] == volumehead
     assert head_info["parent"] == snapreb
-    assert head_info["children"] == []
+    assert not head_info["children"]
     assert head_info["removed"] is False
     assert head_info["usercreated"] is False
     assert head_info["size"] == "0"
@@ -205,7 +205,7 @@ def test_replica_add_rebuild(bin, controller_client, replica_client,
     snapreb_info = info[snapreb]
     assert snapreb_info["name"] == snapreb
     assert snapreb_info["parent"] == snap1
-    assert snapreb_info["children"] == [volumehead]
+    assert volumehead in snapreb_info["children"]
     assert snapreb_info["removed"] is False
     assert snapreb_info["usercreated"] is False
     assert snapreb_info["size"] == "0"
@@ -213,7 +213,7 @@ def test_replica_add_rebuild(bin, controller_client, replica_client,
     snap1_info = info[snap1]
     assert snap1_info["name"] == snap1
     assert snap1_info["parent"] == snap0
-    assert snap1_info["children"] == [snapreb]
+    assert snapreb in snap1_info["children"]
     assert snap1_info["removed"] is False
     assert snap1_info["usercreated"] is True
     assert snap1_info["created"] == createtime1
@@ -222,7 +222,7 @@ def test_replica_add_rebuild(bin, controller_client, replica_client,
     snap0_info = info[snap0]
     assert snap0_info["name"] == snap0
     assert snap0_info["parent"] == ""
-    assert snap0_info["children"] == [snap1]
+    assert snap1 in snap0_info["children"]
     assert snap0_info["removed"] is False
     assert snap0_info["usercreated"] is False
     assert snap0_info["created"] == createtime0
@@ -409,7 +409,7 @@ def test_snapshot_info(bin, controller_client,
     head_info = info[volumehead]
     assert head_info["name"] == volumehead
     assert head_info["parent"] == snap2.id
-    assert head_info["children"] == []
+    assert not head_info["children"]
     assert head_info["removed"] is False
     assert head_info["usercreated"] is False
     assert head_info["created"] != ""
@@ -418,7 +418,7 @@ def test_snapshot_info(bin, controller_client,
     snap2_info = info[snap2.id]
     assert snap2_info["name"] == snap2.id
     assert snap2_info["parent"] == snap.id
-    assert snap2_info["children"] == [volumehead]
+    assert volumehead in snap2_info["children"]
     assert snap2_info["removed"] is False
     assert snap2_info["usercreated"] is True
     assert snap2_info["created"] != ""
@@ -428,7 +428,7 @@ def test_snapshot_info(bin, controller_client,
     snap_info = info[snap.id]
     assert snap_info["name"] == snap.id
     assert snap_info["parent"] == ""
-    assert snap_info["children"] == [snap2.id]
+    assert snap2.id in snap_info["children"]
     assert snap_info["removed"] is False
     assert snap_info["usercreated"] is True
     assert snap_info["created"] != ""
