@@ -2,6 +2,7 @@ package sync
 
 import (
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/Sirupsen/logrus"
@@ -474,6 +475,7 @@ func GetSnapshotsInfo(replicas []rest.Replica) (map[string]replica.DiskInfo, err
 			return nil, err
 		}
 
+		newOutput := make(map[string]replica.DiskInfo)
 		for name, disk := range disks {
 			snapshot := ""
 
@@ -515,15 +517,28 @@ func GetSnapshotsInfo(replicas []rest.Replica) (map[string]replica.DiskInfo, err
 				Size:        disk.Size,
 				Labels:      disk.Labels,
 			}
-			if _, exists := outputDisks[snapshot]; !exists {
-				outputDisks[snapshot] = info
+			if _, exists := newOutput[snapshot]; !exists {
+				newOutput[snapshot] = info
 			} else {
 				// Consolidate the result of snapshot in removing process
-				if info.Removed && !outputDisks[snapshot].Removed {
-					t := outputDisks[snapshot]
+				if info.Removed && !newOutput[snapshot].Removed {
+					t := newOutput[snapshot]
 					t.Removed = true
-					outputDisks[snapshot] = t
+					newOutput[snapshot] = t
 				}
+			}
+		}
+
+		if len(outputDisks) == 0 {
+			outputDisks = newOutput
+			continue
+		}
+		for k, v := range outputDisks {
+			if newOutput[k].Removed || v.Removed {
+				continue
+			}
+			if !reflect.DeepEqual(newOutput[k], v) {
+				return nil, fmt.Errorf("BUG: Inconsistent snapshot info: %+v vs %+v", newOutput[k], v)
 			}
 		}
 
