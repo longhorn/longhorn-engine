@@ -352,8 +352,8 @@ func (t *Task) reloadAndVerify(address string, repClient *replicaClient.ReplicaC
 func (t *Task) syncFiles(fromClient *replicaClient.ReplicaClient, toClient *replicaClient.ReplicaClient, disks []string) error {
 	// volume head has been synced by PrepareRebuild()
 	for _, disk := range disks {
-		if strings.Contains(disk, "volume-head") {
-			return fmt.Errorf("Disk list shouldn't contain volume-head")
+		if strings.Contains(disk, VolumeHeadName) {
+			return fmt.Errorf("Disk list shouldn't contain %s", VolumeHeadName)
 		}
 		if err := t.syncFile(disk, "", fromClient, toClient); err != nil {
 			return err

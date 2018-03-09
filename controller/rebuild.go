@@ -9,19 +9,29 @@ import (
 	"github.com/rancher/longhorn-engine/types"
 )
 
-func getReplicaChain(address string) ([]string, error) {
+func getReplicaDisksAndHead(address string) (map[string]struct{}, string, error) {
 	repClient, err := client.NewReplicaClient(address)
 	if err != nil {
-		return nil, fmt.Errorf("Cannot get replica client for %v: %v",
+		return nil, "", fmt.Errorf("Cannot get replica client for %v: %v",
 			address, err)
 	}
 
 	rep, err := repClient.GetReplica()
 	if err != nil {
-		return nil, fmt.Errorf("Cannot get replica for %v: %v",
+		return nil, "", fmt.Errorf("Cannot get replica for %v: %v",
 			address, err)
 	}
-	return rep.Chain, nil
+
+	disks := map[string]struct{}{}
+	head := rep.Chain[0]
+	for diskName := range rep.Disks {
+		// skip volume head
+		if diskName == head {
+			continue
+		}
+		disks[diskName] = struct{}{}
+	}
+	return disks, head, nil
 }
 
 func (c *Controller) getCurrentAndRWReplica(address string) (*types.Replica, *types.Replica, error) {
@@ -64,20 +74,17 @@ func (c *Controller) VerifyRebuildReplica(address string) error {
 		return fmt.Errorf("Invalid mode %v for replica %v to check", replica.Mode, address)
 	}
 
-	rwChain, err := getReplicaChain(rwReplica.Address)
+	fromDisks, _, err := getReplicaDisksAndHead(rwReplica.Address)
 	if err != nil {
 		return err
 	}
-	// Don't need to compare the volume head disk
-	rwChain = rwChain[1:]
 
-	chain, err := getReplicaChain(address)
+	toDisks, _, err := getReplicaDisksAndHead(address)
 	if err != nil {
 		return err
 	}
-	chain = chain[1:]
 
-	if !reflect.DeepEqual(rwChain, chain) {
+	if !reflect.DeepEqual(fromDisks, toDisks) {
 		return fmt.Errorf("Replica %v's chain not equal to RW replica %v's chain",
 			address, rwReplica.Address)
 	}
@@ -146,22 +153,23 @@ func (c *Controller) PrepareRebuildReplica(address string) ([]string, error) {
 		return nil, fmt.Errorf("Invalid mode %v for replica %v to prepare rebuild", replica.Mode, address)
 	}
 
-	rwChain, err := getReplicaChain(rwReplica.Address)
+	fromDisks, fromHead, err := getReplicaDisksAndHead(rwReplica.Address)
 	if err != nil {
 		return nil, err
 	}
 
-	fromHead := rwChain[0]
-
-	chain, err := getReplicaChain(address)
+	_, toHead, err := getReplicaDisksAndHead(address)
 	if err != nil {
 		return nil, err
 	}
-	toHead := chain[0]
 
 	if err := syncFile(fromHead+".meta", toHead+".meta", rwReplica, replica); err != nil {
 		return nil, err
 	}
 
-	return rwChain[1:], nil
+	ret := []string{}
+	for disk := range fromDisks {
+		ret = append(ret, disk)
+	}
+	return ret, nil
 }
