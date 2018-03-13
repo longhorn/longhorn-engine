@@ -533,12 +533,19 @@ func GetSnapshotsInfo(replicas []rest.Replica) (map[string]replica.DiskInfo, err
 			outputDisks = newOutput
 			continue
 		}
-		for k, v := range outputDisks {
-			if newOutput[k].Removed || v.Removed {
+		for k, old := range outputDisks {
+			new := newOutput[k]
+			if new.Removed || old.Removed {
 				continue
 			}
-			if !reflect.DeepEqual(newOutput[k], v) {
-				return nil, fmt.Errorf("BUG: Inconsistent snapshot info: %+v vs %+v", newOutput[k], v)
+			// There can be slight different regarding the creation
+			// time of snapshot since we're doing it one by one, so
+			// ignore that difference
+			if new.Created != old.Created {
+				new.Created = old.Created
+			}
+			if !reflect.DeepEqual(new, old) {
+				return nil, fmt.Errorf("BUG: Inconsistent snapshot info: %+v vs %+v", new, old)
 			}
 		}
 
