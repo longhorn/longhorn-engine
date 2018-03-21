@@ -1,4 +1,4 @@
-Longhorn Engine [![Build Status](https://drone.rancher.io/api/badges/rancher/longhorn-engine/status.svg)](https://drone.rancher.io/rancher/longhorn-engine)
+Longhorn Engine [![Build Status](https://drone8.rancher.io/api/badges/rancher/longhorn-engine/status.svg)](https://drone8.rancher.io/rancher/longhorn-engine)
 ========
 
 Longhorn Engine implements a lightweight block device storage controller capable of storing the data in a number of replicas. It functions like a network RAID controller.
