@@ -139,6 +139,7 @@ func (t *Tgt) handleServerConnection(c net.Conn, rw types.ReaderWriterAt) {
 	defer c.Close()
 
 	server := rpc.NewServer(c, NewDataProcessorWrapper(rw))
+	logrus.Infoln("New data socket connnection established")
 	if err := server.Handle(); err != nil && err != io.EOF {
 		logrus.Errorln("Fail to handle socket server connection due to ", err)
 	} else if err == io.EOF {
