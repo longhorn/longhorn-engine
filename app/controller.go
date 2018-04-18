@@ -104,8 +104,6 @@ func startController(c *cli.Context) error {
 		}
 	}
 
-	logrus.Infof("Listening on %s", listen)
-
 	addShutdown(func() {
 		control.Shutdown()
 	})

@@ -3,6 +3,8 @@ package controller
 import (
 	"fmt"
 	"net/http"
+	"strconv"
+	"strings"
 	"sync"
 
 	"github.com/Sirupsen/logrus"
@@ -20,6 +22,8 @@ type Controller struct {
 	backend    *replicator
 	frontend   types.Frontend
 
+	listenAddr string
+	listenPort string
 	RestServer *http.Server
 	shutdownCh chan error
 }
@@ -43,6 +47,8 @@ func (c *Controller) StartRestServer() error {
 	go func() {
 		c.shutdownCh <- c.RestServer.ListenAndServe()
 	}()
+	logrus.Infof("Listening on %s", c.RestServer.Addr)
+
 	return nil
 }
 
@@ -427,4 +433,33 @@ func (c *Controller) monitoring(address string, backend types.Backend) {
 
 func (c *Controller) Endpoint() string {
 	return c.frontend.Endpoint()
+}
+
+func (c *Controller) UpdatePort(newPort int) error {
+	oldServer := c.RestServer
+	if oldServer == nil {
+		return fmt.Errorf("old rest server doesn't exist")
+	}
+	oldAddr := c.RestServer.Addr
+	handler := c.RestServer.Handler
+	addrs := strings.Split(oldAddr, ":")
+	newAddr := addrs[0] + ":" + strconv.Itoa(newPort)
+
+	logrus.Infof("About to change to listen to %v", newAddr)
+	newServer := &http.Server{
+		Addr:    newAddr,
+		Handler: handler,
+	}
+	// replace old chan because we're about to shutdown the old server
+	newChan := make(chan error)
+	c.shutdownCh = newChan
+	c.RestServer = newServer
+	c.StartRestServer()
+
+	// this will immediate shutdown all the existing connections. the
+	// pending http requests would error out
+	if err := oldServer.Close(); err != nil {
+		logrus.Warnf("Failed to close old server at %v: %v", oldAddr, err)
+	}
+	return nil
 }
