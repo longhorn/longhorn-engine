@@ -67,6 +67,11 @@ type PrepareRebuildOutput struct {
 	Disks []string `json:"disks"`
 }
 
+type PortInput struct {
+	client.Resource
+	Port int `json:"port"`
+}
+
 func NewVolume(context *api.ApiContext, name, endpoint string, replicas int) *Volume {
 	v := &Volume{
 		Resource: client.Resource{
@@ -128,6 +133,7 @@ func NewSchema() *client.Schemas {
 	schemas.AddType("revertInput", RevertInput{})
 	schemas.AddType("journalInput", JournalInput{})
 	schemas.AddType("prepareRebuildOutput", PrepareRebuildOutput{})
+	schemas.AddType("portInput", PortInput{})
 
 	replica := schemas.AddType("replica", Replica{})
 	replica.CollectionMethods = []string{"GET", "POST"}

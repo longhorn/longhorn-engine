@@ -37,5 +37,8 @@ func NewRouter(s *Server) *mux.Router {
 	// Journal
 	router.Methods("POST").Path("/v1/journal").Handler(f(schemas, s.ListJournal))
 
+	// Settings
+	router.Methods("POST").Path("/v1/settings/updateport").Handler(f(schemas, s.UpdatePort))
+
 	return router
 }
