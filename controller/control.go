@@ -2,6 +2,7 @@ package controller
 
 import (
 	"fmt"
+	"net/http"
 	"sync"
 
 	"github.com/Sirupsen/logrus"
@@ -18,6 +19,9 @@ type Controller struct {
 	factory    types.BackendFactory
 	backend    *replicator
 	frontend   types.Frontend
+
+	RestServer *http.Server
+	shutdownCh chan error
 }
 
 func NewController(name string, factory types.BackendFactory, frontend types.Frontend) *Controller {
@@ -25,9 +29,25 @@ func NewController(name string, factory types.BackendFactory, frontend types.Fro
 		factory:  factory,
 		Name:     name,
 		frontend: frontend,
+
+		shutdownCh: make(chan error),
 	}
 	c.reset()
 	return c
+}
+
+func (c *Controller) StartRestServer() error {
+	if c.RestServer == nil {
+		return fmt.Errorf("cannot find rest server")
+	}
+	go func() {
+		c.shutdownCh <- c.RestServer.ListenAndServe()
+	}()
+	return nil
+}
+
+func (c *Controller) WaitForShutdown() error {
+	return <-c.shutdownCh
 }
 
 func (c *Controller) AddReplica(address string) error {

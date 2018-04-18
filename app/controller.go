@@ -110,5 +110,11 @@ func startController(c *cli.Context) error {
 		control.Shutdown()
 	})
 
-	return http.ListenAndServe(listen, router)
+	httpServer := &http.Server{
+		Addr:    listen,
+		Handler: router,
+	}
+	control.RestServer = httpServer
+	control.StartRestServer()
+	return control.WaitForShutdown()
 }
