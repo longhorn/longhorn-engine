@@ -9,6 +9,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 
+	"github.com/rancher/longhorn-engine/iscsi"
 	"github.com/rancher/longhorn-engine/rpc"
 	"github.com/rancher/longhorn-engine/types"
 	"github.com/rancher/longhorn-engine/util"
@@ -31,7 +32,7 @@ type Tgt struct {
 	isUp         bool
 	socketPath   string
 	socketServer *rpc.Server
-	scsiDevice   *ScsiDevice
+	scsiDevice   *iscsi.ScsiDevice
 }
 
 func (t *Tgt) Startup(name string, size, sectorSize int64, rw types.ReaderWriterAt) error {
@@ -71,7 +72,7 @@ func (t *Tgt) Shutdown() error {
 			t.socketServer.Stop()
 			t.socketServer = nil
 		}
-		if err := StopScsi(t.Volume); err != nil {
+		if err := iscsi.StopScsi(t.Volume); err != nil {
 			return fmt.Errorf("Fail to stop SCSI device: %v", err)
 		}
 	}
@@ -176,13 +177,13 @@ func (t *Tgt) getDev() string {
 func (t *Tgt) startScsiDevice() error {
 	if t.scsiDevice == nil {
 		bsOpts := fmt.Sprintf("size=%v", t.Size)
-		scsiDev, err := NewScsiDevice(t.Volume, t.socketPath, "longhorn", bsOpts)
+		scsiDev, err := iscsi.NewScsiDevice(t.Volume, t.socketPath, "longhorn", bsOpts)
 		if err != nil {
 			return err
 		}
 		t.scsiDevice = scsiDev
 	}
-	if err := StartScsi(t.scsiDevice); err != nil {
+	if err := iscsi.StartScsi(t.scsiDevice); err != nil {
 		return err
 	}
 	logrus.Infof("SCSI device %s created", t.scsiDevice.Device)
