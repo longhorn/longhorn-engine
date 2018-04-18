@@ -2,49 +2,39 @@ package tgt
 
 import (
 	"fmt"
-	"io"
-	"net"
 	"os"
 	"path/filepath"
 
 	"github.com/Sirupsen/logrus"
 
+	"github.com/rancher/longhorn-engine/frontend/socket"
 	"github.com/rancher/longhorn-engine/iscsi"
-	"github.com/rancher/longhorn-engine/rpc"
 	"github.com/rancher/longhorn-engine/types"
 	"github.com/rancher/longhorn-engine/util"
 )
 
 const (
-	SocketDirectory = "/var/run"
-	DevPath         = "/dev/longhorn/"
+	DevPath = "/dev/longhorn/"
 )
 
-func New() types.Frontend {
-	return &Tgt{}
+type Tgt struct {
+	s *socket.Socket
+
+	isUp       bool
+	scsiDevice *iscsi.ScsiDevice
 }
 
-type Tgt struct {
-	Volume     string
-	Size       int64
-	SectorSize int
-
-	isUp         bool
-	socketPath   string
-	socketServer *rpc.Server
-	scsiDevice   *iscsi.ScsiDevice
+func New() types.Frontend {
+	s := socket.New()
+	return &Tgt{s, false, nil}
 }
 
 func (t *Tgt) Startup(name string, size, sectorSize int64, rw types.ReaderWriterAt) error {
-	t.Volume = name
-	t.Size = size
-	t.SectorSize = int(sectorSize)
-
 	if err := t.Shutdown(); err != nil {
 		return err
 	}
 
-	if err := t.startSocketServer(rw); err != nil {
+	if err := t.s.Startup(name, size, sectorSize, rw); err != nil {
 		return err
 	}
 
@@ -62,19 +52,17 @@ func (t *Tgt) Startup(name string, size, sectorSize int64, rw types.ReaderWriter
 }
 
 func (t *Tgt) Shutdown() error {
-	if t.Volume != "" {
+	if t.s.Volume != "" {
 		dev := t.getDev()
 		if err := util.RemoveDevice(dev); err != nil {
 			return fmt.Errorf("Fail to remove device %s: %v", dev, err)
 		}
-		if t.socketServer != nil {
-			logrus.Infof("Shutdown TGT socket server for %v", t.Volume)
-			t.socketServer.Stop()
-			t.socketServer = nil
-		}
-		if err := iscsi.StopScsi(t.Volume); err != nil {
+		if err := iscsi.StopScsi(t.s.Volume); err != nil {
 			return fmt.Errorf("Fail to stop SCSI device: %v", err)
 		}
+	}
+	if err := t.s.Shutdown(); err != nil {
+		return err
 	}
 	t.isUp = false
 
@@ -95,89 +83,14 @@ func (t *Tgt) Endpoint() string {
 	return ""
 }
 
-func (t *Tgt) getSocketPath() string {
-	if t.Volume == "" {
-		panic("Invalid volume name")
-	}
-	return filepath.Join(SocketDirectory, "longhorn-"+t.Volume+".sock")
-}
-
-func (t *Tgt) startSocketServer(rw types.ReaderWriterAt) error {
-	socketPath := t.getSocketPath()
-	if err := os.MkdirAll(filepath.Dir(socketPath), 0700); err != nil {
-		return fmt.Errorf("Cannot create directory %v", filepath.Dir(socketPath))
-	}
-	// Check and remove existing socket
-	if st, err := os.Stat(socketPath); err == nil && !st.IsDir() {
-		if err := os.Remove(socketPath); err != nil {
-			return err
-		}
-	}
-
-	t.socketPath = socketPath
-	go t.startSocketServerListen(rw)
-	return nil
-}
-
-func (t *Tgt) startSocketServerListen(rw types.ReaderWriterAt) error {
-	ln, err := net.Listen("unix", t.socketPath)
-	if err != nil {
-		return err
-	}
-	defer ln.Close()
-
-	for {
-		conn, err := ln.Accept()
-		if err != nil {
-			logrus.Errorln("Fail to accept socket connection")
-			continue
-		}
-		go t.handleServerConnection(conn, rw)
-	}
-}
-
-func (t *Tgt) handleServerConnection(c net.Conn, rw types.ReaderWriterAt) {
-	defer c.Close()
-
-	server := rpc.NewServer(c, NewDataProcessorWrapper(rw))
-	logrus.Infoln("New data socket connnection established")
-	if err := server.Handle(); err != nil && err != io.EOF {
-		logrus.Errorln("Fail to handle socket server connection due to ", err)
-	} else if err == io.EOF {
-		logrus.Warnln("Socket server connection closed")
-	}
-}
-
-type DataProcessorWrapper struct {
-	rw types.ReaderWriterAt
-}
-
-func NewDataProcessorWrapper(rw types.ReaderWriterAt) DataProcessorWrapper {
-	return DataProcessorWrapper{
-		rw: rw,
-	}
-}
-
-func (d DataProcessorWrapper) ReadAt(p []byte, off int64) (n int, err error) {
-	return d.rw.ReadAt(p, off)
-}
-
-func (d DataProcessorWrapper) WriteAt(p []byte, off int64) (n int, err error) {
-	return d.rw.WriteAt(p, off)
-}
-
-func (d DataProcessorWrapper) PingResponse() error {
-	return nil
-}
-
 func (t *Tgt) getDev() string {
-	return filepath.Join(DevPath, t.Volume)
+	return filepath.Join(DevPath, t.s.Volume)
 }
 
 func (t *Tgt) startScsiDevice() error {
 	if t.scsiDevice == nil {
-		bsOpts := fmt.Sprintf("size=%v", t.Size)
-		scsiDev, err := iscsi.NewScsiDevice(t.Volume, t.socketPath, "longhorn", bsOpts)
+		bsOpts := fmt.Sprintf("size=%v", t.s.Size)
+		scsiDev, err := iscsi.NewScsiDevice(t.s.Volume, t.s.GetSocketPath(), "longhorn", bsOpts)
 		if err != nil {
 			return err
 		}
