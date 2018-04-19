@@ -14,7 +14,14 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
+	"github.com/rancher/longhorn-engine/iscsi"
+	"github.com/rancher/longhorn-engine/util"
 	"github.com/yasker/longhorn-engine-launcher/rpc"
+)
+
+const (
+	SocketDirectory = "/var/run"
+	DevPath         = "/dev/longhorn/"
 )
 
 type Launcher struct {
@@ -22,6 +29,9 @@ type Launcher struct {
 	longhornBinary string
 	frontend       string
 	volumeName     string
+	size           int64
+
+	scsiDevice *iscsi.ScsiDevice
 
 	rpcShutdownCh chan error
 
@@ -29,7 +39,7 @@ type Launcher struct {
 	currentControllerShutdownCh chan error
 }
 
-func NewLauncher(listen, longhornBinary, frontend, volumeName string) (*Launcher, error) {
+func NewLauncher(listen, longhornBinary, frontend, volumeName string, size int64) (*Launcher, error) {
 	if frontend != "tgt-blockdev" && frontend != "tgt-iscsi" {
 		return nil, fmt.Errorf("Invalid frontend %v", frontend)
 	}
@@ -38,12 +48,65 @@ func NewLauncher(listen, longhornBinary, frontend, volumeName string) (*Launcher
 		longhornBinary: longhornBinary,
 		frontend:       frontend,
 		volumeName:     volumeName,
+		size:           size,
 	}, nil
 }
 
 func (l *Launcher) StartController(c *Controller) error {
 	l.currentController = c
 	l.currentControllerShutdownCh = c.Start()
+	if err := l.startScsiDevice(); err != nil {
+		return err
+	}
+
+	if err := l.createDev(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (l *Launcher) getDev() string {
+	return filepath.Join(DevPath, l.volumeName)
+}
+
+func (l *Launcher) GetSocketPath() string {
+	if l.volumeName == "" {
+		panic("Invalid volume name")
+	}
+	return filepath.Join(SocketDirectory, "longhorn-"+l.volumeName+".sock")
+}
+
+func (l *Launcher) startScsiDevice() error {
+	if l.scsiDevice == nil {
+		bsOpts := fmt.Sprintf("size=%v", l.size)
+		scsiDev, err := iscsi.NewScsiDevice(l.volumeName, l.GetSocketPath(), "longhorn", bsOpts)
+		if err != nil {
+			return err
+		}
+		l.scsiDevice = scsiDev
+	}
+	if err := iscsi.StartScsi(l.scsiDevice); err != nil {
+		return err
+	}
+	logrus.Infof("SCSI device %s created", l.scsiDevice.Device)
+	return nil
+}
+
+func (l *Launcher) createDev() error {
+	if err := os.MkdirAll(DevPath, 0700); err != nil {
+		logrus.Fatalln("Cannot create directory ", DevPath)
+	}
+
+	dev := l.getDev()
+	if _, err := os.Stat(dev); err == nil {
+		return fmt.Errorf("Device %s already exists, can not create", dev)
+	}
+
+	if err := util.DuplicateDevice(l.scsiDevice.Device, dev); err != nil {
+		return err
+	}
+	logrus.Infof("Device %s is ready", dev)
 	return nil
 }
 

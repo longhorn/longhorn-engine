@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/docker/go-units"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 	"golang.org/x/net/context"
@@ -29,6 +30,9 @@ func StartCmd() cli.Command {
 			cli.StringFlag{
 				Name:  "launcher-listen",
 				Value: "localhost:9510",
+			},
+			cli.StringFlag{
+				Name: "size",
 			},
 			cli.StringFlag{
 				Name:  "listen",
@@ -102,7 +106,16 @@ func start(c *cli.Context) error {
 	replicas := c.StringSlice("replica")
 	frontend := c.String("frontend")
 
-	l, err := NewLauncher(launcherListen, longhornBinary, frontend, name)
+	sizeString := c.String("size")
+	if sizeString == "" {
+		return fmt.Errorf("Invalid empty size")
+	}
+	size, err := units.RAMInBytes(sizeString)
+	if err != nil {
+		return err
+	}
+
+	l, err := NewLauncher(launcherListen, longhornBinary, frontend, name, size)
 	if err != nil {
 		return err
 	}
