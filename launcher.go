@@ -4,9 +4,7 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"os/exec"
 	"path/filepath"
-	"syscall"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/pkg/errors"
@@ -33,6 +31,7 @@ type Launcher struct {
 
 	scsiDevice *iscsi.ScsiDevice
 
+	rpcService    *grpc.Server
 	rpcShutdownCh chan error
 
 	currentController           *Controller
@@ -63,6 +62,18 @@ func (l *Launcher) StartController(c *Controller) error {
 		return err
 	}
 
+	return nil
+}
+
+func (l *Launcher) ShutdownController(c *Controller) error {
+	dev := l.getDev()
+	if err := util.RemoveDevice(dev); err != nil {
+		return fmt.Errorf("Fail to remove device %s: %v", dev, err)
+	}
+	if err := iscsi.StopScsi(l.volumeName); err != nil {
+		return fmt.Errorf("Fail to stop SCSI device: %v", err)
+	}
+	c.Stop()
 	return nil
 }
 
@@ -111,16 +122,28 @@ func (l *Launcher) createDev() error {
 }
 
 func (l *Launcher) WaitForShutdown() error {
-	var controllerError, rpcError error
 	select {
-	case controllerError = <-l.currentControllerShutdownCh:
-		logrus.Warnf("Receive controller shutdown: %v", controllerError)
-		return controllerError
-	case rpcError = <-l.rpcShutdownCh:
+	/*
+		case controllerError = <-l.currentControllerShutdownCh:
+			logrus.Warnf("Receive controller shutdown: %v", controllerError)
+			return controllerError
+	*/
+	case rpcError := <-l.rpcShutdownCh:
 		logrus.Warnf("Receive rpc shutdown: %v", rpcError)
 		return rpcError
 	}
 	return nil
+}
+
+func (l *Launcher) Shutdown() {
+	l.ShutdownController(l.currentController)
+	controllerError := <-l.currentControllerShutdownCh
+	logrus.Info("Longhorn Engine has been shutdown")
+	if controllerError != nil {
+		logrus.Warnf("Engine returns %v", controllerError)
+	}
+	l.rpcService.Stop()
+	logrus.Info("Longhorn Engine Launcher has been shutdown")
 }
 
 func (l *Launcher) StartRPCServer() error {
@@ -129,13 +152,13 @@ func (l *Launcher) StartRPCServer() error {
 		return errors.Wrap(err, "Failed to listen")
 	}
 
-	s := grpc.NewServer()
-	rpc.RegisterLonghornLauncherServiceServer(s, l)
-	reflection.Register(s)
+	l.rpcService = grpc.NewServer()
+	rpc.RegisterLonghornLauncherServiceServer(l.rpcService, l)
+	reflection.Register(l.rpcService)
 
 	l.rpcShutdownCh = make(chan error)
 	go func() {
-		l.rpcShutdownCh <- s.Serve(listen)
+		l.rpcShutdownCh <- l.rpcService.Serve(listen)
 	}()
 	return nil
 }
@@ -146,62 +169,4 @@ func (l *Launcher) UpgradeEngine(cxt context.Context, engine *rpc.Engine) (*rpc.
 		return &rpc.Empty{}, fmt.Errorf("error")
 	}
 	return &rpc.Empty{}, nil
-}
-
-type Controller struct {
-	volumeName string
-
-	binary   string
-	listen   string
-	backends []string
-	replicas []string
-}
-
-func NewController(binary, volumeName, listen string, backends, replicas []string) *Controller {
-	return &Controller{
-		binary:     binary,
-		volumeName: volumeName,
-		listen:     listen,
-		backends:   backends,
-		replicas:   replicas,
-	}
-}
-
-func (c *Controller) Start() chan error {
-	resp := make(chan error)
-
-	exe, err := exec.LookPath(c.binary)
-	if err != nil {
-		resp <- err
-		return resp
-	}
-
-	exe, err = filepath.Abs(exe)
-	if err != nil {
-		resp <- err
-		return resp
-	}
-
-	go func() {
-		args := []string{
-			"controller", c.volumeName,
-			"--listen", c.listen,
-			"--frontend", "socket",
-		}
-		for _, b := range c.backends {
-			args = append(args, "--enable-backend", b)
-		}
-		for _, r := range c.replicas {
-			args = append(args, "--replica", r)
-		}
-		cmd := exec.Command(exe, args...)
-		cmd.SysProcAttr = &syscall.SysProcAttr{
-			Pdeathsig: syscall.SIGKILL,
-		}
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-		resp <- cmd.Run()
-	}()
-
-	return resp
 }

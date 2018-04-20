@@ -3,6 +3,8 @@ package main
 import (
 	"fmt"
 	"os"
+	"os/signal"
+	"syscall"
 	"time"
 
 	"github.com/Sirupsen/logrus"
@@ -126,6 +128,15 @@ func start(c *cli.Context) error {
 	if err := l.StartRPCServer(); err != nil {
 		return err
 	}
+
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		sig := <-sigs
+		logrus.Infof("Receive %v to exit", sig)
+		l.Shutdown()
+	}()
+
 	return l.WaitForShutdown()
 }
 
