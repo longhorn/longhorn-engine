@@ -1,26 +1,36 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"syscall"
+
+	"github.com/Sirupsen/logrus"
+	"github.com/pkg/errors"
+)
+
+const (
+	BackupListenPort = 9511
 )
 
 type Controller struct {
 	volumeName string
 
-	binary   string
-	listen   string
-	backends []string
-	replicas []string
+	Binary       string
+	backupBinary string
+	listen       string
+	backends     []string
+	replicas     []string
 
 	cmd *exec.Cmd
 }
 
 func NewController(binary, volumeName, listen string, backends, replicas []string) *Controller {
 	return &Controller{
-		binary:     binary,
+		Binary:     binary,
 		volumeName: volumeName,
 		listen:     listen,
 		backends:   backends,
@@ -31,7 +41,7 @@ func NewController(binary, volumeName, listen string, backends, replicas []strin
 func (c *Controller) Start() chan error {
 	resp := make(chan error)
 
-	exe, err := exec.LookPath(c.binary)
+	exe, err := exec.LookPath(c.Binary)
 	if err != nil {
 		resp <- err
 		return resp
@@ -70,4 +80,76 @@ func (c *Controller) Start() chan error {
 
 func (c *Controller) Stop() {
 	c.cmd.Process.Signal(syscall.SIGINT)
+}
+
+func (c *Controller) BackupBinary() error {
+	if c.backupBinary != "" {
+		logrus.Warnf("launcher: backup binary %v already exists", c.backupBinary)
+		return nil
+	}
+	backupBinary := c.Binary + ".bak"
+	if err := cp(c.Binary, backupBinary); err != nil {
+		return errors.Wrapf(err, "cannot make backup of %v", c.Binary)
+	}
+	c.backupBinary = backupBinary
+	logrus.Infof("launcher: backup binary %v to %v", c.Binary, c.backupBinary)
+	return nil
+}
+
+func (c *Controller) RemoveBackupBinary() error {
+	if c.backupBinary == "" {
+		logrus.Warnf("launcher: backup binary %v already removed", c.backupBinary)
+		return nil
+	}
+	if err := rm(c.backupBinary); err != nil {
+		return errors.Wrapf(err, "cannot remove backup binary %v", c.backupBinary)
+	}
+	c.backupBinary = ""
+	logrus.Infof("launcher: removed backup binary %v", c.backupBinary)
+	return nil
+}
+
+func (c *Controller) RestoreBackupBinary() error {
+	if c.backupBinary == "" {
+		return fmt.Errorf("cannot restore, backup binary doesn't exist")
+	}
+	if err := cp(c.backupBinary, c.Binary); err != nil {
+		return errors.Wrapf(err, "cannot restore backup of %v from %v", c.Binary, c.backupBinary)
+	}
+	if err := c.RemoveBackupBinary(); err != nil {
+		return errors.Wrapf(err, "failed to clean up backup binary %v", c.backupBinary)
+	}
+	logrus.Infof("launcher: backup binary %v restored", c.backupBinary)
+	return nil
+}
+
+func (c *Controller) SwitchToBackupListenPort() error {
+	//addrs := strings.Split(c.listen, ":")
+	//addr := addrs[0]
+	//backupListen := addr + ":" + strconv.Itoa(BackupListenPort)
+
+	client := NewControllerClient("http://" + c.listen)
+	if err := client.UpdatePort(BackupListenPort); err != nil {
+		if strings.Contains(err.Error(), "EOF") {
+			return nil
+		}
+		return err
+	}
+	return nil
+}
+
+func cp(src, dst string) error {
+	cmd := exec.Command("cp", src, dst)
+	if err := cmd.Run(); err != nil {
+		return errors.Wrapf(err, "fail to copy file %v to %v", src, dst)
+	}
+	return nil
+}
+
+func rm(f string) error {
+	cmd := exec.Command("rm", f)
+	if err := cmd.Run(); err != nil {
+		return errors.Wrapf(err, "fail to remove file %v", f)
+	}
+	return nil
 }

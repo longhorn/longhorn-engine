@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/pkg/errors"
@@ -20,6 +22,9 @@ import (
 const (
 	SocketDirectory = "/var/run"
 	DevPath         = "/dev/longhorn/"
+
+	WaitInterval = time.Second
+	WaitCount    = 10
 )
 
 type Launcher struct {
@@ -100,13 +105,13 @@ func (l *Launcher) startScsiDevice() error {
 	if err := iscsi.StartScsi(l.scsiDevice); err != nil {
 		return err
 	}
-	logrus.Infof("SCSI device %s created", l.scsiDevice.Device)
+	logrus.Infof("launcher: SCSI device %s created", l.scsiDevice.Device)
 	return nil
 }
 
 func (l *Launcher) createDev() error {
 	if err := os.MkdirAll(DevPath, 0700); err != nil {
-		logrus.Fatalln("Cannot create directory ", DevPath)
+		logrus.Fatalln("launcher: Cannot create directory ", DevPath)
 	}
 
 	dev := l.getDev()
@@ -117,7 +122,7 @@ func (l *Launcher) createDev() error {
 	if err := util.DuplicateDevice(l.scsiDevice.Device, dev); err != nil {
 		return err
 	}
-	logrus.Infof("Device %s is ready", dev)
+	logrus.Infof("launcher: Device %s is ready", dev)
 	return nil
 }
 
@@ -129,7 +134,7 @@ func (l *Launcher) WaitForShutdown() error {
 			return controllerError
 	*/
 	case rpcError := <-l.rpcShutdownCh:
-		logrus.Warnf("Receive rpc shutdown: %v", rpcError)
+		logrus.Warnf("launcher: Receive rpc shutdown: %v", rpcError)
 		return rpcError
 	}
 	return nil
@@ -138,12 +143,12 @@ func (l *Launcher) WaitForShutdown() error {
 func (l *Launcher) Shutdown() {
 	l.ShutdownController(l.currentController)
 	controllerError := <-l.currentControllerShutdownCh
-	logrus.Info("Longhorn Engine has been shutdown")
+	logrus.Info("launcher: Longhorn Engine has been shutdown")
 	if controllerError != nil {
-		logrus.Warnf("Engine returns %v", controllerError)
+		logrus.Warnf("launcher: Engine returns %v", controllerError)
 	}
 	l.rpcService.Stop()
-	logrus.Info("Longhorn Engine Launcher has been shutdown")
+	logrus.Info("launcher: Longhorn Engine Launcher has been shutdown")
 }
 
 func (l *Launcher) StartRPCServer() error {
@@ -164,9 +169,66 @@ func (l *Launcher) StartRPCServer() error {
 }
 
 func (l *Launcher) UpgradeEngine(cxt context.Context, engine *rpc.Engine) (*rpc.Empty, error) {
-	newController := NewController(engine.Binary, l.volumeName, engine.Listen, engine.EnableBackends, engine.Replicas)
-	if newController == nil {
-		return &rpc.Empty{}, fmt.Errorf("error")
+	oldController := l.currentController
+	//oldShutdownCh := l.currentControllerShutdownCh
+
+	if err := oldController.BackupBinary(); err != nil {
+		return nil, errors.Wrap(err, "failed to backup old controller binary")
 	}
+	if err := oldController.SwitchToBackupListenPort(); err != nil {
+		return nil, errors.Wrap(err, "failed to ask old controller to switch listening port")
+	}
+
+	binary := oldController.Binary
+	if err := l.updateControllerBinary(binary, engine.Binary); err != nil {
+		return nil, errors.Wrap(err, "failed to update controller binary")
+	}
+	if err := rm(l.GetSocketPath()); err != nil {
+		return nil, errors.Wrapf(err, "failed to remove socket %v", l.GetSocketPath())
+	}
+	newController := NewController(binary, l.volumeName, engine.Listen, engine.EnableBackends, engine.Replicas)
+
+	l.currentController = newController
+	l.currentControllerShutdownCh = newController.Start()
+	newSocket := false
+	for i := 0; i < WaitCount; i++ {
+		if _, err := os.Stat(l.GetSocketPath()); err == nil {
+			newSocket = true
+			break
+		}
+		logrus.Infof("launcher: wait for new controller to be up")
+		time.Sleep(WaitInterval)
+	}
+	if !newSocket {
+		logrus.Errorf("launcher: waiting for the new controller timed out")
+		// TODO rollback
+		return nil, fmt.Errorf("wait for the new controller timed out")
+	}
+	if err := l.reloadSocketConnection(); err != nil {
+		return nil, errors.Wrap(err, "failed to reload socket connection")
+	}
+	oldController.RemoveBackupBinary()
+	oldController.Stop()
 	return &rpc.Empty{}, nil
+}
+
+func (l *Launcher) updateControllerBinary(binary, newBinary string) (err error) {
+	defer func() {
+		err = errors.Wrapf(err, "failed to update controller binary %v to %v", binary, newBinary)
+	}()
+	if err := rm(binary); err != nil {
+		return err
+	}
+	if err := cp(newBinary, binary); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (l *Launcher) reloadSocketConnection() error {
+	cmd := exec.Command("sg_raw", l.getDev(), "a6", "00", "00", "00", "00", "00")
+	if err := cmd.Run(); err != nil {
+		return errors.Wrapf(err, "failed to reload socket connection")
+	}
+	return nil
 }

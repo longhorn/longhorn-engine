@@ -66,8 +66,7 @@ func UpgradeCmd() cli.Command {
 		Name: "upgrade",
 		Flags: []cli.Flag{
 			cli.StringFlag{
-				Name:  "longhorn-binary",
-				Value: "/usr/local/bin/longhorn",
+				Name: "longhorn-binary",
 			},
 			cli.StringFlag{
 				Name:  "listen",
@@ -88,7 +87,7 @@ func UpgradeCmd() cli.Command {
 		},
 		Action: func(c *cli.Context) {
 			if err := upgrade(c); err != nil {
-				logrus.Fatalf("Error running start command: %v.", err)
+				logrus.Fatalf("Error running upgrade command: %v.", err)
 			}
 		},
 	}
@@ -153,6 +152,10 @@ func upgrade(c *cli.Context) error {
 	backends := c.StringSlice("enable-backend")
 	replicas := c.StringSlice("replica")
 
+	if longhornBinary == "" || len(replicas) == 0 {
+		return fmt.Errorf("missing required parameters")
+	}
+
 	client := rpc.NewLonghornLauncherServiceClient(conn)
 	ctx, cancel := context.WithTimeout(context.Background(), UpgradeTimeout)
 	defer cancel()
@@ -173,7 +176,7 @@ func main() {
 	a.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  "url",
-			Value: "http://localhost:9510",
+			Value: "localhost:9510",
 		},
 		cli.BoolFlag{
 			Name: "debug",
@@ -181,6 +184,7 @@ func main() {
 	}
 	a.Commands = []cli.Command{
 		StartCmd(),
+		UpgradeCmd(),
 	}
 	if err := a.Run(os.Args); err != nil {
 		logrus.Fatal("Error when executing command: ", err)
