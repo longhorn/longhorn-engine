@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"os/signal"
@@ -18,7 +19,8 @@ import (
 )
 
 const (
-	UpgradeTimeout = 10 * time.Second
+	UpgradeTimeout  = 10 * time.Second
+	EndpointTimeout = 10 * time.Second
 )
 
 func StartCmd() cli.Command {
@@ -75,6 +77,17 @@ func UpgradeCmd() cli.Command {
 		Action: func(c *cli.Context) {
 			if err := upgrade(c); err != nil {
 				logrus.Fatalf("Error running upgrade command: %v.", err)
+			}
+		},
+	}
+}
+
+func EndpointCmd() cli.Command {
+	return cli.Command{
+		Name: "endpoint",
+		Action: func(c *cli.Context) {
+			if err := endpoint(c); err != nil {
+				logrus.Fatalf("Error running endpoint command: %v.", err)
 			}
 		},
 	}
@@ -154,6 +167,32 @@ func upgrade(c *cli.Context) error {
 	return nil
 }
 
+func endpoint(c *cli.Context) error {
+	url := c.GlobalString("url")
+	conn, err := grpc.Dial(url, grpc.WithInsecure())
+	if err != nil {
+		return fmt.Errorf("cannot connect to %v: %v", url, err)
+	}
+	defer conn.Close()
+
+	client := rpc.NewLonghornLauncherServiceClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), EndpointTimeout)
+	defer cancel()
+
+	endpoint, err := client.GetEndpoint(ctx, &rpc.Empty{})
+	if err != nil {
+		return fmt.Errorf("failed to get endpoint: %v", err)
+	}
+
+	output, err := json.MarshalIndent(endpoint, "", "\t")
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(string(output))
+	return nil
+}
+
 func main() {
 	a := cli.NewApp()
 	a.Flags = []cli.Flag{
@@ -168,6 +207,7 @@ func main() {
 	a.Commands = []cli.Command{
 		StartCmd(),
 		UpgradeCmd(),
+		EndpointCmd(),
 	}
 	if err := a.Run(os.Args); err != nil {
 		logrus.Fatal("Error when executing command: ", err)

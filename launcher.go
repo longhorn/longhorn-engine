@@ -212,6 +212,16 @@ func (l *Launcher) UpgradeEngine(cxt context.Context, engine *rpc.Engine) (*rpc.
 	return &rpc.Empty{}, nil
 }
 
+func (l *Launcher) GetEndpoint(cxt context.Context, empty *rpc.Empty) (*rpc.Endpoint, error) {
+	if l.frontend == "tgt-blockdev" {
+		return &rpc.Endpoint{
+			Frontend: l.frontend,
+			Endpoint: l.getDev(),
+		}, nil
+	}
+	return nil, fmt.Errorf("unsupported frontend %v", l.frontend)
+}
+
 func (l *Launcher) updateControllerBinary(binary, newBinary string) (err error) {
 	defer func() {
 		err = errors.Wrapf(err, "failed to update controller binary %v to %v", binary, newBinary)
