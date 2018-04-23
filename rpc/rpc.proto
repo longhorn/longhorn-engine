@@ -6,9 +6,7 @@ service LonghornLauncherService {
 
 message Engine {
 	string binary = 1;
-	string listen = 2;
-	repeated string replicas = 3;
-	repeated string enable_backends = 4;
+	repeated string replicas = 2;
 }
 
 message Empty {

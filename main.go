@@ -68,19 +68,6 @@ func UpgradeCmd() cli.Command {
 			cli.StringFlag{
 				Name: "longhorn-binary",
 			},
-			cli.StringFlag{
-				Name:  "listen",
-				Value: "localhost:9501",
-			},
-			cli.StringFlag{
-				Name:  "frontend",
-				Value: "tgt-blockdev",
-				Usage: "Supports tgt-blockdev",
-			},
-			cli.StringSliceFlag{
-				Name:  "enable-backend",
-				Value: (*cli.StringSlice)(&[]string{"tcp"}),
-			},
 			cli.StringSliceFlag{
 				Name: "replica",
 			},
@@ -148,8 +135,6 @@ func upgrade(c *cli.Context) error {
 	defer conn.Close()
 
 	longhornBinary := c.String("longhorn-binary")
-	listen := c.String("listen")
-	backends := c.StringSlice("enable-backend")
 	replicas := c.StringSlice("replica")
 
 	if longhornBinary == "" || len(replicas) == 0 {
@@ -161,10 +146,8 @@ func upgrade(c *cli.Context) error {
 	defer cancel()
 
 	if _, err := client.UpgradeEngine(ctx, &rpc.Engine{
-		Binary:         longhornBinary,
-		Listen:         listen,
-		Replicas:       replicas,
-		EnableBackends: backends,
+		Binary:   longhornBinary,
+		Replicas: replicas,
 	}); err != nil {
 		return fmt.Errorf("failed to upgrade: %v", err)
 	}

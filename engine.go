@@ -19,11 +19,12 @@ const (
 type Controller struct {
 	volumeName string
 
-	Binary       string
-	backupBinary string
-	listen       string
-	backends     []string
+	Binary   string
+	Listen   string
+	Backends []string
+
 	replicas     []string
+	backupBinary string
 
 	cmd *exec.Cmd
 }
@@ -32,8 +33,8 @@ func NewController(binary, volumeName, listen string, backends, replicas []strin
 	return &Controller{
 		Binary:     binary,
 		volumeName: volumeName,
-		listen:     listen,
-		backends:   backends,
+		Listen:     listen,
+		Backends:   backends,
 		replicas:   replicas,
 	}
 }
@@ -56,10 +57,10 @@ func (c *Controller) Start() chan error {
 	go func() {
 		args := []string{
 			"controller", c.volumeName,
-			"--listen", c.listen,
+			"--listen", c.Listen,
 			"--frontend", "socket",
 		}
-		for _, b := range c.backends {
+		for _, b := range c.Backends {
 			args = append(args, "--enable-backend", b)
 		}
 		for _, r := range c.replicas {
@@ -128,7 +129,7 @@ func (c *Controller) SwitchToBackupListenPort() error {
 	//addr := addrs[0]
 	//backupListen := addr + ":" + strconv.Itoa(BackupListenPort)
 
-	client := NewControllerClient("http://" + c.listen)
+	client := NewControllerClient("http://" + c.Listen)
 	if err := client.UpdatePort(BackupListenPort); err != nil {
 		if strings.Contains(err.Error(), "EOF") {
 			return nil

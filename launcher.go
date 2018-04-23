@@ -186,7 +186,7 @@ func (l *Launcher) UpgradeEngine(cxt context.Context, engine *rpc.Engine) (*rpc.
 	if err := rm(l.GetSocketPath()); err != nil {
 		return nil, errors.Wrapf(err, "failed to remove socket %v", l.GetSocketPath())
 	}
-	newController := NewController(binary, l.volumeName, engine.Listen, engine.EnableBackends, engine.Replicas)
+	newController := NewController(binary, l.volumeName, oldController.Listen, oldController.Backends, engine.Replicas)
 
 	l.currentController = newController
 	l.currentControllerShutdownCh = newController.Start()
