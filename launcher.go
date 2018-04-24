@@ -20,6 +20,9 @@ import (
 )
 
 const (
+	FrontendTGTBlockDev = "tgt-blockdev"
+	FrontendTGTISCSI    = "tgt-iscsi"
+
 	SocketDirectory = "/var/run"
 	DevPath         = "/dev/longhorn/"
 
@@ -44,7 +47,7 @@ type Launcher struct {
 }
 
 func NewLauncher(listen, longhornBinary, frontend, volumeName string, size int64) (*Launcher, error) {
-	if frontend != "tgt-blockdev" && frontend != "tgt-iscsi" {
+	if frontend != FrontendTGTBlockDev && frontend != FrontendTGTISCSI {
 		return nil, fmt.Errorf("Invalid frontend %v", frontend)
 	}
 	return &Launcher{
@@ -59,26 +62,41 @@ func NewLauncher(listen, longhornBinary, frontend, volumeName string, size int64
 func (l *Launcher) StartController(c *Controller) error {
 	l.currentController = c
 	l.currentControllerShutdownCh = c.Start()
-	if err := l.startScsiDevice(); err != nil {
+	if err := l.startFrontend(); err != nil {
 		return err
 	}
-
-	if err := l.createDev(); err != nil {
-		return err
-	}
-
 	return nil
 }
 
 func (l *Launcher) ShutdownController(c *Controller) error {
-	dev := l.getDev()
-	if err := util.RemoveDevice(dev); err != nil {
-		return fmt.Errorf("Fail to remove device %s: %v", dev, err)
-	}
-	if err := iscsi.StopScsi(l.volumeName); err != nil {
-		return fmt.Errorf("Fail to stop SCSI device: %v", err)
+	if err := l.stopFrontend(); err != nil {
+		return err
 	}
 	c.Stop()
+	return nil
+}
+
+func (l *Launcher) stopFrontend() error {
+	switch l.frontend {
+	case FrontendTGTBlockDev:
+		dev := l.getDev()
+		if err := util.RemoveDevice(dev); err != nil {
+			return fmt.Errorf("Fail to remove device %s: %v", dev, err)
+		}
+		if err := iscsi.StopScsi(l.volumeName); err != nil {
+			return fmt.Errorf("Fail to stop SCSI device: %v", err)
+		}
+		logrus.Infof("launcher: SCSI device %v shutdown", dev)
+		break
+	case FrontendTGTISCSI:
+		if err := iscsi.DeleteTarget(l.scsiDevice.Target); err != nil {
+			return fmt.Errorf("Fail to delete target %v", l.scsiDevice.Target)
+		}
+		logrus.Infof("launcher: SCSI target %v ", l.scsiDevice.Target)
+		break
+	default:
+		return fmt.Errorf("unknown frontend %v", l.frontend)
+	}
 	return nil
 }
 
@@ -93,7 +111,7 @@ func (l *Launcher) GetSocketPath() string {
 	return filepath.Join(SocketDirectory, "longhorn-"+l.volumeName+".sock")
 }
 
-func (l *Launcher) startScsiDevice() error {
+func (l *Launcher) startFrontend() error {
 	if l.scsiDevice == nil {
 		bsOpts := fmt.Sprintf("size=%v", l.size)
 		scsiDev, err := iscsi.NewScsiDevice(l.volumeName, l.GetSocketPath(), "longhorn", bsOpts)
@@ -102,10 +120,26 @@ func (l *Launcher) startScsiDevice() error {
 		}
 		l.scsiDevice = scsiDev
 	}
-	if err := iscsi.StartScsi(l.scsiDevice); err != nil {
-		return err
+	switch l.frontend {
+	case FrontendTGTBlockDev:
+		if err := iscsi.StartScsi(l.scsiDevice); err != nil {
+			return err
+		}
+		if err := l.createDev(); err != nil {
+			return err
+		}
+		logrus.Infof("launcher: SCSI device %s created", l.scsiDevice.Device)
+		break
+	case FrontendTGTISCSI:
+		if err := iscsi.SetupTarget(l.scsiDevice); err != nil {
+			return err
+		}
+		logrus.Infof("launcher: iSCSI target %s created", l.scsiDevice.Target)
+		break
+	default:
+		return fmt.Errorf("unknown frontend %v", l.frontend)
 	}
-	logrus.Infof("launcher: SCSI device %s created", l.scsiDevice.Device)
+
 	return nil
 }
 
@@ -213,10 +247,15 @@ func (l *Launcher) UpgradeEngine(cxt context.Context, engine *rpc.Engine) (*rpc.
 }
 
 func (l *Launcher) GetEndpoint(cxt context.Context, empty *rpc.Empty) (*rpc.Endpoint, error) {
-	if l.frontend == "tgt-blockdev" {
+	if l.frontend == FrontendTGTBlockDev {
 		return &rpc.Endpoint{
 			Frontend: l.frontend,
 			Endpoint: l.getDev(),
+		}, nil
+	} else if l.frontend == FrontendTGTISCSI {
+		return &rpc.Endpoint{
+			Frontend: l.frontend,
+			Endpoint: iscsi.GetTargetName(l.volumeName),
 		}, nil
 	}
 	return nil, fmt.Errorf("unsupported frontend %v", l.frontend)

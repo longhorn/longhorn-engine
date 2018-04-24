@@ -45,7 +45,7 @@ func StartCmd() cli.Command {
 			cli.StringFlag{
 				Name:  "frontend",
 				Value: "tgt-blockdev",
-				Usage: "Supports tgt-blockdev",
+				Usage: "Supports tgt-blockdev or tgt-iscsi",
 			},
 			cli.StringSliceFlag{
 				Name:  "enable-backend",
