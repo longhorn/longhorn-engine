@@ -47,6 +47,23 @@ func GetTargetName(name string) string {
 	return "iqn.2014-09.com.rancher:" + util.Volume2ISCSIName(name)
 }
 
+func SetupTarget(dev *ScsiDevice) error {
+	// Setup target
+	if err := iscsi.StartDaemon(false); err != nil {
+		return err
+	}
+	if err := iscsi.CreateTarget(TargetID, dev.Target); err != nil {
+		return err
+	}
+	if err := iscsi.AddLun(TargetID, TargetLunID, dev.BackingFile, dev.BSType, dev.BSOpts); err != nil {
+		return err
+	}
+	if err := iscsi.BindInitiator(TargetID, "ALL"); err != nil {
+		return err
+	}
+	return nil
+}
+
 func StartScsi(dev *ScsiDevice) error {
 	lock := nsfilelock.NewLockWithTimeout(HostNamespace, LockFile, LockTimeout)
 	if err := lock.Lock(); err != nil {
@@ -68,17 +85,7 @@ func StartScsi(dev *ScsiDevice) error {
 		return err
 	}
 
-	// Setup target
-	if err := iscsi.StartDaemon(false); err != nil {
-		return err
-	}
-	if err := iscsi.CreateTarget(TargetID, dev.Target); err != nil {
-		return err
-	}
-	if err := iscsi.AddLun(TargetID, TargetLunID, dev.BackingFile, dev.BSType, dev.BSOpts); err != nil {
-		return err
-	}
-	if err := iscsi.BindInitiator(TargetID, "ALL"); err != nil {
+	if err := SetupTarget(dev); err != nil {
 		return err
 	}
 
