@@ -9,6 +9,7 @@ import cattle
 
 
 LONGHORN_DEV_DIR = '/dev/longhorn'
+LONGHORN_SOCKET_DIR = '/var/run'
 
 PAGE_SIZE = 512
 
@@ -53,6 +54,10 @@ def writeat_direct(dev, offset, data):
         m.close()
         os.close(f)
     return ret
+
+
+def get_socket_path(volume):
+    return path.join(LONGHORN_SOCKET_DIR, "longhorn-" + volume + ".sock")
 
 
 class restdev:

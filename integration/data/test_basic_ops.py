@@ -4,6 +4,7 @@ from os import path
 import pytest
 
 import cmd
+import launcher
 import common
 from common import dev  # NOQA
 from common import PAGE_SIZE, SIZE  # NOQA
@@ -51,8 +52,15 @@ def test_frontend_show(controller, replica1, replica2):  # NOQA
         common.REPLICA2
     ])
 
-    assert v["endpoint"] == path.join(common.LONGHORN_DEV_DIR,
-                                      common.VOLUME_NAME)
+    ft = v["frontend"]
+    if ft == "tgt" or ft == "tcmu":
+        assert v["endpoint"] == path.join(common.LONGHORN_DEV_DIR,
+                                          common.VOLUME_NAME)
+    elif ft == "socket":
+        assert v["endpoint"] == common.get_socket_path(common.VOLUME_NAME)
+        launcher_info = launcher.info()
+        assert launcher_info["endpoint"] == path.join(common.LONGHORN_DEV_DIR,
+                                                      common.VOLUME_NAME)
 
     info = cmd.info()
     assert info["name"] == common.VOLUME_NAME

@@ -12,7 +12,7 @@ import pytest
 import cattle
 
 from frontend import restdev, blockdev
-from frontend import PAGE_SIZE, LONGHORN_DEV_DIR  # NOQA
+from frontend import PAGE_SIZE, LONGHORN_DEV_DIR, get_socket_path  # NOQA
 
 
 REPLICA1 = 'tcp://localhost:9502'
