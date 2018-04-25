@@ -41,7 +41,8 @@ then
 	mount --rbind /host/dev /dev
 fi
 
-./bin/longhorn controller --frontend tgt --enable-backend file test-volume_1.0 &
+/usr/local/bin/longhorn-engine-launcher start --longhorn-binary ./bin/longhorn \
+	--frontend tgt-blockdev --enable-backend file --size 4Mb test-volume_1.0 &
 pid_controller=$!
 ./bin/longhorn replica $temp &
 pid_replica1=$!
