@@ -14,6 +14,8 @@ import (
 )
 
 const (
+	frontendName = "socket"
+
 	SocketDirectory = "/var/run"
 	DevPath         = "/dev/longhorn/"
 )
@@ -30,6 +32,10 @@ type Socket struct {
 	isUp         bool
 	socketPath   string
 	socketServer *rpc.Server
+}
+
+func (t *Socket) FrontendName() string {
+	return frontendName
 }
 
 func (t *Socket) Startup(name string, size, sectorSize int64, rw types.ReaderWriterAt) error {

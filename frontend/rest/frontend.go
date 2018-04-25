@@ -9,6 +9,10 @@ import (
 	"github.com/rancher/longhorn-engine/types"
 )
 
+const (
+	frontendName = "rest"
+)
+
 var (
 	log = logrus.WithFields(logrus.Fields{"pkg": "rest-frontend"})
 )
@@ -24,6 +28,10 @@ type Device struct {
 
 func New() types.Frontend {
 	return &Device{}
+}
+
+func (d *Device) FrontendName() string {
+	return frontendName
 }
 
 func (d *Device) Startup(name string, size, sectorSize int64, rw types.ReaderWriterAt) error {

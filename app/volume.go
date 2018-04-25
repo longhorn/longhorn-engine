@@ -12,6 +12,7 @@ type VolumeInfo struct {
 	Name         string `json:"name"`
 	ReplicaCount int    `json:"replicaCount"`
 	Endpoint     string `json:"endpoint"`
+	Frontend     string `json:"frontend"`
 }
 
 func InfoCmd() cli.Command {
@@ -19,7 +20,7 @@ func InfoCmd() cli.Command {
 		Name: "info",
 		Action: func(c *cli.Context) {
 			if err := info(c); err != nil {
-				logrus.Fatalln("Error running journal command:", err)
+				logrus.Fatalln("Error running info command:", err)
 			}
 		},
 	}
@@ -37,6 +38,7 @@ func info(c *cli.Context) error {
 		Name:         volume.Name,
 		ReplicaCount: volume.ReplicaCount,
 		Endpoint:     volume.Endpoint,
+		Frontend:     volume.Frontend,
 	}
 
 	output, err := json.MarshalIndent(info, "", "\t")
