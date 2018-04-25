@@ -222,8 +222,7 @@ func (l *Launcher) UpgradeEngine(cxt context.Context, engine *rpc.Engine) (*rpc.
 	}
 	newController := NewController(binary, l.volumeName, oldController.Listen, oldController.Backends, engine.Replicas)
 
-	l.currentController = newController
-	l.currentControllerShutdownCh = newController.Start()
+	newShutdownCh := newController.Start()
 	newSocket := false
 	for i := 0; i < WaitCount; i++ {
 		if _, err := os.Stat(l.GetSocketPath()); err == nil {
@@ -241,19 +240,24 @@ func (l *Launcher) UpgradeEngine(cxt context.Context, engine *rpc.Engine) (*rpc.
 	if err := l.reloadSocketConnection(); err != nil {
 		return nil, errors.Wrap(err, "failed to reload socket connection")
 	}
+	l.currentController = newController
+	l.currentControllerShutdownCh = newShutdownCh
+
 	oldController.RemoveBackupBinary()
 	oldController.Stop()
 	return &rpc.Empty{}, nil
 }
 
-func (l *Launcher) GetEndpoint(cxt context.Context, empty *rpc.Empty) (*rpc.Endpoint, error) {
+func (l *Launcher) GetInfo(cxt context.Context, empty *rpc.Empty) (*rpc.Info, error) {
 	if l.frontend == FrontendTGTBlockDev {
-		return &rpc.Endpoint{
+		return &rpc.Info{
+			Volume:   l.volumeName,
 			Frontend: l.frontend,
 			Endpoint: l.getDev(),
 		}, nil
 	} else if l.frontend == FrontendTGTISCSI {
-		return &rpc.Endpoint{
+		return &rpc.Info{
+			Volume:   l.volumeName,
 			Frontend: l.frontend,
 			Endpoint: iscsi.GetTargetName(l.volumeName),
 		}, nil

@@ -19,8 +19,8 @@ import (
 )
 
 const (
-	UpgradeTimeout  = 10 * time.Second
-	EndpointTimeout = 10 * time.Second
+	UpgradeTimeout = 10 * time.Second
+	InfoTimeout    = 10 * time.Second
 )
 
 func StartCmd() cli.Command {
@@ -82,11 +82,11 @@ func UpgradeCmd() cli.Command {
 	}
 }
 
-func EndpointCmd() cli.Command {
+func InfoCmd() cli.Command {
 	return cli.Command{
-		Name: "endpoint",
+		Name: "info",
 		Action: func(c *cli.Context) {
-			if err := endpoint(c); err != nil {
+			if err := info(c); err != nil {
 				logrus.Fatalf("Error running endpoint command: %v.", err)
 			}
 		},
@@ -167,7 +167,7 @@ func upgrade(c *cli.Context) error {
 	return nil
 }
 
-func endpoint(c *cli.Context) error {
+func info(c *cli.Context) error {
 	url := c.GlobalString("url")
 	conn, err := grpc.Dial(url, grpc.WithInsecure())
 	if err != nil {
@@ -176,10 +176,10 @@ func endpoint(c *cli.Context) error {
 	defer conn.Close()
 
 	client := rpc.NewLonghornLauncherServiceClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), EndpointTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), InfoTimeout)
 	defer cancel()
 
-	endpoint, err := client.GetEndpoint(ctx, &rpc.Empty{})
+	endpoint, err := client.GetInfo(ctx, &rpc.Empty{})
 	if err != nil {
 		return fmt.Errorf("failed to get endpoint: %v", err)
 	}
@@ -207,7 +207,7 @@ func main() {
 	a.Commands = []cli.Command{
 		StartCmd(),
 		UpgradeCmd(),
-		EndpointCmd(),
+		InfoCmd(),
 	}
 	if err := a.Run(os.Args); err != nil {
 		logrus.Fatal("Error when executing command: ", err)

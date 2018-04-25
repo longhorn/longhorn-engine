@@ -2,7 +2,7 @@ syntax="proto3";
 
 service LonghornLauncherService {
 	rpc UpgradeEngine(Engine) returns (Empty) {}
-	rpc GetEndpoint(Empty) returns (Endpoint) {}
+	rpc GetInfo(Empty) returns (Info) {}
 }
 
 message Engine {
@@ -10,9 +10,10 @@ message Engine {
 	repeated string replicas = 2;
 }
 
-message Endpoint {
-	string frontend = 1;
-	string endpoint = 2;
+message Info {
+	string volume = 1;
+	string frontend = 2;
+	string endpoint = 3;
 }
 
 message Empty {
