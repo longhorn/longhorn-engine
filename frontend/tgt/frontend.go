@@ -14,6 +14,8 @@ import (
 )
 
 const (
+	frontendName = "tgt"
+
 	DevPath = "/dev/longhorn/"
 )
 
@@ -27,6 +29,10 @@ type Tgt struct {
 func New() types.Frontend {
 	s := socket.New()
 	return &Tgt{s, false, nil}
+}
+
+func (t *Tgt) FrontendName() string {
+	return frontendName
 }
 
 func (t *Tgt) Startup(name string, size, sectorSize int64, rw types.ReaderWriterAt) error {

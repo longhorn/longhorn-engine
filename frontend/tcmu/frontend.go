@@ -18,6 +18,8 @@ import (
 )
 
 const (
+	frontendName = "tcmu"
+
 	devPath           = "/dev/longhorn/"
 	configDir         = "/sys/kernel/config/target/core/user_42"
 	scsiDir           = "/sys/kernel/config/target/loopback"
@@ -33,6 +35,10 @@ func New() types.Frontend {
 type Tcmu struct {
 	volume string
 	isUp   bool
+}
+
+func (t *Tcmu) FrontendName() string {
+	return frontendName
 }
 
 func (t *Tcmu) Startup(name string, size, sectorSize int64, rw types.ReaderWriterAt) error {

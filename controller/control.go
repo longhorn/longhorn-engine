@@ -435,6 +435,10 @@ func (c *Controller) Endpoint() string {
 	return c.frontend.Endpoint()
 }
 
+func (c *Controller) Frontend() string {
+	return c.frontend.FrontendName()
+}
+
 func (c *Controller) UpdatePort(newPort int) error {
 	oldServer := c.RestServer
 	if oldServer == nil {
