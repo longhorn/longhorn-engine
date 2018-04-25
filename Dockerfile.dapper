@@ -75,6 +75,14 @@ RUN cd /usr/src && \
     ./scripts/build-pkg.sh deb && \
     dpkg -i ./pkg/tgt_*.deb
 
+# Build longhorn-engine-launcher
+RUN cd /go/src/github.com/rancher && \
+    git clone https://github.com/rancher/longhorn-engine-launcher.git && \
+    cd longhorn-engine-launcher && \
+    git checkout a8344b9ac3ecd6caf7752ee6cc8e7df6cdd58005 && \
+    go build && \
+    cp longhorn-engine-launcher /usr/local/bin
+
 VOLUME /tmp
 ENV TMPDIR /tmp
 ENTRYPOINT ["./scripts/entry"]

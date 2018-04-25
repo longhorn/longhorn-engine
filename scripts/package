@@ -18,6 +18,7 @@ fi
 
 cp ../bin/longhorn* .
 cp /usr/src/tgt/pkg/tgt_*.deb .
+cp /usr/local/bin/longhorn-engine-launcher .
 docker build -t ${REPO}/${PROJECT}:${TAG} .
 
 echo Built ${REPO}/${PROJECT}:${TAG}
