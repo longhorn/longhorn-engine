@@ -116,6 +116,9 @@ func (c *Controller) RestoreBackupBinary() error {
 	if c.backupBinary == "" {
 		return fmt.Errorf("cannot restore, backup binary doesn't exist")
 	}
+	if err := rm(c.Binary); err != nil {
+		return errors.Wrapf(err, "cannot remove original binary %v", c.Binary)
+	}
 	if err := cp(c.backupBinary, c.Binary); err != nil {
 		return errors.Wrapf(err, "cannot restore backup of %v from %v", c.Binary, c.backupBinary)
 	}
@@ -167,6 +170,7 @@ func (c *Controller) SwitchPortToOriginal() (err error) {
 		return errors.Wrapf(err, "test connection to %v failed", c.Listen)
 	}
 	c.BackupListen = ""
+	logrus.Infof("launcher: controller updated listen to %v", c.Listen)
 	return nil
 }
 
@@ -184,11 +188,11 @@ func (c *Controller) PrepareUpgrade() error {
 
 func (c *Controller) RollbackUpgrade() error {
 	logrus.Infof("launcher: rolling back upgrade")
-	if err := c.RestoreBackupBinary(); err != nil {
-		return errors.Wrap(err, "failed to restore old controller binary")
-	}
 	if err := c.SwitchPortToOriginal(); err != nil {
 		return errors.Wrap(err, "failed to restore original port")
+	}
+	if err := c.RestoreBackupBinary(); err != nil {
+		return errors.Wrap(err, "failed to restore old controller binary")
 	}
 	logrus.Infof("launcher: rollback completed")
 	return nil
