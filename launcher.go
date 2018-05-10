@@ -206,6 +206,10 @@ func (l *Launcher) UpgradeEngine(cxt context.Context, engine *rpc.Engine) (ret *
 	oldController := l.currentController
 	//oldShutdownCh := l.currentControllerShutdownCh
 
+	if oldController.Binary == engine.Binary {
+		return nil, fmt.Errorf("cannot upgrade with the same binary")
+	}
+
 	if err := oldController.PrepareUpgrade(); err != nil {
 		return nil, errors.Wrap(err, "failed to prepare for switch over")
 	}

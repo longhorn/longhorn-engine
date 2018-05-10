@@ -107,8 +107,8 @@ func (c *Controller) RemoveBackupBinary() error {
 	if err := rm(c.backupBinary); err != nil {
 		return errors.Wrapf(err, "cannot remove backup binary %v", c.backupBinary)
 	}
-	c.backupBinary = ""
 	logrus.Infof("launcher: removed backup binary %v", c.backupBinary)
+	c.backupBinary = ""
 	return nil
 }
 
@@ -122,8 +122,8 @@ func (c *Controller) RestoreBackupBinary() error {
 	if err := c.RemoveBackupBinary(); err != nil {
 		return errors.Wrapf(err, "failed to clean up backup binary %v", c.backupBinary)
 	}
-	c.backupBinary = ""
 	logrus.Infof("launcher: backup binary %v restored", c.backupBinary)
+	c.backupBinary = ""
 	return nil
 }
 
@@ -133,7 +133,7 @@ func (c *Controller) SwitchPortToBackup() (err error) {
 			addrs := strings.Split(c.Listen, ":")
 			addr := addrs[0]
 			c.BackupListen = addr + ":" + strconv.Itoa(BackupListenPort)
-			logrus.Infof("original controller updated listen to %v", c.BackupListen)
+			logrus.Infof("launcher: original controller updated listen to %v", c.BackupListen)
 		}
 	}()
 
