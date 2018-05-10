@@ -119,40 +119,33 @@ func (c *Controller) RestoreBackupBinary() error {
 	if err := cp(c.backupBinary, c.Binary); err != nil {
 		return errors.Wrapf(err, "cannot restore backup of %v from %v", c.Binary, c.backupBinary)
 	}
+	logrus.Infof("launcher: backup binary %v restored", c.backupBinary)
 	if err := c.RemoveBackupBinary(); err != nil {
 		return errors.Wrapf(err, "failed to clean up backup binary %v", c.backupBinary)
 	}
-	logrus.Infof("launcher: backup binary %v restored", c.backupBinary)
-	c.backupBinary = ""
 	return nil
 }
 
 func (c *Controller) SwitchPortToBackup() (err error) {
-	defer func() {
-		if err == nil {
-			addrs := strings.Split(c.Listen, ":")
-			addr := addrs[0]
-			c.BackupListen = addr + ":" + strconv.Itoa(BackupListenPort)
-			logrus.Infof("launcher: original controller updated listen to %v", c.BackupListen)
-		}
-	}()
-
 	client := NewControllerClient("http://" + c.Listen)
 	if err := client.UpdatePort(BackupListenPort); err != nil {
-		if strings.Contains(err.Error(), "EOF") {
-			return nil
+		if !strings.Contains(err.Error(), "EOF") {
+			return err
 		}
-		return err
 	}
+	addrs := strings.Split(c.Listen, ":")
+	addr := addrs[0]
+	c.BackupListen = addr + ":" + strconv.Itoa(BackupListenPort)
+
+	client = NewControllerClient("http://" + c.BackupListen)
+	if err := client.TestConnection(); err != nil {
+		return errors.Wrapf(err, "test connection to %v failed", c.BackupListen)
+	}
+	logrus.Infof("launcher: original controller updated listen to %v", c.BackupListen)
 	return nil
 }
 
 func (c *Controller) SwitchPortToOriginal() (err error) {
-	defer func() {
-		if err == nil {
-			c.BackupListen = ""
-		}
-	}()
 	if c.BackupListen == "" {
 		return fmt.Errorf("backup listen wasn't set")
 	}
@@ -164,31 +157,40 @@ func (c *Controller) SwitchPortToOriginal() (err error) {
 
 	client := NewControllerClient("http://" + c.BackupListen)
 	if err := client.UpdatePort(port); err != nil {
-		if strings.Contains(err.Error(), "EOF") {
-			return nil
+		if !strings.Contains(err.Error(), "EOF") {
+			return err
 		}
-		return err
 	}
+
+	client = NewControllerClient("http://" + c.Listen)
+	if err := client.TestConnection(); err != nil {
+		return errors.Wrapf(err, "test connection to %v failed", c.Listen)
+	}
+	c.BackupListen = ""
 	return nil
 }
 
 func (c *Controller) PrepareUpgrade() error {
+	logrus.Infof("launcher: prepare for upgrade")
 	if err := c.BackupBinary(); err != nil {
 		return errors.Wrap(err, "failed to backup old controller binary")
 	}
 	if err := c.SwitchPortToBackup(); err != nil {
 		return errors.Wrapf(err, "failed to ask old controller to switch listening port %v", BackupListenPort)
 	}
+	logrus.Infof("launcher: preparation completed")
 	return nil
 }
 
 func (c *Controller) RollbackUpgrade() error {
+	logrus.Infof("launcher: rolling back upgrade")
 	if err := c.RestoreBackupBinary(); err != nil {
 		return errors.Wrap(err, "failed to restore old controller binary")
 	}
 	if err := c.SwitchPortToOriginal(); err != nil {
 		return errors.Wrap(err, "failed to restore original port")
 	}
+	logrus.Infof("launcher: rollback completed")
 	return nil
 }
 

@@ -33,6 +33,10 @@ func (c *ControllerClient) UpdatePort(port int) error {
 	return err
 }
 
+func (c *ControllerClient) TestConnection() error {
+	return c.get("/volumes", nil)
+}
+
 func (c *ControllerClient) post(path string, req, resp interface{}) error {
 	return c.do("POST", path, req, resp)
 }
@@ -81,5 +85,8 @@ func (c *ControllerClient) get(path string, obj interface{}) error {
 	}
 	defer resp.Body.Close()
 
-	return json.NewDecoder(resp.Body).Decode(obj)
+	if obj != nil {
+		return json.NewDecoder(resp.Body).Decode(obj)
+	}
+	return nil
 }
