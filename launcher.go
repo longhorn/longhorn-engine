@@ -202,16 +202,22 @@ func (l *Launcher) StartRPCServer() error {
 	return nil
 }
 
-func (l *Launcher) UpgradeEngine(cxt context.Context, engine *rpc.Engine) (*rpc.Empty, error) {
+func (l *Launcher) UpgradeEngine(cxt context.Context, engine *rpc.Engine) (ret *rpc.Empty, err error) {
 	oldController := l.currentController
 	//oldShutdownCh := l.currentControllerShutdownCh
 
-	if err := oldController.BackupBinary(); err != nil {
-		return nil, errors.Wrap(err, "failed to backup old controller binary")
+	if err := oldController.PrepareUpgrade(); err != nil {
+		return nil, errors.Wrap(err, "failed to prepare for switch over")
 	}
-	if err := oldController.SwitchToBackupListenPort(); err != nil {
-		return nil, errors.Wrap(err, "failed to ask old controller to switch listening port")
-	}
+
+	defer func() {
+		if err != nil {
+			logrus.Errorf("failed to upgrade: %v", err)
+			if err := oldController.RollbackUpgrade(); err != nil {
+				logrus.Errorf("failed to rollback upgrade: %v", err)
+			}
+		}
+	}()
 
 	binary := oldController.Binary
 	if err := l.updateControllerBinary(binary, engine.Binary); err != nil {
@@ -233,18 +239,18 @@ func (l *Launcher) UpgradeEngine(cxt context.Context, engine *rpc.Engine) (*rpc.
 		time.Sleep(WaitInterval)
 	}
 	if !newSocket {
+		newController.Stop()
 		logrus.Errorf("launcher: waiting for the new controller timed out")
-		// TODO rollback
 		return nil, fmt.Errorf("wait for the new controller timed out")
 	}
 	if err := l.reloadSocketConnection(); err != nil {
+		newController.Stop()
 		return nil, errors.Wrap(err, "failed to reload socket connection")
 	}
 	l.currentController = newController
 	l.currentControllerShutdownCh = newShutdownCh
 
-	oldController.RemoveBackupBinary()
-	oldController.Stop()
+	oldController.FinalizeUpgrade()
 	return &rpc.Empty{}, nil
 }
 

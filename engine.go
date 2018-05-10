@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 
@@ -19,9 +20,10 @@ const (
 type Controller struct {
 	volumeName string
 
-	Binary   string
-	Listen   string
-	Backends []string
+	Binary       string
+	Listen       string
+	BackupListen string
+	Backends     []string
 
 	replicas     []string
 	backupBinary string
@@ -120,14 +122,20 @@ func (c *Controller) RestoreBackupBinary() error {
 	if err := c.RemoveBackupBinary(); err != nil {
 		return errors.Wrapf(err, "failed to clean up backup binary %v", c.backupBinary)
 	}
+	c.backupBinary = ""
 	logrus.Infof("launcher: backup binary %v restored", c.backupBinary)
 	return nil
 }
 
-func (c *Controller) SwitchToBackupListenPort() error {
-	//addrs := strings.Split(c.listen, ":")
-	//addr := addrs[0]
-	//backupListen := addr + ":" + strconv.Itoa(BackupListenPort)
+func (c *Controller) SwitchPortToBackup() (err error) {
+	defer func() {
+		if err == nil {
+			addrs := strings.Split(c.Listen, ":")
+			addr := addrs[0]
+			c.BackupListen = addr + ":" + strconv.Itoa(BackupListenPort)
+			logrus.Infof("original controller updated listen to %v", c.BackupListen)
+		}
+	}()
 
 	client := NewControllerClient("http://" + c.Listen)
 	if err := client.UpdatePort(BackupListenPort); err != nil {
@@ -136,6 +144,57 @@ func (c *Controller) SwitchToBackupListenPort() error {
 		}
 		return err
 	}
+	return nil
+}
+
+func (c *Controller) SwitchPortToOriginal() (err error) {
+	defer func() {
+		if err == nil {
+			c.BackupListen = ""
+		}
+	}()
+	if c.BackupListen == "" {
+		return fmt.Errorf("backup listen wasn't set")
+	}
+	addrs := strings.Split(c.Listen, ":")
+	port, err := strconv.Atoi(addrs[len(addrs)-1])
+	if err != nil {
+		return fmt.Errorf("unable to parse listen port %v", c.Listen)
+	}
+
+	client := NewControllerClient("http://" + c.BackupListen)
+	if err := client.UpdatePort(port); err != nil {
+		if strings.Contains(err.Error(), "EOF") {
+			return nil
+		}
+		return err
+	}
+	return nil
+}
+
+func (c *Controller) PrepareUpgrade() error {
+	if err := c.BackupBinary(); err != nil {
+		return errors.Wrap(err, "failed to backup old controller binary")
+	}
+	if err := c.SwitchPortToBackup(); err != nil {
+		return errors.Wrapf(err, "failed to ask old controller to switch listening port %v", BackupListenPort)
+	}
+	return nil
+}
+
+func (c *Controller) RollbackUpgrade() error {
+	if err := c.RestoreBackupBinary(); err != nil {
+		return errors.Wrap(err, "failed to restore old controller binary")
+	}
+	if err := c.SwitchPortToOriginal(); err != nil {
+		return errors.Wrap(err, "failed to restore original port")
+	}
+	return nil
+}
+
+func (c *Controller) FinalizeUpgrade() error {
+	c.RemoveBackupBinary()
+	c.Stop()
 	return nil
 }
 
