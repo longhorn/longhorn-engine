@@ -230,6 +230,10 @@ func cp(src, dst string) error {
 }
 
 func rm(f string) error {
+	if _, err := os.Stat(f); err != nil {
+		// file doesn't exist
+		return nil
+	}
 	cmd := exec.Command("rm", f)
 	if err := cmd.Run(); err != nil {
 		return errors.Wrapf(err, "fail to remove file %v", f)
