@@ -25,6 +25,14 @@ BACKED_REPLICA1_SCHEMA = 'http://localhost:9602/v1/schemas'
 BACKED_REPLICA2 = 'tcp://localhost:9605'
 BACKED_REPLICA2_SCHEMA = 'http://localhost:9605/v1/schemas'
 
+UPGRADE_REPLICA1 = 'tcp://localhost:9512'
+UPGRADE_REPLICA1_SCHEMA = 'http://localhost:9512/v1/schemas'
+UPGRADE_REPLICA2 = 'tcp://localhost:9515'
+UPGRADE_REPLICA2_SCHEMA = 'http://localhost:9515/v1/schemas'
+
+LONGHORN_BINARY = './bin/longhorn'
+LONGHORN_UPGRADE_BINARY = '/opt/longhorn'
+
 SIZE = 4 * 1024 * 1024
 
 BACKUP_DIR = '/tmp/longhorn-backup'
