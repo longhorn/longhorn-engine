@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/pkg/errors"
@@ -83,6 +84,22 @@ func (c *Controller) Start() chan error {
 
 func (c *Controller) Stop() {
 	c.cmd.Process.Signal(syscall.SIGINT)
+
+	// wait for the controller to shutdown
+	client := NewControllerClient("http://" + c.Listen)
+	// we're listening as the backup
+	if c.BackupListen != "" {
+		client = NewControllerClient("http://" + c.BackupListen)
+	}
+	for i := 0; i < WaitCount; i++ {
+		if err := client.TestConnection(); err != nil {
+			return
+		}
+		logrus.Infof("launcher: wait for controller to shutdown")
+		time.Sleep(WaitInterval)
+	}
+	logrus.Errorf("launcher: wait for controller to shutdown timed out, killing it")
+	c.cmd.Process.Signal(syscall.SIGKILL)
 }
 
 func (c *Controller) BackupBinary() error {
@@ -122,7 +139,7 @@ func (c *Controller) RestoreBackupBinary() error {
 	if err := cp(c.backupBinary, c.Binary); err != nil {
 		return errors.Wrapf(err, "cannot restore backup of %v from %v", c.Binary, c.backupBinary)
 	}
-	logrus.Infof("launcher: backup binary %v restored", c.backupBinary)
+	logrus.Infof("launcher: backup binary %v restored to %v", c.backupBinary, c.Binary)
 	if err := c.RemoveBackupBinary(); err != nil {
 		return errors.Wrapf(err, "failed to clean up backup binary %v", c.backupBinary)
 	}
