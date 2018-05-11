@@ -25,7 +25,8 @@ type Controller struct {
 	listenAddr string
 	listenPort string
 	RestServer *http.Server
-	shutdownCh chan error
+	shutdownWG sync.WaitGroup
+	lastError  error
 }
 
 func NewController(name string, factory types.BackendFactory, frontend types.Frontend) *Controller {
@@ -33,8 +34,6 @@ func NewController(name string, factory types.BackendFactory, frontend types.Fro
 		factory:  factory,
 		Name:     name,
 		frontend: frontend,
-
-		shutdownCh: make(chan error),
 	}
 	c.reset()
 	return c
@@ -44,8 +43,13 @@ func (c *Controller) StartRestServer() error {
 	if c.RestServer == nil {
 		return fmt.Errorf("cannot find rest server")
 	}
+	c.shutdownWG.Add(1)
 	go func() {
-		c.shutdownCh <- c.RestServer.ListenAndServe()
+		addr := c.RestServer.Addr
+		err := c.RestServer.ListenAndServe()
+		logrus.Errorf("Rest server at %v is down: %v", addr, err)
+		c.lastError = err
+		c.shutdownWG.Done()
 	}()
 	logrus.Infof("Listening on %s", c.RestServer.Addr)
 
@@ -53,7 +57,8 @@ func (c *Controller) StartRestServer() error {
 }
 
 func (c *Controller) WaitForShutdown() error {
-	return <-c.shutdownCh
+	c.shutdownWG.Wait()
+	return c.lastError
 }
 
 func (c *Controller) AddReplica(address string) error {
@@ -454,9 +459,6 @@ func (c *Controller) UpdatePort(newPort int) error {
 		Addr:    newAddr,
 		Handler: handler,
 	}
-	// replace old chan because we're about to shutdown the old server
-	newChan := make(chan error)
-	c.shutdownCh = newChan
 	c.RestServer = newServer
 	c.StartRestServer()
 
