@@ -27,7 +27,7 @@ const (
 	DevPath         = "/dev/longhorn/"
 
 	WaitInterval = time.Second
-	WaitCount    = 10
+	WaitCount    = 60
 )
 
 type Launcher struct {
@@ -112,6 +112,9 @@ func (l *Launcher) GetSocketPath() string {
 }
 
 func (l *Launcher) startFrontend() error {
+	if err := l.waitForSocket(); err != nil {
+		return err
+	}
 	if l.scsiDevice == nil {
 		bsOpts := fmt.Sprintf("size=%v", l.size)
 		scsiDev, err := iscsi.NewScsiDevice(l.volumeName, l.GetSocketPath(), "longhorn", bsOpts)
@@ -233,16 +236,7 @@ func (l *Launcher) UpgradeEngine(cxt context.Context, engine *rpc.Engine) (ret *
 	newController := NewController(binary, l.volumeName, oldController.Listen, oldController.Backends, engine.Replicas)
 
 	newShutdownCh := newController.Start()
-	newSocket := false
-	for i := 0; i < WaitCount; i++ {
-		if _, err := os.Stat(l.GetSocketPath()); err == nil {
-			newSocket = true
-			break
-		}
-		logrus.Infof("launcher: wait for new controller to be up")
-		time.Sleep(WaitInterval)
-	}
-	if !newSocket {
+	if err := l.waitForSocket(); err != nil {
 		newController.Stop()
 		logrus.Errorf("launcher: waiting for the new controller timed out")
 		return nil, fmt.Errorf("wait for the new controller timed out")
@@ -256,6 +250,23 @@ func (l *Launcher) UpgradeEngine(cxt context.Context, engine *rpc.Engine) (ret *
 
 	oldController.FinalizeUpgrade()
 	return &rpc.Empty{}, nil
+}
+
+func (l *Launcher) waitForSocket() error {
+	found := false
+	socket := l.GetSocketPath()
+	for i := 0; i < WaitCount; i++ {
+		if _, err := os.Stat(socket); err == nil {
+			found = true
+			break
+		}
+		logrus.Infof("launcher: wait for socket %v to show up", socket)
+		time.Sleep(WaitInterval)
+	}
+	if !found {
+		return fmt.Errorf("launcher: wait for socket %v timeout", socket)
+	}
+	return nil
 }
 
 func (l *Launcher) GetInfo(cxt context.Context, empty *rpc.Empty) (*rpc.Info, error) {
