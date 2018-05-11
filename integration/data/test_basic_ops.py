@@ -32,7 +32,7 @@ def test_beyond_boundary(dev):  # NOQA
     # out of bounds
     with pytest.raises(EnvironmentError) as err:
         write_dev(dev, SIZE, "1")
-        assert 'No space left' in str(err.value)
+    assert 'No space left' in str(err.value)
     assert len(read_dev(dev, SIZE, 1)) == 0
 
     # normal writes to verify controller/replica survival

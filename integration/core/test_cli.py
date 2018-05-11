@@ -652,9 +652,9 @@ def test_backup_core(bin, controller_client, replica_client,
     cmd = [bin, 'backup', 'inspect',
            "vfs:///tmp/longhorn-backup?backup=backup-1234"
            + "&volume=test-volume_1.0"]
-    with pytest.raises(subprocess.CalledProcessError) as e:
+    # cannot find the backup
+    with pytest.raises(subprocess.CalledProcessError):
         subprocess.check_call(cmd)
-        assert 'cannot find' in str(e.value)
 
     cmd = [bin, 'backup', 'restore', backup1]
     subprocess.check_call(cmd)
@@ -672,14 +672,14 @@ def test_backup_core(bin, controller_client, replica_client,
     cmd = [bin, 'backup', 'inspect',
            "vfs:///tmp/longhorn-backup?backup=backup-1234"
            + "&volume=test-volume_1.0"]
-    with pytest.raises(subprocess.CalledProcessError) as e:
+    # cannot find the backup
+    with pytest.raises(subprocess.CalledProcessError):
         subprocess.check_call(cmd)
-        assert 'cannot find' in str(e.value)
 
     cmd = [bin, 'backup', 'inspect', "xxx"]
-    with pytest.raises(subprocess.CalledProcessError) as e:
+    # cannot find the backup
+    with pytest.raises(subprocess.CalledProcessError):
         subprocess.check_call(cmd)
-        assert 'not supported' in str(e.value)
 
 
 def test_snapshot_purge_basic(bin, controller_client,

@@ -167,19 +167,19 @@ def test_remove_disk(client):
 
     with pytest.raises(cattle.ApiError) as e:
         r.markdiskasremoved(name='003')
-        assert "Can not find snapshot" in e
+    assert "Can not find snapshot" in str(e.value)
 
     with pytest.raises(cattle.ApiError) as e:
         r.prepareremovedisk(name='003')
-        assert "Can not find snapshot" in e
+    assert "Can not find snapshot" in str(e.value)
 
     with pytest.raises(cattle.ApiError) as e:
         r.markdiskasremoved(name='volume-head-002.img')
-        assert "Can not mark the active" in e
+    assert "Can not mark the active" in str(e.value)
 
     with pytest.raises(cattle.ApiError) as e:
         r.prepareremovedisk(name='volume-head-002.img')
-        assert "Can not delete the active" in e
+    assert "Can not delete the active" in str(e.value)
 
     r.markdiskasremoved(name='001')
     ops = r.prepareremovedisk(name='001')["operations"]
