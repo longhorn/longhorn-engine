@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	UpgradeTimeout = 10 * time.Second
+	UpgradeTimeout = 120 * time.Second
 	InfoTimeout    = 10 * time.Second
 )
 

@@ -112,7 +112,7 @@ func (l *Launcher) GetSocketPath() string {
 }
 
 func (l *Launcher) startFrontend() error {
-	if err := l.waitForSocket(); err != nil {
+	if err := <-l.waitForSocket(); err != nil {
 		return err
 	}
 	if l.scsiDevice == nil {
@@ -236,10 +236,24 @@ func (l *Launcher) UpgradeEngine(cxt context.Context, engine *rpc.Engine) (ret *
 	newController := NewController(binary, l.volumeName, oldController.Listen, oldController.Backends, engine.Replicas)
 
 	newShutdownCh := newController.Start()
-	if err := l.waitForSocket(); err != nil {
+	socketError := l.waitForSocket()
+	select {
+	case err = <-newShutdownCh:
+		if err != nil {
+			logrus.Errorf("error starting new controller %v", err)
+			err = errors.Wrapf(err, "error starting new controller")
+		}
+		break
+	case err = <-socketError:
+		if err != nil {
+			logrus.Errorf("error waiting for the socket %v", err)
+			err = errors.Wrapf(err, "error waiting for the socket")
+		}
+		break
+	}
+	if err != nil {
 		newController.Stop()
-		logrus.Errorf("launcher: waiting for the new controller timed out")
-		return nil, fmt.Errorf("wait for the new controller timed out")
+		return nil, errors.Wrapf(err, "cannot start new controller")
 	}
 	if err := l.reloadSocketConnection(); err != nil {
 		newController.Stop()
@@ -252,21 +266,21 @@ func (l *Launcher) UpgradeEngine(cxt context.Context, engine *rpc.Engine) (ret *
 	return &rpc.Empty{}, nil
 }
 
-func (l *Launcher) waitForSocket() error {
-	found := false
-	socket := l.GetSocketPath()
-	for i := 0; i < WaitCount; i++ {
-		if _, err := os.Stat(socket); err == nil {
-			found = true
-			break
+func (l *Launcher) waitForSocket() chan error {
+	errCh := make(chan error)
+	go func(errCh chan error) {
+		socket := l.GetSocketPath()
+		for i := 0; i < WaitCount; i++ {
+			if _, err := os.Stat(socket); err == nil {
+				errCh <- nil
+			}
+			logrus.Infof("launcher: wait for socket %v to show up", socket)
+			time.Sleep(WaitInterval)
 		}
-		logrus.Infof("launcher: wait for socket %v to show up", socket)
-		time.Sleep(WaitInterval)
-	}
-	if !found {
-		return fmt.Errorf("launcher: wait for socket %v timeout", socket)
-	}
-	return nil
+		errCh <- fmt.Errorf("launcher: wait for socket %v timeout", socket)
+	}(errCh)
+
+	return errCh
 }
 
 func (l *Launcher) GetInfo(cxt context.Context, empty *rpc.Empty) (*rpc.Info, error) {
