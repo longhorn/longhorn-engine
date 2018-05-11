@@ -64,14 +64,26 @@ pid_backing_replica1=$!
 ./bin/longhorn replica --listen localhost:9605 --backing-file $backing_qcow2 $temp4 &
 pid_backing_replica2=$!
 
+# for live upgrade test
+cp ./bin/longhorn /opt/
+
+./bin/longhorn replica --listen localhost:9512 $temp &
+pid_upgrade_replica1=$!
+./bin/longhorn replica --listen localhost:9515 $temp2 &
+pid_upgrade_replica2=$!
+
 # make sure everything is running before continue integration test
 ps $pid_controller
 ps $pid_replica1
 ps $pid_replica2
 ps $pid_backing_replica1
 ps $pid_backing_replica2
+ps $pid_upgrade_replica1
+ps $pid_upgrade_replica2
 
-trap "kill $pid_controller $pid_replica1 $pid_replica2 $pid_backing_replica1 $pid_backing_replica2" EXIT
+trap "kill $pid_controller $pid_replica1 $pid_replica2 \
+       $pid_backing_replica1 $pid_backing_replica2 \
+       $pid_upgrade_replica1 $pid_upgrade_replica2" EXIT
 
 cd integration
 find -depth -name __pycache__ -o -name "*.pyc" -exec rm -rf {} \;
