@@ -65,9 +65,8 @@ def test_backup(dev):  # NOQA
     cmd.backup_rm(backup3)
     with pytest.raises(subprocess.CalledProcessError):
         cmd.backup_restore(backup3)
-    with pytest.raises(subprocess.CalledProcessError) as e:
+    with pytest.raises(subprocess.CalledProcessError):
         cmd.backup_inspect(backup3)
-        assert 'cannot find' in str(e.value)
 
     cmd.backup_restore(backup1)
     readed = read_dev(dev, offset, length)
@@ -78,9 +77,8 @@ def test_backup(dev):  # NOQA
     cmd.backup_rm(backup1)
     with pytest.raises(subprocess.CalledProcessError):
         cmd.backup_restore(backup1)
-    with pytest.raises(subprocess.CalledProcessError) as e:
+    with pytest.raises(subprocess.CalledProcessError):
         cmd.backup_inspect(backup1)
-        assert 'cannot find' in str(e.value)
 
     cmd.backup_restore(backup2)
     readed = read_dev(dev, offset, length)
@@ -91,9 +89,8 @@ def test_backup(dev):  # NOQA
     cmd.backup_rm(backup2)
     with pytest.raises(subprocess.CalledProcessError):
         cmd.backup_restore(backup2)
-    with pytest.raises(subprocess.CalledProcessError) as e:
+    with pytest.raises(subprocess.CalledProcessError):
         cmd.backup_inspect(backup2)
-        assert 'cannot find' in str(e.value)
 
 
 def test_backup_with_backing_file(backing_dev):  # NOQA
@@ -128,9 +125,8 @@ def test_backup_with_backing_file(backing_dev):  # NOQA
     cmd.backup_rm(backup0)
     with pytest.raises(subprocess.CalledProcessError):
         cmd.backup_restore(backup0)
-    with pytest.raises(subprocess.CalledProcessError) as e:
+    with pytest.raises(subprocess.CalledProcessError):
         cmd.backup_inspect(backup0)
-        assert 'cannot find' in str(e.value)
 
 
 def test_backup_hole_with_backing_file(backing_dev):  # NOQA
