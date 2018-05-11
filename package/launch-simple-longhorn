@@ -24,10 +24,10 @@ fi
 
 if [ -z $frontend ]
 then
-        echo Use default frontend TCMU
-        frontend="tcmu"
+        echo Use default frontend TGT
+        frontend="tgt-blockdev"
 fi
 
 longhorn replica --size $size --listen localhost:9502 /volume/ &
 sleep 1
-exec longhorn controller --frontend $frontend --replica tcp://localhost:9502 $volume
+exec longhorn-engine-launcher start --frontend $frontend --replica tcp://localhost:9502 --size $size $volume
