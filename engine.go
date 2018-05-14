@@ -42,7 +42,7 @@ func NewController(binary, volumeName, listen string, backends, replicas []strin
 	}
 }
 
-func (c *Controller) Start() chan error {
+func (c *Controller) Start(launcherListen string) chan error {
 	resp := make(chan error)
 
 	exe, err := exec.LookPath(c.Binary)
@@ -62,6 +62,7 @@ func (c *Controller) Start() chan error {
 			"controller", c.volumeName,
 			"--listen", c.Listen,
 			"--frontend", "socket",
+			"--launcher", launcherListen,
 		}
 		for _, b := range c.Backends {
 			args = append(args, "--enable-backend", b)

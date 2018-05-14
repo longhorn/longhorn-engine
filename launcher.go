@@ -61,22 +61,19 @@ func NewLauncher(listen, longhornBinary, frontend, volumeName string, size int64
 
 func (l *Launcher) StartController(c *Controller) error {
 	l.currentController = c
-	l.currentControllerShutdownCh = c.Start()
-	if err := l.startFrontend(); err != nil {
-		return err
-	}
+	l.currentControllerShutdownCh = c.Start(l.listen)
 	return nil
 }
 
 func (l *Launcher) ShutdownController(c *Controller) error {
-	if err := l.stopFrontend(); err != nil {
-		return err
-	}
 	c.Stop()
 	return nil
 }
 
-func (l *Launcher) stopFrontend() error {
+func (l *Launcher) shutdownFrontend() error {
+	if l.scsiDevice == nil {
+		return nil
+	}
 	switch l.frontend {
 	case FrontendTGTBlockDev:
 		dev := l.getDev()
@@ -97,6 +94,7 @@ func (l *Launcher) stopFrontend() error {
 	default:
 		return fmt.Errorf("unknown frontend %v", l.frontend)
 	}
+	l.scsiDevice = nil
 	return nil
 }
 
@@ -122,25 +120,26 @@ func (l *Launcher) startFrontend() error {
 			return err
 		}
 		l.scsiDevice = scsiDev
-	}
-	switch l.frontend {
-	case FrontendTGTBlockDev:
-		if err := iscsi.StartScsi(l.scsiDevice); err != nil {
-			return err
+
+		switch l.frontend {
+		case FrontendTGTBlockDev:
+			if err := iscsi.StartScsi(l.scsiDevice); err != nil {
+				return err
+			}
+			if err := l.createDev(); err != nil {
+				return err
+			}
+			logrus.Infof("launcher: SCSI device %s created", l.scsiDevice.Device)
+			break
+		case FrontendTGTISCSI:
+			if err := iscsi.SetupTarget(l.scsiDevice); err != nil {
+				return err
+			}
+			logrus.Infof("launcher: iSCSI target %s created", l.scsiDevice.Target)
+			break
+		default:
+			return fmt.Errorf("unknown frontend %v", l.frontend)
 		}
-		if err := l.createDev(); err != nil {
-			return err
-		}
-		logrus.Infof("launcher: SCSI device %s created", l.scsiDevice.Device)
-		break
-	case FrontendTGTISCSI:
-		if err := iscsi.SetupTarget(l.scsiDevice); err != nil {
-			return err
-		}
-		logrus.Infof("launcher: iSCSI target %s created", l.scsiDevice.Target)
-		break
-	default:
-		return fmt.Errorf("unknown frontend %v", l.frontend)
 	}
 
 	return nil
@@ -178,6 +177,10 @@ func (l *Launcher) WaitForShutdown() error {
 }
 
 func (l *Launcher) Shutdown() {
+	if err := l.shutdownFrontend(); err != nil {
+		return
+	}
+	logrus.Info("launcher: frontend has been shutdown")
 	l.ShutdownController(l.currentController)
 	controllerError := <-l.currentControllerShutdownCh
 	logrus.Info("launcher: Longhorn Engine has been shutdown")
@@ -235,7 +238,7 @@ func (l *Launcher) UpgradeEngine(cxt context.Context, engine *rpc.Engine) (ret *
 	}
 	newController := NewController(binary, l.volumeName, oldController.Listen, oldController.Backends, engine.Replicas)
 
-	newShutdownCh := newController.Start()
+	newShutdownCh := newController.Start(l.listen)
 	socketError := l.waitForSocket()
 	select {
 	case err = <-newShutdownCh:
@@ -319,4 +322,18 @@ func (l *Launcher) reloadSocketConnection() error {
 		return errors.Wrapf(err, "failed to reload socket connection")
 	}
 	return nil
+}
+
+func (l *Launcher) StartFrontend(cxt context.Context, empty *rpc.Empty) (*rpc.Empty, error) {
+	if err := l.startFrontend(); err != nil {
+		return &rpc.Empty{}, err
+	}
+	return &rpc.Empty{}, nil
+}
+
+func (l *Launcher) ShutdownFrontend(cxt context.Context, empty *rpc.Empty) (*rpc.Empty, error) {
+	if err := l.shutdownFrontend(); err != nil {
+		return &rpc.Empty{}, err
+	}
+	return &rpc.Empty{}, nil
 }

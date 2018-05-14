@@ -3,6 +3,8 @@ syntax="proto3";
 service LonghornLauncherService {
 	rpc UpgradeEngine(Engine) returns (Empty) {}
 	rpc GetInfo(Empty) returns (Info) {}
+	rpc StartFrontend(Empty) returns (Empty) {}
+	rpc ShutdownFrontend(Empty) returns (Empty) {}
 }
 
 message Engine {
