@@ -9,6 +9,8 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/gorilla/handlers"
+	"github.com/urfave/cli"
+
 	"github.com/rancher/longhorn-engine/backend/dynamic"
 	"github.com/rancher/longhorn-engine/backend/file"
 	"github.com/rancher/longhorn-engine/backend/remote"
@@ -16,7 +18,6 @@ import (
 	"github.com/rancher/longhorn-engine/controller/rest"
 	"github.com/rancher/longhorn-engine/types"
 	"github.com/rancher/longhorn-engine/util"
-	"github.com/urfave/cli"
 )
 
 var (
@@ -42,6 +43,9 @@ func ControllerCmd() cli.Command {
 			cli.StringSliceFlag{
 				Name: "replica",
 			},
+			cli.StringFlag{
+				Name: "launcher",
+			},
 		},
 		Action: func(c *cli.Context) {
 			if err := startController(c); err != nil {
@@ -65,6 +69,7 @@ func startController(c *cli.Context) error {
 	backends := c.StringSlice("enable-backend")
 	replicas := c.StringSlice("replica")
 	frontendName := c.String("frontend")
+	launcher := c.String("launcher")
 
 	factories := map[string]types.BackendFactory{}
 	for _, backend := range backends {
@@ -87,7 +92,7 @@ func startController(c *cli.Context) error {
 		frontend = f
 	}
 
-	control := controller.NewController(name, dynamic.New(factories), frontend)
+	control := controller.NewController(name, dynamic.New(factories), frontend, launcher)
 	server := rest.NewServer(control)
 	router := http.Handler(rest.NewRouter(server))
 

@@ -6,10 +6,19 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/rancher/longhorn-engine/types"
 	"github.com/rancher/longhorn-engine/util"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
+
+	launcherRPC "github.com/rancher/longhorn-engine/grpc"
+)
+
+const (
+	RPCTimeout = 10 * time.Second
 )
 
 type Controller struct {
@@ -21,6 +30,7 @@ type Controller struct {
 	factory    types.BackendFactory
 	backend    *replicator
 	frontend   types.Frontend
+	launcher   string
 
 	listenAddr string
 	listenPort string
@@ -29,11 +39,12 @@ type Controller struct {
 	lastError  error
 }
 
-func NewController(name string, factory types.BackendFactory, frontend types.Frontend) *Controller {
+func NewController(name string, factory types.BackendFactory, frontend types.Frontend, launcher string) *Controller {
 	c := &Controller{
 		factory:  factory,
 		Name:     name,
 		frontend: frontend,
+		launcher: launcher,
 	}
 	c.reset()
 	return c
@@ -231,6 +242,13 @@ func (c *Controller) startFrontend() error {
 			logrus.Fatalf("Failed to start up frontend: %v", err)
 			// This will never be reached
 			return err
+		}
+		if c.launcher != "" {
+			if err := c.launcherStartFrontend(); err != nil {
+				logrus.Fatalf("Failed to start up frontend: %v", err)
+				// This will never be reached
+				return err
+			}
 		}
 	}
 	return nil
@@ -466,6 +484,42 @@ func (c *Controller) UpdatePort(newPort int) error {
 	// pending http requests would error out
 	if err := oldServer.Close(); err != nil {
 		logrus.Warnf("Failed to close old server at %v: %v", oldAddr, err)
+	}
+	return nil
+}
+
+func (c *Controller) launcherStartFrontend() error {
+	url := c.launcher
+	conn, err := grpc.Dial(url, grpc.WithInsecure())
+	if err != nil {
+		return fmt.Errorf("cannot connect to %v: %v", url, err)
+	}
+	defer conn.Close()
+
+	client := launcherRPC.NewLonghornLauncherServiceClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), RPCTimeout)
+	defer cancel()
+
+	if _, err := client.StartFrontend(ctx, &launcherRPC.Empty{}); err != nil {
+		return fmt.Errorf("failed to start frontend: %v", err)
+	}
+	return nil
+}
+
+func (c *Controller) launcherShutdownFrontend() error {
+	url := c.launcher
+	conn, err := grpc.Dial(url, grpc.WithInsecure())
+	if err != nil {
+		return fmt.Errorf("cannot connect to %v: %v", url, err)
+	}
+	defer conn.Close()
+
+	client := launcherRPC.NewLonghornLauncherServiceClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), RPCTimeout)
+	defer cancel()
+
+	if _, err := client.ShutdownFrontend(ctx, &launcherRPC.Empty{}); err != nil {
+		return fmt.Errorf("failed to shutdown frontend: %v", err)
 	}
 	return nil
 }

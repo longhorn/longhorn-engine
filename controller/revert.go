@@ -35,6 +35,13 @@ func (c *Controller) Revert(name string) error {
 		return err
 	}
 
+	// shutdown launcher's frontend if applied
+	if c.launcher != "" {
+		logrus.Infof("Asking the launcher to shutdown the frontend")
+		if err := c.launcherShutdownFrontend(); err != nil {
+			return err
+		}
+	}
 	if err := c.shutdownFrontend(); err != nil {
 		return err
 	}
@@ -59,7 +66,16 @@ func (c *Controller) Revert(name string) error {
 		return fmt.Errorf("Fail to revert to %v on all replicas", name)
 	}
 
-	return c.startFrontend()
+	if err := c.startFrontend(); err != nil {
+		return err
+	}
+	if c.launcher != "" {
+		logrus.Infof("Asking the launcher to start the frontend")
+		if err := c.launcherStartFrontend(); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (c *Controller) clientsAndSnapshot(name string) (map[string]*client.ReplicaClient, string, error) {
