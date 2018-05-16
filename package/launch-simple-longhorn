@@ -12,7 +12,7 @@ if [ -z $volume ]
 then
         echo "Usage: launch-simple-longhorn <volume_name> <frontend> "
         echo "<volume_name>: Required. User defined volume name"
-        echo "<frontend>: Optional. By default 'tcmu'. "
+        echo "<frontend>: Optional. By default 'tgt-blockdev'. "
 	exit -1
 fi
 
@@ -24,10 +24,15 @@ fi
 
 if [ -z $frontend ]
 then
-        echo Use default frontend TGT
+        echo Use default frontend TGT block device
         frontend="tgt-blockdev"
 fi
 
+launcher="longhorn controller"
+extra_opts=""
+
+[[ $frontend == "tgt-"* ]] && launcher="longhorn-engine-launcher start" && extra_opts="--size $size"
+
 longhorn replica --size $size --listen localhost:9502 /volume/ &
 sleep 1
-exec longhorn-engine-launcher start --frontend $frontend --replica tcp://localhost:9502 --size $size $volume
+exec $launcher --frontend $frontend --replica tcp://localhost:9502 $extra_opts $volume
