@@ -14,8 +14,8 @@ type Volume struct {
 
 type ReadInput struct {
 	client.Resource
-	Offset int64 `json:"offset"`
-	Length int64 `json:"length"`
+	Offset int64 `json:"offset, string"`
+	Length int64 `json:"length, string"`
 }
 
 type ReadOutput struct {
@@ -85,11 +85,11 @@ func NewSchema() *client.Schemas {
 
 	volumes := schemas.AddType("volume", Volume{})
 	volumes.ResourceActions = map[string]client.Action{
-		"readat": client.Action{
+		"readat": {
 			Input:  "readInput",
 			Output: "readOutput",
 		},
-		"writeat": client.Action{
+		"writeat": {
 			Input:  "writeInput",
 			Output: "writeOutput",
 		},
