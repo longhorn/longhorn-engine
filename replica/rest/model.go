@@ -15,12 +15,12 @@ type Replica struct {
 	Head            string                      `json:"head"`
 	Parent          string                      `json:"parent"`
 	Size            string                      `json:"size"`
-	SectorSize      int64                       `json:"sectorSize"`
+	SectorSize      int64                       `json:"sectorSize, string"`
 	State           string                      `json:"state"`
 	Chain           []string                    `json:"chain"`
 	Disks           map[string]replica.DiskInfo `json:"disks"`
 	RemainSnapshots int                         `json:"remainsnapshots"`
-	RevisionCounter int64                       `json:"revisioncounter"`
+	RevisionCounter int64                       `json:"revisioncounter, string"`
 }
 
 type CreateInput struct {
@@ -75,7 +75,7 @@ type PrepareRemoveDiskOutput struct {
 
 type RevisionCounter struct {
 	client.Resource
-	Counter int64 `json:"counter"`
+	Counter int64 `json:"counter, string"`
 }
 
 func NewReplica(context *api.ApiContext, state replica.State, info replica.Info, rep *replica.Replica) *Replica {
