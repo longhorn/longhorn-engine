@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
 	"os/exec"
 	"regexp"
@@ -225,4 +226,13 @@ func ExecuteWithTimeout(timeout time.Duration, binary string, args ...string) (s
 		return "", fmt.Errorf("Failed to execute: %v %v, output %v, error %v", binary, args, string(output), err)
 	}
 	return string(output), nil
+}
+
+func CheckBackupType(backupTarget string) (string, error) {
+	u, err := url.Parse(backupTarget)
+	if err != nil {
+		return "", err
+	}
+
+	return u.Scheme, nil
 }

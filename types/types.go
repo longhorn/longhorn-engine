@@ -9,6 +9,9 @@ const (
 
 	StateUp   = State("Up")
 	StateDown = State("Down")
+
+	AWSAccessKey = "AWS_ACCESS_KEY_ID"
+	AWSSecretKey = "AWS_SECRET_ACCESS_KEY"
 )
 
 type ReaderWriterAt interface {

@@ -8,15 +8,16 @@ import (
 
 type Process struct {
 	client.Resource
-	ProcessType string    `json:"processType"`
-	SrcFile     string    `json:"srcFile"`
-	DestFile    string    `json:"destfile"`
-	Host        string    `json:"host"`
-	Port        int       `json:"port"`
-	ExitCode    int       `json:"exitCode"`
-	Output      string    `json:"output"`
-	Created     time.Time `json:"created"`
-	Labels      []string  `json:"labels"`
+	ProcessType string            `json:"processType"`
+	SrcFile     string            `json:"srcFile"`
+	DestFile    string            `json:"destfile"`
+	Host        string            `json:"host"`
+	Port        int               `json:"port"`
+	ExitCode    int               `json:"exitCode"`
+	Output      string            `json:"output"`
+	Created     time.Time         `json:"created"`
+	Labels      []string          `json:"labels"`
+	Credential  map[string]string `json:"credential"`
 }
 
 type ProcessCollection struct {
