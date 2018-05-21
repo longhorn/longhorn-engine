@@ -16,6 +16,8 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/rancher/go-rancher/api"
 	"github.com/rancher/go-rancher/client"
+	"github.com/rancher/longhorn-engine/types"
+	"github.com/rancher/longhorn-engine/util"
 )
 
 type Server struct {
@@ -239,6 +241,19 @@ func (s *Server) nextPort() (int, error) {
 
 func (s *Server) launchBackup(p *Process) error {
 	buf := new(bytes.Buffer)
+	backupType, err := util.CheckBackupType(p.DestFile)
+	if err != nil {
+		return err
+	}
+	// set aws credential
+	if backupType == "s3" {
+		credential := p.Credential
+		if credential == nil || credential[types.AWSAccessKey] == "" || credential[types.AWSSecretKey] == "" {
+			return errors.New("Could not backup to s3 without setting credential secret")
+		}
+		os.Setenv(types.AWSAccessKey, credential[types.AWSAccessKey])
+		os.Setenv(types.AWSSecretKey, credential[types.AWSSecretKey])
+	}
 
 	cmdline := []string{"sbackup", "create", p.SrcFile,
 		"--dest", p.DestFile,
@@ -257,7 +272,7 @@ func (s *Server) launchBackup(p *Process) error {
 	}
 
 	logrus.Infof("Running %s %v", cmd.Path, cmd.Args)
-	err := cmd.Wait()
+	err = cmd.Wait()
 
 	p.Output = buf.String()
 	fmt.Fprintf(os.Stdout, p.Output)

@@ -10,7 +10,7 @@ import (
 	"github.com/rancher/longhorn-engine/util"
 )
 
-func (t *Task) CreateBackup(snapshot, dest string, labels []string) (string, error) {
+func (t *Task) CreateBackup(snapshot, dest string, labels []string, credential map[string]string) (string, error) {
 	var replica *rest.Replica
 
 	if snapshot == VolumeHeadName {
@@ -38,14 +38,14 @@ func (t *Task) CreateBackup(snapshot, dest string, labels []string) (string, err
 		return "", fmt.Errorf("Cannot find a suitable replica for backup")
 	}
 
-	backup, err := t.createBackup(replica, snapshot, dest, volume.Name, labels)
+	backup, err := t.createBackup(replica, snapshot, dest, volume.Name, labels, credential)
 	if err != nil {
 		return "", err
 	}
 	return backup, nil
 }
 
-func (t *Task) createBackup(replicaInController *rest.Replica, snapshot, dest, volumeName string, labels []string) (string, error) {
+func (t *Task) createBackup(replicaInController *rest.Replica, snapshot, dest, volumeName string, labels []string, credential map[string]string) (string, error) {
 	if replicaInController.Mode != "RW" {
 		return "", fmt.Errorf("Can only create backup from replica in mode RW, got %s", replicaInController.Mode)
 	}
@@ -67,7 +67,7 @@ func (t *Task) createBackup(replicaInController *rest.Replica, snapshot, dest, v
 
 	logrus.Infof("Backing up %s on %s, to %s", snapshot, replicaInController.Address, dest)
 
-	backup, err := repClient.CreateBackup(snapshot, dest, volumeName, labels)
+	backup, err := repClient.CreateBackup(snapshot, dest, volumeName, labels, credential)
 	if err != nil {
 		logrus.Errorf("Failed backing up %s on %s to %s", snapshot, replicaInController.Address, dest)
 		return "", err

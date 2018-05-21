@@ -2,6 +2,7 @@ package app
 
 import (
 	"fmt"
+	"os"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/pkg/errors"
@@ -10,6 +11,7 @@ import (
 	"github.com/rancher/backupstore/cmd"
 
 	"github.com/rancher/longhorn-engine/sync"
+	"github.com/rancher/longhorn-engine/types"
 	"github.com/rancher/longhorn-engine/util"
 )
 
@@ -83,7 +85,25 @@ func createBackup(c *cli.Context) error {
 		}
 	}
 
-	backup, err := task.CreateBackup(snapshot, dest, labels)
+	credential := map[string]string{}
+	backupType, err := util.CheckBackupType(dest)
+	if err != nil {
+		return err
+	}
+	if backupType == "s3" {
+		accessKey := os.Getenv(types.AWSAccessKey)
+		if accessKey == "" {
+			return fmt.Errorf("Missing environment variable AWS_ACCESS_KEY_ID for s3 backup")
+		}
+		secretKey := os.Getenv(types.AWSSecretKey)
+		if secretKey == "" {
+			return fmt.Errorf("Missing environment variable AWS_SECRET_ACCESS_KEY for s3 backup")
+		}
+		credential[types.AWSAccessKey] = accessKey
+		credential[types.AWSSecretKey] = secretKey
+	}
+
+	backup, err := task.CreateBackup(snapshot, dest, labels, credential)
 	if err != nil {
 		return err
 	}
