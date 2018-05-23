@@ -20,8 +20,9 @@ import (
 )
 
 const (
-	UpgradeTimeout = 120 * time.Second
-	InfoTimeout    = 10 * time.Second
+	UpgradeTimeout  = 120 * time.Second
+	InfoTimeout     = 10 * time.Second
+	FrontendTimeout = 60 * time.Second
 )
 
 func StartCmd() cli.Command {
@@ -89,6 +90,38 @@ func InfoCmd() cli.Command {
 		Action: func(c *cli.Context) {
 			if err := info(c); err != nil {
 				logrus.Fatalf("Error running endpoint command: %v.", err)
+			}
+		},
+	}
+}
+
+func FrontendStartCmd() cli.Command {
+	return cli.Command{
+		Name: "frontend-start",
+		Flags: []cli.Flag{
+			cli.StringFlag{
+				Name: "id",
+			},
+		},
+		Action: func(c *cli.Context) {
+			if err := startFrontend(c); err != nil {
+				logrus.Fatalf("Error running frontend-start command: %v.", err)
+			}
+		},
+	}
+}
+
+func FrontendShutdownCmd() cli.Command {
+	return cli.Command{
+		Name: "frontend-shutdown",
+		Flags: []cli.Flag{
+			cli.StringFlag{
+				Name: "id",
+			},
+		},
+		Action: func(c *cli.Context) {
+			if err := shutdownFrontend(c); err != nil {
+				logrus.Fatalf("Error running frontend-start command: %v.", err)
 			}
 		},
 	}
@@ -195,6 +228,56 @@ func info(c *cli.Context) error {
 	return nil
 }
 
+func startFrontend(c *cli.Context) error {
+	id := c.String("id")
+	if id == "" {
+		return fmt.Errorf("missing parameter id")
+	}
+
+	url := c.GlobalString("url")
+	conn, err := grpc.Dial(url, grpc.WithInsecure())
+	if err != nil {
+		return fmt.Errorf("cannot connect to %v: %v", url, err)
+	}
+	defer conn.Close()
+
+	client := rpc.NewLonghornLauncherServiceClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), FrontendTimeout)
+	defer cancel()
+
+	if _, err := client.StartFrontend(ctx, &rpc.Identity{
+		ID: id,
+	}); err != nil {
+		return fmt.Errorf("failed to start frontend: %v", err)
+	}
+	return nil
+}
+
+func shutdownFrontend(c *cli.Context) error {
+	id := c.String("id")
+	if id == "" {
+		return fmt.Errorf("missing parameter id")
+	}
+
+	url := c.GlobalString("url")
+	conn, err := grpc.Dial(url, grpc.WithInsecure())
+	if err != nil {
+		return fmt.Errorf("cannot connect to %v: %v", url, err)
+	}
+	defer conn.Close()
+
+	client := rpc.NewLonghornLauncherServiceClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), FrontendTimeout)
+	defer cancel()
+
+	if _, err := client.ShutdownFrontend(ctx, &rpc.Identity{
+		ID: id,
+	}); err != nil {
+		return fmt.Errorf("failed to start frontend: %v", err)
+	}
+	return nil
+}
+
 func main() {
 	a := cli.NewApp()
 	a.Flags = []cli.Flag{
@@ -210,6 +293,8 @@ func main() {
 		StartCmd(),
 		UpgradeCmd(),
 		InfoCmd(),
+		FrontendStartCmd(),
+		FrontendShutdownCmd(),
 	}
 	if err := a.Run(os.Args); err != nil {
 		logrus.Fatal("Error when executing command: ", err)
