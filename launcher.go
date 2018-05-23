@@ -62,11 +62,13 @@ func NewLauncher(listen, longhornBinary, frontend, volumeName string, size int64
 func (l *Launcher) StartController(c *Controller) error {
 	l.currentController = c
 	l.currentControllerShutdownCh = c.Start(l.listen)
+	logrus.Infof("launcher: controller %v started", c.ID)
 	return nil
 }
 
 func (l *Launcher) ShutdownController(c *Controller) error {
 	c.Stop()
+	logrus.Infof("launcher: controller %v stopping", c.ID)
 	return nil
 }
 
@@ -240,7 +242,7 @@ func (l *Launcher) UpgradeEngine(cxt context.Context, engine *rpc.Engine) (ret *
 	if err := rm(l.GetSocketPath()); err != nil {
 		return nil, errors.Wrapf(err, "failed to remove socket %v", l.GetSocketPath())
 	}
-	newController := NewController(binary, l.volumeName, oldController.Listen, oldController.Backends, engine.Replicas)
+	newController := NewController(util.UUID(), binary, l.volumeName, oldController.Listen, oldController.Backends, engine.Replicas)
 
 	newShutdownCh := newController.Start(l.listen)
 	socketError := l.waitForSocket()
@@ -328,16 +330,24 @@ func (l *Launcher) reloadSocketConnection() error {
 	return nil
 }
 
-func (l *Launcher) StartFrontend(cxt context.Context, empty *rpc.Empty) (*rpc.Empty, error) {
+func (l *Launcher) StartFrontend(cxt context.Context, identity *rpc.Identity) (*rpc.Empty, error) {
+	if identity.ID != l.currentController.ID {
+		logrus.Infof("launcher: Ignore start frontend from %v since it's not the current controller", identity.ID)
+		return &rpc.Empty{}, nil
+	}
 	if err := l.startFrontend(); err != nil {
 		return &rpc.Empty{}, err
 	}
 	return &rpc.Empty{}, nil
 }
 
-func (l *Launcher) ShutdownFrontend(cxt context.Context, empty *rpc.Empty) (*rpc.Empty, error) {
+func (l *Launcher) ShutdownFrontend(cxt context.Context, identity *rpc.Identity) (*rpc.Empty, error) {
+	if identity.ID != l.currentController.ID {
+		logrus.Infof("launcher: Ignore shutdown frontend from %v since it's not the current controller", identity.ID)
+		return &rpc.Empty{}, nil
+	}
 	if err := l.shutdownFrontend(); err != nil {
-		return &rpc.Empty{}, err
+		return nil, err
 	}
 	return &rpc.Empty{}, nil
 }

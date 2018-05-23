@@ -16,6 +16,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/rancher/longhorn-engine-launcher/rpc"
+	"github.com/rancher/longhorn-engine/util"
 )
 
 const (
@@ -120,7 +121,8 @@ func start(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	controller := NewController(longhornBinary, name, listen, backends, replicas)
+	id := util.UUID()
+	controller := NewController(id, longhornBinary, name, listen, backends, replicas)
 	if err := l.StartController(controller); err != nil {
 		return err
 	}
