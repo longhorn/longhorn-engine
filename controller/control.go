@@ -9,16 +9,15 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
+
 	"github.com/rancher/longhorn-engine/types"
 	"github.com/rancher/longhorn-engine/util"
-	"golang.org/x/net/context"
-	"google.golang.org/grpc"
-
-	launcherRPC "github.com/rancher/longhorn-engine/grpc"
 )
 
 const (
 	RPCTimeout = 60 * time.Second
+
+	LauncherBinary = "longhorn-engine-launcher"
 )
 
 type Controller struct {
@@ -31,6 +30,7 @@ type Controller struct {
 	backend    *replicator
 	frontend   types.Frontend
 	launcher   string
+	launcherID string
 
 	listenAddr string
 	listenPort string
@@ -39,12 +39,13 @@ type Controller struct {
 	lastError  error
 }
 
-func NewController(name string, factory types.BackendFactory, frontend types.Frontend, launcher string) *Controller {
+func NewController(name string, factory types.BackendFactory, frontend types.Frontend, launcher, launcherID string) *Controller {
 	c := &Controller{
-		factory:  factory,
-		Name:     name,
-		frontend: frontend,
-		launcher: launcher,
+		factory:    factory,
+		Name:       name,
+		frontend:   frontend,
+		launcher:   launcher,
+		launcherID: launcherID,
 	}
 	c.reset()
 	return c
@@ -402,6 +403,13 @@ func (c *Controller) shutdownFrontend() error {
 	c.RLock()
 	defer c.RUnlock()
 
+	// shutdown launcher's frontend if applied
+	if c.launcher != "" {
+		logrus.Infof("Asking the launcher to shutdown the frontend")
+		if err := c.launcherShutdownFrontend(); err != nil {
+			return err
+		}
+	}
 	if c.frontend != nil {
 		return c.frontend.Shutdown()
 	}
@@ -489,36 +497,30 @@ func (c *Controller) UpdatePort(newPort int) error {
 }
 
 func (c *Controller) launcherStartFrontend() error {
-	url := c.launcher
-	conn, err := grpc.Dial(url, grpc.WithInsecure())
-	if err != nil {
-		return fmt.Errorf("cannot connect to %v: %v", url, err)
+	if c.launcher == "" {
+		return nil
 	}
-	defer conn.Close()
-
-	client := launcherRPC.NewLonghornLauncherServiceClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), RPCTimeout)
-	defer cancel()
-
-	if _, err := client.StartFrontend(ctx, &launcherRPC.Empty{}); err != nil {
+	args := []string{
+		"--url", c.launcher,
+		"frontend-start",
+		"--id", c.launcherID,
+	}
+	if _, err := util.Execute(LauncherBinary, args...); err != nil {
 		return fmt.Errorf("failed to start frontend: %v", err)
 	}
 	return nil
 }
 
 func (c *Controller) launcherShutdownFrontend() error {
-	url := c.launcher
-	conn, err := grpc.Dial(url, grpc.WithInsecure())
-	if err != nil {
-		return fmt.Errorf("cannot connect to %v: %v", url, err)
+	if c.launcher == "" {
+		return nil
 	}
-	defer conn.Close()
-
-	client := launcherRPC.NewLonghornLauncherServiceClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), RPCTimeout)
-	defer cancel()
-
-	if _, err := client.ShutdownFrontend(ctx, &launcherRPC.Empty{}); err != nil {
+	args := []string{
+		"--url", c.launcher,
+		"frontend-shutdown",
+		"--id", c.launcherID,
+	}
+	if _, err := util.Execute(LauncherBinary, args...); err != nil {
 		return fmt.Errorf("failed to shutdown frontend: %v", err)
 	}
 	return nil

@@ -35,13 +35,6 @@ func (c *Controller) Revert(name string) error {
 		return err
 	}
 
-	// shutdown launcher's frontend if applied
-	if c.launcher != "" {
-		logrus.Infof("Asking the launcher to shutdown the frontend")
-		if err := c.launcherShutdownFrontend(); err != nil {
-			return err
-		}
-	}
 	if err := c.shutdownFrontend(); err != nil {
 		return err
 	}
