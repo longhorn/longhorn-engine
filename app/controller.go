@@ -46,6 +46,9 @@ func ControllerCmd() cli.Command {
 			cli.StringFlag{
 				Name: "launcher",
 			},
+			cli.StringFlag{
+				Name: "launcher-id",
+			},
 		},
 		Action: func(c *cli.Context) {
 			if err := startController(c); err != nil {
@@ -70,6 +73,7 @@ func startController(c *cli.Context) error {
 	replicas := c.StringSlice("replica")
 	frontendName := c.String("frontend")
 	launcher := c.String("launcher")
+	launcherID := c.String("launcher-id")
 
 	factories := map[string]types.BackendFactory{}
 	for _, backend := range backends {
@@ -92,7 +96,7 @@ func startController(c *cli.Context) error {
 		frontend = f
 	}
 
-	control := controller.NewController(name, dynamic.New(factories), frontend, launcher)
+	control := controller.NewController(name, dynamic.New(factories), frontend, launcher, launcherID)
 	server := rest.NewServer(control)
 	router := http.Handler(rest.NewRouter(server))
 
