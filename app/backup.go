@@ -101,6 +101,7 @@ func createBackup(c *cli.Context) error {
 		}
 		credential[types.AWSAccessKey] = accessKey
 		credential[types.AWSSecretKey] = secretKey
+		credential[types.AWSEndPoint] = os.Getenv(types.AWSEndPoint)
 	}
 
 	backup, err := task.CreateBackup(snapshot, dest, labels, credential)

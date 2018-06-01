@@ -252,6 +252,7 @@ func (s *Server) launchBackup(p *Process) error {
 		if credential != nil && credential[types.AWSAccessKey] != "" && credential[types.AWSSecretKey] != "" {
 			os.Setenv(types.AWSAccessKey, credential[types.AWSAccessKey])
 			os.Setenv(types.AWSSecretKey, credential[types.AWSSecretKey])
+			os.Setenv(types.AWSEndPoint, credential[types.AWSEndPoint])
 		} else if os.Getenv(types.AWSAccessKey) == "" || os.Getenv(types.AWSSecretKey) == "" {
 			return errors.New("Could not backup to s3 without setting credential secret")
 		}
