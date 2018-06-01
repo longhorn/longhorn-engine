@@ -8,6 +8,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
+	"os"
 )
 
 type Service struct {
@@ -16,7 +17,14 @@ type Service struct {
 }
 
 func (s *Service) New() (*s3.S3, error) {
-	return s3.New(session.New(), &aws.Config{Region: &s.Region}), nil
+	// get custom endpoint
+	endpoints := os.Getenv("AWS_ENDPOINTS")
+	config := &aws.Config{Region: &s.Region}
+	if endpoints != "" {
+		config.Endpoint = aws.String(endpoints)
+		config.S3ForcePathStyle = aws.Bool(true)
+	}
+	return s3.New(session.New(), config), nil
 }
 
 func (s *Service) Close() {
