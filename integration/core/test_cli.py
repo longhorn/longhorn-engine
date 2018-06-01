@@ -9,11 +9,12 @@ import datetime
 import pytest
 import cattle
 
+from urlparse import urlparse
 
 REPLICA = 'tcp://localhost:9502'
 REPLICA2 = 'tcp://localhost:9505'
 
-BACKUP_DEST = '/tmp/longhorn-backup'
+BACKUP_DEST = '/data/backupbucket'
 
 VOLUME_NAME = 'test-volume_1.0'
 VOLUME_SIZE = str(4 * 1024 * 1024)  # 4M
@@ -66,6 +67,13 @@ def cleanup_replica(client):
     r = client.reload(r)
     assert r.state == 'initial'
     return client
+
+
+@pytest.fixture()
+def backup_targets():
+    env = dict(os.environ)
+    assert env["BACKUPTARGETS"] != ""
+    return env["BACKUPTARGETS"].split(",")
 
 
 @pytest.fixture
@@ -580,8 +588,8 @@ def test_snapshot_last(bin, controller_client, replica_client,
     subprocess.check_call(cmd)
 
 
-def test_backup_core(bin, controller_client, replica_client,
-                     replica_client2):
+def backup_core(bin, controller_client, replica_client,
+                replica_client2, backup_target):
     open_replica(replica_client)
     open_replica(replica_client2)
 
@@ -592,6 +600,8 @@ def test_backup_core(bin, controller_client, replica_client,
     ])
     assert v.replicaCount == 2
 
+    env = dict(os.environ)
+    backup_type = urlparse(backup_target).scheme
     cmd = [bin, 'snapshot', 'create']
     snapshot1 = subprocess.check_output(cmd).strip()
     output = replica_client.list_replica()[0].chain[1]
@@ -599,10 +609,10 @@ def test_backup_core(bin, controller_client, replica_client,
     assert output == 'volume-snap-{}.img'.format(snapshot1)
 
     cmd = [bin, 'backup', 'create', snapshot1,
-           '--dest', "vfs://" + BACKUP_DEST,
+           '--dest', backup_target,
            '--label', 'name=backup1',
-           '--label', 'type=vfs']
-    backup1 = subprocess.check_output(cmd).strip()
+           '--label', 'type=' + backup_type]
+    backup1 = subprocess.check_output(cmd, env=env).strip()
 
     cmd = [bin, 'snapshot', 'create']
     snapshot2 = subprocess.check_output(cmd).strip()
@@ -611,11 +621,11 @@ def test_backup_core(bin, controller_client, replica_client,
     assert output == 'volume-snap-{}.img'.format(snapshot2)
 
     cmd = [bin, 'backup', 'create', snapshot2,
-           '--dest', "vfs://" + BACKUP_DEST]
-    backup2 = subprocess.check_output(cmd).strip()
+           '--dest', backup_target]
+    backup2 = subprocess.check_output(cmd, env=env).strip()
 
     cmd = [bin, 'backup', 'inspect', backup1]
-    data = subprocess.check_output(cmd)
+    data = subprocess.check_output(cmd, env=env)
     backup1_info = json.loads(data)
     assert backup1_info["URL"] == backup1
     assert backup1_info["VolumeName"] == VOLUME_NAME
@@ -623,10 +633,10 @@ def test_backup_core(bin, controller_client, replica_client,
     assert backup1_info["SnapshotName"] == snapshot1
     assert len(backup1_info["Labels"]) == 2
     assert backup1_info["Labels"]["name"] == "backup1"
-    assert backup1_info["Labels"]["type"] == "vfs"
+    assert backup1_info["Labels"]["type"] == backup_type
 
     cmd = [bin, 'backup', 'inspect', backup2]
-    data = subprocess.check_output(cmd)
+    data = subprocess.check_output(cmd, env=env)
     backup2_info = json.loads(data)
     assert backup2_info["URL"] == backup2
     assert backup2_info["VolumeName"] == VOLUME_NAME
@@ -634,8 +644,8 @@ def test_backup_core(bin, controller_client, replica_client,
     assert backup2_info["SnapshotName"] == snapshot2
     assert len(backup2_info["Labels"]) == 0
 
-    cmd = [bin, 'backup', 'ls', "vfs://" + BACKUP_DEST]
-    data = subprocess.check_output(cmd).strip()
+    cmd = [bin, 'backup', 'ls', backup_target]
+    data = subprocess.check_output(cmd, env=env).strip()
     volume_info = json.loads(data)[VOLUME_NAME]
     assert volume_info["Name"] == VOLUME_NAME
     assert volume_info["Size"] == VOLUME_SIZE
@@ -650,36 +660,36 @@ def test_backup_core(bin, controller_client, replica_client,
     assert backup_list[backup2]["Created"] == backup2_info["Created"]
 
     cmd = [bin, 'backup', 'inspect',
-           "vfs:///tmp/longhorn-backup?backup=backup-1234"
+           backup_target + "?backup=backup-1234"
            + "&volume=test-volume_1.0"]
     # cannot find the backup
     with pytest.raises(subprocess.CalledProcessError):
-        subprocess.check_call(cmd)
+        subprocess.check_call(cmd, env=env)
 
     cmd = [bin, 'backup', 'restore', backup1]
-    subprocess.check_call(cmd)
+    subprocess.check_call(cmd, env=env)
 
     cmd = [bin, 'backup', 'restore', backup2]
-    subprocess.check_call(cmd)
+    subprocess.check_call(cmd, env=env)
 
     cmd = [bin, 'backup', 'rm', backup1]
-    subprocess.check_call(cmd)
+    subprocess.check_call(cmd, env=env)
     cmd = [bin, 'backup', 'rm', backup2]
-    subprocess.check_call(cmd)
+    subprocess.check_call(cmd, env=env)
 
     assert os.path.exists(BACKUP_DEST)
 
     cmd = [bin, 'backup', 'inspect',
-           "vfs:///tmp/longhorn-backup?backup=backup-1234"
+           backup_target + "?backup=backup-1234"
            + "&volume=test-volume_1.0"]
     # cannot find the backup
     with pytest.raises(subprocess.CalledProcessError):
-        subprocess.check_call(cmd)
+        subprocess.check_call(cmd, env=env)
 
     cmd = [bin, 'backup', 'inspect', "xxx"]
     # cannot find the backup
     with pytest.raises(subprocess.CalledProcessError):
-        subprocess.check_call(cmd)
+        subprocess.check_call(cmd, env=env)
 
 
 def test_snapshot_purge_basic(bin, controller_client,
@@ -790,3 +800,13 @@ def test_snapshot_purge_head_parent(bin, controller_client,
     assert info[snap1]["parent"] == snap0
     assert info[snap1]["removed"] is True
     assert info[VOLUME_HEAD]["parent"] == snap1
+
+
+def test_backup_cli(bin, controller_client, replica_client,
+                    replica_client2, backup_targets):
+    for backup_target in backup_targets:
+        backup_core(bin, controller_client, replica_client,
+                    replica_client2, backup_target)
+        cleanup_replica(replica_client)
+        cleanup_replica(replica_client2)
+        cleanup_controller(controller_client)

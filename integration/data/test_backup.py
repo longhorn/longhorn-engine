@@ -4,8 +4,8 @@ import pytest
 
 import cmd
 import common
-from common import dev, backing_dev  # NOQA
-from common import read_dev, read_from_backing_file, BACKUP_DEST
+from common import replica1, replica2, controller, backing_replica1, backing_replica2, backup_targets  # NOQA
+from common import read_dev, read_from_backing_file
 from snapshot_tree import snapshot_tree_build, snapshot_tree_verify_backup_node
 
 VOLUME_NAME = 'test-volume_1.0'
@@ -13,7 +13,7 @@ VOLUME_SIZE = str(4 * 1024 * 1024)  # 4M
 BLOCK_SIZE = str(2 * 1024 * 1024)  # 2M
 
 
-def test_backup(dev):  # NOQA
+def backup_test(dev, backup_target):  # NOQA
     offset = 0
     length = 128
 
@@ -22,7 +22,7 @@ def test_backup(dev):  # NOQA
     snap1_checksum = common.checksum_dev(dev)
     snap1 = cmd.snapshot_create()
 
-    backup1 = cmd.backup_create(snap1, BACKUP_DEST)
+    backup1 = cmd.backup_create(snap1, backup_target)
     backup1_info = cmd.backup_inspect(backup1)
     assert backup1_info["URL"] == backup1
     assert backup1_info["VolumeName"] == VOLUME_NAME
@@ -35,7 +35,7 @@ def test_backup(dev):  # NOQA
     snap2_checksum = common.checksum_dev(dev)
     snap2 = cmd.snapshot_create()
 
-    backup2 = cmd.backup_create(snap2, BACKUP_DEST)
+    backup2 = cmd.backup_create(snap2, backup_target)
     backup2_info = cmd.backup_inspect(backup2)
     assert backup2_info["URL"] == backup2
     assert backup2_info["VolumeName"] == VOLUME_NAME
@@ -48,7 +48,7 @@ def test_backup(dev):  # NOQA
     snap3_checksum = common.checksum_dev(dev)
     snap3 = cmd.snapshot_create()
 
-    backup3 = cmd.backup_create(snap3, BACKUP_DEST)
+    backup3 = cmd.backup_create(snap3, backup_target)
     backup3_info = cmd.backup_inspect(backup3)
     assert backup3_info["URL"] == backup3
     assert backup3_info["VolumeName"] == VOLUME_NAME
@@ -93,7 +93,7 @@ def test_backup(dev):  # NOQA
         cmd.backup_inspect(backup2)
 
 
-def test_backup_with_backing_file(backing_dev):  # NOQA
+def backup_with_backing_file_test(backing_dev, backup_target):  # NOQA
     dev = backing_dev  # NOQA
 
     offset = 0
@@ -107,14 +107,14 @@ def test_backup_with_backing_file(backing_dev):  # NOQA
     exists = read_from_backing_file(offset, length)
     assert before == exists
 
-    backup0 = cmd.backup_create(snap0, BACKUP_DEST)
+    backup0 = cmd.backup_create(snap0, backup_target)
     backup0_info = cmd.backup_inspect(backup0)
     assert backup0_info["URL"] == backup0
     assert backup0_info["VolumeName"] == VOLUME_NAME
     assert backup0_info["VolumeSize"] == VOLUME_SIZE
     assert snap0 in backup0_info["SnapshotName"]
 
-    test_backup(dev)
+    backup_test(dev, backup_target)
 
     cmd.backup_restore(backup0)
     after = read_dev(dev, offset, length)
@@ -129,7 +129,7 @@ def test_backup_with_backing_file(backing_dev):  # NOQA
         cmd.backup_inspect(backup0)
 
 
-def test_backup_hole_with_backing_file(backing_dev):  # NOQA
+def backup_hole_with_backing_file_test(backing_dev, backup_target):  # NOQA
     dev = backing_dev  # NOQA
 
     offset1 = 512
@@ -151,7 +151,7 @@ def test_backup_hole_with_backing_file(backing_dev):  # NOQA
 
     boundary_data_backup1 = read_dev(dev, boundary_offset, boundary_length)
     hole_data_backup1 = read_dev(dev, hole_offset, hole_length)
-    backup1 = cmd.backup_create(snap1, BACKUP_DEST)
+    backup1 = cmd.backup_create(snap1, backup_target)
 
     snap2_data = common.random_string(length2)
     common.verify_data(dev, offset2, snap2_data)
@@ -160,7 +160,7 @@ def test_backup_hole_with_backing_file(backing_dev):  # NOQA
 
     boundary_data_backup2 = read_dev(dev, boundary_offset, boundary_length)
     hole_data_backup2 = read_dev(dev, hole_offset, hole_length)
-    backup2 = cmd.backup_create(snap2, BACKUP_DEST)
+    backup2 = cmd.backup_create(snap2, backup_target)
 
     cmd.backup_restore(backup1)
     readed = read_dev(dev, boundary_offset, boundary_length)
@@ -179,19 +179,19 @@ def test_backup_hole_with_backing_file(backing_dev):  # NOQA
     assert c == snap2_checksum
 
 
-def test_snapshot_tree_backup(dev):  # NOQA
+def snapshot_tree_backup_test(dev, backup_target):  # NOQA
     offset = 0
     length = 128
     backup = {}
 
     snap, data = snapshot_tree_build(dev, offset, length)
 
-    backup["0b"] = cmd.backup_create(snap["0b"], BACKUP_DEST)
-    backup["0c"] = cmd.backup_create(snap["0c"], BACKUP_DEST)
-    backup["1c"] = cmd.backup_create(snap["1c"], BACKUP_DEST)
-    backup["2b"] = cmd.backup_create(snap["2b"], BACKUP_DEST)
-    backup["2c"] = cmd.backup_create(snap["2c"], BACKUP_DEST)
-    backup["3c"] = cmd.backup_create(snap["3c"], BACKUP_DEST)
+    backup["0b"] = cmd.backup_create(snap["0b"], backup_target)
+    backup["0c"] = cmd.backup_create(snap["0c"], backup_target)
+    backup["1c"] = cmd.backup_create(snap["1c"], backup_target)
+    backup["2b"] = cmd.backup_create(snap["2b"], backup_target)
+    backup["2c"] = cmd.backup_create(snap["2c"], backup_target)
+    backup["3c"] = cmd.backup_create(snap["3c"], backup_target)
 
     snapshot_tree_verify_backup_node(dev, offset, length, backup, data, "0b")
     snapshot_tree_verify_backup_node(dev, offset, length, backup, data, "0c")
@@ -199,3 +199,43 @@ def test_snapshot_tree_backup(dev):  # NOQA
     snapshot_tree_verify_backup_node(dev, offset, length, backup, data, "2b")
     snapshot_tree_verify_backup_node(dev, offset, length, backup, data, "2c")
     snapshot_tree_verify_backup_node(dev, offset, length, backup, data, "3c")
+
+
+def test_backup(replica1, replica2, controller, backup_targets):  # NOQA
+    for backup_target in backup_targets:
+        dev = common.get_dev(replica1, replica2, controller)
+        backup_test(dev, backup_target)
+        common.cleanup_replica(replica1)
+        common.cleanup_replica(replica2)
+        common.cleanup_controller(controller)
+
+
+def test_snapshot_tree_backup(replica1, replica2, controller, backup_targets):  # NOQA
+    for backup_target in backup_targets:
+        dev = common.get_dev(replica1, replica2, controller)
+        snapshot_tree_backup_test(dev, backup_target)
+        common.cleanup_replica(replica1)
+        common.cleanup_replica(replica2)
+        common.cleanup_controller(controller)
+
+
+def test_backup_with_backing_file(backing_replica1, backing_replica2, controller, backup_targets):  # NOQA
+    for backup_target in backup_targets:
+        backing_dev = common.get_backing_dev(backing_replica1,
+                                             backing_replica2,
+                                             controller)
+        backup_with_backing_file_test(backing_dev, backup_target)
+        common.cleanup_replica(backing_replica1)
+        common.cleanup_replica(backing_replica2)
+        common.cleanup_controller(controller)
+
+
+def test_backup_hole_with_backing_file(backing_replica1, backing_replica2, controller, backup_targets):  # NOQA
+    for backup_target in backup_targets:
+        backing_dev = common.get_backing_dev(backing_replica1,
+                                             backing_replica2,
+                                             controller)
+        backup_hole_with_backing_file_test(backing_dev, backup_target)
+        common.cleanup_replica(backing_replica1)
+        common.cleanup_replica(backing_replica2)
+        common.cleanup_controller(controller)
