@@ -39,6 +39,9 @@ ENV DOCKER_URL_amd64=https://get.docker.com/builds/Linux/x86_64/docker-1.10.3 \
 
 RUN wget -O /usr/bin/docker ${!DOCKER_URL} && chmod +x /usr/bin/docker
 
+# Minio
+RUN wget -O /usr/bin/minio https://dl.minio.io/server/minio/release/linux-amd64/archive/minio.RELEASE.2018-05-25T19-49-13Z && chmod +x /usr/bin/minio
+
 # Build TCMU
 RUN cd /usr/src && \
     git clone https://github.com/open-iscsi/tcmu-runner.git && \

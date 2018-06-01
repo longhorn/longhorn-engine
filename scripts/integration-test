@@ -41,6 +41,11 @@ then
 	mount --rbind /host/dev /dev
 fi
 
+# set credential for replica to test backup restore
+export AWS_ACCESS_KEY_ID=test-access-key
+export AWS_SECRET_ACCESS_KEY=test-secret-key
+export AWS_ENDPOINTS=http://127.0.0.1:9000
+
 /usr/local/bin/longhorn-engine-launcher start --longhorn-binary ./bin/longhorn \
 	--frontend tgt-blockdev --enable-backend file --size 4Mb test-volume_1.0 &
 pid_controller=$!
@@ -84,6 +89,16 @@ ps $pid_upgrade_replica2
 trap "kill $pid_controller $pid_replica1 $pid_replica2 \
        $pid_backing_replica1 $pid_backing_replica2 \
        $pid_upgrade_replica1 $pid_upgrade_replica2" EXIT
+
+# start minio server to test s3 backup and set credential keys
+export MINIO_ACCESS_KEY=test-access-key
+export MINIO_SECRET_KEY=test-secret-key
+# create default bucket
+mkdir -p /data/backupbucket
+# run minio server
+/usr/bin/minio server /data &
+
+export BACKUPTARGETS=s3://backupbucket@us-east-1/backupstore,vfs:///data/backupbucket
 
 cd integration
 find -depth -name __pycache__ -o -name "*.pyc" -exec rm -rf {} \;

@@ -35,7 +35,7 @@ LONGHORN_UPGRADE_BINARY = '/opt/longhorn'
 
 SIZE = 4 * 1024 * 1024
 
-BACKUP_DIR = '/tmp/longhorn-backup'
+BACKUP_DIR = '/data/backupbucket'
 BACKUP_DEST = 'vfs://' + BACKUP_DIR
 
 BACKING_FILE = 'backing_file.raw'
@@ -56,50 +56,20 @@ def _base():
 
 @pytest.fixture()
 def dev(request):
-    prepare_backup_dir(BACKUP_DIR)
     replica = replica_client(request, REPLICA1_SCHEMA)
     replica2 = replica_client(request, REPLICA2_SCHEMA)
     controller = controller_client(request)
 
-    open_replica(replica)
-    open_replica(replica2)
-
-    replicas = controller.list_replica()
-    assert len(replicas) == 0
-
-    v = controller.list_volume()[0]
-    v = v.start(replicas=[
-        REPLICA1,
-        REPLICA2
-    ])
-    assert v.replicaCount == 2
-    d = get_blockdev()
-
-    return d
+    return get_dev(replica, replica2, controller)
 
 
 @pytest.fixture()
 def backing_dev(request):
-    prepare_backup_dir(BACKUP_DIR)
     replica = replica_client(request, BACKED_REPLICA1_SCHEMA)
     replica2 = replica_client(request, BACKED_REPLICA2_SCHEMA)
     controller = controller_client(request)
 
-    open_replica(replica)
-    open_replica(replica2)
-
-    replicas = controller.list_replica()
-    assert len(replicas) == 0
-
-    v = controller.list_volume()[0]
-    v = v.start(replicas=[
-        BACKED_REPLICA1,
-        BACKED_REPLICA2
-    ])
-    assert v.replicaCount == 2
-    d = get_blockdev()
-
-    return d
+    return get_backing_dev(replica, replica2, controller)
 
 
 @pytest.fixture()
@@ -279,3 +249,59 @@ def verify_async(dev, times, length, count):
     if thread_failed:
         thread_failed = False
         raise Exception("data_verifier thread failed")
+
+
+@pytest.fixture()
+def backing_replica1(request):
+    return replica_client(request, BACKED_REPLICA1_SCHEMA)
+
+
+@pytest.fixture()
+def backing_replica2(request):
+    return replica_client(request, BACKED_REPLICA2_SCHEMA)
+
+
+def get_dev(replica1, replica2, controller):
+    prepare_backup_dir(BACKUP_DIR)
+    open_replica(replica1)
+    open_replica(replica2)
+
+    replicas = controller.list_replica()
+    assert len(replicas) == 0
+
+    v = controller.list_volume()[0]
+    v = v.start(replicas=[
+        REPLICA1,
+        REPLICA2
+    ])
+    assert v.replicaCount == 2
+    d = get_blockdev()
+
+    return d
+
+
+def get_backing_dev(backing_replica1, backing_replica2,
+                    controller):
+    prepare_backup_dir(BACKUP_DIR)
+    open_replica(backing_replica1)
+    open_replica(backing_replica2)
+
+    replicas = controller.list_replica()
+    assert len(replicas) == 0
+
+    v = controller.list_volume()[0]
+    v = v.start(replicas=[
+        BACKED_REPLICA1,
+        BACKED_REPLICA2
+    ])
+    assert v.replicaCount == 2
+    d = get_blockdev()
+
+    return d
+
+
+@pytest.fixture()
+def backup_targets():
+    env = dict(os.environ)
+    assert env["BACKUPTARGETS"] != ""
+    return env["BACKUPTARGETS"].split(",")
