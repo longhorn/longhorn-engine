@@ -74,6 +74,7 @@ func longhornCli() {
 	}
 
 	a := cli.NewApp()
+	a.Version = Version
 	a.Before = func(c *cli.Context) error {
 		if c.GlobalBool("debug") {
 			logrus.SetLevel(logrus.DebugLevel)
@@ -100,6 +101,7 @@ func longhornCli() {
 		app.BackupCmd(),
 		app.Journal(),
 		app.InfoCmd(),
+		VersionCmd(),
 	}
 	a.CommandNotFound = cmdNotFound
 	a.OnUsageError = onUsageError
