@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -235,4 +236,33 @@ func CheckBackupType(backupTarget string) (string, error) {
 	}
 
 	return u.Scheme, nil
+}
+
+func ResolveBackingFilepath(fileOrDirpath string) (string, error) {
+	fileOrDir, err := os.Open(fileOrDirpath)
+	if err != nil {
+		return "", err
+	}
+	defer fileOrDir.Close()
+
+	fileOrDirInfo, err := fileOrDir.Stat()
+	if err != nil {
+		return "", err
+	}
+
+	if fileOrDirInfo.IsDir() {
+		files, err := fileOrDir.Readdir(-1)
+		if err != nil {
+			return "", err
+		}
+		if len(files) != 1 {
+			return "", fmt.Errorf("expected exactly one file, found %d files/subdirectories", len(files))
+		}
+		if files[0].IsDir() {
+			return "", fmt.Errorf("expected exactly one file, found a subdirectory")
+		}
+		return filepath.Join(fileOrDirpath, files[0].Name()), nil
+	}
+
+	return fileOrDirpath, nil
 }
