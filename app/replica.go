@@ -28,7 +28,7 @@ func ReplicaCmd() cli.Command {
 			},
 			cli.StringFlag{
 				Name:  "backing-file",
-				Usage: "qcow file to use as the base image of this disk",
+				Usage: "qcow file or encapsulating directory to use as the base image of this disk",
 			},
 			cli.BoolTFlag{
 				Name: "sync-agent",

@@ -1,6 +1,9 @@
 package util
 
 import (
+	"io/ioutil"
+	"os"
+	"path/filepath"
 	"testing"
 
 	. "gopkg.in/check.v1"
@@ -42,4 +45,56 @@ func (s *TestSuite) TestParseLabels(c *C) {
 	c.Assert(err, IsNil)
 	c.Assert(len(lm), Equals, 1)
 	c.Assert(lm["name"], Equals, "456")
+}
+
+func createTempDir(c *C) string {
+	dir, err := ioutil.TempDir("", "test")
+	c.Assert(err, IsNil)
+	return dir
+}
+
+func touchFile(c *C, path string) {
+	f, err := os.Create(path)
+	c.Assert(err, IsNil)
+	f.Close()
+}
+
+func (s *TestSuite) TestResolveFilepathNoOp(c *C) {
+	dirpath := createTempDir(c)
+	f := filepath.Join(dirpath, "test")
+	touchFile(c, f)
+
+	f2, err := ResolveBackingFilepath(f)
+	c.Assert(err, IsNil)
+	c.Assert(f, Equals, f2)
+}
+
+func (s *TestSuite) TestResolveFilepathFromDirectory(c *C) {
+	dirpath := createTempDir(c)
+	f := filepath.Join(dirpath, "test")
+	touchFile(c, f)
+
+	f2, err := ResolveBackingFilepath(dirpath)
+	c.Assert(err, IsNil)
+	c.Assert(f, Equals, f2)
+}
+
+func (s *TestSuite) TestResolveFilepathTooManyFiles(c *C) {
+	dirpath := createTempDir(c)
+	f := filepath.Join(dirpath, "test")
+	touchFile(c, f)
+	f2 := filepath.Join(dirpath, "test2")
+	touchFile(c, f2)
+
+	_, err := ResolveBackingFilepath(dirpath)
+	c.Assert(err, ErrorMatches, ".*found 2 files.*")
+}
+
+func (s *TestSuite) TestResolveFilepathSubdirectory(c *C) {
+	dirpath := createTempDir(c)
+	err := os.Mkdir(filepath.Join(dirpath, "test2"), 0777)
+	c.Assert(err, IsNil)
+
+	_, err = ResolveBackingFilepath(dirpath)
+	c.Assert(err, ErrorMatches, ".*found a subdirectory")
 }
