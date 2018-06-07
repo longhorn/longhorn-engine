@@ -85,6 +85,11 @@ def test_snapshot_revert_with_backing_file(backing_dev):  # NOQA
     before = read_dev(dev, offset, length)
     assert before != ""
 
+    info = cmd.snapshot_info()
+    assert len(info) == 2
+    assert VOLUME_HEAD in info
+    assert snap0 in info
+
     exists = read_from_backing_file(offset, length)
     assert before == exists
 

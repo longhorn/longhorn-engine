@@ -16,6 +16,7 @@ type Replica struct {
 	Parent          string                      `json:"parent"`
 	Size            string                      `json:"size"`
 	SectorSize      int64                       `json:"sectorSize, string"`
+	BackingFile     string                      `json:"backingFile"`
 	State           string                      `json:"state"`
 	Chain           []string                    `json:"chain"`
 	Disks           map[string]replica.DiskInfo `json:"disks"`
@@ -141,6 +142,7 @@ func NewReplica(context *api.ApiContext, state replica.State, info replica.Info,
 	r.Parent = info.Parent
 	r.SectorSize = info.SectorSize
 	r.Size = strconv.FormatInt(info.Size, 10)
+	r.BackingFile = info.BackingFileName
 
 	if rep != nil {
 		r.Chain, _ = rep.DisplayChain()
