@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -206,6 +207,9 @@ func IsHeadDisk(diskName string) bool {
 }
 
 func (r *Replica) diskPath(name string) string {
+	if filepath.IsAbs(name) {
+		return name
+	}
 	return path.Join(r.dir, name)
 }
 
