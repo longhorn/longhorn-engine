@@ -449,7 +449,7 @@ func (t *Task) getToReplica(address string) (rest.Replica, error) {
 
 const VolumeHeadName = "volume-head"
 
-func getDisks(address string) (map[string]replica.DiskInfo, error) {
+func getNonBackingDisks(address string) (map[string]replica.DiskInfo, error) {
 	repClient, err := replicaClient.NewReplicaClient(address)
 	if err != nil {
 		return nil, err
@@ -460,7 +460,15 @@ func getDisks(address string) (map[string]replica.DiskInfo, error) {
 		return nil, err
 	}
 
-	return r.Disks, err
+	disks := make(map[string]replica.DiskInfo)
+	for name, disk := range r.Disks {
+		if name == r.BackingFile {
+			continue
+		}
+		disks[name] = disk
+	}
+
+	return disks, err
 }
 
 func GetSnapshotsInfo(replicas []rest.Replica) (map[string]replica.DiskInfo, error) {
@@ -470,7 +478,7 @@ func GetSnapshotsInfo(replicas []rest.Replica) (map[string]replica.DiskInfo, err
 			continue
 		}
 
-		disks, err := getDisks(r.Address)
+		disks, err := getNonBackingDisks(r.Address)
 		if err != nil {
 			return nil, err
 		}
