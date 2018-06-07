@@ -27,6 +27,8 @@ temp=$(mktemp -d)
 temp2=$(mktemp -d)
 temp3=$(mktemp -d)
 temp4=$(mktemp -d)
+temp5=$(mktemp -d)
+temp6=$(mktemp -d)
 trap "rm -rf $temp $temp2 $temp3 $temp4" EXIT
 
 cd $(dirname $0)/..
@@ -59,9 +61,9 @@ qemu-img convert -f raw -O qcow2 $backing_file $backing_qcow2
 cp $backing_qcow2 $temp3
 cp $backing_qcow2 $temp4
 
-./bin/longhorn replica --listen localhost:9602 --backing-file $backing_qcow2 $temp3 &
+./bin/longhorn replica --listen localhost:9602 --backing-file $temp3/$backing_qcow2 $temp5 &
 pid_backing_replica1=$!
-./bin/longhorn replica --listen localhost:9605 --backing-file $backing_qcow2 $temp4 &
+./bin/longhorn replica --listen localhost:9605 --backing-file $temp4 $temp6 &
 pid_backing_replica2=$!
 
 # for live upgrade test
