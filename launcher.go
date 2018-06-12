@@ -28,6 +28,9 @@ const (
 
 	WaitInterval = time.Second
 	WaitCount    = 60
+
+	SwitchWaitInterval = time.Second
+	SwitchWaitCount    = 15
 )
 
 type Launcher struct {

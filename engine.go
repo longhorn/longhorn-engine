@@ -162,6 +162,13 @@ func (c *Controller) SwitchPortToBackup() (err error) {
 	c.BackupListen = addr + ":" + strconv.Itoa(BackupListenPort)
 
 	client = NewControllerClient("http://" + c.BackupListen)
+	for i := 0; i < SwitchWaitCount; i++ {
+		if err := client.TestConnection(); err == nil {
+			break
+		}
+		logrus.Infof("launcher: wait for controller to switch to %v", c.BackupListen)
+		time.Sleep(SwitchWaitInterval)
+	}
 	if err := client.TestConnection(); err != nil {
 		return errors.Wrapf(err, "test connection to %v failed", c.BackupListen)
 	}
@@ -187,6 +194,13 @@ func (c *Controller) SwitchPortToOriginal() (err error) {
 	}
 
 	client = NewControllerClient("http://" + c.Listen)
+	for i := 0; i < SwitchWaitCount; i++ {
+		if err := client.TestConnection(); err == nil {
+			break
+		}
+		logrus.Infof("launcher: wait for controller to switch to %v", c.Listen)
+		time.Sleep(SwitchWaitInterval)
+	}
 	if err := client.TestConnection(); err != nil {
 		return errors.Wrapf(err, "test connection to %v failed", c.Listen)
 	}
