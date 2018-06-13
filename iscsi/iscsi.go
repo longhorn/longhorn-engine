@@ -14,9 +14,10 @@ import (
 )
 
 var (
-	HostNamespace = "/host/proc/1/ns/"
-	LockFile      = "/var/run/longhorn-iscsi.lock"
-	LockTimeout   = 120 * time.Second
+	HostProc       = "/host/proc"
+	DockerdProcess = "dockerd"
+	LockFile       = "/var/run/longhorn-iscsi.lock"
+	LockTimeout    = 120 * time.Second
 
 	TargetID    = 1
 	TargetLunID = 1
@@ -65,13 +66,13 @@ func SetupTarget(dev *ScsiDevice) error {
 }
 
 func StartScsi(dev *ScsiDevice) error {
-	lock := nsfilelock.NewLockWithTimeout(HostNamespace, LockFile, LockTimeout)
+	lock := nsfilelock.NewLockWithTimeout(getInitiatorNS(), LockFile, LockTimeout)
 	if err := lock.Lock(); err != nil {
 		return fmt.Errorf("Fail to lock: %v", err)
 	}
 	defer lock.Unlock()
 
-	ne, err := iutil.NewNamespaceExecutor(HostNamespace)
+	ne, err := iutil.NewNamespaceExecutor(getInitiatorNS())
 	if err != nil {
 		return err
 	}
@@ -131,7 +132,7 @@ func StartScsi(dev *ScsiDevice) error {
 }
 
 func StopScsi(volumeName string) error {
-	lock := nsfilelock.NewLockWithTimeout(HostNamespace, LockFile, LockTimeout)
+	lock := nsfilelock.NewLockWithTimeout(getInitiatorNS(), LockFile, LockTimeout)
 	if err := lock.Lock(); err != nil {
 		return fmt.Errorf("Fail to lock: %v", err)
 	}
@@ -148,7 +149,7 @@ func StopScsi(volumeName string) error {
 }
 
 func LogoutTarget(target string) error {
-	ne, err := iutil.NewNamespaceExecutor(HostNamespace)
+	ne, err := iutil.NewNamespaceExecutor(getInitiatorNS())
 	if err != nil {
 		return err
 	}
@@ -243,4 +244,14 @@ func DeleteTarget(target string) error {
 		}
 	}
 	return nil
+}
+
+func getInitiatorNS() string {
+	pf := iutil.NewProcessFinder(HostProc)
+	ps, err := pf.FindAncestorByName(DockerdProcess)
+	if err != nil {
+		logrus.Warnf("Failed to find dockerd in the process ancestors, fall back to use pid 1: %v", err)
+		return fmt.Sprintf("%s/1/ns/", HostProc)
+	}
+	return fmt.Sprintf("%s/%d/ns/", HostProc, ps.Pid)
 }
