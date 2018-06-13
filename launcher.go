@@ -115,7 +115,9 @@ func (l *Launcher) GetSocketPath() string {
 }
 
 func (l *Launcher) startFrontend() error {
-	if err := <-l.waitForSocket(); err != nil {
+	// not going to use it
+	stopCh := make(chan struct{})
+	if err := <-l.waitForSocket(stopCh); err != nil {
 		return err
 	}
 	if l.scsiDevice == nil {
@@ -248,7 +250,8 @@ func (l *Launcher) UpgradeEngine(cxt context.Context, engine *rpc.Engine) (ret *
 	newController := NewController(util.UUID(), binary, l.volumeName, oldController.Listen, oldController.Backends, engine.Replicas)
 
 	newShutdownCh := newController.Start(l.listen)
-	socketError := l.waitForSocket()
+	stopCh := make(chan struct{})
+	socketError := l.waitForSocket(stopCh)
 	select {
 	case err = <-newShutdownCh:
 		if err != nil {
@@ -263,6 +266,8 @@ func (l *Launcher) UpgradeEngine(cxt context.Context, engine *rpc.Engine) (ret *
 		}
 		break
 	}
+	close(stopCh)
+
 	if err != nil {
 		newController.Stop()
 		return nil, errors.Wrapf(err, "cannot start new controller")
@@ -278,19 +283,28 @@ func (l *Launcher) UpgradeEngine(cxt context.Context, engine *rpc.Engine) (ret *
 	return &rpc.Empty{}, nil
 }
 
-func (l *Launcher) waitForSocket() chan error {
+func (l *Launcher) waitForSocket(stopCh chan struct{}) chan error {
 	errCh := make(chan error)
-	go func(errCh chan error) {
+	go func(errCh chan error, stopCh chan struct{}) {
 		socket := l.GetSocketPath()
-		for i := 0; i < WaitCount; i++ {
-			if _, err := os.Stat(socket); err == nil {
-				errCh <- nil
+		timeout := time.After(time.Duration(WaitCount) * WaitInterval)
+		tick := time.Tick(WaitInterval)
+		for {
+			select {
+			case <-timeout:
+				errCh <- fmt.Errorf("launcher: wait for socket %v timed out", socket)
+			case <-tick:
+				if _, err := os.Stat(socket); err == nil {
+					errCh <- nil
+					return
+				}
+				logrus.Infof("launcher: wait for socket %v to show up", socket)
+			case <-stopCh:
+				logrus.Infof("launcher: stop wait for socket routine")
+				return
 			}
-			logrus.Infof("launcher: wait for socket %v to show up", socket)
-			time.Sleep(WaitInterval)
 		}
-		errCh <- fmt.Errorf("launcher: wait for socket %v timeout", socket)
-	}(errCh)
+	}(errCh, stopCh)
 
 	return errCh
 }
