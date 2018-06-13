@@ -4,7 +4,10 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"os"
+	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -20,6 +23,8 @@ import (
 var (
 	MaximumVolumeNameSize = 64
 	parsePattern          = regexp.MustCompile(`(.*):(\d+)`)
+
+	cmdTimeout = time.Minute // one minute by default
 )
 
 const (
@@ -189,4 +194,75 @@ func UnescapeURL(url string) string {
 	result := strings.Replace(url, "\\u0026", "&", 1)
 	result = strings.Replace(result, "u0026", "&", 1)
 	return result
+}
+
+func Execute(binary string, args ...string) (string, error) {
+	return ExecuteWithTimeout(cmdTimeout, binary, args...)
+}
+
+func ExecuteWithTimeout(timeout time.Duration, binary string, args ...string) (string, error) {
+	var output []byte
+	var err error
+	cmd := exec.Command(binary, args...)
+	done := make(chan struct{})
+
+	go func() {
+		output, err = cmd.CombinedOutput()
+		done <- struct{}{}
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(timeout):
+		if cmd.Process != nil {
+			if err := cmd.Process.Kill(); err != nil {
+				logrus.Warnf("Problem killing process pid=%v: %s", cmd.Process.Pid, err)
+			}
+
+		}
+		return "", fmt.Errorf("Timeout executing: %v %v, output %v, error %v", binary, args, string(output), err)
+	}
+
+	if err != nil {
+		return "", fmt.Errorf("Failed to execute: %v %v, output %v, error %v", binary, args, string(output), err)
+	}
+	return string(output), nil
+}
+
+func CheckBackupType(backupTarget string) (string, error) {
+	u, err := url.Parse(backupTarget)
+	if err != nil {
+		return "", err
+	}
+
+	return u.Scheme, nil
+}
+
+func ResolveBackingFilepath(fileOrDirpath string) (string, error) {
+	fileOrDir, err := os.Open(fileOrDirpath)
+	if err != nil {
+		return "", err
+	}
+	defer fileOrDir.Close()
+
+	fileOrDirInfo, err := fileOrDir.Stat()
+	if err != nil {
+		return "", err
+	}
+
+	if fileOrDirInfo.IsDir() {
+		files, err := fileOrDir.Readdir(-1)
+		if err != nil {
+			return "", err
+		}
+		if len(files) != 1 {
+			return "", fmt.Errorf("expected exactly one file, found %d files/subdirectories", len(files))
+		}
+		if files[0].IsDir() {
+			return "", fmt.Errorf("expected exactly one file, found a subdirectory")
+		}
+		return filepath.Join(fileOrDirpath, files[0].Name()), nil
+	}
+
+	return fileOrDirpath, nil
 }
