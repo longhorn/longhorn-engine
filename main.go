@@ -10,11 +10,20 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/docker/pkg/reexec"
-	"github.com/rancher/longhorn-engine/app"
-	"github.com/rancher/longhorn-engine/backup"
 	"github.com/rancher/sparse-tools/cli/sfold"
 	"github.com/rancher/sparse-tools/cli/ssync"
 	"github.com/urfave/cli"
+
+	"github.com/rancher/longhorn-engine/app"
+	"github.com/rancher/longhorn-engine/backup"
+	"github.com/rancher/longhorn-engine/meta"
+)
+
+// following variables will be filled by `-ldflags "-X ..."`
+var (
+	Version   string
+	GitCommit string
+	BuildDate string
 )
 
 func main() {
@@ -74,7 +83,12 @@ func longhornCli() {
 	}
 
 	a := cli.NewApp()
+
 	a.Version = Version
+	meta.Version = Version
+	meta.GitCommit = GitCommit
+	meta.BuildDate = BuildDate
+
 	a.Before = func(c *cli.Context) error {
 		if c.GlobalBool("debug") {
 			logrus.SetLevel(logrus.DebugLevel)
