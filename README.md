@@ -102,7 +102,7 @@ tcp://172.18.0.3:9502 RW   [volume-head-000.img]
 ```
 
 ## License
-Copyright (c) 2014-2017 [Rancher Labs, Inc.](http://rancher.com)
+Copyright (c) 2014-2018 [Rancher Labs, Inc.](http://rancher.com)
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
