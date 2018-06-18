@@ -40,5 +40,8 @@ func NewRouter(s *Server) *mux.Router {
 	// Settings
 	router.Methods("POST").Path("/v1/settings/updateport").Handler(f(schemas, s.UpdatePort))
 
+	// Version
+	router.Methods("GET").Path("/v1/version/details").Handler(f(schemas, s.GetVersionDetails))
+
 	return router
 }
