@@ -5,7 +5,9 @@ import (
 
 	"github.com/rancher/go-rancher/api"
 	"github.com/rancher/go-rancher/client"
+
 	"github.com/rancher/longhorn-engine/controller"
+	"github.com/rancher/longhorn-engine/meta"
 	"github.com/rancher/longhorn-engine/types"
 )
 
@@ -73,6 +75,11 @@ type PortInput struct {
 	Port int `json:"port"`
 }
 
+type Version struct {
+	client.Resource
+	meta.VersionOutput
+}
+
 func NewVolume(context *api.ApiContext, name, endpoint, frontend string, replicas int) *Volume {
 	v := &Volume{
 		Resource: client.Resource{
@@ -136,6 +143,7 @@ func NewSchema() *client.Schemas {
 	schemas.AddType("journalInput", JournalInput{})
 	schemas.AddType("prepareRebuildOutput", PrepareRebuildOutput{})
 	schemas.AddType("portInput", PortInput{})
+	schemas.AddType("version", Version{})
 
 	replica := schemas.AddType("replica", Replica{})
 	replica.CollectionMethods = []string{"GET", "POST"}

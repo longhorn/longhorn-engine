@@ -22,20 +22,20 @@ var (
 )
 
 type VersionOutput struct {
-	Version   string
-	GitCommit string
-	BuildDate string
+	Version   string `json:"version"`
+	GitCommit string `json:"gitCommit"`
+	BuildDate string `json:"buildDate"`
 
-	CLIAPIVersion           int
-	CLIAPIMinVersion        int
-	ControllerAPIVersion    int
-	ControllerAPIMinVersion int
-	DataFormatVersion       int
-	DataFormatMinVersion    int
+	CLIAPIVersion           int `json:"cliAPIVersion"`
+	CLIAPIMinVersion        int `json:"cliAPIMinVersion"`
+	ControllerAPIVersion    int `json:"controllerAPIVersion"`
+	ControllerAPIMinVersion int `json:"controllerAPIMinVersion"`
+	DataFormatVersion       int `json:"dataFormatVersion"`
+	DataFormatMinVersion    int `json:"dataFormatMinVersion"`
 }
 
-func GetVersion() *VersionOutput {
-	return &VersionOutput{
+func GetVersion() VersionOutput {
+	return VersionOutput{
 		Version:   Version,
 		GitCommit: GitCommit,
 		BuildDate: BuildDate,

@@ -178,6 +178,16 @@ func (c *ControllerClient) GetVolume() (*rest.Volume, error) {
 	return &volumes.Data[0], nil
 }
 
+func (c *ControllerClient) GetVersion() (*rest.Version, error) {
+	var version rest.Version
+
+	err := c.get("/version/details", &version)
+	if err != nil {
+		return nil, err
+	}
+	return &version, nil
+}
+
 func (c *ControllerClient) post(path string, req, resp interface{}) error {
 	return c.do("POST", path, req, resp)
 }
