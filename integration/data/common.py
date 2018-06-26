@@ -11,6 +11,7 @@ from os import path
 import pytest
 import cattle
 
+import cmd
 from frontend import restdev, blockdev
 from frontend import PAGE_SIZE, LONGHORN_DEV_DIR, get_socket_path  # NOQA
 
@@ -42,6 +43,8 @@ BACKING_FILE = 'backing_file.raw'
 
 VOLUME_NAME = 'test-volume_1.0'
 VOLUME_HEAD = 'volume-head'
+
+RETRY_COUNTS = 100
 
 thread_failed = False
 
@@ -305,3 +308,69 @@ def backup_targets():
     env = dict(os.environ)
     assert env["BACKUPTARGETS"] != ""
     return env["BACKUPTARGETS"].split(",")
+
+
+def random_offset(size, existings={}):
+    assert size < PAGE_SIZE
+    for i in range(RETRY_COUNTS):
+        offset = 0
+        if int(SIZE) != size:
+            offset = random.randrange(0, int(SIZE)-size, PAGE_SIZE)
+        collided = False
+        # it's [start, end) vs [pos, pos + size)
+        for start, end in existings.items():
+            if offset + size <= start or offset >= end:
+                continue
+            collided = True
+            break
+        if not collided:
+            break
+    assert not collided
+    existings[offset] = offset + size
+    return offset
+
+
+def random_length(length_limit):
+    return random.randrange(0, length_limit, 1)
+
+
+class Data:
+    def __init__(self, offset, length, content):
+        self.offset = offset
+        self.length = length
+        self.content = content
+
+    def write_and_verify_data(self, dev):
+        verify_data(dev, self.offset, self.content)
+
+    def read_and_verify_data(self, dev):
+        assert read_dev(dev, self.offset, self.length) == self.content
+
+    def read_and_refute_data(self, dev):
+        assert read_dev(dev, self.offset, self.length) != self.content
+
+
+class Snapshot:
+    def __init__(self, dev, data):
+        self.dev = dev
+        self.data = data
+        self.data.write_and_verify_data(self.dev)
+        self.checksum = checksum_dev(self.dev)
+        self.name = cmd.snapshot_create()
+
+    # verify the whole disk is at the state when snapshot was taken
+    def verify_checksum(self):
+        assert checksum_dev(self.dev) == self.checksum
+
+    def verify_data(self):
+        self.data.read_and_verify_data(self.dev)
+
+    def refute_data(self):
+        self.data.read_and_refute_data(self.dev)
+
+
+def generate_random_data(dev, existings={}, length_limit=PAGE_SIZE):
+    length = random_length(length_limit)
+    return Data(random_offset(length, existings),
+                length,
+                random_string(length))
