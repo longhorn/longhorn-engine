@@ -13,8 +13,8 @@ type diffDisk struct {
 	// mapping of sector to index in the files array. a value of 0 is special meaning
 	// we don't know the location yet.
 	location []byte
-	// list of files in child, parent, grandparent, etc order.
-	// index 0 is nil and index 1 is the active write layer
+	// list of files in grandparent, parent, child, etc order.
+	// index 0 is nil and index n-1 is the active write layer
 	files      []types.DiffDisk
 	sectorSize int64
 }
@@ -208,32 +208,27 @@ func (d *diffDisk) lookup(sector int64) (byte, error) {
 		return byte(len(d.files) - 1), nil
 	}
 
-	// small optimization
-	if int64(len(d.files)) == 2 {
-		return 1, nil
+	if len(d.files) < 2 {
+		return 0, fmt.Errorf("BUG: replica files cannot be less than 2")
 	}
 
-	target := d.location[sector]
-
-	if target == 0 {
-		for i := len(d.files) - 1; i > 0; i-- {
-			if i == 1 {
-				// This is important that for index 1 we don't check Fiemap because it may be a base image file
-				// Also the result has to be 1
-				d.location[sector] = byte(i)
-				return byte(i), nil
-			}
-
-			e, err := fibmap.Fiemap(d.files[i].Fd(), uint64(sector*d.sectorSize), uint64(d.sectorSize), 1)
-			if err != 0 {
-				return byte(0), err
+	if d.location[sector] == 0 {
+		for i := len(d.files) - 1; i > 1; i-- {
+			e, errno := fibmap.Fiemap(d.files[i].Fd(), uint64(sector*d.sectorSize), uint64(d.sectorSize), 1)
+			if errno != 0 {
+				return 0, fmt.Errorf(errno.Error())
 			}
 			if len(e) > 0 {
 				d.location[sector] = byte(i)
-				return byte(i), nil
+				break
 			}
 		}
-		return byte(len(d.files) - 1), nil
+		if d.location[sector] == 0 {
+			// We have hit the index 1 without found any data
+			// This is important that for index 1 we don't check Fiemap because it may be a base image file
+			// Also the result has to be 1 anyway, no matter it contains data or not
+			d.location[sector] = 1
+		}
 	}
-	return target, nil
+	return d.location[sector], nil
 }
