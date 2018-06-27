@@ -31,42 +31,35 @@ def test_snapshot_revert(dev):  # NOQA
 
 # BUG: https://github.com/rancher/longhorn/issues/108
 def test_snapshot_rm_basic(dev):  # NOQA
-    offset = 0
-    length = 128
+    existings = {}
 
-    snap1_data = common.random_string(length)
-    common.verify_data(dev, offset, snap1_data)
-    snap1 = cmd.snapshot_create()
-
-    snap2_data = common.random_string(length)
-    common.verify_data(dev, offset, snap2_data)
-    snap2 = cmd.snapshot_create()
-
-    snap3_data = common.random_string(length)
-    common.verify_data(dev, offset, snap3_data)
-    snap3 = cmd.snapshot_create()
+    snap1 = Snapshot(dev, generate_random_data(existings))
+    snap2 = Snapshot(dev, generate_random_data(existings))
+    snap3 = Snapshot(dev, generate_random_data(existings))
 
     info = cmd.snapshot_info()
     assert len(info) == 4
     assert VOLUME_HEAD in info
-    assert snap1 in info
-    assert snap2 in info
-    assert snap3 in info
+    assert snap1.name in info
+    assert snap2.name in info
+    assert snap3.name in info
 
-    cmd.snapshot_rm(snap2)
+    cmd.snapshot_rm(snap2.name)
     cmd.snapshot_purge()
 
     info = cmd.snapshot_info()
     assert len(info) == 3
-    assert snap1 in info
-    assert snap3 in info
+    assert snap1.name in info
+    assert snap3.name in info
 
-    readed = read_dev(dev, offset, length)
-    assert readed == snap3_data
+    snap3.verify_checksum()
+    snap2.verify_data()
+    snap1.verify_data()
 
-    cmd.snapshot_revert(snap1)
-    readed = read_dev(dev, offset, length)
-    assert readed == snap1_data
+    cmd.snapshot_revert(snap1.name)
+    snap3.refute_data()
+    snap2.refute_data()
+    snap1.verify_checksum()
 
 
 def test_snapshot_revert_with_backing_file(backing_dev):  # NOQA
