@@ -1,5 +1,4 @@
 import cmd
-import common
 from common import dev, backing_dev  # NOQA
 from common import read_dev, read_from_backing_file, VOLUME_HEAD
 from common import Snapshot, generate_random_data
@@ -88,85 +87,74 @@ def test_snapshot_revert_with_backing_file(backing_dev):  # NOQA
 
 
 def test_snapshot_rm_rolling(dev):  # NOQA
-    offset = 0
-    length = 128
+    existings = {}
 
-    snap1_data = common.random_string(length)
-    common.verify_data(dev, offset, snap1_data)
-    snap1 = cmd.snapshot_create()
+    snap1 = Snapshot(dev, generate_random_data(existings))
 
     snapList = cmd.snapshot_ls()
-    assert snap1 in snapList
+    assert snap1.name in snapList
 
-    cmd.snapshot_rm(snap1)
+    cmd.snapshot_rm(snap1.name)
     # cannot do anything because it's the parent of volume head
     cmd.snapshot_purge()
 
-    snap2_data = common.random_string(length)
-    common.verify_data(dev, offset, snap2_data)
-    snap2 = cmd.snapshot_create()
+    snap2 = Snapshot(dev, generate_random_data(existings))
 
     info = cmd.snapshot_info()
     assert len(info) == 3
-    assert snap1 in info
-    assert info[snap1]["removed"] is True
-    assert snap2 in info
-    assert info[snap2]["removed"] is False
+    assert snap1.name in info
+    assert snap2.name in info
+    assert info[snap1.name]["removed"] is True
+    assert info[snap2.name]["removed"] is False
 
-    cmd.snapshot_rm(snap2)
+    cmd.snapshot_rm(snap2.name)
     # this should trigger the deletion of snap1
     cmd.snapshot_purge()
 
-    snap3_data = common.random_string(length)
-    common.verify_data(dev, offset, snap3_data)
-    snap3 = cmd.snapshot_create()
+    snap2.verify_checksum()
+    snap1.verify_data()
 
-    snap4_data = common.random_string(length)
-    common.verify_data(dev, offset, snap4_data)
-    snap4 = cmd.snapshot_create()
-
-    snap5_data = common.random_string(length)
-    common.verify_data(dev, offset, snap5_data)
-    snap5 = cmd.snapshot_create()
+    snap3 = Snapshot(dev, generate_random_data(existings))
+    snap4 = Snapshot(dev, generate_random_data(existings))
+    snap5 = Snapshot(dev, generate_random_data(existings))
 
     snapList = cmd.snapshot_ls()
-    assert snap1 not in snapList
-    assert snap2 not in snapList
-    assert snap3 in snapList
-    assert snap4 in snapList
-    assert snap5 in snapList
+    assert snap1.name not in snapList
+    assert snap2.name not in snapList
+    assert snap3.name in snapList
+    assert snap4.name in snapList
+    assert snap5.name in snapList
 
     info = cmd.snapshot_info()
     assert len(info) == 5
-    assert snap1 not in info
-    assert snap2 in info
-    assert info[snap2]["removed"] is True
-    assert snap3 in info
-    assert info[snap3]["size"] == "4096"
-    assert snap4 in info
-    assert info[snap4]["size"] == "4096"
-    assert snap5 in info
-    assert info[snap5]["size"] == "4096"
+    assert snap1.name not in info
+    assert snap2.name in info
+    assert snap3.name in info
+    assert snap4.name in info
+    assert snap5.name in info
+    assert info[snap2.name]["removed"] is True
 
-    cmd.snapshot_rm(snap3)
-    cmd.snapshot_rm(snap4)
-    cmd.snapshot_rm(snap5)
+    cmd.snapshot_rm(snap3.name)
+    cmd.snapshot_rm(snap4.name)
+    cmd.snapshot_rm(snap5.name)
     # this should trigger the deletion of snap2 - snap4
     # and snap5 marked as removed
     cmd.snapshot_purge()
 
     info = cmd.snapshot_info()
     assert len(info) == 2
-    assert snap1 not in info
-    assert snap2 not in info
-    assert snap3 not in info
-    assert snap4 not in info
-    assert snap5 in info
-    assert info[snap5]["removed"] is True
-    assert info[snap5]["size"] == "4096"
+    assert snap1.name not in info
+    assert snap2.name not in info
+    assert snap3.name not in info
+    assert snap4.name not in info
+    assert snap5.name in info
+    assert info[snap5.name]["removed"] is True
 
-    readed = read_dev(dev, offset, length)
-    assert readed == snap5_data
+    snap5.verify_checksum()
+    snap4.verify_data()
+    snap3.verify_data()
+    snap2.verify_data()
+    snap1.verify_data()
 
 
 def test_snapshot_tree_basic(dev):  # NOQA
