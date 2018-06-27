@@ -337,6 +337,20 @@ func (r *Replica) ReplaceDisk(target, source string) error {
 		return err
 	}
 
+	// the target file handler need to be refreshed for the hard linked disk
+	index := r.findDisk(target)
+	if index <= 0 {
+		return nil
+	}
+	if err := r.volume.files[index].Close(); err != nil {
+		return err
+	}
+	newFile, err := r.openFile(r.activeDiskData[index].Name, 0)
+	if err != nil {
+		return err
+	}
+	r.volume.files[index] = newFile
+
 	logrus.Infof("Done replacing %v with %v", target, source)
 
 	return nil
