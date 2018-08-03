@@ -23,6 +23,8 @@ import (
 var (
 	MaximumVolumeNameSize = 64
 	parsePattern          = regexp.MustCompile(`(.*):(\d+)`)
+	validVolumeName       = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.-]+$`)
+	validLabelValue       = regexp.MustCompile(`^[a-zA-Z0-9_.\-/:]+$`)
 
 	cmdTimeout = time.Minute // one minute by default
 )
@@ -147,8 +149,11 @@ func ValidVolumeName(name string) bool {
 	if len(name) > MaximumVolumeNameSize {
 		return false
 	}
-	validName := regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.-]+$`)
-	return validName.MatchString(name)
+	return validVolumeName.MatchString(name)
+}
+
+func ValidLabelValue(name string) bool {
+	return validLabelValue.MatchString(name)
 }
 
 func Volume2ISCSIName(name string) string {
@@ -181,7 +186,7 @@ func ParseLabels(labels []string) (map[string]string, error) {
 		if !ValidVolumeName(key) {
 			return nil, fmt.Errorf("Invalid key %v for label %v", key, label)
 		}
-		if !ValidVolumeName(value) {
+		if !ValidLabelValue(value) {
 			return nil, fmt.Errorf("Invalid value %v for label %v", value, label)
 		}
 		result[key] = value
