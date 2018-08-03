@@ -29,6 +29,10 @@ func getReplicaDisksAndHead(address string) (map[string]struct{}, string, error)
 		if diskName == head {
 			continue
 		}
+		// skip backing file
+		if diskName == rep.BackingFile {
+			continue
+		}
 		disks[diskName] = struct{}{}
 	}
 	return disks, head, nil

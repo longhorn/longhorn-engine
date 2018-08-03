@@ -1,6 +1,8 @@
 import cmd
 import common
 from common import controller, replica1, replica2 # NOQA
+from common import backing_replica1, backing_replica2 # NOQA
+from common import prepare_backup_dir, BACKUP_DIR # NOQA
 from common import open_replica, get_blockdev, cleanup_replica
 from common import verify_read, verify_data, verify_async, VOLUME_HEAD
 from snapshot_tree import snapshot_tree_build, snapshot_tree_verify
@@ -273,3 +275,70 @@ def test_snapshot_tree_rebuild(controller, replica1, replica2):  # NOQA
     common.verify_replica_state(controller, 1, "RW")
 
     snapshot_tree_verify(dev, offset, length, snap, snap_data)
+
+
+def test_ha_single_backing_replica_rebuild(controller,          # NOQA
+                                           backing_replica1,    # NOQA
+                                           backing_replica2):   # NOQA
+    prepare_backup_dir(BACKUP_DIR)
+    open_replica(backing_replica1)
+    open_replica(backing_replica2)
+
+    replicas = controller.list_replica()
+    assert len(replicas) == 0
+
+    v = controller.list_volume()[0]
+    v = v.start(replicas=[
+        common.BACKED_REPLICA1,
+        common.BACKED_REPLICA2
+    ])
+    assert v.replicaCount == 2
+
+    replicas = controller.list_replica()
+    assert len(replicas) == 2
+    assert replicas[0].mode == "RW"
+    assert replicas[1].mode == "RW"
+
+    dev = get_blockdev()
+
+    data = common.random_string(128)
+    data_offset = 1024
+    verify_data(dev, data_offset, data)
+
+    # Cleanup replica2
+    cleanup_replica(backing_replica2)
+
+    verify_async(dev, 10, 128, 1)
+
+    common.verify_replica_state(controller, 1, "ERR")
+
+    verify_read(dev, data_offset, data)
+
+    controller.delete(replicas[1])
+
+    # Rebuild replica2
+    common.open_replica(backing_replica2)
+    cmd.add_replica(common.BACKED_REPLICA2)
+
+    verify_async(dev, 10, 128, 1)
+
+    common.verify_replica_state(controller, 1, "RW")
+
+    verify_read(dev, data_offset, data)
+
+    # WORKAROUND for unable to remove the parent of volume head
+    newsnap = cmd.snapshot_create()
+
+    info = cmd.snapshot_info()
+    assert len(info) == 3
+    sysnap = info[newsnap]["parent"]
+    assert info[sysnap]["parent"] == ""
+    assert newsnap in info[sysnap]["children"]
+    assert info[sysnap]["usercreated"] is False
+    assert info[sysnap]["removed"] is False
+
+    cmd.snapshot_purge()
+    info = cmd.snapshot_info()
+    assert len(info) == 2
+    assert info[newsnap] is not None
+    assert info[VOLUME_HEAD] is not None
