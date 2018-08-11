@@ -11,6 +11,7 @@ cd ./package
 
 TAG=${TAG:-${VERSION}}
 REPO=${REPO:-rancher}
+IMAGE=${REPO}/${PROJECT}:${TAG}
 
 if [ ! -x ../bin/longhorn ]; then
     ../scripts/build
@@ -19,6 +20,8 @@ fi
 cp ../bin/longhorn* .
 cp /usr/src/tgt/pkg/tgt_*.deb .
 cp /usr/local/bin/longhorn-engine-launcher .
-docker build -t ${REPO}/${PROJECT}:${TAG} .
+docker build -t ${IMAGE} .
 
-echo Built ${REPO}/${PROJECT}:${TAG}
+echo Built ${IMAGE}
+
+echo ${IMAGE} > ../bin/latest_image
