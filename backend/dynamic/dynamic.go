@@ -1,12 +1,12 @@
 package dynamic
-
+//dependancies
 import (
 	"fmt"
 	"strings"
 
 	"github.com/rancher/longhorn-engine/types"
 )
-
+//struct created
 type Factory struct {
 	factories map[string]types.BackendFactory
 }
