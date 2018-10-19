@@ -14,6 +14,8 @@ import (
 	"syscall"
 
 	"github.com/Sirupsen/logrus"
+	fibmap "github.com/frostschutz/go-fibmap"
+	"github.com/pkg/errors"
 	"github.com/rancher/longhorn-engine/types"
 	"github.com/rancher/longhorn-engine/util"
 	"github.com/rancher/sparse-tools/sparse"
@@ -179,6 +181,10 @@ func construct(readonly bool, size, sectorSize int64, dir, head string, backingF
 		}
 	}
 
+	if err := r.isExtentSupported(); err != nil {
+		return nil, errors.Wrap(err, "file extent is unsupported")
+	}
+
 	r.info.Parent = r.diskData[r.info.Head].Parent
 
 	r.insertBackingFile()
@@ -213,6 +219,26 @@ func (r *Replica) diskPath(name string) string {
 	return path.Join(r.dir, name)
 }
 
+func (r *Replica) isExtentSupported() error {
+	filePath := r.diskPath(r.info.Head + metadataSuffix)
+	fileInfo, err := os.Stat(filePath)
+	if err != nil {
+		return err
+	}
+
+	file, err := os.OpenFile(filePath, os.O_RDONLY, 0666)
+	if err != nil {
+		return err
+	}
+
+	defer file.Close()
+
+	fiemapFile := fibmap.NewFibmapFile(file)
+	if _, errno := fiemapFile.Fiemap(uint32(fileInfo.Size())); errno != 0 {
+		return errno
+	}
+	return nil
+}
 func (r *Replica) insertBackingFile() {
 	if r.info.BackingFile == nil {
 		return
