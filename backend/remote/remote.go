@@ -27,6 +27,10 @@ func New() types.BackendFactory {
 	return &Factory{}
 }
 
+type RevisionCounter struct {
+	Counter int64 `json:"counter,string"`
+}
+
 type Factory struct {
 }
 
@@ -135,7 +139,7 @@ func (r *Remote) GetRevisionCounter() (int64, error) {
 
 func (r *Remote) SetRevisionCounter(counter int64) error {
 	logrus.Infof("Set revision counter of %s to : %v", r.name, counter)
-	return r.doAction("setrevisioncounter", &map[string]int64{"counter": counter})
+	return r.doAction("setrevisioncounter", &RevisionCounter{Counter: counter})
 }
 
 func (r *Remote) info() (rest.Replica, error) {

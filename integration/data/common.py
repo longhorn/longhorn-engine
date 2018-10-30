@@ -133,7 +133,7 @@ def open_replica(client, backing_file=None):
     r = replicas[0]
     assert r.state == 'initial'
     assert r.size == '0'
-    assert r.sectorSize == 0
+    assert r.sectorSize == '0'
     assert r.parent == ''
     assert r.head == ''
 
@@ -141,7 +141,7 @@ def open_replica(client, backing_file=None):
 
     assert r.state == 'closed'
     assert r.size == str(1024 * 4096)
-    assert r.sectorSize == 512
+    assert r.sectorSize == '512'
     assert r.parent == ''
     assert r.head == 'volume-head-000.img'
 
