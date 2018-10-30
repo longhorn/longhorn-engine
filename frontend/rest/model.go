@@ -14,8 +14,8 @@ type Volume struct {
 
 type ReadInput struct {
 	client.Resource
-	Offset int64 `json:"offset, string"`
-	Length int64 `json:"length, string"`
+	Offset int64 `json:"offset,string"`
+	Length int64 `json:"length,string"`
 }
 
 type ReadOutput struct {
