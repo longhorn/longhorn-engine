@@ -55,10 +55,10 @@ RUN cd /usr/src/tcmu-runner && \
     cp libtcmu_static.a /usr/local/lib/libtcmu.a
 
 # Install libqcow
-RUN wget -O - https://github.com/libyal/libqcow/releases/download/20170222/libqcow-alpha-20170222.tar.gz | tar xvzf - -C /usr/src
-RUN cd /usr/src/libqcow-20170222 && \
+RUN wget -O - https://s3-us-west-1.amazonaws.com/rancher-longhorn/libqcow-alpha-20181117.tar.gz | tar xvzf - -C /usr/src
+RUN cd /usr/src/libqcow-20181117 && \
     ./configure
-RUN cd /usr/src/libqcow-20170222 && \
+RUN cd /usr/src/libqcow-20181117 && \
     make -j$(nproc) && \
     make install
 
