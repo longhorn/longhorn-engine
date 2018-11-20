@@ -74,7 +74,7 @@ RUN cd /usr/src && \
 RUN cd /usr/src && \
     git clone https://github.com/rancher/tgt.git && \
     cd tgt && \
-    git checkout 4dcaac8ca91804bef8f21fdf388efeaf5e81184e && \
+    git checkout 5c9b706c1eaaa509adaecc5a7933251b8e82be02 && \
     ./scripts/build-pkg.sh deb && \
     dpkg -i ./pkg/tgt_*.deb
 
