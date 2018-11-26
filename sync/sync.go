@@ -552,6 +552,11 @@ func GetSnapshotsInfo(replicas []rest.Replica) (map[string]replica.DiskInfo, err
 			if new.Created != old.Created {
 				new.Created = old.Created
 			}
+			// VolumeHead is being written, so size can be slightly
+			// different.
+			if k == VolumeHeadName && new.Size != old.Size {
+				new.Size = old.Size
+			}
 			if !reflect.DeepEqual(new, old) {
 				return nil, fmt.Errorf("BUG: Inconsistent snapshot info: %+v vs %+v", new, old)
 			}
