@@ -552,9 +552,9 @@ func GetSnapshotsInfo(replicas []rest.Replica) (map[string]replica.DiskInfo, err
 			if new.Created != old.Created {
 				new.Created = old.Created
 			}
-			// VolumeHead is being written, so size can be slightly
-			// different.
-			if k == VolumeHeadName && new.Size != old.Size {
+			// The actual size is filesystem implementation depended. It cannot
+			// be used to check the data integrity.
+			if new.Size != old.Size {
 				new.Size = old.Size
 			}
 			if !reflect.DeepEqual(new, old) {
