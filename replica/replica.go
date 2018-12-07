@@ -33,7 +33,6 @@ const (
 	diskSuffix         = ".img"
 	diskName           = diskPrefix + "%s" + diskSuffix
 	maximumChainLength = 250
-	qemuImageBinary    = "qemu-img"
 )
 
 var (

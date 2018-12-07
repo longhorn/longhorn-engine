@@ -5,44 +5,19 @@ import (
 	"os/exec"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/rancher/longhorn-engine/replica"
+	"github.com/rancher/backupstore"
 	"github.com/rancher/longhorn-engine/util"
 	"github.com/urfave/cli"
 )
 
-const DefaultImageFormat = "qcow2"
+const (
+	DefaultImageFormat = "qcow2"
+	QEMUImageBinary    = "qemu-img"
+)
 
 var SupportedImageFormats = []string{
-	"rbd",
-	"host_cdrom",
-	"blkdebug",
-	"qcow",
-	"host_device",
-	"vpc",
 	"qcow2",
-	"cloop",
-	"vdi",
-	"sheepdog",
-	"qed",
-	"nbd",
-	"tftp",
-	"vvfat",
-	"ftp",
-	"ftps",
-	"https",
-	"dmg",
-	"http",
-	"vmdk",
-	"iscsi",
-	"parallels",
 	"raw",
-	"bochs",
-	"quorum",
-	"null-aio",
-	"null-co",
-	"vhdx",
-	"blkverify",
-	"file",
 }
 
 func RestoreToCmd() cli.Command {
@@ -65,7 +40,7 @@ func RestoreToCmd() cli.Command {
 			cli.StringFlag{
 				Name:  "output-file",
 				Usage: "filepath to write the resulting image to",
-				Value: "/image/base.qcow2",
+				Value: "volume.qcow2",
 			},
 		},
 		Action: func(c *cli.Context) {
@@ -86,36 +61,30 @@ func imageFormatSupported(desiredFormat string) bool {
 }
 
 func restoreTo(c *cli.Context) error {
-	if c.NArg() != 1 {
-		return fmt.Errorf("directory name is required")
+	imageFormat := c.String("image-format")
+	if !imageFormatSupported(imageFormat) {
+		return fmt.Errorf("unsupported image format: %s", imageFormat)
 	}
-	dir := c.Args()[0]
 
 	backingFile, err := openBackingFile(c.String("backing-file"))
 	if err != nil {
 		return err
 	}
-	s := replica.NewServer(dir, backingFile, 512)
 
 	backupURL := c.String("backup-url")
 	if backupURL == "" {
 		return fmt.Errorf("backup-url must be provided")
 	}
 
-	snapshotName := "coalesced"
-	if err := s.Restore(backupURL, snapshotName); err != nil {
-		return err
-	}
-	coalescedFile := s.GetSnapshotFilepath(snapshotName)
+	backupFilepath := "backup.qcow2"
 
-	imageFormat := c.String("image-format")
-	if !imageFormatSupported(imageFormat) {
-		return fmt.Errorf("unsupported image format: %s", imageFormat)
+	if err := backupstore.RestoreDeltaBlockBackup(backupURL, backupFilepath); err != nil {
+		return err
 	}
 
 	outputFile := c.String("output-file")
 	if backingFile == nil {
-		if err := s.ConvertImage(coalescedFile, outputFile, imageFormat); err != nil {
+		if err := ConvertImage(backupFilepath, outputFile, imageFormat); err != nil {
 			return err
 		}
 	} else {
@@ -123,14 +92,14 @@ func restoreTo(c *cli.Context) error {
 		if err != nil {
 			return err
 		}
-		if err := s.ConvertImage(coalescedFile, outputFile, DefaultImageFormat); err != nil {
+		if err := ConvertImage(backupFilepath, outputFile, DefaultImageFormat); err != nil {
 			return err
 		}
-		if err := s.CommitSnapshotToBackingFile(outputFile, backingFilepath); err != nil {
+		if err := CommitSnapshotToBackingFile(outputFile, backingFilepath); err != nil {
 			return err
 		}
 		if imageFormat != DefaultImageFormat {
-			if err := s.ConvertImage(backingFilepath, outputFile, imageFormat); err != nil {
+			if err := ConvertImage(backingFilepath, outputFile, imageFormat); err != nil {
 				return err
 			}
 		} else {
@@ -142,4 +111,27 @@ func restoreTo(c *cli.Context) error {
 	logrus.Infof("Produced image: %s", outputFile)
 
 	return nil
+}
+
+func ConvertImage(srcFilepath, dstFilepath, format string) error {
+	defer logrus.Debugf("ConvertImage (%s) %s -> %s", format, srcFilepath, dstFilepath)
+
+	return exec.Command(QEMUImageBinary, "convert", "-O", format, srcFilepath, dstFilepath).Run()
+}
+
+func CommitSnapshotToBackingFile(snapFilepath, backingFilepath string) error {
+	defer logrus.Debugf("CommitSnapshotToBackingFile %s -> %s", snapFilepath, backingFilepath)
+
+	if err := rebaseSnapshot(snapFilepath, backingFilepath); err != nil {
+		return err
+	}
+	return commitSnapshot(snapFilepath)
+}
+
+func rebaseSnapshot(snapFilepath, backingFilepath string) error {
+	return exec.Command(QEMUImageBinary, "rebase", "-u", "-b", backingFilepath, snapFilepath).Run()
+}
+
+func commitSnapshot(snapFilepath string) error {
+	return exec.Command(QEMUImageBinary, "commit", snapFilepath).Run()
 }

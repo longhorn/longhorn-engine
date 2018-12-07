@@ -3,7 +3,6 @@ package replica
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -377,31 +376,4 @@ func (s *Server) Restore(url, name string) (err error) {
 	}
 
 	return r.Close()
-}
-
-func (s *Server) GetSnapshotFilepath(name string) string {
-	return filepath.Join(s.dir, diskPrefix+name+diskSuffix)
-}
-
-func (s *Server) ConvertImage(srcFilepath, dstFilepath, format string) error {
-	defer logrus.Debugf("ConvertImage (%s) %s -> %s", format, srcFilepath, dstFilepath)
-
-	return exec.Command(qemuImageBinary, "convert", "-O", format, srcFilepath, dstFilepath).Run()
-}
-
-func (s *Server) CommitSnapshotToBackingFile(snapFilepath, backingFilepath string) error {
-	defer logrus.Debugf("CommitSnapshotToBackingFile %s -> %s", snapFilepath, backingFilepath)
-
-	if err := s.rebaseSnapshot(snapFilepath, backingFilepath); err != nil {
-		return err
-	}
-	return s.commitSnapshot(snapFilepath)
-}
-
-func (s *Server) rebaseSnapshot(snapFilepath, backingFilepath string) error {
-	return exec.Command(qemuImageBinary, "rebase", "-u", "-b", backingFilepath, snapFilepath).Run()
-}
-
-func (s *Server) commitSnapshot(snapFilepath string) error {
-	return exec.Command(qemuImageBinary, "commit", snapFilepath).Run()
 }
