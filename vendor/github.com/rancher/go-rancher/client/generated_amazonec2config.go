@@ -11,9 +11,13 @@ type Amazonec2Config struct {
 
 	Ami string `json:"ami,omitempty" yaml:"ami,omitempty"`
 
+	DeviceName string `json:"deviceName,omitempty" yaml:"device_name,omitempty"`
+
 	IamInstanceProfile string `json:"iamInstanceProfile,omitempty" yaml:"iam_instance_profile,omitempty"`
 
 	InstanceType string `json:"instanceType,omitempty" yaml:"instance_type,omitempty"`
+
+	KeypairName string `json:"keypairName,omitempty" yaml:"keypair_name,omitempty"`
 
 	Monitoring bool `json:"monitoring,omitempty" yaml:"monitoring,omitempty"`
 
@@ -23,21 +27,31 @@ type Amazonec2Config struct {
 
 	RequestSpotInstance bool `json:"requestSpotInstance,omitempty" yaml:"request_spot_instance,omitempty"`
 
+	Retries string `json:"retries,omitempty" yaml:"retries,omitempty"`
+
 	RootSize string `json:"rootSize,omitempty" yaml:"root_size,omitempty"`
 
 	SecretKey string `json:"secretKey,omitempty" yaml:"secret_key,omitempty"`
 
-	SecurityGroup string `json:"securityGroup,omitempty" yaml:"security_group,omitempty"`
+	SecurityGroup []string `json:"securityGroup,omitempty" yaml:"security_group,omitempty"`
 
 	SessionToken string `json:"sessionToken,omitempty" yaml:"session_token,omitempty"`
 
 	SpotPrice string `json:"spotPrice,omitempty" yaml:"spot_price,omitempty"`
 
+	SshKeypath string `json:"sshKeypath,omitempty" yaml:"ssh_keypath,omitempty"`
+
 	SshUser string `json:"sshUser,omitempty" yaml:"ssh_user,omitempty"`
 
 	SubnetId string `json:"subnetId,omitempty" yaml:"subnet_id,omitempty"`
 
+	Tags string `json:"tags,omitempty" yaml:"tags,omitempty"`
+
+	UseEbsOptimizedInstance bool `json:"useEbsOptimizedInstance,omitempty" yaml:"use_ebs_optimized_instance,omitempty"`
+
 	UsePrivateAddress bool `json:"usePrivateAddress,omitempty" yaml:"use_private_address,omitempty"`
+
+	VolumeType string `json:"volumeType,omitempty" yaml:"volume_type,omitempty"`
 
 	VpcId string `json:"vpcId,omitempty" yaml:"vpc_id,omitempty"`
 
@@ -46,7 +60,8 @@ type Amazonec2Config struct {
 
 type Amazonec2ConfigCollection struct {
 	Collection
-	Data []Amazonec2Config `json:"data,omitempty"`
+	Data   []Amazonec2Config `json:"data,omitempty"`
+	client *Amazonec2ConfigClient
 }
 
 type Amazonec2ConfigClient struct {
@@ -82,7 +97,18 @@ func (c *Amazonec2ConfigClient) Update(existing *Amazonec2Config, updates interf
 func (c *Amazonec2ConfigClient) List(opts *ListOpts) (*Amazonec2ConfigCollection, error) {
 	resp := &Amazonec2ConfigCollection{}
 	err := c.rancherClient.doList(AMAZONEC2CONFIG_TYPE, opts, resp)
+	resp.client = c
 	return resp, err
+}
+
+func (cc *Amazonec2ConfigCollection) Next() (*Amazonec2ConfigCollection, error) {
+	if cc != nil && cc.Pagination != nil && cc.Pagination.Next != "" {
+		resp := &Amazonec2ConfigCollection{}
+		err := cc.client.rancherClient.doNext(cc.Pagination.Next, resp)
+		resp.client = cc.client
+		return resp, err
+	}
+	return nil, nil
 }
 
 func (c *Amazonec2ConfigClient) ById(id string) (*Amazonec2Config, error) {

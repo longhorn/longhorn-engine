@@ -25,6 +25,8 @@ type ExternalService struct {
 
 	HealthCheck *InstanceHealthCheck `json:"healthCheck,omitempty" yaml:"health_check,omitempty"`
 
+	HealthState string `json:"healthState,omitempty" yaml:"health_state,omitempty"`
+
 	Hostname string `json:"hostname,omitempty" yaml:"hostname,omitempty"`
 
 	Kind string `json:"kind,omitempty" yaml:"kind,omitempty"`
@@ -39,6 +41,8 @@ type ExternalService struct {
 
 	Removed string `json:"removed,omitempty" yaml:"removed,omitempty"`
 
+	StartOnCreate bool `json:"startOnCreate,omitempty" yaml:"start_on_create,omitempty"`
+
 	State string `json:"state,omitempty" yaml:"state,omitempty"`
 
 	Transitioning string `json:"transitioning,omitempty" yaml:"transitioning,omitempty"`
@@ -47,14 +51,15 @@ type ExternalService struct {
 
 	TransitioningProgress int64 `json:"transitioningProgress,omitempty" yaml:"transitioning_progress,omitempty"`
 
-	Upgrade ServiceUpgrade `json:"upgrade,omitempty" yaml:"upgrade,omitempty"`
+	Upgrade *ServiceUpgrade `json:"upgrade,omitempty" yaml:"upgrade,omitempty"`
 
 	Uuid string `json:"uuid,omitempty" yaml:"uuid,omitempty"`
 }
 
 type ExternalServiceCollection struct {
 	Collection
-	Data []ExternalService `json:"data,omitempty"`
+	Data   []ExternalService `json:"data,omitempty"`
+	client *ExternalServiceClient
 }
 
 type ExternalServiceClient struct {
@@ -70,8 +75,6 @@ type ExternalServiceOperations interface {
 
 	ActionActivate(*ExternalService) (*Service, error)
 
-	ActionAddservicelink(*ExternalService, *AddRemoveServiceLinkInput) (*Service, error)
-
 	ActionCancelrollback(*ExternalService) (*Service, error)
 
 	ActionCancelupgrade(*ExternalService) (*Service, error)
@@ -84,13 +87,9 @@ type ExternalServiceOperations interface {
 
 	ActionRemove(*ExternalService) (*Service, error)
 
-	ActionRemoveservicelink(*ExternalService, *AddRemoveServiceLinkInput) (*Service, error)
-
 	ActionRestart(*ExternalService, *ServiceRestart) (*Service, error)
 
 	ActionRollback(*ExternalService) (*Service, error)
-
-	ActionSetservicelinks(*ExternalService, *SetServiceLinksInput) (*Service, error)
 
 	ActionUpdate(*ExternalService) (*Service, error)
 
@@ -118,7 +117,18 @@ func (c *ExternalServiceClient) Update(existing *ExternalService, updates interf
 func (c *ExternalServiceClient) List(opts *ListOpts) (*ExternalServiceCollection, error) {
 	resp := &ExternalServiceCollection{}
 	err := c.rancherClient.doList(EXTERNAL_SERVICE_TYPE, opts, resp)
+	resp.client = c
 	return resp, err
+}
+
+func (cc *ExternalServiceCollection) Next() (*ExternalServiceCollection, error) {
+	if cc != nil && cc.Pagination != nil && cc.Pagination.Next != "" {
+		resp := &ExternalServiceCollection{}
+		err := cc.client.rancherClient.doNext(cc.Pagination.Next, resp)
+		resp.client = cc.client
+		return resp, err
+	}
+	return nil, nil
 }
 
 func (c *ExternalServiceClient) ById(id string) (*ExternalService, error) {
@@ -141,15 +151,6 @@ func (c *ExternalServiceClient) ActionActivate(resource *ExternalService) (*Serv
 	resp := &Service{}
 
 	err := c.rancherClient.doAction(EXTERNAL_SERVICE_TYPE, "activate", &resource.Resource, nil, resp)
-
-	return resp, err
-}
-
-func (c *ExternalServiceClient) ActionAddservicelink(resource *ExternalService, input *AddRemoveServiceLinkInput) (*Service, error) {
-
-	resp := &Service{}
-
-	err := c.rancherClient.doAction(EXTERNAL_SERVICE_TYPE, "addservicelink", &resource.Resource, input, resp)
 
 	return resp, err
 }
@@ -208,15 +209,6 @@ func (c *ExternalServiceClient) ActionRemove(resource *ExternalService) (*Servic
 	return resp, err
 }
 
-func (c *ExternalServiceClient) ActionRemoveservicelink(resource *ExternalService, input *AddRemoveServiceLinkInput) (*Service, error) {
-
-	resp := &Service{}
-
-	err := c.rancherClient.doAction(EXTERNAL_SERVICE_TYPE, "removeservicelink", &resource.Resource, input, resp)
-
-	return resp, err
-}
-
 func (c *ExternalServiceClient) ActionRestart(resource *ExternalService, input *ServiceRestart) (*Service, error) {
 
 	resp := &Service{}
@@ -231,15 +223,6 @@ func (c *ExternalServiceClient) ActionRollback(resource *ExternalService) (*Serv
 	resp := &Service{}
 
 	err := c.rancherClient.doAction(EXTERNAL_SERVICE_TYPE, "rollback", &resource.Resource, nil, resp)
-
-	return resp, err
-}
-
-func (c *ExternalServiceClient) ActionSetservicelinks(resource *ExternalService, input *SetServiceLinksInput) (*Service, error) {
-
-	resp := &Service{}
-
-	err := c.rancherClient.doAction(EXTERNAL_SERVICE_TYPE, "setservicelinks", &resource.Resource, input, resp)
 
 	return resp, err
 }

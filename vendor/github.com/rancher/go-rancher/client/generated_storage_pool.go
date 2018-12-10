@@ -9,6 +9,8 @@ type StoragePool struct {
 
 	AccountId string `json:"accountId,omitempty" yaml:"account_id,omitempty"`
 
+	BlockDevicePath string `json:"blockDevicePath,omitempty" yaml:"block_device_path,omitempty"`
+
 	Created string `json:"created,omitempty" yaml:"created,omitempty"`
 
 	Data map[string]interface{} `json:"data,omitempty" yaml:"data,omitempty"`
@@ -36,11 +38,16 @@ type StoragePool struct {
 	TransitioningProgress int64 `json:"transitioningProgress,omitempty" yaml:"transitioning_progress,omitempty"`
 
 	Uuid string `json:"uuid,omitempty" yaml:"uuid,omitempty"`
+
+	VolumeAccessMode string `json:"volumeAccessMode,omitempty" yaml:"volume_access_mode,omitempty"`
+
+	VolumeCapabilities []string `json:"volumeCapabilities,omitempty" yaml:"volume_capabilities,omitempty"`
 }
 
 type StoragePoolCollection struct {
 	Collection
-	Data []StoragePool `json:"data,omitempty"`
+	Data   []StoragePool `json:"data,omitempty"`
+	client *StoragePoolClient
 }
 
 type StoragePoolClient struct {
@@ -90,7 +97,18 @@ func (c *StoragePoolClient) Update(existing *StoragePool, updates interface{}) (
 func (c *StoragePoolClient) List(opts *ListOpts) (*StoragePoolCollection, error) {
 	resp := &StoragePoolCollection{}
 	err := c.rancherClient.doList(STORAGE_POOL_TYPE, opts, resp)
+	resp.client = c
 	return resp, err
+}
+
+func (cc *StoragePoolCollection) Next() (*StoragePoolCollection, error) {
+	if cc != nil && cc.Pagination != nil && cc.Pagination.Next != "" {
+		resp := &StoragePoolCollection{}
+		err := cc.client.rancherClient.doNext(cc.Pagination.Next, resp)
+		resp.client = cc.client
+		return resp, err
+	}
+	return nil, nil
 }
 
 func (c *StoragePoolClient) ById(id string) (*StoragePool, error) {

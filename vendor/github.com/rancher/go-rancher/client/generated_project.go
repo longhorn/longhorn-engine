@@ -7,6 +7,8 @@ const (
 type Project struct {
 	Resource
 
+	AllowSystemRole bool `json:"allowSystemRole,omitempty" yaml:"allow_system_role,omitempty"`
+
 	Created string `json:"created,omitempty" yaml:"created,omitempty"`
 
 	Data map[string]interface{} `json:"data,omitempty" yaml:"data,omitempty"`
@@ -18,6 +20,8 @@ type Project struct {
 	Kubernetes bool `json:"kubernetes,omitempty" yaml:"kubernetes,omitempty"`
 
 	Members []interface{} `json:"members,omitempty" yaml:"members,omitempty"`
+
+	Mesos bool `json:"mesos,omitempty" yaml:"mesos,omitempty"`
 
 	Name string `json:"name,omitempty" yaml:"name,omitempty"`
 
@@ -40,11 +44,14 @@ type Project struct {
 	TransitioningProgress int64 `json:"transitioningProgress,omitempty" yaml:"transitioning_progress,omitempty"`
 
 	Uuid string `json:"uuid,omitempty" yaml:"uuid,omitempty"`
+
+	VirtualMachine bool `json:"virtualMachine,omitempty" yaml:"virtual_machine,omitempty"`
 }
 
 type ProjectCollection struct {
 	Collection
-	Data []Project `json:"data,omitempty"`
+	Data   []Project `json:"data,omitempty"`
+	client *ProjectClient
 }
 
 type ProjectClient struct {
@@ -96,7 +103,18 @@ func (c *ProjectClient) Update(existing *Project, updates interface{}) (*Project
 func (c *ProjectClient) List(opts *ListOpts) (*ProjectCollection, error) {
 	resp := &ProjectCollection{}
 	err := c.rancherClient.doList(PROJECT_TYPE, opts, resp)
+	resp.client = c
 	return resp, err
+}
+
+func (cc *ProjectCollection) Next() (*ProjectCollection, error) {
+	if cc != nil && cc.Pagination != nil && cc.Pagination.Next != "" {
+		resp := &ProjectCollection{}
+		err := cc.client.rancherClient.doNext(cc.Pagination.Next, resp)
+		resp.client = cc.client
+		return resp, err
+	}
+	return nil, nil
 }
 
 func (c *ProjectClient) ById(id string) (*Project, error) {

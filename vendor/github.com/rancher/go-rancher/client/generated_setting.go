@@ -7,14 +7,21 @@ const (
 type Setting struct {
 	Resource
 
+	ActiveValue string `json:"activeValue,omitempty" yaml:"active_value,omitempty"`
+
+	InDb bool `json:"inDb,omitempty" yaml:"in_db,omitempty"`
+
 	Name string `json:"name,omitempty" yaml:"name,omitempty"`
+
+	Source string `json:"source,omitempty" yaml:"source,omitempty"`
 
 	Value string `json:"value,omitempty" yaml:"value,omitempty"`
 }
 
 type SettingCollection struct {
 	Collection
-	Data []Setting `json:"data,omitempty"`
+	Data   []Setting `json:"data,omitempty"`
+	client *SettingClient
 }
 
 type SettingClient struct {
@@ -50,7 +57,18 @@ func (c *SettingClient) Update(existing *Setting, updates interface{}) (*Setting
 func (c *SettingClient) List(opts *ListOpts) (*SettingCollection, error) {
 	resp := &SettingCollection{}
 	err := c.rancherClient.doList(SETTING_TYPE, opts, resp)
+	resp.client = c
 	return resp, err
+}
+
+func (cc *SettingCollection) Next() (*SettingCollection, error) {
+	if cc != nil && cc.Pagination != nil && cc.Pagination.Next != "" {
+		resp := &SettingCollection{}
+		err := cc.client.rancherClient.doNext(cc.Pagination.Next, resp)
+		resp.client = cc.client
+		return resp, err
+	}
+	return nil, nil
 }
 
 func (c *SettingClient) ById(id string) (*Setting, error) {

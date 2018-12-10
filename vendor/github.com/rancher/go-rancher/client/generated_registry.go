@@ -9,6 +9,8 @@ type Registry struct {
 
 	AccountId string `json:"accountId,omitempty" yaml:"account_id,omitempty"`
 
+	BlockDevicePath string `json:"blockDevicePath,omitempty" yaml:"block_device_path,omitempty"`
+
 	Created string `json:"created,omitempty" yaml:"created,omitempty"`
 
 	Data map[string]interface{} `json:"data,omitempty" yaml:"data,omitempty"`
@@ -38,11 +40,16 @@ type Registry struct {
 	TransitioningProgress int64 `json:"transitioningProgress,omitempty" yaml:"transitioning_progress,omitempty"`
 
 	Uuid string `json:"uuid,omitempty" yaml:"uuid,omitempty"`
+
+	VolumeAccessMode string `json:"volumeAccessMode,omitempty" yaml:"volume_access_mode,omitempty"`
+
+	VolumeCapabilities []string `json:"volumeCapabilities,omitempty" yaml:"volume_capabilities,omitempty"`
 }
 
 type RegistryCollection struct {
 	Collection
-	Data []Registry `json:"data,omitempty"`
+	Data   []Registry `json:"data,omitempty"`
+	client *RegistryClient
 }
 
 type RegistryClient struct {
@@ -92,7 +99,18 @@ func (c *RegistryClient) Update(existing *Registry, updates interface{}) (*Regis
 func (c *RegistryClient) List(opts *ListOpts) (*RegistryCollection, error) {
 	resp := &RegistryCollection{}
 	err := c.rancherClient.doList(REGISTRY_TYPE, opts, resp)
+	resp.client = c
 	return resp, err
+}
+
+func (cc *RegistryCollection) Next() (*RegistryCollection, error) {
+	if cc != nil && cc.Pagination != nil && cc.Pagination.Next != "" {
+		resp := &RegistryCollection{}
+		err := cc.client.rancherClient.doNext(cc.Pagination.Next, resp)
+		resp.client = cc.client
+		return resp, err
+	}
+	return nil, nil
 }
 
 func (c *RegistryClient) ById(id string) (*Registry, error) {

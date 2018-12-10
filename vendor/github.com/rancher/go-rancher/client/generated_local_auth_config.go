@@ -13,14 +13,15 @@ type LocalAuthConfig struct {
 
 	Name string `json:"name,omitempty" yaml:"name,omitempty"`
 
-	Password Password `json:"password,omitempty" yaml:"password,omitempty"`
+	Password string `json:"password,omitempty" yaml:"password,omitempty"`
 
 	Username string `json:"username,omitempty" yaml:"username,omitempty"`
 }
 
 type LocalAuthConfigCollection struct {
 	Collection
-	Data []LocalAuthConfig `json:"data,omitempty"`
+	Data   []LocalAuthConfig `json:"data,omitempty"`
+	client *LocalAuthConfigClient
 }
 
 type LocalAuthConfigClient struct {
@@ -56,7 +57,18 @@ func (c *LocalAuthConfigClient) Update(existing *LocalAuthConfig, updates interf
 func (c *LocalAuthConfigClient) List(opts *ListOpts) (*LocalAuthConfigCollection, error) {
 	resp := &LocalAuthConfigCollection{}
 	err := c.rancherClient.doList(LOCAL_AUTH_CONFIG_TYPE, opts, resp)
+	resp.client = c
 	return resp, err
+}
+
+func (cc *LocalAuthConfigCollection) Next() (*LocalAuthConfigCollection, error) {
+	if cc != nil && cc.Pagination != nil && cc.Pagination.Next != "" {
+		resp := &LocalAuthConfigCollection{}
+		err := cc.client.rancherClient.doNext(cc.Pagination.Next, resp)
+		resp.client = cc.client
+		return resp, err
+	}
+	return nil, nil
 }
 
 func (c *LocalAuthConfigClient) ById(id string) (*LocalAuthConfig, error) {

@@ -21,11 +21,15 @@ type Environment struct {
 
 	ExternalId string `json:"externalId,omitempty" yaml:"external_id,omitempty"`
 
+	HealthState string `json:"healthState,omitempty" yaml:"health_state,omitempty"`
+
 	Kind string `json:"kind,omitempty" yaml:"kind,omitempty"`
 
 	Name string `json:"name,omitempty" yaml:"name,omitempty"`
 
 	Outputs map[string]interface{} `json:"outputs,omitempty" yaml:"outputs,omitempty"`
+
+	PreviousEnvironment map[string]interface{} `json:"previousEnvironment,omitempty" yaml:"previous_environment,omitempty"`
 
 	PreviousExternalId string `json:"previousExternalId,omitempty" yaml:"previous_external_id,omitempty"`
 
@@ -50,7 +54,8 @@ type Environment struct {
 
 type EnvironmentCollection struct {
 	Collection
-	Data []Environment `json:"data,omitempty"`
+	Data   []Environment `json:"data,omitempty"`
+	client *EnvironmentClient
 }
 
 type EnvironmentClient struct {
@@ -112,7 +117,18 @@ func (c *EnvironmentClient) Update(existing *Environment, updates interface{}) (
 func (c *EnvironmentClient) List(opts *ListOpts) (*EnvironmentCollection, error) {
 	resp := &EnvironmentCollection{}
 	err := c.rancherClient.doList(ENVIRONMENT_TYPE, opts, resp)
+	resp.client = c
 	return resp, err
+}
+
+func (cc *EnvironmentCollection) Next() (*EnvironmentCollection, error) {
+	if cc != nil && cc.Pagination != nil && cc.Pagination.Next != "" {
+		resp := &EnvironmentCollection{}
+		err := cc.client.rancherClient.doNext(cc.Pagination.Next, resp)
+		resp.client = cc.client
+		return resp, err
+	}
+	return nil, nil
 }
 
 func (c *EnvironmentClient) ById(id string) (*Environment, error) {
