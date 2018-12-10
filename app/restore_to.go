@@ -40,7 +40,7 @@ func RestoreToCmd() cli.Command {
 			cli.StringFlag{
 				Name:  "output-file",
 				Usage: "filepath to write the resulting image to",
-				Value: "volume.qcow2",
+				Value: "volume." + DefaultImageFormat,
 			},
 		},
 		Action: func(c *cli.Context) {
@@ -66,24 +66,19 @@ func restoreTo(c *cli.Context) error {
 		return fmt.Errorf("unsupported image format: %s", imageFormat)
 	}
 
-	backingFile, err := openBackingFile(c.String("backing-file"))
-	if err != nil {
-		return err
-	}
-
 	backupURL := c.String("backup-url")
 	if backupURL == "" {
 		return fmt.Errorf("backup-url must be provided")
 	}
 
-	backupFilepath := "backup.qcow2"
-
+	backupFilepath := "backup.img"
 	if err := backupstore.RestoreDeltaBlockBackup(backupURL, backupFilepath); err != nil {
 		return err
 	}
 
 	outputFile := c.String("output-file")
-	if backingFile == nil {
+	backingFileOrDir := c.String("backing-file")
+	if backingFileOrDir == "" {
 		if err := ConvertImage(backupFilepath, outputFile, imageFormat); err != nil {
 			return err
 		}

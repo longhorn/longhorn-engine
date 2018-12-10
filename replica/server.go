@@ -374,6 +374,5 @@ func (s *Server) Restore(url, name string) (err error) {
 	if err != nil {
 		return err
 	}
-
 	return r.Close()
 }
