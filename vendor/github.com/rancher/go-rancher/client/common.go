@@ -3,7 +3,6 @@ package client
 import (
 	"bytes"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -11,9 +10,10 @@ import (
 	"net/url"
 	"os"
 	"regexp"
+	"time"
 
 	"github.com/gorilla/websocket"
-	"time"
+	"github.com/pkg/errors"
 )
 
 const (
@@ -22,8 +22,9 @@ const (
 )
 
 var (
-	debug  = false
-	dialer = &websocket.Dialer{}
+	debug             = false
+	dialer            = &websocket.Dialer{}
+	privateFieldRegex = regexp.MustCompile("^[[:lower:]]")
 )
 
 type ClientOpts struct {
@@ -43,6 +44,15 @@ type ApiError struct {
 
 func (e *ApiError) Error() string {
 	return e.Msg
+}
+
+func IsNotFound(err error) bool {
+	apiError, ok := err.(*ApiError)
+	if !ok {
+		return false
+	}
+
+	return apiError.StatusCode == http.StatusNotFound
 }
 
 func newApiError(resp *http.Response, url string) *ApiError {
@@ -106,14 +116,20 @@ func appendFilters(urlString string, filters map[string]interface{}) (string, er
 
 	q := u.Query()
 	for k, v := range filters {
-		q.Add(k, fmt.Sprintf("%v", v))
+		if l, ok := v.([]string); ok {
+			for _, v := range l {
+				q.Add(k, v)
+			}
+		} else {
+			q.Add(k, fmt.Sprintf("%v", v))
+		}
 	}
 
 	u.RawQuery = q.Encode()
 	return u.String(), nil
 }
 
-func setupRancherBaseClient(rancherClient *RancherBaseClient, opts *ClientOpts) error {
+func setupRancherBaseClient(rancherClient *RancherBaseClientImpl, opts *ClientOpts) error {
 	if opts.Timeout == 0 {
 		opts.Timeout = time.Second * 10
 	}
@@ -187,18 +203,18 @@ func NewListOpts() *ListOpts {
 	}
 }
 
-func (rancherClient *RancherBaseClient) setupRequest(req *http.Request) {
+func (rancherClient *RancherBaseClientImpl) setupRequest(req *http.Request) {
 	req.SetBasicAuth(rancherClient.Opts.AccessKey, rancherClient.Opts.SecretKey)
 }
 
-func (rancherClient *RancherBaseClient) newHttpClient() *http.Client {
+func (rancherClient *RancherBaseClientImpl) newHttpClient() *http.Client {
 	if rancherClient.Opts.Timeout == 0 {
 		rancherClient.Opts.Timeout = time.Second * 10
 	}
 	return &http.Client{Timeout: rancherClient.Opts.Timeout}
 }
 
-func (rancherClient *RancherBaseClient) doDelete(url string) error {
+func (rancherClient *RancherBaseClientImpl) doDelete(url string) error {
 	client := rancherClient.newHttpClient()
 	req, err := http.NewRequest("DELETE", url, nil)
 	if err != nil {
@@ -211,8 +227,9 @@ func (rancherClient *RancherBaseClient) doDelete(url string) error {
 	if err != nil {
 		return err
 	}
-
 	defer resp.Body.Close()
+
+	io.Copy(ioutil.Discard, resp.Body)
 
 	if resp.StatusCode >= 300 {
 		return newApiError(resp, url)
@@ -221,11 +238,11 @@ func (rancherClient *RancherBaseClient) doDelete(url string) error {
 	return nil
 }
 
-func (rancherClient *RancherBaseClient) Websocket(url string, headers map[string][]string) (*websocket.Conn, *http.Response, error) {
+func (rancherClient *RancherBaseClientImpl) Websocket(url string, headers map[string][]string) (*websocket.Conn, *http.Response, error) {
 	return dialer.Dial(url, http.Header(headers))
 }
 
-func (rancherClient *RancherBaseClient) doGet(url string, opts *ListOpts, respObject interface{}) error {
+func (rancherClient *RancherBaseClientImpl) doGet(url string, opts *ListOpts, respObject interface{}) error {
 	if opts == nil {
 		opts = NewListOpts()
 	}
@@ -266,10 +283,18 @@ func (rancherClient *RancherBaseClient) doGet(url string, opts *ListOpts, respOb
 		fmt.Println("Response <= " + string(byteContent))
 	}
 
-	return json.Unmarshal(byteContent, respObject)
+	if err := json.Unmarshal(byteContent, respObject); err != nil {
+		return errors.Wrap(err, fmt.Sprintf("Failed to parse: %s", byteContent))
+	}
+
+	return nil
 }
 
-func (rancherClient *RancherBaseClient) doList(schemaType string, opts *ListOpts, respObject interface{}) error {
+func (rancherClient *RancherBaseClientImpl) List(schemaType string, opts *ListOpts, respObject interface{}) error {
+	return rancherClient.doList(schemaType, opts, respObject)
+}
+
+func (rancherClient *RancherBaseClientImpl) doList(schemaType string, opts *ListOpts, respObject interface{}) error {
 	schema, ok := rancherClient.Types[schemaType]
 	if !ok {
 		return errors.New("Unknown schema type [" + schemaType + "]")
@@ -287,11 +312,15 @@ func (rancherClient *RancherBaseClient) doList(schemaType string, opts *ListOpts
 	return rancherClient.doGet(collectionUrl, opts, respObject)
 }
 
-func (rancherClient *RancherBaseClient) Post(url string, createObj interface{}, respObject interface{}) error {
+func (rancherClient *RancherBaseClientImpl) doNext(nextUrl string, respObject interface{}) error {
+	return rancherClient.doGet(nextUrl, nil, respObject)
+}
+
+func (rancherClient *RancherBaseClientImpl) Post(url string, createObj interface{}, respObject interface{}) error {
 	return rancherClient.doModify("POST", url, createObj, respObject)
 }
 
-func (rancherClient *RancherBaseClient) GetLink(resource Resource, link string, respObject interface{}) error {
+func (rancherClient *RancherBaseClientImpl) GetLink(resource Resource, link string, respObject interface{}) error {
 	url := resource.Links[link]
 	if url == "" {
 		return fmt.Errorf("Failed to find link: %s", link)
@@ -300,7 +329,7 @@ func (rancherClient *RancherBaseClient) GetLink(resource Resource, link string, 
 	return rancherClient.doGet(url, &ListOpts{}, respObject)
 }
 
-func (rancherClient *RancherBaseClient) doModify(method string, url string, createObj interface{}, respObject interface{}) error {
+func (rancherClient *RancherBaseClientImpl) doModify(method string, url string, createObj interface{}, respObject interface{}) error {
 	bodyContent, err := json.Marshal(createObj)
 	if err != nil {
 		return err
@@ -319,7 +348,6 @@ func (rancherClient *RancherBaseClient) doModify(method string, url string, crea
 
 	rancherClient.setupRequest(req)
 	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("Content-Length", string(len(bodyContent)))
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -347,11 +375,11 @@ func (rancherClient *RancherBaseClient) doModify(method string, url string, crea
 	return nil
 }
 
-func (rancherClient *RancherBaseClient) Create(schemaType string, createObj interface{}, respObject interface{}) error {
+func (rancherClient *RancherBaseClientImpl) Create(schemaType string, createObj interface{}, respObject interface{}) error {
 	return rancherClient.doCreate(schemaType, createObj, respObject)
 }
 
-func (rancherClient *RancherBaseClient) doCreate(schemaType string, createObj interface{}, respObject interface{}) error {
+func (rancherClient *RancherBaseClientImpl) doCreate(schemaType string, createObj interface{}, respObject interface{}) error {
 	if createObj == nil {
 		createObj = map[string]string{}
 	}
@@ -379,11 +407,11 @@ func (rancherClient *RancherBaseClient) doCreate(schemaType string, createObj in
 	return rancherClient.doModify("POST", collectionUrl, createObj, respObject)
 }
 
-func (rancherClient *RancherBaseClient) Update(schemaType string, existing *Resource, updates interface{}, respObject interface{}) error {
+func (rancherClient *RancherBaseClientImpl) Update(schemaType string, existing *Resource, updates interface{}, respObject interface{}) error {
 	return rancherClient.doUpdate(schemaType, existing, updates, respObject)
 }
 
-func (rancherClient *RancherBaseClient) doUpdate(schemaType string, existing *Resource, updates interface{}, respObject interface{}) error {
+func (rancherClient *RancherBaseClientImpl) doUpdate(schemaType string, existing *Resource, updates interface{}, respObject interface{}) error {
 	if existing == nil {
 		return errors.New("Existing object is nil")
 	}
@@ -413,7 +441,11 @@ func (rancherClient *RancherBaseClient) doUpdate(schemaType string, existing *Re
 	return rancherClient.doModify("PUT", selfUrl, updates, respObject)
 }
 
-func (rancherClient *RancherBaseClient) doById(schemaType string, id string, respObject interface{}) error {
+func (rancherClient *RancherBaseClientImpl) ById(schemaType string, id string, respObject interface{}) error {
+	return rancherClient.doById(schemaType, id, respObject)
+}
+
+func (rancherClient *RancherBaseClientImpl) doById(schemaType string, id string, respObject interface{}) error {
 	schema, ok := rancherClient.Types[schemaType]
 	if !ok {
 		return errors.New("Unknown schema type [" + schemaType + "]")
@@ -433,7 +465,14 @@ func (rancherClient *RancherBaseClient) doById(schemaType string, id string, res
 	return err
 }
 
-func (rancherClient *RancherBaseClient) doResourceDelete(schemaType string, existing *Resource) error {
+func (rancherClient *RancherBaseClientImpl) Delete(existing *Resource) error {
+	if existing == nil {
+		return nil
+	}
+	return rancherClient.doResourceDelete(existing.Type, existing)
+}
+
+func (rancherClient *RancherBaseClientImpl) doResourceDelete(schemaType string, existing *Resource) error {
 	schema, ok := rancherClient.Types[schemaType]
 	if !ok {
 		return errors.New("Unknown schema type [" + schemaType + "]")
@@ -451,7 +490,7 @@ func (rancherClient *RancherBaseClient) doResourceDelete(schemaType string, exis
 	return rancherClient.doDelete(selfUrl)
 }
 
-func (rancherClient *RancherBaseClient) Reload(existing *Resource, output interface{}) error {
+func (rancherClient *RancherBaseClientImpl) Reload(existing *Resource, output interface{}) error {
 	selfUrl, ok := existing.Links[SELF]
 	if !ok {
 		return errors.New(fmt.Sprintf("Failed to find self URL of [%v]", existing))
@@ -460,7 +499,12 @@ func (rancherClient *RancherBaseClient) Reload(existing *Resource, output interf
 	return rancherClient.doGet(selfUrl, NewListOpts(), output)
 }
 
-func (rancherClient *RancherBaseClient) doAction(schemaType string, action string,
+func (rancherClient *RancherBaseClientImpl) Action(schemaType string, action string,
+	existing *Resource, inputObject, respObject interface{}) error {
+	return rancherClient.doAction(schemaType, action, existing, inputObject, respObject)
+}
+
+func (rancherClient *RancherBaseClientImpl) doAction(schemaType string, action string,
 	existing *Resource, inputObject, respObject interface{}) error {
 
 	if existing == nil {

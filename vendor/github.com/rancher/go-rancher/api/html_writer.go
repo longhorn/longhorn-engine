@@ -19,8 +19,8 @@ var schemas="%SCHEMAS%";
 //BEFORE DATA
 var data = 
 `
-	defaultCssUrl = "https://releases.rancher.com/api-ui/1.0.4/ui.min.css"
-	defaultJsUrl  = "https://releases.rancher.com/api-ui/1.0.4/ui.min.js"
+	defaultCssUrl = "https://releases.rancher.com/api-ui/1.0.5/ui.css"
+	defaultJsUrl  = "https://releases.rancher.com/api-ui/1.0.5/ui.js"
 )
 
 var (

@@ -18,5 +18,6 @@ func (j *JsonWriter) Write(obj interface{}, rw http.ResponseWriter) error {
 	}
 
 	enc := json.NewEncoder(rw)
+	enc.SetEscapeHTML(false)
 	return enc.Encode(obj)
 }

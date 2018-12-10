@@ -13,6 +13,8 @@ type LaunchConfig struct {
 
 	AllocationState string `json:"allocationState,omitempty" yaml:"allocation_state,omitempty"`
 
+	BlkioDeviceOptions map[string]interface{} `json:"blkioDeviceOptions,omitempty" yaml:"blkio_device_options,omitempty"`
+
 	Build *DockerBuild `json:"build,omitempty" yaml:"build,omitempty"`
 
 	CapAdd []string `json:"capAdd,omitempty" yaml:"cap_add,omitempty"`
@@ -71,6 +73,8 @@ type LaunchConfig struct {
 
 	HealthState string `json:"healthState,omitempty" yaml:"health_state,omitempty"`
 
+	HostId string `json:"hostId,omitempty" yaml:"host_id,omitempty"`
+
 	Hostname string `json:"hostname,omitempty" yaml:"hostname,omitempty"`
 
 	ImageUuid string `json:"imageUuid,omitempty" yaml:"image_uuid,omitempty"`
@@ -121,6 +125,8 @@ type LaunchConfig struct {
 
 	RequestedHostId string `json:"requestedHostId,omitempty" yaml:"requested_host_id,omitempty"`
 
+	RequestedIpAddress string `json:"requestedIpAddress,omitempty" yaml:"requested_ip_address,omitempty"`
+
 	SecurityOpt []string `json:"securityOpt,omitempty" yaml:"security_opt,omitempty"`
 
 	StartCount int64 `json:"startCount,omitempty" yaml:"start_count,omitempty"`
@@ -160,7 +166,8 @@ type LaunchConfig struct {
 
 type LaunchConfigCollection struct {
 	Collection
-	Data []LaunchConfig `json:"data,omitempty"`
+	Data   []LaunchConfig `json:"data,omitempty"`
+	client *LaunchConfigClient
 }
 
 type LaunchConfigClient struct {
@@ -182,11 +189,13 @@ type LaunchConfigOperations interface {
 
 	ActionDeallocate(*LaunchConfig) (*Instance, error)
 
+	ActionError(*LaunchConfig) (*Instance, error)
+
 	ActionExecute(*LaunchConfig, *ContainerExec) (*HostAccess, error)
 
-	ActionLogs(*LaunchConfig, *ContainerLogs) (*HostAccess, error)
-
 	ActionMigrate(*LaunchConfig) (*Instance, error)
+
+	ActionProxy(*LaunchConfig, *ContainerProxy) (*HostAccess, error)
 
 	ActionPurge(*LaunchConfig) (*Instance, error)
 
@@ -232,7 +241,18 @@ func (c *LaunchConfigClient) Update(existing *LaunchConfig, updates interface{})
 func (c *LaunchConfigClient) List(opts *ListOpts) (*LaunchConfigCollection, error) {
 	resp := &LaunchConfigCollection{}
 	err := c.rancherClient.doList(LAUNCH_CONFIG_TYPE, opts, resp)
+	resp.client = c
 	return resp, err
+}
+
+func (cc *LaunchConfigCollection) Next() (*LaunchConfigCollection, error) {
+	if cc != nil && cc.Pagination != nil && cc.Pagination.Next != "" {
+		resp := &LaunchConfigCollection{}
+		err := cc.client.rancherClient.doNext(cc.Pagination.Next, resp)
+		resp.client = cc.client
+		return resp, err
+	}
+	return nil, nil
 }
 
 func (c *LaunchConfigClient) ById(id string) (*LaunchConfig, error) {
@@ -286,6 +306,15 @@ func (c *LaunchConfigClient) ActionDeallocate(resource *LaunchConfig) (*Instance
 	return resp, err
 }
 
+func (c *LaunchConfigClient) ActionError(resource *LaunchConfig) (*Instance, error) {
+
+	resp := &Instance{}
+
+	err := c.rancherClient.doAction(LAUNCH_CONFIG_TYPE, "error", &resource.Resource, nil, resp)
+
+	return resp, err
+}
+
 func (c *LaunchConfigClient) ActionExecute(resource *LaunchConfig, input *ContainerExec) (*HostAccess, error) {
 
 	resp := &HostAccess{}
@@ -295,20 +324,20 @@ func (c *LaunchConfigClient) ActionExecute(resource *LaunchConfig, input *Contai
 	return resp, err
 }
 
-func (c *LaunchConfigClient) ActionLogs(resource *LaunchConfig, input *ContainerLogs) (*HostAccess, error) {
-
-	resp := &HostAccess{}
-
-	err := c.rancherClient.doAction(LAUNCH_CONFIG_TYPE, "logs", &resource.Resource, input, resp)
-
-	return resp, err
-}
-
 func (c *LaunchConfigClient) ActionMigrate(resource *LaunchConfig) (*Instance, error) {
 
 	resp := &Instance{}
 
 	err := c.rancherClient.doAction(LAUNCH_CONFIG_TYPE, "migrate", &resource.Resource, nil, resp)
+
+	return resp, err
+}
+
+func (c *LaunchConfigClient) ActionProxy(resource *LaunchConfig, input *ContainerProxy) (*HostAccess, error) {
+
+	resp := &HostAccess{}
+
+	err := c.rancherClient.doAction(LAUNCH_CONFIG_TYPE, "proxy", &resource.Resource, input, resp)
 
 	return resp, err
 }

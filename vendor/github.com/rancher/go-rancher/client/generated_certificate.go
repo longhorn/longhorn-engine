@@ -62,7 +62,8 @@ type Certificate struct {
 
 type CertificateCollection struct {
 	Collection
-	Data []Certificate `json:"data,omitempty"`
+	Data   []Certificate `json:"data,omitempty"`
+	client *CertificateClient
 }
 
 type CertificateClient struct {
@@ -79,6 +80,8 @@ type CertificateOperations interface {
 	ActionCreate(*Certificate) (*Certificate, error)
 
 	ActionRemove(*Certificate) (*Certificate, error)
+
+	ActionUpdate(*Certificate) (*Certificate, error)
 }
 
 func newCertificateClient(rancherClient *RancherClient) *CertificateClient {
@@ -102,7 +105,18 @@ func (c *CertificateClient) Update(existing *Certificate, updates interface{}) (
 func (c *CertificateClient) List(opts *ListOpts) (*CertificateCollection, error) {
 	resp := &CertificateCollection{}
 	err := c.rancherClient.doList(CERTIFICATE_TYPE, opts, resp)
+	resp.client = c
 	return resp, err
+}
+
+func (cc *CertificateCollection) Next() (*CertificateCollection, error) {
+	if cc != nil && cc.Pagination != nil && cc.Pagination.Next != "" {
+		resp := &CertificateCollection{}
+		err := cc.client.rancherClient.doNext(cc.Pagination.Next, resp)
+		resp.client = cc.client
+		return resp, err
+	}
+	return nil, nil
 }
 
 func (c *CertificateClient) ById(id string) (*Certificate, error) {
@@ -134,6 +148,15 @@ func (c *CertificateClient) ActionRemove(resource *Certificate) (*Certificate, e
 	resp := &Certificate{}
 
 	err := c.rancherClient.doAction(CERTIFICATE_TYPE, "remove", &resource.Resource, nil, resp)
+
+	return resp, err
+}
+
+func (c *CertificateClient) ActionUpdate(resource *Certificate) (*Certificate, error) {
+
+	resp := &Certificate{}
+
+	err := c.rancherClient.doAction(CERTIFICATE_TYPE, "update", &resource.Resource, nil, resp)
 
 	return resp, err
 }

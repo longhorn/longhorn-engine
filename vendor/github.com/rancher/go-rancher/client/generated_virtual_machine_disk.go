@@ -13,14 +13,19 @@ type VirtualMachineDisk struct {
 
 	Opts map[string]interface{} `json:"opts,omitempty" yaml:"opts,omitempty"`
 
+	ReadIops int64 `json:"readIops,omitempty" yaml:"read_iops,omitempty"`
+
 	Root bool `json:"root,omitempty" yaml:"root,omitempty"`
 
 	Size string `json:"size,omitempty" yaml:"size,omitempty"`
+
+	WriteIops int64 `json:"writeIops,omitempty" yaml:"write_iops,omitempty"`
 }
 
 type VirtualMachineDiskCollection struct {
 	Collection
-	Data []VirtualMachineDisk `json:"data,omitempty"`
+	Data   []VirtualMachineDisk `json:"data,omitempty"`
+	client *VirtualMachineDiskClient
 }
 
 type VirtualMachineDiskClient struct {
@@ -56,7 +61,18 @@ func (c *VirtualMachineDiskClient) Update(existing *VirtualMachineDisk, updates 
 func (c *VirtualMachineDiskClient) List(opts *ListOpts) (*VirtualMachineDiskCollection, error) {
 	resp := &VirtualMachineDiskCollection{}
 	err := c.rancherClient.doList(VIRTUAL_MACHINE_DISK_TYPE, opts, resp)
+	resp.client = c
 	return resp, err
+}
+
+func (cc *VirtualMachineDiskCollection) Next() (*VirtualMachineDiskCollection, error) {
+	if cc != nil && cc.Pagination != nil && cc.Pagination.Next != "" {
+		resp := &VirtualMachineDiskCollection{}
+		err := cc.client.rancherClient.doNext(cc.Pagination.Next, resp)
+		resp.client = cc.client
+		return resp, err
+	}
+	return nil, nil
 }
 
 func (c *VirtualMachineDiskClient) ById(id string) (*VirtualMachineDisk, error) {

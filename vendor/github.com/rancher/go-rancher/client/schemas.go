@@ -28,7 +28,7 @@ func (s *Schema) Field(name string) Field {
 
 func (s *Schemas) CheckSchema(name string) (Schema, bool) {
 	for i := range s.Data {
-		if s.Data[i].Id == name {
+		if strings.ToLower(s.Data[i].Id) == strings.ToLower(name) {
 			return s.Data[i], true
 		}
 	}
@@ -56,6 +56,8 @@ func typeToFields(t reflect.Type) map[string]Field {
 			continue
 		} else if typeField.Anonymous {
 			continue
+		} else if privateFieldRegex.FindStringIndex(typeField.Name) != nil {
+			continue
 		}
 
 		fieldString := strings.ToLower(typeField.Type.Kind().String())
@@ -75,6 +77,9 @@ func typeToFields(t reflect.Type) map[string]Field {
 		case fieldString == "slice":
 			// HACK
 			schemaField.Type = "array[string]"
+		case fieldString == "struct":
+			schemaField.Type = typeField.Type.String()
+
 		}
 
 		name := strings.Split(typeField.Tag.Get("json"), ",")[0]

@@ -40,7 +40,8 @@ type Agent struct {
 
 type AgentCollection struct {
 	Collection
-	Data []Agent `json:"data,omitempty"`
+	Data   []Agent `json:"data,omitempty"`
+	client *AgentClient
 }
 
 type AgentClient struct {
@@ -59,6 +60,8 @@ type AgentOperations interface {
 	ActionCreate(*Agent) (*Agent, error)
 
 	ActionDeactivate(*Agent) (*Agent, error)
+
+	ActionDisconnect(*Agent) (*Agent, error)
 
 	ActionPurge(*Agent) (*Agent, error)
 
@@ -92,7 +95,18 @@ func (c *AgentClient) Update(existing *Agent, updates interface{}) (*Agent, erro
 func (c *AgentClient) List(opts *ListOpts) (*AgentCollection, error) {
 	resp := &AgentCollection{}
 	err := c.rancherClient.doList(AGENT_TYPE, opts, resp)
+	resp.client = c
 	return resp, err
+}
+
+func (cc *AgentCollection) Next() (*AgentCollection, error) {
+	if cc != nil && cc.Pagination != nil && cc.Pagination.Next != "" {
+		resp := &AgentCollection{}
+		err := cc.client.rancherClient.doNext(cc.Pagination.Next, resp)
+		resp.client = cc.client
+		return resp, err
+	}
+	return nil, nil
 }
 
 func (c *AgentClient) ById(id string) (*Agent, error) {
@@ -133,6 +147,15 @@ func (c *AgentClient) ActionDeactivate(resource *Agent) (*Agent, error) {
 	resp := &Agent{}
 
 	err := c.rancherClient.doAction(AGENT_TYPE, "deactivate", &resource.Resource, nil, resp)
+
+	return resp, err
+}
+
+func (c *AgentClient) ActionDisconnect(resource *Agent) (*Agent, error) {
+
+	resp := &Agent{}
+
+	err := c.rancherClient.doAction(AGENT_TYPE, "disconnect", &resource.Resource, nil, resp)
 
 	return resp, err
 }

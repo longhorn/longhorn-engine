@@ -9,6 +9,8 @@ type Port struct {
 
 	AccountId string `json:"accountId,omitempty" yaml:"account_id,omitempty"`
 
+	BindAddress string `json:"bindAddress,omitempty" yaml:"bind_address,omitempty"`
+
 	Created string `json:"created,omitempty" yaml:"created,omitempty"`
 
 	Data map[string]interface{} `json:"data,omitempty" yaml:"data,omitempty"`
@@ -48,7 +50,8 @@ type Port struct {
 
 type PortCollection struct {
 	Collection
-	Data []Port `json:"data,omitempty"`
+	Data   []Port `json:"data,omitempty"`
+	client *PortClient
 }
 
 type PortClient struct {
@@ -98,7 +101,18 @@ func (c *PortClient) Update(existing *Port, updates interface{}) (*Port, error) 
 func (c *PortClient) List(opts *ListOpts) (*PortCollection, error) {
 	resp := &PortCollection{}
 	err := c.rancherClient.doList(PORT_TYPE, opts, resp)
+	resp.client = c
 	return resp, err
+}
+
+func (cc *PortCollection) Next() (*PortCollection, error) {
+	if cc != nil && cc.Pagination != nil && cc.Pagination.Next != "" {
+		resp := &PortCollection{}
+		err := cc.client.rancherClient.doNext(cc.Pagination.Next, resp)
+		resp.client = cc.client
+		return resp, err
+	}
+	return nil, nil
 }
 
 func (c *PortClient) ById(id string) (*Port, error) {

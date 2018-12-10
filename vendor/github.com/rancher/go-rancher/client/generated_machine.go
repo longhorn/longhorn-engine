@@ -9,15 +9,21 @@ type Machine struct {
 
 	AccountId string `json:"accountId,omitempty" yaml:"account_id,omitempty"`
 
+	Amazonec2Config *Amazonec2Config `json:"amazonec2Config,omitempty" yaml:"amazonec2config,omitempty"`
+
 	AuthCertificateAuthority string `json:"authCertificateAuthority,omitempty" yaml:"auth_certificate_authority,omitempty"`
 
 	AuthKey string `json:"authKey,omitempty" yaml:"auth_key,omitempty"`
+
+	AzureConfig *AzureConfig `json:"azureConfig,omitempty" yaml:"azure_config,omitempty"`
 
 	Created string `json:"created,omitempty" yaml:"created,omitempty"`
 
 	Data map[string]interface{} `json:"data,omitempty" yaml:"data,omitempty"`
 
 	Description string `json:"description,omitempty" yaml:"description,omitempty"`
+
+	DigitaloceanConfig *DigitaloceanConfig `json:"digitaloceanConfig,omitempty" yaml:"digitalocean_config,omitempty"`
 
 	DockerVersion string `json:"dockerVersion,omitempty" yaml:"docker_version,omitempty"`
 
@@ -47,6 +53,8 @@ type Machine struct {
 
 	Name string `json:"name,omitempty" yaml:"name,omitempty"`
 
+	PacketConfig *PacketConfig `json:"packetConfig,omitempty" yaml:"packet_config,omitempty"`
+
 	RemoveTime string `json:"removeTime,omitempty" yaml:"remove_time,omitempty"`
 
 	Removed string `json:"removed,omitempty" yaml:"removed,omitempty"`
@@ -64,7 +72,8 @@ type Machine struct {
 
 type MachineCollection struct {
 	Collection
-	Data []Machine `json:"data,omitempty"`
+	Data   []Machine `json:"data,omitempty"`
+	client *MachineClient
 }
 
 type MachineClient struct {
@@ -110,7 +119,18 @@ func (c *MachineClient) Update(existing *Machine, updates interface{}) (*Machine
 func (c *MachineClient) List(opts *ListOpts) (*MachineCollection, error) {
 	resp := &MachineCollection{}
 	err := c.rancherClient.doList(MACHINE_TYPE, opts, resp)
+	resp.client = c
 	return resp, err
+}
+
+func (cc *MachineCollection) Next() (*MachineCollection, error) {
+	if cc != nil && cc.Pagination != nil && cc.Pagination.Next != "" {
+		resp := &MachineCollection{}
+		err := cc.client.rancherClient.doNext(cc.Pagination.Next, resp)
+		resp.client = cc.client
+		return resp, err
+	}
+	return nil, nil
 }
 
 func (c *MachineClient) ById(id string) (*Machine, error) {

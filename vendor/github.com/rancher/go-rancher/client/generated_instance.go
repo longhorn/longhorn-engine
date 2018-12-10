@@ -17,6 +17,8 @@ type Instance struct {
 
 	ExternalId string `json:"externalId,omitempty" yaml:"external_id,omitempty"`
 
+	HostId string `json:"hostId,omitempty" yaml:"host_id,omitempty"`
+
 	Kind string `json:"kind,omitempty" yaml:"kind,omitempty"`
 
 	Name string `json:"name,omitempty" yaml:"name,omitempty"`
@@ -38,7 +40,8 @@ type Instance struct {
 
 type InstanceCollection struct {
 	Collection
-	Data []Instance `json:"data,omitempty"`
+	Data   []Instance `json:"data,omitempty"`
+	client *InstanceClient
 }
 
 type InstanceClient struct {
@@ -59,6 +62,8 @@ type InstanceOperations interface {
 	ActionCreate(*Instance) (*Instance, error)
 
 	ActionDeallocate(*Instance) (*Instance, error)
+
+	ActionError(*Instance) (*Instance, error)
 
 	ActionMigrate(*Instance) (*Instance, error)
 
@@ -104,7 +109,18 @@ func (c *InstanceClient) Update(existing *Instance, updates interface{}) (*Insta
 func (c *InstanceClient) List(opts *ListOpts) (*InstanceCollection, error) {
 	resp := &InstanceCollection{}
 	err := c.rancherClient.doList(INSTANCE_TYPE, opts, resp)
+	resp.client = c
 	return resp, err
+}
+
+func (cc *InstanceCollection) Next() (*InstanceCollection, error) {
+	if cc != nil && cc.Pagination != nil && cc.Pagination.Next != "" {
+		resp := &InstanceCollection{}
+		err := cc.client.rancherClient.doNext(cc.Pagination.Next, resp)
+		resp.client = cc.client
+		return resp, err
+	}
+	return nil, nil
 }
 
 func (c *InstanceClient) ById(id string) (*Instance, error) {
@@ -154,6 +170,15 @@ func (c *InstanceClient) ActionDeallocate(resource *Instance) (*Instance, error)
 	resp := &Instance{}
 
 	err := c.rancherClient.doAction(INSTANCE_TYPE, "deallocate", &resource.Resource, nil, resp)
+
+	return resp, err
+}
+
+func (c *InstanceClient) ActionError(resource *Instance) (*Instance, error) {
+
+	resp := &Instance{}
+
+	err := c.rancherClient.doAction(INSTANCE_TYPE, "error", &resource.Resource, nil, resp)
 
 	return resp, err
 }
