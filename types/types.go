@@ -80,3 +80,8 @@ type DataProcessor interface {
 	ReaderWriterAt
 	PingResponse() error
 }
+
+const (
+	EventTypeVolume  = "volume"
+	EventTypeReplica = "replica"
+)

@@ -6,12 +6,23 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/rancher/go-rancher/api"
 	"github.com/rancher/go-rancher/client"
+
+	"github.com/rancher/longhorn-engine/broadcaster"
 	"github.com/rancher/longhorn-engine/types"
 )
 
 func (s *Server) ListReplicas(rw http.ResponseWriter, req *http.Request) error {
 	apiContext := api.GetApiContext(req)
-	resp := client.GenericCollection{}
+	list, err := s.replicaList(apiContext)
+	if err != nil {
+		return err
+	}
+	apiContext.Write(list)
+	return nil
+}
+
+func (s *Server) replicaList(apiContext *api.ApiContext) (*client.GenericCollection, error) {
+	resp := &client.GenericCollection{}
 	for _, r := range s.c.ListReplicas() {
 		resp.Data = append(resp.Data, NewReplica(apiContext, r.Address, r.Mode))
 	}
@@ -20,9 +31,15 @@ func (s *Server) ListReplicas(rw http.ResponseWriter, req *http.Request) error {
 	resp.CreateTypes = map[string]string{
 		"replica": apiContext.UrlBuilder.Collection("replica"),
 	}
+	return resp, nil
+}
 
-	apiContext.Write(&resp)
-	return nil
+func (s *Server) processEventReplicaList(e *broadcaster.Event, apiContext *api.ApiContext) (interface{}, error) {
+	list, err := s.replicaList(apiContext)
+	if err != nil {
+		return nil, err
+	}
+	return apiContext.PopulateCollection(list)
 }
 
 func (s *Server) GetReplica(rw http.ResponseWriter, req *http.Request) error {
