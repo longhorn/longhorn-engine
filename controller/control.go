@@ -10,6 +10,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 
+	"github.com/rancher/longhorn-engine/broadcaster"
 	"github.com/rancher/longhorn-engine/types"
 	"github.com/rancher/longhorn-engine/util"
 )
@@ -37,15 +38,18 @@ type Controller struct {
 	RestServer *http.Server
 	shutdownWG sync.WaitGroup
 	lastError  error
+
+	Broadcaster *broadcaster.Broadcaster
 }
 
 func NewController(name string, factory types.BackendFactory, frontend types.Frontend, launcher, launcherID string) *Controller {
 	c := &Controller{
-		factory:    factory,
-		Name:       name,
-		frontend:   frontend,
-		launcher:   launcher,
-		launcherID: launcherID,
+		factory:     factory,
+		Name:        name,
+		frontend:    frontend,
+		launcher:    launcher,
+		launcherID:  launcherID,
+		Broadcaster: &broadcaster.Broadcaster{},
 	}
 	c.reset()
 	return c
@@ -130,7 +134,11 @@ func (c *Controller) Snapshot(name string, labels map[string]string) (string, er
 	}
 
 	created := util.Now()
-	return name, c.handleErrorNoLock(c.backend.Snapshot(name, true, created, labels))
+	if err := c.handleErrorNoLock(c.backend.Snapshot(name, true, created, labels)); err != nil {
+		return "", err
+	}
+	c.Broadcaster.Notify(broadcaster.NewSimpleEvent(types.EventTypeReplica))
+	return name, nil
 }
 
 func (c *Controller) addReplicaNoLock(newBackend types.Backend, address string, snapshot bool) error {
@@ -167,6 +175,8 @@ func (c *Controller) addReplicaNoLock(newBackend types.Backend, address string, 
 
 	go c.monitoring(address, newBackend)
 
+	c.Broadcaster.Notify(broadcaster.NewSimpleEvent(types.EventTypeReplica))
+
 	return nil
 }
 
@@ -197,6 +207,7 @@ func (c *Controller) RemoveReplica(address string) error {
 		}
 	}
 
+	c.Broadcaster.Notify(broadcaster.NewSimpleEvent(types.EventTypeReplica))
 	return nil
 }
 
@@ -228,6 +239,7 @@ func (c *Controller) setReplicaModeNoLock(address string, mode types.Mode) {
 				r.Mode = mode
 				c.replicas[i] = r
 				c.backend.SetMode(address, mode)
+				c.Broadcaster.Notify(broadcaster.NewSimpleEvent(types.EventTypeReplica))
 			} else {
 				logrus.Infof("Ignore set replica %v to mode %v due to it's ERR",
 					address, mode)

@@ -3,7 +3,14 @@ package rest
 import (
 	"github.com/gorilla/mux"
 	"github.com/rancher/go-rancher/api"
+
 	"github.com/rancher/longhorn-engine/replica/rest"
+	"github.com/rancher/longhorn-engine/types"
+)
+
+const (
+	StreamTypeVolume  = "volumes"
+	StreamTypeReplica = "replicas"
 )
 
 func NewRouter(s *Server) *mux.Router {
@@ -42,6 +49,13 @@ func NewRouter(s *Server) *mux.Router {
 
 	// Version
 	router.Methods("GET").Path("/v1/version/details").Handler(f(schemas, s.GetVersionDetails))
+
+	// WebSockets
+	volumeListStream := NewStreamHandlerFunc(StreamTypeVolume, s.processEventVolumeList, s.c.Broadcaster, types.EventTypeVolume, types.EventTypeReplica)
+	router.Path("/v1/ws/volumes").Handler(f(schemas, volumeListStream))
+
+	replicaListStream := NewStreamHandlerFunc(StreamTypeReplica, s.processEventReplicaList, s.c.Broadcaster, types.EventTypeReplica)
+	router.Path("/v1/ws/replicas").Handler(f(schemas, replicaListStream))
 
 	return router
 }

@@ -6,16 +6,34 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/rancher/go-rancher/api"
 	"github.com/rancher/go-rancher/client"
+
+	"github.com/rancher/longhorn-engine/broadcaster"
 )
 
 func (s *Server) ListVolumes(rw http.ResponseWriter, req *http.Request) error {
 	apiContext := api.GetApiContext(req)
-	apiContext.Write(&client.GenericCollection{
+	list, err := s.volumeList(apiContext)
+	if err != nil {
+		return err
+	}
+	apiContext.Write(list)
+	return nil
+}
+
+func (s *Server) volumeList(apiContext *api.ApiContext) (*client.GenericCollection, error) {
+	return &client.GenericCollection{
 		Data: []interface{}{
 			s.listVolumes(apiContext)[0],
 		},
-	})
-	return nil
+	}, nil
+}
+
+func (s *Server) processEventVolumeList(e *broadcaster.Event, apiContext *api.ApiContext) (interface{}, error) {
+	list, err := s.volumeList(apiContext)
+	if err != nil {
+		return nil, err
+	}
+	return apiContext.PopulateCollection(list)
 }
 
 func (s *Server) GetVolume(rw http.ResponseWriter, req *http.Request) error {
