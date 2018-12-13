@@ -84,4 +84,16 @@ type DataProcessor interface {
 const (
 	EventTypeVolume  = "volume"
 	EventTypeReplica = "replica"
+	EventTypeMetrics = "metrics"
 )
+
+type Metrics struct {
+	Bandwidth    RWMetrics // in byte
+	TotalLatency RWMetrics // in microsecond(us)
+	IOPS         RWMetrics
+}
+
+type RWMetrics struct {
+	Read  uint64
+	Write uint64
+}

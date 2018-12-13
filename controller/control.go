@@ -6,6 +6,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	"github.com/Sirupsen/logrus"
@@ -40,6 +41,8 @@ type Controller struct {
 	lastError  error
 
 	Broadcaster *broadcaster.Broadcaster
+
+	metrics *types.Metrics
 }
 
 func NewController(name string, factory types.BackendFactory, frontend types.Frontend, launcher, launcherID string) *Controller {
@@ -50,8 +53,10 @@ func NewController(name string, factory types.BackendFactory, frontend types.Fro
 		launcher:    launcher,
 		launcherID:  launcherID,
 		Broadcaster: &broadcaster.Broadcaster{},
+		metrics:     &types.Metrics{},
 	}
 	c.reset()
+	c.metricsStart()
 	return c
 }
 
@@ -344,31 +349,37 @@ func (c *Controller) Start(addresses ...string) error {
 
 func (c *Controller) WriteAt(b []byte, off int64) (int, error) {
 	c.RLock()
-	if off < 0 || off+int64(len(b)) > c.size {
-		err := fmt.Errorf("EOF: Write of %v bytes at offset %v is beyond volume size %v", len(b), off, c.size)
+	l := len(b)
+	if off < 0 || off+int64(l) > c.size {
+		err := fmt.Errorf("EOF: Write of %v bytes at offset %v is beyond volume size %v", l, off, c.size)
 		c.RUnlock()
 		return 0, err
 	}
+	startTime := time.Now()
 	n, err := c.backend.WriteAt(b, off)
 	c.RUnlock()
 	if err != nil {
 		return n, c.handleError(err)
 	}
+	c.recordMetrics(false, l, time.Now().Sub(startTime))
 	return n, err
 }
 
 func (c *Controller) ReadAt(b []byte, off int64) (int, error) {
 	c.RLock()
-	if off < 0 || off+int64(len(b)) > c.size {
-		err := fmt.Errorf("EOF: Read of %v bytes at offset %v is beyond volume size %v", len(b), off, c.size)
+	l := len(b)
+	if off < 0 || off+int64(l) > c.size {
+		err := fmt.Errorf("EOF: Read of %v bytes at offset %v is beyond volume size %v", l, off, c.size)
 		c.RUnlock()
 		return 0, err
 	}
+	startTime := time.Now()
 	n, err := c.backend.ReadAt(b, off)
 	c.RUnlock()
 	if err != nil {
 		return n, c.handleError(err)
 	}
+	c.recordMetrics(true, l, time.Now().Sub(startTime))
 	return n, err
 }
 
@@ -536,4 +547,32 @@ func (c *Controller) launcherShutdownFrontend() error {
 		return fmt.Errorf("failed to shutdown frontend: %v", err)
 	}
 	return nil
+}
+
+func (c *Controller) recordMetrics(isRead bool, dataLength int, latency time.Duration) {
+	latencyInUS := uint64(latency.Nanoseconds() / 1000)
+	if isRead {
+		atomic.AddUint64(&c.metrics.Bandwidth.Read, uint64(dataLength))
+		atomic.AddUint64(&c.metrics.TotalLatency.Read, latencyInUS)
+		atomic.AddUint64(&c.metrics.IOPS.Read, 1)
+	} else {
+		atomic.AddUint64(&c.metrics.Bandwidth.Write, uint64(dataLength))
+		atomic.AddUint64(&c.metrics.TotalLatency.Write, latencyInUS)
+		atomic.AddUint64(&c.metrics.IOPS.Write, 1)
+	}
+}
+
+func (c *Controller) metricsStart() {
+	go func() {
+		for {
+			time.Sleep(1 * time.Second)
+			latestMetrics := c.metrics
+			c.metrics = &types.Metrics{}
+			e := &broadcaster.Event{
+				Type: types.EventTypeMetrics,
+				Data: latestMetrics,
+			}
+			c.Broadcaster.Notify(e)
+		}
+	}()
 }
