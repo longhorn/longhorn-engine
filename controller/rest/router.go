@@ -11,6 +11,7 @@ import (
 const (
 	StreamTypeVolume  = "volumes"
 	StreamTypeReplica = "replicas"
+	StreamTypeMetrics = "metrics"
 )
 
 func NewRouter(s *Server) *mux.Router {
@@ -56,6 +57,9 @@ func NewRouter(s *Server) *mux.Router {
 
 	replicaListStream := NewStreamHandlerFunc(StreamTypeReplica, s.processEventReplicaList, s.c.Broadcaster, types.EventTypeReplica)
 	router.Path("/v1/ws/replicas").Handler(f(schemas, replicaListStream))
+
+	metricsStream := NewStreamHandlerFunc(StreamTypeMetrics, s.processEventMetrics, s.c.Broadcaster, types.EventTypeMetrics)
+	router.Path("/v1/ws/metrics").Handler(f(schemas, metricsStream))
 
 	return router
 }
