@@ -35,4 +35,4 @@ extra_opts=""
 
 longhorn replica --size $size --listen localhost:9502 /volume/ &
 sleep 1
-exec $launcher --frontend $frontend --replica tcp://localhost:9502 $extra_opts $volume
+exec $launcher --listen 0.0.0.0:9501 --frontend $frontend --replica tcp://localhost:9502 $extra_opts $volume
