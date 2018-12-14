@@ -10,9 +10,10 @@ frontend=$3
 
 if [ -z $volume ]
 then
-        echo "Usage: launch-simple-longhorn <volume_name> <frontend> "
+        echo "Usage: launch-simple-file <volume_name> <size> <frontend> "
         echo "<volume_name>: Required. User defined volume name"
-        echo "<frontend>: Optional. By default 'tgt-blockdev'. "
+        echo "<size>: Optional. User defined volume size"
+        echo "<frontend>: Optional. By default 'tgt'. "
 	exit -1
 fi
 
@@ -25,7 +26,7 @@ fi
 if [ -z $frontend ]
 then
         echo Use default frontend TGT block device
-        frontend="tgt-blockdev"
+        frontend="tgt"
 fi
 
 launcher="longhorn controller"
@@ -33,6 +34,9 @@ extra_opts=""
 
 [[ $frontend == "tgt-"* ]] && launcher="longhorn-engine-launcher start" && extra_opts="--size $size"
 
-longhorn replica --size $size --listen 0.0.0.0:9502 /volume/ &
+img=/volume/volume.img
+
+truncate -s $size $img
+
 sleep 1
-exec $launcher --listen 0.0.0.0:9501 --frontend $frontend --replica tcp://0.0.0.0:9502 $extra_opts $volume
+exec $launcher --listen 0.0.0.0:9501 --frontend $frontend --enable-backend file --replica file://$img $extra_opts $volume
