@@ -242,6 +242,9 @@ func DeleteTarget(target string) error {
 		if err := iscsi.DeleteTarget(TargetID); err != nil {
 			return err
 		}
+		if err := iscsi.ShutdownTgtd(); err != nil {
+			return err
+		}
 	}
 	return nil
 }
