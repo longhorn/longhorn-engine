@@ -6,6 +6,9 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/rancher/go-rancher/api"
 	"github.com/rancher/go-rancher/client"
+
+	// add pprof endpoint
+	_ "net/http/pprof"
 )
 
 func HandleError(s *client.Schemas, t func(http.ResponseWriter, *http.Request) error) http.Handler {
@@ -67,6 +70,8 @@ func NewRouter(s *Server) *mux.Router {
 	for name, action := range actions {
 		router.Methods("POST").Path("/v1/replicas/{id}").Queries("action", name).Handler(f(schemas, checkAction(s, action)))
 	}
+
+	router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
 
 	return router
 }

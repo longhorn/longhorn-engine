@@ -1,11 +1,16 @@
 package rest
 
 import (
+	"net/http"
+
 	"github.com/gorilla/mux"
 	"github.com/rancher/go-rancher/api"
 
 	"github.com/rancher/longhorn-engine/replica/rest"
 	"github.com/rancher/longhorn-engine/types"
+
+	// add pprof endpoint
+	_ "net/http/pprof"
 )
 
 const (
@@ -60,6 +65,8 @@ func NewRouter(s *Server) *mux.Router {
 
 	metricsStream := NewStreamHandlerFunc(StreamTypeMetrics, s.processEventMetrics, s.c.Broadcaster, types.EventTypeMetrics)
 	router.Path("/v1/ws/metrics").Handler(f(schemas, metricsStream))
+
+	router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
 
 	return router
 }
