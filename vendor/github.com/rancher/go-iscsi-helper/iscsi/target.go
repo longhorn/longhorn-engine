@@ -241,3 +241,15 @@ func GetTargetTid(name string) (int, error) {
 	}
 	return tid, nil
 }
+
+func ShutdownTgtd() error {
+	opts := []string{
+		"--op", "delete",
+		"--mode", "system",
+	}
+	_, err := util.Execute(tgtBinary, opts)
+	if err != nil {
+		return err
+	}
+	return nil
+}
