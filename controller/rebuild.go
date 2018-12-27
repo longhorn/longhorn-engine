@@ -103,7 +103,7 @@ func (c *Controller) VerifyRebuildReplica(address string) error {
 		return fmt.Errorf("Fail to set revision counter for %v: %v", address, err)
 	}
 
-	logrus.Debugf("WO replica %v's chain verified, update mode to RW", address)
+	logrus.Infof("WO replica %v's chain verified, update mode to RW", address)
 	c.setReplicaModeNoLock(address, types.RW)
 	return nil
 }
