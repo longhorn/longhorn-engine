@@ -79,7 +79,7 @@ func devOpen(dev Device) int {
 
 	id := strings.TrimPrefix(cfgString, "longhorn//")
 	if id != volume {
-		log.Debugf("Ignore volume %s, which is not mine", id)
+		log.Infof("Ignore volume %s, which is not mine", id)
 		return -C.EINVAL
 	}
 	state.volume = id
@@ -219,7 +219,7 @@ func (s *State) handleCommand(dev Device, cmd Command) int {
 	case C.WRITE_6, C.WRITE_10, C.WRITE_12, C.WRITE_16:
 		return s.handleWriteCommand(dev, cmd)
 	default:
-		log.Debugf("Ignore unknown SCSI command 0x%x\n", scsiCmd)
+		log.Warnf("Ignore unknown SCSI command 0x%x\n", scsiCmd)
 	}
 	return C.TCMU_NOT_HANDLED
 }
@@ -254,7 +254,7 @@ func devCheckConfig(cfg *C.char, reason **C.char) bool {
 	if id != volume {
 		//it's for others
 		*reason = C.CString("Not current volume")
-		log.Debugf("%s is not my volume", id)
+		log.Infof("%s is not my volume", id)
 		return false
 	}
 	return true

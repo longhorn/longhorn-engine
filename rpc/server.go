@@ -65,7 +65,7 @@ func (s *Server) read() error {
 			}
 			continue
 		case <-s.done:
-			logrus.Debugf("RPC server stopped")
+			logrus.Infof("RPC server stopped")
 			return nil
 		}
 	}

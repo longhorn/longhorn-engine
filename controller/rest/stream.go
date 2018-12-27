@@ -40,7 +40,7 @@ func NewStreamHandlerFunc(streamType string,
 			"id":   strconv.Itoa(rand.Int()),
 			"type": streamType,
 		}
-		logrus.WithFields(fields).Debug("websocket: open")
+		logrus.WithFields(fields).Info("websocket: open")
 
 		watcher := b.NewWatcher(events...)
 		defer watcher.Close()
@@ -51,7 +51,7 @@ func NewStreamHandlerFunc(streamType string,
 			for {
 				_, _, err := conn.ReadMessage()
 				if err != nil {
-					logrus.WithFields(fields).Debug(err.Error())
+					logrus.WithFields(fields).Info(err.Error())
 					return
 				}
 			}

@@ -303,7 +303,7 @@ func removeAsync(path string, done chan<- error) {
 		logrus.Errorf("Unable to remove: %v", path)
 		done <- err
 	}
-	logrus.Debugf("Removed: %s", path)
+	logrus.Infof("Removed: %s", path)
 	done <- nil
 }
 

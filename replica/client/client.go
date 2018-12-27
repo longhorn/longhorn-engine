@@ -456,7 +456,7 @@ func (c *ReplicaClient) post(path string, req, resp interface{}) error {
 		url = c.address + path
 	}
 
-	logrus.Debugf("POST %s", url)
+	logrus.Infof("POST %s", url)
 
 	httpResp, err := c.httpClient.Post(url, bodyType, bytes.NewBuffer(b))
 	if err != nil {
