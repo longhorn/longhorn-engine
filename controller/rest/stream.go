@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"fmt"
 	"math/rand"
 	"net/http"
 	"strconv"
@@ -14,7 +15,8 @@ import (
 )
 
 const (
-	keepAlivePeriod = 15 * time.Second
+	keepAlivePeriod = 5 * time.Second
+	timeoutPeriod   = 3 * keepAlivePeriod
 
 	writeWait = 10 * time.Second
 )
@@ -46,6 +48,14 @@ func NewStreamHandlerFunc(streamType string,
 		defer watcher.Close()
 
 		done := make(chan struct{})
+
+		timeoutTimer := time.NewTimer(timeoutPeriod)
+
+		conn.SetPongHandler(func(data string) error {
+			timeoutTimer.Reset(timeoutPeriod)
+			return nil
+		})
+
 		go func() {
 			defer close(done)
 			for {
@@ -77,6 +87,9 @@ func NewStreamHandlerFunc(streamType string,
 				if err != nil {
 					return err
 				}
+			case <-timeoutTimer.C:
+				logrus.WithFields(fields).Info("websocket: no response for ping, close websocket due to timeout")
+				return fmt.Errorf("websocket ping timeout")
 			}
 		}
 	}
