@@ -10,8 +10,8 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/yasker/go-websocket-toolbox/broadcaster"
 
-	"github.com/rancher/longhorn-engine/broadcaster"
 	"github.com/rancher/longhorn-engine/types"
 	"github.com/rancher/longhorn-engine/util"
 )

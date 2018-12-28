@@ -5,6 +5,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/rancher/go-rancher/api"
+	"github.com/yasker/go-websocket-toolbox/handler"
 
 	"github.com/rancher/longhorn-engine/replica/rest"
 	"github.com/rancher/longhorn-engine/types"
@@ -57,13 +58,13 @@ func NewRouter(s *Server) *mux.Router {
 	router.Methods("GET").Path("/v1/version/details").Handler(f(schemas, s.GetVersionDetails))
 
 	// WebSockets
-	volumeListStream := NewStreamHandlerFunc(StreamTypeVolume, s.processEventVolumeList, s.c.Broadcaster, types.EventTypeVolume, types.EventTypeReplica)
+	volumeListStream := handler.NewStreamHandlerFunc(StreamTypeVolume, s.processEventVolumeList, s.c.Broadcaster, types.EventTypeVolume, types.EventTypeReplica)
 	router.Path("/v1/ws/volumes").Handler(f(schemas, volumeListStream))
 
-	replicaListStream := NewStreamHandlerFunc(StreamTypeReplica, s.processEventReplicaList, s.c.Broadcaster, types.EventTypeReplica)
+	replicaListStream := handler.NewStreamHandlerFunc(StreamTypeReplica, s.processEventReplicaList, s.c.Broadcaster, types.EventTypeReplica)
 	router.Path("/v1/ws/replicas").Handler(f(schemas, replicaListStream))
 
-	metricsStream := NewStreamHandlerFunc(StreamTypeMetrics, s.processEventMetrics, s.c.Broadcaster, types.EventTypeMetrics)
+	metricsStream := handler.NewStreamHandlerFunc(StreamTypeMetrics, s.processEventMetrics, s.c.Broadcaster, types.EventTypeMetrics)
 	router.Path("/v1/ws/metrics").Handler(f(schemas, metricsStream))
 
 	router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)

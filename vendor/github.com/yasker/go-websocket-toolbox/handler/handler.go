@@ -1,4 +1,4 @@
-package rest
+package handler
 
 import (
 	"fmt"
@@ -11,7 +11,7 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/gorilla/websocket"
 
-	"github.com/rancher/longhorn-engine/broadcaster"
+	"github.com/yasker/go-websocket-toolbox/broadcaster"
 )
 
 const (
