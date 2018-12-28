@@ -89,8 +89,8 @@ func (c *Controller) VerifyRebuildReplica(address string) error {
 	}
 
 	if !reflect.DeepEqual(fromDisks, toDisks) {
-		return fmt.Errorf("Replica %v's chain not equal to RW replica %v's chain",
-			address, rwReplica.Address)
+		return fmt.Errorf("Replica %v's chain not equal to RW replica %v's chain: %+v vs %+v",
+			address, rwReplica.Address, fromDisks, toDisks)
 	}
 
 	counter, err := c.backend.GetRevisionCounter(rwReplica.Address)
