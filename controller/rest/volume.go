@@ -28,7 +28,8 @@ func (s *Server) volumeList(apiContext *api.ApiContext) (*client.GenericCollecti
 	}, nil
 }
 
-func (s *Server) processEventVolumeList(e *broadcaster.Event, apiContext *api.ApiContext) (interface{}, error) {
+func (s *Server) processEventVolumeList(e *broadcaster.Event, r *http.Request) (interface{}, error) {
+	apiContext := api.GetApiContext(r)
 	list, err := s.volumeList(apiContext)
 	if err != nil {
 		return nil, err

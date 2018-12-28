@@ -30,7 +30,7 @@ func (s *Server) ListJournal(rw http.ResponseWriter, req *http.Request) error {
 	return nil
 }
 
-func (s *Server) processEventMetrics(e *broadcaster.Event, apiContext *api.ApiContext) (interface{}, error) {
+func (s *Server) processEventMetrics(e *broadcaster.Event, r *http.Request) (interface{}, error) {
 	metrics, ok := e.Data.(*types.Metrics)
 	if !ok {
 		return nil, fmt.Errorf("not types.Metrics in the event")
