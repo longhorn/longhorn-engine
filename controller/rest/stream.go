@@ -5,11 +5,11 @@ import (
 	"math/rand"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/gorilla/websocket"
-	"github.com/rancher/go-rancher/api"
 
 	"github.com/rancher/longhorn-engine/broadcaster"
 )
@@ -19,6 +19,9 @@ const (
 	timeoutPeriod   = 3 * keepAlivePeriod
 
 	writeWait = 10 * time.Second
+
+	MessagePong            = "pong"
+	WebSocketCommandPrefix = "wscmd_"
 )
 
 var upgrader = websocket.Upgrader{
@@ -30,7 +33,7 @@ func init() {
 }
 
 func NewStreamHandlerFunc(streamType string,
-	eventProcessor func(event *broadcaster.Event, ctx *api.ApiContext) (interface{}, error),
+	eventProcessor func(event *broadcaster.Event, r *http.Request) (interface{}, error),
 	b *broadcaster.Broadcaster, events ...string) func(w http.ResponseWriter, r *http.Request) error {
 
 	return func(w http.ResponseWriter, r *http.Request) error {
@@ -56,25 +59,38 @@ func NewStreamHandlerFunc(streamType string,
 			return nil
 		})
 
+		responseChan := make(chan string, 10)
+		sendKeepalive := false
 		go func() {
 			defer close(done)
 			for {
-				_, _, err := conn.ReadMessage()
+				msgType, msg, err := conn.ReadMessage()
 				if err != nil {
-					logrus.WithFields(fields).Info(err.Error())
+					logrus.WithFields(fields).Infof("close websocket: %v", err.Error())
 					return
+				}
+				msgString := string(msg)
+				if msgType == 1 && strings.HasPrefix(msgString, WebSocketCommandPrefix) {
+					cmd := strings.TrimPrefix(msgString, WebSocketCommandPrefix)
+					switch cmd {
+					case "ping":
+						responseChan <- MessagePong
+					case "start_keepalive":
+						sendKeepalive = true
+					case "stop_keepalive":
+						sendKeepalive = false
+					}
 				}
 			}
 		}()
 
-		apiContext := api.GetApiContext(r)
 		keepAliveTicker := time.NewTicker(keepAlivePeriod)
 		for {
 			select {
 			case <-done:
 				return nil
 			case event := <-watcher.Events():
-				data, err := eventProcessor(event, apiContext)
+				data, err := eventProcessor(event, r)
 				if err != nil {
 					return err
 				}
@@ -82,10 +98,18 @@ func NewStreamHandlerFunc(streamType string,
 				if err = conn.WriteJSON(data); err != nil {
 					return err
 				}
-			case <-keepAliveTicker.C:
-				err = conn.WriteControl(websocket.PingMessage, []byte{}, time.Now().Add(writeWait))
-				if err != nil {
+			case resp := <-responseChan:
+				if err = conn.WriteJSON(resp); err != nil {
 					return err
+				}
+			case <-keepAliveTicker.C:
+				if err = conn.WriteControl(websocket.PingMessage, []byte{}, time.Now().Add(writeWait)); err != nil {
+					return err
+				}
+				if sendKeepalive {
+					if err := conn.WriteJSON(MessagePong); err != nil {
+						return err
+					}
 				}
 			case <-timeoutTimer.C:
 				logrus.WithFields(fields).Info("websocket: no response for ping, close websocket due to timeout")

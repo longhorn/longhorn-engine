@@ -34,7 +34,8 @@ func (s *Server) replicaList(apiContext *api.ApiContext) (*client.GenericCollect
 	return resp, nil
 }
 
-func (s *Server) processEventReplicaList(e *broadcaster.Event, apiContext *api.ApiContext) (interface{}, error) {
+func (s *Server) processEventReplicaList(e *broadcaster.Event, r *http.Request) (interface{}, error) {
+	apiContext := api.GetApiContext(r)
 	list, err := s.replicaList(apiContext)
 	if err != nil {
 		return nil, err
