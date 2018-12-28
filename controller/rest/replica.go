@@ -6,8 +6,8 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/rancher/go-rancher/api"
 	"github.com/rancher/go-rancher/client"
+	"github.com/yasker/go-websocket-toolbox/broadcaster"
 
-	"github.com/rancher/longhorn-engine/broadcaster"
 	"github.com/rancher/longhorn-engine/types"
 )
 

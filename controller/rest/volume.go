@@ -6,8 +6,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/rancher/go-rancher/api"
 	"github.com/rancher/go-rancher/client"
-
-	"github.com/rancher/longhorn-engine/broadcaster"
+	"github.com/yasker/go-websocket-toolbox/broadcaster"
 )
 
 func (s *Server) ListVolumes(rw http.ResponseWriter, req *http.Request) error {
