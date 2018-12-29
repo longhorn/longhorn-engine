@@ -204,7 +204,7 @@ func (c *Controller) RemoveReplica(address string) error {
 
 	for i, r := range c.replicas {
 		if r.Address == address {
-			if len(c.replicas) == 1 && c.frontend.State() == types.StateUp {
+			if len(c.replicas) == 1 && c.frontend != nil && c.frontend.State() == types.StateUp {
 				return fmt.Errorf("Cannot remove last replica if volume is up")
 			}
 			c.replicas = append(c.replicas[:i], c.replicas[i+1:]...)
@@ -486,11 +486,17 @@ func (c *Controller) monitoring(address string, backend types.Backend) {
 }
 
 func (c *Controller) Endpoint() string {
-	return c.frontend.Endpoint()
+	if c.frontend != nil {
+		return c.frontend.Endpoint()
+	}
+	return ""
 }
 
 func (c *Controller) Frontend() string {
-	return c.frontend.FrontendName()
+	if c.frontend != nil {
+		return c.frontend.FrontendName()
+	}
+	return ""
 }
 
 func (c *Controller) UpdatePort(newPort int) error {
