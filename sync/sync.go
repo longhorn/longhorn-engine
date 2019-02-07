@@ -133,13 +133,13 @@ func (t *Task) PurgeSnapshots() error {
 	return nil
 }
 
-func (t *Task) rmDisk(replicaInController *rest.Replica, disk string) error {
+func (t *Task) rmDisk(replicaInController *rest.Replica, disk string, force bool) error {
 	repClient, err := replicaClient.NewReplicaClient(replicaInController.Address)
 	if err != nil {
 		return err
 	}
 
-	return repClient.RemoveDisk(disk)
+	return repClient.RemoveDisk(disk, force)
 }
 
 func (t *Task) replaceDisk(replicaInController *rest.Replica, target, source string) error {
@@ -232,7 +232,7 @@ func (t *Task) processRemoveSnapshot(replicaInController *rest.Replica, snapshot
 		switch op.Action {
 		case replica.OpRemove:
 			logrus.Infof("Removing %s on %s", op.Source, replicaInController.Address)
-			if err := t.rmDisk(replicaInController, op.Source); err != nil {
+			if err := t.rmDisk(replicaInController, op.Source, false); err != nil {
 				return err
 			}
 		case replica.OpCoalesce:

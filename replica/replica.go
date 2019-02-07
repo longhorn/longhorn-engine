@@ -46,8 +46,10 @@ type Replica struct {
 	info            Info
 	diskData        map[string]*disk
 	diskChildrenMap map[string]map[string]bool
-	activeDiskData  []*disk
-	readOnly        bool
+	// activeDiskData is in grandparent, parent, child, etc order.
+	// index 0 is nil or backing file and index n-1 is the active write layer
+	activeDiskData []*disk
+	readOnly       bool
 
 	revisionLock  sync.Mutex
 	revisionCache int64
@@ -280,7 +282,7 @@ func (r *Replica) findDisk(name string) int {
 	return 0
 }
 
-func (r *Replica) RemoveDiffDisk(name string) error {
+func (r *Replica) RemoveDiffDisk(name string, force bool) error {
 	r.Lock()
 	defer r.Unlock()
 
@@ -288,7 +290,7 @@ func (r *Replica) RemoveDiffDisk(name string) error {
 		return fmt.Errorf("Can not delete the active differencing disk")
 	}
 
-	if err := r.removeDiskNode(name); err != nil {
+	if err := r.removeDiskNode(name, force); err != nil {
 		return err
 	}
 
@@ -355,7 +357,7 @@ func (r *Replica) ReplaceDisk(target, source string) error {
 		return err
 	}
 
-	if err := r.removeDiskNode(source); err != nil {
+	if err := r.removeDiskNode(source, false); err != nil {
 		return err
 	}
 
@@ -382,7 +384,9 @@ func (r *Replica) ReplaceDisk(target, source string) error {
 	return nil
 }
 
-func (r *Replica) removeDiskNode(name string) error {
+// removeDiskNode with force = true should be only used when preparing rebuild,
+// since the live chain needs to be overwritten
+func (r *Replica) removeDiskNode(name string, force bool) error {
 	// If snapshot has no child, then we can safely delete it
 	// And it's definitely not in the live chain
 	children, exists := r.diskChildrenMap[name]
@@ -394,11 +398,14 @@ func (r *Replica) removeDiskNode(name string) error {
 
 	// If snapshot has more than one child, we cannot really delete it
 	if len(children) > 1 {
-		return fmt.Errorf("Cannot remove snapshot %v with %v children",
-			name, len(children))
+		if !force {
+			return fmt.Errorf("Cannot remove snapshot %v with %v children",
+				name, len(children))
+		}
+		logrus.Debugf("force delete disk %v with multiple children. Randomly choose a child to inherit", name)
 	}
 
-	// only one child from here
+	// only one child from here (or forced deletion)
 	var child string
 	for child = range children {
 	}
@@ -415,6 +422,9 @@ func (r *Replica) removeDiskNode(name string) error {
 	if err := r.volume.RemoveIndex(index); err != nil {
 		return err
 	}
+	// len(r.activeDiskData)-1 is the volume head, so "-2" is the parent of
+	// the volume head, which means the volume head's parent would need to
+	// be updated
 	if len(r.activeDiskData)-2 == index {
 		r.info.Parent = r.diskData[r.info.Head].Parent
 	}

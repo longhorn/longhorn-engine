@@ -50,7 +50,8 @@ type SnapshotInput struct {
 
 type RemoveDiskInput struct {
 	client.Resource
-	Name string `json:"name"`
+	Name  string `json:"name"`
+	Force bool   `json:"force"`
 }
 
 type ReplaceDiskInput struct {

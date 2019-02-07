@@ -292,7 +292,7 @@ func (s *TestSuite) TestRemoveLeafNode(c *C) {
 	c.Assert(r.diskChildrenMap["volume-snap-001.img"]["volume-snap-002.img"], Equals, true)
 	c.Assert(r.diskChildrenMap["volume-snap-002.img"], IsNil)
 
-	err = r.RemoveDiffDisk("volume-snap-002.img")
+	err = r.RemoveDiffDisk("volume-snap-002.img", false)
 	c.Assert(err, IsNil)
 
 	c.Assert(len(r.diskData), Equals, 3)
@@ -302,7 +302,7 @@ func (s *TestSuite) TestRemoveLeafNode(c *C) {
 
 	c.Assert(r.diskChildrenMap["volume-snap-001.img"], IsNil)
 
-	err = r.RemoveDiffDisk("volume-snap-001.img")
+	err = r.RemoveDiffDisk("volume-snap-001.img", false)
 	c.Assert(err, IsNil)
 
 	c.Assert(len(r.diskData), Equals, 2)
@@ -340,7 +340,7 @@ func (s *TestSuite) TestRemoveLast(c *C) {
 	c.Assert(r.activeDiskData[1].Name, Equals, "volume-snap-000.img")
 	c.Assert(r.activeDiskData[1].Parent, Equals, "")
 
-	err = r.RemoveDiffDisk("volume-snap-000.img")
+	err = r.RemoveDiffDisk("volume-snap-000.img", false)
 	c.Assert(err, IsNil)
 	c.Assert(len(r.activeDiskData), Equals, 3)
 	c.Assert(len(r.volume.files), Equals, 3)
@@ -386,7 +386,7 @@ func (s *TestSuite) TestRemoveMiddle(c *C) {
 	c.Assert(r.activeDiskData[1].Name, Equals, "volume-snap-000.img")
 	c.Assert(r.activeDiskData[1].Parent, Equals, "")
 
-	err = r.RemoveDiffDisk("volume-snap-001.img")
+	err = r.RemoveDiffDisk("volume-snap-001.img", false)
 	c.Assert(err, IsNil)
 	c.Assert(len(r.activeDiskData), Equals, 3)
 	c.Assert(len(r.volume.files), Equals, 3)
@@ -432,7 +432,7 @@ func (s *TestSuite) TestRemoveFirst(c *C) {
 	c.Assert(r.activeDiskData[1].Name, Equals, "volume-snap-000.img")
 	c.Assert(r.activeDiskData[1].Parent, Equals, "")
 
-	err = r.RemoveDiffDisk("volume-head-002.img")
+	err = r.RemoveDiffDisk("volume-head-002.img", false)
 	c.Assert(err, NotNil)
 }
 
@@ -491,7 +491,7 @@ func (s *TestSuite) TestRemoveOutOfChain(c *C) {
 	c.Assert(r.diskChildrenMap["volume-snap-001.img"]["volume-snap-002.img"], Equals, true)
 	c.Assert(r.diskChildrenMap["volume-snap-002.img"], IsNil)
 
-	err = r.RemoveDiffDisk("volume-snap-001.img")
+	err = r.RemoveDiffDisk("volume-snap-001.img", false)
 	c.Assert(err, IsNil)
 	c.Assert(len(r.activeDiskData), Equals, 3)
 	c.Assert(len(r.volume.files), Equals, 3)
@@ -899,4 +899,48 @@ func (s *TestSuite) TestPartialReadZeroEndOffset(c *C) {
 	fill(expected[b/2:], 2)
 
 	byteEquals(c, expected, buf)
+}
+
+func (s *TestSuite) TestForceRemoveDiffDisk(c *C) {
+	dir, err := ioutil.TempDir("", "replica")
+	c.Assert(err, IsNil)
+	defer os.RemoveAll(dir)
+
+	r, err := New(9, 3, dir, nil)
+	c.Assert(err, IsNil)
+	defer r.Close()
+
+	now := getNow()
+	err = r.Snapshot("000", true, now, nil)
+	c.Assert(err, IsNil)
+
+	err = r.Snapshot("001a", true, now, nil)
+	c.Assert(err, IsNil)
+
+	c.Assert(len(r.activeDiskData), Equals, 4)
+	c.Assert(len(r.volume.files), Equals, 4)
+
+	c.Assert(r.info.Head, Equals, "volume-head-002.img")
+	c.Assert(r.activeDiskData[3].Name, Equals, "volume-head-002.img")
+	c.Assert(r.activeDiskData[3].Parent, Equals, "volume-snap-001a.img")
+	c.Assert(r.activeDiskData[2].Name, Equals, "volume-snap-001a.img")
+	c.Assert(r.activeDiskData[2].Parent, Equals, "volume-snap-000.img")
+	c.Assert(r.activeDiskData[1].Name, Equals, "volume-snap-000.img")
+	c.Assert(r.activeDiskData[1].Parent, Equals, "")
+
+	err = r.RemoveDiffDisk("volume-head-002.img", true)
+	c.Assert(err, NotNil)
+
+	revertTime := getNow()
+	r, err = r.Revert("volume-snap-000.img", revertTime)
+	c.Assert(err, IsNil)
+
+	err = r.Snapshot("001b", true, now, nil)
+	c.Assert(err, IsNil)
+
+	err = r.RemoveDiffDisk("volume-snap-000.img", false)
+	c.Assert(err, NotNil)
+
+	err = r.RemoveDiffDisk("volume-snap-000.img", true)
+	c.Assert(err, IsNil)
 }
