@@ -5,6 +5,8 @@ import (
 	"reflect"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/pkg/errors"
+
 	"github.com/rancher/longhorn-engine/replica/client"
 	"github.com/rancher/longhorn-engine/types"
 )
@@ -162,8 +164,19 @@ func (c *Controller) PrepareRebuildReplica(address string) ([]string, error) {
 		return nil, err
 	}
 
-	_, toHead, err := getReplicaDisksAndHead(address)
+	toDisks, toHead, err := getReplicaDisksAndHead(address)
 	if err != nil {
+		return nil, err
+	}
+
+	ret := []string{}
+	extraDisks := toDisks
+	for disk := range fromDisks {
+		ret = append(ret, disk)
+		delete(extraDisks, disk)
+	}
+
+	if err := removeExtraDisks(extraDisks, address); err != nil {
 		return nil, err
 	}
 
@@ -171,9 +184,29 @@ func (c *Controller) PrepareRebuildReplica(address string) ([]string, error) {
 		return nil, err
 	}
 
-	ret := []string{}
-	for disk := range fromDisks {
-		ret = append(ret, disk)
-	}
 	return ret, nil
+}
+
+func removeExtraDisks(extraDisks map[string]struct{}, address string) (err error) {
+	defer func() {
+		err = errors.Wrapf(err, "failed to remove extra disks %v in replica %v", extraDisks, address)
+	}()
+
+	if len(extraDisks) == 0 {
+		return nil
+	}
+
+	repClient, err := client.NewReplicaClient(address)
+	if err != nil {
+		return errors.Wrapf(err, "cannot replica client")
+	}
+
+	for disk := range extraDisks {
+		if err = repClient.RemoveDisk(disk, true); err != nil {
+			return errors.Wrapf(err, "cannot remove disk")
+		}
+	}
+	logrus.Warnf("Removed extra disks %v in replica %v", extraDisks, address)
+
+	return nil
 }
