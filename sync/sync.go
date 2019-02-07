@@ -2,10 +2,10 @@ package sync
 
 import (
 	"fmt"
-	"reflect"
 	"strings"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/pkg/errors"
 	"github.com/rancher/longhorn-engine/controller/client"
 	"github.com/rancher/longhorn-engine/controller/rest"
 	"github.com/rancher/longhorn-engine/replica"
@@ -94,6 +94,7 @@ func (t *Task) PurgeSnapshots() error {
 	if err != nil {
 		return err
 	}
+	// We're tracing up from each leaf to the root
 	for _, leaf := range leaves {
 		// Somehow the leaf was removed during the process
 		if _, ok := snapshotsInfo[leaf]; !ok {
@@ -471,8 +472,10 @@ func getNonBackingDisks(address string) (map[string]replica.DiskInfo, error) {
 	return disks, err
 }
 
-func GetSnapshotsInfo(replicas []rest.Replica) (map[string]replica.DiskInfo, error) {
-	outputDisks := make(map[string]replica.DiskInfo)
+func GetSnapshotsInfo(replicas []rest.Replica) (outputDisks map[string]replica.DiskInfo, err error) {
+	defer func() {
+		err = errors.Wrapf(err, "BUG: cannot get snapshot info")
+	}()
 	for _, r := range replicas {
 		if r.Mode != "RW" {
 			continue
@@ -483,7 +486,7 @@ func GetSnapshotsInfo(replicas []rest.Replica) (map[string]replica.DiskInfo, err
 			return nil, err
 		}
 
-		newOutput := make(map[string]replica.DiskInfo)
+		newDisks := make(map[string]replica.DiskInfo)
 		for name, disk := range disks {
 			snapshot := ""
 
@@ -525,43 +528,14 @@ func GetSnapshotsInfo(replicas []rest.Replica) (map[string]replica.DiskInfo, err
 				Size:        disk.Size,
 				Labels:      disk.Labels,
 			}
-			if _, exists := newOutput[snapshot]; !exists {
-				newOutput[snapshot] = info
-			} else {
-				// Consolidate the result of snapshot in removing process
-				if info.Removed && !newOutput[snapshot].Removed {
-					t := newOutput[snapshot]
-					t.Removed = true
-					newOutput[snapshot] = t
-				}
-			}
+			newDisks[snapshot] = info
 		}
-
-		if len(outputDisks) == 0 {
-			outputDisks = newOutput
-			continue
+		// we treat the healthy replica with the most snapshots as the
+		// source of the truth, since that means something are still in
+		// progress and haven't completed yet.
+		if len(newDisks) > len(outputDisks) {
+			outputDisks = newDisks
 		}
-		for k, old := range outputDisks {
-			new := newOutput[k]
-			if new.Removed || old.Removed {
-				continue
-			}
-			// There can be slight different regarding the creation
-			// time of snapshot since we're doing it one by one, so
-			// ignore that difference
-			if new.Created != old.Created {
-				new.Created = old.Created
-			}
-			// The actual size is filesystem implementation depended. It cannot
-			// be used to check the data integrity.
-			if new.Size != old.Size {
-				new.Size = old.Size
-			}
-			if !reflect.DeepEqual(new, old) {
-				return nil, fmt.Errorf("BUG: Inconsistent snapshot info: %+v vs %+v", new, old)
-			}
-		}
-
 	}
 	return outputDisks, nil
 }

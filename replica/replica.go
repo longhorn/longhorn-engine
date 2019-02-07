@@ -200,7 +200,7 @@ func GenerateSnapshotDiskName(name string) string {
 
 func GetSnapshotNameFromDiskName(diskName string) (string, error) {
 	if !strings.HasPrefix(diskName, diskPrefix) || !strings.HasSuffix(diskName, diskSuffix) {
-		return "", fmt.Errorf("Invalid snapshot disk name %v", diskName)
+		return "", fmt.Errorf("invalid snapshot disk name %v", diskName)
 	}
 	result := strings.TrimPrefix(diskName, diskPrefix)
 	result = strings.TrimSuffix(result, diskSuffix)
