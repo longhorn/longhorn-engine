@@ -342,3 +342,60 @@ def test_ha_single_backing_replica_rebuild(controller,          # NOQA
     assert len(info) == 2
     assert info[newsnap] is not None
     assert info[VOLUME_HEAD] is not None
+
+
+def test_ha_remove_extra_disks(controller, replica1, replica2):     # NOQA
+    prepare_backup_dir(BACKUP_DIR)
+    open_replica(replica1)
+
+    replicas = controller.list_replica()
+    assert len(replicas) == 0
+
+    v = controller.list_volume()[0]
+    v = v.start(replicas=[
+        common.REPLICA1,
+    ])
+    assert v.replicaCount == 1
+
+    replicas = controller.list_replica()
+    assert len(replicas) == 1
+    assert replicas[0].mode == "RW"
+
+    dev = get_blockdev()
+
+    wasted_data = common.random_string(128)
+    data_offset = 1024
+    verify_data(dev, data_offset, wasted_data)
+
+    # now replica1 contains extra data in a snapshot
+    cmd.snapshot_create()
+
+    common.cleanup_controller(controller)
+
+    open_replica(replica2)
+    replicas = controller.list_replica()
+    assert len(replicas) == 0
+
+    v = controller.list_volume()[0]
+    v = v.start(replicas=[
+        common.REPLICA2,
+    ])
+    assert v.replicaCount == 1
+
+    replicas = controller.list_replica()
+    assert len(replicas) == 1
+    assert replicas[0].mode == "RW"
+
+    dev = get_blockdev()
+
+    data = common.random_string(128)
+    data_offset = 1024
+    verify_data(dev, data_offset, data)
+
+    r = replica1.list_replica()[0]
+    replica1 = replica1.reload(r)
+    print(replica1)
+
+    cmd.add_replica(common.REPLICA1)
+
+    verify_data(dev, data_offset, data)

@@ -402,7 +402,7 @@ func (r *Replica) removeDiskNode(name string, force bool) error {
 			return fmt.Errorf("Cannot remove snapshot %v with %v children",
 				name, len(children))
 		}
-		logrus.Debugf("force delete disk %v with multiple children. Randomly choose a child to inherit", name)
+		logrus.Warnf("force delete disk %v with multiple children. Randomly choose a child to inherit", name)
 	}
 
 	// only one child from here (or forced deletion)

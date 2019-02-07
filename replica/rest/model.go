@@ -129,6 +129,7 @@ func NewReplica(context *api.ApiContext, state replica.State, info replica.Info,
 		actions["setrebuilding"] = true
 		actions["close"] = true
 		actions["reload"] = true
+		actions["removedisk"] = true
 		actions["setrevisioncounter"] = true
 	case replica.Error:
 	}
