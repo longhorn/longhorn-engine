@@ -86,7 +86,7 @@ func (s *Server) RemoveDisk(rw http.ResponseWriter, req *http.Request) error {
 		return err
 	}
 
-	return s.doOp(req, s.s.RemoveDiffDisk(input.Name))
+	return s.doOp(req, s.s.RemoveDiffDisk(input.Name, input.Force))
 }
 
 func (s *Server) ReplaceDisk(rw http.ResponseWriter, req *http.Request) error {

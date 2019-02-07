@@ -187,7 +187,7 @@ func (s *Server) Snapshot(name string, userCreated bool, createdTime string, lab
 	return s.r.Snapshot(name, userCreated, createdTime, labels)
 }
 
-func (s *Server) RemoveDiffDisk(name string) error {
+func (s *Server) RemoveDiffDisk(name string, force bool) error {
 	s.Lock()
 	defer s.Unlock()
 
@@ -195,8 +195,8 @@ func (s *Server) RemoveDiffDisk(name string) error {
 		return nil
 	}
 
-	logrus.Infof("Removing disk: %s", name)
-	return s.r.RemoveDiffDisk(name)
+	logrus.Infof("Removing disk %s, force %v", name, force)
+	return s.r.RemoveDiffDisk(name, force)
 }
 
 func (s *Server) ReplaceDisk(target, source string) error {

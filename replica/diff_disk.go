@@ -14,7 +14,7 @@ type diffDisk struct {
 	// we don't know the location yet.
 	location []byte
 	// list of files in grandparent, parent, child, etc order.
-	// index 0 is nil and index n-1 is the active write layer
+	// index 0 is nil or backing file and index n-1 is the active write layer
 	files      []types.DiffDisk
 	sectorSize int64
 }
