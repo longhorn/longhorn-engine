@@ -312,7 +312,8 @@ func (r *Replica) MarkDiskAsRemoved(name string) error {
 		disk = GenerateSnapshotDiskName(name)
 		_, exists = r.diskData[disk]
 		if !exists {
-			return fmt.Errorf("Can not find snapshot %v", disk)
+			logrus.Infof("Disk %v cannot be found, may has already been removed", disk)
+			return nil
 		}
 	}
 
@@ -444,7 +445,8 @@ func (r *Replica) PrepareRemoveDisk(name string) ([]PrepareRemoveAction, error) 
 		disk = GenerateSnapshotDiskName(name)
 		data, exists = r.diskData[disk]
 		if !exists {
-			return nil, fmt.Errorf("Can not find snapshot %v", disk)
+			logrus.Infof("Disk %v cannot be found, may has already been removed", disk)
+			return nil, nil
 		}
 	}
 

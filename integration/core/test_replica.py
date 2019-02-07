@@ -165,13 +165,9 @@ def test_remove_disk(client):
     assert r.chain == ['volume-head-002.img', 'volume-snap-001.img',
                        'volume-snap-000.img']
 
-    with pytest.raises(cattle.ApiError) as e:
-        r.markdiskasremoved(name='003')
-    assert "Can not find snapshot" in str(e.value)
-
-    with pytest.raises(cattle.ApiError) as e:
-        r.prepareremovedisk(name='003')
-    assert "Can not find snapshot" in str(e.value)
+    # idempotent
+    r.markdiskasremoved(name='003')
+    r.prepareremovedisk(name='003')
 
     with pytest.raises(cattle.ApiError) as e:
         r.markdiskasremoved(name='volume-head-002.img')
