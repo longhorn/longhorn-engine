@@ -15,10 +15,10 @@ var (
 	ErrRWTimeout   = errors.New("r/w timeout")
 	ErrPingTimeout = errors.New("Ping timeout")
 
-	opRetries      = 4
-	opReadTimeout  = 15 * time.Second // client read
-	opWriteTimeout = 15 * time.Second // client write
-	opPingTimeout  = 20 * time.Second
+	opRetries      = 2
+	opReadTimeout  = 4 * time.Second // client read
+	opWriteTimeout = 4 * time.Second // client write
+	opPingTimeout  = 8 * time.Second
 )
 
 //Client replica client
