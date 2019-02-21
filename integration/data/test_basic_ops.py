@@ -6,6 +6,7 @@ import pytest
 import cmd
 import launcher
 import common
+import frontend
 from common import dev  # NOQA
 from common import PAGE_SIZE, SIZE  # NOQA
 from common import controller, replica1, replica2, read_dev, write_dev  # NOQA
@@ -65,3 +66,25 @@ def test_frontend_show(controller, replica1, replica2):  # NOQA
     info = cmd.info()
     assert info["name"] == common.VOLUME_NAME
     assert info["endpoint"] == v["endpoint"]
+
+
+# https://github.com/rancher/longhorn/issues/401
+def test_cleanup_leftover_blockdev(controller, replica1, replica2):  # NOQA
+    common.open_replica(replica1)
+    common.open_replica(replica2)
+
+    replicas = controller.list_replica()
+    assert len(replicas) == 0
+
+    blockdev = path.join(frontend.LONGHORN_DEV_DIR, common.VOLUME_NAME)
+    assert not path.exists(blockdev)
+    open(blockdev, 'a').close()
+
+    v = controller.list_volume()[0]
+    v.start(replicas=[
+        common.REPLICA1,
+        common.REPLICA2
+    ])
+
+    info = cmd.info()
+    assert info["name"] == common.VOLUME_NAME

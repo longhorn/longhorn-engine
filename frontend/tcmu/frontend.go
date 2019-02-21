@@ -14,7 +14,10 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/pkg/errors"
+
 	"github.com/rancher/longhorn-engine/types"
+	"github.com/rancher/longhorn-engine/util"
 )
 
 const (
@@ -129,7 +132,10 @@ func createDevice(volume string) error {
 	dev := devPath + volume
 
 	if _, err := os.Stat(dev); err == nil {
-		return fmt.Errorf("Device %s already exists, can not create", dev)
+		logrus.Warnf("Device %s already exists, clean it up", dev)
+		if err := util.RemoveDevice(dev); err != nil {
+			return errors.Wrapf(err, "cannot cleanup block device file %v", dev)
+		}
 	}
 
 	tgt, _ := getScsiPrefixAndWnn(volume)
