@@ -159,7 +159,10 @@ func (l *Launcher) createDev() error {
 
 	dev := l.getDev()
 	if _, err := os.Stat(dev); err == nil {
-		return fmt.Errorf("Device %s already exists, can not create", dev)
+		logrus.Warnf("Device %s already exists, clean it up", dev)
+		if err := util.RemoveDevice(dev); err != nil {
+			return errors.Wrapf(err, "cannot cleanup block device file %v", dev)
+		}
 	}
 
 	if err := util.DuplicateDevice(l.scsiDevice.Device, dev); err != nil {
