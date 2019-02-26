@@ -9,3 +9,9 @@ type Mappings struct {
 	Mappings  []Mapping
 	BlockSize int64
 }
+
+type MessageType string
+
+const (
+	MessageTypeError = MessageType("error")
+)

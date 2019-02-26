@@ -21,6 +21,10 @@ VOLUME_SIZE = str(4 * 1024 * 1024)  # 4M
 
 VOLUME_HEAD = "volume-head"
 
+VOLUME_CONFIG_FILE = "volume.cfg"
+VOLUME_TMP_CONFIG_FILE = "volume.cfg.tmp"
+MESSAGE_TYPE_ERROR = "error"
+
 
 @pytest.fixture
 def controller_client(request):
@@ -98,6 +102,22 @@ def bin():
     c = _file('bin/longhorn')
     assert path.exists(c)
     return c
+
+
+# find the path of the first file
+def findfile(start, name):
+    for relpath, dirs, files in os.walk(start):
+        if name in files:
+            full_path = os.path.join(start, relpath, name)
+            return os.path.normpath(os.path.abspath(full_path))
+
+
+# find the path of the first dir
+def finddir(start, name):
+    for relpath, dirs, files in os.walk(start):
+        if name in dirs:
+            full_path = os.path.join(start, relpath, name)
+            return os.path.normpath(os.path.abspath(full_path))
 
 
 def setup_module():
@@ -658,6 +678,41 @@ def backup_core(bin, controller_client, replica_client,
     assert backup_list[backup2]["SnapshotName"] == backup2_info["SnapshotName"]
     assert backup_list[backup2]["Size"] == backup2_info["Size"]
     assert backup_list[backup2]["Created"] == backup2_info["Created"]
+
+    # test backup volume list
+    # https://github.com/rancher/longhorn/issues/399
+    volume_dir = finddir(BACKUP_DEST, VOLUME_NAME)
+    assert volume_dir
+    assert path.exists(volume_dir)
+    volume_cfg_path = findfile(volume_dir, VOLUME_CONFIG_FILE)
+    assert path.exists(volume_cfg_path)
+    volume_tmp_cfg_path = volume_cfg_path.replace(
+        VOLUME_CONFIG_FILE, VOLUME_TMP_CONFIG_FILE)
+    os.rename(volume_cfg_path, volume_tmp_cfg_path)
+    assert path.exists(volume_tmp_cfg_path)
+
+    cmd = [bin, 'backup', 'ls',
+           '--volume-only', backup_target]
+    data = subprocess.check_output(cmd, env=env)
+    volume_info_dict = json.loads(data)
+
+    assert volume_info_dict
+    assert volume_info_dict.get(VOLUME_NAME, None)
+    assert volume_info_dict[VOLUME_NAME].get("Messages", None)
+    assert MESSAGE_TYPE_ERROR in volume_info_dict[VOLUME_NAME]["Messages"]
+
+    os.rename(volume_tmp_cfg_path, volume_cfg_path)
+    assert path.exists(volume_cfg_path)
+
+    cmd = [bin, 'backup', 'ls',
+           '--volume-only', backup_target]
+    data = subprocess.check_output(cmd, env=env)
+    volume_info_dict = json.loads(data)
+
+    assert volume_info_dict
+    assert volume_info_dict.get(VOLUME_NAME, None)
+    assert volume_info_dict[VOLUME_NAME].get("Messages", None) is not None
+    assert MESSAGE_TYPE_ERROR not in volume_info_dict[VOLUME_NAME]["Messages"]
 
     cmd = [bin, 'backup', 'inspect',
            backup_target + "?backup=backup-1234"
