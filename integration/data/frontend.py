@@ -19,7 +19,7 @@ def readat_direct(dev, offset, length):
     in_page_offset = offset % PAGE_SIZE
     # either read less than a page, or whole pages
     if in_page_offset != 0:
-        assert pg == (offset + length - 1) / PAGE_SIZE
+        assert pg == (offset + length) / PAGE_SIZE
         to_read = PAGE_SIZE
     else:
         assert length % PAGE_SIZE == 0
@@ -38,7 +38,7 @@ def readat_direct(dev, offset, length):
 def writeat_direct(dev, offset, data):
     pg = offset / PAGE_SIZE
     # don't support across page write
-    assert pg == (offset + len(data) - 1) / PAGE_SIZE
+    assert pg == (offset + len(data)) / PAGE_SIZE
     pg_offset = pg * PAGE_SIZE
 
     f = os.open(dev, os.O_DIRECT | os.O_RDWR)
