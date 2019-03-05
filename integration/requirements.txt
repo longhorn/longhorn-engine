@@ -3,3 +3,5 @@ directio==1.2
 
 flake8==3.4.0
 pytest==2.3.5
+
+libqcow-python==20181227
