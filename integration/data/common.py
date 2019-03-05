@@ -1,7 +1,6 @@
 import random
 import string
 import subprocess
-import hashlib
 import time
 import threading
 
@@ -12,6 +11,7 @@ import pytest
 import cattle
 
 import cmd
+from utils import read_file, checksum_data, SIZE
 from frontend import restdev, blockdev
 from frontend import PAGE_SIZE, LONGHORN_DEV_DIR, get_socket_path  # NOQA
 
@@ -33,8 +33,6 @@ UPGRADE_REPLICA2_SCHEMA = 'http://localhost:9515/v1/schemas'
 
 LONGHORN_BINARY = './bin/longhorn'
 LONGHORN_UPGRADE_BINARY = '/opt/longhorn'
-
-SIZE = 4 * 1024 * 1024
 
 BACKUP_DIR = '/data/backupbucket'
 BACKUP_DEST = 'vfs://' + BACKUP_DIR
@@ -189,16 +187,11 @@ def prepare_backup_dir(backup_dir):
 
 def read_from_backing_file(offset, length):
     p = _file(BACKING_FILE)
-    assert path.exists(p)
-    f = open(p, 'r')
-    f.seek(offset)
-    data = f.read(length)
-    f.close()
-    return data
+    return read_file(p, offset, length)
 
 
 def checksum_dev(dev):
-    return hashlib.sha512(dev.readat(0, SIZE)).hexdigest()
+    return checksum_data(dev.readat(0, SIZE))
 
 
 def data_verifier(dev, times, offset, length):

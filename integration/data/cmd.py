@@ -76,3 +76,17 @@ def backup_inspect(backup):
 def add_replica(url):
     cmd = [_bin(), '--debug', 'add', url]
     return subprocess.check_output(cmd).strip()
+
+
+def restore_to(backup_url, backing_file, output_file, format):
+    cmd = [_bin(), '--debug', 'restore-to', '--backup-url', backup_url]
+    if backing_file:
+        cmd.append('--backing-file')
+        cmd.append(backing_file)
+    if output_file:
+        cmd.append('--output-file')
+        cmd.append(output_file)
+    if format:
+        cmd.append('--image-format')
+        cmd.append(format)
+    return subprocess.check_output(cmd)
