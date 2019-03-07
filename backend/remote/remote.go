@@ -10,7 +10,8 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
+
 	"github.com/rancher/longhorn-engine/replica/rest"
 	"github.com/rancher/longhorn-engine/rpc"
 	"github.com/rancher/longhorn-engine/types"

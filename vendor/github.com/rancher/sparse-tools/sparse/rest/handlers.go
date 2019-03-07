@@ -9,7 +9,8 @@ import (
 	"os"
 	"strconv"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
+
 	"github.com/rancher/sparse-tools/sparse"
 )
 
@@ -36,7 +37,7 @@ func (server *SyncServer) getQueryInterval(request *http.Request) (sparse.Interv
 		return interval, err
 	}
 
-	return sparse.Interval{begin, end}, err
+	return sparse.Interval{Begin: begin, End: end}, err
 }
 
 func (server *SyncServer) open(writer http.ResponseWriter, request *http.Request) {

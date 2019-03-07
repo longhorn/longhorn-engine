@@ -4,8 +4,9 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/gorilla/handlers"
+	"github.com/sirupsen/logrus"
+
 	"github.com/rancher/longhorn-engine/types"
 )
 

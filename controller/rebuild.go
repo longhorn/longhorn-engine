@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"reflect"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 
 	"github.com/rancher/longhorn-engine/replica/client"
 	"github.com/rancher/longhorn-engine/types"

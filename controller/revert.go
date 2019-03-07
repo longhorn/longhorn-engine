@@ -4,7 +4,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
+
 	"github.com/rancher/longhorn-engine/replica/client"
 	"github.com/rancher/longhorn-engine/types"
 	"github.com/rancher/longhorn-engine/util"

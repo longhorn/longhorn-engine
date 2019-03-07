@@ -13,8 +13,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/satori/go.uuid"
+	"github.com/sirupsen/logrus"
 )
 
 const (

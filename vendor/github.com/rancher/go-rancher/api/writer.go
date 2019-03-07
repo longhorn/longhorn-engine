@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"reflect"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/rancher/go-rancher/client"
+	"github.com/sirupsen/logrus"
 )
 
 type ApiResponseWriter interface {
@@ -104,7 +104,7 @@ func mapInterfaceToString(input interface{}) map[string]string {
 			result[k] = fmt.Sprintf("%s", v)
 		}
 	default:
-		logrus.Infof("Unknown type", reflect.TypeOf(input))
+		logrus.Infof("Unknown type %v", reflect.TypeOf(input))
 	}
 	return result
 }

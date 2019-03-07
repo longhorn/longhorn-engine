@@ -8,7 +8,7 @@ import (
 	"syscall"
 	"unsafe"
 
-	log "github.com/Sirupsen/logrus"
+	log "github.com/sirupsen/logrus"
 )
 
 type FileIoProcessor interface {

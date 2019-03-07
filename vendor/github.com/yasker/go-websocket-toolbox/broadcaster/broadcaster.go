@@ -4,7 +4,7 @@ import (
 	"container/list"
 	"sync"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 )
 
 // Broadcaster is able to receive and pass runtime.Object to multiple Watchers,

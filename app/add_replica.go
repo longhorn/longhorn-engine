@@ -3,9 +3,10 @@ package app
 import (
 	"errors"
 
-	"github.com/Sirupsen/logrus"
-	"github.com/rancher/longhorn-engine/sync"
+	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
+
+	"github.com/rancher/longhorn-engine/sync"
 )
 
 func AddReplicaCmd() cli.Command {

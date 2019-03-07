@@ -6,7 +6,8 @@ import (
 	"net"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
+
 	journal "github.com/rancher/sparse-tools/stats"
 )
 

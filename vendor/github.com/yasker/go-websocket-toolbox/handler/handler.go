@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/gorilla/websocket"
+	"github.com/sirupsen/logrus"
 
 	"github.com/yasker/go-websocket-toolbox/broadcaster"
 )

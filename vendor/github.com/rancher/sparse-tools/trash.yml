@@ -1,9 +1,0 @@
-# trash.conf
-
-# package
-github.com/rancher/sparse-tools
-
-github.com/Sirupsen/logrus	v0.10.0-19-gf3cfb45
-github.com/gorilla/context	v1.1-4-gaed02d1
-github.com/gorilla/mux	v1.1-13-g9fa818a
-golang.org/x/sys	a408501

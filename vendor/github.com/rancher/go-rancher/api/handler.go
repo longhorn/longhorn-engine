@@ -3,10 +3,10 @@ package api
 import (
 	"net/http"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/gorilla/context"
 	"github.com/gorilla/mux"
 	"github.com/rancher/go-rancher/client"
+	"github.com/sirupsen/logrus"
 )
 
 func ApiHandlerFunc(schemas *client.Schemas, f http.HandlerFunc) http.HandlerFunc {
