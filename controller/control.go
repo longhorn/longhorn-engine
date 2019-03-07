@@ -9,7 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 	"github.com/yasker/go-websocket-toolbox/broadcaster"
 
 	"github.com/rancher/longhorn-engine/types"

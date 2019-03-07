@@ -7,8 +7,8 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/gorilla/handlers"
+	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 
 	"github.com/rancher/longhorn-engine/backend/dynamic"

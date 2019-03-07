@@ -7,7 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 
 	"github.com/rancher/longhorn-engine/rpc"
 	"github.com/rancher/longhorn-engine/types"

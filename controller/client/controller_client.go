@@ -9,7 +9,8 @@ import (
 	"net/http"
 	"strings"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
+
 	"github.com/rancher/longhorn-engine/controller/rest"
 )
 

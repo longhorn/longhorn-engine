@@ -6,9 +6,10 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/Sirupsen/logrus"
-	"github.com/rancher/longhorn-engine/sync/agent"
+	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
+
+	"github.com/rancher/longhorn-engine/sync/agent"
 )
 
 func SyncAgentCmd() cli.Command {

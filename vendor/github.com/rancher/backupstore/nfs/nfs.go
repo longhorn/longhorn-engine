@@ -7,10 +7,10 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/rancher/backupstore"
 	"github.com/rancher/backupstore/fsops"
 	"github.com/rancher/backupstore/util"
+	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -72,7 +72,7 @@ func initFunc(destURL string) (backupstore.BackupStoreDriver, error) {
 	}
 
 	b.destURL = KIND + "://" + b.serverPath
-	log.Debug("Loaded driver for %v", b.destURL)
+	log.Debugf("Loaded driver for %v", b.destURL)
 	return b, nil
 }
 

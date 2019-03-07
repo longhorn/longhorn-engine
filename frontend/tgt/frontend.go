@@ -5,8 +5,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 
 	"github.com/rancher/longhorn-engine/frontend/socket"
 	"github.com/rancher/longhorn-engine/iscsi"

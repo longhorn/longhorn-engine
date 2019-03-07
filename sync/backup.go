@@ -3,7 +3,8 @@ package sync
 import (
 	"fmt"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
+
 	"github.com/rancher/longhorn-engine/controller/rest"
 	"github.com/rancher/longhorn-engine/replica"
 	replicaClient "github.com/rancher/longhorn-engine/replica/client"

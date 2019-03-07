@@ -13,9 +13,10 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/Sirupsen/logrus"
 	fibmap "github.com/frostschutz/go-fibmap"
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
+
 	"github.com/rancher/longhorn-engine/types"
 	"github.com/rancher/longhorn-engine/util"
 	"github.com/rancher/sparse-tools/sparse"

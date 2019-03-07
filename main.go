@@ -8,10 +8,10 @@ import (
 	"runtime/debug"
 	"runtime/pprof"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/docker/docker/pkg/reexec"
 	"github.com/rancher/sparse-tools/cli/sfold"
 	"github.com/rancher/sparse-tools/cli/ssync"
+	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 
 	"github.com/rancher/longhorn-engine/app"

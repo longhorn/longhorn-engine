@@ -11,7 +11,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
+
 	"github.com/rancher/longhorn-engine/replica/rest"
 	"github.com/rancher/longhorn-engine/sync/agent"
 )

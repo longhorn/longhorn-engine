@@ -7,9 +7,9 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/pkg/errors"
 	"github.com/rancher/backupstore"
+	"github.com/sirupsen/logrus"
 
 	"github.com/rancher/longhorn-engine/util"
 )

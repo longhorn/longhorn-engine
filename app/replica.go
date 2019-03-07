@@ -8,13 +8,14 @@ import (
 	"path/filepath"
 	"syscall"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/docker/go-units"
+	"github.com/sirupsen/logrus"
+	"github.com/urfave/cli"
+
 	"github.com/rancher/longhorn-engine/replica"
 	"github.com/rancher/longhorn-engine/replica/rest"
 	"github.com/rancher/longhorn-engine/replica/rpc"
 	"github.com/rancher/longhorn-engine/util"
-	"github.com/urfave/cli"
 )
 
 func ReplicaCmd() cli.Command {

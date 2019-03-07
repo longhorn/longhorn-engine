@@ -5,10 +5,11 @@ import (
 	"os"
 	"text/tabwriter"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
+	"github.com/urfave/cli"
+
 	"github.com/rancher/longhorn-engine/controller/client"
 	replicaClient "github.com/rancher/longhorn-engine/replica/client"
-	"github.com/urfave/cli"
 )
 
 func LsReplicaCmd() cli.Command {
