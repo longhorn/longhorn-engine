@@ -136,6 +136,7 @@ func construct(readonly bool, size, sectorSize int64, dir, head string, backingF
 		activeDiskData:  make([]*disk, 1),
 		diskData:        make(map[string]*disk),
 		diskChildrenMap: map[string]map[string]bool{},
+		readOnly:        readonly,
 	}
 	r.info.Size = size
 	r.info.SectorSize = sectorSize
