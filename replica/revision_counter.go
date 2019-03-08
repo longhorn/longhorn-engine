@@ -56,6 +56,10 @@ func (r *Replica) openRevisionFile(isCreate bool) error {
 }
 
 func (r *Replica) initRevisionCounter() error {
+	if r.readOnly {
+		return nil
+	}
+
 	r.revisionLock.Lock()
 	defer r.revisionLock.Unlock()
 
