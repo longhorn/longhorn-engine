@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"net"
 	"net/http"
 	"strconv"
@@ -94,7 +95,8 @@ func (r *Remote) doAction(action string, obj interface{}) error {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("Bad status: %d %s", resp.StatusCode, resp.Status)
+		content, _ := ioutil.ReadAll(resp.Body)
+		return fmt.Errorf("backend: Bad status from remote: %d %s: %s", resp.StatusCode, resp.Status, content)
 	}
 
 	return nil
@@ -157,7 +159,8 @@ func (r *Remote) info() (rest.Replica, error) {
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return replica, fmt.Errorf("Bad status: %d %s", resp.StatusCode, resp.Status)
+		content, _ := ioutil.ReadAll(resp.Body)
+		return replica, fmt.Errorf("backend: Bad status from remote info: %d %s: %s", resp.StatusCode, resp.Status, content)
 	}
 
 	err = json.NewDecoder(resp.Body).Decode(&replica)
