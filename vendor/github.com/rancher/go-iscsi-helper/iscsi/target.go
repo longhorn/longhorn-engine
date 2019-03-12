@@ -3,6 +3,7 @@ package iscsi
 import (
 	"bufio"
 	"fmt"
+	"io"
 	"os"
 	"os/exec"
 	"strconv"
@@ -178,6 +179,8 @@ func StartDaemon(debug bool) error {
 }
 
 func startDaemon(logf *os.File, debug bool) {
+	defer logf.Close()
+
 	opts := []string{
 		"-f",
 	}
@@ -185,13 +188,14 @@ func startDaemon(logf *os.File, debug bool) {
 		opts = append(opts, "-d", "1")
 	}
 	cmd := exec.Command("tgtd", opts...)
-	cmd.Stdout = logf
-	cmd.Stderr = logf
-
-	err := cmd.Run()
-	if err != nil {
+	mw := io.MultiWriter(os.Stderr, logf)
+	cmd.Stdout = mw
+	cmd.Stderr = mw
+	if err := cmd.Run(); err != nil {
+		fmt.Fprintf(mw, "go-iscsi-helper: command failed: %v\n", err)
 		panic(err)
 	}
+	fmt.Fprintln(mw, "go-iscsi-helper: done")
 }
 
 func CheckTargetForBackingStore(name string) bool {
@@ -240,4 +244,16 @@ func GetTargetTid(name string) (int, error) {
 		}
 	}
 	return tid, nil
+}
+
+func ShutdownTgtd() error {
+	opts := []string{
+		"--op", "delete",
+		"--mode", "system",
+	}
+	_, err := util.Execute(tgtBinary, opts)
+	if err != nil {
+		return err
+	}
+	return nil
 }
