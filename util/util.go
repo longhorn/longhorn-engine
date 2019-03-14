@@ -80,7 +80,7 @@ func FilteredLoggingHandler(filteredPaths map[string]struct{}, writer io.Writer,
 	return filteredLoggingHandler{
 		filteredPaths:  filteredPaths,
 		handler:        router,
-		loggingHandler: handlers.LoggingHandler(writer, router),
+		loggingHandler: handlers.CombinedLoggingHandler(writer, router),
 	}
 }
 
