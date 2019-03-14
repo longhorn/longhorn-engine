@@ -101,6 +101,7 @@ func startController(c *cli.Context) error {
 	router := http.Handler(rest.NewRouter(server))
 
 	router = util.FilteredLoggingHandler(map[string]struct{}{
+		"/v1":          {},
 		"/v1/volumes":  {},
 		"/v1/replicas": {},
 	}, os.Stdout, router)

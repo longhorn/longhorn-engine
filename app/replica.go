@@ -101,6 +101,7 @@ func startReplica(c *cli.Context) error {
 		router := http.Handler(rest.NewRouter(server))
 		router = util.FilteredLoggingHandler(map[string]struct{}{
 			"/ping":          {},
+			"/v1":            {},
 			"/v1/replicas/1": {},
 		}, os.Stdout, router)
 		logrus.Infof("Listening on control %s", controlAddress)
