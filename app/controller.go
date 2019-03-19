@@ -97,6 +97,11 @@ func startController(c *cli.Context) error {
 	}
 
 	control := controller.NewController(name, dynamic.New(factories), frontend, launcher, launcherID)
+
+	addShutdown(func() {
+		control.Shutdown()
+	})
+
 	server := rest.NewServer(control)
 	router := http.Handler(rest.NewRouter(server))
 
@@ -113,10 +118,6 @@ func startController(c *cli.Context) error {
 			log.Fatal(err)
 		}
 	}
-
-	addShutdown(func() {
-		control.Shutdown()
-	})
 
 	httpServer := &http.Server{
 		Addr:    listen,
