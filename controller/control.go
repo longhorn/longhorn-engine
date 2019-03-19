@@ -9,6 +9,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/yasker/go-websocket-toolbox/broadcaster"
 
@@ -256,16 +257,16 @@ func (c *Controller) setReplicaModeNoLock(address string, mode types.Mode) {
 func (c *Controller) startFrontend() error {
 	if len(c.replicas) > 0 && c.frontend != nil {
 		if err := c.frontend.Startup(c.Name, c.size, c.sectorSize, c); err != nil {
-			// FATAL
-			logrus.Fatalf("Failed to start up frontend: %v", err)
-			// This will never be reached
-			return err
+			logrus.Errorf("Failed to startup frontend: %v", err)
+			return errors.Wrap(err, "failed to start up frontend")
 		}
 		if c.launcher != "" {
 			if err := c.launcherStartFrontend(); err != nil {
-				logrus.Fatalf("Failed to start up frontend: %v", err)
-				// This will never be reached
-				return err
+				logrus.Errorf("Shutting down frontend due to failed to start up launcher: %v", err)
+				if err := c.frontend.Shutdown(); err != nil {
+					logrus.Errorf("Failed to shutdown frontend: %v", err)
+				}
+				return errors.Wrap(err, "failed to start up launcher")
 			}
 		}
 	}
@@ -287,8 +288,6 @@ func (c *Controller) Start(addresses ...string) error {
 	}
 
 	c.reset()
-
-	defer c.startFrontend()
 
 	first := true
 	for _, address := range addresses {
@@ -342,6 +341,10 @@ func (c *Controller) Start(addresses ...string) error {
 				expectedRevision, counter, address)
 			c.setReplicaModeNoLock(address, types.ERR)
 		}
+	}
+
+	if err := c.startFrontend(); err != nil {
+		return err
 	}
 
 	return nil
