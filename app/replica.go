@@ -105,13 +105,17 @@ func startReplica(c *cli.Context) error {
 			"/v1/replicas/1": {},
 		}, os.Stdout, router)
 		logrus.Infof("Listening on control %s", controlAddress)
-		resp <- http.ListenAndServe(controlAddress, router)
+		err := http.ListenAndServe(controlAddress, router)
+		logrus.Warnf("Replica rest server at %v is down: %v", controlAddress, err)
+		resp <- err
 	}()
 
 	go func() {
 		rpcServer := rpc.New(dataAddress, s)
 		logrus.Infof("Listening on data %s", dataAddress)
-		resp <- rpcServer.ListenAndServe()
+		err := rpcServer.ListenAndServe()
+		logrus.Warnf("Replica rest server at %v is down: %v", dataAddress, err)
+		resp <- err
 	}()
 
 	if c.Bool("sync-agent") {
@@ -133,9 +137,15 @@ func startReplica(c *cli.Context) error {
 			cmd.Dir = dir
 			cmd.Stdout = os.Stdout
 			cmd.Stderr = os.Stderr
-			resp <- cmd.Run()
+			logrus.Infof("Listening on sync agent %s", syncAddress)
+			err := cmd.Run()
+			logrus.Warnf("Replica sync agent at %v is down: %v", syncAddress, err)
+			resp <- err
 		}()
 	}
+
+	// empty shutdown hook for signal message
+	addShutdown(func() {})
 
 	return <-resp
 }
