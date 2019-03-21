@@ -78,8 +78,8 @@ def add_replica(url):
     return subprocess.check_output(cmd).strip()
 
 
-def restore_to(backup_url, backing_file, output_file, format):
-    cmd = [_bin(), '--debug', 'restore-to', '--backup-url', backup_url]
+def restore_to_file(backup_url, backing_file='', output_file='', format=''):
+    cmd = [_bin(), '--debug', 'backup', 'restore-to-file', backup_url]
     if backing_file:
         cmd.append('--backing-file')
         cmd.append(backing_file)
@@ -87,6 +87,6 @@ def restore_to(backup_url, backing_file, output_file, format):
         cmd.append('--output-file')
         cmd.append(output_file)
     if format:
-        cmd.append('--image-format')
+        cmd.append('--output-format')
         cmd.append(format)
     return subprocess.check_output(cmd)

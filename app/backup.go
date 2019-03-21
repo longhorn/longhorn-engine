@@ -22,6 +22,7 @@ func BackupCmd() cli.Command {
 		Subcommands: []cli.Command{
 			BackupCreateCmd(),
 			BackupRestoreCmd(),
+			RestoreToFileCmd(),
 			cmd.BackupRemoveCmd(),
 			cmd.BackupListCmd(),
 			cmd.BackupInspectCmd(),

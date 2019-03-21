@@ -7,18 +7,21 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/rancher/backupstore"
-	"github.com/rancher/longhorn-engine/util"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
+
+	"github.com/rancher/backupstore"
+	"github.com/rancher/longhorn-engine/util"
 )
 
 const (
-	DefaultImageFormat  = "qcow2"
-	QEMUImageBinary     = "qemu-img"
-	BackupFilePath      = "backup.img"
-	BackupFileConverted = "backup.img.converted"
-	BackingFileCopy     = "backing.img.cp"
+	DefaultOutputFormat   = "qcow2"
+	DefaultOutputFileName = "volume"
+	QEMUImageBinary       = "qemu-img"
+	BackupFilePath        = "backup.img"
+	BackupFileConverted   = "backup.img.converted"
+	BackingFileCopy       = "backing.img.cp"
 )
 
 var SupportedImageFormats = []string{
@@ -26,14 +29,11 @@ var SupportedImageFormats = []string{
 	"raw",
 }
 
-func RestoreToCmd() cli.Command {
+func RestoreToFileCmd() cli.Command {
 	return cli.Command{
-		Name: "restore-to",
+		Name:  "restore-to-file",
+		Usage: "restore a backup to a raw image or a qcow2 image: restore-to-file <backupURL> --backing-file <backing-file-path> --output-file <output-file> --output-format <output-format>",
 		Flags: []cli.Flag{
-			cli.StringFlag{
-				Name:  "backup-url",
-				Usage: "backup URL to be published",
-			},
 			cli.StringFlag{
 				Name:  "backing-file",
 				Usage: "filepath or dirpath containing exactly one qcow2 backing file",
@@ -41,18 +41,17 @@ func RestoreToCmd() cli.Command {
 			cli.StringFlag{
 				Name:  "output-file",
 				Usage: "filepath to write the resulting image to",
-				Value: "volume." + DefaultImageFormat,
 			},
 			cli.StringFlag{
-				Name:  "image-format",
-				Usage: "format of image to produce",
-				Value: DefaultImageFormat,
+				Name:  "output-format",
+				Usage: "format of output file image to produce",
+				Value: DefaultOutputFormat,
 			},
 		},
 		Action: func(c *cli.Context) {
 			logrus.Infof("Running restore to file command: backup-url=%s  output-file=%s  format=%s",
 				c.String("backup-url"), c.String("output-file"), c.String("image-format"))
-			if err := restoreTo(c); err != nil {
+			if err := restoreToFile(c); err != nil {
 				logrus.Fatalf("Error running restore to file command: %v", err)
 			}
 			defer logrus.Infof("Done running restore to file command. Produced image: %s",
@@ -61,34 +60,34 @@ func RestoreToCmd() cli.Command {
 	}
 }
 
-func imageFormatSupported(desiredFormat string) bool {
-	for _, supportedFormat := range SupportedImageFormats {
-		if desiredFormat == supportedFormat {
-			return true
-		}
-	}
-	return false
-}
-
-func restoreTo(c *cli.Context) error {
-	imageFormat := c.String("image-format")
-	if !imageFormatSupported(imageFormat) {
-		return fmt.Errorf("unsupported image format: %s", imageFormat)
+func restoreToFile(c *cli.Context) error {
+	outputFormat := c.String("output-format")
+	if !outputFormatSupported(outputFormat) {
+		return fmt.Errorf("Unsupported output image format: %s", outputFormat)
 	}
 
-	backupURL := c.String("backup-url")
+	backupURL := c.Args().First()
 	if backupURL == "" {
-		return fmt.Errorf("backup-url must be provided")
+		return fmt.Errorf("Missing the first argument, it should be backup-url")
 	}
+
+	outputFile := c.String("output-file")
+	if outputFile == "" {
+		outputFile = DefaultOutputFileName + "." + outputFormat
+	}
+	outputFilePath, err := filepath.Abs(outputFile)
+	if err != nil {
+		return errors.Wrap(err, "Error confirming output file path")
+	}
+	logrus.Infof("Restore to output file path %v", outputFilePath)
 
 	if err := backupstore.RestoreDeltaBlockBackup(backupURL, BackupFilePath); err != nil {
 		return err
 	}
 
-	outputFile := c.String("output-file")
 	backingFileOrDir := c.String("backing-file")
 	if backingFileOrDir == "" {
-		if err := ConvertImage(BackupFilePath, outputFile, imageFormat); err != nil {
+		if err := ConvertImage(BackupFilePath, outputFile, outputFormat); err != nil {
 			return err
 		}
 	} else {
@@ -102,19 +101,28 @@ func restoreTo(c *cli.Context) error {
 		if err := CopyFile(backingFilepath, BackingFileCopy); err != nil {
 			return err
 		}
-		if err := ConvertImage(BackupFilePath, BackupFileConverted, DefaultImageFormat); err != nil {
+		if err := ConvertImage(BackupFilePath, BackupFileConverted, DefaultOutputFormat); err != nil {
 			return err
 		}
 		if err := MergeSnapshots(BackupFileConverted, BackingFileCopy); err != nil {
 			return err
 		}
-		if err := ConvertImage(BackingFileCopy, outputFile, imageFormat); err != nil {
+		if err := ConvertImage(BackingFileCopy, outputFile, outputFormat); err != nil {
 			return err
 		}
 	}
 	defer CleanupTempFiles(outputFile, BackupFilePath, BackupFileConverted, BackingFileCopy)
 
 	return nil
+}
+
+func outputFormatSupported(desiredFormat string) bool {
+	for _, supportedFormat := range SupportedImageFormats {
+		if desiredFormat == supportedFormat {
+			return true
+		}
+	}
+	return false
 }
 
 func CheckBackingFileFormat(backingFilePath string) error {
