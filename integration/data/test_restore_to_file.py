@@ -14,8 +14,8 @@ BLOCK_SIZE = str(2 * 1024 * 1024)  # 2M
 
 BACKING_FILE_QCOW2 = 'backing_file.qcow2'
 
-OUTPUT_FILE_RAW = 'test-restore_to-output.raw'
-OUTPUT_FILE_QCOW2 = 'test-restore_to-output.qcow2'
+OUTPUT_FILE_RAW = 'test-restore_to_file-output.raw'
+OUTPUT_FILE_QCOW2 = 'test-restore_to_file-output.qcow2'
 
 IMAGE_FORMAT_RAW = 'raw'
 IMAGE_FORMAT_QCOW2 = 'qcow2'
@@ -48,7 +48,7 @@ def check_empty_volume(dev, offset=0, length=4*1024):
     assert backing_data == empty_volume_data
 
 
-def restore_to_with_backing_file_test(backing_dev, backup_target):
+def restore_to_file_with_backing_file_test(backing_dev, backup_target):
     length0 = 4 * 1024
     length1 = 256
     length2 = 128
@@ -72,8 +72,8 @@ def restore_to_with_backing_file_test(backing_dev, backup_target):
     assert volume_data != ""
     assert volume_data == backing_data
 
-    cmd.restore_to(backup, file(BACKING_FILE_QCOW2),
-                   output_raw_path, IMAGE_FORMAT_RAW)
+    cmd.restore_to_file(backup, file(BACKING_FILE_QCOW2),
+                        output_raw_path, IMAGE_FORMAT_RAW)
     output0_raw = read_file(output_raw_path, offset0, length0)
     output0_checksum = checksum_data(
         read_file(output_raw_path, 0, SIZE))
@@ -82,8 +82,8 @@ def restore_to_with_backing_file_test(backing_dev, backup_target):
     os.remove(output_raw_path)
     assert not os.path.exists(output_raw_path)
 
-    cmd.restore_to(backup, file(BACKING_FILE_QCOW2),
-                   output_qcow2_path, IMAGE_FORMAT_QCOW2)
+    cmd.restore_to_file(backup, file(BACKING_FILE_QCOW2),
+                        output_qcow2_path, IMAGE_FORMAT_QCOW2)
     output0_qcow2 = read_qcow2_file_without_backing_file(
         output_qcow2_path, offset0, length0)
     output0_checksum = checksum_data(
@@ -108,8 +108,8 @@ def restore_to_with_backing_file_test(backing_dev, backup_target):
         offset1, length0 - offset1)
     dev_checksum = common.checksum_dev(backing_dev)
 
-    cmd.restore_to(backup, file(BACKING_FILE_QCOW2),
-                   output_raw_path, IMAGE_FORMAT_RAW)
+    cmd.restore_to_file(backup, file(BACKING_FILE_QCOW2),
+                        output_raw_path, IMAGE_FORMAT_RAW)
     output1_raw_snap1 = read_file(
         output_raw_path, offset0, length1)
     output1_raw_backing = read_file(
@@ -123,8 +123,8 @@ def restore_to_with_backing_file_test(backing_dev, backup_target):
     os.remove(output_raw_path)
     assert not os.path.exists(output_raw_path)
 
-    cmd.restore_to(backup, file(BACKING_FILE_QCOW2),
-                   output_qcow2_path, IMAGE_FORMAT_QCOW2)
+    cmd.restore_to_file(backup, file(BACKING_FILE_QCOW2),
+                        output_qcow2_path, IMAGE_FORMAT_QCOW2)
     output1_qcow2_snap1 = read_qcow2_file_without_backing_file(
         output_qcow2_path, offset0, length1)
     output1_qcow2_backing = read_qcow2_file_without_backing_file(
@@ -160,8 +160,8 @@ def restore_to_with_backing_file_test(backing_dev, backup_target):
         offset1, length0 - offset1)
     dev_checksum = common.checksum_dev(backing_dev)
 
-    cmd.restore_to(backup, file(BACKING_FILE_QCOW2),
-                   output_raw_path, IMAGE_FORMAT_RAW)
+    cmd.restore_to_file(backup, file(BACKING_FILE_QCOW2),
+                        output_raw_path, IMAGE_FORMAT_RAW)
     output2_raw_snap2 = read_file(
         output_raw_path, offset0, length2)
     output2_raw_snap1 = read_file(
@@ -180,8 +180,8 @@ def restore_to_with_backing_file_test(backing_dev, backup_target):
     os.remove(output_raw_path)
     assert not os.path.exists(output_raw_path)
 
-    cmd.restore_to(backup, file(BACKING_FILE_QCOW2),
-                   output_qcow2_path, IMAGE_FORMAT_QCOW2)
+    cmd.restore_to_file(backup, file(BACKING_FILE_QCOW2),
+                        output_qcow2_path, IMAGE_FORMAT_QCOW2)
     output2_qcow2_snap2 = read_qcow2_file_without_backing_file(
         output_qcow2_path, offset0, length2)
     output2_qcow2_snap1 = read_qcow2_file_without_backing_file(
@@ -207,7 +207,7 @@ def restore_to_with_backing_file_test(backing_dev, backup_target):
     check_empty_volume(backing_dev)
 
 
-def restore_to_without_backing_file_test(dev, backup_target):
+def restore_to_file_without_backing_file_test(dev, backup_target):
     length0 = 256
     length1 = 128
     offset0 = 0
@@ -226,15 +226,15 @@ def restore_to_without_backing_file_test(dev, backup_target):
     snap1 = cmd.snapshot_create()
     backup = create_backup(backup_target, snap1)
 
-    cmd.restore_to(backup, "",
-                   output_raw_path, IMAGE_FORMAT_RAW)
+    cmd.restore_to_file(backup, "",
+                        output_raw_path, IMAGE_FORMAT_RAW)
     output1_raw = read_file(output_raw_path, offset0, length0)
     assert output1_raw == snap1_data
     os.remove(output_raw_path)
     assert not os.path.exists(output_raw_path)
 
-    cmd.restore_to(backup, "",
-                   output_qcow2_path, IMAGE_FORMAT_QCOW2)
+    cmd.restore_to_file(backup, "",
+                        output_qcow2_path, IMAGE_FORMAT_QCOW2)
     output1_qcow2 = read_qcow2_file_without_backing_file(
         output_qcow2_path, offset0, length0)
     assert output1_qcow2 == snap1_data
@@ -256,8 +256,8 @@ def restore_to_without_backing_file_test(dev, backup_target):
     snap2 = cmd.snapshot_create()
     backup = create_backup(backup_target, snap2)
 
-    cmd.restore_to(backup, "",
-                   output_raw_path, IMAGE_FORMAT_RAW)
+    cmd.restore_to_file(backup, "",
+                        output_raw_path, IMAGE_FORMAT_RAW)
     output2_raw_snap2 = read_file(
         output_raw_path, offset0, length1)
     output2_raw_snap1 = read_file(
@@ -265,8 +265,8 @@ def restore_to_without_backing_file_test(dev, backup_target):
     assert output2_raw_snap2 == snap2_data
     assert output2_raw_snap1 == snap1_data[offset1: length0]
 
-    cmd.restore_to(backup, "",
-                   output_qcow2_path, IMAGE_FORMAT_QCOW2)
+    cmd.restore_to_file(backup, "",
+                        output_qcow2_path, IMAGE_FORMAT_QCOW2)
     output2_qcow2_snap2 = read_qcow2_file_without_backing_file(
         output_qcow2_path, offset0, length1)
     output2_qcow2_snap1 = read_qcow2_file_without_backing_file(
@@ -281,21 +281,23 @@ def restore_to_without_backing_file_test(dev, backup_target):
     rm_backups(backup)
 
 
-def test_restore_to_with_backing_file(backing_replica1, backing_replica2, controller, backup_targets):  # NOQA
+def test_restore_to_file_with_backing_file(backing_replica1, backing_replica2,  # NOQA
+                                           controller, backup_targets):  # NOQA
     for backup_target in backup_targets:
         backing_dev = common.get_backing_dev(backing_replica1,
                                              backing_replica2,
                                              controller)
-        restore_to_with_backing_file_test(backing_dev, backup_target)
+        restore_to_file_with_backing_file_test(backing_dev, backup_target)
         common.cleanup_replica(backing_replica1)
         common.cleanup_replica(backing_replica2)
         common.cleanup_controller(controller)
 
 
-def test_restore_to_without_backing_file(replica1, replica2, controller, backup_targets):  # NOQA
+def test_restore_to_file_without_backing_file(replica1, replica2,  # NOQA
+                                              controller, backup_targets):  # NOQA
     for backup_target in backup_targets:
         dev = common.get_dev(replica1, replica2, controller)
-        restore_to_without_backing_file_test(dev, backup_target)
+        restore_to_file_without_backing_file_test(dev, backup_target)
         common.cleanup_replica(replica1)
         common.cleanup_replica(replica2)
         common.cleanup_controller(controller)
