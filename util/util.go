@@ -1,6 +1,7 @@
 package util
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net/http"
@@ -208,13 +209,16 @@ func Execute(binary string, args ...string) (string, error) {
 }
 
 func ExecuteWithTimeout(timeout time.Duration, binary string, args ...string) (string, error) {
-	var output []byte
 	var err error
 	cmd := exec.Command(binary, args...)
 	done := make(chan struct{})
 
+	var output, stderr bytes.Buffer
+	cmd.Stdout = &output
+	cmd.Stderr = &stderr
+
 	go func() {
-		output, err = cmd.CombinedOutput()
+		err = cmd.Run()
 		done <- struct{}{}
 	}()
 
@@ -227,13 +231,15 @@ func ExecuteWithTimeout(timeout time.Duration, binary string, args ...string) (s
 			}
 
 		}
-		return "", fmt.Errorf("Timeout executing: %v %v, output %v, error %v", binary, args, string(output), err)
+		return "", fmt.Errorf("Timeout executing: %v %v, output %s, stderr, %s, error %v",
+			binary, args, output.String(), stderr.String(), err)
 	}
 
 	if err != nil {
-		return "", fmt.Errorf("Failed to execute: %v %v, output %v, error %v", binary, args, string(output), err)
+		return "", fmt.Errorf("Failed to execute: %v %v, output %s, stderr, %s, error %v",
+			binary, args, output.String(), stderr.String(), err)
 	}
-	return string(output), nil
+	return output.String(), nil
 }
 
 func CheckBackupType(backupTarget string) (string, error) {
