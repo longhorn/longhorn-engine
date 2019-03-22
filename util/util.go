@@ -242,6 +242,21 @@ func ExecuteWithTimeout(timeout time.Duration, binary string, args ...string) (s
 	return output.String(), nil
 }
 
+func ExecuteWithoutTimeout(binary string, args ...string) (string, error) {
+	var err error
+	var output, stderr bytes.Buffer
+
+	cmd := exec.Command(binary, args...)
+	cmd.Stdout = &output
+	cmd.Stderr = &stderr
+
+	if err = cmd.Run(); err != nil {
+		return "", fmt.Errorf("Failed to execute: %v %v, output %s, stderr, %s, error %v",
+			binary, args, output.String(), stderr.String(), err)
+	}
+	return output.String(), nil
+}
+
 func CheckBackupType(backupTarget string) (string, error) {
 	u, err := url.Parse(backupTarget)
 	if err != nil {
