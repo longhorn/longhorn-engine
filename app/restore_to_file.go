@@ -3,7 +3,6 @@ package app
 import (
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 
@@ -49,12 +48,12 @@ func RestoreToFileCmd() cli.Command {
 			},
 		},
 		Action: func(c *cli.Context) {
-			logrus.Infof("Running restore to file command: backup-url=%s  output-file=%s  format=%s",
-				c.String("backup-url"), c.String("output-file"), c.String("image-format"))
+			logrus.Infof("Running restore to file command: backup-url=%s backing-file=%s output-file=%s output-format=%s",
+				c.Args().First(), c.String("backing-file"), c.String("output-file"), c.String("output-format"))
 			if err := restoreToFile(c); err != nil {
 				logrus.Fatalf("Error running restore to file command: %v", err)
 			}
-			defer logrus.Infof("Done running restore to file command. Produced image: %s",
+			logrus.Infof("Done running restore to file command. Produced image: %s",
 				c.String("output-file"))
 		},
 	}
@@ -79,11 +78,15 @@ func restoreToFile(c *cli.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "Error confirming output file path")
 	}
-	logrus.Infof("Restore to output file path %v", outputFilePath)
+	logrus.Infof("Output file path=%s", outputFilePath)
 
+	defer CleanupTempFiles(outputFile, BackupFilePath, BackupFileConverted, BackingFileCopy)
+
+	logrus.Infof("Start to restore %s to %s", backupURL, BackupFilePath)
 	if err := backupstore.RestoreDeltaBlockBackup(backupURL, BackupFilePath); err != nil {
 		return err
 	}
+	logrus.Infof("Done restoring %s to %s", backupURL, BackupFilePath)
 
 	backingFileOrDir := c.String("backing-file")
 	if backingFileOrDir == "" {
@@ -91,6 +94,7 @@ func restoreToFile(c *cli.Context) error {
 			return err
 		}
 	} else {
+		logrus.Infof("Start to prepare and check backing file")
 		backingFilepath, err := util.ResolveBackingFilepath(backingFileOrDir)
 		if err != nil {
 			return err
@@ -101,17 +105,17 @@ func restoreToFile(c *cli.Context) error {
 		if err := CopyFile(backingFilepath, BackingFileCopy); err != nil {
 			return err
 		}
+		logrus.Infof("Done preparing and checking backing file: %s", backingFilepath)
 		if err := ConvertImage(BackupFilePath, BackupFileConverted, DefaultOutputFormat); err != nil {
 			return err
 		}
-		if err := MergeSnapshots(BackupFileConverted, BackingFileCopy); err != nil {
+		if err := MergeSnapshotsToBackingFile(BackupFileConverted, BackingFileCopy); err != nil {
 			return err
 		}
 		if err := ConvertImage(BackingFileCopy, outputFile, outputFormat); err != nil {
 			return err
 		}
 	}
-	defer CleanupTempFiles(outputFile, BackupFilePath, BackupFileConverted, BackingFileCopy)
 
 	return nil
 }
@@ -126,83 +130,83 @@ func outputFormatSupported(desiredFormat string) bool {
 }
 
 func CheckBackingFileFormat(backingFilePath string) error {
-	output, err := exec.Command(QEMUImageBinary, "info", backingFilePath).Output()
+	output, err := util.ExecuteWithoutTimeout(QEMUImageBinary, "info", backingFilePath)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failed CheckBackingFileFormat %s", backingFilePath)
 	}
-	outStr := string(output)
-	if !strings.Contains(outStr, "file format: qcow2") {
-		return fmt.Errorf("the format of backing file is not qcow2. backing file info=%s", outStr)
+	if !strings.Contains(output, "file format: qcow2") {
+		return fmt.Errorf("the format of backing file is not qcow2. backing file info=%s", output)
 	}
 	return nil
 }
 
 func CopyFile(backingFilepath, outputFile string) error {
-	if err := exec.Command("cp", backingFilepath, outputFile).Run(); err != nil {
+	if _, err := util.ExecuteWithoutTimeout("cp", backingFilepath, outputFile); err != nil {
 		return err
 	}
 	return nil
 }
 
-func CleanupTempFiles(outputFile string, files ...string) error {
+func CleanupTempFiles(outputFile string, files ...string) {
 	outputFilePath, err := filepath.Abs(outputFile)
 	if err != nil {
-		logrus.Errorf("find absolute path for output file=%s failed: %v", outputFile, err)
-		return err
+		logrus.Errorf("failed to find absolute path for output file=%s: %v", outputFile, err)
+		return
 	}
 	for _, file := range files {
 		filePath, err := filepath.Abs(file)
 		if err != nil {
-			logrus.Errorf("find absolute path for tmp file=%s failed: %v", file, err)
-			return err
+			logrus.Errorf("failed to find absolute path for tmp file=%s: %v", file, err)
+			continue
 		}
 		if filePath == outputFilePath {
 			continue
 		}
 		if err := os.Remove(filePath); err != nil {
-			return err
+			logrus.Errorf("failed to remove tmp file=%s: %v", file, err)
+			continue
 		}
 	}
-	return nil
+	return
 }
 
 func ConvertImage(srcFilepath, dstFilepath, format string) error {
-	defer logrus.Debugf("ConvertImage (%s) %s -> %s", format, srcFilepath, dstFilepath)
-	cmd := exec.Command(QEMUImageBinary, "convert", "-O", format, srcFilepath, dstFilepath)
-	if err := cmd.Run(); err != nil {
-		logrus.Errorf("convertImage (%s) %s -> %s failed: %v", format, srcFilepath, dstFilepath, err)
-		return err
+	logrus.Infof("Start ConvertImage (%s) %s -> %s", format, srcFilepath, dstFilepath)
+	_, err := util.ExecuteWithoutTimeout(QEMUImageBinary, "convert", "-O", format, srcFilepath, dstFilepath)
+	if err != nil {
+		return errors.Wrapf(err, "failed convertImage (%s) %s -> %s", format, srcFilepath, dstFilepath)
 	}
+	logrus.Infof("Done ConvertImage (%s) %s -> %s", format, srcFilepath, dstFilepath)
 	return nil
 }
 
-func MergeSnapshots(snapFilepath, backingFilepath string) error {
-	defer logrus.Debugf("MergeSnapshots %s -> %s", snapFilepath, backingFilepath)
-
+func MergeSnapshotsToBackingFile(snapFilepath, backingFilepath string) error {
+	logrus.Infof("Start MergeSnapshotsToBackingFile %s -> %s", snapFilepath, backingFilepath)
 	if err := rebaseSnapshot(snapFilepath, backingFilepath); err != nil {
-		return err
+		return errors.Wrapf(err, "failed MergeSnapshotsToBackingFile %s -> %s", snapFilepath, backingFilepath)
 	}
+	logrus.Infof("Done MergeSnapshotsToBackingFile %s -> %s", snapFilepath, backingFilepath)
 	return commitSnapshot(snapFilepath)
 }
 
 func rebaseSnapshot(snapFilepath, backingFilepath string) error {
-	output, err := exec.Command(QEMUImageBinary, "rebase", "-u", "-b", backingFilepath, snapFilepath).Output()
+	logrus.Infof("Start rebaseSnapshot %s -> %s", snapFilepath, backingFilepath)
+	_, err := util.ExecuteWithoutTimeout(QEMUImageBinary, "rebase", "-u", "-b", backingFilepath, snapFilepath)
 	if err != nil {
-		logrus.Errorf("rebase snapshot %s -> %s failed: %v", snapFilepath, backingFilepath, err)
-		return err
+		return errors.Wrapf(err, "failed rebaseSnapshot %s -> %s", snapFilepath, backingFilepath)
 	}
-	logrus.Debugf("rebaseSnapshot %s -> %s. %v", string(output))
+	logrus.Infof("Done rebaseSnapshot %s -> %s", snapFilepath, backingFilepath)
 	return nil
 }
 
 // qemu-img commit will allows you to merge from a 'top' image (snapFilepath)
 // into a lower-level 'base' image (backingFilepath).
 func commitSnapshot(snapFilepath string) error {
-	output, err := exec.Command(QEMUImageBinary, "commit", snapFilepath).Output()
+	logrus.Infof("Start commitSnapshot %s", snapFilepath)
+	_, err := util.ExecuteWithoutTimeout(QEMUImageBinary, "commit", snapFilepath)
 	if err != nil {
-		logrus.Errorf("commitSnapshot %s failed: %v", snapFilepath, err)
-		return err
+		return errors.Wrapf(err, "failed commitSnapshot %s", snapFilepath)
 	}
-	logrus.Debugf("commitSnapshot %s. %v", snapFilepath, string(output))
+	logrus.Infof("Done commitSnapshot %s", snapFilepath)
 	return nil
 }
