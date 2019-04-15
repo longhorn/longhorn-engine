@@ -12,6 +12,7 @@ type Volume struct {
 	Size           int64 `json:",string"`
 	CreatedTime    string
 	LastBackupName string
+	LastBackupAt   string
 	BlockCount     int64 `json:",string"`
 }
 

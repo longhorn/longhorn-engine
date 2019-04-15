@@ -6,8 +6,8 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/sirupsen/logrus"
 	"github.com/rancher/backupstore/util"
+	"github.com/sirupsen/logrus"
 
 	. "github.com/rancher/backupstore/logging"
 )
@@ -209,6 +209,7 @@ func CreateDeltaBlockBackup(config *DeltaBackupConfig) (string, error) {
 	}
 
 	volume.LastBackupName = backup.Name
+	volume.LastBackupAt = backup.SnapshotCreatedAt
 	volume.BlockCount = volume.BlockCount + newBlocks
 
 	if err := saveVolume(volume, bsDriver); err != nil {
@@ -367,6 +368,7 @@ func DeleteDeltaBlockBackup(backupURL string) error {
 
 	if backup.Name == v.LastBackupName {
 		v.LastBackupName = ""
+		v.LastBackupAt = ""
 		if err := saveVolume(v, bsDriver); err != nil {
 			return err
 		}
