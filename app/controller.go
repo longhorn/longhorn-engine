@@ -20,10 +20,6 @@ import (
 	"github.com/rancher/longhorn-engine/util"
 )
 
-var (
-	frontends = map[string]types.Frontend{}
-)
-
 func ControllerCmd() cli.Command {
 	return cli.Command{
 		Name: "controller",
@@ -89,7 +85,7 @@ func startController(c *cli.Context) error {
 
 	var frontend types.Frontend
 	if frontendName != "" {
-		f, ok := frontends[frontendName]
+		f, ok := controller.Frontends[frontendName]
 		if !ok {
 			return fmt.Errorf("Failed to find frontend: %s", frontendName)
 		}
