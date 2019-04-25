@@ -25,6 +25,7 @@ type Controller struct {
 	Binary       string
 	Listen       string
 	BackupListen string
+	Frontend     string
 	Backends     []string
 
 	replicas     []string
@@ -33,12 +34,13 @@ type Controller struct {
 	cmd *exec.Cmd
 }
 
-func NewController(id, binary, volumeName, listen string, backends, replicas []string) *Controller {
+func NewController(id, binary, volumeName, listen, frontend string, backends, replicas []string) *Controller {
 	return &Controller{
 		ID:         id,
 		Binary:     binary,
 		volumeName: volumeName,
 		Listen:     listen,
+		Frontend:   frontend,
 		Backends:   backends,
 		replicas:   replicas,
 	}
@@ -63,9 +65,11 @@ func (c *Controller) Start(launcherListen string) chan error {
 		args := []string{
 			"controller", c.volumeName,
 			"--listen", c.Listen,
-			"--frontend", "socket",
 			"--launcher", launcherListen,
 			"--launcher-id", c.ID,
+		}
+		if c.Frontend != "" {
+			args = append(args, "--frontend", "socket")
 		}
 		for _, b := range c.Backends {
 			args = append(args, "--enable-backend", b)

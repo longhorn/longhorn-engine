@@ -50,7 +50,7 @@ type Launcher struct {
 }
 
 func NewLauncher(listen, longhornBinary, frontend, volumeName string, size int64) (*Launcher, error) {
-	if frontend != FrontendTGTBlockDev && frontend != FrontendTGTISCSI {
+	if frontend != FrontendTGTBlockDev && frontend != FrontendTGTISCSI && frontend != "" {
 		return nil, fmt.Errorf("Invalid frontend %v", frontend)
 	}
 	return &Launcher{
@@ -95,6 +95,9 @@ func (l *Launcher) shutdownFrontend() error {
 			return fmt.Errorf("Fail to delete target %v", l.scsiDevice.Target)
 		}
 		logrus.Infof("launcher: SCSI target %v ", l.scsiDevice.Target)
+		break
+	case "":
+		logrus.Infof("launcher: skip shutdown frontend since it's not enabeld")
 		break
 	default:
 		return fmt.Errorf("unknown frontend %v", l.frontend)
@@ -250,7 +253,7 @@ func (l *Launcher) UpgradeEngine(cxt context.Context, engine *rpc.Engine) (ret *
 	if err := rm(l.GetSocketPath()); err != nil {
 		return nil, errors.Wrapf(err, "failed to remove socket %v", l.GetSocketPath())
 	}
-	newController := NewController(util.UUID(), binary, l.volumeName, oldController.Listen, oldController.Backends, engine.Replicas)
+	newController := NewController(util.UUID(), binary, l.volumeName, oldController.Listen, l.frontend, oldController.Backends, engine.Replicas)
 
 	newShutdownCh := newController.Start(l.listen)
 	stopCh := make(chan struct{})
@@ -313,20 +316,21 @@ func (l *Launcher) waitForSocket(stopCh chan struct{}) chan error {
 }
 
 func (l *Launcher) GetInfo(cxt context.Context, empty *rpc.Empty) (*rpc.Info, error) {
-	if l.frontend == FrontendTGTBlockDev {
-		return &rpc.Info{
-			Volume:   l.volumeName,
-			Frontend: l.frontend,
-			Endpoint: l.getDev(),
-		}, nil
-	} else if l.frontend == FrontendTGTISCSI {
-		return &rpc.Info{
-			Volume:   l.volumeName,
-			Frontend: l.frontend,
-			Endpoint: iscsi.GetTargetName(l.volumeName),
-		}, nil
+	info := &rpc.Info{
+		Volume:   l.volumeName,
+		Frontend: l.frontend,
 	}
-	return nil, fmt.Errorf("unsupported frontend %v", l.frontend)
+	switch l.frontend {
+	case FrontendTGTBlockDev:
+		info.Endpoint = l.getDev()
+		return info, nil
+	case FrontendTGTISCSI:
+		info.Endpoint = iscsi.GetTargetName(l.volumeName)
+		return info, nil
+	case "":
+		return info, nil
+	}
+	return nil, fmt.Errorf("BUG: unsupported frontend %v", l.frontend)
 }
 
 func (l *Launcher) updateControllerBinary(binary, newBinary string) (err error) {
@@ -354,6 +358,9 @@ func (l *Launcher) StartFrontend(cxt context.Context, identity *rpc.Identity) (*
 	if identity.ID != l.currentController.ID {
 		logrus.Infof("launcher: Ignore start frontend from %v since it's not the current controller", identity.ID)
 		return &rpc.Empty{}, nil
+	}
+	if l.frontend == "" {
+		return &rpc.Empty{}, fmt.Errorf("no frontend started since it's not specified")
 	}
 	if err := l.startFrontend(); err != nil {
 		return &rpc.Empty{}, err

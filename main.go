@@ -46,8 +46,7 @@ func StartCmd() cli.Command {
 			},
 			cli.StringFlag{
 				Name:  "frontend",
-				Value: "tgt-blockdev",
-				Usage: "Supports tgt-blockdev or tgt-iscsi",
+				Usage: "Supports tgt-blockdev or tgt-iscsi, or leave it empty to disable frontend",
 			},
 			cli.StringSliceFlag{
 				Name:  "enable-backend",
@@ -155,7 +154,7 @@ func start(c *cli.Context) error {
 		return err
 	}
 	id := util.UUID()
-	controller := NewController(id, longhornBinary, name, listen, backends, replicas)
+	controller := NewController(id, longhornBinary, name, listen, l.frontend, backends, replicas)
 	if err := l.StartController(controller); err != nil {
 		return err
 	}
