@@ -273,6 +273,27 @@ func (c *Controller) startFrontend() error {
 	return nil
 }
 
+func (c *Controller) StartFrontend(frontend string) error {
+	c.Lock()
+	defer c.Unlock()
+
+	if frontend == "" {
+		return fmt.Errorf("Cannot start empty frontend")
+	}
+	if c.frontend != nil {
+		if c.frontend.FrontendName() != frontend && c.frontend.State() != types.StateDown {
+			return fmt.Errorf("Frontend %v is already started, cannot be set as %v",
+				c.frontend.FrontendName(), frontend)
+		}
+	}
+	f, ok := Frontends[frontend]
+	if !ok {
+		return fmt.Errorf("Failed to find frontend: %s", frontend)
+	}
+	c.frontend = f
+	return c.startFrontend()
+}
+
 func (c *Controller) Start(addresses ...string) error {
 	var expectedRevision int64
 
@@ -438,6 +459,13 @@ func (c *Controller) shutdownFrontend() error {
 	}
 	if c.frontend != nil {
 		return c.frontend.Shutdown()
+	}
+	return nil
+}
+
+func (c *Controller) ShutdownFrontend() error {
+	if err := c.shutdownFrontend(); err != nil {
+		return err
 	}
 	return nil
 }

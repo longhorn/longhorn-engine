@@ -82,7 +82,7 @@ RUN cd /usr/src && \
 RUN cd /go/src/github.com/rancher && \
     git clone https://github.com/rancher/longhorn-engine-launcher.git && \
     cd longhorn-engine-launcher && \
-    git checkout 484d20ef51bcaae168b7d336ca218fbe66385229 && \
+    git checkout 553ad5bf82ef9b224b652efd2eee59bb30b06c04 && \
     go build && \
     cp longhorn-engine-launcher /usr/local/bin
 

@@ -80,6 +80,11 @@ type Version struct {
 	meta.VersionOutput
 }
 
+type StartFrontendInput struct {
+	client.Resource
+	Frontend string `json:"frontend"`
+}
+
 func NewVolume(context *api.ApiContext, name, endpoint, frontend string, replicas int) *Volume {
 	v := &Volume{
 		Resource: client.Resource{
@@ -99,6 +104,8 @@ func NewVolume(context *api.ApiContext, name, endpoint, frontend string, replica
 		v.Actions["shutdown"] = context.UrlBuilder.ActionLink(v.Resource, "shutdown")
 		v.Actions["snapshot"] = context.UrlBuilder.ActionLink(v.Resource, "snapshot")
 		v.Actions["revert"] = context.UrlBuilder.ActionLink(v.Resource, "revert")
+		v.Actions["startfrontend"] = context.UrlBuilder.ActionLink(v.Resource, "startfrontend")
+		v.Actions["shutdownfrontend"] = context.UrlBuilder.ActionLink(v.Resource, "shutdownfrontend")
 	}
 	return v
 }
@@ -143,6 +150,7 @@ func NewSchema() *client.Schemas {
 	schemas.AddType("journalInput", JournalInput{})
 	schemas.AddType("prepareRebuildOutput", PrepareRebuildOutput{})
 	schemas.AddType("portInput", PortInput{})
+	schemas.AddType("startFrontendInput", StartFrontendInput{})
 	schemas.AddType("version", Version{})
 
 	replica := schemas.AddType("replica", Replica{})
@@ -178,6 +186,13 @@ func NewSchema() *client.Schemas {
 		"snapshot": {
 			Input:  "snapshotInput",
 			Output: "snapshotOutput",
+		},
+		"startfrontend": {
+			Input:  "startFrontendInput",
+			Output: "volume",
+		},
+		"shutdownfrontend": {
+			Output: "volume",
 		},
 	}
 
