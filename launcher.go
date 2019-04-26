@@ -354,7 +354,7 @@ func (l *Launcher) reloadSocketConnection() error {
 	return nil
 }
 
-func (l *Launcher) setAndStartFrontend(frontend string) error {
+func (l *Launcher) startEngineFrontend(frontend string) error {
 	if l.frontend != "" {
 		return fmt.Errorf("cannot set frontend if it's already set")
 	}
@@ -395,8 +395,8 @@ func (l *Launcher) ShutdownFrontend(cxt context.Context, identity *rpc.Identity)
 	return &rpc.Empty{}, nil
 }
 
-func (l *Launcher) SetFrontend(cxt context.Context, frontend *rpc.Frontend) (*rpc.Empty, error) {
-	if err := l.setAndStartFrontend(frontend.Frontend); err != nil {
+func (l *Launcher) StartEngineFrontend(cxt context.Context, frontend *rpc.Frontend) (*rpc.Empty, error) {
+	if err := l.startEngineFrontend(frontend.Frontend); err != nil {
 		return nil, err
 	}
 	return &rpc.Empty{}, nil

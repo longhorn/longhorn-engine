@@ -128,11 +128,11 @@ func FrontendShutdownCmd() cli.Command {
 
 func FrontendSetCmd() cli.Command {
 	return cli.Command{
-		Name:  "frontend-set",
-		Usage: "Set frontend to tgt-blockdev or tgt-iscsi and enable it. Only valid if no frontend has been set",
+		Name:  "engine-frontend-start",
+		Usage: "Set frontend to tgt-blockdev or tgt-iscsi and start engine frontend with it. Only valid if no frontend has been set",
 		Action: func(c *cli.Context) {
-			if err := setFrontend(c); err != nil {
-				logrus.Fatalf("Error running frontend-set command: %v.", err)
+			if err := startEngineFrontend(c); err != nil {
+				logrus.Fatalf("Error running engine-frontend-start command: %v.", err)
 			}
 		},
 	}
@@ -289,7 +289,7 @@ func shutdownFrontend(c *cli.Context) error {
 	return nil
 }
 
-func setFrontend(c *cli.Context) error {
+func startEngineFrontend(c *cli.Context) error {
 	if c.NArg() == 0 {
 		return fmt.Errorf("frontend is required as the first argument")
 	}
@@ -306,7 +306,7 @@ func setFrontend(c *cli.Context) error {
 	ctx, cancel := context.WithTimeout(context.Background(), FrontendTimeout)
 	defer cancel()
 
-	if _, err := client.SetFrontend(ctx, &rpc.Frontend{
+	if _, err := client.StartEngineFrontend(ctx, &rpc.Frontend{
 		Frontend: frontend,
 	}); err != nil {
 		return fmt.Errorf("failed to start frontend: %v", err)

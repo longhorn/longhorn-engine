@@ -5,7 +5,7 @@ service LonghornLauncherService {
 	rpc GetInfo(Empty) returns (Info) {}
 	rpc StartFrontend(Identity) returns (Empty) {}
 	rpc ShutdownFrontend(Identity) returns (Empty) {}
-	rpc SetFrontend(Frontend) returns (Empty) {}
+	rpc StartEngineFrontend(Frontend) returns (Empty) {}
 }
 
 message Engine {
