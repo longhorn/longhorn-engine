@@ -6,10 +6,10 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/rancher/backupstore/util"
 	"github.com/sirupsen/logrus"
 
 	. "github.com/rancher/backupstore/logging"
+	"github.com/rancher/backupstore/util"
 )
 
 type DeltaBackupConfig struct {
@@ -307,20 +307,7 @@ func RestoreDeltaBlockBackup(backupURL, volDevName string) error {
 	blkCounts := len(backup.Blocks)
 	for i, block := range backup.Blocks {
 		log.Debugf("Restore for %v: block %v, %v/%v", volDevName, block.BlockChecksum, i+1, blkCounts)
-		blkFile := getBlockFilePath(srcVolumeName, block.BlockChecksum)
-		rc, err := bsDriver.Read(blkFile)
-		if err != nil {
-			return err
-		}
-		r, err := util.DecompressAndVerify(rc, block.BlockChecksum)
-		rc.Close()
-		if err != nil {
-			return err
-		}
-		if _, err := volDev.Seek(block.Offset, 0); err != nil {
-			return err
-		}
-		if _, err := io.CopyN(volDev, r, DEFAULT_BLOCK_SIZE); err != nil {
+		if err := restoreBlockToFile(srcVolumeName, volDev, bsDriver, block); err != nil {
 			return err
 		}
 	}
@@ -333,6 +320,151 @@ func RestoreDeltaBlockBackup(backupURL, volDevName string) error {
 		}
 	}
 
+	return nil
+}
+
+func restoreBlockToFile(volumeName string, volDev *os.File, bsDriver BackupStoreDriver, blk BlockMapping) error {
+	blkFile := getBlockFilePath(volumeName, blk.BlockChecksum)
+	rc, err := bsDriver.Read(blkFile)
+	if err != nil {
+		return err
+	}
+	defer rc.Close()
+	r, err := util.DecompressAndVerify(rc, blk.BlockChecksum)
+	if err != nil {
+		return err
+	}
+	if _, err := volDev.Seek(blk.Offset, 0); err != nil {
+		return err
+	}
+	if _, err := io.CopyN(volDev, r, DEFAULT_BLOCK_SIZE); err != nil {
+		return err
+	}
+	return nil
+}
+
+func RestoreDeltaBlockBackupIncrementally(backupURL, volDevName, lastBackupName string) error {
+	bsDriver, err := GetBackupStoreDriver(backupURL)
+	if err != nil {
+		return err
+	}
+
+	srcBackupName, srcVolumeName, err := decodeBackupURL(backupURL)
+	if err != nil {
+		return err
+	}
+
+	vol, err := loadVolume(srcVolumeName, bsDriver)
+	if err != nil {
+		return generateError(logrus.Fields{
+			LogFieldVolume:    srcVolumeName,
+			LogEventBackupURL: backupURL,
+		}, "Volume doesn't exist in backupstore: %v", err)
+	}
+
+	if vol.Size == 0 || vol.Size%DEFAULT_BLOCK_SIZE != 0 {
+		return fmt.Errorf("Read invalid volume size %v", vol.Size)
+	}
+
+	// check lastBackupName
+	if !util.ValidateName(lastBackupName) {
+		return fmt.Errorf("Invalid parameter lastBackupName %v", lastBackupName)
+	}
+
+	// check volDev
+	var volDev *os.File
+	if _, err := os.Stat(volDevName); os.IsNotExist(err) {
+		volDev, err = os.Create(volDevName)
+		if err != nil {
+			return err
+		}
+		logrus.Debugf("Created new file %v", volDevName)
+	} else {
+		volDev, err = os.OpenFile(volDevName, os.O_RDWR, 0600)
+		if err != nil {
+			return err
+		}
+		logrus.Debugf("File %v existed\n", volDevName)
+	}
+	defer volDev.Close()
+
+	stat, err := volDev.Stat()
+	if err != nil {
+		return err
+	}
+
+	lastBackup, err := loadBackup(lastBackupName, srcVolumeName, bsDriver)
+	if err != nil {
+		return err
+	}
+	backup, err := loadBackup(srcBackupName, srcVolumeName, bsDriver)
+	if err != nil {
+		return err
+	}
+
+	log.WithFields(logrus.Fields{
+		LogFieldReason:     LogReasonStart,
+		LogFieldEvent:      LogEventRestoreIncre,
+		LogFieldObject:     LogFieldSnapshot,
+		LogFieldSnapshot:   srcBackupName,
+		LogFieldOrigVolume: srcVolumeName,
+		LogFieldVolumeDev:  volDevName,
+		LogEventBackupURL:  backupURL,
+	}).Debugf("Started incrementally restoring from %v to %v", lastBackup, backup)
+
+	emptyBlock := make([]byte, DEFAULT_BLOCK_SIZE)
+	for b, l := 0, 0; b < len(backup.Blocks) || l < len(lastBackup.Blocks); {
+		if b >= len(backup.Blocks) {
+			if err := fillBlockToFile(&emptyBlock, volDev, lastBackup.Blocks[l].Offset); err != nil {
+				return err
+			}
+			l++
+		}
+		if l >= len(lastBackup.Blocks) {
+			if err := restoreBlockToFile(srcVolumeName, volDev, bsDriver, backup.Blocks[b]); err != nil {
+				return err
+			}
+			b++
+		}
+
+		bB := backup.Blocks[b]
+		lB := lastBackup.Blocks[l]
+		if bB.Offset == lB.Offset {
+			if bB.BlockChecksum != lB.BlockChecksum {
+				if err := restoreBlockToFile(srcVolumeName, volDev, bsDriver, bB); err != nil {
+					return err
+				}
+			}
+			b++
+			l++
+		} else if bB.Offset < lB.Offset {
+			if err := restoreBlockToFile(srcVolumeName, volDev, bsDriver, bB); err != nil {
+				return err
+			}
+			b++
+		} else {
+			if err := fillBlockToFile(&emptyBlock, volDev, lB.Offset); err != nil {
+				return err
+			}
+			l++
+		}
+	}
+
+	// We want to truncate regular files, but not device
+	if stat.Mode()&os.ModeType == 0 {
+		log.Debugf("Truncate %v to size %v", volDevName, vol.Size)
+		if err := volDev.Truncate(vol.Size); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func fillBlockToFile(block *[]byte, volDev *os.File, offset int64) error {
+	if _, err := volDev.WriteAt(*block, offset); err != nil {
+		return err
+	}
 	return nil
 }
 

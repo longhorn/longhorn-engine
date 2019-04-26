@@ -18,10 +18,11 @@ const (
 	LogFieldKind         = "kind"
 	LogFieldFilepath     = "filepath"
 
-	LogFieldEvent   = "event"
-	LogEventBackup  = "backup"
-	LogEventRestore = "restore"
-	LogEventCompare = "compare"
+	LogFieldEvent        = "event"
+	LogEventBackup       = "backup"
+	LogEventRestore      = "restore"
+	LogEventRestoreIncre = "restore_incrementally"
+	LogEventCompare      = "compare"
 
 	LogFieldReason    = "reason"
 	LogReasonStart    = "start"

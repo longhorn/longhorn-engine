@@ -115,3 +115,13 @@ func LoadVolume(backupURL string) (*Volume, error) {
 	}
 	return loadVolume(volumeName, driver)
 }
+
+func GetBackupFromBackupURL(backupURL string) (string, error) {
+	backup, _, err := decodeBackupURL(backupURL)
+	return backup, err
+}
+
+func GetVolumeFromBackupURL(backupURL string) (string, error) {
+	_, volume, err := decodeBackupURL(backupURL)
+	return volume, err
+}
