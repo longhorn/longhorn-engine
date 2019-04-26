@@ -255,5 +255,6 @@ func ShutdownTgtd() error {
 	if err != nil {
 		return err
 	}
+	daemonIsRunning = false
 	return nil
 }
