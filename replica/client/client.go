@@ -158,6 +158,39 @@ func (c *ReplicaClient) MarkDiskAsRemoved(disk string) error {
 	}, nil)
 }
 
+func (c *ReplicaClient) RemoveFile(file string) error {
+	var running agent.Process
+	err := c.post(c.syncAgent+"/processes", &agent.Process{
+		ProcessType: "rm",
+		DestFile:    file,
+	}, &running)
+	if err != nil {
+		return err
+	}
+
+	start := 250 * time.Millisecond
+	for {
+		err := c.get(running.Links["self"], &running)
+		if err != nil {
+			return err
+		}
+
+		switch running.ExitCode {
+		case -2:
+			time.Sleep(start)
+			start = start * 2
+			if start > 1*time.Second {
+				start = 1 * time.Second
+			}
+		case 0:
+			return nil
+		default:
+			return fmt.Errorf("ExitCode: %d, output: %v",
+				running.ExitCode, running.Output)
+		}
+	}
+}
+
 func (c *ReplicaClient) OpenReplica() error {
 	r, err := c.GetReplica()
 	if err != nil {
@@ -337,6 +370,41 @@ func (c *ReplicaClient) RestoreBackup(backup, snapshotFile string) error {
 		ProcessType: "restore",
 		SrcFile:     backup,
 		DestFile:    snapshotFile,
+	}, &running)
+	if err != nil {
+		return err
+	}
+
+	start := 250 * time.Millisecond
+	for {
+		err := c.get(running.Links["self"], &running)
+		if err != nil {
+			return err
+		}
+
+		switch running.ExitCode {
+		case -2:
+			time.Sleep(start)
+			start = start * 2
+			if start > 1*time.Second {
+				start = 1 * time.Second
+			}
+		case 0:
+			return nil
+		default:
+			return fmt.Errorf("ExitCode: %d, output: %v",
+				running.ExitCode, running.Output)
+		}
+	}
+}
+
+func (c *ReplicaClient) RestoreBackupIncrementally(backup, deltaFile, lastRestored string) error {
+	var running agent.Process
+	err := c.post(c.syncAgent+"/processes", &agent.Process{
+		ProcessType: "restore-incre",
+		SrcFile:     backup,
+		DestFile:    deltaFile,
+		ExtraArgs:   []string{lastRestored},
 	}, &running)
 	if err != nil {
 		return err

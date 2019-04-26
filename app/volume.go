@@ -13,6 +13,8 @@ type VolumeInfo struct {
 	ReplicaCount int    `json:"replicaCount"`
 	Endpoint     string `json:"endpoint"`
 	Frontend     string `json:"frontend"`
+	IsRestoring  bool   `json:"isRestoring"`
+	LastRestored string `json:"lastRestored"`
 }
 
 func InfoCmd() cli.Command {
@@ -39,6 +41,8 @@ func info(c *cli.Context) error {
 		ReplicaCount: volume.ReplicaCount,
 		Endpoint:     volume.Endpoint,
 		Frontend:     volume.Frontend,
+		IsRestoring:  volume.IsRestoring,
+		LastRestored: volume.LastRestored,
 	}
 
 	output, err := json.MarshalIndent(info, "", "\t")
