@@ -6,11 +6,12 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/rancher/go-iscsi-helper/iscsi"
 	iutil "github.com/rancher/go-iscsi-helper/util"
-	"github.com/rancher/longhorn-engine/util"
+	"github.com/sirupsen/logrus"
 	"github.com/yasker/nsfilelock"
+
+	"github.com/rancher/longhorn-engine/util"
 )
 
 var (
@@ -240,6 +241,9 @@ func DeleteTarget(target string) error {
 			return err
 		}
 		if err := iscsi.DeleteTarget(TargetID); err != nil {
+			return err
+		}
+		if err := iscsi.ShutdownTgtd(); err != nil {
 			return err
 		}
 	}

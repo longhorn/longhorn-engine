@@ -1,6 +1,7 @@
 package util
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"net/http"
@@ -14,15 +15,17 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/gorilla/handlers"
 	"github.com/satori/go.uuid"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 )
 
 var (
 	MaximumVolumeNameSize = 64
 	parsePattern          = regexp.MustCompile(`(.*):(\d+)`)
+	validVolumeName       = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.-]+$`)
+	validLabelValue       = regexp.MustCompile(`^[a-zA-Z0-9_.\-/:]+$`)
 
 	cmdTimeout = time.Minute // one minute by default
 )
@@ -78,7 +81,7 @@ func FilteredLoggingHandler(filteredPaths map[string]struct{}, writer io.Writer,
 	return filteredLoggingHandler{
 		filteredPaths:  filteredPaths,
 		handler:        router,
-		loggingHandler: handlers.LoggingHandler(writer, router),
+		loggingHandler: handlers.CombinedLoggingHandler(writer, router),
 	}
 }
 
@@ -147,8 +150,11 @@ func ValidVolumeName(name string) bool {
 	if len(name) > MaximumVolumeNameSize {
 		return false
 	}
-	validName := regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.-]+$`)
-	return validName.MatchString(name)
+	return validVolumeName.MatchString(name)
+}
+
+func ValidLabelValue(name string) bool {
+	return validLabelValue.MatchString(name)
 }
 
 func Volume2ISCSIName(name string) string {
@@ -181,7 +187,7 @@ func ParseLabels(labels []string) (map[string]string, error) {
 		if !ValidVolumeName(key) {
 			return nil, fmt.Errorf("Invalid key %v for label %v", key, label)
 		}
-		if !ValidVolumeName(value) {
+		if !ValidLabelValue(value) {
 			return nil, fmt.Errorf("Invalid value %v for label %v", value, label)
 		}
 		result[key] = value
@@ -193,6 +199,8 @@ func UnescapeURL(url string) string {
 	// Deal with escape in url inputed from bash
 	result := strings.Replace(url, "\\u0026", "&", 1)
 	result = strings.Replace(result, "u0026", "&", 1)
+	result = strings.TrimLeft(result, "\"'")
+	result = strings.TrimRight(result, "\"'")
 	return result
 }
 
@@ -201,13 +209,16 @@ func Execute(binary string, args ...string) (string, error) {
 }
 
 func ExecuteWithTimeout(timeout time.Duration, binary string, args ...string) (string, error) {
-	var output []byte
 	var err error
 	cmd := exec.Command(binary, args...)
 	done := make(chan struct{})
 
+	var output, stderr bytes.Buffer
+	cmd.Stdout = &output
+	cmd.Stderr = &stderr
+
 	go func() {
-		output, err = cmd.CombinedOutput()
+		err = cmd.Run()
 		done <- struct{}{}
 	}()
 
@@ -220,13 +231,30 @@ func ExecuteWithTimeout(timeout time.Duration, binary string, args ...string) (s
 			}
 
 		}
-		return "", fmt.Errorf("Timeout executing: %v %v, output %v, error %v", binary, args, string(output), err)
+		return "", fmt.Errorf("Timeout executing: %v %v, output %s, stderr, %s, error %v",
+			binary, args, output.String(), stderr.String(), err)
 	}
 
 	if err != nil {
-		return "", fmt.Errorf("Failed to execute: %v %v, output %v, error %v", binary, args, string(output), err)
+		return "", fmt.Errorf("Failed to execute: %v %v, output %s, stderr, %s, error %v",
+			binary, args, output.String(), stderr.String(), err)
 	}
-	return string(output), nil
+	return output.String(), nil
+}
+
+func ExecuteWithoutTimeout(binary string, args ...string) (string, error) {
+	var err error
+	var output, stderr bytes.Buffer
+
+	cmd := exec.Command(binary, args...)
+	cmd.Stdout = &output
+	cmd.Stderr = &stderr
+
+	if err = cmd.Run(); err != nil {
+		return "", fmt.Errorf("Failed to execute: %v %v, output %s, stderr, %s, error %v",
+			binary, args, output.String(), stderr.String(), err)
+	}
+	return output.String(), nil
 }
 
 func CheckBackupType(backupTarget string) (string, error) {

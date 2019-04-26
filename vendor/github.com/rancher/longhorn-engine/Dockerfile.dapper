@@ -21,7 +21,7 @@ RUN apt-get update && \
     apt-get install -y cmake wget curl git less file \
         libglib2.0-dev libkmod-dev libnl-genl-3-dev linux-libc-dev pkg-config psmisc python-tox qemu-utils fuse python-dev \
         devscripts debhelper bash-completion librdmacm-dev libibverbs-dev xsltproc docbook-xsl \
-        libconfig-general-perl libaio-dev libc6-dev sg3-utils
+        libconfig-general-perl libaio-dev libc6-dev sg3-utils iptables libltdl7
 
 # needed for ${!var} substitution
 RUN rm -f /bin/sh && ln -s /bin/bash /bin/sh
@@ -29,15 +29,15 @@ RUN rm -f /bin/sh && ln -s /bin/bash /bin/sh
 # Install Go & tools
 ENV GOLANG_ARCH_amd64=amd64 GOLANG_ARCH_arm=armv6l GOLANG_ARCH=GOLANG_ARCH_${ARCH} \
     GOPATH=/go PATH=/go/bin:/usr/local/go/bin:${PATH} SHELL=/bin/bash
-RUN wget -O - https://storage.googleapis.com/golang/go1.8.3.linux-${!GOLANG_ARCH}.tar.gz | tar -xzf - -C /usr/local && \
-    go get github.com/rancher/trash && go get github.com/golang/lint/golint
+RUN wget -O - https://storage.googleapis.com/golang/go1.10.3.linux-${!GOLANG_ARCH}.tar.gz | tar -xzf - -C /usr/local && \
+    go get github.com/rancher/trash && go get -u golang.org/x/lint/golint
 
 # Docker
-ENV DOCKER_URL_amd64=https://get.docker.com/builds/Linux/x86_64/docker-1.10.3 \
-    DOCKER_URL_arm=https://github.com/rancher/docker/releases/download/v1.10.3-ros1/docker-1.10.3_arm \
+ENV DOCKER_URL_amd64=https://download.docker.com/linux/ubuntu/dists/xenial/pool/stable/amd64/docker-ce_17.03.3~ce-0~ubuntu-xenial_amd64.deb \
+    DOCKER_URL_arm=https://download.docker.com/linux/ubuntu/dists/xenial/pool/stable/arm64/docker-ce_18.06.1~ce~3-0~ubuntu_arm64.deb \
     DOCKER_URL=DOCKER_URL_${ARCH}
 
-RUN wget -O /usr/bin/docker ${!DOCKER_URL} && chmod +x /usr/bin/docker
+RUN wget ${!DOCKER_URL} -O docker_ce_${ARCH} && dpkg -i docker_ce_${ARCH}
 
 # Minio
 RUN wget -O /usr/bin/minio https://dl.minio.io/server/minio/release/linux-amd64/archive/minio.RELEASE.2018-05-25T19-49-13Z && chmod +x /usr/bin/minio
@@ -55,10 +55,10 @@ RUN cd /usr/src/tcmu-runner && \
     cp libtcmu_static.a /usr/local/lib/libtcmu.a
 
 # Install libqcow
-RUN wget -O - https://github.com/libyal/libqcow/releases/download/20160123/libqcow-alpha-20160123.tar.gz | tar xvzf - -C /usr/src
-RUN cd /usr/src/libqcow-20160123 && \
+RUN wget -O - https://s3-us-west-1.amazonaws.com/rancher-longhorn/libqcow-alpha-20181117.tar.gz | tar xvzf - -C /usr/src
+RUN cd /usr/src/libqcow-20181117 && \
     ./configure
-RUN cd /usr/src/libqcow-20160123 && \
+RUN cd /usr/src/libqcow-20181117 && \
     make -j$(nproc) && \
     make install
 
@@ -74,7 +74,7 @@ RUN cd /usr/src && \
 RUN cd /usr/src && \
     git clone https://github.com/rancher/tgt.git && \
     cd tgt && \
-    git checkout 4dcaac8ca91804bef8f21fdf388efeaf5e81184e && \
+    git checkout eed5fafb4de79b6a5a6ca4164773bf4286942afe && \
     ./scripts/build-pkg.sh deb && \
     dpkg -i ./pkg/tgt_*.deb
 
@@ -82,7 +82,7 @@ RUN cd /usr/src && \
 RUN cd /go/src/github.com/rancher && \
     git clone https://github.com/rancher/longhorn-engine-launcher.git && \
     cd longhorn-engine-launcher && \
-    git checkout a30df8aa556da730d3649a5fb2eca8d88c32b174 && \
+    git checkout 484d20ef51bcaae168b7d336ca218fbe66385229 && \
     go build && \
     cp longhorn-engine-launcher /usr/local/bin
 
