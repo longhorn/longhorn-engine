@@ -25,15 +25,17 @@ const (
 
 type Controller struct {
 	sync.RWMutex
-	Name       string
-	size       int64
-	sectorSize int64
-	replicas   []types.Replica
-	factory    types.BackendFactory
-	backend    *replicator
-	frontend   types.Frontend
-	launcher   string
-	launcherID string
+	Name         string
+	size         int64
+	sectorSize   int64
+	replicas     []types.Replica
+	factory      types.BackendFactory
+	backend      *replicator
+	frontend     types.Frontend
+	launcher     string
+	launcherID   string
+	isRestoring  bool
+	lastRestored string
 
 	listenAddr string
 	listenPort string
@@ -53,6 +55,7 @@ func NewController(name string, factory types.BackendFactory, frontend types.Fro
 		frontend:    frontend,
 		launcher:    launcher,
 		launcherID:  launcherID,
+		isRestoring: false,
 		Broadcaster: &broadcaster.Broadcaster{},
 		metrics:     &types.Metrics{},
 	}
@@ -493,6 +496,7 @@ func (c *Controller) Shutdown() error {
 	if err != nil {
 		logrus.Error("Error when shutting down backend:", err)
 	}
+	c.cleanupRestoreInfo()
 	return nil
 }
 
@@ -535,6 +539,48 @@ func (c *Controller) FrontendState() string {
 		return string(c.frontend.State())
 	}
 	return ""
+}
+
+func (c *Controller) IsRestoring() bool {
+	return c.isRestoring
+}
+
+func (c *Controller) LastRestored() string {
+	return c.lastRestored
+}
+
+func (c *Controller) PrepareRestore(lastRestored string) error {
+	c.Lock()
+	defer c.Unlock()
+	if c.isRestoring {
+		return fmt.Errorf("volume %v is restoring", c.Name)
+	}
+	if c.lastRestored != "" && c.lastRestored != lastRestored {
+		return fmt.Errorf("flag lastRestored %v in command doesn't match field LastRestored %v in engine", lastRestored, c.lastRestored)
+	}
+	c.isRestoring = true
+	return nil
+}
+
+func (c *Controller) FinishRestore(currentRestored string) error {
+	c.Lock()
+	defer c.Unlock()
+	if !c.isRestoring {
+		return fmt.Errorf("BUG: volume %v is not restoring", c.Name)
+	}
+	if currentRestored != "" {
+		c.lastRestored = currentRestored
+	}
+	c.isRestoring = false
+	return nil
+}
+
+func (c *Controller) cleanupRestoreInfo() {
+	c.Lock()
+	defer c.Unlock()
+	c.lastRestored = ""
+	c.isRestoring = false
+	return
 }
 
 func (c *Controller) UpdatePort(newPort int) error {

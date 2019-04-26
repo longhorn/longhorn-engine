@@ -24,6 +24,8 @@ type Volume struct {
 	Endpoint      string `json:"endpoint"`
 	Frontend      string `json:"frontend"`
 	FrontendState string `json:"frontendState"`
+	IsRestoring   bool   `json:"isRestoring"`
+	LastRestored  string `json:"lastRestored"`
 }
 
 type VolumeCollection struct {
@@ -86,7 +88,17 @@ type StartFrontendInput struct {
 	Frontend string `json:"frontend"`
 }
 
-func NewVolume(context *api.ApiContext, name, endpoint, frontend, frontendState string, replicas int) *Volume {
+type PrepareRestoreInput struct {
+	client.Resource
+	LastRestored string `json:"lastRestored"`
+}
+
+type FinishRestoreInput struct {
+	client.Resource
+	CurrentRestored string `json:"currentRestored"`
+}
+
+func NewVolume(context *api.ApiContext, name, endpoint, frontend, frontendState string, replicas int, isRestoring bool, lastRestored string) *Volume {
 	v := &Volume{
 		Resource: client.Resource{
 			Id:      EncodeID(name),
@@ -98,6 +110,8 @@ func NewVolume(context *api.ApiContext, name, endpoint, frontend, frontendState 
 		Endpoint:      endpoint,
 		Frontend:      frontend,
 		FrontendState: frontendState,
+		IsRestoring:   isRestoring,
+		LastRestored:  lastRestored,
 	}
 
 	if replicas == 0 {
@@ -108,6 +122,8 @@ func NewVolume(context *api.ApiContext, name, endpoint, frontend, frontendState 
 		v.Actions["revert"] = context.UrlBuilder.ActionLink(v.Resource, "revert")
 		v.Actions["startfrontend"] = context.UrlBuilder.ActionLink(v.Resource, "startfrontend")
 		v.Actions["shutdownfrontend"] = context.UrlBuilder.ActionLink(v.Resource, "shutdownfrontend")
+		v.Actions["preparerestore"] = context.UrlBuilder.ActionLink(v.Resource, "preparerestore")
+		v.Actions["finishrestore"] = context.UrlBuilder.ActionLink(v.Resource, "finishrestore")
 	}
 	return v
 }
@@ -153,6 +169,8 @@ func NewSchema() *client.Schemas {
 	schemas.AddType("prepareRebuildOutput", PrepareRebuildOutput{})
 	schemas.AddType("portInput", PortInput{})
 	schemas.AddType("startFrontendInput", StartFrontendInput{})
+	schemas.AddType("prepareRestoreInput", PrepareRestoreInput{})
+	schemas.AddType("finishRestoreInput", FinishRestoreInput{})
 	schemas.AddType("version", Version{})
 
 	replica := schemas.AddType("replica", Replica{})
@@ -195,6 +213,12 @@ func NewSchema() *client.Schemas {
 		},
 		"shutdownfrontend": {
 			Output: "volume",
+		},
+		"preparerestore": {
+			Input: "prepareRestoreInput",
+		},
+		"finishrestore": {
+			Input: "finishRestoreInput",
 		},
 	}
 

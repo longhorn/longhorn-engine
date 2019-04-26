@@ -34,6 +34,9 @@ const (
 	diskSuffix         = ".img"
 	diskName           = diskPrefix + "%s" + diskSuffix
 	maximumChainLength = 250
+	deltaPrefix        = "volume-delta-"
+	deltaSuffix        = ".img"
+	deltaName          = deltaPrefix + "%s" + deltaSuffix
 )
 
 var (
@@ -207,6 +210,10 @@ func GetSnapshotNameFromDiskName(diskName string) (string, error) {
 	result := strings.TrimPrefix(diskName, diskPrefix)
 	result = strings.TrimSuffix(result, diskSuffix)
 	return result, nil
+}
+
+func GenerateDeltaFileName(name string) string {
+	return fmt.Sprintf(deltaName, name)
 }
 
 func IsHeadDisk(diskName string) bool {

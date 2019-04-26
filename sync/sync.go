@@ -17,6 +17,8 @@ var (
 	RetryCounts = 3
 )
 
+const VolumeHeadName = "volume-head"
+
 type Task struct {
 	client *client.ControllerClient
 }
@@ -179,6 +181,20 @@ func (t *Task) isRebuilding(replicaInController *rest.Replica) (bool, error) {
 	}
 
 	return replica.Rebuilding, nil
+}
+
+func (t *Task) isDirty(replicaInController *rest.Replica) (bool, error) {
+	repClient, err := replicaClient.NewReplicaClient(replicaInController.Address)
+	if err != nil {
+		return false, err
+	}
+
+	replica, err := repClient.GetReplica()
+	if err != nil {
+		return false, err
+	}
+
+	return replica.Dirty, nil
 }
 
 func (t *Task) prepareRemoveSnapshot(replicaInController *rest.Replica, snapshot string) ([]replica.PrepareRemoveAction, error) {
@@ -448,8 +464,6 @@ func (t *Task) getToReplica(address string) (rest.Replica, error) {
 
 	return rest.Replica{}, fmt.Errorf("Failed to find target replica to copy to")
 }
-
-const VolumeHeadName = "volume-head"
 
 func getNonBackingDisks(address string) (map[string]replica.DiskInfo, error) {
 	repClient, err := replicaClient.NewReplicaClient(address)

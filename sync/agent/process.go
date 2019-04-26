@@ -131,10 +131,14 @@ func (s *Server) launch(p *Process) error {
 		return s.launchRmBackup(p)
 	case "restore":
 		return s.launchRestore(p)
+	case "restore-incre":
+		return s.launchRestoreIncrementally(p)
 	case "inspectbackup":
 		return s.launchInspectBackup(p)
 	case "listbackup":
 		return s.launchListBackup(p)
+	case "rm":
+		return s.launchRemoveFile(p)
 	}
 	return fmt.Errorf("Unknown process type %s", p.ProcessType)
 }
@@ -368,6 +372,41 @@ func (s *Server) launchRestore(p *Process) error {
 	return nil
 }
 
+func (s *Server) launchRestoreIncrementally(p *Process) error {
+	buf := new(bytes.Buffer)
+
+	cmd := reexec.Command("sbackup", "restore", p.SrcFile, "--incrementally", "--to", p.DestFile, "--last-restored", p.ExtraArgs[0])
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Pdeathsig: syscall.SIGKILL,
+	}
+	cmd.Stdout = buf
+	cmd.Stderr = os.Stderr
+	if err := cmd.Start(); err != nil {
+		return err
+	}
+
+	logrus.Infof("Running %s %v", cmd.Path, cmd.Args)
+	err := cmd.Wait()
+
+	p.Output = buf.String()
+	fmt.Fprintf(os.Stdout, p.Output)
+	if err != nil {
+		logrus.Infof("Error running %s %v: %v", "sbackup", cmd.Args, err)
+		p.ExitCode = 1
+		if exitError, ok := err.(*exec.ExitError); ok {
+			if waitStatus, ok := exitError.Sys().(syscall.WaitStatus); ok {
+				logrus.Infof("Error running %s %v: %v", "sbackup", cmd.Args, waitStatus.ExitStatus())
+				p.ExitCode = waitStatus.ExitStatus()
+			}
+		}
+		return err
+	}
+
+	p.ExitCode = 0
+	logrus.Infof("Done running %s %v", "sbackup", cmd.Args)
+	return nil
+}
+
 func (s *Server) launchInspectBackup(p *Process) error {
 	buf := new(bytes.Buffer)
 
@@ -439,5 +478,26 @@ func (s *Server) launchListBackup(p *Process) error {
 
 	p.ExitCode = 0
 	logrus.Infof("Done running %s %v", "sbackup", cmd.Args)
+	return nil
+}
+
+func (s *Server) launchRemoveFile(p *Process) error {
+	logrus.Infof("Running rm %v", p.DestFile)
+	err := os.Remove(p.DestFile)
+
+	if err != nil {
+		logrus.Infof("Error running %s %v: %v", "rm", p.DestFile, err)
+		p.ExitCode = 1
+		if exitError, ok := err.(*exec.ExitError); ok {
+			if waitStatus, ok := exitError.Sys().(syscall.WaitStatus); ok {
+				logrus.Infof("Error running %s %v: %v", "rm", p.DestFile, waitStatus.ExitStatus())
+				p.ExitCode = waitStatus.ExitStatus()
+			}
+		}
+		return err
+	}
+
+	p.ExitCode = 0
+	logrus.Infof("Done running %s %v", "rm", p.DestFile)
 	return nil
 }

@@ -2,8 +2,8 @@ package sync
 
 import (
 	"fmt"
-
 	"github.com/sirupsen/logrus"
+	"sync"
 
 	"github.com/rancher/longhorn-engine/controller/rest"
 	"github.com/rancher/longhorn-engine/replica"
@@ -122,5 +122,97 @@ func (t *Task) restoreBackup(replicaInController *rest.Replica, backup string, s
 		logrus.Errorf("Failed restoring backup %s on %s", backup, replicaInController.Address)
 		return err
 	}
+	return nil
+}
+
+func (t *Task) RestoreBackupIncrementally(backup, lastRestored string) error {
+	replicas, err := t.client.ListReplicas()
+	if err != nil {
+		return err
+	}
+
+	for _, r := range replicas {
+		if ok, err := t.isRebuilding(&r); err != nil {
+			return err
+		} else if ok {
+			return fmt.Errorf("can not incrementally restore from backup because %s is rebuilding", r.Address)
+		}
+		if ok, err := t.isDirty(&r); err != nil {
+			return err
+		} else if ok {
+			return fmt.Errorf("BUG: replica %s of standby volume cannot be dirty", r.Address)
+		}
+	}
+
+	snapshots, err := GetSnapshotsInfo(replicas)
+	if err != nil {
+		return err
+	}
+	if len(snapshots) != 2 {
+		return fmt.Errorf("BUG: replicas %s of standby volume should contains 2 snapshots only: volume head and the restore file", replicas)
+	}
+	var snapshotName string
+	for _, s := range snapshots {
+		if s.Name != VolumeHeadName {
+			snapshotName = s.Name
+		}
+	}
+	snapshotDiskName := replica.GenerateSnapshotDiskName(snapshotName)
+
+	// generate a temporary delta file for incrementally restore.
+	// we won't directly restore to the snapshot since a crashed restoring will mess up the snapshot
+	deltaFileName := replica.GenerateDeltaFileName(lastRestored)
+
+	errorMap := sync.Map{}
+	var wg sync.WaitGroup
+	wg.Add(len(replicas))
+	for _, r := range replicas {
+		go func(replica rest.Replica) {
+			defer wg.Done()
+			err := t.restoreBackupIncrementally(&replica, snapshotDiskName, backup, deltaFileName, lastRestored)
+			if err != nil {
+				errorMap.Store(replica.Address, err)
+			}
+		}(r)
+	}
+	wg.Wait()
+	for _, r := range replicas {
+		if v, ok := errorMap.Load(r.Address); ok {
+			err = v.(error)
+			logrus.Errorf("replica %v failed to incrementally restore: %v", r.Address, err)
+		}
+	}
+	return err
+}
+
+func (t *Task) restoreBackupIncrementally(replicaInController *rest.Replica, snapshotDiskName, backup, deltaFileName, lastRestored string) error {
+	if replicaInController.Mode != "RW" {
+		return fmt.Errorf("can only incrementally restore backup from replica in mode RW, got mode %s", replicaInController.Mode)
+	}
+
+	repClient, err := replicaClient.NewReplicaClient(replicaInController.Address)
+	if err != nil {
+		return err
+	}
+
+	logrus.Infof("Incrementally restoring backup %s on %s", backup, replicaInController.Address)
+
+	// incrementally restore to delta file
+	if err := repClient.RestoreBackupIncrementally(backup, deltaFileName, lastRestored); err != nil {
+		logrus.Errorf("Failed to incrementally restore backup %s on %s", backup, replicaInController.Address)
+		return err
+	}
+
+	// coalesce delta file to snapshot/disk file
+	if err = repClient.Coalesce(deltaFileName, snapshotDiskName); err != nil {
+		logrus.Errorf("Failed to coalesce %s on %s: %v", deltaFileName, snapshotDiskName, err)
+		return err
+	}
+
+	// cleanup
+	if err = repClient.RemoveFile(deltaFileName); err != nil {
+		logrus.Warnf("Failed to cleanup delta file %s: %v", deltaFileName, err)
+	}
+
 	return nil
 }

@@ -8,6 +8,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 
+	"github.com/rancher/backupstore"
 	"github.com/rancher/backupstore/cmd"
 
 	"github.com/rancher/longhorn-engine/sync"
@@ -55,7 +56,17 @@ func BackupCreateCmd() cli.Command {
 func BackupRestoreCmd() cli.Command {
 	return cli.Command{
 		Name:  "restore",
-		Usage: "restore a backup to current volume: restore <backup>",
+		Usage: "restore a backup to current volume: restore <backup>  or  restore <backup> --incrementally --last-restored <last-restored>",
+		Flags: []cli.Flag{
+			cli.BoolFlag{
+				Name:  "incrementally, I",
+				Usage: "Whether do incremental restore",
+			},
+			cli.StringFlag{
+				Name:  "last-restored",
+				Usage: "Last restored backup name",
+			},
+		},
 		Action: func(c *cli.Context) {
 			if err := restoreBackup(c); err != nil {
 				logrus.Fatalf("Error running restore backup command: %v", err)
@@ -115,6 +126,13 @@ func createBackup(c *cli.Context) error {
 }
 
 func restoreBackup(c *cli.Context) error {
+	if c.Bool("incrementally") {
+		return doRestoreBackupIncrementally(c)
+	}
+	return doRestoreBackup(c)
+}
+
+func doRestoreBackup(c *cli.Context) error {
 	url := c.GlobalString("url")
 	task := sync.NewTask(url)
 
@@ -125,6 +143,43 @@ func restoreBackup(c *cli.Context) error {
 
 	if err := task.RestoreBackup(backup); err != nil {
 		return err
+	}
+
+	return nil
+}
+
+func doRestoreBackupIncrementally(c *cli.Context) error {
+	url := c.GlobalString("url")
+	task := sync.NewTask(url)
+
+	backup := c.Args().First()
+	if backup == "" {
+		return fmt.Errorf("Missing required parameter backup")
+	}
+	backupName, err := backupstore.GetBackupFromBackupURL(backup)
+	if err != nil {
+		return err
+	}
+
+	lastRestored := c.String("last-restored")
+
+	cli := getCli(c)
+	err = cli.PrepareRestore(lastRestored)
+	if err != nil {
+		return err
+	}
+
+	if err := task.RestoreBackupIncrementally(backup, lastRestored); err != nil {
+		// failed to restore, no need to update field lastRestored
+		if extraErr := cli.FinishRestore(""); extraErr != nil {
+			return errors.Wrapf(extraErr, "failed to execute and finsish incrementally restoring: %v", err)
+		}
+		return err
+	}
+
+	// TODO: will error out here cause dead lock?
+	if err = cli.FinishRestore(backupName); err != nil {
+		return errors.Wrapf(err, "failed to finsish incrementally restoring")
 	}
 
 	return nil

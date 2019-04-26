@@ -49,6 +49,14 @@ var (
 				Name:  "to",
 				Usage: "destination file of restoring, will be created if not exists",
 			},
+			cli.BoolFlag{
+				Name:  "incrementally, I",
+				Usage: "Whether do incremental restore",
+			},
+			cli.StringFlag{
+				Name:  "last-restored",
+				Usage: "last restored backup name, the backup should exist in the backupstore",
+			},
 		},
 		Action: cmdBackupRestore,
 	}
@@ -206,8 +214,14 @@ func doBackupCreate(c *cli.Context) error {
 }
 
 func cmdBackupRestore(c *cli.Context) {
-	if err := doBackupRestore(c); err != nil {
-		panic(err)
+	if c.Bool("incrementally") {
+		if err := doBackupRestoreIncrementally(c); err != nil {
+			panic(err)
+		}
+	} else {
+		if err := doBackupRestore(c); err != nil {
+			panic(err)
+		}
 	}
 }
 
@@ -233,6 +247,42 @@ func doBackupRestore(c *cli.Context) error {
 	if err := createNewSnapshotMetafile(toFile + ".meta"); err != nil {
 		return err
 	}
+	return nil
+}
+
+func doBackupRestoreIncrementally(c *cli.Context) error {
+	if c.NArg() == 0 {
+		return RequiredMissingError("backup URL")
+	}
+	backupURL := c.Args()[0]
+	if backupURL == "" {
+		return RequiredMissingError("backup URL")
+	}
+	backupURL = util.UnescapeURL(backupURL)
+
+	deltaFile := c.String("to")
+	if deltaFile == "" {
+		return RequiredMissingError("to")
+	}
+
+	lastRestored := c.String("last-restored")
+	if lastRestored == "" {
+		return RequiredMissingError("last-restored")
+	}
+
+	// check delta file
+	if _, err := os.Stat(deltaFile); err == nil {
+		logrus.Warnf("delta file %s for incremental restoring exists, will remove and re-create it", deltaFile)
+		err = os.Remove(deltaFile)
+		if err != nil {
+			return err
+		}
+	}
+
+	if err := backupstore.RestoreDeltaBlockBackupIncrementally(backupURL, deltaFile, lastRestored); err != nil {
+		return err
+	}
+
 	return nil
 }
 

@@ -11,6 +11,7 @@ type Process struct {
 	ProcessType string            `json:"processType"`
 	SrcFile     string            `json:"srcFile"`
 	DestFile    string            `json:"destfile"`
+	ExtraArgs   []string          `json:"extraArgs"`
 	Host        string            `json:"host"`
 	Port        int               `json:"port"`
 	ExitCode    int               `json:"exitCode"`

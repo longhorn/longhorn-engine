@@ -164,6 +164,32 @@ func (c *ControllerClient) PrepareRebuild(address string) (*rest.PrepareRebuildO
 	return &output, err
 }
 
+func (c *ControllerClient) PrepareRestore(lastRestored string) error {
+	volume, err := c.GetVolume()
+	if err != nil {
+		return err
+	}
+
+	input := &rest.PrepareRestoreInput{
+		LastRestored: lastRestored,
+	}
+
+	return c.post(volume.Actions["preparerestore"], input, nil)
+}
+
+func (c *ControllerClient) FinishRestore(currentRestored string) error {
+	volume, err := c.GetVolume()
+	if err != nil {
+		return err
+	}
+
+	input := &rest.FinishRestoreInput{
+		CurrentRestored: currentRestored,
+	}
+
+	return c.post(volume.Actions["finishrestore"], input, nil)
+}
+
 func (c *ControllerClient) GetVolume() (*rest.Volume, error) {
 	var volumes rest.VolumeCollection
 
