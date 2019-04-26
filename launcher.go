@@ -354,6 +354,22 @@ func (l *Launcher) reloadSocketConnection() error {
 	return nil
 }
 
+func (l *Launcher) setAndStartFrontend(frontend string) error {
+	if l.frontend != "" {
+		return fmt.Errorf("cannot set frontend if it's already set")
+	}
+	if frontend != FrontendTGTBlockDev && frontend != FrontendTGTISCSI {
+		return fmt.Errorf("Invalid frontend %v", frontend)
+	}
+	l.frontend = frontend
+	// the controller will call back to launcher to start the frontend
+	if err := l.currentController.StartFrontend("socket"); err != nil {
+		return err
+	}
+	logrus.Infof("Frontend %v has been set and started", frontend)
+	return nil
+}
+
 func (l *Launcher) StartFrontend(cxt context.Context, identity *rpc.Identity) (*rpc.Empty, error) {
 	if identity.ID != l.currentController.ID {
 		logrus.Infof("launcher: Ignore start frontend from %v since it's not the current controller", identity.ID)
@@ -374,6 +390,13 @@ func (l *Launcher) ShutdownFrontend(cxt context.Context, identity *rpc.Identity)
 		return &rpc.Empty{}, nil
 	}
 	if err := l.shutdownFrontend(); err != nil {
+		return nil, err
+	}
+	return &rpc.Empty{}, nil
+}
+
+func (l *Launcher) SetFrontend(cxt context.Context, frontend *rpc.Frontend) (*rpc.Empty, error) {
+	if err := l.setAndStartFrontend(frontend.Frontend); err != nil {
 		return nil, err
 	}
 	return &rpc.Empty{}, nil

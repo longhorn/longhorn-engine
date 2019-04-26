@@ -126,6 +126,18 @@ func FrontendShutdownCmd() cli.Command {
 	}
 }
 
+func FrontendSetCmd() cli.Command {
+	return cli.Command{
+		Name:  "frontend-set",
+		Usage: "Set frontend to tgt-blockdev or tgt-iscsi and enable it. Only valid if no frontend has been set",
+		Action: func(c *cli.Context) {
+			if err := setFrontend(c); err != nil {
+				logrus.Fatalf("Error running frontend-set command: %v.", err)
+			}
+		},
+	}
+}
+
 func start(c *cli.Context) error {
 	if c.NArg() == 0 {
 		return errors.New("volume name is required")
@@ -277,6 +289,31 @@ func shutdownFrontend(c *cli.Context) error {
 	return nil
 }
 
+func setFrontend(c *cli.Context) error {
+	if c.NArg() == 0 {
+		return fmt.Errorf("frontend is required as the first argument")
+	}
+	frontend := c.Args()[0]
+
+	url := c.GlobalString("url")
+	conn, err := grpc.Dial(url, grpc.WithInsecure())
+	if err != nil {
+		return fmt.Errorf("cannot connect to %v: %v", url, err)
+	}
+	defer conn.Close()
+
+	client := rpc.NewLonghornLauncherServiceClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), FrontendTimeout)
+	defer cancel()
+
+	if _, err := client.SetFrontend(ctx, &rpc.Frontend{
+		Frontend: frontend,
+	}); err != nil {
+		return fmt.Errorf("failed to start frontend: %v", err)
+	}
+	return nil
+}
+
 func main() {
 	a := cli.NewApp()
 	a.Flags = []cli.Flag{
@@ -294,6 +331,7 @@ func main() {
 		InfoCmd(),
 		FrontendStartCmd(),
 		FrontendShutdownCmd(),
+		FrontendSetCmd(),
 	}
 	if err := a.Run(os.Args); err != nil {
 		logrus.Fatal("Error when executing command: ", err)

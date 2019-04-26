@@ -19,6 +19,19 @@ type PortInput struct {
 	Port int
 }
 
+type StartFrontendInput struct {
+	Frontend string `json:"frontend"`
+}
+
+type Volume struct {
+	ID       string `json:"id"`
+	Frontend string `json:"frontend"`
+}
+
+type VolumeCollection struct {
+	Data []Volume `json:"data"`
+}
+
 func NewControllerClient(controller string) *ControllerClient {
 	if !strings.HasSuffix(controller, "/v1") {
 		controller += "/v1"
@@ -28,6 +41,19 @@ func NewControllerClient(controller string) *ControllerClient {
 	}
 }
 
+func (c *ControllerClient) StartFrontend(frontend string) error {
+	volume, err := c.GetVolume()
+	if err != nil {
+		return err
+	}
+	if volume.Frontend != "" {
+		return fmt.Errorf("volume already have frontend set as %v", volume.Frontend)
+	}
+	return c.post("/volumes/"+volume.ID+"?action=startfrontend", StartFrontendInput{
+		Frontend: frontend,
+	}, nil)
+}
+
 func (c *ControllerClient) UpdatePort(port int) error {
 	err := c.post("/settings/updateport", &PortInput{Port: port}, nil)
 	return err
@@ -35,6 +61,14 @@ func (c *ControllerClient) UpdatePort(port int) error {
 
 func (c *ControllerClient) TestConnection() error {
 	return c.get("/volumes", nil)
+}
+
+func (c *ControllerClient) GetVolume() (*Volume, error) {
+	volumes := VolumeCollection{}
+	if err := c.get("/volumes", &volumes); err != nil {
+		return nil, err
+	}
+	return &volumes.Data[0], nil
 }
 
 func (c *ControllerClient) post(path string, req, resp interface{}) error {

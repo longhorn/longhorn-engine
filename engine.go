@@ -243,6 +243,15 @@ func (c *Controller) FinalizeUpgrade() error {
 	return nil
 }
 
+func (c *Controller) StartFrontend(frontend string) error {
+	client := NewControllerClient("http://" + c.Listen)
+	if err := client.StartFrontend(frontend); err != nil {
+		return err
+	}
+	logrus.Infof("launcher: Controller frontend %v started", frontend)
+	return nil
+}
+
 func cp(src, dst string) error {
 	cmd := exec.Command("cp", src, dst)
 	if err := cmd.Run(); err != nil {
