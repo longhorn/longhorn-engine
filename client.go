@@ -46,12 +46,17 @@ func (c *ControllerClient) StartFrontend(frontend string) error {
 	if err != nil {
 		return err
 	}
-	if volume.Frontend != "" {
-		return fmt.Errorf("volume already have frontend set as %v", volume.Frontend)
-	}
 	return c.post("/volumes/"+volume.ID+"?action=startfrontend", StartFrontendInput{
 		Frontend: frontend,
 	}, nil)
+}
+
+func (c *ControllerClient) ShutdownFrontend() error {
+	volume, err := c.GetVolume()
+	if err != nil {
+		return err
+	}
+	return c.post("/volumes/"+volume.ID+"?action=shutdownfrontend", struct{}{}, nil)
 }
 
 func (c *ControllerClient) UpdatePort(port int) error {

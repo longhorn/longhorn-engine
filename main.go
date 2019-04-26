@@ -126,13 +126,25 @@ func FrontendShutdownCmd() cli.Command {
 	}
 }
 
-func FrontendSetCmd() cli.Command {
+func EngineFrontendStartCmd() cli.Command {
 	return cli.Command{
 		Name:  "engine-frontend-start",
 		Usage: "Set frontend to tgt-blockdev or tgt-iscsi and start engine frontend with it. Only valid if no frontend has been set",
 		Action: func(c *cli.Context) {
 			if err := startEngineFrontend(c); err != nil {
 				logrus.Fatalf("Error running engine-frontend-start command: %v.", err)
+			}
+		},
+	}
+}
+
+func EngineFrontendShutdownCmd() cli.Command {
+	return cli.Command{
+		Name:  "engine-frontend-shutdown",
+		Usage: "Shutdown the engine frontend. Only valid if the frontend has been set.",
+		Action: func(c *cli.Context) {
+			if err := shutdownEngineFrontend(c); err != nil {
+				logrus.Fatalf("Error running engine-frontend-shutdown command: %v.", err)
 			}
 		},
 	}
@@ -309,7 +321,25 @@ func startEngineFrontend(c *cli.Context) error {
 	if _, err := client.StartEngineFrontend(ctx, &rpc.Frontend{
 		Frontend: frontend,
 	}); err != nil {
-		return fmt.Errorf("failed to start frontend: %v", err)
+		return fmt.Errorf("failed to start engine frontend: %v", err)
+	}
+	return nil
+}
+
+func shutdownEngineFrontend(c *cli.Context) error {
+	url := c.GlobalString("url")
+	conn, err := grpc.Dial(url, grpc.WithInsecure())
+	if err != nil {
+		return fmt.Errorf("cannot connect to %v: %v", url, err)
+	}
+	defer conn.Close()
+
+	client := rpc.NewLonghornLauncherServiceClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), FrontendTimeout)
+	defer cancel()
+
+	if _, err := client.ShutdownEngineFrontend(ctx, &rpc.Empty{}); err != nil {
+		return fmt.Errorf("failed to shutdown engine frontend: %v", err)
 	}
 	return nil
 }
@@ -331,7 +361,8 @@ func main() {
 		InfoCmd(),
 		FrontendStartCmd(),
 		FrontendShutdownCmd(),
-		FrontendSetCmd(),
+		EngineFrontendStartCmd(),
+		EngineFrontendShutdownCmd(),
 	}
 	if err := a.Run(os.Args); err != nil {
 		logrus.Fatal("Error when executing command: ", err)

@@ -355,6 +355,10 @@ func (l *Launcher) reloadSocketConnection() error {
 }
 
 func (l *Launcher) startEngineFrontend(frontend string) error {
+	if l.frontend == frontend {
+		logrus.Debugf("Engine frontend %v is already up", frontend)
+		return nil
+	}
 	if l.frontend != "" {
 		return fmt.Errorf("cannot set frontend if it's already set")
 	}
@@ -366,7 +370,21 @@ func (l *Launcher) startEngineFrontend(frontend string) error {
 	if err := l.currentController.StartFrontend("socket"); err != nil {
 		return err
 	}
-	logrus.Infof("Frontend %v has been set and started", frontend)
+	logrus.Infof("Engine frontend %v has been started", frontend)
+	return nil
+}
+
+func (l *Launcher) shutdownEngineFrontend() error {
+	if l.frontend == "" {
+		logrus.Debugf("Engine frontend is already down")
+		return nil
+	}
+	// the controller will call back to launcher to shutdown the frontend
+	if err := l.currentController.ShutdownFrontend(); err != nil {
+		return err
+	}
+	l.frontend = ""
+	logrus.Info("Engine frontend has been shut down")
 	return nil
 }
 
@@ -397,6 +415,13 @@ func (l *Launcher) ShutdownFrontend(cxt context.Context, identity *rpc.Identity)
 
 func (l *Launcher) StartEngineFrontend(cxt context.Context, frontend *rpc.Frontend) (*rpc.Empty, error) {
 	if err := l.startEngineFrontend(frontend.Frontend); err != nil {
+		return nil, err
+	}
+	return &rpc.Empty{}, nil
+}
+
+func (l *Launcher) ShutdownEngineFrontend(cxt context.Context, empty *rpc.Empty) (*rpc.Empty, error) {
+	if err := l.shutdownEngineFrontend(); err != nil {
 		return nil, err
 	}
 	return &rpc.Empty{}, nil

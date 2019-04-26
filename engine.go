@@ -252,6 +252,15 @@ func (c *Controller) StartFrontend(frontend string) error {
 	return nil
 }
 
+func (c *Controller) ShutdownFrontend() error {
+	client := NewControllerClient("http://" + c.Listen)
+	if err := client.ShutdownFrontend(); err != nil {
+		return err
+	}
+	logrus.Info("launcher: Controller frontend has been shut down")
+	return nil
+}
+
 func cp(src, dst string) error {
 	cmd := exec.Command("cp", src, dst)
 	if err := cmd.Run(); err != nil {
