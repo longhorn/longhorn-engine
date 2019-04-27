@@ -530,6 +530,13 @@ func (c *Controller) Frontend() string {
 	return ""
 }
 
+func (c *Controller) FrontendState() string {
+	if c.frontend != nil {
+		return string(c.frontend.State())
+	}
+	return ""
+}
+
 func (c *Controller) UpdatePort(newPort int) error {
 	oldServer := c.RestServer
 	if oldServer == nil {

@@ -19,10 +19,11 @@ type Replica struct {
 
 type Volume struct {
 	client.Resource
-	Name         string `json:"name"`
-	ReplicaCount int    `json:"replicaCount"`
-	Endpoint     string `json:"endpoint"`
-	Frontend     string `json:"frontend"`
+	Name          string `json:"name"`
+	ReplicaCount  int    `json:"replicaCount"`
+	Endpoint      string `json:"endpoint"`
+	Frontend      string `json:"frontend"`
+	FrontendState string `json:"frontendState"`
 }
 
 type VolumeCollection struct {
@@ -85,17 +86,18 @@ type StartFrontendInput struct {
 	Frontend string `json:"frontend"`
 }
 
-func NewVolume(context *api.ApiContext, name, endpoint, frontend string, replicas int) *Volume {
+func NewVolume(context *api.ApiContext, name, endpoint, frontend, frontendState string, replicas int) *Volume {
 	v := &Volume{
 		Resource: client.Resource{
 			Id:      EncodeID(name),
 			Type:    "volume",
 			Actions: map[string]string{},
 		},
-		Name:         name,
-		ReplicaCount: replicas,
-		Endpoint:     endpoint,
-		Frontend:     frontend,
+		Name:          name,
+		ReplicaCount:  replicas,
+		Endpoint:      endpoint,
+		Frontend:      frontend,
+		FrontendState: frontendState,
 	}
 
 	if replicas == 0 {

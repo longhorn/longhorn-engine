@@ -7,8 +7,8 @@ const (
 	RW  = Mode("RW")
 	ERR = Mode("ERR")
 
-	StateUp   = State("Up")
-	StateDown = State("Down")
+	StateUp   = State("up")
+	StateDown = State("down")
 
 	AWSAccessKey = "AWS_ACCESS_KEY_ID"
 	AWSSecretKey = "AWS_SECRET_ACCESS_KEY"
