@@ -31,6 +31,11 @@ UPGRADE_REPLICA1_SCHEMA = 'http://localhost:9512/v1/schemas'
 UPGRADE_REPLICA2 = 'tcp://localhost:9515'
 UPGRADE_REPLICA2_SCHEMA = 'http://localhost:9515/v1/schemas'
 
+CONTROLLER = "http://localhost:9501"
+CONTROLLER_SCHEMA = "http://localhost:9501/v1/schemas"
+CONTROLLER_NO_FRONTEND = "http://localhost:9801"
+CONTROLLER_NO_FRONTEND_SCHEMA = "http://localhost:9801/v1/schemas"
+
 LONGHORN_BINARY = './bin/longhorn'
 LONGHORN_UPGRADE_BINARY = '/opt/longhorn'
 
@@ -40,6 +45,7 @@ BACKUP_DEST = 'vfs://' + BACKUP_DIR
 BACKING_FILE = 'backing_file.raw'
 
 VOLUME_NAME = 'test-volume_1.0'
+VOLUME2_NAME = 'test-volume_2.0'
 VOLUME_HEAD = 'volume-head'
 
 RETRY_COUNTS = 100
@@ -79,7 +85,21 @@ def controller(request):
 
 
 def controller_client(request):
-    url = 'http://localhost:9501/v1/schemas'
+    url = CONTROLLER_SCHEMA
+    c = cattle.from_env(url=url)
+    request.addfinalizer(lambda: cleanup_controller(c))
+    c = cleanup_controller(c)
+    assert c.list_volume()[0].replicaCount == 0
+    return c
+
+
+@pytest.fixture()
+def controller_no_frontend(request):
+    return controller_no_frontend_client(request)
+
+
+def controller_no_frontend_client(request):
+    url = CONTROLLER_NO_FRONTEND_SCHEMA
     c = cattle.from_env(url=url)
     request.addfinalizer(lambda: cleanup_controller(c))
     c = cleanup_controller(c)
@@ -146,12 +166,12 @@ def open_replica(client, backing_file=None):
     return r
 
 
-def get_restdev():
-    return restdev(VOLUME_NAME)
+def get_restdev(volume=VOLUME_NAME):
+    return restdev(volume)
 
 
-def get_blockdev():
-    dev = blockdev(VOLUME_NAME)
+def get_blockdev(volume=VOLUME_NAME):
+    dev = blockdev(volume)
     for i in range(10):
         if not dev.ready():
             time.sleep(1)
