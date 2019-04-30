@@ -156,7 +156,7 @@ func (l *Launcher) startFrontend() error {
 }
 
 func (l *Launcher) createDev() error {
-	if err := os.MkdirAll(DevPath, 0700); err != nil {
+	if err := os.MkdirAll(DevPath, 0755); err != nil {
 		logrus.Fatalln("launcher: Cannot create directory ", DevPath)
 	}
 
