@@ -29,7 +29,10 @@ temp3=$(mktemp -d)
 temp4=$(mktemp -d)
 temp5=$(mktemp -d)
 temp6=$(mktemp -d)
-trap "rm -rf $temp $temp2 $temp3 $temp4" EXIT
+fix1='/tmp/standby_vol_replica_1/'
+fix2='/tmp/standby_vol_replica_2/'
+mkdir -p $fix1 $fix2
+trap "rm -rf $temp $temp2 $temp3 $temp4 $fix1 $fix2" EXIT
 
 cd $(dirname $0)/..
 
@@ -79,6 +82,12 @@ pid_upgrade_replica1=$!
 ./bin/longhorn replica --listen localhost:9515 $temp2 &
 pid_upgrade_replica2=$!
 
+# for standby volume
+./bin/longhorn replica --listen localhost:9522 $fix1 &
+pid_standby_replica1=$!
+./bin/longhorn replica --listen localhost:9525 $fix2 &
+pid_standby_replica2=$!
+
 # use the same volume here
 /usr/local/bin/longhorn-engine-launcher start --longhorn-binary ./bin/longhorn \
 	--launcher-listen localhost:9810 --listen localhost:9801 \
@@ -94,11 +103,14 @@ ps $pid_backing_replica1
 ps $pid_backing_replica2
 ps $pid_upgrade_replica1
 ps $pid_upgrade_replica2
+ps $pid_standby_replica1
+ps $pid_standby_replica2
 
 trap "kill $pid_controller $pid_controller_no_frontend \
 	$pid_replica1 $pid_replica2 \
 	$pid_backing_replica1 $pid_backing_replica2 \
-	$pid_upgrade_replica1 $pid_upgrade_replica2" EXIT
+	$pid_upgrade_replica1 $pid_upgrade_replica2 \
+	$pid_standby_replica1 $pid_standby_replica2" EXIT
 
 # start minio server to test s3 backup and set credential keys
 export MINIO_ACCESS_KEY=test-access-key
