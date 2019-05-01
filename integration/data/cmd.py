@@ -97,3 +97,9 @@ def restore_to_file(backup_url, backing_file='', output_file='', format='',
         cmd.append('--output-format')
         cmd.append(format)
     return subprocess.check_output(cmd)
+
+
+def restore_inc(backup_url, last_restored, url=CONTROLLER):
+    cmd = [_bin(), '--url', url, '--debug', 'backup', 'restore',
+           backup_url, '--incrementally', '--last-restored', last_restored]
+    return subprocess.check_output(cmd)
