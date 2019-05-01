@@ -10,7 +10,7 @@ from os import path
 import pytest
 import cattle
 
-import cmd
+from cmd import snapshot_create
 from utils import read_file, checksum_data, SIZE
 from frontend import restdev, blockdev
 from frontend import PAGE_SIZE, LONGHORN_DEV_DIR, get_socket_path  # NOQA
@@ -31,9 +31,7 @@ UPGRADE_REPLICA1_SCHEMA = 'http://localhost:9512/v1/schemas'
 UPGRADE_REPLICA2 = 'tcp://localhost:9515'
 UPGRADE_REPLICA2_SCHEMA = 'http://localhost:9515/v1/schemas'
 
-CONTROLLER = "http://localhost:9501"
 CONTROLLER_SCHEMA = "http://localhost:9501/v1/schemas"
-CONTROLLER_NO_FRONTEND = "http://localhost:9801"
 CONTROLLER_NO_FRONTEND_SCHEMA = "http://localhost:9801/v1/schemas"
 
 LONGHORN_BINARY = './bin/longhorn'
@@ -369,7 +367,7 @@ class Snapshot:
         self.data = data
         self.data.write_and_verify_data(self.dev)
         self.checksum = checksum_dev(self.dev)
-        self.name = cmd.snapshot_create()
+        self.name = snapshot_create()
 
     # verify the whole disk is at the state when snapshot was taken
     def verify_checksum(self):
