@@ -31,6 +31,14 @@ UPGRADE_REPLICA1_SCHEMA = 'http://localhost:9512/v1/schemas'
 UPGRADE_REPLICA2 = 'tcp://localhost:9515'
 UPGRADE_REPLICA2_SCHEMA = 'http://localhost:9515/v1/schemas'
 
+STANDBY_REPLICA1 = 'tcp://localhost:9522'
+STANDBY_REPLICA1_SCHEMA = 'http://localhost:9522/v1/schemas'
+STANDBY_REPLICA2 = 'tcp://localhost:9525'
+STANDBY_REPLICA2_SCHEMA = 'http://localhost:9525/v1/schemas'
+
+STANDBY_REPLICA1_PATH = '/tmp/standby_vol_replica_1/'
+STANDBY_REPLICA2_PATH = '/tmp/standby_vol_replica_2/'
+
 CONTROLLER_SCHEMA = "http://localhost:9501/v1/schemas"
 CONTROLLER_NO_FRONTEND_SCHEMA = "http://localhost:9801/v1/schemas"
 
@@ -122,6 +130,16 @@ def replica1(request):
 @pytest.fixture()
 def replica2(request):
     return replica_client(request, REPLICA2_SCHEMA)
+
+
+@pytest.fixture()
+def standby_replica1(request):
+    return replica_client(request, STANDBY_REPLICA1_SCHEMA)
+
+
+@pytest.fixture()
+def standby_replica2(request):
+    return replica_client(request, STANDBY_REPLICA2_SCHEMA)
 
 
 def replica_client(request, url):
