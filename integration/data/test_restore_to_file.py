@@ -94,7 +94,7 @@ def restore_to_file_with_backing_file_test(backing_dev, backup_target):
     os.remove(output_qcow2_path)
     assert not os.path.exists(output_qcow2_path)
 
-    rm_backups(backup)
+    rm_backups([backup])
 
     # create 1 snapshot with 256B data.
     # output = snap1(offset0, length1) + backing(offset1, ...)
@@ -139,8 +139,8 @@ def restore_to_file_with_backing_file_test(backing_dev, backup_target):
     assert not os.path.exists(output_qcow2_path)
 
     cmd.snapshot_revert(snap0)
-    rm_snaps(snap1)
-    rm_backups(backup)
+    rm_snaps([snap1])
+    rm_backups([backup])
     check_backing()
     check_empty_volume(backing_dev)
 
@@ -201,8 +201,8 @@ def restore_to_file_with_backing_file_test(backing_dev, backup_target):
     assert not os.path.exists(output_qcow2_path)
 
     cmd.snapshot_revert(snap0)
-    rm_snaps(snap1, snap2)
-    rm_backups(backup)
+    rm_snaps([snap1, snap2])
+    rm_backups([backup])
     check_backing()
     check_empty_volume(backing_dev)
 
@@ -242,8 +242,8 @@ def restore_to_file_without_backing_file_test(dev, backup_target):
     assert not os.path.exists(output_qcow2_path)
 
     cmd.snapshot_revert(snap0)
-    rm_snaps(snap1)
-    rm_backups(backup)
+    rm_snaps([snap1])
+    rm_backups([backup])
 
     # create 2 snapshots with 256B data and 128B data
     # output = snap2(offset0, length1 - length2) +
@@ -277,8 +277,8 @@ def restore_to_file_without_backing_file_test(dev, backup_target):
     assert not os.path.exists(output_qcow2_path)
 
     cmd.snapshot_revert(snap0)
-    rm_snaps(snap1, snap2)
-    rm_backups(backup)
+    rm_snaps([snap1, snap2])
+    rm_backups([backup])
 
 
 def test_restore_to_file_with_backing_file(backing_replica1, backing_replica2,  # NOQA

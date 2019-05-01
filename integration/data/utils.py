@@ -28,8 +28,8 @@ def read_file(file_path, offset, length):
     return data
 
 
-def create_backup(backup_target, snap):
-    backup = cmd.backup_create(snap, backup_target)
+def create_backup(backup_target, snap, url=cmd.CONTROLLER):
+    backup = cmd.backup_create(snap, backup_target, url)
     backup_info = cmd.backup_inspect(backup)
     assert backup_info["URL"] == backup
     assert backup_info["VolumeName"] == VOLUME_NAME
@@ -38,20 +38,20 @@ def create_backup(backup_target, snap):
     return backup
 
 
-def rm_backups(*backups):
+def rm_backups(backups, url=cmd.CONTROLLER):
     for b in backups:
-        cmd.backup_rm(b)
+        cmd.backup_rm(b, url)
         with pytest.raises(subprocess.CalledProcessError):
             cmd.backup_restore(b)
         with pytest.raises(subprocess.CalledProcessError):
             cmd.backup_inspect(b)
 
 
-def rm_snaps(*snaps):
+def rm_snaps(snaps, url=cmd.CONTROLLER):
     for s in snaps:
-        cmd.snapshot_rm(s)
-        cmd.snapshot_purge()
-    snap_info_list = cmd.snapshot_info()
+        cmd.snapshot_rm(s, url)
+        cmd.snapshot_purge(url)
+    snap_info_list = cmd.snapshot_info(url)
     for s in snaps:
         assert s not in snap_info_list
 
