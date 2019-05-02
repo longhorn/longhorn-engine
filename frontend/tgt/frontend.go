@@ -111,7 +111,7 @@ func (t *Tgt) startScsiDevice() error {
 }
 
 func (t *Tgt) createDev() error {
-	if err := os.MkdirAll(DevPath, 0700); err != nil {
+	if err := os.MkdirAll(DevPath, 0755); err != nil {
 		logrus.Fatalln("Cannot create directory ", DevPath)
 	}
 

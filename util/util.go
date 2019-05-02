@@ -106,11 +106,14 @@ func DuplicateDevice(src, dest string) error {
 	if err := mknod(dest, major, minor); err != nil {
 		return fmt.Errorf("Cannot duplicate device %s to %s", src, dest)
 	}
+	if err := os.Chmod(dest, 0660); err != nil {
+		return fmt.Errorf("Couldn't change permission of the device %s: %s", dest, err)
+	}
 	return nil
 }
 
 func mknod(device string, major, minor int) error {
-	var fileMode os.FileMode = 0600
+	var fileMode os.FileMode = 0660
 	fileMode |= unix.S_IFBLK
 	dev := int((major << 8) | (minor & 0xff) | ((minor & 0xfff00) << 12))
 

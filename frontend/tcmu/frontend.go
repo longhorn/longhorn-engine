@@ -127,7 +127,7 @@ func PostEnableTcmu(volume string) error {
 }
 
 func createDevice(volume string) error {
-	os.MkdirAll(devPath, 0700)
+	os.MkdirAll(devPath, 0755)
 
 	dev := devPath + volume
 
@@ -196,7 +196,7 @@ func createDevice(volume string) error {
 }
 
 func mknod(device string, major, minor int) error {
-	var fileMode os.FileMode = 0600
+	var fileMode os.FileMode = 0660
 	fileMode |= syscall.S_IFBLK
 	dev := int((major << 8) | (minor & 0xff) | ((minor & 0xfff00) << 12))
 
