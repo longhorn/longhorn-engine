@@ -142,6 +142,11 @@ func (c *Controller) Snapshot(name string, labels map[string]string) (string, er
 		return "", fmt.Errorf("Too many snapshots created")
 	}
 
+	// We perform a system level sync here. Can be improved for the filesystem of block device later
+	if _, err := util.Execute("sync", ""); err != nil {
+		logrus.Errorf("WARNING: continue to snapshot for %v, but sync failed: %v", name, err)
+	}
+
 	created := util.Now()
 	if err := c.handleErrorNoLock(c.backend.Snapshot(name, true, created, labels)); err != nil {
 		return "", err
