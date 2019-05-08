@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	iutil "github.com/rancher/go-iscsi-helper/util"
 	"github.com/sirupsen/logrus"
 	"github.com/yasker/go-websocket-toolbox/broadcaster"
 
@@ -129,6 +130,17 @@ func (c *Controller) addReplica(address string, snapshot bool) error {
 }
 
 func (c *Controller) Snapshot(name string, labels map[string]string) (string, error) {
+	// We perform a system level sync without the lock. Cannot block read/write
+	// Can be improved to only sync the filesystem on the block device later
+	if ne, err := iutil.NewNamespaceExecutor(util.GetInitiatorNS()); err != nil {
+		logrus.Errorf("WARNING: continue to snapshot for %v, but cannot sync due to cannot get the namespace executor: %v", name, err)
+	} else {
+		if _, err := ne.Execute("sync", []string{}); err != nil {
+			// sync should never fail though, so it more like due to the nsenter
+			logrus.Errorf("WARNING: continue to snapshot for %v, but sync failed: %v", name, err)
+		}
+	}
+
 	c.Lock()
 	defer c.Unlock()
 
@@ -140,11 +152,6 @@ func (c *Controller) Snapshot(name string, labels map[string]string) (string, er
 		return "", err
 	} else if remain <= 0 {
 		return "", fmt.Errorf("Too many snapshots created")
-	}
-
-	// We perform a system level sync here. Can be improved for the filesystem of block device later
-	if _, err := util.Execute("sync", ""); err != nil {
-		logrus.Errorf("WARNING: continue to snapshot for %v, but sync failed: %v", name, err)
 	}
 
 	created := util.Now()
