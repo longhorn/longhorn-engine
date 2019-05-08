@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/gorilla/handlers"
+	iutil "github.com/rancher/go-iscsi-helper/util"
 	"github.com/satori/go.uuid"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
@@ -28,6 +29,9 @@ var (
 	validLabelValue       = regexp.MustCompile(`^[a-zA-Z0-9_.\-/:]+$`)
 
 	cmdTimeout = time.Minute // one minute by default
+
+	HostProc       = "/host/proc"
+	DockerdProcess = "dockerd"
 )
 
 const (
@@ -296,4 +300,14 @@ func ResolveBackingFilepath(fileOrDirpath string) (string, error) {
 	}
 
 	return fileOrDirpath, nil
+}
+
+func GetInitiatorNS() string {
+	pf := iutil.NewProcessFinder(HostProc)
+	ps, err := pf.FindAncestorByName(DockerdProcess)
+	if err != nil {
+		logrus.Warnf("Failed to find dockerd in the process ancestors, fall back to use pid 1: %v", err)
+		return fmt.Sprintf("%s/1/ns/", HostProc)
+	}
+	return fmt.Sprintf("%s/%d/ns/", HostProc, ps.Pid)
 }
