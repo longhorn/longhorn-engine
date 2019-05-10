@@ -16,6 +16,7 @@ import (
 	"time"
 
 	"github.com/gorilla/handlers"
+	iutil "github.com/rancher/go-iscsi-helper/util"
 	"github.com/satori/go.uuid"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
@@ -28,6 +29,8 @@ var (
 	validLabelValue       = regexp.MustCompile(`^[a-zA-Z0-9_.\-/:]+$`)
 
 	cmdTimeout = time.Minute // one minute by default
+
+	HostProc = "/host/proc"
 )
 
 const (
@@ -296,4 +299,12 @@ func ResolveBackingFilepath(fileOrDirpath string) (string, error) {
 	}
 
 	return fileOrDirpath, nil
+}
+
+func GetInitiatorNS() string {
+	path, err := iutil.GetHostNamespacePath(HostProc)
+	if err != nil {
+		logrus.Warnf("GetHostNamespacePath error, will use default path: %v", path, err)
+	}
+	return path
 }
