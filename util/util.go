@@ -30,8 +30,7 @@ var (
 
 	cmdTimeout = time.Minute // one minute by default
 
-	HostProc       = "/host/proc"
-	DockerdProcess = "dockerd"
+	HostProc = "/host/proc"
 )
 
 const (
@@ -303,11 +302,9 @@ func ResolveBackingFilepath(fileOrDirpath string) (string, error) {
 }
 
 func GetInitiatorNS() string {
-	pf := iutil.NewProcessFinder(HostProc)
-	ps, err := pf.FindAncestorByName(DockerdProcess)
+	path, err := iutil.GetHostNamespacePath(HostProc)
 	if err != nil {
-		logrus.Warnf("Failed to find dockerd in the process ancestors, fall back to use pid 1: %v", err)
-		return fmt.Sprintf("%s/1/ns/", HostProc)
+		logrus.Warnf("GetHostNamespacePath error, will use default path: %v", path, err)
 	}
-	return fmt.Sprintf("%s/%d/ns/", HostProc, ps.Pid)
+	return path
 }
