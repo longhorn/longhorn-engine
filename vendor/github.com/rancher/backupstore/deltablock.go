@@ -419,12 +419,14 @@ func RestoreDeltaBlockBackupIncrementally(backupURL, volDevName, lastBackupName 
 				return err
 			}
 			l++
+			continue
 		}
 		if l >= len(lastBackup.Blocks) {
 			if err := restoreBlockToFile(srcVolumeName, volDev, bsDriver, backup.Blocks[b]); err != nil {
 				return err
 			}
 			b++
+			continue
 		}
 
 		bB := backup.Blocks[b]
