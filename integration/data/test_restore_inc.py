@@ -81,6 +81,15 @@ def restore_inc_test(controller, replica1, replica2,  # NOQA
     backup3 = create_backup(backup_target, snap3)
     backup3_name = cmd.backup_inspect(backup3)['Name']
 
+    # backup4: 256 random data in 1st block
+    length4 = 256
+    offset4 = 0
+    snap4_data = common.random_string(length4)
+    verify_data(dev, offset4, snap4_data)
+    snap4 = cmd.snapshot_create()
+    backup4 = create_backup(backup_target, snap4)
+    backup4_name = cmd.backup_inspect(backup4)['Name']
+
     common.cleanup_replica(replica1)
     common.cleanup_replica(replica2)
     common.cleanup_controller(controller)
@@ -150,9 +159,23 @@ def restore_inc_test(controller, replica1, replica2,  # NOQA
     volume_info = cmd.info(CONTROLLER_NO_FRONTEND)
     assert volume_info['lastRestored'] == backup3_name
 
+    # mock corner case: invalid last-restored backup
+    rm_backups([backup3])
+    # actually it is full restoration
+    cmd.restore_inc(backup4, backup3_name, CONTROLLER_NO_FRONTEND)
+    verify_no_frontend_data(0, snap4_data, sb_controller)
+    volume_info = cmd.info(CONTROLLER_NO_FRONTEND)
+    assert volume_info['lastRestored'] == backup4_name
+    if "vfs" in backup_target:
+        command = ["find", VFS_DIR, "-type", "d", "-name", VOLUME_NAME]
+        backup_volume_path = subprocess.check_output(command).strip()
+        command = ["find", backup_volume_path, "-name", "*tempoary"]
+        tmp_files = subprocess.check_output(command).split()
+        assert len(tmp_files) == 0
+
     cleanup_no_frontend_volume(sb_controller, sb_replica1, sb_replica2)
 
-    rm_backups([backup0, backup1, backup2, backup3])
+    rm_backups([backup0, backup1, backup2, backup4])
 
 
 def restore_for_no_frontend_volume(backup, c):
