@@ -37,6 +37,7 @@ const (
 	deltaPrefix        = "volume-delta-"
 	deltaSuffix        = ".img"
 	deltaName          = deltaPrefix + "%s" + deltaSuffix
+	snapTmpSuffix      = ".snap_tmp"
 )
 
 var (
@@ -201,6 +202,14 @@ func construct(readonly bool, size, sectorSize int64, dir, head string, backingF
 
 func GenerateSnapshotDiskName(name string) string {
 	return fmt.Sprintf(diskName, name)
+}
+
+func GenerateSnapshotDiskMetaName(diskName string) string {
+	return diskName + metadataSuffix
+}
+
+func GenerateSnapTempFileName(fileName string) string {
+	return fileName + snapTmpSuffix
 }
 
 func GetSnapshotNameFromDiskName(diskName string) (string, error) {

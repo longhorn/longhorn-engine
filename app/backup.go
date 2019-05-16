@@ -169,7 +169,7 @@ func doRestoreBackupIncrementally(c *cli.Context) error {
 		return err
 	}
 
-	if err := task.RestoreBackupIncrementally(backup, lastRestored); err != nil {
+	if err := task.RestoreBackupIncrementally(backup, backupName, lastRestored); err != nil {
 		// failed to restore, no need to update field lastRestored
 		if extraErr := cli.FinishRestore(""); extraErr != nil {
 			return errors.Wrapf(extraErr, "failed to execute and finsish incrementally restoring: %v", err)
