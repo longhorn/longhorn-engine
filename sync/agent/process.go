@@ -139,6 +139,8 @@ func (s *Server) launch(p *Process) error {
 		return s.launchListBackup(p)
 	case "rm":
 		return s.launchRemoveFile(p)
+	case "rename":
+		return s.launchRenameFile(p)
 	}
 	return fmt.Errorf("Unknown process type %s", p.ProcessType)
 }
@@ -499,5 +501,26 @@ func (s *Server) launchRemoveFile(p *Process) error {
 
 	p.ExitCode = 0
 	logrus.Infof("Done running %s %v", "rm", p.DestFile)
+	return nil
+}
+
+func (s *Server) launchRenameFile(p *Process) error {
+	logrus.Infof("Running rename file from %v to %v", p.SrcFile, p.DestFile)
+	err := os.Rename(p.SrcFile, p.DestFile)
+
+	if err != nil {
+		logrus.Infof("Error running %s from %v to %v: %v", "rename", p.SrcFile, p.DestFile, err)
+		p.ExitCode = 1
+		if exitError, ok := err.(*exec.ExitError); ok {
+			if waitStatus, ok := exitError.Sys().(syscall.WaitStatus); ok {
+				logrus.Infof("Error running %s from %v to %v: %v", "rename", p.SrcFile, p.DestFile, waitStatus.ExitStatus())
+				p.ExitCode = waitStatus.ExitStatus()
+			}
+		}
+		return err
+	}
+
+	p.ExitCode = 0
+	logrus.Infof("Done running %s from %v to %v", "rename", p.SrcFile, p.DestFile)
 	return nil
 }
