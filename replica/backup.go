@@ -35,12 +35,10 @@ func NewBackup(backingFile *BackingFile) *Backup {
 }
 
 func (rb *Backup) HasSnapshot(snapID, volumeID string) bool {
-	id := GenerateSnapshotDiskName(snapID)
-	//TODO Check current in the volume directory of volumeID
-	if err := rb.assertOpen(id, volumeID); err != nil {
+	if rb.volumeID != volumeID {
 		return false
 	}
-
+	id := GenerateSnapshotDiskName(snapID)
 	to := rb.findIndex(id)
 	if to < 0 {
 		return false
