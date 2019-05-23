@@ -78,7 +78,7 @@ func (rb *Backup) OpenSnapshot(snapID, volumeID string) error {
 
 func (rb *Backup) assertOpen(id, volumeID string) error {
 	if rb.volumeID != volumeID || rb.snapshotID != id {
-		return fmt.Errorf("Invalid state volume [%s] and snapshot [%s] are open, not [%s], [%s]", rb.volumeID, rb.snapshotID, id, volumeID)
+		return fmt.Errorf("Invalid state volume [%s] and snapshot [%s] are open, not volume [%s], snapshot [%s]", rb.volumeID, rb.snapshotID, volumeID, id)
 	}
 	return nil
 }
