@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/rancher/backupstore"
 )
 
@@ -36,6 +38,7 @@ func NewBackup(backingFile *BackingFile) *Backup {
 
 func (rb *Backup) HasSnapshot(snapID, volumeID string) bool {
 	if rb.volumeID != volumeID {
+		logrus.Warnf("Invalid state volume [%s] are open, not [%s]", rb.volumeID, volumeID)
 		return false
 	}
 	id := GenerateSnapshotDiskName(snapID)
@@ -181,6 +184,7 @@ func (rb *Backup) findIndex(id string) int {
 			return i
 		}
 	}
+	logrus.Warnf("Cannot find snapshot %s in activeDiskData list of volume %s", id, rb.volumeID)
 	return -1
 }
 
