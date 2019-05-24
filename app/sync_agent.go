@@ -2,14 +2,17 @@ package app
 
 import (
 	"fmt"
-	"net/http"
+	"net"
 	"strconv"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 
-	"github.com/rancher/longhorn-engine/sync/agent"
+	"github.com/rancher/longhorn-engine/sync/rpc"
 )
 
 func SyncAgentCmd() cli.Command {
@@ -35,7 +38,7 @@ func SyncAgentCmd() cli.Command {
 }
 
 func startSyncAgent(c *cli.Context) error {
-	listen := c.String("listen")
+	listenPort := c.String("listen")
 	portRange := c.String("listen-port-range")
 
 	parts := strings.Split(portRange, "-")
@@ -53,9 +56,16 @@ func startSyncAgent(c *cli.Context) error {
 		return err
 	}
 
-	server := agent.NewServer(start, end)
-	router := agent.NewRouter(server)
-	logrus.Infof("Listening on sync %s", listen)
+	listen, err := net.Listen("tcp", listenPort)
+	if err != nil {
+		return errors.Wrap(err, "Failed to listen")
+	}
 
-	return http.ListenAndServe(listen, router)
+	server := grpc.NewServer()
+	rpc.RegisterSyncAgentServiceServer(server, rpc.NewSyncAgentServer(start, end))
+	reflection.Register(server)
+
+	logrus.Infof("Listening on sync %s", listenPort)
+
+	return server.Serve(listen)
 }

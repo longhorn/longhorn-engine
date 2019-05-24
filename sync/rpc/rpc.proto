@@ -1,0 +1,71 @@
+syntax="proto3";
+
+service SyncAgentService {
+    rpc RemoveFile(RemoveFileRequest) returns (Empty) {}
+    rpc RenameFile(RenameFileRequest) returns (Empty) {}
+    rpc LaunchReceiver(LaunchReceiverRequest) returns (LaunchReceiverReply) {}
+    rpc SendFile(SendFileRequest) returns (Empty) {}
+    rpc Coalesce(CoalesceRequest) returns (Empty) {}
+    rpc CreateBackup(CreateBackupRequest) returns (CreateBackupReply) {}
+    rpc RemoveBackup(RemoveBackupRequest) returns (Empty) {}
+    rpc RestoreBackup(RestoreBackupRequest) returns (Empty) {}
+    rpc RestoreBackupIncrementally(RestoreBackupIncrementallyRequest) returns (Empty) {}
+}
+
+message RemoveFileRequest {
+    string fileName = 1;
+}
+
+message RenameFileRequest {
+    string oldFileName = 1;
+    string newFileName = 2;
+}
+
+message LaunchReceiverRequest {
+    string toFileName = 1;
+}
+
+message LaunchReceiverReply {
+    int32 port = 1;
+}
+
+message SendFileRequest {
+    string fromFileName = 1;
+    string host = 2;
+    int32 port =3;
+}
+
+message CoalesceRequest {
+    string fromFileName = 1;
+    string toFileName = 2;
+}
+
+message CreateBackupRequest {
+    string snapshotFileName = 1;
+    string backupTarget = 2;
+    string volumeName = 3;
+    repeated string labels = 4;
+    map<string, string> credential = 5;
+}
+
+message CreateBackupReply {
+    string backup = 1;
+}
+
+message RemoveBackupRequest {
+    string backup = 1;
+};
+
+message RestoreBackupRequest {
+    string backup = 1;
+    string snapshotFileName = 2;
+}
+
+message RestoreBackupIncrementallyRequest {
+    string backup = 1;
+    string deltaFileName = 2;
+    string lastRestoredBackupName = 3;
+}
+
+message Empty {
+}
