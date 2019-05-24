@@ -12,16 +12,23 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 
 	"github.com/rancher/longhorn-engine/replica/rest"
-	"github.com/rancher/longhorn-engine/sync/agent"
+	"github.com/rancher/longhorn-engine/sync/rpc"
+)
+
+const (
+	SyncAgentServiceCommonTimeout = 1 * time.Minute
+	SyncAgentServiceLongTimeout   = 24 * time.Hour
 )
 
 type ReplicaClient struct {
-	address    string
-	syncAgent  string
-	host       string
-	httpClient *http.Client
+	address             string
+	host                string
+	httpClient          *http.Client
+	syncAgentServiceURL string
 }
 
 func NewReplicaClient(address string) (*ReplicaClient, error) {
@@ -52,18 +59,20 @@ func NewReplicaClient(address string) (*ReplicaClient, error) {
 		return nil, err
 	}
 
-	syncAgent := strings.Replace(address, fmt.Sprintf(":%d", port), fmt.Sprintf(":%d", port+2), -1)
-
 	timeout := time.Duration(30 * time.Second)
 	client := &http.Client{
 		Timeout: timeout,
 	}
 
+	syncAgentServiceURL := strings.Replace(address, fmt.Sprintf(":%d", port), fmt.Sprintf(":%d", port+2), -1)
+	syncAgentServiceURL = strings.TrimPrefix(syncAgentServiceURL, "http://")
+	syncAgentServiceURL = strings.TrimSuffix(syncAgentServiceURL, "/v1")
+
 	return &ReplicaClient{
-		host:       parts[0],
-		address:    address,
-		syncAgent:  syncAgent,
-		httpClient: client,
+		host:                parts[0],
+		address:             address,
+		httpClient:          client,
+		syncAgentServiceURL: syncAgentServiceURL,
 	}, nil
 }
 
@@ -158,73 +167,6 @@ func (c *ReplicaClient) MarkDiskAsRemoved(disk string) error {
 	}, nil)
 }
 
-func (c *ReplicaClient) RemoveFile(file string) error {
-	var running agent.Process
-	err := c.post(c.syncAgent+"/processes", &agent.Process{
-		ProcessType: "rm",
-		DestFile:    file,
-	}, &running)
-	if err != nil {
-		return err
-	}
-
-	start := 250 * time.Millisecond
-	for {
-		err := c.get(running.Links["self"], &running)
-		if err != nil {
-			return err
-		}
-
-		switch running.ExitCode {
-		case -2:
-			time.Sleep(start)
-			start = start * 2
-			if start > 1*time.Second {
-				start = 1 * time.Second
-			}
-		case 0:
-			return nil
-		default:
-			return fmt.Errorf("ExitCode: %d, output: %v",
-				running.ExitCode, running.Output)
-		}
-	}
-}
-
-func (c *ReplicaClient) RenameFile(oldFileName, newFileName string) error {
-	var running agent.Process
-	err := c.post(c.syncAgent+"/processes", &agent.Process{
-		ProcessType: "rename",
-		SrcFile:     oldFileName,
-		DestFile:    newFileName,
-	}, &running)
-	if err != nil {
-		return err
-	}
-
-	start := 250 * time.Millisecond
-	for {
-		err := c.get(running.Links["self"], &running)
-		if err != nil {
-			return err
-		}
-
-		switch running.ExitCode {
-		case -2:
-			time.Sleep(start)
-			start = start * 2
-			if start > 1*time.Second {
-				start = 1 * time.Second
-			}
-		case 0:
-			return nil
-		default:
-			return fmt.Errorf("ExitCode: %d, output: %v",
-				running.ExitCode, running.Output)
-		}
-	}
-}
-
 func (c *ReplicaClient) OpenReplica() error {
 	r, err := c.GetReplica()
 	if err != nil {
@@ -248,290 +190,197 @@ func (c *ReplicaClient) ReloadReplica() (rest.Replica, error) {
 	return replica, err
 }
 
-func (c *ReplicaClient) LaunchReceiver(toFilePath string) (string, int, error) {
-	var running agent.Process
-	err := c.post(c.syncAgent+"/processes", &agent.Process{
-		ProcessType: "sync",
-		DestFile:    toFilePath,
-	}, &running)
+func (c *ReplicaClient) RemoveFile(file string) error {
+	conn, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure())
 	if err != nil {
-		return "", 0, err
+		return fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
+	}
+	defer conn.Close()
+	syncAgentServiceClient := rpc.NewSyncAgentServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), SyncAgentServiceCommonTimeout)
+	defer cancel()
+
+	if _, err := syncAgentServiceClient.RemoveFile(ctx, &rpc.RemoveFileRequest{
+		FileName: file,
+	}); err != nil {
+		return fmt.Errorf("failed to remove file %v: %v", file, err)
 	}
 
-	return c.host, running.Port, nil
+	return nil
+}
+
+func (c *ReplicaClient) RenameFile(oldFileName, newFileName string) error {
+	conn, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure())
+	if err != nil {
+		return fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
+	}
+	defer conn.Close()
+	syncAgentServiceClient := rpc.NewSyncAgentServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), SyncAgentServiceCommonTimeout)
+	defer cancel()
+
+	if _, err := syncAgentServiceClient.RenameFile(ctx, &rpc.RenameFileRequest{
+		OldFileName: oldFileName,
+		NewFileName: newFileName,
+	}); err != nil {
+		return fmt.Errorf("failed to rename or replace old file %v with new file %v: %v", oldFileName, newFileName, err)
+	}
+
+	return nil
+}
+
+func (c *ReplicaClient) LaunchReceiver(toFilePath string) (string, int32, error) {
+	conn, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure())
+	if err != nil {
+		return "", 0, fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
+	}
+	defer conn.Close()
+	syncAgentServiceClient := rpc.NewSyncAgentServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), SyncAgentServiceLongTimeout)
+	defer cancel()
+
+	reply, err := syncAgentServiceClient.LaunchReceiver(ctx, &rpc.LaunchReceiverRequest{
+		ToFileName: toFilePath,
+	})
+	if err != nil {
+		return "", 0, fmt.Errorf("failed to launch receiver for %v: %v", toFilePath, err)
+	}
+
+	return c.host, reply.Port, nil
 }
 
 func (c *ReplicaClient) Coalesce(from, to string) error {
-	var running agent.Process
-	err := c.post(c.syncAgent+"/processes", &agent.Process{
-		ProcessType: "fold",
-		SrcFile:     from,
-		DestFile:    to,
-	}, &running)
+	conn, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure())
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
+	}
+	defer conn.Close()
+	syncAgentServiceClient := rpc.NewSyncAgentServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), SyncAgentServiceLongTimeout)
+	defer cancel()
+
+	if _, err := syncAgentServiceClient.Coalesce(ctx, &rpc.CoalesceRequest{
+		FromFileName: from,
+		ToFileName:   to,
+	}); err != nil {
+		return fmt.Errorf("failed to coalesce file %v to file %v: %v", from, to, err)
 	}
 
-	start := 250 * time.Millisecond
-	for {
-		err := c.get(running.Links["self"], &running)
-		if err != nil {
-			return err
-		}
-
-		switch running.ExitCode {
-		case -2:
-			time.Sleep(start)
-			start = start * 2
-			if start > 1*time.Second {
-				start = 1 * time.Second
-			}
-		case 0:
-			return nil
-		default:
-			return fmt.Errorf("ExitCode: %d", running.ExitCode)
-		}
-	}
+	return nil
 }
 
-func (c *ReplicaClient) SendFile(from, host string, port int) error {
-	var running agent.Process
-	err := c.post(c.syncAgent+"/processes", &agent.Process{
-		ProcessType: "sync",
-		Host:        host,
-		SrcFile:     from,
-		Port:        port,
-	}, &running)
+func (c *ReplicaClient) SendFile(from, host string, port int32) error {
+	conn, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure())
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
+	}
+	defer conn.Close()
+	syncAgentServiceClient := rpc.NewSyncAgentServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), SyncAgentServiceLongTimeout)
+	defer cancel()
+
+	if _, err := syncAgentServiceClient.SendFile(ctx, &rpc.SendFileRequest{
+		FromFileName: from,
+		Host:         host,
+		Port:         port,
+	}); err != nil {
+		return fmt.Errorf("failed to send file %v to %v:%v: %v", from, host, port, err)
 	}
 
-	start := 250 * time.Millisecond
-	for {
-		err := c.get(running.Links["self"], &running)
-		if err != nil {
-			return err
-		}
-
-		switch running.ExitCode {
-		case -2:
-			time.Sleep(start)
-			start = start * 2
-			if start > 1*time.Second {
-				start = 1 * time.Second
-			}
-		case 0:
-			return nil
-		default:
-			return fmt.Errorf("ExitCode: %d", running.ExitCode)
-		}
-	}
+	return nil
 }
 
 func (c *ReplicaClient) CreateBackup(snapshot, dest, volume string, labels []string, credential map[string]string) (string, error) {
-	var running agent.Process
-	err := c.post(c.syncAgent+"/processes", &agent.Process{
-		ProcessType: "backup",
-		SrcFile:     snapshot,
-		DestFile:    dest,
-		Host:        volume,
-		Labels:      labels,
-		Credential:  credential,
-	}, &running)
+	conn, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure())
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
+	}
+	defer conn.Close()
+	syncAgentServiceClient := rpc.NewSyncAgentServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), SyncAgentServiceLongTimeout)
+	defer cancel()
+
+	reply, err := syncAgentServiceClient.CreateBackup(ctx, &rpc.CreateBackupRequest{
+		SnapshotFileName: snapshot,
+		BackupTarget:     dest,
+		VolumeName:       volume,
+		Labels:           labels,
+		Credential:       credential,
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to create backup to %v for volume %v: %v", dest, volume, err)
 	}
 
-	start := 250 * time.Millisecond
-	for {
-		err := c.get(running.Links["self"], &running)
-		if err != nil {
-			return "", err
-		}
-
-		switch running.ExitCode {
-		case -2:
-			time.Sleep(start)
-			start = start * 2
-			if start > 1*time.Second {
-				start = 1 * time.Second
-			}
-		case 0:
-			return running.Output, nil
-		default:
-			return "", fmt.Errorf("ExitCode: %d, output: %v",
-				running.ExitCode, running.Output)
-		}
-	}
+	return reply.Backup, nil
 }
 
 func (c *ReplicaClient) RmBackup(backup string) error {
-	var running agent.Process
-	err := c.post(c.syncAgent+"/processes", &agent.Process{
-		ProcessType: "rmbackup",
-		SrcFile:     backup,
-	}, &running)
+	conn, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure())
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
+	}
+	defer conn.Close()
+	syncAgentServiceClient := rpc.NewSyncAgentServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), SyncAgentServiceCommonTimeout)
+	defer cancel()
+
+	if _, err := syncAgentServiceClient.RemoveBackup(ctx, &rpc.RemoveBackupRequest{
+		Backup: backup,
+	}); err != nil {
+		return fmt.Errorf("failed to remove backup %v: %v", backup, err)
 	}
 
-	start := 250 * time.Millisecond
-	for {
-		err := c.get(running.Links["self"], &running)
-		if err != nil {
-			return err
-		}
-
-		switch running.ExitCode {
-		case -2:
-			time.Sleep(start)
-			start = start * 2
-			if start > 1*time.Second {
-				start = 1 * time.Second
-			}
-		case 0:
-			return nil
-		default:
-			return fmt.Errorf("ExitCode: %d, output: %v",
-				running.ExitCode, running.Output)
-		}
-	}
+	return nil
 }
 
 func (c *ReplicaClient) RestoreBackup(backup, snapshotFile string) error {
-	var running agent.Process
-	err := c.post(c.syncAgent+"/processes", &agent.Process{
-		ProcessType: "restore",
-		SrcFile:     backup,
-		DestFile:    snapshotFile,
-	}, &running)
+	conn, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure())
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
+	}
+	defer conn.Close()
+	syncAgentServiceClient := rpc.NewSyncAgentServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), SyncAgentServiceLongTimeout)
+	defer cancel()
+
+	if _, err := syncAgentServiceClient.RestoreBackup(ctx, &rpc.RestoreBackupRequest{
+		Backup:           backup,
+		SnapshotFileName: snapshotFile,
+	}); err != nil {
+		return fmt.Errorf("failed to restore backup %v to snapshot %v: %v", backup, snapshotFile, err)
 	}
 
-	start := 250 * time.Millisecond
-	for {
-		err := c.get(running.Links["self"], &running)
-		if err != nil {
-			return err
-		}
-
-		switch running.ExitCode {
-		case -2:
-			time.Sleep(start)
-			start = start * 2
-			if start > 1*time.Second {
-				start = 1 * time.Second
-			}
-		case 0:
-			return nil
-		default:
-			return fmt.Errorf("ExitCode: %d, output: %v",
-				running.ExitCode, running.Output)
-		}
-	}
+	return nil
 }
 
 func (c *ReplicaClient) RestoreBackupIncrementally(backup, deltaFile, lastRestored string) error {
-	var running agent.Process
-	err := c.post(c.syncAgent+"/processes", &agent.Process{
-		ProcessType: "restore-incre",
-		SrcFile:     backup,
-		DestFile:    deltaFile,
-		ExtraArgs:   []string{lastRestored},
-	}, &running)
+	conn, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure())
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
+	}
+	defer conn.Close()
+	syncAgentServiceClient := rpc.NewSyncAgentServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), SyncAgentServiceLongTimeout)
+	defer cancel()
+
+	if _, err := syncAgentServiceClient.RestoreBackupIncrementally(ctx, &rpc.RestoreBackupIncrementallyRequest{
+		Backup:                 backup,
+		DeltaFileName:          deltaFile,
+		LastRestoredBackupName: lastRestored,
+	}); err != nil {
+		return fmt.Errorf("failed to incrementally restore backup %v to file %v: %v", backup, deltaFile, err)
 	}
 
-	start := 250 * time.Millisecond
-	for {
-		err := c.get(running.Links["self"], &running)
-		if err != nil {
-			return err
-		}
-
-		switch running.ExitCode {
-		case -2:
-			time.Sleep(start)
-			start = start * 2
-			if start > 1*time.Second {
-				start = 1 * time.Second
-			}
-		case 0:
-			return nil
-		default:
-			return fmt.Errorf("ExitCode: %d, output: %v",
-				running.ExitCode, running.Output)
-		}
-	}
-}
-
-func (c *ReplicaClient) InspectBackup(backup string) (string, error) {
-	var running agent.Process
-	err := c.post(c.syncAgent+"/processes", &agent.Process{
-		ProcessType: "inspectbackup",
-		SrcFile:     backup,
-	}, &running)
-	if err != nil {
-		return "", err
-	}
-
-	start := 250 * time.Millisecond
-	for {
-		err := c.get(running.Links["self"], &running)
-		if err != nil {
-			return "", err
-		}
-
-		switch running.ExitCode {
-		case -2:
-			time.Sleep(start)
-			start = start * 2
-			if start > 1*time.Second {
-				start = 1 * time.Second
-			}
-		case 0:
-			return running.Output, nil
-		default:
-			return "", fmt.Errorf("ExitCode: %d, output: %v",
-				running.ExitCode, running.Output)
-		}
-	}
-}
-
-func (c *ReplicaClient) ListBackup(destURL, volume string) (string, error) {
-	var running agent.Process
-	err := c.post(c.syncAgent+"/processes", &agent.Process{
-		ProcessType: "listbackup",
-		SrcFile:     destURL,
-		DestFile:    volume,
-	}, &running)
-	if err != nil {
-		return "", err
-	}
-
-	start := 250 * time.Millisecond
-	for {
-		err := c.get(running.Links["self"], &running)
-		if err != nil {
-			return "", err
-		}
-
-		switch running.ExitCode {
-		case -2:
-			time.Sleep(start)
-			start = start * 2
-			if start > 1*time.Second {
-				start = 1 * time.Second
-			}
-		case 0:
-			return running.Output, nil
-		default:
-			return "", fmt.Errorf("ExitCode: %d, output: %v",
-				running.ExitCode, running.Output)
-		}
-	}
+	return nil
 }
 
 func (c *ReplicaClient) get(url string, obj interface{}) error {
@@ -578,37 +427,4 @@ func (c *ReplicaClient) post(path string, req, resp interface{}) error {
 	}
 
 	return json.NewDecoder(httpResp.Body).Decode(resp)
-}
-
-func (c *ReplicaClient) HardLink(from, to string) error {
-	var running agent.Process
-	err := c.post(c.syncAgent+"/processes", &agent.Process{
-		ProcessType: "hardlink",
-		SrcFile:     from,
-		DestFile:    to,
-	}, &running)
-	if err != nil {
-		return err
-	}
-
-	start := 250 * time.Millisecond
-	for {
-		err := c.get(running.Links["self"], &running)
-		if err != nil {
-			return err
-		}
-
-		switch running.ExitCode {
-		case -2:
-			time.Sleep(start)
-			start = start * 2
-			if start > 1*time.Second {
-				start = 1 * time.Second
-			}
-		case 0:
-			return nil
-		default:
-			return fmt.Errorf("ExitCode: %d", running.ExitCode)
-		}
-	}
 }
