@@ -1,4 +1,4 @@
-package rpc
+package dataconn
 
 import journal "github.com/longhorn/sparse-tools/stats"
 

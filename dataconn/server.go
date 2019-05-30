@@ -1,4 +1,4 @@
-package rpc
+package dataconn
 
 import (
 	"io"

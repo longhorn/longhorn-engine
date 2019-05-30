@@ -111,7 +111,7 @@ func startReplica(c *cli.Context) error {
 	}()
 
 	go func() {
-		rpcServer := rpc.New(dataAddress, s)
+		rpcServer := rpc.NewDataServer(dataAddress, s)
 		logrus.Infof("Listening on data %s", dataAddress)
 		err := rpcServer.ListenAndServe()
 		logrus.Warnf("Replica rest server at %v is down: %v", dataAddress, err)

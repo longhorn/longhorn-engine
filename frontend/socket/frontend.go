@@ -9,7 +9,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/longhorn/longhorn-engine/rpc"
+	"github.com/longhorn/longhorn-engine/dataconn"
 	"github.com/longhorn/longhorn-engine/types"
 )
 
@@ -31,7 +31,7 @@ type Socket struct {
 
 	isUp         bool
 	socketPath   string
-	socketServer *rpc.Server
+	socketServer *dataconn.Server
 }
 
 func (t *Socket) FrontendName() string {
@@ -127,7 +127,7 @@ func (t *Socket) startSocketServerListen(rw types.ReaderWriterAt) error {
 func (t *Socket) handleServerConnection(c net.Conn, rw types.ReaderWriterAt) {
 	defer c.Close()
 
-	server := rpc.NewServer(c, NewDataProcessorWrapper(rw))
+	server := dataconn.NewServer(c, NewDataProcessorWrapper(rw))
 	logrus.Infoln("New data socket connnection established")
 	if err := server.Handle(); err != nil && err != io.EOF {
 		logrus.Errorln("Fail to handle socket server connection due to ", err)
