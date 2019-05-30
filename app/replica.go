@@ -2,6 +2,7 @@ package app
 
 import (
 	"errors"
+	"net"
 	"net/http"
 	"os"
 	"os/exec"
@@ -11,6 +12,8 @@ import (
 	"github.com/docker/go-units"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 
 	"github.com/longhorn/longhorn-engine/replica"
 	"github.com/longhorn/longhorn-engine/replica/rest"
@@ -89,7 +92,7 @@ func startReplica(c *cli.Context) error {
 		}
 	}
 
-	controlAddress, dataAddress, syncAddress, err := util.ParseAddresses(address)
+	controlAddress, dataAddress, syncAddress, replicaServiceURL, err := util.ParseAddresses(address)
 	if err != nil {
 		return err
 	}
@@ -107,6 +110,23 @@ func startReplica(c *cli.Context) error {
 		logrus.Infof("Listening on control %s", controlAddress)
 		err := http.ListenAndServe(controlAddress, router)
 		logrus.Warnf("Replica rest server at %v is down: %v", controlAddress, err)
+	}()
+
+	go func() {
+		listen, err := net.Listen("tcp", replicaServiceURL)
+		if err != nil {
+			logrus.Warnf("Failed to listen %v: %v", replicaServiceURL, err)
+			resp <- err
+			return
+		}
+
+		server := grpc.NewServer()
+		rpc.RegisterReplicaServiceServer(server, rpc.NewReplicaServer(s))
+		reflection.Register(server)
+
+		logrus.Infof("Listening on gRPC Replica server %s", replicaServiceURL)
+		err = server.Serve(listen)
+		logrus.Warnf("gRPC Replica server at %v is down: %v", replicaServiceURL, err)
 		resp <- err
 	}()
 

@@ -29,6 +29,7 @@ type ReplicaClient struct {
 	host                string
 	httpClient          *http.Client
 	syncAgentServiceURL string
+	replicaServiceURL   string
 }
 
 func NewReplicaClient(address string) (*ReplicaClient, error) {
@@ -68,11 +69,14 @@ func NewReplicaClient(address string) (*ReplicaClient, error) {
 	syncAgentServiceURL = strings.TrimPrefix(syncAgentServiceURL, "http://")
 	syncAgentServiceURL = strings.TrimSuffix(syncAgentServiceURL, "/v1")
 
+	replicaServiceURL := strings.Replace(syncAgentServiceURL, fmt.Sprintf(":%d", port), fmt.Sprintf(":%d", port+3), -1)
+
 	return &ReplicaClient{
 		host:                parts[0],
 		address:             address,
 		httpClient:          client,
 		syncAgentServiceURL: syncAgentServiceURL,
+		replicaServiceURL:   replicaServiceURL,
 	}, nil
 }
 

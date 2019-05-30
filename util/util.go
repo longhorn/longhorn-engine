@@ -37,10 +37,10 @@ const (
 	BlockSizeLinux = 512
 )
 
-func ParseAddresses(name string) (string, string, string, error) {
+func ParseAddresses(name string) (string, string, string, string, error) {
 	matches := parsePattern.FindStringSubmatch(name)
 	if matches == nil {
-		return "", "", "", fmt.Errorf("Invalid address %s does not match pattern: %v", name, parsePattern)
+		return "", "", "", "", fmt.Errorf("Invalid address %s does not match pattern: %v", name, parsePattern)
 	}
 
 	host := matches[1]
@@ -48,7 +48,8 @@ func ParseAddresses(name string) (string, string, string, error) {
 
 	return fmt.Sprintf("%s:%d", host, port),
 		fmt.Sprintf("%s:%d", host, port+1),
-		fmt.Sprintf("%s:%d", host, port+2), nil
+		fmt.Sprintf("%s:%d", host, port+2),
+		fmt.Sprintf("%s:%d", host, port+3), nil
 }
 
 func UUID() string {
