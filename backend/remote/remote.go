@@ -14,7 +14,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/longhorn/longhorn-engine/replica/rest"
-	"github.com/longhorn/longhorn-engine/rpc"
+	"github.com/longhorn/longhorn-engine/dataconn"
 	"github.com/longhorn/longhorn-engine/types"
 	"github.com/longhorn/longhorn-engine/util"
 )
@@ -202,19 +202,19 @@ func (rf *Factory) Create(address string) (types.Backend, error) {
 		return nil, err
 	}
 
-	rpc := rpc.NewClient(conn)
-	r.ReaderWriterAt = rpc
+	dataConnClient := dataconn.NewClient(conn)
+	r.ReaderWriterAt = dataConnClient
 
 	if err := r.open(); err != nil {
 		return nil, err
 	}
 
-	go r.monitorPing(rpc)
+	go r.monitorPing(dataConnClient)
 
 	return r, nil
 }
 
-func (r *Remote) monitorPing(client *rpc.Client) {
+func (r *Remote) monitorPing(client *dataconn.Client) {
 	ticker := time.NewTicker(pingInveral)
 	defer ticker.Stop()
 

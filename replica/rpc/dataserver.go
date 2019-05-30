@@ -5,23 +5,23 @@ import (
 
 	"github.com/sirupsen/logrus"
 
+	"github.com/longhorn/longhorn-engine/dataconn"
 	"github.com/longhorn/longhorn-engine/replica"
-	"github.com/longhorn/longhorn-engine/rpc"
 )
 
-type Server struct {
+type DataServer struct {
 	address string
 	s       *replica.Server
 }
 
-func New(address string, s *replica.Server) *Server {
-	return &Server{
+func NewDataServer(address string, s *replica.Server) *DataServer {
+	return &DataServer{
 		address: address,
 		s:       s,
 	}
 }
 
-func (s *Server) ListenAndServe() error {
+func (s *DataServer) ListenAndServe() error {
 	addr, err := net.ResolveTCPAddr("tcp", s.address)
 	if err != nil {
 		return err
@@ -42,7 +42,7 @@ func (s *Server) ListenAndServe() error {
 		logrus.Infof("New connection from: %v", conn.RemoteAddr())
 
 		go func(conn net.Conn) {
-			server := rpc.NewServer(conn, s.s)
+			server := dataconn.NewServer(conn, s.s)
 			server.Handle()
 		}(conn)
 	}
