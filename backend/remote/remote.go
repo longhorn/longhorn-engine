@@ -38,12 +38,13 @@ type Factory struct {
 
 type Remote struct {
 	types.ReaderWriterAt
-	name        string
-	pingURL     string
-	replicaURL  string
-	httpClient  *http.Client
-	closeChan   chan struct{}
-	monitorChan types.MonitorChannel
+	name              string
+	replicaServiceURL string
+	pingURL           string
+	replicaURL        string
+	httpClient        *http.Client
+	closeChan         chan struct{}
+	monitorChan       types.MonitorChannel
 }
 
 func (r *Remote) Close() error {
@@ -170,15 +171,16 @@ func (r *Remote) info() (rest.Replica, error) {
 func (rf *Factory) Create(address string) (types.Backend, error) {
 	logrus.Infof("Connecting to remote: %s", address)
 
-	controlAddress, dataAddress, _, err := util.ParseAddresses(address)
+	controlAddress, dataAddress, _, replicaServiceURL, err := util.ParseAddresses(address)
 	if err != nil {
 		return nil, err
 	}
 
 	r := &Remote{
-		name:       address,
-		replicaURL: fmt.Sprintf("http://%s/v1/replicas/1", controlAddress),
-		pingURL:    fmt.Sprintf("http://%s/ping", controlAddress),
+		name:              address,
+		replicaServiceURL: replicaServiceURL,
+		replicaURL:        fmt.Sprintf("http://%s/v1/replicas/1", controlAddress),
+		pingURL:           fmt.Sprintf("http://%s/ping", controlAddress),
 		httpClient: &http.Client{
 			Timeout: timeout,
 		},
