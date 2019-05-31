@@ -217,7 +217,7 @@ func (t *Task) restoreBackupIncrementally(replicaInController *rest.Replica, sna
 		}
 
 		// coalesce delta file to snapshot/disk file
-		if err = repClient.Coalesce(deltaFileName, snapshotDiskName); err != nil {
+		if err = repClient.CoalesceFile(deltaFileName, snapshotDiskName); err != nil {
 			logrus.Errorf("Failed to coalesce %s on %s: %v", deltaFileName, snapshotDiskName, err)
 			return err
 		}

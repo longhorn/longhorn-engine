@@ -201,7 +201,7 @@ func (c *ReplicaClient) RemoveFile(file string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), SyncAgentServiceCommonTimeout)
 	defer cancel()
 
-	if _, err := syncAgentServiceClient.RemoveFile(ctx, &rpc.RemoveFileRequest{
+	if _, err := syncAgentServiceClient.FileRemove(ctx, &rpc.FileRemoveRequest{
 		FileName: file,
 	}); err != nil {
 		return fmt.Errorf("failed to remove file %v: %v", file, err)
@@ -221,7 +221,7 @@ func (c *ReplicaClient) RenameFile(oldFileName, newFileName string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), SyncAgentServiceCommonTimeout)
 	defer cancel()
 
-	if _, err := syncAgentServiceClient.RenameFile(ctx, &rpc.RenameFileRequest{
+	if _, err := syncAgentServiceClient.FileRename(ctx, &rpc.FileRenameRequest{
 		OldFileName: oldFileName,
 		NewFileName: newFileName,
 	}); err != nil {
@@ -231,28 +231,7 @@ func (c *ReplicaClient) RenameFile(oldFileName, newFileName string) error {
 	return nil
 }
 
-func (c *ReplicaClient) LaunchReceiver(toFilePath string) (string, int32, error) {
-	conn, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure())
-	if err != nil {
-		return "", 0, fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
-	}
-	defer conn.Close()
-	syncAgentServiceClient := rpc.NewSyncAgentServiceClient(conn)
-
-	ctx, cancel := context.WithTimeout(context.Background(), SyncAgentServiceLongTimeout)
-	defer cancel()
-
-	reply, err := syncAgentServiceClient.LaunchReceiver(ctx, &rpc.LaunchReceiverRequest{
-		ToFileName: toFilePath,
-	})
-	if err != nil {
-		return "", 0, fmt.Errorf("failed to launch receiver for %v: %v", toFilePath, err)
-	}
-
-	return c.host, reply.Port, nil
-}
-
-func (c *ReplicaClient) Coalesce(from, to string) error {
+func (c *ReplicaClient) CoalesceFile(from, to string) error {
 	conn, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure())
 	if err != nil {
 		return fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
@@ -263,7 +242,7 @@ func (c *ReplicaClient) Coalesce(from, to string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), SyncAgentServiceLongTimeout)
 	defer cancel()
 
-	if _, err := syncAgentServiceClient.Coalesce(ctx, &rpc.CoalesceRequest{
+	if _, err := syncAgentServiceClient.FileCoalesce(ctx, &rpc.FileCoalesceRequest{
 		FromFileName: from,
 		ToFileName:   to,
 	}); err != nil {
@@ -284,7 +263,7 @@ func (c *ReplicaClient) SendFile(from, host string, port int32) error {
 	ctx, cancel := context.WithTimeout(context.Background(), SyncAgentServiceLongTimeout)
 	defer cancel()
 
-	if _, err := syncAgentServiceClient.SendFile(ctx, &rpc.SendFileRequest{
+	if _, err := syncAgentServiceClient.FileSend(ctx, &rpc.FileSendRequest{
 		FromFileName: from,
 		Host:         host,
 		Port:         port,
@@ -293,6 +272,27 @@ func (c *ReplicaClient) SendFile(from, host string, port int32) error {
 	}
 
 	return nil
+}
+
+func (c *ReplicaClient) LaunchReceiver(toFilePath string) (string, int32, error) {
+	conn, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure())
+	if err != nil {
+		return "", 0, fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
+	}
+	defer conn.Close()
+	syncAgentServiceClient := rpc.NewSyncAgentServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), SyncAgentServiceLongTimeout)
+	defer cancel()
+
+	reply, err := syncAgentServiceClient.ReceiverLaunch(ctx, &rpc.ReceiverLaunchRequest{
+		ToFileName: toFilePath,
+	})
+	if err != nil {
+		return "", 0, fmt.Errorf("failed to launch receiver for %v: %v", toFilePath, err)
+	}
+
+	return c.host, reply.Port, nil
 }
 
 func (c *ReplicaClient) CreateBackup(snapshot, dest, volume string, labels []string, credential map[string]string) (string, error) {
@@ -306,7 +306,7 @@ func (c *ReplicaClient) CreateBackup(snapshot, dest, volume string, labels []str
 	ctx, cancel := context.WithTimeout(context.Background(), SyncAgentServiceLongTimeout)
 	defer cancel()
 
-	reply, err := syncAgentServiceClient.CreateBackup(ctx, &rpc.CreateBackupRequest{
+	reply, err := syncAgentServiceClient.BackupCreate(ctx, &rpc.BackupCreateRequest{
 		SnapshotFileName: snapshot,
 		BackupTarget:     dest,
 		VolumeName:       volume,
@@ -331,7 +331,7 @@ func (c *ReplicaClient) RmBackup(backup string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), SyncAgentServiceCommonTimeout)
 	defer cancel()
 
-	if _, err := syncAgentServiceClient.RemoveBackup(ctx, &rpc.RemoveBackupRequest{
+	if _, err := syncAgentServiceClient.BackupRemove(ctx, &rpc.BackupRemoveRequest{
 		Backup: backup,
 	}); err != nil {
 		return fmt.Errorf("failed to remove backup %v: %v", backup, err)
@@ -351,7 +351,7 @@ func (c *ReplicaClient) RestoreBackup(backup, snapshotFile string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), SyncAgentServiceLongTimeout)
 	defer cancel()
 
-	if _, err := syncAgentServiceClient.RestoreBackup(ctx, &rpc.RestoreBackupRequest{
+	if _, err := syncAgentServiceClient.BackupRestore(ctx, &rpc.BackupRestoreRequest{
 		Backup:           backup,
 		SnapshotFileName: snapshotFile,
 	}); err != nil {
@@ -372,7 +372,7 @@ func (c *ReplicaClient) RestoreBackupIncrementally(backup, deltaFile, lastRestor
 	ctx, cancel := context.WithTimeout(context.Background(), SyncAgentServiceLongTimeout)
 	defer cancel()
 
-	if _, err := syncAgentServiceClient.RestoreBackupIncrementally(ctx, &rpc.RestoreBackupIncrementallyRequest{
+	if _, err := syncAgentServiceClient.BackupRestoreIncrementally(ctx, &rpc.BackupRestoreIncrementallyRequest{
 		Backup:                 backup,
 		DeltaFileName:          deltaFile,
 		LastRestoredBackupName: lastRestored,
