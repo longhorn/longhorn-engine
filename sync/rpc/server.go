@@ -59,7 +59,7 @@ func (s *SyncAgentServer) nextPort(processName string) (int, error) {
 	return 0, errors.New("Out of ports")
 }
 
-func (*SyncAgentServer) RemoveFile(ctx context.Context, req *RemoveFileRequest) (*Empty, error) {
+func (*SyncAgentServer) FileRemove(ctx context.Context, req *FileRemoveRequest) (*Empty, error) {
 	logrus.Infof("Running rm %v", req.FileName)
 
 	if err := os.Remove(req.FileName); err != nil {
@@ -71,7 +71,7 @@ func (*SyncAgentServer) RemoveFile(ctx context.Context, req *RemoveFileRequest) 
 	return &Empty{}, nil
 }
 
-func (*SyncAgentServer) RenameFile(ctx context.Context, req *RenameFileRequest) (*Empty, error) {
+func (*SyncAgentServer) FileRename(ctx context.Context, req *FileRenameRequest) (*Empty, error) {
 	logrus.Infof("Running rename file from %v to %v", req.OldFileName, req.NewFileName)
 
 	if err := os.Rename(req.OldFileName, req.NewFileName); err != nil {
@@ -83,7 +83,60 @@ func (*SyncAgentServer) RenameFile(ctx context.Context, req *RenameFileRequest) 
 	return &Empty{}, nil
 }
 
-func (s *SyncAgentServer) LaunchReceiver(ctx context.Context, req *LaunchReceiverRequest) (*LaunchReceiverReply, error) {
+func (*SyncAgentServer) FileCoalesce(ctx context.Context, req *FileCoalesceRequest) (*Empty, error) {
+	cmd := reexec.Command("sfold", req.FromFileName, req.ToFileName)
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Pdeathsig: syscall.SIGKILL,
+	}
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Start(); err != nil {
+		return nil, err
+	}
+
+	logrus.Infof("Running %s %v", cmd.Path, cmd.Args)
+	if err := cmd.Wait(); err != nil {
+		logrus.Infof("Error running %s %v: %v", "sfold", cmd.Args, err)
+		return nil, err
+	}
+
+	return &Empty{}, nil
+}
+
+func (s *SyncAgentServer) FileSend(ctx context.Context, req *FileSendRequest) (*Empty, error) {
+	args := []string{"ssync"}
+	if req.Host != "" {
+		args = append(args, "-host", req.Host)
+	}
+	if req.Port != 0 {
+		args = append(args, "-port", strconv.FormatInt(int64(req.Port), 10))
+	}
+	if req.FromFileName != "" {
+		args = append(args, req.FromFileName)
+	}
+
+	cmd := reexec.Command(args...)
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Pdeathsig: syscall.SIGKILL,
+	}
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	if err := cmd.Start(); err != nil {
+		return nil, err
+	}
+
+	logrus.Infof("Running %s %v", "ssync", args)
+	if err := cmd.Wait(); err != nil {
+		logrus.Infof("Error running %s %v: %v", "ssync", args, err)
+		return nil, err
+	}
+
+	logrus.Infof("Done running %s %v", "ssync", args)
+	return &Empty{}, nil
+}
+
+func (s *SyncAgentServer) ReceiverLaunch(ctx context.Context, req *ReceiverLaunchRequest) (*ReceiverLaunchReply, error) {
 	port, err := s.nextPort("LaunchReceiver")
 	if err != nil {
 		return nil, err
@@ -124,63 +177,10 @@ func (s *SyncAgentServer) LaunchReceiver(ctx context.Context, req *LaunchReceive
 		logrus.Infof("Done running %s %v", "ssync", args)
 	}()
 
-	return &LaunchReceiverReply{Port: int32(port)}, nil
+	return &ReceiverLaunchReply{Port: int32(port)}, nil
 }
 
-func (s *SyncAgentServer) SendFile(ctx context.Context, req *SendFileRequest) (*Empty, error) {
-	args := []string{"ssync"}
-	if req.Host != "" {
-		args = append(args, "-host", req.Host)
-	}
-	if req.Port != 0 {
-		args = append(args, "-port", strconv.FormatInt(int64(req.Port), 10))
-	}
-	if req.FromFileName != "" {
-		args = append(args, req.FromFileName)
-	}
-
-	cmd := reexec.Command(args...)
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Pdeathsig: syscall.SIGKILL,
-	}
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	if err := cmd.Start(); err != nil {
-		return nil, err
-	}
-
-	logrus.Infof("Running %s %v", "ssync", args)
-	if err := cmd.Wait(); err != nil {
-		logrus.Infof("Error running %s %v: %v", "ssync", args, err)
-		return nil, err
-	}
-
-	logrus.Infof("Done running %s %v", "ssync", args)
-	return &Empty{}, nil
-}
-
-func (*SyncAgentServer) Coalesce(ctx context.Context, req *CoalesceRequest) (*Empty, error) {
-	cmd := reexec.Command("sfold", req.FromFileName, req.ToFileName)
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Pdeathsig: syscall.SIGKILL,
-	}
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Start(); err != nil {
-		return nil, err
-	}
-
-	logrus.Infof("Running %s %v", cmd.Path, cmd.Args)
-	if err := cmd.Wait(); err != nil {
-		logrus.Infof("Error running %s %v: %v", "sfold", cmd.Args, err)
-		return nil, err
-	}
-
-	return &Empty{}, nil
-}
-
-func (*SyncAgentServer) CreateBackup(ctx context.Context, req *CreateBackupRequest) (*CreateBackupReply, error) {
+func (*SyncAgentServer) BackupCreate(ctx context.Context, req *BackupCreateRequest) (*BackupCreateReply, error) {
 	backupType, err := util.CheckBackupType(req.BackupTarget)
 	if err != nil {
 		return nil, err
@@ -219,7 +219,7 @@ func (*SyncAgentServer) CreateBackup(ctx context.Context, req *CreateBackupReque
 	logrus.Infof("Running %s %v", cmd.Path, cmd.Args)
 	err = cmd.Wait()
 
-	reply := &CreateBackupReply{
+	reply := &BackupCreateReply{
 		Backup: buf.String(),
 	}
 	fmt.Fprintf(os.Stdout, reply.Backup)
@@ -232,7 +232,7 @@ func (*SyncAgentServer) CreateBackup(ctx context.Context, req *CreateBackupReque
 	return reply, nil
 }
 
-func (*SyncAgentServer) RemoveBackup(ctx context.Context, req *RemoveBackupRequest) (*Empty, error) {
+func (*SyncAgentServer) BackupRemove(ctx context.Context, req *BackupRemoveRequest) (*Empty, error) {
 	cmd := reexec.Command("sbackup", "delete", req.Backup)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Pdeathsig: syscall.SIGKILL,
@@ -253,7 +253,7 @@ func (*SyncAgentServer) RemoveBackup(ctx context.Context, req *RemoveBackupReque
 	return &Empty{}, nil
 }
 
-func (*SyncAgentServer) RestoreBackup(ctx context.Context, req *RestoreBackupRequest) (*Empty, error) {
+func (*SyncAgentServer) BackupRestore(ctx context.Context, req *BackupRestoreRequest) (*Empty, error) {
 	cmd := reexec.Command("sbackup", "restore", req.Backup, "--to", req.SnapshotFileName)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Pdeathsig: syscall.SIGKILL,
@@ -274,7 +274,7 @@ func (*SyncAgentServer) RestoreBackup(ctx context.Context, req *RestoreBackupReq
 	return &Empty{}, nil
 }
 
-func (*SyncAgentServer) RestoreBackupIncrementally(ctx context.Context, req *RestoreBackupIncrementallyRequest) (*Empty, error) {
+func (*SyncAgentServer) BackupRestoreIncrementally(ctx context.Context, req *BackupRestoreIncrementallyRequest) (*Empty, error) {
 	cmd := reexec.Command("sbackup", "restore", req.Backup, "--incrementally", "--to", req.DeltaFileName, "--last-restored", req.LastRestoredBackupName)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Pdeathsig: syscall.SIGKILL,

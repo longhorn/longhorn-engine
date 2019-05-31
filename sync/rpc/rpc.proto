@@ -1,46 +1,46 @@
 syntax="proto3";
 
 service SyncAgentService {
-    rpc RemoveFile(RemoveFileRequest) returns (Empty) {}
-    rpc RenameFile(RenameFileRequest) returns (Empty) {}
-    rpc LaunchReceiver(LaunchReceiverRequest) returns (LaunchReceiverReply) {}
-    rpc SendFile(SendFileRequest) returns (Empty) {}
-    rpc Coalesce(CoalesceRequest) returns (Empty) {}
-    rpc CreateBackup(CreateBackupRequest) returns (CreateBackupReply) {}
-    rpc RemoveBackup(RemoveBackupRequest) returns (Empty) {}
-    rpc RestoreBackup(RestoreBackupRequest) returns (Empty) {}
-    rpc RestoreBackupIncrementally(RestoreBackupIncrementallyRequest) returns (Empty) {}
+    rpc FileRemove(FileRemoveRequest) returns (Empty) {}
+    rpc FileRename(FileRenameRequest) returns (Empty) {}
+    rpc FileCoalesce(FileCoalesceRequest) returns (Empty) {}
+    rpc FileSend(FileSendRequest) returns (Empty) {}
+    rpc ReceiverLaunch(ReceiverLaunchRequest) returns (ReceiverLaunchReply) {}
+    rpc BackupCreate(BackupCreateRequest) returns (BackupCreateReply) {}
+    rpc BackupRemove(BackupRemoveRequest) returns (Empty) {}
+    rpc BackupRestore(BackupRestoreRequest) returns (Empty) {}
+    rpc BackupRestoreIncrementally(BackupRestoreIncrementallyRequest) returns (Empty) {}
 }
 
-message RemoveFileRequest {
+message FileRemoveRequest {
     string fileName = 1;
 }
 
-message RenameFileRequest {
+message FileRenameRequest {
     string oldFileName = 1;
     string newFileName = 2;
 }
 
-message LaunchReceiverRequest {
+message ReceiverLaunchRequest {
     string toFileName = 1;
 }
 
-message LaunchReceiverReply {
+message ReceiverLaunchReply {
     int32 port = 1;
 }
 
-message SendFileRequest {
+message FileSendRequest {
     string fromFileName = 1;
     string host = 2;
     int32 port =3;
 }
 
-message CoalesceRequest {
+message FileCoalesceRequest {
     string fromFileName = 1;
     string toFileName = 2;
 }
 
-message CreateBackupRequest {
+message BackupCreateRequest {
     string snapshotFileName = 1;
     string backupTarget = 2;
     string volumeName = 3;
@@ -48,20 +48,20 @@ message CreateBackupRequest {
     map<string, string> credential = 5;
 }
 
-message CreateBackupReply {
+message BackupCreateReply {
     string backup = 1;
 }
 
-message RemoveBackupRequest {
+message BackupRemoveRequest {
     string backup = 1;
 };
 
-message RestoreBackupRequest {
+message BackupRestoreRequest {
     string backup = 1;
     string snapshotFileName = 2;
 }
 
-message RestoreBackupIncrementallyRequest {
+message BackupRestoreIncrementallyRequest {
     string backup = 1;
     string deltaFileName = 2;
     string lastRestoredBackupName = 3;
