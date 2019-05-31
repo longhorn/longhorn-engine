@@ -56,7 +56,7 @@ export AWS_ENDPOINTS=http://127.0.0.1:9000
 pid_controller=$!
 ./bin/longhorn replica $temp &
 pid_replica1=$!
-./bin/longhorn replica --listen localhost:9505 $temp2 &
+./bin/longhorn replica --listen localhost:9512 $temp2 &
 pid_replica2=$!
 
 # replica with 4MB backing file
@@ -71,21 +71,21 @@ cp $backing_qcow2 $temp4
 
 ./bin/longhorn replica --listen localhost:9602 --backing-file $temp3/$backing_qcow2 $temp5 &
 pid_backing_replica1=$!
-./bin/longhorn replica --listen localhost:9605 --backing-file $temp4 $temp6 &
+./bin/longhorn replica --listen localhost:9612 --backing-file $temp4 $temp6 &
 pid_backing_replica2=$!
 
 # for live upgrade test
 cp ./bin/longhorn /opt/
 
-./bin/longhorn replica --listen localhost:9512 $temp &
+./bin/longhorn replica --listen localhost:9522 $temp &
 pid_upgrade_replica1=$!
-./bin/longhorn replica --listen localhost:9515 $temp2 &
+./bin/longhorn replica --listen localhost:9532 $temp2 &
 pid_upgrade_replica2=$!
 
 # for standby volume
-./bin/longhorn replica --listen localhost:9522 $fix1 &
+./bin/longhorn replica --listen localhost:9542 $fix1 &
 pid_standby_replica1=$!
-./bin/longhorn replica --listen localhost:9525 $fix2 &
+./bin/longhorn replica --listen localhost:9552 $fix2 &
 pid_standby_replica2=$!
 
 # use the same volume here

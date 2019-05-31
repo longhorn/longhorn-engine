@@ -12,7 +12,7 @@ import cattle
 from urlparse import urlparse
 
 REPLICA = 'tcp://localhost:9502'
-REPLICA2 = 'tcp://localhost:9505'
+REPLICA2 = 'tcp://localhost:9512'
 
 BACKUP_DEST = '/data/backupbucket'
 
@@ -55,7 +55,7 @@ def replica_client(request):
 
 @pytest.fixture
 def replica_client2(request):
-    url = 'http://localhost:9505/v1/schemas'
+    url = 'http://localhost:9512/v1/schemas'
     c = cattle.from_env(url=url)
     request.addfinalizer(lambda: cleanup_replica(c))
     return cleanup_replica(c)
