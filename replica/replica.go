@@ -96,14 +96,14 @@ type PrepareRemoveAction struct {
 }
 
 type DiskInfo struct {
-	Name        string              `json:"name"`
-	Parent      string              `json:"parent"`
-	Children    map[string]struct{} `json:"children"`
-	Removed     bool                `json:"removed"`
-	UserCreated bool                `json:"usercreated"`
-	Created     string              `json:"created"`
-	Size        string              `json:"size"`
-	Labels      map[string]string   `json:"labels"`
+	Name        string            `json:"name"`
+	Parent      string            `json:"parent"`
+	Children    map[string]bool   `json:"children"`
+	Removed     bool              `json:"removed"`
+	UserCreated bool              `json:"usercreated"`
+	Created     string            `json:"created"`
+	Size        string            `json:"size"`
+	Labels      map[string]string `json:"labels"`
 }
 
 const (
@@ -1014,11 +1014,8 @@ func (r *Replica) ListDisks() map[string]DiskInfo {
 		if disk.Labels == nil {
 			diskInfo.Labels = map[string]string{}
 		}
-		children := map[string]struct{}{}
-		for child := range r.diskChildrenMap[disk.Name] {
-			children[child] = struct{}{}
-		}
-		diskInfo.Children = children
+
+		diskInfo.Children = r.diskChildrenMap[disk.Name]
 		result[disk.Name] = diskInfo
 	}
 	return result

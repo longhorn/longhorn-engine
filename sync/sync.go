@@ -513,7 +513,7 @@ func GetSnapshotsInfo(replicas []rest.Replica) (outputDisks map[string]replica.D
 			} else {
 				snapshot = VolumeHeadName
 			}
-			children := map[string]struct{}{}
+			children := map[string]bool{}
 			for childDisk := range disk.Children {
 				child := ""
 				if !replica.IsHeadDisk(childDisk) {
@@ -524,7 +524,7 @@ func GetSnapshotsInfo(replicas []rest.Replica) (outputDisks map[string]replica.D
 				} else {
 					child = VolumeHeadName
 				}
-				children[child] = struct{}{}
+				children[child] = true
 			}
 			parent := ""
 			if disk.Parent != "" {
