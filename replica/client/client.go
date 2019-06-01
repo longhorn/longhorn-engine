@@ -69,7 +69,9 @@ func NewReplicaClient(address string) (*ReplicaClient, error) {
 	syncAgentServiceURL = strings.TrimPrefix(syncAgentServiceURL, "http://")
 	syncAgentServiceURL = strings.TrimSuffix(syncAgentServiceURL, "/v1")
 
-	replicaServiceURL := strings.Replace(syncAgentServiceURL, fmt.Sprintf(":%d", port), fmt.Sprintf(":%d", port+3), -1)
+	replicaServiceURL := strings.Replace(address, fmt.Sprintf(":%d", port), fmt.Sprintf(":%d", port+3), -1)
+	replicaServiceURL = strings.TrimPrefix(replicaServiceURL, "http://")
+	replicaServiceURL = strings.TrimSuffix(replicaServiceURL, "/v1")
 
 	return &ReplicaClient{
 		host:                parts[0],
@@ -78,17 +80,6 @@ func NewReplicaClient(address string) (*ReplicaClient, error) {
 		syncAgentServiceURL: syncAgentServiceURL,
 		replicaServiceURL:   replicaServiceURL,
 	}, nil
-}
-
-func (c *ReplicaClient) Create(size string) error {
-	r, err := c.GetReplica()
-	if err != nil {
-		return err
-	}
-
-	return c.post(r.Actions["create"], rest.CreateInput{
-		Size: size,
-	}, nil)
 }
 
 func (c *ReplicaClient) Revert(name, created string) error {

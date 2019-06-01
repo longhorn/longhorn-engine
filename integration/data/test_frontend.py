@@ -2,6 +2,7 @@ import common
 import launcher
 from launcher import LAUNCHER_NO_FRONTEND
 from common import controller_no_frontend, replica1, replica2 # NOQA
+from common import grpc_replica1, grpc_replica2  # NOQA
 from common import open_replica
 from common import VOLUME2_NAME
 from common import get_blockdev, verify_read, verify_data
@@ -10,11 +11,12 @@ from common import get_blockdev, verify_read, verify_data
 FRONTEND_TGT_BLOCKDEV = "tgt-blockdev"
 
 
-def test_frontend_switch(controller_no_frontend, replica1, replica2):  # NOQA
+def test_frontend_switch(controller_no_frontend, replica1, replica2,  # NOQA
+                         grpc_replica1, grpc_replica2):  # NOQA
     controller = controller_no_frontend
 
-    open_replica(replica1)
-    open_replica(replica2)
+    open_replica(replica1, grpc_replica1)
+    open_replica(replica2, grpc_replica2)
 
     replicas = controller.list_replica()
     assert len(replicas) == 0

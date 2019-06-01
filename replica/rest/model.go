@@ -25,11 +25,6 @@ type Replica struct {
 	RevisionCounter int64                       `json:"revisioncounter,string"`
 }
 
-type CreateInput struct {
-	client.Resource
-	Size string `json:"size"`
-}
-
 type RevertInput struct {
 	client.Resource
 	Name    string `json:"name"`
@@ -96,7 +91,6 @@ func NewReplica(context *api.ApiContext, state replica.State, info replica.Info,
 
 	switch state {
 	case replica.Initial:
-		actions["create"] = true
 	case replica.Open:
 		actions["close"] = true
 		actions["setrebuilding"] = true
@@ -163,7 +157,6 @@ func NewSchema() *client.Schemas {
 	schemas.AddType("error", client.ServerApiError{})
 	schemas.AddType("apiVersion", client.Resource{})
 	schemas.AddType("schema", client.Schema{})
-	schemas.AddType("createInput", CreateInput{})
 	schemas.AddType("rebuildingInput", RebuildingInput{})
 	schemas.AddType("snapshotInput", SnapshotInput{})
 	schemas.AddType("removediskInput", RemoveDiskInput{})
@@ -196,10 +189,6 @@ func NewSchema() *client.Schemas {
 		},
 		"setrebuilding": {
 			Input:  "rebuildingInput",
-			Output: "replica",
-		},
-		"create": {
-			Input:  "createInput",
 			Output: "replica",
 		},
 		"revert": {
