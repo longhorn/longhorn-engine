@@ -1,9 +1,22 @@
 import time
 import random
 import datetime
+import sys
+import os
 
 import pytest
 import cattle
+
+# include directory intergration/rpc for module import
+sys.path.append(
+    os.path.abspath(
+        os.path.join(os.path.split(__file__)[0], "../rpc")
+    )
+)
+from replica.replica_client import ReplicaClient  # NOQA
+
+GRPC_URL = 'localhost:9505'
+SIZE_STR = str(1024*4096)
 
 
 @pytest.fixture
@@ -12,6 +25,11 @@ def client(request):
     c = cattle.from_env(url=url)
     request.addfinalizer(lambda: cleanup(c))
     return cleanup(c)
+
+
+@pytest.fixture
+def grpc_client():
+    return ReplicaClient(GRPC_URL)
 
 
 def cleanup(client):
@@ -35,7 +53,7 @@ def random_num():
     return random.randint(0, 1000000)
 
 
-def test_create(client):
+def test_create(client, grpc_client):
     replicas = client.list_replica()
     assert len(replicas) == 1
 
@@ -46,16 +64,16 @@ def test_create(client):
     assert r.parent == ''
     assert r.head == ''
 
-    r = r.create(size=str(1024*4096))
+    r = grpc_client.replica_create(size=SIZE_STR)
 
     assert r.state == 'closed'
-    assert r.size == str(1024*4096)
-    assert r.sectorSize == '512'
+    assert r.size == SIZE_STR
+    assert r.sectorSize == 512
     assert r.parent == ''
     assert r.head == 'volume-head-000.img'
 
 
-def test_open(client):
+def test_open(client, grpc_client):
     replicas = client.list_replica()
     assert len(replicas) == 1
 
@@ -66,39 +84,41 @@ def test_open(client):
     assert r.parent == ''
     assert r.head == ''
 
-    r = r.create(size=str(1024*4096))
+    r = grpc_client.replica_create(size=SIZE_STR)
 
     assert r.state == 'closed'
     assert not r.dirty
     assert not r.rebuilding
-    assert r.size == str(1024*4096)
-    assert r.sectorSize == '512'
+    assert r.size == SIZE_STR
+    assert r.sectorSize == 512
     assert r.parent == ''
     assert r.head == 'volume-head-000.img'
 
+    r = client.list_replica()[0]
     r = r.open()
 
     assert r.state == 'open'
     assert not r.dirty
     assert not r.rebuilding
-    assert r.size == str(1024*4096)
+    assert r.size == SIZE_STR
     assert r.sectorSize == '512'
     assert r.parent == ''
     assert r.head == 'volume-head-000.img'
 
 
-def test_close(client):
+def test_close(client, grpc_client):
+    grpc_client.replica_create(size=SIZE_STR)
+
     replicas = client.list_replica()
     assert len(replicas) == 1
 
     r = replicas[0]
-    r = r.create(size=str(1024*4096))
     r = r.open()
 
     assert r.state == 'open'
     assert not r.dirty
     assert not r.rebuilding
-    assert r.size == str(1024*4096)
+    assert r.size == SIZE_STR
     assert r.sectorSize == '512'
     assert r.parent == ''
     assert r.head == 'volume-head-000.img'
@@ -108,24 +128,25 @@ def test_close(client):
     assert r.state == 'closed'
     assert not r.dirty
     assert not r.rebuilding
-    assert r.size == str(1024*4096)
+    assert r.size == SIZE_STR
     assert r.sectorSize == '512'
     assert r.parent == ''
     assert r.head == 'volume-head-000.img'
 
 
-def test_snapshot(client):
+def test_snapshot(client, grpc_client):
+    grpc_client.replica_create(size=SIZE_STR)
+
     replicas = client.list_replica()
     assert len(replicas) == 1
 
     r = replicas[0]
-    r = r.create(size=str(1024*4096))
     r = r.open()
 
     assert r.state == 'open'
     assert not r.dirty
     assert not r.rebuilding
-    assert r.size == str(1024*4096)
+    assert r.size == SIZE_STR
     assert r.sectorSize == '512'
     assert r.parent == ''
     assert r.head == 'volume-head-000.img'
@@ -135,7 +156,7 @@ def test_snapshot(client):
     assert r.state == 'dirty'
     assert r.dirty
     assert not r.rebuilding
-    assert r.size == str(1024*4096)
+    assert r.size == SIZE_STR
     assert r.sectorSize == '512'
     assert r.disks["volume-snap-000.img"].labels["name"] == "000"
     assert r.disks["volume-snap-000.img"].labels["key"] == "value"
@@ -145,7 +166,7 @@ def test_snapshot(client):
     assert r.state == 'dirty'
     assert r.dirty
     assert not r.rebuilding
-    assert r.size == str(1024*4096)
+    assert r.size == SIZE_STR
     assert r.sectorSize == '512'
     assert r.head == 'volume-head-002.img'
     assert r.parent == 'volume-snap-001.img'
@@ -153,12 +174,13 @@ def test_snapshot(client):
                        'volume-snap-000.img']
 
 
-def test_remove_disk(client):
+def test_remove_disk(client, grpc_client):
+    grpc_client.replica_create(size=SIZE_STR)
+
     replicas = client.list_replica()
     assert len(replicas) == 1
 
     r = replicas[0]
-    r = r.create(size=str(1024*4096))
     r = r.open()
     r = r.snapshot(name='000', created=datetime.datetime.utcnow().isoformat())
     r = r.snapshot(name='001', created=datetime.datetime.utcnow().isoformat())
@@ -184,19 +206,20 @@ def test_remove_disk(client):
     r = r.removedisk(name='volume-snap-001.img')
     assert r.state == 'dirty'
     assert not r.rebuilding
-    assert r.size == str(1024*4096)
+    assert r.size == SIZE_STR
     assert r.sectorSize == '512'
     assert r.head == 'volume-head-002.img'
     assert r.parent == 'volume-snap-000.img'
     assert r.chain == ['volume-head-002.img', 'volume-snap-000.img']
 
 
-def test_remove_last_disk(client):
+def test_remove_last_disk(client, grpc_client):
+    grpc_client.replica_create(size=SIZE_STR)
+
     replicas = client.list_replica()
     assert len(replicas) == 1
 
     r = replicas[0]
-    r = r.create(size=str(1024*4096))
     r = r.open()
     r = r.snapshot(name='000', created=datetime.datetime.utcnow().isoformat())
     r = r.snapshot(name='001', created=datetime.datetime.utcnow().isoformat())
@@ -216,19 +239,20 @@ def test_remove_last_disk(client):
     r = r.removedisk(name='volume-snap-000.img')
     assert r.state == 'dirty'
     assert not r.rebuilding
-    assert r.size == str(1024*4096)
+    assert r.size == SIZE_STR
     assert r.sectorSize == '512'
     assert r.head == 'volume-head-002.img'
     assert r.parent == 'volume-snap-001.img'
     assert r.chain == ['volume-head-002.img', 'volume-snap-001.img']
 
 
-def test_reload(client):
+def test_reload(client, grpc_client):
+    grpc_client.replica_create(size=SIZE_STR)
+
     replicas = client.list_replica()
     assert len(replicas) == 1
 
     r = replicas[0]
-    r = r.create(size=str(1024*4096))
     r = r.open()
     assert r.chain == ['volume-head-000.img']
     r = r.snapshot(name='000', created=datetime.datetime.utcnow().isoformat())
@@ -239,7 +263,7 @@ def test_reload(client):
 
     r = r.removedisk(name='volume-snap-000.img')
     assert r.state == 'dirty'
-    assert r.size == str(1024*4096)
+    assert r.size == SIZE_STR
     assert r.sectorSize == '512'
     assert r.head == 'volume-head-002.img'
     assert r.parent == 'volume-snap-001.img'
@@ -247,7 +271,7 @@ def test_reload(client):
 
     r = r.reload()
     assert r.state == 'dirty'
-    assert r.size == str(1024*4096)
+    assert r.size == SIZE_STR
     assert r.sectorSize == '512'
     assert r.chain == ['volume-head-002.img', 'volume-snap-001.img']
     assert r.head == 'volume-head-002.img'
@@ -255,46 +279,48 @@ def test_reload(client):
 
     r = r.close().open()
     assert r.state == 'open'
-    assert r.size == str(1024*4096)
+    assert r.size == SIZE_STR
     assert r.sectorSize == '512'
     assert r.chain == ['volume-head-002.img', 'volume-snap-001.img']
     assert r.head == 'volume-head-002.img'
     assert r.parent == 'volume-snap-001.img'
 
 
-def test_reload_simple(client):
+def test_reload_simple(client, grpc_client):
+    grpc_client.replica_create(size=SIZE_STR)
+
     replicas = client.list_replica()
     assert len(replicas) == 1
 
     r = replicas[0]
-    r = r.create(size=str(1024*4096))
     r = r.open()
     assert r.state == 'open'
     assert not r.rebuilding
-    assert r.size == str(1024*4096)
+    assert r.size == SIZE_STR
     assert r.sectorSize == '512'
     assert r.parent == ''
     assert r.head == 'volume-head-000.img'
 
     r = r.reload()
     assert r.state == 'open'
-    assert r.size == str(1024*4096)
+    assert r.size == SIZE_STR
     assert r.sectorSize == '512'
     assert r.parent == ''
     assert r.head == 'volume-head-000.img'
 
 
-def test_rebuilding(client):
+def test_rebuilding(client, grpc_client):
+    grpc_client.replica_create(size=SIZE_STR)
+
     replicas = client.list_replica()
     assert len(replicas) == 1
 
     r = replicas[0]
-    r = r.create(size=str(1024*4096))
     r = r.open()
     r = r.snapshot(name='001', created=datetime.datetime.utcnow().isoformat())
     assert r.state == 'dirty'
     assert not r.rebuilding
-    assert r.size == str(1024*4096)
+    assert r.size == SIZE_STR
     assert r.sectorSize == '512'
     assert r.parent == 'volume-snap-001.img'
     assert r.head == 'volume-head-001.img'
@@ -303,7 +329,7 @@ def test_rebuilding(client):
     r = r.setrebuilding(rebuilding=True)
     assert r.state == 'rebuilding'
     assert r.rebuilding
-    assert r.size == str(1024*4096)
+    assert r.size == SIZE_STR
     assert r.sectorSize == '512'
     assert r.parent == 'volume-snap-001.img'
     assert r.head == 'volume-head-001.img'
@@ -312,7 +338,7 @@ def test_rebuilding(client):
     r = r.close().open()
     assert r.state == 'rebuilding'
     assert r.rebuilding
-    assert r.size == str(1024*4096)
+    assert r.size == SIZE_STR
     assert r.sectorSize == '512'
     assert r.parent == 'volume-snap-001.img'
     assert r.head == 'volume-head-001.img'
@@ -321,24 +347,25 @@ def test_rebuilding(client):
     r = r.reload()
     assert r.state == 'rebuilding'
     assert r.rebuilding
-    assert r.size == str(1024*4096)
+    assert r.size == SIZE_STR
     assert r.sectorSize == '512'
     assert r.parent == 'volume-snap-001.img'
     assert r.head == 'volume-head-001.img'
     assert r.chain == ['volume-head-001.img', 'volume-snap-001.img']
 
 
-def test_not_rebuilding(client):
+def test_not_rebuilding(client, grpc_client):
+    grpc_client.replica_create(size=SIZE_STR)
+
     replicas = client.list_replica()
     assert len(replicas) == 1
 
     r = replicas[0]
-    r = r.create(size=str(1024*4096))
     r = r.open()
     r = r.snapshot(name='001', created=datetime.datetime.utcnow().isoformat())
     assert r.state == 'dirty'
     assert not r.rebuilding
-    assert r.size == str(1024*4096)
+    assert r.size == SIZE_STR
     assert r.sectorSize == '512'
     assert r.parent == 'volume-snap-001.img'
     assert r.head == 'volume-head-001.img'
@@ -347,7 +374,7 @@ def test_not_rebuilding(client):
     r = r.setrebuilding(rebuilding=True)
     assert r.state == 'rebuilding'
     assert r.rebuilding
-    assert r.size == str(1024*4096)
+    assert r.size == SIZE_STR
     assert r.sectorSize == '512'
     assert r.parent == 'volume-snap-001.img'
     assert r.head == 'volume-head-001.img'
@@ -356,7 +383,7 @@ def test_not_rebuilding(client):
     r = r.setrebuilding(rebuilding=False)
     assert r.state == 'dirty'
     assert not r.rebuilding
-    assert r.size == str(1024*4096)
+    assert r.size == SIZE_STR
     assert r.sectorSize == '512'
     assert r.parent == 'volume-snap-001.img'
     assert r.head == 'volume-head-001.img'

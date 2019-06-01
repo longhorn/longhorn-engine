@@ -2,13 +2,11 @@ package rest
 
 import (
 	"fmt"
-	"io"
-	"net/http"
-	"strconv"
-
 	"github.com/gorilla/mux"
 	"github.com/rancher/go-rancher/api"
 	"github.com/rancher/go-rancher/client"
+	"io"
+	"net/http"
 )
 
 func (s *Server) ListReplicas(rw http.ResponseWriter, req *http.Request) error {
@@ -54,25 +52,6 @@ func (s *Server) SetRebuilding(rw http.ResponseWriter, req *http.Request) error 
 	}
 
 	return s.doOp(req, s.s.SetRebuilding(input.Rebuilding))
-}
-
-func (s *Server) Create(rw http.ResponseWriter, req *http.Request) error {
-	var input CreateInput
-	apiContext := api.GetApiContext(req)
-	if err := apiContext.Read(&input); err != nil && err != io.EOF {
-		return err
-	}
-
-	size := int64(0)
-	if input.Size != "" {
-		var err error
-		size, err = strconv.ParseInt(input.Size, 10, 0)
-		if err != nil {
-			return err
-		}
-	}
-
-	return s.doOp(req, s.s.Create(size))
 }
 
 func (s *Server) OpenReplica(rw http.ResponseWriter, req *http.Request) error {

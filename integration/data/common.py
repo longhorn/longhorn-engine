@@ -3,6 +3,7 @@ import string
 import subprocess
 import time
 import threading
+import sys
 
 import os
 from os import path
@@ -15,26 +16,42 @@ from utils import read_file, checksum_data, SIZE
 from frontend import restdev, blockdev
 from frontend import PAGE_SIZE, LONGHORN_DEV_DIR, get_socket_path  # NOQA
 
+# include directory intergration/rpc for module import
+sys.path.append(
+    os.path.abspath(
+        os.path.join(os.path.split(__file__)[0], "../rpc")
+    )
+)
+from replica.replica_client import ReplicaClient  # NOQA
+
 
 REPLICA1 = 'tcp://localhost:9502'
 REPLICA1_SCHEMA = 'http://localhost:9502/v1/schemas'
+GRPC_REPLICA1 = 'localhost:9505'
 REPLICA2 = 'tcp://localhost:9512'
 REPLICA2_SCHEMA = 'http://localhost:9512/v1/schemas'
+GRPC_REPLICA2 = 'localhost:9515'
 
 BACKED_REPLICA1 = 'tcp://localhost:9602'
 BACKED_REPLICA1_SCHEMA = 'http://localhost:9602/v1/schemas'
+GRPC_BACKED_REPLICA1 = 'localhost:9605'
 BACKED_REPLICA2 = 'tcp://localhost:9612'
 BACKED_REPLICA2_SCHEMA = 'http://localhost:9612/v1/schemas'
+GRPC_BACKED_REPLICA2 = 'localhost:9615'
 
 UPGRADE_REPLICA1 = 'tcp://localhost:9522'
 UPGRADE_REPLICA1_SCHEMA = 'http://localhost:9522/v1/schemas'
+GRPC_UPGRADE_REPLICA1 = 'localhost:9525'
 UPGRADE_REPLICA2 = 'tcp://localhost:9532'
 UPGRADE_REPLICA2_SCHEMA = 'http://localhost:9532/v1/schemas'
+GRPC_UPGRADE_REPLICA2 = 'localhost:9535'
 
 STANDBY_REPLICA1 = 'tcp://localhost:9542'
 STANDBY_REPLICA1_SCHEMA = 'http://localhost:9542/v1/schemas'
+GRPC_STANDBY_REPLICA1 = 'localhost:9545'
 STANDBY_REPLICA2 = 'tcp://localhost:9552'
 STANDBY_REPLICA2_SCHEMA = 'http://localhost:9552/v1/schemas'
+GRPC_STANDBY_REPLICA2 = 'localhost:9555'
 
 STANDBY_REPLICA1_PATH = '/tmp/standby_vol_replica_1/'
 STANDBY_REPLICA2_PATH = '/tmp/standby_vol_replica_2/'
@@ -71,18 +88,25 @@ def _base():
 def dev(request):
     replica = replica_client(request, REPLICA1_SCHEMA)
     replica2 = replica_client(request, REPLICA2_SCHEMA)
+    grpc_replica1 = grpc_replica_client(GRPC_REPLICA1)
+    grpc_replica2 = grpc_replica_client(GRPC_REPLICA2)
     controller = controller_client(request)
 
-    return get_dev(replica, replica2, controller)
+    return get_dev(replica, replica2,
+                   grpc_replica1, grpc_replica2, controller)
 
 
 @pytest.fixture()
 def backing_dev(request):
     replica = replica_client(request, BACKED_REPLICA1_SCHEMA)
     replica2 = replica_client(request, BACKED_REPLICA2_SCHEMA)
+    grpc_replica1 = grpc_replica_client(GRPC_BACKED_REPLICA1)
+    grpc_replica2 = grpc_replica_client(GRPC_BACKED_REPLICA2)
     controller = controller_client(request)
 
-    return get_backing_dev(replica, replica2, controller)
+    return get_backing_dev(replica, replica2,
+                           grpc_replica1, grpc_replica2,
+                           controller)
 
 
 @pytest.fixture()
@@ -142,10 +166,44 @@ def standby_replica2(request):
     return replica_client(request, STANDBY_REPLICA2_SCHEMA)
 
 
+@pytest.fixture()
+def grpc_replica1():
+    return grpc_replica_client(GRPC_REPLICA1)
+
+
+@pytest.fixture()
+def grpc_replica2():
+    return grpc_replica_client(GRPC_REPLICA2)
+
+
+@pytest.fixture()
+def grpc_backing_replica1():
+    return grpc_replica_client(GRPC_BACKED_REPLICA1)
+
+
+@pytest.fixture()
+def grpc_backing_replica2():
+    return grpc_replica_client(GRPC_BACKED_REPLICA2)
+
+
+@pytest.fixture()
+def grpc_standby_replica1():
+    return grpc_replica_client(GRPC_STANDBY_REPLICA1)
+
+
+@pytest.fixture()
+def grpc_standby_replica2():
+    return grpc_replica_client(GRPC_STANDBY_REPLICA2)
+
+
 def replica_client(request, url):
     c = cattle.from_env(url=url)
     request.addfinalizer(lambda: cleanup_replica(c))
     return cleanup_replica(c)
+
+
+def grpc_replica_client(url):
+    return ReplicaClient(url)
 
 
 def cleanup_replica(client):
@@ -160,7 +218,7 @@ def cleanup_replica(client):
     return client
 
 
-def open_replica(client, backing_file=None):
+def open_replica(client, grpc_client, backing_file=None):
     replicas = client.list_replica()
     assert len(replicas) == 1
 
@@ -171,11 +229,11 @@ def open_replica(client, backing_file=None):
     assert r.parent == ''
     assert r.head == ''
 
-    r = r.create(size=str(1024 * 4096))
+    r = grpc_client.replica_create(size=str(1024 * 4096))
 
     assert r.state == 'closed'
     assert r.size == str(1024 * 4096)
-    assert r.sectorSize == '512'
+    assert r.sectorSize == 512
     assert r.parent == ''
     assert r.head == 'volume-head-000.img'
 
@@ -293,10 +351,11 @@ def backing_replica2(request):
     return replica_client(request, BACKED_REPLICA2_SCHEMA)
 
 
-def get_dev(replica1, replica2, controller):
+def get_dev(replica1, replica2,
+            grpc_replica1, grpc_replica2, controller):
     prepare_backup_dir(BACKUP_DIR)
-    open_replica(replica1)
-    open_replica(replica2)
+    open_replica(replica1, grpc_replica1)
+    open_replica(replica2, grpc_replica2)
 
     replicas = controller.list_replica()
     assert len(replicas) == 0
@@ -313,10 +372,11 @@ def get_dev(replica1, replica2, controller):
 
 
 def get_backing_dev(backing_replica1, backing_replica2,
+                    grpc_backing_replica1, grpc_backing_replica2,
                     controller):
     prepare_backup_dir(BACKUP_DIR)
-    open_replica(backing_replica1)
-    open_replica(backing_replica2)
+    open_replica(backing_replica1, grpc_backing_replica1)
+    open_replica(backing_replica2, grpc_backing_replica2)
 
     replicas = controller.list_replica()
     assert len(replicas) == 0

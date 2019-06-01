@@ -1,6 +1,8 @@
 package rpc
 
 import (
+	"strconv"
+
 	"github.com/golang/protobuf/ptypes/empty"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
@@ -19,9 +21,67 @@ func NewReplicaServer(s *replica.Server) *ReplicaServer {
 	}
 }
 
-func (rs *ReplicaServer) ReplicaCreate(ctx context.Context, req *ReplicaCreateRequest) (*Replica, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ReplicaCreate not implemented")
+func (rs *ReplicaServer) listReplicaDisks() map[string]*DiskInfo {
+	disks := map[string]*DiskInfo{}
+	r := rs.s.Replica()
+	if r != nil {
+		ds := r.ListDisks()
+		for name, info := range ds {
+			disks[name] = &DiskInfo{
+				Name:        info.Name,
+				Parent:      info.Parent,
+				Children:    info.Children,
+				Removed:     info.Removed,
+				UserCreated: info.UserCreated,
+				Created:     info.Created,
+				Size:        info.Size,
+				Labels:      info.Labels,
+			}
+		}
+	}
+	return disks
 }
+
+func (rs *ReplicaServer) getReplica() (replica *Replica) {
+	state, info := rs.s.Status()
+	replica = &Replica{
+		Dirty:       info.Dirty,
+		Rebuilding:  info.Rebuilding,
+		Head:        info.Head,
+		Parent:      info.Parent,
+		Size:        strconv.FormatInt(info.Size, 10),
+		SectorSize:  info.SectorSize,
+		BackingFile: info.BackingFileName,
+		State:       string(state),
+		Disks:       rs.listReplicaDisks(),
+	}
+	r := rs.s.Replica()
+	if r != nil {
+		chain, _ := r.DisplayChain()
+		replica.Chain = chain
+		replica.RemainSnapshots = int32(r.GetRemainSnapshotCounts())
+		replica.RevisionCounter = r.GetRevisionCounter()
+	}
+	return replica
+}
+
+func (rs *ReplicaServer) ReplicaCreate(ctx context.Context, req *ReplicaCreateRequest) (*Replica, error) {
+	size := int64(0)
+	if req.Size != "" {
+		var err error
+		size, err = strconv.ParseInt(req.Size, 10, 0)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	if err := rs.s.Create(size); err != nil {
+		return nil, err
+	}
+
+	return rs.getReplica(), nil
+}
+
 func (rs *ReplicaServer) ReplicaDelete(ctx context.Context, req *empty.Empty) (*empty.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReplicaDelete not implemented")
 }
