@@ -11,12 +11,17 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 
 	"github.com/longhorn/longhorn-engine/replica/rest"
 	"github.com/longhorn/longhorn-engine/dataconn"
 	"github.com/longhorn/longhorn-engine/types"
 	"github.com/longhorn/longhorn-engine/util"
+	replicarpc "github.com/longhorn/longhorn-engine/replica/rpc"
+	"github.com/longhorn/longhorn-engine/replica/client"
 )
 
 var (
@@ -55,7 +60,21 @@ func (r *Remote) Close() error {
 
 func (r *Remote) open() error {
 	logrus.Infof("Opening: %s", r.name)
-	return r.doAction("open", nil)
+	conn, err := grpc.Dial(r.replicaServiceURL, grpc.WithInsecure())
+	if err != nil {
+		return fmt.Errorf("cannot connect to ReplicaService %v: %v", r.replicaServiceURL, err)
+	}
+	defer conn.Close()
+	replicaServiceClient := replicarpc.NewReplicaServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), client.GRPCServiceCommonTimeout)
+	defer cancel()
+
+	if _, err := replicaServiceClient.ReplicaOpen(ctx, &empty.Empty{}); err != nil {
+		return fmt.Errorf("failed to open replica %v from remote: %v", r.replicaServiceURL, err)
+	}
+
+	return nil
 }
 
 func (r *Remote) Snapshot(name string, userCreated bool, created string, labels map[string]string) error {

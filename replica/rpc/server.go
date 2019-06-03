@@ -88,9 +88,15 @@ func (rs *ReplicaServer) ReplicaDelete(ctx context.Context, req *empty.Empty) (*
 func (rs *ReplicaServer) ReplicaGet(ctx context.Context, req *empty.Empty) (*Replica, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReplicaGet not implemented")
 }
+
 func (rs *ReplicaServer) ReplicaOpen(ctx context.Context, req *empty.Empty) (*Replica, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ReplicaOpen not implemented")
+	if err := rs.s.Open(); err != nil {
+		return nil, err
+	}
+
+	return rs.getReplica(), nil
 }
+
 func (rs *ReplicaServer) ReplicaClose(ctx context.Context, req *empty.Empty) (*Replica, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReplicaClose not implemented")
 }

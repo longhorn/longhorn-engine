@@ -103,7 +103,6 @@ func NewReplica(context *api.ApiContext, state replica.State, info replica.Info,
 		actions["prepareremovedisk"] = true
 		actions["setrevisioncounter"] = true
 	case replica.Closed:
-		actions["open"] = true
 		actions["removedisk"] = true
 		actions["replacedisk"] = true
 		actions["revert"] = true
@@ -171,9 +170,6 @@ func NewSchema() *client.Schemas {
 	replica.ResourceMethods = []string{"GET", "DELETE"}
 	replica.ResourceActions = map[string]client.Action{
 		"close": {
-			Output: "replica",
-		},
-		"open": {
 			Output: "replica",
 		},
 		"reload": {
