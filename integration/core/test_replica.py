@@ -120,17 +120,13 @@ def test_close(client, grpc_client):
     assert r.parent == ''
     assert r.head == 'volume-head-000.img'
 
-    replicas = client.list_replica()
-    assert len(replicas) == 1
-
-    r = client.list_replica()[0]
-    r = r.close()
+    r = grpc_client.replica_close()
 
     assert r.state == 'closed'
     assert not r.dirty
     assert not r.rebuilding
     assert r.size == SIZE_STR
-    assert r.sectorSize == '512'
+    assert r.sectorSize == 512
     assert r.parent == ''
     assert r.head == 'volume-head-000.img'
 
@@ -278,7 +274,7 @@ def test_reload(client, grpc_client):
     assert r.head == 'volume-head-002.img'
     assert r.parent == 'volume-snap-001.img'
 
-    r.close()
+    grpc_client.replica_close()
     r = grpc_client.replica_open()
     assert r.state == 'open'
     assert r.size == SIZE_STR
@@ -337,7 +333,7 @@ def test_rebuilding(client, grpc_client):
     assert r.head == 'volume-head-001.img'
     assert r.chain == ['volume-head-001.img', 'volume-snap-001.img']
 
-    r.close()
+    grpc_client.replica_close()
     r = grpc_client.replica_open()
     assert r.state == 'rebuilding'
     assert r.rebuilding

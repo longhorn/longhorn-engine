@@ -92,7 +92,6 @@ func NewReplica(context *api.ApiContext, state replica.State, info replica.Info,
 	switch state {
 	case replica.Initial:
 	case replica.Open:
-		actions["close"] = true
 		actions["setrebuilding"] = true
 		actions["snapshot"] = true
 		actions["reload"] = true
@@ -110,7 +109,6 @@ func NewReplica(context *api.ApiContext, state replica.State, info replica.Info,
 		actions["prepareremovedisk"] = true
 	case replica.Dirty:
 		actions["setrebuilding"] = true
-		actions["close"] = true
 		actions["snapshot"] = true
 		actions["reload"] = true
 		actions["removedisk"] = true
@@ -121,7 +119,6 @@ func NewReplica(context *api.ApiContext, state replica.State, info replica.Info,
 	case replica.Rebuilding:
 		actions["snapshot"] = true
 		actions["setrebuilding"] = true
-		actions["close"] = true
 		actions["reload"] = true
 		actions["removedisk"] = true
 		actions["setrevisioncounter"] = true
@@ -169,9 +166,6 @@ func NewSchema() *client.Schemas {
 
 	replica.ResourceMethods = []string{"GET", "DELETE"}
 	replica.ResourceActions = map[string]client.Action{
-		"close": {
-			Output: "replica",
-		},
 		"reload": {
 			Output: "replica",
 		},
