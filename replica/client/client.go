@@ -140,15 +140,24 @@ func (c *ReplicaClient) ReloadReplica() (*replicarpc.Replica, error) {
 }
 
 func (c *ReplicaClient) Revert(name, created string) error {
-	r, err := c.GetReplica()
+	conn, err := grpc.Dial(c.replicaServiceURL, grpc.WithInsecure())
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot connect to ReplicaService %v: %v", c.replicaServiceURL, err)
 	}
+	defer conn.Close()
+	replicaServiceClient := replicarpc.NewReplicaServiceClient(conn)
 
-	return c.post(r.Actions["revert"], rest.RevertInput{
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
+	defer cancel()
+
+	if _, err := replicaServiceClient.ReplicaRevert(ctx, &replicarpc.ReplicaRevertRequest{
 		Name:    name,
 		Created: created,
-	}, nil)
+	}); err != nil {
+		return fmt.Errorf("failed to revert replica %v: %v", c.replicaServiceURL, err)
+	}
+
+	return nil
 }
 
 func (c *ReplicaClient) SetRebuilding(rebuilding bool) error {

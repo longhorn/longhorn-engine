@@ -1,6 +1,7 @@
 package rpc
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/golang/protobuf/ptypes/empty"
@@ -114,8 +115,20 @@ func (rs *ReplicaServer) ReplicaReload(ctx context.Context, req *empty.Empty) (*
 }
 
 func (rs *ReplicaServer) ReplicaRevert(ctx context.Context, req *ReplicaRevertRequest) (*Replica, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ReplicaRevert not implemented")
+	if req.Name == "" {
+		return nil, fmt.Errorf("Cannot accept empty snapshot name")
+	}
+	if req.Created == "" {
+		return nil, fmt.Errorf("Need to specific created time")
+	}
+
+	if err := rs.s.Revert(req.Name, req.Created); err != nil {
+		return nil, err
+	}
+
+	return rs.getReplica(), nil
 }
+
 func (rs *ReplicaServer) ReplicaSnapshot(ctx context.Context, req *ReplicaSnapshotRequest) (*Replica, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReplicaSnapshot not implemented")
 }

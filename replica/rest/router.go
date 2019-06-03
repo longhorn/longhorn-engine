@@ -55,7 +55,6 @@ func NewRouter(s *Server) *mux.Router {
 	actions := map[string]func(http.ResponseWriter, *http.Request) error{
 		"snapshot":           s.SnapshotReplica,
 		"setrebuilding":      s.SetRebuilding,
-		"revert":             s.RevertReplica,
 		"setrevisioncounter": s.SetRevisionCounter,
 		"markdiskasremoved":  s.MarkDiskAsRemoved,
 		"prepareremovedisk":  s.PrepareRemoveDisk,
