@@ -25,12 +25,6 @@ type Replica struct {
 	RevisionCounter int64                       `json:"revisioncounter,string"`
 }
 
-type RevertInput struct {
-	client.Resource
-	Name    string `json:"name"`
-	Created string `json:"created"`
-}
-
 type RebuildingInput struct {
 	client.Resource
 	Rebuilding bool `json:"rebuilding"`
@@ -96,14 +90,12 @@ func NewReplica(context *api.ApiContext, state replica.State, info replica.Info,
 		actions["snapshot"] = true
 		actions["removedisk"] = true
 		actions["replacedisk"] = true
-		actions["revert"] = true
 		actions["markdiskasremoved"] = true
 		actions["prepareremovedisk"] = true
 		actions["setrevisioncounter"] = true
 	case replica.Closed:
 		actions["removedisk"] = true
 		actions["replacedisk"] = true
-		actions["revert"] = true
 		actions["markdiskasremoved"] = true
 		actions["prepareremovedisk"] = true
 	case replica.Dirty:
@@ -111,7 +103,6 @@ func NewReplica(context *api.ApiContext, state replica.State, info replica.Info,
 		actions["snapshot"] = true
 		actions["removedisk"] = true
 		actions["replacedisk"] = true
-		actions["revert"] = true
 		actions["markdiskasremoved"] = true
 		actions["prepareremovedisk"] = true
 	case replica.Rebuilding:
@@ -154,7 +145,6 @@ func NewSchema() *client.Schemas {
 	schemas.AddType("snapshotInput", SnapshotInput{})
 	schemas.AddType("removediskInput", RemoveDiskInput{})
 	schemas.AddType("markDiskAsRemovedInput", MarkDiskAsRemovedInput{})
-	schemas.AddType("revertInput", RevertInput{})
 	schemas.AddType("prepareRemoveDiskInput", PrepareRemoveDiskInput{})
 	schemas.AddType("prepareRemoveDiskOutput", PrepareRemoveDiskOutput{})
 	schemas.AddType("revisionCounter", RevisionCounter{})
@@ -173,10 +163,6 @@ func NewSchema() *client.Schemas {
 		},
 		"setrebuilding": {
 			Input:  "rebuildingInput",
-			Output: "replica",
-		},
-		"revert": {
-			Input:  "revertInput",
 			Output: "replica",
 		},
 		"prepareremovedisk": {

@@ -122,24 +122,6 @@ func (s *Server) SnapshotReplica(rw http.ResponseWriter, req *http.Request) erro
 	return s.doOp(req, s.s.Snapshot(input.Name, input.UserCreated, input.Created, input.Labels))
 }
 
-func (s *Server) RevertReplica(rw http.ResponseWriter, req *http.Request) error {
-	var input RevertInput
-	apiContext := api.GetApiContext(req)
-	if err := apiContext.Read(&input); err != nil && err != io.EOF {
-		return err
-	}
-
-	if input.Name == "" {
-		return fmt.Errorf("Cannot accept empty snapshot name")
-	}
-
-	if input.Created == "" {
-		return fmt.Errorf("Need to specific created time")
-	}
-
-	return s.doOp(req, s.s.Revert(input.Name, input.Created))
-}
-
 func (s *Server) DeleteReplica(rw http.ResponseWriter, req *http.Request) error {
 	return s.doOp(req, s.s.Delete())
 }
