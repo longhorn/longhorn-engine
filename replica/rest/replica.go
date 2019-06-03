@@ -140,10 +140,6 @@ func (s *Server) RevertReplica(rw http.ResponseWriter, req *http.Request) error 
 	return s.doOp(req, s.s.Revert(input.Name, input.Created))
 }
 
-func (s *Server) ReloadReplica(rw http.ResponseWriter, req *http.Request) error {
-	return s.doOp(req, s.s.Reload())
-}
-
 func (s *Server) DeleteReplica(rw http.ResponseWriter, req *http.Request) error {
 	return s.doOp(req, s.s.Delete())
 }

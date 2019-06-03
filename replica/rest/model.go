@@ -94,7 +94,6 @@ func NewReplica(context *api.ApiContext, state replica.State, info replica.Info,
 	case replica.Open:
 		actions["setrebuilding"] = true
 		actions["snapshot"] = true
-		actions["reload"] = true
 		actions["removedisk"] = true
 		actions["replacedisk"] = true
 		actions["revert"] = true
@@ -110,7 +109,6 @@ func NewReplica(context *api.ApiContext, state replica.State, info replica.Info,
 	case replica.Dirty:
 		actions["setrebuilding"] = true
 		actions["snapshot"] = true
-		actions["reload"] = true
 		actions["removedisk"] = true
 		actions["replacedisk"] = true
 		actions["revert"] = true
@@ -119,7 +117,6 @@ func NewReplica(context *api.ApiContext, state replica.State, info replica.Info,
 	case replica.Rebuilding:
 		actions["snapshot"] = true
 		actions["setrebuilding"] = true
-		actions["reload"] = true
 		actions["removedisk"] = true
 		actions["setrevisioncounter"] = true
 	case replica.Error:
@@ -166,9 +163,6 @@ func NewSchema() *client.Schemas {
 
 	replica.ResourceMethods = []string{"GET", "DELETE"}
 	replica.ResourceActions = map[string]client.Action{
-		"reload": {
-			Output: "replica",
-		},
 		"snapshot": {
 			Input:  "snapshotInput",
 			Output: "replica",

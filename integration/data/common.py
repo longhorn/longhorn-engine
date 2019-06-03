@@ -223,7 +223,7 @@ def cleanup_replica(client, grpc_client):
         grpc_client.replica_open()
     r = client.list_replica()[0]
     client.delete(r)
-    r = client.reload(r)
+    r = grpc_client.replica_reload()
     assert r.state == 'initial'
     return client
 

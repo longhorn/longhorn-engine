@@ -402,9 +402,8 @@ def test_ha_remove_extra_disks(controller, replica1, replica2,  # NOQA
     data_offset = 1024
     verify_data(dev, data_offset, data)
 
-    r = replica1.list_replica()[0]
-    replica1 = replica1.reload(r)
-    print(replica1)
+    r1 = grpc_replica1.replica_reload()
+    print(r1)
 
     cmd.add_replica(common.REPLICA1)
 
