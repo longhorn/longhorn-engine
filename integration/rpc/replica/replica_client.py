@@ -15,3 +15,6 @@ class ReplicaClient(object):
 
     def replica_open(self):
         return self.stub.ReplicaOpen(empty_pb2.Empty())
+
+    def replica_close(self):
+        return self.stub.ReplicaClose(empty_pb2.Empty())

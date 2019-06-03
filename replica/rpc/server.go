@@ -98,8 +98,13 @@ func (rs *ReplicaServer) ReplicaOpen(ctx context.Context, req *empty.Empty) (*Re
 }
 
 func (rs *ReplicaServer) ReplicaClose(ctx context.Context, req *empty.Empty) (*Replica, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ReplicaClose not implemented")
+	if err := rs.s.Close(); err != nil {
+		return nil, err
+	}
+
+	return rs.getReplica(), nil
 }
+
 func (rs *ReplicaServer) ReplicaReload(ctx context.Context, req *empty.Empty) (*Replica, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReplicaReload not implemented")
 }

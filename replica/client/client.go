@@ -115,12 +115,21 @@ func (c *ReplicaClient) Revert(name, created string) error {
 }
 
 func (c *ReplicaClient) Close() error {
-	r, err := c.GetReplica()
+	conn, err := grpc.Dial(c.replicaServiceURL, grpc.WithInsecure())
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot connect to ReplicaService %v: %v", c.replicaServiceURL, err)
+	}
+	defer conn.Close()
+	replicaServiceClient := replicarpc.NewReplicaServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
+	defer cancel()
+
+	if _, err := replicaServiceClient.ReplicaClose(ctx, &empty.Empty{}); err != nil {
+		return fmt.Errorf("failed to close replica %v: %v", c.replicaServiceURL, err)
 	}
 
-	return c.post(r.Actions["close"], nil, nil)
+	return nil
 }
 
 func (c *ReplicaClient) SetRebuilding(rebuilding bool) error {

@@ -138,7 +138,7 @@ def test_ha_double_replica_rebuild(controller, replica1, replica2,  # NOQA
     # Close replica2
     r2 = replica2.list_replica()[0]
     assert r2.revisioncounter == '1'
-    r2.close()
+    grpc_replica2.replica_close()
 
     verify_async(dev, 10, 128, 1)
 
@@ -153,7 +153,7 @@ def test_ha_double_replica_rebuild(controller, replica1, replica2,  # NOQA
     # Close replica1
     r1 = replica1.list_replica()[0]
     assert r1.revisioncounter == '12'  # 1 + 10 + 1
-    r1.close()
+    grpc_replica1.replica_close()
 
     # Restart volume
     common.cleanup_controller(controller)
@@ -181,7 +181,7 @@ def test_ha_double_replica_rebuild(controller, replica1, replica2,  # NOQA
     # Rebuild replica2
     r2 = replica2.list_replica()[0]
     assert r2.revisioncounter == '1'
-    r2.close()
+    grpc_replica2.replica_close()
 
     controller.delete(replicas[0])
 

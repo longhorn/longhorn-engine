@@ -218,7 +218,7 @@ def test_replica_add_rebuild(bin, controller_client,
                        'volume-snap-001.img',
                        'volume-snap-000.img']
 
-    r = r.close()
+    grpc_replica_client.replica_close()
     cmd = [bin, '--debug', 'add-replica', REPLICA]
     subprocess.check_call(cmd)
 
@@ -296,8 +296,8 @@ def test_replica_add_after_rebuild_failed(bin, controller_client,
 
     grpc_replica_client.replica_open()
     r = replica_client.list_replica()[0]
-    r = r.snapshot(name='000', created=datetime.datetime.utcnow().isoformat())
-    r.close()
+    r.snapshot(name='000', created=datetime.datetime.utcnow().isoformat())
+    grpc_replica_client.replica_close()
 
     cmd = [bin, '--debug', 'add-replica', REPLICA]
     subprocess.check_call(cmd)
@@ -308,7 +308,7 @@ def test_replica_add_after_rebuild_failed(bin, controller_client,
     grpc_replica_client2.replica_open()
     l = replica_client2.list_replica()[0]
     l = l.setrebuilding(rebuilding=True)
-    l.close()
+    grpc_replica_client2.replica_close()
 
     cmd = [bin, '--debug', 'add-replica', REPLICA2]
     subprocess.check_call(cmd)

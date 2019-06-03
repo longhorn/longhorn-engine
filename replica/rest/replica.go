@@ -144,10 +144,6 @@ func (s *Server) ReloadReplica(rw http.ResponseWriter, req *http.Request) error 
 	return s.doOp(req, s.s.Reload())
 }
 
-func (s *Server) CloseReplica(rw http.ResponseWriter, req *http.Request) error {
-	return s.doOp(req, s.s.Close())
-}
-
 func (s *Server) DeleteReplica(rw http.ResponseWriter, req *http.Request) error {
 	return s.doOp(req, s.s.Delete())
 }

@@ -54,8 +54,21 @@ type Remote struct {
 
 func (r *Remote) Close() error {
 	logrus.Infof("Closing: %s", r.name)
-	r.StopMonitoring()
-	return r.doAction("close", nil)
+	conn, err := grpc.Dial(r.replicaServiceURL, grpc.WithInsecure())
+	if err != nil {
+		return fmt.Errorf("cannot connect to ReplicaService %v: %v", r.replicaServiceURL, err)
+	}
+	defer conn.Close()
+	replicaServiceClient := replicarpc.NewReplicaServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), client.GRPCServiceCommonTimeout)
+	defer cancel()
+
+	if _, err := replicaServiceClient.ReplicaClose(ctx, &empty.Empty{}); err != nil {
+		return fmt.Errorf("failed to close replica %v from remote: %v", r.replicaServiceURL, err)
+	}
+
+	return nil
 }
 
 func (r *Remote) open() error {
