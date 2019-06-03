@@ -120,6 +120,25 @@ func (c *ReplicaClient) Close() error {
 	return nil
 }
 
+func (c *ReplicaClient) ReloadReplica() (*replicarpc.Replica, error) {
+	conn, err := grpc.Dial(c.replicaServiceURL, grpc.WithInsecure())
+	if err != nil {
+		return nil, fmt.Errorf("cannot connect to ReplicaService %v: %v", c.replicaServiceURL, err)
+	}
+	defer conn.Close()
+	replicaServiceClient := replicarpc.NewReplicaServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
+	defer cancel()
+
+	replica, err := replicaServiceClient.ReplicaReload(ctx, &empty.Empty{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to reload replica %v: %v", c.replicaServiceURL, err)
+	}
+
+	return replica, nil
+}
+
 func (c *ReplicaClient) Revert(name, created string) error {
 	r, err := c.GetReplica()
 	if err != nil {
@@ -195,13 +214,6 @@ func (c *ReplicaClient) GetReplica() (rest.Replica, error) {
 	var replica rest.Replica
 
 	err := c.get(c.address+"/replicas/1", &replica)
-	return replica, err
-}
-
-func (c *ReplicaClient) ReloadReplica() (rest.Replica, error) {
-	var replica rest.Replica
-
-	err := c.post(c.address+"/replicas/1?action=reload", map[string]string{}, &replica)
 	return replica, err
 }
 
