@@ -16,12 +16,12 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/longhorn/longhorn-engine/replica/rest"
-	"github.com/longhorn/longhorn-engine/sync/rpc"
+	syncagentrpc "github.com/longhorn/longhorn-engine/sync/rpc"
 )
 
 const (
-	SyncAgentServiceCommonTimeout = 1 * time.Minute
-	SyncAgentServiceLongTimeout   = 24 * time.Hour
+	GRPCServiceCommonTimeout = 1 * time.Minute
+	GRPCServiceLongTimeout   = 24 * time.Hour
 )
 
 type ReplicaClient struct {
@@ -191,12 +191,12 @@ func (c *ReplicaClient) RemoveFile(file string) error {
 		return fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
 	}
 	defer conn.Close()
-	syncAgentServiceClient := rpc.NewSyncAgentServiceClient(conn)
+	syncAgentServiceClient := syncagentrpc.NewSyncAgentServiceClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), SyncAgentServiceCommonTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
 	defer cancel()
 
-	if _, err := syncAgentServiceClient.FileRemove(ctx, &rpc.FileRemoveRequest{
+	if _, err := syncAgentServiceClient.FileRemove(ctx, &syncagentrpc.FileRemoveRequest{
 		FileName: file,
 	}); err != nil {
 		return fmt.Errorf("failed to remove file %v: %v", file, err)
@@ -211,12 +211,12 @@ func (c *ReplicaClient) RenameFile(oldFileName, newFileName string) error {
 		return fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
 	}
 	defer conn.Close()
-	syncAgentServiceClient := rpc.NewSyncAgentServiceClient(conn)
+	syncAgentServiceClient := syncagentrpc.NewSyncAgentServiceClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), SyncAgentServiceCommonTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
 	defer cancel()
 
-	if _, err := syncAgentServiceClient.FileRename(ctx, &rpc.FileRenameRequest{
+	if _, err := syncAgentServiceClient.FileRename(ctx, &syncagentrpc.FileRenameRequest{
 		OldFileName: oldFileName,
 		NewFileName: newFileName,
 	}); err != nil {
@@ -232,12 +232,12 @@ func (c *ReplicaClient) CoalesceFile(from, to string) error {
 		return fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
 	}
 	defer conn.Close()
-	syncAgentServiceClient := rpc.NewSyncAgentServiceClient(conn)
+	syncAgentServiceClient := syncagentrpc.NewSyncAgentServiceClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), SyncAgentServiceLongTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceLongTimeout)
 	defer cancel()
 
-	if _, err := syncAgentServiceClient.FileCoalesce(ctx, &rpc.FileCoalesceRequest{
+	if _, err := syncAgentServiceClient.FileCoalesce(ctx, &syncagentrpc.FileCoalesceRequest{
 		FromFileName: from,
 		ToFileName:   to,
 	}); err != nil {
@@ -253,12 +253,12 @@ func (c *ReplicaClient) SendFile(from, host string, port int32) error {
 		return fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
 	}
 	defer conn.Close()
-	syncAgentServiceClient := rpc.NewSyncAgentServiceClient(conn)
+	syncAgentServiceClient := syncagentrpc.NewSyncAgentServiceClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), SyncAgentServiceLongTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceLongTimeout)
 	defer cancel()
 
-	if _, err := syncAgentServiceClient.FileSend(ctx, &rpc.FileSendRequest{
+	if _, err := syncAgentServiceClient.FileSend(ctx, &syncagentrpc.FileSendRequest{
 		FromFileName: from,
 		Host:         host,
 		Port:         port,
@@ -275,12 +275,12 @@ func (c *ReplicaClient) LaunchReceiver(toFilePath string) (string, int32, error)
 		return "", 0, fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
 	}
 	defer conn.Close()
-	syncAgentServiceClient := rpc.NewSyncAgentServiceClient(conn)
+	syncAgentServiceClient := syncagentrpc.NewSyncAgentServiceClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), SyncAgentServiceLongTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceLongTimeout)
 	defer cancel()
 
-	reply, err := syncAgentServiceClient.ReceiverLaunch(ctx, &rpc.ReceiverLaunchRequest{
+	reply, err := syncAgentServiceClient.ReceiverLaunch(ctx, &syncagentrpc.ReceiverLaunchRequest{
 		ToFileName: toFilePath,
 	})
 	if err != nil {
@@ -296,12 +296,12 @@ func (c *ReplicaClient) CreateBackup(snapshot, dest, volume string, labels []str
 		return "", fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
 	}
 	defer conn.Close()
-	syncAgentServiceClient := rpc.NewSyncAgentServiceClient(conn)
+	syncAgentServiceClient := syncagentrpc.NewSyncAgentServiceClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), SyncAgentServiceLongTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceLongTimeout)
 	defer cancel()
 
-	reply, err := syncAgentServiceClient.BackupCreate(ctx, &rpc.BackupCreateRequest{
+	reply, err := syncAgentServiceClient.BackupCreate(ctx, &syncagentrpc.BackupCreateRequest{
 		SnapshotFileName: snapshot,
 		BackupTarget:     dest,
 		VolumeName:       volume,
@@ -321,12 +321,12 @@ func (c *ReplicaClient) RmBackup(backup string) error {
 		return fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
 	}
 	defer conn.Close()
-	syncAgentServiceClient := rpc.NewSyncAgentServiceClient(conn)
+	syncAgentServiceClient := syncagentrpc.NewSyncAgentServiceClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), SyncAgentServiceCommonTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
 	defer cancel()
 
-	if _, err := syncAgentServiceClient.BackupRemove(ctx, &rpc.BackupRemoveRequest{
+	if _, err := syncAgentServiceClient.BackupRemove(ctx, &syncagentrpc.BackupRemoveRequest{
 		Backup: backup,
 	}); err != nil {
 		return fmt.Errorf("failed to remove backup %v: %v", backup, err)
@@ -341,12 +341,12 @@ func (c *ReplicaClient) RestoreBackup(backup, snapshotFile string) error {
 		return fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
 	}
 	defer conn.Close()
-	syncAgentServiceClient := rpc.NewSyncAgentServiceClient(conn)
+	syncAgentServiceClient := syncagentrpc.NewSyncAgentServiceClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), SyncAgentServiceLongTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceLongTimeout)
 	defer cancel()
 
-	if _, err := syncAgentServiceClient.BackupRestore(ctx, &rpc.BackupRestoreRequest{
+	if _, err := syncAgentServiceClient.BackupRestore(ctx, &syncagentrpc.BackupRestoreRequest{
 		Backup:           backup,
 		SnapshotFileName: snapshotFile,
 	}); err != nil {
@@ -362,12 +362,12 @@ func (c *ReplicaClient) RestoreBackupIncrementally(backup, deltaFile, lastRestor
 		return fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
 	}
 	defer conn.Close()
-	syncAgentServiceClient := rpc.NewSyncAgentServiceClient(conn)
+	syncAgentServiceClient := syncagentrpc.NewSyncAgentServiceClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), SyncAgentServiceLongTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceLongTimeout)
 	defer cancel()
 
-	if _, err := syncAgentServiceClient.BackupRestoreIncrementally(ctx, &rpc.BackupRestoreIncrementallyRequest{
+	if _, err := syncAgentServiceClient.BackupRestoreIncrementally(ctx, &syncagentrpc.BackupRestoreIncrementallyRequest{
 		Backup:                 backup,
 		DeltaFileName:          deltaFile,
 		LastRestoredBackupName: lastRestored,
