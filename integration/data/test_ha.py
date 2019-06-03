@@ -36,7 +36,7 @@ def test_ha_single_replica_failure(controller, replica1, replica2,  # NOQA
     data_offset = 1024
     verify_data(dev, data_offset, data)
 
-    cleanup_replica(replica2)
+    cleanup_replica(replica2, grpc_replica2)
 
     verify_async(dev, 10, 128, 1)
 
@@ -71,7 +71,7 @@ def test_ha_single_replica_rebuild(controller, replica1, replica2,  # NOQA
     verify_data(dev, data_offset, data)
 
     # Cleanup replica2
-    cleanup_replica(replica2)
+    cleanup_replica(replica2, grpc_replica2)
 
     verify_async(dev, 10, 128, 1)
 
@@ -263,7 +263,7 @@ def test_snapshot_tree_rebuild(controller, replica1, replica2,  # NOQA
     verify_data(dev, data_offset, data)
 
     # Cleanup replica2
-    cleanup_replica(replica2)
+    cleanup_replica(replica2, grpc_replica2)
 
     verify_async(dev, 10, 128, 1)
 
@@ -315,7 +315,7 @@ def test_ha_single_backing_replica_rebuild(controller,              # NOQA
     verify_data(dev, data_offset, data)
 
     # Cleanup replica2
-    cleanup_replica(backing_replica2)
+    cleanup_replica(backing_replica2, grpc_backing_replica2)
 
     verify_async(dev, 10, 128, 1)
 

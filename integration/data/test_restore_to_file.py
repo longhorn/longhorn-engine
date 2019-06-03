@@ -296,8 +296,8 @@ def test_restore_to_file_with_backing_file(backing_replica1, backing_replica2,  
                                              grpc_backing_replica2,
                                              controller)
         restore_to_file_with_backing_file_test(backing_dev, backup_target)
-        common.cleanup_replica(backing_replica1)
-        common.cleanup_replica(backing_replica2)
+        common.cleanup_replica(backing_replica1, grpc_backing_replica1)
+        common.cleanup_replica(backing_replica2, grpc_backing_replica2)
         common.cleanup_controller(controller)
 
 
@@ -308,6 +308,6 @@ def test_restore_to_file_without_backing_file(replica1, replica2,  # NOQA
         dev = common.get_dev(replica1, replica2,
                              grpc_replica1, grpc_replica2, controller)
         restore_to_file_without_backing_file_test(dev, backup_target)
-        common.cleanup_replica(replica1)
-        common.cleanup_replica(replica2)
+        common.cleanup_replica(replica1, grpc_replica1)
+        common.cleanup_replica(replica2, grpc_replica2)
         common.cleanup_controller(controller)

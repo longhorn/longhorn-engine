@@ -11,11 +11,13 @@ import (
 	"strings"
 	"time"
 
+	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
 	"github.com/longhorn/longhorn-engine/replica/rest"
+	replicarpc "github.com/longhorn/longhorn-engine/replica/rpc"
 	syncagentrpc "github.com/longhorn/longhorn-engine/sync/rpc"
 )
 
@@ -80,6 +82,24 @@ func NewReplicaClient(address string) (*ReplicaClient, error) {
 		syncAgentServiceURL: syncAgentServiceURL,
 		replicaServiceURL:   replicaServiceURL,
 	}, nil
+}
+
+func (c *ReplicaClient) OpenReplica() error {
+	conn, err := grpc.Dial(c.replicaServiceURL, grpc.WithInsecure())
+	if err != nil {
+		return fmt.Errorf("cannot connect to ReplicaService %v: %v", c.replicaServiceURL, err)
+	}
+	defer conn.Close()
+	replicaServiceClient := replicarpc.NewReplicaServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
+	defer cancel()
+
+	if _, err := replicaServiceClient.ReplicaOpen(ctx, &empty.Empty{}); err != nil {
+		return fmt.Errorf("failed to open replica %v: %v", c.replicaServiceURL, err)
+	}
+
+	return nil
 }
 
 func (c *ReplicaClient) Revert(name, created string) error {
@@ -160,15 +180,6 @@ func (c *ReplicaClient) MarkDiskAsRemoved(disk string) error {
 	return c.post(r.Actions["markdiskasremoved"], &rest.MarkDiskAsRemovedInput{
 		Name: disk,
 	}, nil)
-}
-
-func (c *ReplicaClient) OpenReplica() error {
-	r, err := c.GetReplica()
-	if err != nil {
-		return err
-	}
-
-	return c.post(r.Actions["open"], nil, nil)
 }
 
 func (c *ReplicaClient) GetReplica() (rest.Replica, error) {

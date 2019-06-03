@@ -54,10 +54,6 @@ func (s *Server) SetRebuilding(rw http.ResponseWriter, req *http.Request) error 
 	return s.doOp(req, s.s.SetRebuilding(input.Rebuilding))
 }
 
-func (s *Server) OpenReplica(rw http.ResponseWriter, req *http.Request) error {
-	return s.doOp(req, s.s.Open())
-}
-
 func (s *Server) RemoveDisk(rw http.ResponseWriter, req *http.Request) error {
 	var input RemoveDiskInput
 	apiContext := api.GetApiContext(req)

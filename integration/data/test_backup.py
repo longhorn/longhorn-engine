@@ -210,8 +210,8 @@ def test_backup(replica1, replica2,  # NOQA
         dev = common.get_dev(replica1, replica2,
                              grpc_replica1, grpc_replica2, controller)
         backup_test(dev, backup_target)
-        common.cleanup_replica(replica1)
-        common.cleanup_replica(replica2)
+        common.cleanup_replica(replica1, grpc_replica1)
+        common.cleanup_replica(replica2, grpc_replica2)
         common.cleanup_controller(controller)
 
 
@@ -222,8 +222,8 @@ def test_snapshot_tree_backup(replica1, replica2,  # NOQA
         dev = common.get_dev(replica1, replica2,
                              grpc_replica1, grpc_replica2, controller)
         snapshot_tree_backup_test(dev, backup_target)
-        common.cleanup_replica(replica1)
-        common.cleanup_replica(replica2)
+        common.cleanup_replica(replica1, grpc_replica1)
+        common.cleanup_replica(replica2, grpc_replica2)
         common.cleanup_controller(controller)
 
 
@@ -237,8 +237,8 @@ def test_backup_with_backing_file(backing_replica1, backing_replica2,  # NOQA
                                              grpc_backing_replica2,
                                              controller)
         backup_with_backing_file_test(backing_dev, backup_target)
-        common.cleanup_replica(backing_replica1)
-        common.cleanup_replica(backing_replica2)
+        common.cleanup_replica(backing_replica1, grpc_backing_replica1)
+        common.cleanup_replica(backing_replica2, grpc_backing_replica2)
         common.cleanup_controller(controller)
 
 
@@ -252,6 +252,6 @@ def test_backup_hole_with_backing_file(backing_replica1, backing_replica2,  # NO
                                              grpc_backing_replica2,
                                              controller)
         backup_hole_with_backing_file_test(backing_dev, backup_target)
-        common.cleanup_replica(backing_replica1)
-        common.cleanup_replica(backing_replica2)
+        common.cleanup_replica(backing_replica1, grpc_backing_replica1)
+        common.cleanup_replica(backing_replica2, grpc_backing_replica2)
         common.cleanup_controller(controller)

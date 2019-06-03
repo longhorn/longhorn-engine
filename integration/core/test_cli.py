@@ -62,16 +62,18 @@ def cleanup_controller(client):
 def replica_client(request):
     url = 'http://localhost:9502/v1/schemas'
     c = cattle.from_env(url=url)
-    request.addfinalizer(lambda: cleanup_replica(c))
-    return cleanup_replica(c)
+    grpc_c = ReplicaClient(GRPC_REPLICA)
+    request.addfinalizer(lambda: cleanup_replica(c, grpc_c))
+    return cleanup_replica(c, grpc_c)
 
 
 @pytest.fixture
 def replica_client2(request):
     url = 'http://localhost:9512/v1/schemas'
     c = cattle.from_env(url=url)
-    request.addfinalizer(lambda: cleanup_replica(c))
-    return cleanup_replica(c)
+    grpc_c = ReplicaClient(GRPC_REPLICA2)
+    request.addfinalizer(lambda: cleanup_replica(c, grpc_c))
+    return cleanup_replica(c, grpc_c)
 
 
 @pytest.fixture
@@ -84,12 +86,13 @@ def grpc_replica_client2():
     return ReplicaClient(GRPC_REPLICA2)
 
 
-def cleanup_replica(client):
+def cleanup_replica(client, grpc_client):
     r = client.list_replica()[0]
     if r.state == 'initial':
         return client
     if 'open' in r:
-        r = r.open()
+        grpc_client.replica_open()
+    r = client.list_replica()[0]
     client.delete(r)
     r = client.reload(r)
     assert r.state == 'initial'
@@ -197,8 +200,8 @@ def test_replica_add_rebuild(bin, controller_client,
 
     snap0 = "000"
     snap1 = "001"
+    grpc_replica_client.replica_open()
     r = replica_client.list_replica()[0]
-    r = r.open()
     createtime0 = getNow()
     r = r.snapshot(name=snap0, created=createtime0,
                    labels={"name": "snap0", "key": "value"})
@@ -291,8 +294,8 @@ def test_replica_add_after_rebuild_failed(bin, controller_client,
     open_replica(replica_client, grpc_replica_client)
     open_replica(replica_client2, grpc_replica_client2)
 
+    grpc_replica_client.replica_open()
     r = replica_client.list_replica()[0]
-    r = r.open()
     r = r.snapshot(name='000', created=datetime.datetime.utcnow().isoformat())
     r.close()
 
@@ -302,8 +305,8 @@ def test_replica_add_after_rebuild_failed(bin, controller_client,
     volume = controller_client.list_volume()[0]
     assert volume.replicaCount == 1
 
+    grpc_replica_client2.replica_open()
     l = replica_client2.list_replica()[0]
-    l = l.open()
     l = l.setrebuilding(rebuilding=True)
     l.close()
 
@@ -337,7 +340,7 @@ def test_replica_failure_detection(bin, controller_client,
     # wait for initial read/write period to pass
     time.sleep(2)
 
-    cleanup_replica(replica_client)
+    cleanup_replica(replica_client, grpc_replica_client)
 
     detected = False
     for i in range(10):
@@ -912,6 +915,6 @@ def test_backup_cli(bin, controller_client,
                     replica_client, replica_client2,
                     grpc_replica_client, grpc_replica_client2,
                     backup_target)
-        cleanup_replica(replica_client)
-        cleanup_replica(replica_client2)
+        cleanup_replica(replica_client, grpc_replica_client)
+        cleanup_replica(replica_client2, grpc_replica_client2)
         cleanup_controller(controller_client)
