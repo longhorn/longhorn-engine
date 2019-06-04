@@ -130,8 +130,20 @@ func (rs *ReplicaServer) ReplicaRevert(ctx context.Context, req *ReplicaRevertRe
 }
 
 func (rs *ReplicaServer) ReplicaSnapshot(ctx context.Context, req *ReplicaSnapshotRequest) (*Replica, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ReplicaSnapshot not implemented")
+	if req.Name == "" {
+		return nil, fmt.Errorf("Cannot accept empty snapshot name")
+	}
+	if req.Created == "" {
+		return nil, fmt.Errorf("Need to specific created time")
+	}
+
+	if err := rs.s.Snapshot(req.Name, req.UserCreated, req.Created, req.Labels); err != nil {
+		return nil, err
+	}
+
+	return rs.getReplica(), nil
 }
+
 func (rs *ReplicaServer) DiskRemove(ctx context.Context, req *DiskRemoveRequest) (*Replica, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DiskRemove not implemented")
 }
