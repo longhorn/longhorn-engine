@@ -186,8 +186,13 @@ func (rs *ReplicaServer) DiskMarkAsRemoved(ctx context.Context, req *DiskMarkAsR
 }
 
 func (rs *ReplicaServer) RebuildingSet(ctx context.Context, req *RebuildingSetRequest) (*Replica, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RebuildingSet not implemented")
+	if err := rs.s.SetRebuilding(req.Rebuilding); err != nil {
+		return nil, err
+	}
+
+	return rs.getReplica(), nil
 }
+
 func (rs *ReplicaServer) RevisionCounterSet(ctx context.Context, req *RevisionCounterSetRequest) (*Replica, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RevisionCounterSet not implemented")
 }

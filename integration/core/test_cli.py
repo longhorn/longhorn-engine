@@ -307,8 +307,7 @@ def test_replica_add_after_rebuild_failed(bin, controller_client,
     assert volume.replicaCount == 1
 
     grpc_replica_client2.replica_open()
-    l = replica_client2.list_replica()[0]
-    l = l.setrebuilding(rebuilding=True)
+    grpc_replica_client2.rebuilding_set(rebuilding=True)
     grpc_replica_client2.replica_close()
 
     cmd = [bin, '--debug', 'add-replica', REPLICA2]

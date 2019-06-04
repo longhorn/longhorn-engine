@@ -41,3 +41,7 @@ class ReplicaClient(object):
     def disk_mark_as_removed(self, name):
         return self.stub.DiskMarkAsRemoved(
             replica_pb2.DiskMarkAsRemovedRequest(name=name))
+
+    def rebuilding_set(self, rebuilding):
+        return self.stub.RebuildingSet(
+            replica_pb2.RebuildingSetRequest(rebuilding=rebuilding))

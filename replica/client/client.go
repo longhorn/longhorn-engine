@@ -245,14 +245,23 @@ func (c *ReplicaClient) MarkDiskAsRemoved(disk string) error {
 }
 
 func (c *ReplicaClient) SetRebuilding(rebuilding bool) error {
-	r, err := c.GetReplica()
+	conn, err := grpc.Dial(c.replicaServiceURL, grpc.WithInsecure())
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot connect to ReplicaService %v: %v", c.replicaServiceURL, err)
+	}
+	defer conn.Close()
+	replicaServiceClient := replicarpc.NewReplicaServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
+	defer cancel()
+
+	if _, err := replicaServiceClient.RebuildingSet(ctx, &replicarpc.RebuildingSetRequest{
+		Rebuilding: rebuilding,
+	}); err != nil {
+		return fmt.Errorf("failed to set rebuilding to %v for replica %v: %v", rebuilding, c.replicaServiceURL, err)
 	}
 
-	return c.post(r.Actions["setrebuilding"], &rest.RebuildingInput{
-		Rebuilding: rebuilding,
-	}, nil)
+	return nil
 }
 
 func (c *ReplicaClient) GetReplica() (rest.Replica, error) {

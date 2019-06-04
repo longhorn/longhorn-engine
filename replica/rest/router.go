@@ -53,7 +53,6 @@ func NewRouter(s *Server) *mux.Router {
 
 	// Actions
 	actions := map[string]func(http.ResponseWriter, *http.Request) error{
-		"setrebuilding":      s.SetRebuilding,
 		"setrevisioncounter": s.SetRevisionCounter,
 	}
 
