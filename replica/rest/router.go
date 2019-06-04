@@ -57,7 +57,6 @@ func NewRouter(s *Server) *mux.Router {
 		"setrevisioncounter": s.SetRevisionCounter,
 		"markdiskasremoved":  s.MarkDiskAsRemoved,
 		"prepareremovedisk":  s.PrepareRemoveDisk,
-		"removedisk":         s.RemoveDisk,
 		"replacedisk":        s.ReplaceDisk,
 	}
 

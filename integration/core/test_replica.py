@@ -200,11 +200,11 @@ def test_remove_disk(client, grpc_client):
     ops = r.prepareremovedisk(name='001')["operations"]
     assert len(ops) == 0
 
-    r = r.removedisk(name='volume-snap-001.img')
+    r = grpc_client.disk_remove(name='volume-snap-001.img')
     assert r.state == 'dirty'
     assert not r.rebuilding
     assert r.size == SIZE_STR
-    assert r.sectorSize == '512'
+    assert r.sectorSize == 512
     assert r.head == 'volume-head-002.img'
     assert r.parent == 'volume-snap-000.img'
     assert r.chain == ['volume-head-002.img', 'volume-snap-000.img']
@@ -235,11 +235,11 @@ def test_remove_last_disk(client, grpc_client):
     assert ops[1].source == "volume-snap-000.img"
     assert ops[1].target == "volume-snap-001.img"
 
-    r = r.removedisk(name='volume-snap-000.img')
+    r = grpc_client.disk_remove(name='volume-snap-000.img')
     assert r.state == 'dirty'
     assert not r.rebuilding
     assert r.size == SIZE_STR
-    assert r.sectorSize == '512'
+    assert r.sectorSize == 512
     assert r.head == 'volume-head-002.img'
     assert r.parent == 'volume-snap-001.img'
     assert r.chain == ['volume-head-002.img', 'volume-snap-001.img']
@@ -264,10 +264,10 @@ def test_reload(client, grpc_client):
                        'volume-snap-000.img']
 
     r = client.list_replica()[0]
-    r = r.removedisk(name='volume-snap-000.img')
+    r = grpc_client.disk_remove(name='volume-snap-000.img')
     assert r.state == 'dirty'
     assert r.size == SIZE_STR
-    assert r.sectorSize == '512'
+    assert r.sectorSize == 512
     assert r.head == 'volume-head-002.img'
     assert r.parent == 'volume-snap-001.img'
     assert r.chain == ['volume-head-002.img', 'volume-snap-001.img']

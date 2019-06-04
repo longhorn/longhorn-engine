@@ -29,3 +29,7 @@ class ReplicaClient(object):
                 name=name, userCreated=user_created,
                 created=created, labels=labels,
             ))
+
+    def disk_remove(self, name, force=False):
+        return self.stub.DiskRemove(
+            replica_pb2.DiskRemoveRequest(name=name, force=force))
