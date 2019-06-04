@@ -153,8 +153,13 @@ func (rs *ReplicaServer) DiskRemove(ctx context.Context, req *DiskRemoveRequest)
 }
 
 func (rs *ReplicaServer) DiskReplace(ctx context.Context, req *DiskReplaceRequest) (*Replica, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DiskReplace not implemented")
+	if err := rs.s.ReplaceDisk(req.Target, req.Source); err != nil {
+		return nil, err
+	}
+
+	return rs.getReplica(), nil
 }
+
 func (rs *ReplicaServer) DiskPrepareRemove(ctx context.Context, req *DiskPrepareRemoveRequest) (*DiskPrepareRemoveReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DiskPrepareRemove not implemented")
 }
