@@ -322,15 +322,11 @@ def test_rebuilding(client, grpc_client):
     assert r.head == 'volume-head-001.img'
     assert r.chain == ['volume-head-001.img', 'volume-snap-001.img']
 
-    replicas = client.list_replica()
-    assert len(replicas) == 1
-
-    r = replicas[0]
-    r = r.setrebuilding(rebuilding=True)
+    r = grpc_client.rebuilding_set(rebuilding=True)
     assert r.state == 'rebuilding'
     assert r.rebuilding
     assert r.size == SIZE_STR
-    assert r.sectorSize == '512'
+    assert r.sectorSize == 512
     assert r.parent == 'volume-snap-001.img'
     assert r.head == 'volume-head-001.img'
     assert r.chain == ['volume-head-001.img', 'volume-snap-001.img']
@@ -369,24 +365,20 @@ def test_not_rebuilding(client, grpc_client):
     assert r.head == 'volume-head-001.img'
     assert r.chain == ['volume-head-001.img', 'volume-snap-001.img']
 
-    replicas = client.list_replica()
-    assert len(replicas) == 1
-
-    r = replicas[0]
-    r = r.setrebuilding(rebuilding=True)
+    r = grpc_client.rebuilding_set(rebuilding=True)
     assert r.state == 'rebuilding'
     assert r.rebuilding
     assert r.size == SIZE_STR
-    assert r.sectorSize == '512'
+    assert r.sectorSize == 512
     assert r.parent == 'volume-snap-001.img'
     assert r.head == 'volume-head-001.img'
     assert r.chain == ['volume-head-001.img', 'volume-snap-001.img']
 
-    r = r.setrebuilding(rebuilding=False)
+    r = grpc_client.rebuilding_set(rebuilding=False)
     assert r.state == 'dirty'
     assert not r.rebuilding
     assert r.size == SIZE_STR
-    assert r.sectorSize == '512'
+    assert r.sectorSize == 512
     assert r.parent == 'volume-snap-001.img'
     assert r.head == 'volume-head-001.img'
     assert r.chain == ['volume-head-001.img', 'volume-snap-001.img']

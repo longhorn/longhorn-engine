@@ -43,16 +43,6 @@ func (s *Server) doOp(req *http.Request, err error) error {
 	return nil
 }
 
-func (s *Server) SetRebuilding(rw http.ResponseWriter, req *http.Request) error {
-	var input RebuildingInput
-	apiContext := api.GetApiContext(req)
-	if err := apiContext.Read(&input); err != nil && err != io.EOF {
-		return err
-	}
-
-	return s.doOp(req, s.s.SetRebuilding(input.Rebuilding))
-}
-
 func (s *Server) DeleteReplica(rw http.ResponseWriter, req *http.Request) error {
 	return s.doOp(req, s.s.Delete())
 }
