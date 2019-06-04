@@ -194,5 +194,8 @@ func (rs *ReplicaServer) RebuildingSet(ctx context.Context, req *RebuildingSetRe
 }
 
 func (rs *ReplicaServer) RevisionCounterSet(ctx context.Context, req *RevisionCounterSetRequest) (*Replica, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method RevisionCounterSet not implemented")
+	if err := rs.s.SetRevisionCounter(req.Counter); err != nil {
+		return nil, err
+	}
+	return rs.getReplica(), nil
 }

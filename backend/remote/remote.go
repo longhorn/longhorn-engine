@@ -1,10 +1,8 @@
 package remote
 
 import (
-	"bytes"
 	"encoding/json"
 	"fmt"
-	"io"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -115,37 +113,27 @@ func (r *Remote) Snapshot(name string, userCreated bool, created string, labels 
 	return nil
 }
 
-func (r *Remote) doAction(action string, obj interface{}) error {
-	body := io.Reader(nil)
-	if obj != nil {
-		buffer := &bytes.Buffer{}
-		if err := json.NewEncoder(buffer).Encode(obj); err != nil {
-			return err
-		}
-		body = buffer
-	}
+func (r *Remote) SetRevisionCounter(counter int64) error {
+	logrus.Infof("Set revision counter of %s to : %v", r.name, counter)
 
-	req, err := http.NewRequest("POST", r.replicaURL+"?action="+action, body)
+	conn, err := grpc.Dial(r.replicaServiceURL, grpc.WithInsecure())
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot connect to ReplicaService %v: %v", r.replicaServiceURL, err)
 	}
+	defer conn.Close()
+	replicaServiceClient := replicarpc.NewReplicaServiceClient(conn)
 
-	if obj != nil {
-		req.Header.Add("Content-Type", "application/json")
-	}
+	ctx, cancel := context.WithTimeout(context.Background(), client.GRPCServiceCommonTimeout)
+	defer cancel()
 
-	resp, err := r.httpClient.Do(req)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		content, _ := ioutil.ReadAll(resp.Body)
-		return fmt.Errorf("backend: Bad status from remote: %d %s: %s", resp.StatusCode, resp.Status, content)
+	if _, err := replicaServiceClient.RevisionCounterSet(ctx, &replicarpc.RevisionCounterSetRequest{
+		Counter: counter,
+	}); err != nil {
+		return fmt.Errorf("failed to set revision counter to %d for replica %v from remote: %v", counter, r.replicaServiceURL, err)
 	}
 
 	return nil
+
 }
 
 func (r *Remote) Size() (int64, error) {
@@ -184,11 +172,6 @@ func (r *Remote) GetRevisionCounter() (int64, error) {
 		return 0, fmt.Errorf("Invalid state %v for getting revision counter", replica.State)
 	}
 	return replica.RevisionCounter, nil
-}
-
-func (r *Remote) SetRevisionCounter(counter int64) error {
-	logrus.Infof("Set revision counter of %s to : %v", r.name, counter)
-	return r.doAction("setrevisioncounter", &RevisionCounter{Counter: counter})
 }
 
 func (r *Remote) info() (rest.Replica, error) {

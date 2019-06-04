@@ -25,11 +25,6 @@ type Replica struct {
 	RevisionCounter int64                       `json:"revisioncounter,string"`
 }
 
-type RevisionCounter struct {
-	client.Resource
-	Counter int64 `json:"counter,string"`
-}
-
 func NewReplica(context *api.ApiContext, state replica.State, info replica.Info, rep *replica.Replica) *Replica {
 	r := &Replica{
 		Resource: client.Resource{
@@ -46,11 +41,9 @@ func NewReplica(context *api.ApiContext, state replica.State, info replica.Info,
 	switch state {
 	case replica.Initial:
 	case replica.Open:
-		actions["setrevisioncounter"] = true
 	case replica.Closed:
 	case replica.Dirty:
 	case replica.Rebuilding:
-		actions["setrevisioncounter"] = true
 	case replica.Error:
 	}
 
@@ -82,15 +75,10 @@ func NewSchema() *client.Schemas {
 	schemas.AddType("error", client.ServerApiError{})
 	schemas.AddType("apiVersion", client.Resource{})
 	schemas.AddType("schema", client.Schema{})
-	schemas.AddType("revisionCounter", RevisionCounter{})
 	replica := schemas.AddType("replica", Replica{})
 
 	replica.ResourceMethods = []string{"GET", "DELETE"}
-	replica.ResourceActions = map[string]client.Action{
-		"setrevisioncounter": {
-			Input: "revisionCounter",
-		},
-	}
+	replica.ResourceActions = map[string]client.Action{}
 
 	return schemas
 }
