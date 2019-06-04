@@ -225,14 +225,23 @@ func (c *ReplicaClient) PrepareRemoveDisk(disk string) ([]*replicarpc.PrepareRem
 }
 
 func (c *ReplicaClient) MarkDiskAsRemoved(disk string) error {
-	r, err := c.GetReplica()
+	conn, err := grpc.Dial(c.replicaServiceURL, grpc.WithInsecure())
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot connect to ReplicaService %v: %v", c.replicaServiceURL, err)
+	}
+	defer conn.Close()
+	replicaServiceClient := replicarpc.NewReplicaServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
+	defer cancel()
+
+	if _, err := replicaServiceClient.DiskMarkAsRemoved(ctx, &replicarpc.DiskMarkAsRemovedRequest{
+		Name: disk,
+	}); err != nil {
+		return fmt.Errorf("failed to mark disk %v as removed for replica %v: %v", disk, c.replicaServiceURL, err)
 	}
 
-	return c.post(r.Actions["markdiskasremoved"], &rest.MarkDiskAsRemovedInput{
-		Name: disk,
-	}, nil)
+	return nil
 }
 
 func (c *ReplicaClient) SetRebuilding(rebuilding bool) error {

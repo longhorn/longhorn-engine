@@ -186,18 +186,18 @@ def test_remove_disk(client, grpc_client):
 
     r = replicas[0]
     # idempotent
-    r.markdiskasremoved(name='003')
+    grpc_client.disk_mark_as_removed(name='003')
     grpc_client.disk_prepare_remove(name='003')
 
-    with pytest.raises(cattle.ApiError) as e:
-        r.markdiskasremoved(name='volume-head-002.img')
+    with pytest.raises(grpc.RpcError) as e:
+        grpc_client.disk_mark_as_removed(name='volume-head-002.img')
     assert "Can not mark the active" in str(e.value)
 
     with pytest.raises(grpc.RpcError) as e:
         grpc_client.disk_prepare_remove(name='volume-head-002.img')
     assert "Can not delete the active" in str(e.value)
 
-    r.markdiskasremoved(name='001')
+    grpc_client.disk_mark_as_removed(name='001')
     ops = grpc_client.disk_prepare_remove(name='001').operations
     assert len(ops) == 0
 
@@ -222,11 +222,7 @@ def test_remove_last_disk(client, grpc_client):
     assert r.chain == ['volume-head-002.img', 'volume-snap-001.img',
                        'volume-snap-000.img']
 
-    replicas = client.list_replica()
-    assert len(replicas) == 1
-
-    r = replicas[0]
-    r.markdiskasremoved(name='volume-snap-000.img')
+    grpc_client.disk_mark_as_removed(name='volume-snap-000.img')
 
     ops = grpc_client.disk_prepare_remove(
         name='volume-snap-000.img').operations
