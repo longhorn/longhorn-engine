@@ -172,15 +172,24 @@ func (c *ReplicaClient) SetRebuilding(rebuilding bool) error {
 }
 
 func (c *ReplicaClient) RemoveDisk(disk string, force bool) error {
-	r, err := c.GetReplica()
+	conn, err := grpc.Dial(c.replicaServiceURL, grpc.WithInsecure())
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot connect to ReplicaService %v: %v", c.replicaServiceURL, err)
 	}
+	defer conn.Close()
+	replicaServiceClient := replicarpc.NewReplicaServiceClient(conn)
 
-	return c.post(r.Actions["removedisk"], &rest.RemoveDiskInput{
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
+	defer cancel()
+
+	if _, err := replicaServiceClient.DiskRemove(ctx, &replicarpc.DiskRemoveRequest{
 		Name:  disk,
 		Force: force,
-	}, nil)
+	}); err != nil {
+		return fmt.Errorf("failed to remove disk %v for replica %v: %v", disk, c.replicaServiceURL, err)
+	}
+
+	return nil
 }
 
 func (c *ReplicaClient) ReplaceDisk(target, source string) error {
