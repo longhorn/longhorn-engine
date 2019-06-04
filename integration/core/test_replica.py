@@ -3,6 +3,7 @@ import random
 import datetime
 import sys
 import os
+import grpc
 
 import pytest
 import cattle
@@ -186,18 +187,18 @@ def test_remove_disk(client, grpc_client):
     r = replicas[0]
     # idempotent
     r.markdiskasremoved(name='003')
-    r.prepareremovedisk(name='003')
+    grpc_client.disk_prepare_remove(name='003')
 
     with pytest.raises(cattle.ApiError) as e:
         r.markdiskasremoved(name='volume-head-002.img')
     assert "Can not mark the active" in str(e.value)
 
-    with pytest.raises(cattle.ApiError) as e:
-        r.prepareremovedisk(name='volume-head-002.img')
+    with pytest.raises(grpc.RpcError) as e:
+        grpc_client.disk_prepare_remove(name='volume-head-002.img')
     assert "Can not delete the active" in str(e.value)
 
     r.markdiskasremoved(name='001')
-    ops = r.prepareremovedisk(name='001')["operations"]
+    ops = grpc_client.disk_prepare_remove(name='001').operations
     assert len(ops) == 0
 
     r = grpc_client.disk_remove(name='volume-snap-001.img')
@@ -226,7 +227,9 @@ def test_remove_last_disk(client, grpc_client):
 
     r = replicas[0]
     r.markdiskasremoved(name='volume-snap-000.img')
-    ops = r.prepareremovedisk(name='volume-snap-000.img')["operations"]
+
+    ops = grpc_client.disk_prepare_remove(
+        name='volume-snap-000.img').operations
     assert len(ops) == 2
     assert ops[0].action == "coalesce"
     assert ops[0].source == "volume-snap-000.img"
