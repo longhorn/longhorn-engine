@@ -53,16 +53,6 @@ func (s *Server) SetRebuilding(rw http.ResponseWriter, req *http.Request) error 
 	return s.doOp(req, s.s.SetRebuilding(input.Rebuilding))
 }
 
-func (s *Server) ReplaceDisk(rw http.ResponseWriter, req *http.Request) error {
-	var input ReplaceDiskInput
-	apiContext := api.GetApiContext(req)
-	if err := apiContext.Read(&input); err != nil {
-		return err
-	}
-
-	return s.doOp(req, s.s.ReplaceDisk(input.Target, input.Source))
-}
-
 func (s *Server) MarkDiskAsRemoved(rw http.ResponseWriter, req *http.Request) error {
 	var input MarkDiskAsRemovedInput
 	apiContext := api.GetApiContext(req)
