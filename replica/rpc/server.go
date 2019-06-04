@@ -178,8 +178,13 @@ func (rs *ReplicaServer) DiskPrepareRemove(ctx context.Context, req *DiskPrepare
 }
 
 func (rs *ReplicaServer) DiskMarkAsRemoved(ctx context.Context, req *DiskMarkAsRemovedRequest) (*Replica, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DiskMarkAsRemoved not implemented")
+	if err := rs.s.MarkDiskAsRemoved(req.Name); err != nil {
+		return nil, err
+	}
+
+	return rs.getReplica(), nil
 }
+
 func (rs *ReplicaServer) RebuildingSet(ctx context.Context, req *RebuildingSetRequest) (*Replica, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RebuildingSet not implemented")
 }

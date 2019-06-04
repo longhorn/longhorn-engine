@@ -30,11 +30,6 @@ type RebuildingInput struct {
 	Rebuilding bool `json:"rebuilding"`
 }
 
-type MarkDiskAsRemovedInput struct {
-	client.Resource
-	Name string `json:"name"`
-}
-
 type RevisionCounter struct {
 	client.Resource
 	Counter int64 `json:"counter,string"`
@@ -57,13 +52,10 @@ func NewReplica(context *api.ApiContext, state replica.State, info replica.Info,
 	case replica.Initial:
 	case replica.Open:
 		actions["setrebuilding"] = true
-		actions["markdiskasremoved"] = true
 		actions["setrevisioncounter"] = true
 	case replica.Closed:
-		actions["markdiskasremoved"] = true
 	case replica.Dirty:
 		actions["setrebuilding"] = true
-		actions["markdiskasremoved"] = true
 	case replica.Rebuilding:
 		actions["setrebuilding"] = true
 		actions["setrevisioncounter"] = true
@@ -99,7 +91,6 @@ func NewSchema() *client.Schemas {
 	schemas.AddType("apiVersion", client.Resource{})
 	schemas.AddType("schema", client.Schema{})
 	schemas.AddType("rebuildingInput", RebuildingInput{})
-	schemas.AddType("markDiskAsRemovedInput", MarkDiskAsRemovedInput{})
 	schemas.AddType("revisionCounter", RevisionCounter{})
 	replica := schemas.AddType("replica", Replica{})
 
@@ -111,10 +102,6 @@ func NewSchema() *client.Schemas {
 		},
 		"setrevisioncounter": {
 			Input: "revisionCounter",
-		},
-		"markdiskasremoved": {
-			Input:  "markDiskAsRemovedInput",
-			Output: "replica",
 		},
 	}
 

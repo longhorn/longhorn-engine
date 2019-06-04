@@ -37,3 +37,7 @@ class ReplicaClient(object):
     def disk_prepare_remove(self, name):
         return self.stub.DiskPrepareRemove(
             replica_pb2.DiskPrepareRemoveRequest(name=name))
+
+    def disk_mark_as_removed(self, name):
+        return self.stub.DiskMarkAsRemoved(
+            replica_pb2.DiskMarkAsRemovedRequest(name=name))
