@@ -21,3 +21,11 @@ class ReplicaClient(object):
 
     def replica_reload(self):
         return self.stub.ReplicaReload(empty_pb2.Empty())
+
+    def replica_snapshot(self, name="", user_created=False,
+                         created="", labels={}):
+        return self.stub.ReplicaSnapshot(
+            replica_pb2.ReplicaSnapshotRequest(
+                name=name, userCreated=user_created,
+                created=created, labels=labels,
+            ))

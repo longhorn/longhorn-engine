@@ -93,13 +93,26 @@ func (r *Remote) open() error {
 func (r *Remote) Snapshot(name string, userCreated bool, created string, labels map[string]string) error {
 	logrus.Infof("Snapshot: %s %s UserCreated %v Created at %v, Labels %v",
 		r.name, name, userCreated, created, labels)
-	return r.doAction("snapshot",
-		&map[string]interface{}{
-			"name":        name,
-			"usercreated": userCreated,
-			"created":     created,
-			"labels":      labels,
-		})
+	conn, err := grpc.Dial(r.replicaServiceURL, grpc.WithInsecure())
+	if err != nil {
+		return fmt.Errorf("cannot connect to ReplicaService %v: %v", r.replicaServiceURL, err)
+	}
+	defer conn.Close()
+	replicaServiceClient := replicarpc.NewReplicaServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), client.GRPCServiceCommonTimeout)
+	defer cancel()
+
+	if _, err := replicaServiceClient.ReplicaSnapshot(ctx, &replicarpc.ReplicaSnapshotRequest{
+		Name:        name,
+		UserCreated: userCreated,
+		Created:     created,
+		Labels:      labels,
+	}); err != nil {
+		return fmt.Errorf("failed to snapshot replica %v from remote: %v", r.replicaServiceURL, err)
+	}
+
+	return nil
 }
 
 func (r *Remote) doAction(action string, obj interface{}) error {

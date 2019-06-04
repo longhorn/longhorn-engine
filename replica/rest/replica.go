@@ -1,7 +1,6 @@
 package rest
 
 import (
-	"fmt"
 	"github.com/gorilla/mux"
 	"github.com/rancher/go-rancher/api"
 	"github.com/rancher/go-rancher/client"
@@ -102,24 +101,6 @@ func (s *Server) PrepareRemoveDisk(rw http.ResponseWriter, req *http.Request) er
 		Operations: operations,
 	})
 	return nil
-}
-
-func (s *Server) SnapshotReplica(rw http.ResponseWriter, req *http.Request) error {
-	var input SnapshotInput
-	apiContext := api.GetApiContext(req)
-	if err := apiContext.Read(&input); err != nil && err != io.EOF {
-		return err
-	}
-
-	if input.Name == "" {
-		return fmt.Errorf("Cannot accept empty snapshot name")
-	}
-
-	if input.Created == "" {
-		return fmt.Errorf("Need to specific created time")
-	}
-
-	return s.doOp(req, s.s.Snapshot(input.Name, input.UserCreated, input.Created, input.Labels))
 }
 
 func (s *Server) DeleteReplica(rw http.ResponseWriter, req *http.Request) error {

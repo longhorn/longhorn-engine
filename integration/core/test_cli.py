@@ -201,12 +201,13 @@ def test_replica_add_rebuild(bin, controller_client,
     snap0 = "000"
     snap1 = "001"
     grpc_replica_client.replica_open()
-    r = replica_client.list_replica()[0]
     createtime0 = getNow()
-    r = r.snapshot(name=snap0, created=createtime0,
-                   labels={"name": "snap0", "key": "value"})
+    grpc_replica_client.replica_snapshot(
+        name=snap0, created=createtime0,
+        labels={"name": "snap0", "key": "value"})
     createtime1 = getNow()
-    r = r.snapshot(name=snap1, usercreated=True, created=createtime1)
+    r = grpc_replica_client.replica_snapshot(
+        name=snap1, user_created=True, created=createtime1)
 
     l = replica_client2.list_replica()[0]
 
@@ -295,8 +296,8 @@ def test_replica_add_after_rebuild_failed(bin, controller_client,
     open_replica(replica_client2, grpc_replica_client2)
 
     grpc_replica_client.replica_open()
-    r = replica_client.list_replica()[0]
-    r.snapshot(name='000', created=datetime.datetime.utcnow().isoformat())
+    grpc_replica_client.replica_snapshot(
+        name='000', created=datetime.datetime.utcnow().isoformat())
     grpc_replica_client.replica_close()
 
     cmd = [bin, '--debug', 'add-replica', REPLICA]
