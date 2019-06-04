@@ -202,17 +202,26 @@ func (c *ReplicaClient) ReplaceDisk(target, source string) error {
 	return nil
 }
 
-func (c *ReplicaClient) PrepareRemoveDisk(disk string) (rest.PrepareRemoveDiskOutput, error) {
-	var output rest.PrepareRemoveDiskOutput
-	r, err := c.GetReplica()
+func (c *ReplicaClient) PrepareRemoveDisk(disk string) ([]*replicarpc.PrepareRemoveAction, error) {
+	conn, err := grpc.Dial(c.replicaServiceURL, grpc.WithInsecure())
 	if err != nil {
-		return output, err
+		return nil, fmt.Errorf("cannot connect to ReplicaService %v: %v", c.replicaServiceURL, err)
+	}
+	defer conn.Close()
+	replicaServiceClient := replicarpc.NewReplicaServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
+	defer cancel()
+
+	reply, err := replicaServiceClient.DiskPrepareRemove(ctx, &replicarpc.DiskPrepareRemoveRequest{
+		Name: disk,
+	})
+
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare removing disk %v for replica %v: %v", disk, c.replicaServiceURL, err)
 	}
 
-	err = c.post(r.Actions["prepareremovedisk"], &rest.PrepareRemoveDiskInput{
-		Name: disk,
-	}, &output)
-	return output, err
+	return reply.Operations, nil
 }
 
 func (c *ReplicaClient) MarkDiskAsRemoved(disk string) error {

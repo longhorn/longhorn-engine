@@ -11,6 +11,7 @@ import (
 	"github.com/longhorn/longhorn-engine/controller/rest"
 	"github.com/longhorn/longhorn-engine/replica"
 	replicaClient "github.com/longhorn/longhorn-engine/replica/client"
+	replicarpc "github.com/longhorn/longhorn-engine/replica/rpc"
 )
 
 var (
@@ -197,7 +198,7 @@ func (t *Task) isDirty(replicaInController *rest.Replica) (bool, error) {
 	return replica.Dirty, nil
 }
 
-func (t *Task) prepareRemoveSnapshot(replicaInController *rest.Replica, snapshot string) ([]replica.PrepareRemoveAction, error) {
+func (t *Task) prepareRemoveSnapshot(replicaInController *rest.Replica, snapshot string) ([]*replicarpc.PrepareRemoveAction, error) {
 	if replicaInController.Mode != "RW" {
 		return nil, fmt.Errorf("Can only removed snapshot from replica in mode RW, got %s", replicaInController.Mode)
 	}
@@ -207,12 +208,12 @@ func (t *Task) prepareRemoveSnapshot(replicaInController *rest.Replica, snapshot
 		return nil, err
 	}
 
-	output, err := repClient.PrepareRemoveDisk(snapshot)
+	operations, err := repClient.PrepareRemoveDisk(snapshot)
 	if err != nil {
 		return nil, err
 	}
 
-	return output.Operations, nil
+	return operations, nil
 }
 
 func (t *Task) markSnapshotAsRemoved(replicaInController *rest.Replica, snapshot string) error {
@@ -232,7 +233,7 @@ func (t *Task) markSnapshotAsRemoved(replicaInController *rest.Replica, snapshot
 	return nil
 }
 
-func (t *Task) processRemoveSnapshot(replicaInController *rest.Replica, snapshot string, ops []replica.PrepareRemoveAction) error {
+func (t *Task) processRemoveSnapshot(replicaInController *rest.Replica, snapshot string, ops []*replicarpc.PrepareRemoveAction) error {
 	if len(ops) == 0 {
 		return nil
 	}

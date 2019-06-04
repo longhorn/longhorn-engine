@@ -161,8 +161,22 @@ func (rs *ReplicaServer) DiskReplace(ctx context.Context, req *DiskReplaceReques
 }
 
 func (rs *ReplicaServer) DiskPrepareRemove(ctx context.Context, req *DiskPrepareRemoveRequest) (*DiskPrepareRemoveReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method DiskPrepareRemove not implemented")
+	operations, err := rs.s.PrepareRemoveDisk(req.Name)
+	if err != nil {
+		return nil, err
+	}
+
+	reply := &DiskPrepareRemoveReply{}
+	for _, op := range operations {
+		reply.Operations = append(reply.Operations, &PrepareRemoveAction{
+			Action: op.Action,
+			Source: op.Source,
+			Target: op.Target,
+		})
+	}
+	return reply, err
 }
+
 func (rs *ReplicaServer) DiskMarkAsRemoved(ctx context.Context, req *DiskMarkAsRemovedRequest) (*Replica, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DiskMarkAsRemoved not implemented")
 }

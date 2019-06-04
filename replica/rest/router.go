@@ -56,7 +56,6 @@ func NewRouter(s *Server) *mux.Router {
 		"setrebuilding":      s.SetRebuilding,
 		"setrevisioncounter": s.SetRevisionCounter,
 		"markdiskasremoved":  s.MarkDiskAsRemoved,
-		"prepareremovedisk":  s.PrepareRemoveDisk,
 	}
 
 	for name, action := range actions {
