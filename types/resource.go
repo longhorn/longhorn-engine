@@ -25,3 +25,9 @@ type DiskInfo struct {
 	Size        string            `json:"size"`
 	Labels      map[string]string `json:"labels"`
 }
+
+type PrepareRemoveAction struct {
+	Action string `json:"action"`
+	Source string `json:"source"`
+	Target string `json:"target"`
+}
