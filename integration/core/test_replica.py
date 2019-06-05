@@ -6,7 +6,6 @@ import os
 import grpc
 
 import pytest
-import cattle
 
 # include directory intergration/rpc for module import
 sys.path.append(
@@ -21,30 +20,22 @@ SIZE_STR = str(1024*4096)
 
 
 @pytest.fixture
-def client(request):
-    url = 'http://localhost:9502/v1/schemas'
-    c = cattle.from_env(url=url)
+def grpc_client(request):
     grpc_c = ReplicaClient(GRPC_URL)
-    request.addfinalizer(lambda: cleanup(c, grpc_c))
-    return cleanup(c, grpc_c)
+    request.addfinalizer(lambda: cleanup(grpc_c))
+    return cleanup(grpc_c)
 
 
-@pytest.fixture
-def grpc_client():
-    return ReplicaClient(GRPC_URL)
-
-
-def cleanup(client, grpc_client):
-    r = client.list_replica()[0]
+def cleanup(grpc_client):
+    r = grpc_client.replica_get()
     if r.state == 'initial':
-        return client
-    if 'open' in r:
+        return grpc_client
+    if r.state == 'closed':
         grpc_client.replica_open()
-    r = client.list_replica()[0]
-    client.delete(r)
+    grpc_client.replica_delete()
     r = grpc_client.replica_reload()
     assert r.state == 'initial'
-    return client
+    return grpc_client
 
 
 @pytest.fixture
@@ -56,14 +47,11 @@ def random_num():
     return random.randint(0, 1000000)
 
 
-def test_create(client, grpc_client):
-    replicas = client.list_replica()
-    assert len(replicas) == 1
-
-    r = replicas[0]
+def test_create(grpc_client):
+    r = grpc_client.replica_get()
     assert r.state == 'initial'
     assert r.size == '0'
-    assert r.sectorSize == '0'
+    assert r.sectorSize == 0
     assert r.parent == ''
     assert r.head == ''
 
@@ -76,14 +64,11 @@ def test_create(client, grpc_client):
     assert r.head == 'volume-head-000.img'
 
 
-def test_open(client, grpc_client):
-    replicas = client.list_replica()
-    assert len(replicas) == 1
-
-    r = replicas[0]
+def test_open(grpc_client):
+    r = grpc_client.replica_get()
     assert r.state == 'initial'
     assert r.size == '0'
-    assert r.sectorSize == '0'
+    assert r.sectorSize == 0
     assert r.parent == ''
     assert r.head == ''
 
@@ -108,7 +93,7 @@ def test_open(client, grpc_client):
     assert r.head == 'volume-head-000.img'
 
 
-def test_close(client, grpc_client):
+def test_close(grpc_client):
     grpc_client.replica_create(size=SIZE_STR)
 
     r = grpc_client.replica_open()
@@ -132,7 +117,7 @@ def test_close(client, grpc_client):
     assert r.head == 'volume-head-000.img'
 
 
-def test_snapshot(client, grpc_client):
+def test_snapshot(grpc_client):
     grpc_client.replica_create(size=SIZE_STR)
 
     r = grpc_client.replica_open()
@@ -170,7 +155,7 @@ def test_snapshot(client, grpc_client):
                        'volume-snap-000.img']
 
 
-def test_remove_disk(client, grpc_client):
+def test_remove_disk(grpc_client):
     grpc_client.replica_create(size=SIZE_STR)
     grpc_client.replica_open()
 
@@ -181,10 +166,6 @@ def test_remove_disk(client, grpc_client):
     assert r.chain == ['volume-head-002.img', 'volume-snap-001.img',
                        'volume-snap-000.img']
 
-    replicas = client.list_replica()
-    assert len(replicas) == 1
-
-    r = replicas[0]
     # idempotent
     grpc_client.disk_mark_as_removed(name='003')
     grpc_client.disk_prepare_remove(name='003')
@@ -211,7 +192,7 @@ def test_remove_disk(client, grpc_client):
     assert r.chain == ['volume-head-002.img', 'volume-snap-000.img']
 
 
-def test_remove_last_disk(client, grpc_client):
+def test_remove_last_disk(grpc_client):
     grpc_client.replica_create(size=SIZE_STR)
     grpc_client.replica_open()
 
@@ -244,14 +225,11 @@ def test_remove_last_disk(client, grpc_client):
     assert r.chain == ['volume-head-002.img', 'volume-snap-001.img']
 
 
-def test_reload(client, grpc_client):
+def test_reload(grpc_client):
     grpc_client.replica_create(size=SIZE_STR)
     grpc_client.replica_open()
 
-    replicas = client.list_replica()
-    assert len(replicas) == 1
-
-    r = replicas[0]
+    r = grpc_client.replica_get()
     assert r.chain == ['volume-head-000.img']
 
     r = grpc_client.replica_snapshot(
@@ -262,7 +240,6 @@ def test_reload(client, grpc_client):
     assert r.chain == ['volume-head-002.img', 'volume-snap-001.img',
                        'volume-snap-000.img']
 
-    r = client.list_replica()[0]
     r = grpc_client.disk_remove(name='volume-snap-000.img')
     assert r.state == 'dirty'
     assert r.size == SIZE_STR
@@ -289,7 +266,7 @@ def test_reload(client, grpc_client):
     assert r.parent == 'volume-snap-001.img'
 
 
-def test_reload_simple(client, grpc_client):
+def test_reload_simple(grpc_client):
     grpc_client.replica_create(size=SIZE_STR)
 
     r = grpc_client.replica_open()
@@ -308,7 +285,7 @@ def test_reload_simple(client, grpc_client):
     assert r.head == 'volume-head-000.img'
 
 
-def test_rebuilding(client, grpc_client):
+def test_rebuilding(grpc_client):
     grpc_client.replica_create(size=SIZE_STR)
     grpc_client.replica_open()
 
@@ -351,7 +328,7 @@ def test_rebuilding(client, grpc_client):
     assert r.chain == ['volume-head-001.img', 'volume-snap-001.img']
 
 
-def test_not_rebuilding(client, grpc_client):
+def test_not_rebuilding(grpc_client):
     grpc_client.replica_create(size=SIZE_STR)
     grpc_client.replica_open()
 

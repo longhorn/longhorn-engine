@@ -5,7 +5,7 @@ import launcher
 import common
 from common import dev  # NOQA
 from common import PAGE_SIZE, SIZE  # NOQA
-from common import controller, replica1, replica2, read_dev, write_dev  # NOQA
+from common import controller, read_dev, write_dev  # NOQA
 
 
 def test_upgrade(dev):  # NOQA

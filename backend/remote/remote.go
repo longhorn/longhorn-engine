@@ -1,9 +1,7 @@
 package remote
 
 import (
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"net"
 	"net/http"
 	"strconv"
@@ -14,12 +12,12 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
-	"github.com/longhorn/longhorn-engine/replica/rest"
 	"github.com/longhorn/longhorn-engine/dataconn"
+	"github.com/longhorn/longhorn-engine/replica/client"
+	replicaClient "github.com/longhorn/longhorn-engine/replica/client"
+	replicarpc "github.com/longhorn/longhorn-engine/replica/rpc"
 	"github.com/longhorn/longhorn-engine/types"
 	"github.com/longhorn/longhorn-engine/util"
-	replicarpc "github.com/longhorn/longhorn-engine/replica/rpc"
-	"github.com/longhorn/longhorn-engine/replica/client"
 )
 
 var (
@@ -137,63 +135,60 @@ func (r *Remote) SetRevisionCounter(counter int64) error {
 }
 
 func (r *Remote) Size() (int64, error) {
-	replica, err := r.info()
+	replicaInfo, err := r.info()
 	if err != nil {
 		return 0, err
 	}
-	return strconv.ParseInt(replica.Size, 10, 0)
+	return strconv.ParseInt(replicaInfo.Size, 10, 0)
 }
 
 func (r *Remote) SectorSize() (int64, error) {
-	replica, err := r.info()
+	replicaInfo, err := r.info()
 	if err != nil {
 		return 0, err
 	}
-	return replica.SectorSize, nil
+	return replicaInfo.SectorSize, nil
 }
 
 func (r *Remote) RemainSnapshots() (int, error) {
-	replica, err := r.info()
+	replicaInfo, err := r.info()
 	if err != nil {
 		return 0, err
 	}
-	if replica.State != "open" && replica.State != "dirty" && replica.State != "rebuilding" {
-		return 0, fmt.Errorf("Invalid state %v for counting snapshots", replica.State)
+	if replicaInfo.State != "open" && replicaInfo.State != "dirty" && replicaInfo.State != "rebuilding" {
+		return 0, fmt.Errorf("Invalid state %v for counting snapshots", replicaInfo.State)
 	}
-	return replica.RemainSnapshots, nil
+	return replicaInfo.RemainSnapshots, nil
 }
 
 func (r *Remote) GetRevisionCounter() (int64, error) {
-	replica, err := r.info()
+	replicaInfo, err := r.info()
 	if err != nil {
 		return 0, err
 	}
-	if replica.State != "open" && replica.State != "dirty" {
-		return 0, fmt.Errorf("Invalid state %v for getting revision counter", replica.State)
+	if replicaInfo.State != "open" && replicaInfo.State != "dirty" {
+		return 0, fmt.Errorf("Invalid state %v for getting revision counter", replicaInfo.State)
 	}
-	return replica.RevisionCounter, nil
+	return replicaInfo.RevisionCounter, nil
 }
 
-func (r *Remote) info() (rest.Replica, error) {
-	var replica rest.Replica
-	req, err := http.NewRequest("GET", r.replicaURL, nil)
+func (r *Remote) info() (*types.ReplicaInfo, error) {
+	conn, err := grpc.Dial(r.replicaServiceURL, grpc.WithInsecure())
 	if err != nil {
-		return replica, err
+		return nil, fmt.Errorf("cannot connect to ReplicaService %v: %v", r.replicaServiceURL, err)
 	}
+	defer conn.Close()
+	replicaServiceClient := replicarpc.NewReplicaServiceClient(conn)
 
-	resp, err := r.httpClient.Do(req)
+	ctx, cancel := context.WithTimeout(context.Background(), client.GRPCServiceCommonTimeout)
+	defer cancel()
+
+	replica, err := replicaServiceClient.ReplicaGet(ctx, &empty.Empty{})
 	if err != nil {
-		return replica, err
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		content, _ := ioutil.ReadAll(resp.Body)
-		return replica, fmt.Errorf("backend: Bad status from remote info: %d %s: %s", resp.StatusCode, resp.Status, content)
+		return nil, fmt.Errorf("failed to get replica %v info from remote: %v", r.replicaServiceURL, err)
 	}
 
-	err = json.NewDecoder(resp.Body).Decode(&replica)
-	return replica, err
+	return replicaClient.GetReplicaInfo(replica), nil
 }
 
 func (rf *Factory) Create(address string) (types.Backend, error) {

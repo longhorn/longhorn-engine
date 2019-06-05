@@ -4,8 +4,6 @@ import pyqcow
 import cmd
 import common
 from common import controller, backup_targets  # NOQA
-from common import replica1, replica2  # NOQA
-from common import backing_replica1, backing_replica2  # NOQA
 from common import grpc_replica1, grpc_replica2  # NOQA
 from common import grpc_backing_replica1, grpc_backing_replica2  # NOQAs
 from common import read_dev, read_file, read_from_backing_file
@@ -285,29 +283,24 @@ def restore_to_file_without_backing_file_test(dev, backup_target):
     rm_backups([backup])
 
 
-def test_restore_to_file_with_backing_file(backing_replica1, backing_replica2,  # NOQA
-                                           grpc_backing_replica1,  # NOQA
+def test_restore_to_file_with_backing_file(grpc_backing_replica1,  # NOQA
                                            grpc_backing_replica2,  # NOQA
                                            controller, backup_targets):  # NOQA
     for backup_target in backup_targets:
-        backing_dev = common.get_backing_dev(backing_replica1,
-                                             backing_replica2,
-                                             grpc_backing_replica1,
+        backing_dev = common.get_backing_dev(grpc_backing_replica1,
                                              grpc_backing_replica2,
                                              controller)
         restore_to_file_with_backing_file_test(backing_dev, backup_target)
-        common.cleanup_replica(backing_replica1, grpc_backing_replica1)
-        common.cleanup_replica(backing_replica2, grpc_backing_replica2)
+        common.cleanup_replica(grpc_backing_replica1)
+        common.cleanup_replica(grpc_backing_replica2)
         common.cleanup_controller(controller)
 
 
-def test_restore_to_file_without_backing_file(replica1, replica2,  # NOQA
-                                              grpc_replica1, grpc_replica2,  # NOQA
+def test_restore_to_file_without_backing_file(grpc_replica1, grpc_replica2,  # NOQA
                                               controller, backup_targets):  # NOQA
     for backup_target in backup_targets:
-        dev = common.get_dev(replica1, replica2,
-                             grpc_replica1, grpc_replica2, controller)
+        dev = common.get_dev(grpc_replica1, grpc_replica2, controller)
         restore_to_file_without_backing_file_test(dev, backup_target)
-        common.cleanup_replica(replica1, grpc_replica1)
-        common.cleanup_replica(replica2, grpc_replica2)
+        common.cleanup_replica(grpc_replica1)
+        common.cleanup_replica(grpc_replica2)
         common.cleanup_controller(controller)

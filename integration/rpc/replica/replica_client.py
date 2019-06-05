@@ -13,6 +13,12 @@ class ReplicaClient(object):
     def replica_create(self, size):
         return self.stub.ReplicaCreate(replica_pb2.ReplicaCreateRequest(size=size))
 
+    def replica_delete(self):
+        return self.stub.ReplicaDelete(empty_pb2.Empty())
+
+    def replica_get(self):
+        return self.stub.ReplicaGet(empty_pb2.Empty())
+
     def replica_open(self):
         return self.stub.ReplicaOpen(empty_pb2.Empty())
 
