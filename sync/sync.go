@@ -12,6 +12,7 @@ import (
 	"github.com/longhorn/longhorn-engine/replica"
 	replicaClient "github.com/longhorn/longhorn-engine/replica/client"
 	replicarpc "github.com/longhorn/longhorn-engine/replica/rpc"
+	"github.com/longhorn/longhorn-engine/types"
 )
 
 var (
@@ -466,7 +467,7 @@ func (t *Task) getToReplica(address string) (rest.Replica, error) {
 	return rest.Replica{}, fmt.Errorf("Failed to find target replica to copy to")
 }
 
-func getNonBackingDisks(address string) (map[string]replica.DiskInfo, error) {
+func getNonBackingDisks(address string) (map[string]types.DiskInfo, error) {
 	repClient, err := replicaClient.NewReplicaClient(address)
 	if err != nil {
 		return nil, err
@@ -477,7 +478,7 @@ func getNonBackingDisks(address string) (map[string]replica.DiskInfo, error) {
 		return nil, err
 	}
 
-	disks := make(map[string]replica.DiskInfo)
+	disks := make(map[string]types.DiskInfo)
 	for name, disk := range r.Disks {
 		if name == r.BackingFile {
 			continue
@@ -488,7 +489,7 @@ func getNonBackingDisks(address string) (map[string]replica.DiskInfo, error) {
 	return disks, err
 }
 
-func GetSnapshotsInfo(replicas []rest.Replica) (outputDisks map[string]replica.DiskInfo, err error) {
+func GetSnapshotsInfo(replicas []rest.Replica) (outputDisks map[string]types.DiskInfo, err error) {
 	defer func() {
 		err = errors.Wrapf(err, "BUG: cannot get snapshot info")
 	}()
@@ -502,7 +503,7 @@ func GetSnapshotsInfo(replicas []rest.Replica) (outputDisks map[string]replica.D
 			return nil, err
 		}
 
-		newDisks := make(map[string]replica.DiskInfo)
+		newDisks := make(map[string]types.DiskInfo)
 		for name, disk := range disks {
 			snapshot := ""
 
@@ -534,7 +535,7 @@ func GetSnapshotsInfo(replicas []rest.Replica) (outputDisks map[string]replica.D
 					return nil, err
 				}
 			}
-			info := replica.DiskInfo{
+			info := types.DiskInfo{
 				Name:        snapshot,
 				Parent:      parent,
 				Removed:     disk.Removed,

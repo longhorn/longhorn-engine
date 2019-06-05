@@ -6,8 +6,6 @@ import (
 
 	"github.com/golang/protobuf/ptypes/empty"
 	"golang.org/x/net/context"
-	"google.golang.org/grpc/codes"
-	"google.golang.org/grpc/status"
 
 	"github.com/longhorn/longhorn-engine/replica"
 )
@@ -88,7 +86,7 @@ func (rs *ReplicaServer) ReplicaDelete(ctx context.Context, req *empty.Empty) (*
 }
 
 func (rs *ReplicaServer) ReplicaGet(ctx context.Context, req *empty.Empty) (*Replica, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ReplicaGet not implemented")
+	return rs.getReplica(), nil
 }
 
 func (rs *ReplicaServer) ReplicaOpen(ctx context.Context, req *empty.Empty) (*Replica, error) {

@@ -1,7 +1,6 @@
 package rest
 
 import (
-	"github.com/gorilla/mux"
 	"github.com/rancher/go-rancher/api"
 	"github.com/rancher/go-rancher/client"
 	"net/http"
@@ -19,17 +18,6 @@ func (s *Server) ListReplicas(rw http.ResponseWriter, req *http.Request) error {
 func (s *Server) Replica(apiContext *api.ApiContext) *Replica {
 	state, info := s.s.Status()
 	return NewReplica(apiContext, state, info, s.s.Replica())
-}
-
-func (s *Server) GetReplica(rw http.ResponseWriter, req *http.Request) error {
-	apiContext := api.GetApiContext(req)
-	r := s.Replica(apiContext)
-	if mux.Vars(req)["id"] == r.Id {
-		apiContext.Write(r)
-	} else {
-		rw.WriteHeader(http.StatusNotFound)
-	}
-	return nil
 }
 
 func (s *Server) doOp(req *http.Request, err error) error {

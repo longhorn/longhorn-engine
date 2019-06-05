@@ -1,8 +1,6 @@
 import cmd
 import common
-from common import controller, replica1, replica2 # NOQA
-from common import backing_replica1, backing_replica2 # NOQA
-from common import grpc_replica1, grpc_replica2  # NOQA
+from common import controller, grpc_replica1, grpc_replica2  # NOQA
 from common import grpc_backing_replica1, grpc_backing_replica2  # NOQA
 from common import prepare_backup_dir, BACKUP_DIR # NOQA
 from common import open_replica, get_blockdev, cleanup_replica
@@ -10,10 +8,9 @@ from common import verify_read, verify_data, verify_async, VOLUME_HEAD
 from snapshot_tree import snapshot_tree_build, snapshot_tree_verify
 
 
-def test_ha_single_replica_failure(controller, replica1, replica2,  # NOQA
-                                   grpc_replica1, grpc_replica2):  # NOQA
-    open_replica(replica1, grpc_replica1)
-    open_replica(replica2, grpc_replica2)
+def test_ha_single_replica_failure(controller, grpc_replica1, grpc_replica2):  # NOQA
+    open_replica(grpc_replica1)
+    open_replica(grpc_replica2)
 
     replicas = controller.list_replica()
     assert len(replicas) == 0
@@ -36,7 +33,7 @@ def test_ha_single_replica_failure(controller, replica1, replica2,  # NOQA
     data_offset = 1024
     verify_data(dev, data_offset, data)
 
-    cleanup_replica(replica2, grpc_replica2)
+    cleanup_replica(grpc_replica2)
 
     verify_async(dev, 10, 128, 1)
 
@@ -44,10 +41,9 @@ def test_ha_single_replica_failure(controller, replica1, replica2,  # NOQA
 
     verify_read(dev, data_offset, data)
 
-def test_ha_single_replica_rebuild(controller, replica1, replica2,  # NOQA
-                                   grpc_replica1, grpc_replica2):  # NOQA
-    open_replica(replica1, grpc_replica1)
-    open_replica(replica2, grpc_replica2)
+def test_ha_single_replica_rebuild(controller, grpc_replica1, grpc_replica2):  # NOQA
+    open_replica(grpc_replica1)
+    open_replica(grpc_replica2)
 
     replicas = controller.list_replica()
     assert len(replicas) == 0
@@ -71,7 +67,7 @@ def test_ha_single_replica_rebuild(controller, replica1, replica2,  # NOQA
     verify_data(dev, data_offset, data)
 
     # Cleanup replica2
-    cleanup_replica(replica2, grpc_replica2)
+    cleanup_replica(grpc_replica2)
 
     verify_async(dev, 10, 128, 1)
 
@@ -82,7 +78,7 @@ def test_ha_single_replica_rebuild(controller, replica1, replica2,  # NOQA
     controller.delete(replicas[1])
 
     # Rebuild replica2
-    open_replica(replica2, grpc_replica2)
+    open_replica(grpc_replica2)
     cmd.add_replica(common.REPLICA2)
 
     verify_async(dev, 10, 128, 1)
@@ -109,10 +105,10 @@ def test_ha_single_replica_rebuild(controller, replica1, replica2,  # NOQA
     assert info[VOLUME_HEAD] is not None
 
 
-def test_ha_double_replica_rebuild(controller, replica1, replica2,  # NOQA
+def test_ha_double_replica_rebuild(controller,  # NOQA
                                    grpc_replica1, grpc_replica2):  # NOQA
-    open_replica(replica1, grpc_replica1)
-    open_replica(replica2, grpc_replica2)
+    open_replica(grpc_replica1)
+    open_replica(grpc_replica2)
 
     replicas = controller.list_replica()
     assert len(replicas) == 0
@@ -136,8 +132,8 @@ def test_ha_double_replica_rebuild(controller, replica1, replica2,  # NOQA
     verify_data(dev, data1_offset, data1)
 
     # Close replica2
-    r2 = replica2.list_replica()[0]
-    assert r2.revisioncounter == '1'
+    r2 = grpc_replica2.replica_get()
+    assert r2.revisionCounter == 1
     grpc_replica2.replica_close()
 
     verify_async(dev, 10, 128, 1)
@@ -151,8 +147,8 @@ def test_ha_double_replica_rebuild(controller, replica1, replica2,  # NOQA
     verify_data(dev, data2_offset, data2)
 
     # Close replica1
-    r1 = replica1.list_replica()[0]
-    assert r1.revisioncounter == '12'  # 1 + 10 + 1
+    r1 = grpc_replica1.replica_get()
+    assert r1.revisionCounter == 12  # 1 + 10 + 1
     grpc_replica1.replica_close()
 
     # Restart volume
@@ -179,8 +175,8 @@ def test_ha_double_replica_rebuild(controller, replica1, replica2,  # NOQA
     verify_read(dev, data2_offset, data2)
 
     # Rebuild replica2
-    r2 = replica2.list_replica()[0]
-    assert r2.revisioncounter == '1'
+    r2 = grpc_replica2.replica_get()
+    assert r2.revisionCounter == 1
     grpc_replica2.replica_close()
 
     controller.delete(replicas[0])
@@ -194,16 +190,16 @@ def test_ha_double_replica_rebuild(controller, replica1, replica2,  # NOQA
     verify_read(dev, data1_offset, data1)
     verify_read(dev, data2_offset, data2)
 
-    r1 = replica1.list_replica()[0]
-    r2 = replica2.list_replica()[0]
-    assert r1.revisioncounter == '22'  # 1 + 10 + 1 + 10
-    assert r2.revisioncounter == '22'  # must be in sync with r1
+    r1 = grpc_replica1.replica_get()
+    r2 = grpc_replica2.replica_get()
+    assert r1.revisionCounter == 22  # 1 + 10 + 1 + 10
+    assert r2.revisionCounter == 22  # must be in sync with r1
 
 
-def test_ha_revision_counter_consistency(controller, replica1, replica2,  # NOQA
+def test_ha_revision_counter_consistency(controller,  # NOQA
                                          grpc_replica1, grpc_replica2):  # NOQA
-    open_replica(replica1, grpc_replica1)
-    open_replica(replica2, grpc_replica2)
+    open_replica(grpc_replica1)
+    open_replica(grpc_replica2)
 
     replicas = controller.list_replica()
     assert len(replicas) == 0
@@ -224,20 +220,20 @@ def test_ha_revision_counter_consistency(controller, replica1, replica2,  # NOQA
 
     common.verify_async(dev, 10, 128, 100)
 
-    r1 = replica1.list_replica()[0]
-    r2 = replica2.list_replica()[0]
+    r1 = grpc_replica1.replica_get()
+    r2 = grpc_replica2.replica_get()
     # kernel can merge requests so backend may not receive 1000 writes
-    assert r1.revisioncounter > '0'
-    assert r1.revisioncounter == r2.revisioncounter
+    assert r1.revisionCounter > 0
+    assert r1.revisionCounter == r2.revisionCounter
 
 
-def test_snapshot_tree_rebuild(controller, replica1, replica2,  # NOQA
+def test_snapshot_tree_rebuild(controller,  # NOQA
                                grpc_replica1, grpc_replica2):  # NOQA
     offset = 0
     length = 128
 
-    open_replica(replica1, grpc_replica1)
-    open_replica(replica2, grpc_replica2)
+    open_replica(grpc_replica1)
+    open_replica(grpc_replica2)
 
     replicas = controller.list_replica()
     assert len(replicas) == 0
@@ -263,7 +259,7 @@ def test_snapshot_tree_rebuild(controller, replica1, replica2,  # NOQA
     verify_data(dev, data_offset, data)
 
     # Cleanup replica2
-    cleanup_replica(replica2, grpc_replica2)
+    cleanup_replica(grpc_replica2)
 
     verify_async(dev, 10, 128, 1)
 
@@ -274,7 +270,7 @@ def test_snapshot_tree_rebuild(controller, replica1, replica2,  # NOQA
     controller.delete(replicas[1])
 
     # Rebuild replica2
-    open_replica(replica2, grpc_replica2)
+    open_replica(grpc_replica2)
     cmd.add_replica(common.REPLICA2)
 
     verify_async(dev, 10, 128, 1)
@@ -285,13 +281,11 @@ def test_snapshot_tree_rebuild(controller, replica1, replica2,  # NOQA
 
 
 def test_ha_single_backing_replica_rebuild(controller,              # NOQA
-                                           backing_replica1,        # NOQA
-                                           backing_replica2,        # NOQA
                                            grpc_backing_replica1,   # NOQA
                                            grpc_backing_replica2):  # NOQA
     prepare_backup_dir(BACKUP_DIR)
-    open_replica(backing_replica1, grpc_backing_replica1)
-    open_replica(backing_replica2, grpc_backing_replica2)
+    open_replica(grpc_backing_replica1)
+    open_replica(grpc_backing_replica2)
 
     replicas = controller.list_replica()
     assert len(replicas) == 0
@@ -315,7 +309,7 @@ def test_ha_single_backing_replica_rebuild(controller,              # NOQA
     verify_data(dev, data_offset, data)
 
     # Cleanup replica2
-    cleanup_replica(backing_replica2, grpc_backing_replica2)
+    cleanup_replica(grpc_backing_replica2)
 
     verify_async(dev, 10, 128, 1)
 
@@ -326,7 +320,7 @@ def test_ha_single_backing_replica_rebuild(controller,              # NOQA
     controller.delete(replicas[1])
 
     # Rebuild replica2
-    open_replica(backing_replica2, grpc_backing_replica2)
+    open_replica(grpc_backing_replica2)
     cmd.add_replica(common.BACKED_REPLICA2)
 
     verify_async(dev, 10, 128, 1)
@@ -353,10 +347,10 @@ def test_ha_single_backing_replica_rebuild(controller,              # NOQA
     assert info[VOLUME_HEAD] is not None
 
 
-def test_ha_remove_extra_disks(controller, replica1, replica2,  # NOQA
-                               grpc_replica1, grpc_replica2):     # NOQA
+def test_ha_remove_extra_disks(controller,  # NOQA
+                               grpc_replica1, grpc_replica2):  # NOQA
     prepare_backup_dir(BACKUP_DIR)
-    open_replica(replica1, grpc_replica1)
+    open_replica(grpc_replica1)
 
     replicas = controller.list_replica()
     assert len(replicas) == 0
@@ -382,7 +376,7 @@ def test_ha_remove_extra_disks(controller, replica1, replica2,  # NOQA
 
     common.cleanup_controller(controller)
 
-    open_replica(replica2, grpc_replica2)
+    open_replica(grpc_replica2)
     replicas = controller.list_replica()
     assert len(replicas) == 0
 

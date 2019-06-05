@@ -4,7 +4,7 @@ import pytest
 
 import cmd
 import common
-from common import replica1, replica2, controller, backing_replica1, backing_replica2, backup_targets  # NOQA
+from common import controller, backup_targets  # NOQA
 from common import grpc_replica1, grpc_replica2  # NOQA
 from common import grpc_backing_replica1, grpc_backing_replica2  # NOQA
 from common import read_dev, read_from_backing_file
@@ -203,55 +203,45 @@ def snapshot_tree_backup_test(dev, backup_target):  # NOQA
     snapshot_tree_verify_backup_node(dev, offset, length, backup, data, "3c")
 
 
-def test_backup(replica1, replica2,  # NOQA
-                grpc_replica1, grpc_replica2,  # NOQA
+def test_backup(grpc_replica1, grpc_replica2,  # NOQA
                 controller, backup_targets):  # NOQA
     for backup_target in backup_targets:
-        dev = common.get_dev(replica1, replica2,
-                             grpc_replica1, grpc_replica2, controller)
+        dev = common.get_dev(grpc_replica1, grpc_replica2, controller)
         backup_test(dev, backup_target)
-        common.cleanup_replica(replica1, grpc_replica1)
-        common.cleanup_replica(replica2, grpc_replica2)
+        common.cleanup_replica(grpc_replica1)
+        common.cleanup_replica(grpc_replica2)
         common.cleanup_controller(controller)
 
 
-def test_snapshot_tree_backup(replica1, replica2,  # NOQA
-                              grpc_replica1, grpc_replica2,  # NOQA
+def test_snapshot_tree_backup(grpc_replica1, grpc_replica2,  # NOQA
                               controller, backup_targets):  # NOQA
     for backup_target in backup_targets:
-        dev = common.get_dev(replica1, replica2,
-                             grpc_replica1, grpc_replica2, controller)
+        dev = common.get_dev(grpc_replica1, grpc_replica2, controller)
         snapshot_tree_backup_test(dev, backup_target)
-        common.cleanup_replica(replica1, grpc_replica1)
-        common.cleanup_replica(replica2, grpc_replica2)
+        common.cleanup_replica(grpc_replica1)
+        common.cleanup_replica(grpc_replica2)
         common.cleanup_controller(controller)
 
 
-def test_backup_with_backing_file(backing_replica1, backing_replica2,  # NOQA
-                                  grpc_backing_replica1, grpc_backing_replica2,  # NOQA
+def test_backup_with_backing_file(grpc_backing_replica1, grpc_backing_replica2,  # NOQA
                                   controller, backup_targets):  # NOQA
     for backup_target in backup_targets:
-        backing_dev = common.get_backing_dev(backing_replica1,
-                                             backing_replica2,
-                                             grpc_backing_replica1,
+        backing_dev = common.get_backing_dev(grpc_backing_replica1,
                                              grpc_backing_replica2,
                                              controller)
         backup_with_backing_file_test(backing_dev, backup_target)
-        common.cleanup_replica(backing_replica1, grpc_backing_replica1)
-        common.cleanup_replica(backing_replica2, grpc_backing_replica2)
+        common.cleanup_replica(grpc_backing_replica1)
+        common.cleanup_replica(grpc_backing_replica2)
         common.cleanup_controller(controller)
 
 
-def test_backup_hole_with_backing_file(backing_replica1, backing_replica2,  # NOQA
-                                       grpc_backing_replica1, grpc_backing_replica2,  # NOQA
+def test_backup_hole_with_backing_file(grpc_backing_replica1, grpc_backing_replica2,  # NOQA
                                        controller, backup_targets):  # NOQA
     for backup_target in backup_targets:
-        backing_dev = common.get_backing_dev(backing_replica1,
-                                             backing_replica2,
-                                             grpc_backing_replica1,
+        backing_dev = common.get_backing_dev(grpc_backing_replica1,
                                              grpc_backing_replica2,
                                              controller)
         backup_hole_with_backing_file_test(backing_dev, backup_target)
-        common.cleanup_replica(backing_replica1, grpc_backing_replica1)
-        common.cleanup_replica(backing_replica2, grpc_backing_replica2)
+        common.cleanup_replica(grpc_backing_replica1)
+        common.cleanup_replica(grpc_backing_replica2)
         common.cleanup_controller(controller)

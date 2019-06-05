@@ -26,31 +26,23 @@ from replica.replica_client import ReplicaClient  # NOQA
 
 
 REPLICA1 = 'tcp://localhost:9502'
-REPLICA1_SCHEMA = 'http://localhost:9502/v1/schemas'
 GRPC_REPLICA1 = 'localhost:9505'
 REPLICA2 = 'tcp://localhost:9512'
-REPLICA2_SCHEMA = 'http://localhost:9512/v1/schemas'
 GRPC_REPLICA2 = 'localhost:9515'
 
 BACKED_REPLICA1 = 'tcp://localhost:9602'
-BACKED_REPLICA1_SCHEMA = 'http://localhost:9602/v1/schemas'
 GRPC_BACKED_REPLICA1 = 'localhost:9605'
 BACKED_REPLICA2 = 'tcp://localhost:9612'
-BACKED_REPLICA2_SCHEMA = 'http://localhost:9612/v1/schemas'
 GRPC_BACKED_REPLICA2 = 'localhost:9615'
 
 UPGRADE_REPLICA1 = 'tcp://localhost:9522'
-UPGRADE_REPLICA1_SCHEMA = 'http://localhost:9522/v1/schemas'
 GRPC_UPGRADE_REPLICA1 = 'localhost:9525'
 UPGRADE_REPLICA2 = 'tcp://localhost:9532'
-UPGRADE_REPLICA2_SCHEMA = 'http://localhost:9532/v1/schemas'
 GRPC_UPGRADE_REPLICA2 = 'localhost:9535'
 
 STANDBY_REPLICA1 = 'tcp://localhost:9542'
-STANDBY_REPLICA1_SCHEMA = 'http://localhost:9542/v1/schemas'
 GRPC_STANDBY_REPLICA1 = 'localhost:9545'
 STANDBY_REPLICA2 = 'tcp://localhost:9552'
-STANDBY_REPLICA2_SCHEMA = 'http://localhost:9552/v1/schemas'
 GRPC_STANDBY_REPLICA2 = 'localhost:9555'
 
 STANDBY_REPLICA1_PATH = '/tmp/standby_vol_replica_1/'
@@ -86,30 +78,22 @@ def _base():
 
 @pytest.fixture()
 def dev(request):
-    replica = replica_client(request, REPLICA1_SCHEMA,
-                             GRPC_REPLICA1)
-    replica2 = replica_client(request, REPLICA2_SCHEMA,
-                              GRPC_REPLICA2)
-    grpc_replica1 = grpc_replica_client(GRPC_REPLICA1)
-    grpc_replica2 = grpc_replica_client(GRPC_REPLICA2)
+    grpc_replica1 = grpc_replica_client(request, GRPC_REPLICA1)
+    grpc_replica2 = grpc_replica_client(request, GRPC_REPLICA2)
     controller = controller_client(request)
 
-    return get_dev(replica, replica2,
-                   grpc_replica1, grpc_replica2, controller)
+    return get_dev(grpc_replica1, grpc_replica2, controller)
 
 
 @pytest.fixture()
 def backing_dev(request):
-    replica = replica_client(request, BACKED_REPLICA1_SCHEMA,
-                             GRPC_BACKED_REPLICA1)
-    replica2 = replica_client(request, BACKED_REPLICA2_SCHEMA,
-                              GRPC_BACKED_REPLICA2)
-    grpc_replica1 = grpc_replica_client(GRPC_BACKED_REPLICA1)
-    grpc_replica2 = grpc_replica_client(GRPC_BACKED_REPLICA2)
+    grpc_replica1 = grpc_replica_client(request,
+                                        GRPC_BACKED_REPLICA1)
+    grpc_replica2 = grpc_replica_client(request,
+                                        GRPC_BACKED_REPLICA2)
     controller = controller_client(request)
 
-    return get_backing_dev(replica, replica2,
-                           grpc_replica1, grpc_replica2,
+    return get_backing_dev(grpc_replica1, grpc_replica2,
                            controller)
 
 
@@ -151,91 +135,58 @@ def cleanup_controller(client):
 
 
 @pytest.fixture()
-def replica1(request):
-    return replica_client(request, REPLICA1_SCHEMA,
-                          GRPC_REPLICA1)
+def grpc_replica1(request):
+    return grpc_replica_client(request, GRPC_REPLICA1)
 
 
 @pytest.fixture()
-def replica2(request):
-    return replica_client(request, REPLICA2_SCHEMA,
-                          GRPC_REPLICA2)
+def grpc_replica2(request):
+    return grpc_replica_client(request, GRPC_REPLICA2)
 
 
 @pytest.fixture()
-def standby_replica1(request):
-    return replica_client(request, STANDBY_REPLICA1_SCHEMA,
-                          GRPC_STANDBY_REPLICA1)
+def grpc_backing_replica1(request):
+    return grpc_replica_client(request, GRPC_BACKED_REPLICA1)
 
 
 @pytest.fixture()
-def standby_replica2(request):
-    return replica_client(request, STANDBY_REPLICA2_SCHEMA,
-                          GRPC_STANDBY_REPLICA2)
+def grpc_backing_replica2(request):
+    return grpc_replica_client(request, GRPC_BACKED_REPLICA2)
 
 
 @pytest.fixture()
-def grpc_replica1():
-    return grpc_replica_client(GRPC_REPLICA1)
+def grpc_standby_replica1(request):
+    return grpc_replica_client(request, GRPC_STANDBY_REPLICA1)
 
 
 @pytest.fixture()
-def grpc_replica2():
-    return grpc_replica_client(GRPC_REPLICA2)
+def grpc_standby_replica2(request):
+    return grpc_replica_client(request, GRPC_STANDBY_REPLICA2)
 
 
-@pytest.fixture()
-def grpc_backing_replica1():
-    return grpc_replica_client(GRPC_BACKED_REPLICA1)
+def grpc_replica_client(request, url):
+    grpc_c = ReplicaClient(url)
+    request.addfinalizer(lambda: cleanup_replica(grpc_c))
+    return cleanup_replica(grpc_c)
 
 
-@pytest.fixture()
-def grpc_backing_replica2():
-    return grpc_replica_client(GRPC_BACKED_REPLICA2)
-
-
-@pytest.fixture()
-def grpc_standby_replica1():
-    return grpc_replica_client(GRPC_STANDBY_REPLICA1)
-
-
-@pytest.fixture()
-def grpc_standby_replica2():
-    return grpc_replica_client(GRPC_STANDBY_REPLICA2)
-
-
-def replica_client(request, url, grpc_url):
-    c = cattle.from_env(url=url)
-    grpc_c = ReplicaClient(grpc_url)
-    request.addfinalizer(lambda: cleanup_replica(c, grpc_c))
-    return cleanup_replica(c, grpc_c)
-
-
-def grpc_replica_client(url):
-    return ReplicaClient(url)
-
-
-def cleanup_replica(client, grpc_client):
-    r = client.list_replica()[0]
+def cleanup_replica(grpc_client):
+    r = grpc_client.replica_get()
     if r.state == 'initial':
-        return client
-    if 'open' in r:
+        return grpc_client
+    if r.state == 'closed':
         grpc_client.replica_open()
-    r = client.list_replica()[0]
-    client.delete(r)
+    grpc_client.replica_delete()
     r = grpc_client.replica_reload()
     assert r.state == 'initial'
-    return client
+    return grpc_client
 
 
-def open_replica(client, grpc_client, backing_file=None):
-    replicas = client.list_replica()
-    assert len(replicas) == 1
-
-    r = replicas[0]
+def open_replica(grpc_client, backing_file=None):
+    r = grpc_client.replica_get()
     assert r.state == 'initial'
     assert r.size == '0'
-    assert r.sectorSize == '0'
+    assert r.sectorSize == 0
     assert r.parent == ''
     assert r.head == ''
 
@@ -351,23 +302,10 @@ def verify_async(dev, times, length, count):
         raise Exception("data_verifier thread failed")
 
 
-@pytest.fixture()
-def backing_replica1(request):
-    return replica_client(request, BACKED_REPLICA1_SCHEMA,
-                          GRPC_BACKED_REPLICA1)
-
-
-@pytest.fixture()
-def backing_replica2(request):
-    return replica_client(request, BACKED_REPLICA2_SCHEMA,
-                          GRPC_BACKED_REPLICA2)
-
-
-def get_dev(replica1, replica2,
-            grpc_replica1, grpc_replica2, controller):
+def get_dev(grpc_replica1, grpc_replica2, controller):
     prepare_backup_dir(BACKUP_DIR)
-    open_replica(replica1, grpc_replica1)
-    open_replica(replica2, grpc_replica2)
+    open_replica(grpc_replica1)
+    open_replica(grpc_replica2)
 
     replicas = controller.list_replica()
     assert len(replicas) == 0
@@ -383,12 +321,11 @@ def get_dev(replica1, replica2,
     return d
 
 
-def get_backing_dev(backing_replica1, backing_replica2,
-                    grpc_backing_replica1, grpc_backing_replica2,
+def get_backing_dev(grpc_backing_replica1, grpc_backing_replica2,
                     controller):
     prepare_backup_dir(BACKUP_DIR)
-    open_replica(backing_replica1, grpc_backing_replica1)
-    open_replica(backing_replica2, grpc_backing_replica2)
+    open_replica(grpc_backing_replica1)
+    open_replica(grpc_backing_replica2)
 
     replicas = controller.list_replica()
     assert len(replicas) == 0

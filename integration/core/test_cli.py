@@ -59,44 +59,29 @@ def cleanup_controller(client):
 
 
 @pytest.fixture
-def replica_client(request):
-    url = 'http://localhost:9502/v1/schemas'
-    c = cattle.from_env(url=url)
+def grpc_replica_client(request):
     grpc_c = ReplicaClient(GRPC_REPLICA)
-    request.addfinalizer(lambda: cleanup_replica(c, grpc_c))
-    return cleanup_replica(c, grpc_c)
+    request.addfinalizer(lambda: cleanup_replica(grpc_c))
+    return cleanup_replica(grpc_c)
 
 
 @pytest.fixture
-def replica_client2(request):
-    url = 'http://localhost:9512/v1/schemas'
-    c = cattle.from_env(url=url)
+def grpc_replica_client2(request):
     grpc_c = ReplicaClient(GRPC_REPLICA2)
-    request.addfinalizer(lambda: cleanup_replica(c, grpc_c))
-    return cleanup_replica(c, grpc_c)
+    request.addfinalizer(lambda: cleanup_replica(grpc_c))
+    return cleanup_replica(grpc_c)
 
 
-@pytest.fixture
-def grpc_replica_client():
-    return ReplicaClient(GRPC_REPLICA)
-
-
-@pytest.fixture
-def grpc_replica_client2():
-    return ReplicaClient(GRPC_REPLICA2)
-
-
-def cleanup_replica(client, grpc_client):
-    r = client.list_replica()[0]
+def cleanup_replica(grpc_client):
+    r = grpc_client.replica_get()
     if r.state == 'initial':
-        return client
-    if 'open' in r:
+        return grpc_client
+    if r.state == 'closed':
         grpc_client.replica_open()
-    r = client.list_replica()[0]
-    client.delete(r)
+    grpc_client.replica_delete()
     r = grpc_client.replica_reload()
     assert r.state == 'initial'
-    return client
+    return grpc_client
 
 
 @pytest.fixture()
@@ -154,14 +139,11 @@ def setup_module():
     assert os.path.exists(BACKUP_DEST)
 
 
-def open_replica(client, grpc_client):
-    replicas = client.list_replica()
-    assert len(replicas) == 1
-
-    r = replicas[0]
+def open_replica(grpc_client):
+    r = grpc_client.replica_get()
     assert r.state == 'initial'
     assert r.size == '0'
-    assert r.sectorSize == '0'
+    assert r.sectorSize == 0
     assert r.parent == ''
     assert r.head == ''
 
@@ -177,8 +159,8 @@ def open_replica(client, grpc_client):
 
 
 def test_replica_add_start(bin, controller_client,
-                           replica_client, grpc_replica_client):
-    open_replica(replica_client, grpc_replica_client)
+                           grpc_replica_client):
+    open_replica(grpc_replica_client)
 
     cmd = [bin, '--debug', 'add-replica', REPLICA]
     subprocess.check_call(cmd)
@@ -193,10 +175,9 @@ def getNow():
 
 
 def test_replica_add_rebuild(bin, controller_client,
-                             replica_client, replica_client2,
                              grpc_replica_client, grpc_replica_client2):
-    open_replica(replica_client, grpc_replica_client)
-    open_replica(replica_client2, grpc_replica_client2)
+    open_replica(grpc_replica_client)
+    open_replica(grpc_replica_client2)
 
     snap0 = "000"
     snap1 = "001"
@@ -209,7 +190,7 @@ def test_replica_add_rebuild(bin, controller_client,
     r = grpc_replica_client.replica_snapshot(
         name=snap1, user_created=True, created=createtime1)
 
-    l = replica_client2.list_replica()[0]
+    l = grpc_replica_client2.replica_get()
 
     assert r.chain == ['volume-head-002.img',
                        'volume-snap-001.img',
@@ -289,11 +270,10 @@ def test_replica_add_rebuild(bin, controller_client,
 
 
 def test_replica_add_after_rebuild_failed(bin, controller_client,
-                                          replica_client, replica_client2,
                                           grpc_replica_client,
                                           grpc_replica_client2):
-    open_replica(replica_client, grpc_replica_client)
-    open_replica(replica_client2, grpc_replica_client2)
+    open_replica(grpc_replica_client)
+    open_replica(grpc_replica_client2)
 
     grpc_replica_client.replica_open()
     grpc_replica_client.replica_snapshot(
@@ -323,12 +303,11 @@ def test_replica_add_after_rebuild_failed(bin, controller_client,
         assert r.mode == 'RW'
 
 
-def test_replica_failure_detection(bin, controller_client,
-                                   replica_client, replica_client2,
+def test_replica_failure_detection(controller_client,
                                    grpc_replica_client,
                                    grpc_replica_client2):
-    open_replica(replica_client, grpc_replica_client)
-    open_replica(replica_client2, grpc_replica_client2)
+    open_replica(grpc_replica_client)
+    open_replica(grpc_replica_client2)
 
     v = controller_client.list_volume()[0]
     v = v.start(replicas=[
@@ -340,7 +319,7 @@ def test_replica_failure_detection(bin, controller_client,
     # wait for initial read/write period to pass
     time.sleep(2)
 
-    cleanup_replica(replica_client, grpc_replica_client)
+    cleanup_replica(grpc_replica_client)
 
     detected = False
     for i in range(10):
@@ -356,10 +335,10 @@ def test_replica_failure_detection(bin, controller_client,
     assert detected
 
 
-def test_revert(bin, controller_client, replica_client, replica_client2,
+def test_revert(controller_client,
                 grpc_replica_client, grpc_replica_client2):
-    open_replica(replica_client, grpc_replica_client)
-    open_replica(replica_client2, grpc_replica_client2)
+    open_replica(grpc_replica_client)
+    open_replica(grpc_replica_client2)
 
     v = controller_client.list_volume()[0]
     v = v.start(replicas=[
@@ -374,8 +353,8 @@ def test_revert(bin, controller_client, replica_client, replica_client2,
     snap2 = v.snapshot(name='foo2')
     assert snap2.id == 'foo2'
 
-    r1 = replica_client.list_replica()[0]
-    r2 = replica_client2.list_replica()[0]
+    r1 = grpc_replica_client.replica_get()
+    r2 = grpc_replica_client2.replica_get()
 
     assert r1.chain == ['volume-head-002.img', 'volume-snap-foo2.img',
                         'volume-snap-foo1.img']
@@ -383,16 +362,16 @@ def test_revert(bin, controller_client, replica_client, replica_client2,
 
     v.revert(name='foo1')
 
-    r1 = replica_client.list_replica()[0]
-    r2 = replica_client2.list_replica()[0]
+    r1 = grpc_replica_client.replica_get()
+    r2 = grpc_replica_client2.replica_get()
     assert r1.chain == ['volume-head-003.img', 'volume-snap-foo1.img']
     assert r1.chain == r2.chain
 
 
-def test_snapshot(bin, controller_client, replica_client, replica_client2,
+def test_snapshot(bin, controller_client,
                   grpc_replica_client, grpc_replica_client2):
-    open_replica(replica_client, grpc_replica_client)
-    open_replica(replica_client2, grpc_replica_client2)
+    open_replica(grpc_replica_client)
+    open_replica(grpc_replica_client2)
 
     v = controller_client.list_volume()[0]
     v = v.start(replicas=[
@@ -416,10 +395,10 @@ def test_snapshot(bin, controller_client, replica_client, replica_client2,
 '''.format(snap2.id, snap.id)
 
 
-def test_snapshot_ls(bin, controller_client, replica_client, replica_client2,
+def test_snapshot_ls(bin, controller_client,
                      grpc_replica_client, grpc_replica_client2):
-    open_replica(replica_client, grpc_replica_client)
-    open_replica(replica_client2, grpc_replica_client2)
+    open_replica(grpc_replica_client)
+    open_replica(grpc_replica_client2)
 
     v = controller_client.list_volume()[0]
     v = v.start(replicas=[
@@ -444,10 +423,9 @@ def test_snapshot_ls(bin, controller_client, replica_client, replica_client2,
 
 
 def test_snapshot_info(bin, controller_client,
-                       replica_client, replica_client2,
                        grpc_replica_client, grpc_replica_client2):
-    open_replica(replica_client, grpc_replica_client)
-    open_replica(replica_client2, grpc_replica_client2)
+    open_replica(grpc_replica_client)
+    open_replica(grpc_replica_client2)
 
     v = controller_client.list_volume()[0]
     v = v.start(replicas=[
@@ -500,11 +478,10 @@ def test_snapshot_info(bin, controller_client,
 
 
 def test_snapshot_create(bin, controller_client,
-                         replica_client, replica_client2,
                          grpc_replica_client,
                          grpc_replica_client2):
-    open_replica(replica_client, grpc_replica_client)
-    open_replica(replica_client2, grpc_replica_client2)
+    open_replica(grpc_replica_client)
+    open_replica(grpc_replica_client2)
 
     v = controller_client.list_volume()[0]
     v = v.start(replicas=[
@@ -515,7 +492,7 @@ def test_snapshot_create(bin, controller_client,
 
     cmd = [bin, 'snapshot', 'create']
     snap0 = subprocess.check_output(cmd).strip()
-    expected = replica_client.list_replica()[0].chain[1]
+    expected = grpc_replica_client.replica_get().chain[1]
     assert expected == 'volume-snap-{}.img'.format(snap0)
 
     cmd = [bin, 'snapshot', 'create',
@@ -547,10 +524,10 @@ def test_snapshot_create(bin, controller_client,
     assert len(info[VOLUME_HEAD]["labels"]) == 0
 
 
-def test_snapshot_rm(bin, controller_client, replica_client, replica_client2,
+def test_snapshot_rm(bin, controller_client,
                      grpc_replica_client, grpc_replica_client2):
-    open_replica(replica_client, grpc_replica_client)
-    open_replica(replica_client2, grpc_replica_client2)
+    open_replica(grpc_replica_client)
+    open_replica(grpc_replica_client2)
 
     v = controller_client.list_volume()[0]
     v = v.start(replicas=[
@@ -563,7 +540,7 @@ def test_snapshot_rm(bin, controller_client, replica_client, replica_client2,
     subprocess.check_call(cmd)
     output = subprocess.check_output(cmd).strip()
 
-    chain = replica_client.list_replica()[0].chain
+    chain = grpc_replica_client.replica_get().chain
     assert len(chain) == 3
     assert chain[0] == 'volume-head-002.img'
     assert chain[1] == 'volume-snap-{}.img'.format(output)
@@ -571,17 +548,17 @@ def test_snapshot_rm(bin, controller_client, replica_client, replica_client2,
     cmd = [bin, 'snapshot', 'rm', output]
     subprocess.check_call(cmd)
 
-    new_chain = replica_client.list_replica()[0].chain
+    new_chain = grpc_replica_client.replica_get().chain
     assert len(new_chain) == 2
     assert chain[0] == new_chain[0]
     assert chain[2] == new_chain[1]
 
 
-def test_snapshot_rm_empty(
-        bin, controller_client, replica_client, replica_client2,
-        grpc_replica_client, grpc_replica_client2):
-    open_replica(replica_client, grpc_replica_client)
-    open_replica(replica_client2, grpc_replica_client2)
+def test_snapshot_rm_empty(bin, controller_client,
+                           grpc_replica_client,
+                           grpc_replica_client2):
+    open_replica(grpc_replica_client)
+    open_replica(grpc_replica_client2)
 
     v = controller_client.list_volume()[0]
     v = v.start(replicas=[
@@ -594,14 +571,14 @@ def test_snapshot_rm_empty(
 
     # first snapshot
     output1 = subprocess.check_output(cmd).strip()
-    chain = replica_client.list_replica()[0].chain
+    chain = grpc_replica_client.replica_get().chain
     assert len(chain) == 2
     assert chain[0] == 'volume-head-001.img'
     assert chain[1] == 'volume-snap-{}.img'.format(output1)
 
     # second snapshot
     output2 = subprocess.check_output(cmd).strip()
-    chain = replica_client.list_replica()[0].chain
+    chain = grpc_replica_client.replica_get().chain
     assert len(chain) == 3
     assert chain[0] == 'volume-head-002.img'
     assert chain[1] == 'volume-snap-{}.img'.format(output2)
@@ -611,18 +588,17 @@ def test_snapshot_rm_empty(
     # to the first snapshot(empty) and rename it to second snapshot
     cmd = [bin, 'snapshot', 'rm', output1]
     subprocess.check_call(cmd)
-    new_chain = replica_client.list_replica()[0].chain
+    new_chain = grpc_replica_client.replica_get().chain
     assert len(new_chain) == 2
     assert chain[0] == new_chain[0]
     assert chain[1] == new_chain[1]
 
 
 def test_snapshot_last(bin, controller_client,
-                       replica_client, replica_client2,
                        grpc_replica_client,
                        grpc_replica_client2):
-    open_replica(replica_client, grpc_replica_client)
-    open_replica(replica_client2, grpc_replica_client2)
+    open_replica(grpc_replica_client)
+    open_replica(grpc_replica_client2)
 
     v = controller_client.list_volume()[0]
     v = v.start(replicas=[
@@ -635,12 +611,12 @@ def test_snapshot_last(bin, controller_client,
     output = subprocess.check_output([bin, 'snapshot', 'ls'])
     output = output.splitlines()[1]
 
-    chain = replica_client.list_replica()[0].chain
+    chain = grpc_replica_client.replica_get().chain
     assert len(chain) == 2
     assert chain[0] == 'volume-head-001.img'
     assert chain[1] == 'volume-snap-{}.img'.format(output)
 
-    chain = replica_client2.list_replica()[0].chain
+    chain = grpc_replica_client2.replica_get().chain
     assert len(chain) == 2
     assert chain[0] == 'volume-head-001.img'
     assert chain[1] == 'volume-snap-{}.img'.format(output)
@@ -651,12 +627,11 @@ def test_snapshot_last(bin, controller_client,
 
 
 def backup_core(bin, controller_client,
-                replica_client, replica_client2,
                 grpc_replica_client,
                 grpc_replica_client2,
                 backup_target):
-    open_replica(replica_client, grpc_replica_client)
-    open_replica(replica_client2, grpc_replica_client2)
+    open_replica(grpc_replica_client)
+    open_replica(grpc_replica_client2)
 
     v = controller_client.list_volume()[0]
     v = v.start(replicas=[
@@ -669,7 +644,7 @@ def backup_core(bin, controller_client,
     backup_type = urlparse(backup_target).scheme
     cmd = [bin, 'snapshot', 'create']
     snapshot1 = subprocess.check_output(cmd).strip()
-    output = replica_client.list_replica()[0].chain[1]
+    output = grpc_replica_client.replica_get().chain[1]
 
     assert output == 'volume-snap-{}.img'.format(snapshot1)
 
@@ -681,7 +656,7 @@ def backup_core(bin, controller_client,
 
     cmd = [bin, 'snapshot', 'create']
     snapshot2 = subprocess.check_output(cmd).strip()
-    output = replica_client.list_replica()[0].chain[1]
+    output = grpc_replica_client.replica_get().chain[1]
 
     assert output == 'volume-snap-{}.img'.format(snapshot2)
 
@@ -793,11 +768,10 @@ def backup_core(bin, controller_client,
 
 
 def test_snapshot_purge_basic(bin, controller_client,
-                              replica_client, replica_client2,
                               grpc_replica_client,
                               grpc_replica_client2):
-    open_replica(replica_client, grpc_replica_client)
-    open_replica(replica_client2, grpc_replica_client2)
+    open_replica(grpc_replica_client)
+    open_replica(grpc_replica_client2)
 
     v = controller_client.list_volume()[0]
     v = v.start(replicas=[
@@ -810,7 +784,7 @@ def test_snapshot_purge_basic(bin, controller_client,
     snap0 = subprocess.check_output(cmd).strip()
     snap1 = subprocess.check_output(cmd).strip()
 
-    chain = replica_client.list_replica()[0].chain
+    chain = grpc_replica_client.replica_get().chain
     assert len(chain) == 3
     assert chain[0] == 'volume-head-002.img'
     assert chain[1] == 'volume-snap-{}.img'.format(snap1)
@@ -819,7 +793,7 @@ def test_snapshot_purge_basic(bin, controller_client,
     cmd = [bin, 'snapshot', 'rm', snap0]
     subprocess.check_call(cmd)
 
-    new_chain = replica_client.list_replica()[0].chain
+    new_chain = grpc_replica_client.replica_get().chain
     assert len(new_chain) == 2
     assert chain[0] == new_chain[0]
     assert chain[1] == new_chain[1]
@@ -848,11 +822,10 @@ def test_snapshot_purge_basic(bin, controller_client,
 
 
 def test_snapshot_purge_head_parent(bin, controller_client,
-                                    replica_client, replica_client2,
                                     grpc_replica_client,
                                     grpc_replica_client2):
-    open_replica(replica_client, grpc_replica_client)
-    open_replica(replica_client2, grpc_replica_client2)
+    open_replica(grpc_replica_client)
+    open_replica(grpc_replica_client2)
 
     v = controller_client.list_volume()[0]
     v = v.start(replicas=[
@@ -865,7 +838,7 @@ def test_snapshot_purge_head_parent(bin, controller_client,
     snap0 = subprocess.check_output(cmd).strip()
     snap1 = subprocess.check_output(cmd).strip()
 
-    chain = replica_client.list_replica()[0].chain
+    chain = grpc_replica_client.replica_get().chain
     assert len(chain) == 3
     assert chain[0] == 'volume-head-002.img'
     assert chain[1] == 'volume-snap-{}.img'.format(snap1)
@@ -874,7 +847,7 @@ def test_snapshot_purge_head_parent(bin, controller_client,
     cmd = [bin, 'snapshot', 'rm', snap1]
     subprocess.check_call(cmd)
 
-    new_chain = replica_client.list_replica()[0].chain
+    new_chain = grpc_replica_client.replica_get().chain
     assert len(new_chain) == 2
     assert chain[0] == new_chain[0]
     assert chain[2] == new_chain[1]
@@ -907,14 +880,12 @@ def test_snapshot_purge_head_parent(bin, controller_client,
 
 
 def test_backup_cli(bin, controller_client,
-                    replica_client, replica_client2,
                     grpc_replica_client, grpc_replica_client2,
                     backup_targets):
     for backup_target in backup_targets:
         backup_core(bin, controller_client,
-                    replica_client, replica_client2,
                     grpc_replica_client, grpc_replica_client2,
                     backup_target)
-        cleanup_replica(replica_client, grpc_replica_client)
-        cleanup_replica(replica_client2, grpc_replica_client2)
+        cleanup_replica(grpc_replica_client)
+        cleanup_replica(grpc_replica_client2)
         cleanup_controller(controller_client)

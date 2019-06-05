@@ -16,9 +16,9 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
-	"github.com/longhorn/longhorn-engine/replica/rest"
 	replicarpc "github.com/longhorn/longhorn-engine/replica/rpc"
 	syncagentrpc "github.com/longhorn/longhorn-engine/sync/rpc"
+	"github.com/longhorn/longhorn-engine/types"
 )
 
 const (
@@ -82,6 +82,67 @@ func NewReplicaClient(address string) (*ReplicaClient, error) {
 		syncAgentServiceURL: syncAgentServiceURL,
 		replicaServiceURL:   replicaServiceURL,
 	}, nil
+}
+
+func GetDiskInfo(info *replicarpc.DiskInfo) *types.DiskInfo {
+	diskInfo := &types.DiskInfo{
+		Name:        info.Name,
+		Parent:      info.Parent,
+		Children:    info.Children,
+		Removed:     info.Removed,
+		UserCreated: info.UserCreated,
+		Created:     info.Created,
+		Size:        info.Size,
+		Labels:      info.Labels,
+	}
+
+	if diskInfo.Labels == nil {
+		diskInfo.Labels = map[string]string{}
+	}
+
+	return diskInfo
+}
+
+func GetReplicaInfo(r *replicarpc.Replica) *types.ReplicaInfo {
+	replicaInfo := &types.ReplicaInfo{
+		Dirty:           r.Dirty,
+		Rebuilding:      r.Rebuilding,
+		Head:            r.Head,
+		Parent:          r.Parent,
+		Size:            r.Size,
+		SectorSize:      r.SectorSize,
+		BackingFile:     r.BackingFile,
+		State:           r.State,
+		Chain:           r.Chain,
+		Disks:           map[string]types.DiskInfo{},
+		RemainSnapshots: int(r.RemainSnapshots),
+		RevisionCounter: r.RevisionCounter,
+	}
+
+	for diskName, diskInfo := range r.Disks {
+		replicaInfo.Disks[diskName] = *GetDiskInfo(diskInfo)
+	}
+
+	return replicaInfo
+}
+
+func (c *ReplicaClient) GetReplica() (*types.ReplicaInfo, error) {
+	conn, err := grpc.Dial(c.replicaServiceURL, grpc.WithInsecure())
+	if err != nil {
+		return nil, fmt.Errorf("cannot connect to ReplicaService %v: %v", c.replicaServiceURL, err)
+	}
+	defer conn.Close()
+	replicaServiceClient := replicarpc.NewReplicaServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
+	defer cancel()
+
+	replica, err := replicaServiceClient.ReplicaGet(ctx, &empty.Empty{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get replica %v: %v", c.replicaServiceURL, err)
+	}
+
+	return GetReplicaInfo(replica), nil
 }
 
 func (c *ReplicaClient) OpenReplica() error {
@@ -262,13 +323,6 @@ func (c *ReplicaClient) SetRebuilding(rebuilding bool) error {
 	}
 
 	return nil
-}
-
-func (c *ReplicaClient) GetReplica() (rest.Replica, error) {
-	var replica rest.Replica
-
-	err := c.get(c.address+"/replicas/1", &replica)
-	return replica, err
 }
 
 func (c *ReplicaClient) RemoveFile(file string) error {
