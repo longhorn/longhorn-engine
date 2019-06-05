@@ -26,24 +26,24 @@ from replica.replica_client import ReplicaClient  # NOQA
 
 
 REPLICA1 = 'tcp://localhost:9502'
-GRPC_REPLICA1 = 'localhost:9505'
+GRPC_REPLICA1 = 'localhost:9502'
 REPLICA2 = 'tcp://localhost:9512'
-GRPC_REPLICA2 = 'localhost:9515'
+GRPC_REPLICA2 = 'localhost:9512'
 
 BACKED_REPLICA1 = 'tcp://localhost:9602'
-GRPC_BACKED_REPLICA1 = 'localhost:9605'
+GRPC_BACKED_REPLICA1 = 'localhost:9602'
 BACKED_REPLICA2 = 'tcp://localhost:9612'
-GRPC_BACKED_REPLICA2 = 'localhost:9615'
+GRPC_BACKED_REPLICA2 = 'localhost:9612'
 
 UPGRADE_REPLICA1 = 'tcp://localhost:9522'
-GRPC_UPGRADE_REPLICA1 = 'localhost:9525'
+GRPC_UPGRADE_REPLICA1 = 'localhost:9522'
 UPGRADE_REPLICA2 = 'tcp://localhost:9532'
-GRPC_UPGRADE_REPLICA2 = 'localhost:9535'
+GRPC_UPGRADE_REPLICA2 = 'localhost:9532'
 
 STANDBY_REPLICA1 = 'tcp://localhost:9542'
-GRPC_STANDBY_REPLICA1 = 'localhost:9545'
+GRPC_STANDBY_REPLICA1 = 'localhost:9542'
 STANDBY_REPLICA2 = 'tcp://localhost:9552'
-GRPC_STANDBY_REPLICA2 = 'localhost:9555'
+GRPC_STANDBY_REPLICA2 = 'localhost:9552'
 
 STANDBY_REPLICA1_PATH = '/tmp/standby_vol_replica_1/'
 STANDBY_REPLICA2_PATH = '/tmp/standby_vol_replica_2/'

@@ -24,8 +24,8 @@ from replica.replica_client import ReplicaClient  # NOQA
 REPLICA = 'tcp://localhost:9502'
 REPLICA2 = 'tcp://localhost:9512'
 
-GRPC_REPLICA = 'localhost:9505'
-GRPC_REPLICA2 = 'localhost:9515'
+GRPC_REPLICA = 'localhost:9502'
+GRPC_REPLICA2 = 'localhost:9512'
 
 BACKUP_DEST = '/data/backupbucket'
 

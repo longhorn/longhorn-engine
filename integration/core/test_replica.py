@@ -15,7 +15,7 @@ sys.path.append(
 )
 from replica.replica_client import ReplicaClient  # NOQA
 
-GRPC_URL = 'localhost:9505'
+GRPC_URL = 'localhost:9502'
 SIZE_STR = str(1024*4096)
 
 
