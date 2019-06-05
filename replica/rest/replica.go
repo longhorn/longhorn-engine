@@ -41,7 +41,3 @@ func (s *Server) doOp(req *http.Request, err error) error {
 	apiContext.Write(s.Replica(apiContext))
 	return nil
 }
-
-func (s *Server) DeleteReplica(rw http.ResponseWriter, req *http.Request) error {
-	return s.doOp(req, s.s.Delete())
-}

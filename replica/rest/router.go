@@ -49,7 +49,6 @@ func NewRouter(s *Server) *mux.Router {
 	// Replicas
 	router.Methods("GET").Path("/v1/replicas").Handler(f(schemas, s.ListReplicas))
 	router.Methods("GET").Path("/v1/replicas/{id}").Handler(f(schemas, s.GetReplica))
-	router.Methods("DELETE").Path("/v1/replicas/{id}").Handler(f(schemas, s.DeleteReplica))
 
 	// Actions
 	actions := map[string]func(http.ResponseWriter, *http.Request) error{}
