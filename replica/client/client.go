@@ -155,7 +155,7 @@ func (c *ReplicaClient) Close() error {
 	return nil
 }
 
-func (c *ReplicaClient) ReloadReplica() (*replicarpc.Replica, error) {
+func (c *ReplicaClient) ReloadReplica() (*types.ReplicaInfo, error) {
 	conn, err := grpc.Dial(c.replicaServiceURL, grpc.WithInsecure())
 	if err != nil {
 		return nil, fmt.Errorf("cannot connect to ReplicaService %v: %v", c.replicaServiceURL, err)
@@ -171,7 +171,7 @@ func (c *ReplicaClient) ReloadReplica() (*replicarpc.Replica, error) {
 		return nil, fmt.Errorf("failed to reload replica %v: %v", c.replicaServiceURL, err)
 	}
 
-	return replica, nil
+	return GetReplicaInfo(replica), nil
 }
 
 func (c *ReplicaClient) Revert(name, created string) error {
@@ -237,7 +237,7 @@ func (c *ReplicaClient) ReplaceDisk(target, source string) error {
 	return nil
 }
 
-func (c *ReplicaClient) PrepareRemoveDisk(disk string) ([]*replicarpc.PrepareRemoveAction, error) {
+func (c *ReplicaClient) PrepareRemoveDisk(disk string) ([]*types.PrepareRemoveAction, error) {
 	conn, err := grpc.Dial(c.replicaServiceURL, grpc.WithInsecure())
 	if err != nil {
 		return nil, fmt.Errorf("cannot connect to ReplicaService %v: %v", c.replicaServiceURL, err)
@@ -256,7 +256,16 @@ func (c *ReplicaClient) PrepareRemoveDisk(disk string) ([]*replicarpc.PrepareRem
 		return nil, fmt.Errorf("failed to prepare removing disk %v for replica %v: %v", disk, c.replicaServiceURL, err)
 	}
 
-	return reply.Operations, nil
+	operations := []*types.PrepareRemoveAction{}
+	for _, op := range reply.Operations {
+		operations = append(operations, &types.PrepareRemoveAction{
+			Action: op.Action,
+			Source: op.Source,
+			Target: op.Target,
+		})
+	}
+
+	return operations, nil
 }
 
 func (c *ReplicaClient) MarkDiskAsRemoved(disk string) error {
