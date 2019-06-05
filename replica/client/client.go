@@ -1,18 +1,12 @@
 package client
 
 import (
-	"bytes"
-	"encoding/json"
 	"fmt"
-	"io/ioutil"
-	"net/http"
-	"net/url"
 	"strconv"
 	"strings"
 	"time"
 
 	"github.com/golang/protobuf/ptypes/empty"
-	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
@@ -27,32 +21,25 @@ const (
 )
 
 type ReplicaClient struct {
-	address             string
 	host                string
-	httpClient          *http.Client
-	syncAgentServiceURL string
 	replicaServiceURL   string
+	syncAgentServiceURL string
 }
 
 func NewReplicaClient(address string) (*ReplicaClient, error) {
 	if strings.HasPrefix(address, "tcp://") {
-		address = address[6:]
+		address = strings.TrimPrefix(address, "tcp://")
 	}
 
-	if !strings.HasPrefix(address, "http") {
-		address = "http://" + address
+	if strings.HasPrefix(address, "http://") {
+		address = strings.TrimPrefix(address, "http://")
 	}
 
-	if !strings.HasSuffix(address, "/v1") {
-		address += "/v1"
+	if strings.HasSuffix(address, "/v1") {
+		address = strings.TrimSuffix(address, "/v1")
 	}
 
-	u, err := url.Parse(address)
-	if err != nil {
-		return nil, err
-	}
-
-	parts := strings.Split(u.Host, ":")
+	parts := strings.Split(address, ":")
 	if len(parts) < 2 {
 		return nil, fmt.Errorf("Invalid address %s, must have a port in it", address)
 	}
@@ -62,25 +49,12 @@ func NewReplicaClient(address string) (*ReplicaClient, error) {
 		return nil, err
 	}
 
-	timeout := time.Duration(30 * time.Second)
-	client := &http.Client{
-		Timeout: timeout,
-	}
-
 	syncAgentServiceURL := strings.Replace(address, fmt.Sprintf(":%d", port), fmt.Sprintf(":%d", port+2), -1)
-	syncAgentServiceURL = strings.TrimPrefix(syncAgentServiceURL, "http://")
-	syncAgentServiceURL = strings.TrimSuffix(syncAgentServiceURL, "/v1")
-
-	replicaServiceURL := strings.Replace(address, fmt.Sprintf(":%d", port), fmt.Sprintf(":%d", port+3), -1)
-	replicaServiceURL = strings.TrimPrefix(replicaServiceURL, "http://")
-	replicaServiceURL = strings.TrimSuffix(replicaServiceURL, "/v1")
 
 	return &ReplicaClient{
 		host:                parts[0],
-		address:             address,
-		httpClient:          client,
+		replicaServiceURL:   address,
 		syncAgentServiceURL: syncAgentServiceURL,
-		replicaServiceURL:   replicaServiceURL,
 	}, nil
 }
 
@@ -516,50 +490,4 @@ func (c *ReplicaClient) RestoreBackupIncrementally(backup, deltaFile, lastRestor
 	}
 
 	return nil
-}
-
-func (c *ReplicaClient) get(url string, obj interface{}) error {
-	if !strings.HasPrefix(url, "http") {
-		url = c.address + url
-	}
-
-	resp, err := c.httpClient.Get(url)
-	if err != nil {
-		return err
-	}
-	defer resp.Body.Close()
-
-	return json.NewDecoder(resp.Body).Decode(obj)
-}
-
-func (c *ReplicaClient) post(path string, req, resp interface{}) error {
-	b, err := json.Marshal(req)
-	if err != nil {
-		return err
-	}
-
-	bodyType := "application/json"
-	url := path
-	if !strings.HasPrefix(url, "http") {
-		url = c.address + path
-	}
-
-	logrus.Infof("POST %s", url)
-
-	httpResp, err := c.httpClient.Post(url, bodyType, bytes.NewBuffer(b))
-	if err != nil {
-		return err
-	}
-	defer httpResp.Body.Close()
-
-	if httpResp.StatusCode >= 300 {
-		content, _ := ioutil.ReadAll(httpResp.Body)
-		return fmt.Errorf("Bad response: %d %s: %s", httpResp.StatusCode, httpResp.Status, content)
-	}
-
-	if resp == nil {
-		return nil
-	}
-
-	return json.NewDecoder(httpResp.Body).Decode(resp)
 }

@@ -5,9 +5,9 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/rancher/go-rancher/api"
+	"github.com/rancher/go-rancher/client"
 	"github.com/yasker/go-websocket-toolbox/handler"
 
-	"github.com/longhorn/longhorn-engine/replica/rest"
 	"github.com/longhorn/longhorn-engine/types"
 
 	// add pprof endpoint
@@ -20,10 +20,19 @@ const (
 	StreamTypeMetrics = "metrics"
 )
 
+func HandleError(s *client.Schemas, t func(http.ResponseWriter, *http.Request) error) http.Handler {
+	return api.ApiHandler(s, http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
+		if err := t(rw, req); err != nil {
+			apiContext := api.GetApiContext(req)
+			apiContext.WriteErr(err)
+		}
+	}))
+}
+
 func NewRouter(s *Server) *mux.Router {
 	schemas := NewSchema()
 	router := mux.NewRouter().StrictSlash(true)
-	f := rest.HandleError
+	f := HandleError
 
 	// API framework routes
 	router.Methods("GET").Path("/").Handler(api.VersionsHandler(schemas, "v1"))

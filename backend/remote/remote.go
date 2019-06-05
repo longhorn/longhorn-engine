@@ -3,7 +3,6 @@ package remote
 import (
 	"fmt"
 	"net"
-	"net/http"
 	"strconv"
 	"time"
 
@@ -41,9 +40,6 @@ type Remote struct {
 	types.ReaderWriterAt
 	name              string
 	replicaServiceURL string
-	pingURL           string
-	replicaURL        string
-	httpClient        *http.Client
 	closeChan         chan struct{}
 	monitorChan       types.MonitorChannel
 }
@@ -194,19 +190,14 @@ func (r *Remote) info() (*types.ReplicaInfo, error) {
 func (rf *Factory) Create(address string) (types.Backend, error) {
 	logrus.Infof("Connecting to remote: %s", address)
 
-	controlAddress, dataAddress, _, replicaServiceURL, err := util.ParseAddresses(address)
+	controlAddress, dataAddress, _, err := util.ParseAddresses(address)
 	if err != nil {
 		return nil, err
 	}
 
 	r := &Remote{
 		name:              address,
-		replicaServiceURL: replicaServiceURL,
-		replicaURL:        fmt.Sprintf("http://%s/v1/replicas/1", controlAddress),
-		pingURL:           fmt.Sprintf("http://%s/ping", controlAddress),
-		httpClient: &http.Client{
-			Timeout: timeout,
-		},
+		replicaServiceURL: controlAddress,
 		// We don't want sender to wait for receiver, because receiver may
 		// has been already notified
 		closeChan:   make(chan struct{}, 5),
