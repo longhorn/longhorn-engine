@@ -6,6 +6,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes/empty"
 	"golang.org/x/net/context"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
 	"github.com/longhorn/longhorn-engine/replica"
 )
@@ -14,9 +15,19 @@ type ReplicaServer struct {
 	s *replica.Server
 }
 
+type ReplicaHealthCheckServer struct {
+	rs *ReplicaServer
+}
+
 func NewReplicaServer(s *replica.Server) *ReplicaServer {
 	return &ReplicaServer{
 		s: s,
+	}
+}
+
+func NewReplicaHealthCheckServer(rs *ReplicaServer) *ReplicaHealthCheckServer {
+	return &ReplicaHealthCheckServer{
+		rs: rs,
 	}
 }
 
@@ -197,4 +208,28 @@ func (rs *ReplicaServer) RevisionCounterSet(ctx context.Context, req *RevisionCo
 		return nil, err
 	}
 	return rs.getReplica(), nil
+}
+
+func (hc *ReplicaHealthCheckServer) Check(context.Context, *healthpb.HealthCheckRequest) (*healthpb.HealthCheckResponse, error) {
+	if hc.rs.s != nil {
+		return &healthpb.HealthCheckResponse{
+			Status: healthpb.HealthCheckResponse_SERVING,
+		}, nil
+	}
+
+	return &healthpb.HealthCheckResponse{
+		Status: healthpb.HealthCheckResponse_NOT_SERVING,
+	}, nil
+}
+
+func (hc *ReplicaHealthCheckServer) Watch(req *healthpb.HealthCheckRequest, ws healthpb.Health_WatchServer) error {
+	if hc.rs.s != nil {
+		return ws.Send(&healthpb.HealthCheckResponse{
+			Status: healthpb.HealthCheckResponse_SERVING,
+		})
+	}
+
+	return ws.Send(&healthpb.HealthCheckResponse{
+		Status: healthpb.HealthCheckResponse_NOT_SERVING,
+	})
 }

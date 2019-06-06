@@ -12,6 +12,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 	"google.golang.org/grpc"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 
 	"github.com/longhorn/longhorn-engine/replica"
@@ -106,7 +107,9 @@ func startReplica(c *cli.Context) error {
 		}
 
 		server := grpc.NewServer()
-		rpc.RegisterReplicaServiceServer(server, rpc.NewReplicaServer(s))
+		rs := rpc.NewReplicaServer(s)
+		rpc.RegisterReplicaServiceServer(server, rs)
+		healthpb.RegisterHealthServer(server, rpc.NewReplicaHealthCheckServer(rs))
 		reflection.Register(server)
 
 		logrus.Infof("Listening on gRPC Replica server %s", controlAddress)
