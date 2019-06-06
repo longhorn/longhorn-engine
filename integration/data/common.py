@@ -369,7 +369,7 @@ def random_offset(size, existings={}):
 
 
 def random_length(length_limit):
-    return random.randint(1, length_limit)
+    return random.randint(1, length_limit-1)
 
 
 class Data:
