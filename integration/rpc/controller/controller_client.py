@@ -17,3 +17,8 @@ class ControllerClient(object):
 
     def volume_shutdown(self):
         return self.stub.VolumeShutdown(empty_pb2.Empty())
+
+    def volume_snapshot(self, name="", labels={}):
+        return self.stub.VolumeSnapshot(controller_pb2.VolumeSnapshotRequest(
+            name=name, labels=labels
+        )).name

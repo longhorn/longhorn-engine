@@ -355,12 +355,11 @@ def test_revert(controller_client, grpc_controller_client,
     ])
     assert v.replicaCount == 2
 
-    v = controller_client.list_volume()[0]
-    snap = v.snapshot(name='foo1')
-    assert snap.id == 'foo1'
+    snap = grpc_controller_client.volume_snapshot(name='foo1')
+    assert snap == 'foo1'
 
-    snap2 = v.snapshot(name='foo2')
-    assert snap2.id == 'foo2'
+    snap2 = grpc_controller_client.volume_snapshot(name='foo2')
+    assert snap2 == 'foo2'
 
     r1 = grpc_replica_client.replica_get()
     r2 = grpc_replica_client2.replica_get()
@@ -388,12 +387,11 @@ def test_snapshot(bin, controller_client, grpc_controller_client,
     ])
     assert v.replicaCount == 2
 
-    v = controller_client.list_volume()[0]
-    snap = v.snapshot(name='foo1')
-    assert snap.id == 'foo1'
+    snap = grpc_controller_client.volume_snapshot(name='foo1')
+    assert snap == 'foo1'
 
-    snap2 = v.snapshot(name='foo2')
-    assert snap2.id == 'foo2'
+    snap2 = grpc_controller_client.volume_snapshot(name='foo2')
+    assert snap2 == 'foo2'
 
     cmd = [bin, '--debug', 'snapshot']
     output = subprocess.check_output(cmd)
@@ -401,7 +399,7 @@ def test_snapshot(bin, controller_client, grpc_controller_client,
     assert output == '''ID
 {}
 {}
-'''.format(snap2.id, snap.id)
+'''.format(snap2, snap)
 
 
 def test_snapshot_ls(bin, controller_client, grpc_controller_client,
@@ -415,12 +413,11 @@ def test_snapshot_ls(bin, controller_client, grpc_controller_client,
     ])
     assert v.replicaCount == 2
 
-    v = controller_client.list_volume()[0]
-    snap = v.snapshot()
-    assert snap.id != ''
+    snap = grpc_controller_client.volume_snapshot()
+    assert snap != ''
 
-    snap2 = v.snapshot()
-    assert snap2.id != ''
+    snap2 = grpc_controller_client.volume_snapshot()
+    assert snap2 != ''
 
     cmd = [bin, '--debug', 'snapshot', 'ls']
     output = subprocess.check_output(cmd)
@@ -428,7 +425,7 @@ def test_snapshot_ls(bin, controller_client, grpc_controller_client,
     assert output == '''ID
 {}
 {}
-'''.format(snap2.id, snap.id)
+'''.format(snap2, snap)
 
 
 def test_snapshot_info(bin, controller_client, grpc_controller_client,
@@ -442,12 +439,12 @@ def test_snapshot_info(bin, controller_client, grpc_controller_client,
     ])
     assert v.replicaCount == 2
 
-    v = controller_client.list_volume()[0]
-    snap = v.snapshot()
-    assert snap.id != ''
+    snap = grpc_controller_client.volume_snapshot()
+    assert snap != ''
 
-    snap2 = v.snapshot(labels={"name": "snap", "key": "value"})
-    assert snap2.id != ''
+    snap2 = grpc_controller_client.volume_snapshot(
+        labels={"name": "snap", "key": "value"})
+    assert snap2 != ''
 
     cmd = [bin, '--debug', 'snapshot', 'info']
     output = subprocess.check_output(cmd)
@@ -459,16 +456,16 @@ def test_snapshot_info(bin, controller_client, grpc_controller_client,
 
     head_info = info[volumehead]
     assert head_info["name"] == volumehead
-    assert head_info["parent"] == snap2.id
+    assert head_info["parent"] == snap2
     assert not head_info["children"]
     assert head_info["removed"] is False
     assert head_info["usercreated"] is False
     assert head_info["created"] != ""
     assert len(head_info["labels"]) == 0
 
-    snap2_info = info[snap2.id]
-    assert snap2_info["name"] == snap2.id
-    assert snap2_info["parent"] == snap.id
+    snap2_info = info[snap2]
+    assert snap2_info["name"] == snap2
+    assert snap2_info["parent"] == snap
     assert volumehead in snap2_info["children"]
     assert snap2_info["removed"] is False
     assert snap2_info["usercreated"] is True
@@ -476,10 +473,10 @@ def test_snapshot_info(bin, controller_client, grpc_controller_client,
     assert snap2_info["labels"]["name"] == "snap"
     assert snap2_info["labels"]["key"] == "value"
 
-    snap_info = info[snap.id]
-    assert snap_info["name"] == snap.id
+    snap_info = info[snap]
+    assert snap_info["name"] == snap
     assert snap_info["parent"] == ""
-    assert snap2.id in snap_info["children"]
+    assert snap2 in snap_info["children"]
     assert snap_info["removed"] is False
     assert snap_info["usercreated"] is True
     assert snap_info["created"] != ""

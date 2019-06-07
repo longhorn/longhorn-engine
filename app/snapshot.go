@@ -127,7 +127,7 @@ func createSnapshot(c *cli.Context) error {
 		}
 	}
 
-	id, err := cli.Snapshot(name, labelMap)
+	id, err := cli.VolumeSnapshot(name, labelMap)
 	if err != nil {
 		return err
 	}

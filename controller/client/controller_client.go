@@ -64,6 +64,28 @@ func (c *ControllerClient) VolumeStart(replicas ...string) error {
 	return nil
 }
 
+func (c *ControllerClient) VolumeSnapshot(name string, labels map[string]string) (string, error) {
+	conn, err := grpc.Dial(c.grpcAddress, grpc.WithInsecure())
+	if err != nil {
+		return "", fmt.Errorf("cannot connect to ControllerService %v: %v", c.grpcAddress, err)
+	}
+	defer conn.Close()
+	controllerServiceClient := congtrollerrpc.NewControllerServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
+	defer cancel()
+
+	reply, err := controllerServiceClient.VolumeSnapshot(ctx, &congtrollerrpc.VolumeSnapshotRequest{
+		Name:   name,
+		Labels: labels,
+	})
+	if err != nil {
+		return "", fmt.Errorf("failed to create snapshot %v for volume %v: %v", name, c.grpcAddress, err)
+	}
+
+	return reply.Name, nil
+}
+
 func (c *ControllerClient) RevertVolume(name string) (*rest.Volume, error) {
 	volume, err := c.GetVolume()
 	if err != nil {
@@ -82,25 +104,6 @@ func (c *ControllerClient) RevertVolume(name string) (*rest.Volume, error) {
 	}
 
 	return output, err
-}
-
-func (c *ControllerClient) Snapshot(name string, labels map[string]string) (string, error) {
-	volume, err := c.GetVolume()
-	if err != nil {
-		return "", err
-	}
-
-	input := &rest.SnapshotInput{
-		Name:   name,
-		Labels: labels,
-	}
-	output := &rest.SnapshotOutput{}
-	err = c.post(volume.Actions["snapshot"], input, output)
-	if err != nil {
-		return "", err
-	}
-
-	return output.Id, err
 }
 
 func (c *ControllerClient) RevertSnapshot(snapshot string) error {
