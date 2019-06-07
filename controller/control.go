@@ -2,6 +2,7 @@ package controller
 
 import (
 	"fmt"
+	"net"
 	"net/http"
 	"strconv"
 	"strings"
@@ -12,9 +13,13 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/yasker/go-websocket-toolbox/broadcaster"
+	"google.golang.org/grpc"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/grpc/reflection"
 
 	iutil "github.com/longhorn/go-iscsi-helper/util"
 
+	controllerrpc "github.com/longhorn/longhorn-engine/controller/rpc"
 	"github.com/longhorn/longhorn-engine/types"
 	"github.com/longhorn/longhorn-engine/util"
 )
@@ -42,6 +47,10 @@ type Controller struct {
 	listenAddr string
 	listenPort string
 	RestServer *http.Server
+
+	GRPCAddress string
+	GRPCServer  *grpc.Server
+
 	shutdownWG sync.WaitGroup
 	lastError  error
 
@@ -64,6 +73,63 @@ func NewController(name string, factory types.BackendFactory, frontend types.Fro
 	c.reset()
 	c.metricsStart()
 	return c
+}
+
+func (c *Controller) SetControllerGRPCServer(address string) error {
+	grpcServer := grpc.NewServer()
+
+	grpcAddress, err := util.GetControllerGRPCAddress(address)
+	if err != nil {
+		return err
+	}
+	c.GRPCAddress = grpcAddress
+
+	cs := controllerrpc.NewControllerServer(c)
+	controllerrpc.RegisterControllerServiceServer(grpcServer, cs)
+
+	healthpb.RegisterHealthServer(grpcServer, controllerrpc.NewControllerHealthCheckServer(cs))
+	reflection.Register(grpcServer)
+
+	c.GRPCServer = grpcServer
+
+	return nil
+}
+
+func (c *Controller) StartGRPCServer() error {
+	if c.GRPCServer == nil {
+		return fmt.Errorf("cannot find grpc server")
+	}
+
+	grpcPort, err := util.GetPortFromAddress(c.GRPCAddress)
+	if err != nil {
+		return err
+	}
+
+	if c.GRPCAddress == "" || grpcPort == 0 {
+		return fmt.Errorf("cannot find grpc address or port")
+	}
+
+	c.shutdownWG.Add(1)
+	go func() {
+		defer c.shutdownWG.Done()
+
+		grpcAddress := c.GRPCAddress
+		listener, err := net.Listen("tcp", c.GRPCAddress)
+		if err != nil {
+			logrus.Errorf("Failed to listen %v: %v", grpcAddress, err)
+			c.lastError = err
+			return
+		}
+
+		logrus.Infof(" Listening on gRPC Controller server: %v", grpcAddress)
+		err = c.GRPCServer.Serve(listener)
+		logrus.Errorf("GRPC server at %v is down: %v", grpcAddress, err)
+		c.lastError = err
+		return
+	}()
+	logrus.Infof("Listening on %s", c.GRPCAddress)
+
+	return nil
 }
 
 func (c *Controller) StartRestServer() error {

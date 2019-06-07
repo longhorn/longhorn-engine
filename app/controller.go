@@ -120,6 +120,12 @@ func startController(c *cli.Context) error {
 		Handler: router,
 	}
 	control.RestServer = httpServer
+
+	if err := control.SetControllerGRPCServer(listen); err != nil {
+		return err
+	}
+
 	control.StartRestServer()
+	control.StartGRPCServer()
 	return control.WaitForShutdown()
 }
