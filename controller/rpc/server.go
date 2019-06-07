@@ -57,8 +57,12 @@ func (cs *ControllerServer) VolumeStart(ctx context.Context, req *VolumeStartReq
 }
 
 func (cs *ControllerServer) VolumeShutdown(ctx context.Context, req *empty.Empty) (*Volume, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method VolumeShutdown not implemented")
+	if err := cs.c.Shutdown(); err != nil {
+		return nil, err
+	}
+	return cs.getVolume(), nil
 }
+
 func (cs *ControllerServer) VolumeSnapshot(ctx context.Context, req *VolumeSnapshotRequest) (*VolumeSnapshotReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method VolumeSnapshot not implemented")
 }

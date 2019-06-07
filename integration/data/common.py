@@ -117,8 +117,9 @@ def grpc_controller():
 def controller_client(request):
     url = CONTROLLER_SCHEMA
     c = cattle.from_env(url=url)
-    request.addfinalizer(lambda: cleanup_controller(c))
-    c = cleanup_controller(c)
+    grpc_c = ControllerClient(GRPC_CONTROLLER)
+    request.addfinalizer(lambda: cleanup_controller(c, grpc_c))
+    c = cleanup_controller(c, grpc_c)
     assert c.list_volume()[0].replicaCount == 0
     return c
 
@@ -140,8 +141,9 @@ def grpc_controller_no_frontend():
 def controller_no_frontend_client(request):
     url = CONTROLLER_NO_FRONTEND_SCHEMA
     c = cattle.from_env(url=url)
-    request.addfinalizer(lambda: cleanup_controller(c))
-    c = cleanup_controller(c)
+    grpc_c = ControllerClient(GRPC_CONTROLLER_NO_FRONTEND)
+    request.addfinalizer(lambda: cleanup_controller(c, grpc_c))
+    c = cleanup_controller(c, grpc_c)
     assert c.list_volume()[0].replicaCount == 0
     return c
 
@@ -150,10 +152,10 @@ def grpc_controller_no_frontend_client():
     return ControllerClient(GRPC_CONTROLLER_NO_FRONTEND)
 
 
-def cleanup_controller(client):
+def cleanup_controller(client, grpc_client):
     v = client.list_volume()[0]
     if v.replicaCount != 0:
-        v = v.shutdown()
+        grpc_client.volume_shutdown()
     for r in client.list_replica():
         client.delete(r)
     return client

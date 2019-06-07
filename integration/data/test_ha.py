@@ -152,7 +152,7 @@ def test_ha_double_replica_rebuild(controller, grpc_controller,  # NOQA
     grpc_replica1.replica_close()
 
     # Restart volume
-    common.cleanup_controller(controller)
+    common.cleanup_controller(controller, grpc_controller)
 
     replicas = controller.list_replica()
     assert len(replicas) == 0
@@ -369,7 +369,7 @@ def test_ha_remove_extra_disks(controller, grpc_controller,  # NOQA
     # now replica1 contains extra data in a snapshot
     cmd.snapshot_create()
 
-    common.cleanup_controller(controller)
+    common.cleanup_controller(controller, grpc_controller)
 
     open_replica(grpc_replica2)
     replicas = controller.list_replica()

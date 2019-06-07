@@ -2,6 +2,7 @@ import grpc
 
 import controller_pb2
 import controller_pb2_grpc
+from google.protobuf import empty_pb2
 
 
 class ControllerClient(object):
@@ -13,3 +14,6 @@ class ControllerClient(object):
         return self.stub.VolumeStart(controller_pb2.VolumeStartRequest(
             replicaAddresses=replicas,
         ))
+
+    def volume_shutdown(self):
+        return self.stub.VolumeShutdown(empty_pb2.Empty())

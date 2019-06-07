@@ -110,7 +110,6 @@ func NewVolume(context *api.ApiContext, name, endpoint, frontend, frontendState 
 	}
 
 	if replicas != 0 {
-		v.Actions["shutdown"] = context.UrlBuilder.ActionLink(v.Resource, "shutdown")
 		v.Actions["snapshot"] = context.UrlBuilder.ActionLink(v.Resource, "snapshot")
 		v.Actions["revert"] = context.UrlBuilder.ActionLink(v.Resource, "revert")
 		v.Actions["startfrontend"] = context.UrlBuilder.ActionLink(v.Resource, "startfrontend")
@@ -186,9 +185,6 @@ func NewSchema() *client.Schemas {
 	volumes.ResourceActions = map[string]client.Action{
 		"revert": {
 			Input:  "revertInput",
-			Output: "volume",
-		},
-		"shutdown": {
 			Output: "volume",
 		},
 		"snapshot": {

@@ -101,7 +101,7 @@ def restore_inc_test(controller, grpc_controller,  # NOQA
 
     common.cleanup_replica(grpc_replica1)
     common.cleanup_replica(grpc_replica2)
-    common.cleanup_controller(controller)
+    common.cleanup_controller(controller, grpc_controller)
     launcher.shutdown_engine_frontend(url=LAUNCHER)
 
     # start no-frontend volume
@@ -183,7 +183,7 @@ def restore_inc_test(controller, grpc_controller,  # NOQA
         tmp_files = subprocess.check_output(command).split()
         assert len(tmp_files) == 0
 
-    cleanup_no_frontend_volume(sb_controller,
+    cleanup_no_frontend_volume(sb_controller, grpc_sb_controller,
                                grpc_sb_replica1, grpc_sb_replica2)
 
     rm_backups([backup0, backup1, backup2, backup4])
@@ -238,7 +238,7 @@ def start_no_frontend_volume(c, grpc_c, grpc_r1, grpc_r2):
     assert v.frontendState == "down"
 
 
-def cleanup_no_frontend_volume(c, grpc_r1, grpc_r2):
+def cleanup_no_frontend_volume(c, grpc_c, grpc_r1, grpc_r2):
     launcher.start_engine_frontend(FRONTEND_TGT_BLOCKDEV,
                                    url=LAUNCHER_NO_FRONTEND)
     v = c.list_volume()[0]
@@ -246,7 +246,7 @@ def cleanup_no_frontend_volume(c, grpc_r1, grpc_r2):
 
     common.cleanup_replica(grpc_r1)
     common.cleanup_replica(grpc_r2)
-    common.cleanup_controller(c)
+    common.cleanup_controller(c, grpc_c)
 
     launcher.shutdown_engine_frontend(url=LAUNCHER_NO_FRONTEND)
     v = c.list_volume()[0]

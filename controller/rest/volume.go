@@ -50,23 +50,6 @@ func (s *Server) GetVolume(rw http.ResponseWriter, req *http.Request) error {
 	return nil
 }
 
-func (s *Server) ShutdownVolume(rw http.ResponseWriter, req *http.Request) error {
-	apiContext := api.GetApiContext(req)
-	id := mux.Vars(req)["id"]
-
-	v := s.getVolume(apiContext, id)
-	if v == nil {
-		rw.WriteHeader(http.StatusNotFound)
-		return nil
-	}
-
-	if err := s.c.Shutdown(); err != nil {
-		return err
-	}
-
-	return s.GetVolume(rw, req)
-}
-
 func (s *Server) RevertVolume(rw http.ResponseWriter, req *http.Request) error {
 	apiContext := api.GetApiContext(req)
 	id := mux.Vars(req)["id"]

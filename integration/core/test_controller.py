@@ -23,8 +23,9 @@ GRPC_CONTROLLER = "localhost:9505"
 def client(request):
     url = 'http://localhost:9501/v1/schemas'
     c = cattle.from_env(url=url)
-    request.addfinalizer(lambda: cleanup(c))
-    return cleanup(c)
+    grpc_c = ControllerClient(GRPC_CONTROLLER)
+    request.addfinalizer(lambda: cleanup(c, grpc_c))
+    return cleanup(c, grpc_c)
 
 
 @pytest.fixture
@@ -32,10 +33,10 @@ def grpc_client():
     return ControllerClient(GRPC_CONTROLLER)
 
 
-def cleanup(client):
+def cleanup(client, grpc_client):
     v = client.list_volume()[0]
     if v.replicaCount != 0:
-        v = v.shutdown()
+        grpc_client.volume_shutdown()
     for r in client.list_replica():
         client.delete(r)
     return client
@@ -153,8 +154,7 @@ def test_shutdown(client, grpc_client):
     v = grpc_client.volume_start(replicas=addresses)
     assert v.replicaCount == 2
 
-    v = client.list_volume()[0]
-    v = v.shutdown()
+    v = grpc_client.volume_shutdown()
     assert v.replicaCount == 0
 
     r = client.list_replica()
