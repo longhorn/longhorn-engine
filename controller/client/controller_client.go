@@ -12,18 +12,27 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/longhorn/longhorn-engine/controller/rest"
+	"github.com/longhorn/longhorn-engine/util"
 )
 
 type ControllerClient struct {
-	controller string
+	controller  string
+	grpcAddress string
 }
 
 func NewControllerClient(controller string) *ControllerClient {
 	if !strings.HasSuffix(controller, "/v1") {
 		controller += "/v1"
 	}
+
+	grpcAddress, err := util.GetControllerGRPCAddress(controller)
+	if err != nil {
+		logrus.Errorf("Failed to get gRPC address, %v", err)
+	}
+
 	return &ControllerClient{
-		controller: controller,
+		controller:  controller,
+		grpcAddress: grpcAddress,
 	}
 }
 
