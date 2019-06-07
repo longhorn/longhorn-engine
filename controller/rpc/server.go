@@ -1,7 +1,10 @@
 package rpc
 
 import (
+	"time"
+
 	"github.com/golang/protobuf/ptypes/empty"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
@@ -104,8 +107,35 @@ func (cs *ControllerServer) MetricGet(req *empty.Empty, srv ControllerService_Me
 }
 
 func (hc *ControllerHealthCheckServer) Check(context.Context, *healthpb.HealthCheckRequest) (*healthpb.HealthCheckResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method Check not implemented")
+	if hc.cs.c != nil {
+		return &healthpb.HealthCheckResponse{
+			Status: healthpb.HealthCheckResponse_SERVING,
+		}, nil
+	}
+
+	return &healthpb.HealthCheckResponse{
+		Status: healthpb.HealthCheckResponse_NOT_SERVING,
+	}, nil
 }
+
 func (hc *ControllerHealthCheckServer) Watch(req *healthpb.HealthCheckRequest, ws healthpb.Health_WatchServer) error {
-	return status.Errorf(codes.Unimplemented, "method Watch not implemented")
+	for {
+		if hc.cs.c != nil {
+			if err := ws.Send(&healthpb.HealthCheckResponse{
+				Status: healthpb.HealthCheckResponse_SERVING,
+			}); err != nil {
+				logrus.Errorf("Failed to send health check result %v for gRPC controller server: %v",
+					healthpb.HealthCheckResponse_SERVING, err)
+			}
+		} else {
+			if err := ws.Send(&healthpb.HealthCheckResponse{
+				Status: healthpb.HealthCheckResponse_NOT_SERVING,
+			}); err != nil {
+				logrus.Errorf("Failed to send health check result %v for gRPC controller server: %v",
+					healthpb.HealthCheckResponse_NOT_SERVING, err)
+			}
+
+		}
+		time.Sleep(time.Second)
+	}
 }
