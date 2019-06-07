@@ -1,22 +1,22 @@
 import cmd
 import common
-from common import controller, grpc_replica1, grpc_replica2  # NOQA
+from common import controller, grpc_controller, grpc_replica1, grpc_replica2  # NOQA
 from common import grpc_backing_replica1, grpc_backing_replica2  # NOQA
-from common import prepare_backup_dir, BACKUP_DIR # NOQA
+from common import prepare_backup_dir, BACKUP_DIR  # NOQA
 from common import open_replica, get_blockdev, cleanup_replica
 from common import verify_read, verify_data, verify_async, VOLUME_HEAD
 from snapshot_tree import snapshot_tree_build, snapshot_tree_verify
 
 
-def test_ha_single_replica_failure(controller, grpc_replica1, grpc_replica2):  # NOQA
+def test_ha_single_replica_failure(controller, grpc_controller,  # NOQA
+                                   grpc_replica1, grpc_replica2):  # NOQA
     open_replica(grpc_replica1)
     open_replica(grpc_replica2)
 
     replicas = controller.list_replica()
     assert len(replicas) == 0
 
-    v = controller.list_volume()[0]
-    v = v.start(replicas=[
+    v = grpc_controller.volume_start(replicas=[
         common.REPLICA1,
         common.REPLICA2
     ])
@@ -41,15 +41,16 @@ def test_ha_single_replica_failure(controller, grpc_replica1, grpc_replica2):  #
 
     verify_read(dev, data_offset, data)
 
-def test_ha_single_replica_rebuild(controller, grpc_replica1, grpc_replica2):  # NOQA
+
+def test_ha_single_replica_rebuild(controller, grpc_controller,  # NOQA
+                                   grpc_replica1, grpc_replica2):  # NOQA
     open_replica(grpc_replica1)
     open_replica(grpc_replica2)
 
     replicas = controller.list_replica()
     assert len(replicas) == 0
 
-    v = controller.list_volume()[0]
-    v = v.start(replicas=[
+    v = grpc_controller.volume_start(replicas=[
         common.REPLICA1,
         common.REPLICA2
     ])
@@ -105,7 +106,7 @@ def test_ha_single_replica_rebuild(controller, grpc_replica1, grpc_replica2):  #
     assert info[VOLUME_HEAD] is not None
 
 
-def test_ha_double_replica_rebuild(controller,  # NOQA
+def test_ha_double_replica_rebuild(controller, grpc_controller,  # NOQA
                                    grpc_replica1, grpc_replica2):  # NOQA
     open_replica(grpc_replica1)
     open_replica(grpc_replica2)
@@ -113,8 +114,7 @@ def test_ha_double_replica_rebuild(controller,  # NOQA
     replicas = controller.list_replica()
     assert len(replicas) == 0
 
-    v = controller.list_volume()[0]
-    v = v.start(replicas=[
+    v = grpc_controller.volume_start(replicas=[
         common.REPLICA1,
         common.REPLICA2
     ])
@@ -157,9 +157,8 @@ def test_ha_double_replica_rebuild(controller,  # NOQA
     replicas = controller.list_replica()
     assert len(replicas) == 0
 
-    v = controller.list_volume()[0]
     # NOTE the order is reversed here
-    v = v.start(replicas=[
+    v = grpc_controller.volume_start(replicas=[
         common.REPLICA2,
         common.REPLICA1
     ])
@@ -196,7 +195,7 @@ def test_ha_double_replica_rebuild(controller,  # NOQA
     assert r2.revisionCounter == 22  # must be in sync with r1
 
 
-def test_ha_revision_counter_consistency(controller,  # NOQA
+def test_ha_revision_counter_consistency(controller, grpc_controller,  # NOQA
                                          grpc_replica1, grpc_replica2):  # NOQA
     open_replica(grpc_replica1)
     open_replica(grpc_replica2)
@@ -204,8 +203,7 @@ def test_ha_revision_counter_consistency(controller,  # NOQA
     replicas = controller.list_replica()
     assert len(replicas) == 0
 
-    v = controller.list_volume()[0]
-    v = v.start(replicas=[
+    v = grpc_controller.volume_start(replicas=[
         common.REPLICA1,
         common.REPLICA2
     ])
@@ -227,7 +225,7 @@ def test_ha_revision_counter_consistency(controller,  # NOQA
     assert r1.revisionCounter == r2.revisionCounter
 
 
-def test_snapshot_tree_rebuild(controller,  # NOQA
+def test_snapshot_tree_rebuild(controller, grpc_controller,  # NOQA
                                grpc_replica1, grpc_replica2):  # NOQA
     offset = 0
     length = 128
@@ -238,8 +236,7 @@ def test_snapshot_tree_rebuild(controller,  # NOQA
     replicas = controller.list_replica()
     assert len(replicas) == 0
 
-    v = controller.list_volume()[0]
-    v = v.start(replicas=[
+    v = grpc_controller.volume_start(replicas=[
         common.REPLICA1,
         common.REPLICA2
     ])
@@ -280,8 +277,8 @@ def test_snapshot_tree_rebuild(controller,  # NOQA
     snapshot_tree_verify(dev, offset, length, snap, snap_data)
 
 
-def test_ha_single_backing_replica_rebuild(controller,              # NOQA
-                                           grpc_backing_replica1,   # NOQA
+def test_ha_single_backing_replica_rebuild(controller, grpc_controller,  # NOQA
+                                           grpc_backing_replica1,  # NOQA
                                            grpc_backing_replica2):  # NOQA
     prepare_backup_dir(BACKUP_DIR)
     open_replica(grpc_backing_replica1)
@@ -290,8 +287,7 @@ def test_ha_single_backing_replica_rebuild(controller,              # NOQA
     replicas = controller.list_replica()
     assert len(replicas) == 0
 
-    v = controller.list_volume()[0]
-    v = v.start(replicas=[
+    v = grpc_controller.volume_start(replicas=[
         common.BACKED_REPLICA1,
         common.BACKED_REPLICA2
     ])
@@ -347,7 +343,7 @@ def test_ha_single_backing_replica_rebuild(controller,              # NOQA
     assert info[VOLUME_HEAD] is not None
 
 
-def test_ha_remove_extra_disks(controller,  # NOQA
+def test_ha_remove_extra_disks(controller, grpc_controller,  # NOQA
                                grpc_replica1, grpc_replica2):  # NOQA
     prepare_backup_dir(BACKUP_DIR)
     open_replica(grpc_replica1)
@@ -355,8 +351,7 @@ def test_ha_remove_extra_disks(controller,  # NOQA
     replicas = controller.list_replica()
     assert len(replicas) == 0
 
-    v = controller.list_volume()[0]
-    v = v.start(replicas=[
+    v = grpc_controller.volume_start(replicas=[
         common.REPLICA1,
     ])
     assert v.replicaCount == 1
@@ -380,8 +375,7 @@ def test_ha_remove_extra_disks(controller,  # NOQA
     replicas = controller.list_replica()
     assert len(replicas) == 0
 
-    v = controller.list_volume()[0]
-    v = v.start(replicas=[
+    v = grpc_controller.volume_start(replicas=[
         common.REPLICA2,
     ])
     assert v.replicaCount == 1

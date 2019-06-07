@@ -1,9 +1,22 @@
 import time
 import random
+import sys
+import os
 
 import pytest
 import cattle
 from cattle import ApiError
+
+# include directory intergration/rpc for module import
+sys.path.append(
+    os.path.abspath(
+        os.path.join(os.path.split(__file__)[0], "../rpc")
+    )
+)
+from controller.controller_client import ControllerClient  # NOQA
+
+
+GRPC_CONTROLLER = "localhost:9505"
 
 
 @pytest.fixture
@@ -12,6 +25,11 @@ def client(request):
     c = cattle.from_env(url=url)
     request.addfinalizer(lambda: cleanup(c))
     return cleanup(c)
+
+
+@pytest.fixture
+def grpc_client():
+    return ControllerClient(GRPC_CONTROLLER)
 
 
 def cleanup(client):
@@ -107,7 +125,7 @@ def test_replica_change(client):
     assert r1.mode == 'RW'
 
 
-def test_start(client):
+def test_start(client, grpc_client):
     vs = client.list_volume()
     assert len(vs) == 1
 
@@ -115,7 +133,7 @@ def test_start(client):
     assert v.replicaCount == 0
 
     addresses = ['file://' + random_str(), 'file://' + random_str()]
-    v = v.start(replicas=addresses)
+    v = grpc_client.volume_start(replicas=addresses)
 
     rs = client.list_replica()
     assert len(rs) == 2
@@ -125,16 +143,17 @@ def test_start(client):
     assert set(found_addresses) == set(addresses)
 
 
-def test_shutdown(client):
+def test_shutdown(client, grpc_client):
     vs = client.list_volume()
     assert len(vs) == 1
     v = vs[0]
     assert v.replicaCount == 0
 
     addresses = ['file://' + random_str(), 'file://' + random_str()]
-    v = v.start(replicas=addresses)
+    v = grpc_client.volume_start(replicas=addresses)
     assert v.replicaCount == 2
 
+    v = client.list_volume()[0]
     v = v.shutdown()
     assert v.replicaCount == 0
 

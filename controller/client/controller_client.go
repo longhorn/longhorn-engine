@@ -8,10 +8,14 @@ import (
 	"io/ioutil"
 	"net/http"
 	"strings"
+	"time"
 
 	"github.com/sirupsen/logrus"
+	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 
 	"github.com/longhorn/longhorn-engine/controller/rest"
+	congtrollerrpc "github.com/longhorn/longhorn-engine/controller/rpc"
 	"github.com/longhorn/longhorn-engine/util"
 )
 
@@ -19,6 +23,10 @@ type ControllerClient struct {
 	controller  string
 	grpcAddress string
 }
+
+const (
+	GRPCServiceTimeout = 1 * time.Minute
+)
 
 func NewControllerClient(controller string) *ControllerClient {
 	if !strings.HasSuffix(controller, "/v1") {
@@ -36,15 +44,24 @@ func NewControllerClient(controller string) *ControllerClient {
 	}
 }
 
-func (c *ControllerClient) Start(replicas ...string) error {
-	volume, err := c.GetVolume()
+func (c *ControllerClient) VolumeStart(replicas ...string) error {
+	conn, err := grpc.Dial(c.grpcAddress, grpc.WithInsecure())
 	if err != nil {
-		return err
+		return fmt.Errorf("cannot connect to ControllerService %v: %v", c.grpcAddress, err)
+	}
+	defer conn.Close()
+	controllerServiceClient := congtrollerrpc.NewControllerServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
+	defer cancel()
+
+	if _, err := controllerServiceClient.VolumeStart(ctx, &congtrollerrpc.VolumeStartRequest{
+		ReplicaAddresses: replicas,
+	}); err != nil {
+		return fmt.Errorf("failed to start volume %v: %v", c.grpcAddress, err)
 	}
 
-	return c.post(volume.Actions["start"], rest.StartInput{
-		Replicas: replicas,
-	}, nil)
+	return nil
 }
 
 func (c *ControllerClient) RevertVolume(name string) (*rest.Volume, error) {

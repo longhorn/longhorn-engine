@@ -23,6 +23,7 @@ sys.path.append(
     )
 )
 from replica.replica_client import ReplicaClient  # NOQA
+from controller.controller_client import ControllerClient  # NOQA
 
 
 REPLICA1 = 'tcp://localhost:9502'
@@ -47,6 +48,9 @@ GRPC_STANDBY_REPLICA2 = 'localhost:9552'
 
 STANDBY_REPLICA1_PATH = '/tmp/standby_vol_replica_1/'
 STANDBY_REPLICA2_PATH = '/tmp/standby_vol_replica_2/'
+
+GRPC_CONTROLLER = "localhost:9505"
+GRPC_CONTROLLER_NO_FRONTEND = "localhost:9805"
 
 CONTROLLER_SCHEMA = "http://localhost:9501/v1/schemas"
 CONTROLLER_NO_FRONTEND_SCHEMA = "http://localhost:9801/v1/schemas"
@@ -81,8 +85,10 @@ def dev(request):
     grpc_replica1 = grpc_replica_client(request, GRPC_REPLICA1)
     grpc_replica2 = grpc_replica_client(request, GRPC_REPLICA2)
     controller = controller_client(request)
+    grpc_controller = grpc_controller_client()
 
-    return get_dev(grpc_replica1, grpc_replica2, controller)
+    return get_dev(grpc_replica1, grpc_replica2,
+                   controller, grpc_controller)
 
 
 @pytest.fixture()
@@ -92,14 +98,20 @@ def backing_dev(request):
     grpc_replica2 = grpc_replica_client(request,
                                         GRPC_BACKED_REPLICA2)
     controller = controller_client(request)
+    grpc_controller = grpc_controller_client()
 
     return get_backing_dev(grpc_replica1, grpc_replica2,
-                           controller)
+                           controller, grpc_controller)
 
 
 @pytest.fixture()
 def controller(request):
     return controller_client(request)
+
+
+@pytest.fixture()
+def grpc_controller():
+    return grpc_controller_client()
 
 
 def controller_client(request):
@@ -111,9 +123,18 @@ def controller_client(request):
     return c
 
 
+def grpc_controller_client():
+    return ControllerClient(GRPC_CONTROLLER)
+
+
 @pytest.fixture()
 def controller_no_frontend(request):
     return controller_no_frontend_client(request)
+
+
+@pytest.fixture()
+def grpc_controller_no_frontend():
+    return grpc_controller_no_frontend_client()
 
 
 def controller_no_frontend_client(request):
@@ -123,6 +144,10 @@ def controller_no_frontend_client(request):
     c = cleanup_controller(c)
     assert c.list_volume()[0].replicaCount == 0
     return c
+
+
+def grpc_controller_no_frontend_client():
+    return ControllerClient(GRPC_CONTROLLER_NO_FRONTEND)
 
 
 def cleanup_controller(client):
@@ -302,7 +327,7 @@ def verify_async(dev, times, length, count):
         raise Exception("data_verifier thread failed")
 
 
-def get_dev(grpc_replica1, grpc_replica2, controller):
+def get_dev(grpc_replica1, grpc_replica2, controller, grpc_controller):
     prepare_backup_dir(BACKUP_DIR)
     open_replica(grpc_replica1)
     open_replica(grpc_replica2)
@@ -310,8 +335,7 @@ def get_dev(grpc_replica1, grpc_replica2, controller):
     replicas = controller.list_replica()
     assert len(replicas) == 0
 
-    v = controller.list_volume()[0]
-    v = v.start(replicas=[
+    v = grpc_controller.volume_start(replicas=[
         REPLICA1,
         REPLICA2
     ])
@@ -322,7 +346,7 @@ def get_dev(grpc_replica1, grpc_replica2, controller):
 
 
 def get_backing_dev(grpc_backing_replica1, grpc_backing_replica2,
-                    controller):
+                    controller, grpc_controller):
     prepare_backup_dir(BACKUP_DIR)
     open_replica(grpc_backing_replica1)
     open_replica(grpc_backing_replica2)
@@ -330,8 +354,7 @@ def get_backing_dev(grpc_backing_replica1, grpc_backing_replica2,
     replicas = controller.list_replica()
     assert len(replicas) == 0
 
-    v = controller.list_volume()[0]
-    v = v.start(replicas=[
+    v = grpc_controller.volume_start(replicas=[
         BACKED_REPLICA1,
         BACKED_REPLICA2
     ])

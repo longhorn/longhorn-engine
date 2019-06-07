@@ -48,9 +48,14 @@ func (cs *ControllerServer) getVolume() *Volume {
 func (cs *ControllerServer) VolumeGet(ctx context.Context, req *empty.Empty) (*Volume, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method VolumeGet not implemented")
 }
+
 func (cs *ControllerServer) VolumeStart(ctx context.Context, req *VolumeStartRequest) (*Volume, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method VolumeStart not implemented")
+	if err := cs.c.Start(req.ReplicaAddresses...); err != nil {
+		return nil, err
+	}
+	return cs.getVolume(), nil
 }
+
 func (cs *ControllerServer) VolumeShutdown(ctx context.Context, req *empty.Empty) (*Volume, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method VolumeShutdown not implemented")
 }

@@ -43,11 +43,6 @@ type DiskCollection struct {
 	Data []string `json:"data"`
 }
 
-type StartInput struct {
-	client.Resource
-	Replicas []string `json:"replicas"`
-}
-
 type SnapshotOutput struct {
 	client.Resource
 }
@@ -114,9 +109,7 @@ func NewVolume(context *api.ApiContext, name, endpoint, frontend, frontendState 
 		LastRestored:  lastRestored,
 	}
 
-	if replicas == 0 {
-		v.Actions["start"] = context.UrlBuilder.ActionLink(v.Resource, "start")
-	} else {
+	if replicas != 0 {
 		v.Actions["shutdown"] = context.UrlBuilder.ActionLink(v.Resource, "shutdown")
 		v.Actions["snapshot"] = context.UrlBuilder.ActionLink(v.Resource, "snapshot")
 		v.Actions["revert"] = context.UrlBuilder.ActionLink(v.Resource, "revert")
@@ -161,7 +154,6 @@ func NewSchema() *client.Schemas {
 	schemas.AddType("error", client.ServerApiError{})
 	schemas.AddType("apiVersion", client.Resource{})
 	schemas.AddType("schema", client.Schema{})
-	schemas.AddType("startInput", StartInput{})
 	schemas.AddType("snapshotOutput", SnapshotOutput{})
 	schemas.AddType("snapshotInput", SnapshotInput{})
 	schemas.AddType("revertInput", RevertInput{})
@@ -194,10 +186,6 @@ func NewSchema() *client.Schemas {
 	volumes.ResourceActions = map[string]client.Action{
 		"revert": {
 			Input:  "revertInput",
-			Output: "volume",
-		},
-		"start": {
-			Input:  "startInput",
 			Output: "volume",
 		},
 		"shutdown": {

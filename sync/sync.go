@@ -288,7 +288,7 @@ func (t *Task) AddReplica(replica string) error {
 	}
 
 	if volume.ReplicaCount == 0 {
-		return t.client.Start(replica)
+		return t.client.VolumeStart(replica)
 	}
 
 	if err := t.checkAndResetFailedRebuild(replica); err != nil {

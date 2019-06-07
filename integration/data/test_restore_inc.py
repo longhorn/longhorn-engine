@@ -7,6 +7,7 @@ import cmd
 import launcher
 from launcher import LAUNCHER, LAUNCHER_NO_FRONTEND
 from common import controller, controller_no_frontend  # NOQA
+from common import grpc_controller, grpc_controller_no_frontend  # NOQA
 from common import grpc_replica1, grpc_replica2   # NOQA
 from common import grpc_standby_replica1, grpc_standby_replica2   # NOQA
 from common import backup_targets  # NOQA
@@ -24,24 +25,29 @@ VFS_DIR = "/data/backupbucket/"
 
 
 def test_restore_incrementally(controller, controller_no_frontend,  # NOQA
+                               grpc_controller, grpc_controller_no_frontend,  # NOQA
                                grpc_replica1, grpc_replica2,  # NOQA
                                grpc_standby_replica1, grpc_standby_replica2,  # NOQA
                                backup_targets):  # NOQA
     for backup_target in backup_targets:
-        restore_inc_test(controller, grpc_replica1, grpc_replica2,
+        restore_inc_test(controller, grpc_controller,
+                         grpc_replica1, grpc_replica2,
                          controller_no_frontend,
+                         grpc_controller_no_frontend,
                          grpc_standby_replica1, grpc_standby_replica2,
                          backup_target)
     launcher.start_engine_frontend(FRONTEND_TGT_BLOCKDEV, url=LAUNCHER)
 
 
-def restore_inc_test(controller, grpc_replica1, grpc_replica2,  # NOQA
-                     sb_controller, grpc_sb_replica1, grpc_sb_replica2,  # NOQA
+def restore_inc_test(controller, grpc_controller,  # NOQA
+                     grpc_replica1, grpc_replica2,  # NOQA
+                     sb_controller, grpc_sb_controller,  # NOQA
+                     grpc_sb_replica1, grpc_sb_replica2,  # NOQA
                      backup_target):  # NOQA
     launcher.start_engine_frontend(FRONTEND_TGT_BLOCKDEV,
                                    url=LAUNCHER)
     dev = common.get_dev(grpc_replica1, grpc_replica2,
-                         controller)
+                         controller, grpc_controller)
 
     zero_string = b'\x00'.decode('utf-8')
 
@@ -100,7 +106,7 @@ def restore_inc_test(controller, grpc_replica1, grpc_replica2,  # NOQA
 
     # start no-frontend volume
     # start standby volume (no frontend)
-    start_no_frontend_volume(sb_controller,
+    start_no_frontend_volume(sb_controller, grpc_sb_controller,
                              grpc_sb_replica1, grpc_sb_replica2)
 
     restore_for_no_frontend_volume(backup0, sb_controller)
@@ -210,7 +216,7 @@ def verify_no_frontend_data(data_offset, data, c):
     assert v.frontendState == "down"
 
 
-def start_no_frontend_volume(c, grpc_r1, grpc_r2):
+def start_no_frontend_volume(c, grpc_c, grpc_r1, grpc_r2):
     launcher.start_engine_frontend(FRONTEND_TGT_BLOCKDEV,
                                    url=LAUNCHER_NO_FRONTEND)
 
@@ -221,7 +227,7 @@ def start_no_frontend_volume(c, grpc_r1, grpc_r2):
     assert len(standby_replicas) == 0
 
     v = c.list_volume()[0]
-    v = v.start(replicas=[
+    v = grpc_c.volume_start(replicas=[
         common.STANDBY_REPLICA1,
         common.STANDBY_REPLICA2
     ])
