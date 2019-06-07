@@ -8,7 +8,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/rancher/backupstore"
+	"github.com/longhorn/backupstore"
 	"github.com/sirupsen/logrus"
 )
 

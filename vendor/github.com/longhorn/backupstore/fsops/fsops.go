@@ -6,8 +6,8 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/rancher/backupstore"
-	"github.com/rancher/backupstore/util"
+	"github.com/longhorn/backupstore"
+	"github.com/longhorn/backupstore/util"
 )
 
 const (

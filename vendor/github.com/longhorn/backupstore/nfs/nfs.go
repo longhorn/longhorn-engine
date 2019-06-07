@@ -7,9 +7,9 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/rancher/backupstore"
-	"github.com/rancher/backupstore/fsops"
-	"github.com/rancher/backupstore/util"
+	"github.com/longhorn/backupstore"
+	"github.com/longhorn/backupstore/fsops"
+	"github.com/longhorn/backupstore/util"
 	"github.com/sirupsen/logrus"
 )
 
