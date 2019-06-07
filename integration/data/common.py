@@ -165,9 +165,9 @@ def grpc_standby_replica2(request):
 
 
 def grpc_replica_client(request, url):
-    grpc_c = ReplicaClient(url)
-    request.addfinalizer(lambda: cleanup_replica(grpc_c))
-    return cleanup_replica(grpc_c)
+    c = ReplicaClient(url)
+    request.addfinalizer(lambda: cleanup_replica(c))
+    return cleanup_replica(c)
 
 
 def cleanup_replica(grpc_client):

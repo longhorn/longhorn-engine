@@ -15,15 +15,16 @@ sys.path.append(
 )
 from replica.replica_client import ReplicaClient  # NOQA
 
+
 GRPC_URL = 'localhost:9502'
 SIZE_STR = str(1024*4096)
 
 
 @pytest.fixture
 def grpc_client(request):
-    grpc_c = ReplicaClient(GRPC_URL)
-    request.addfinalizer(lambda: cleanup(grpc_c))
-    return cleanup(grpc_c)
+    c = ReplicaClient(GRPC_URL)
+    request.addfinalizer(lambda: cleanup(c))
+    return cleanup(c)
 
 
 def cleanup(grpc_client):

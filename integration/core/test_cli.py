@@ -60,16 +60,16 @@ def cleanup_controller(client):
 
 @pytest.fixture
 def grpc_replica_client(request):
-    grpc_c = ReplicaClient(GRPC_REPLICA)
-    request.addfinalizer(lambda: cleanup_replica(grpc_c))
-    return cleanup_replica(grpc_c)
+    c = ReplicaClient(GRPC_REPLICA)
+    request.addfinalizer(lambda: cleanup_replica(c))
+    return cleanup_replica(c)
 
 
 @pytest.fixture
 def grpc_replica_client2(request):
-    grpc_c = ReplicaClient(GRPC_REPLICA2)
-    request.addfinalizer(lambda: cleanup_replica(grpc_c))
-    return cleanup_replica(grpc_c)
+    c = ReplicaClient(GRPC_REPLICA2)
+    request.addfinalizer(lambda: cleanup_replica(c))
+    return cleanup_replica(c)
 
 
 def cleanup_replica(grpc_client):
