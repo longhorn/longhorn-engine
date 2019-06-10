@@ -3,6 +3,7 @@ package replica
 import (
 	"fmt"
 	"os"
+	"sync"
 
 	"github.com/sirupsen/logrus"
 
@@ -24,6 +25,7 @@ type DeltaBlockBackupOperations interface {
 */
 
 type Backup struct {
+	lock           sync.Mutex
 	backingFile *BackingFile
 	replica     *Replica
 	volumeID    string
@@ -37,6 +39,8 @@ func NewBackup(backingFile *BackingFile) *Backup {
 }
 
 func (rb *Backup) HasSnapshot(snapID, volumeID string) bool {
+	rb.lock.Lock()
+	defer rb.lock.Unlock()
 	if rb.volumeID != volumeID {
 		logrus.Warnf("Invalid state volume [%s] are open, not [%s]", rb.volumeID, volumeID)
 		return false
@@ -51,7 +55,8 @@ func (rb *Backup) HasSnapshot(snapID, volumeID string) bool {
 
 func (rb *Backup) OpenSnapshot(snapID, volumeID string) error {
 	id := GenerateSnapshotDiskName(snapID)
-
+	rb.lock.Lock()
+	defer rb.lock.Unlock()
 	if rb.volumeID == volumeID && rb.snapshotID == id {
 		return nil
 	}
@@ -85,10 +90,11 @@ func (rb *Backup) assertOpen(id, volumeID string) error {
 
 func (rb *Backup) ReadSnapshot(snapID, volumeID string, start int64, data []byte) error {
 	id := GenerateSnapshotDiskName(snapID)
+	rb.lock.Lock()
+	defer rb.lock.Unlock()
 	if err := rb.assertOpen(id, volumeID); err != nil {
 		return err
 	}
-
 	if rb.snapshotID != id && rb.volumeID != volumeID {
 		return fmt.Errorf("Snapshot %s and volume %s are not open", id, volumeID)
 	}
@@ -99,12 +105,14 @@ func (rb *Backup) ReadSnapshot(snapID, volumeID string, start int64, data []byte
 
 func (rb *Backup) CloseSnapshot(snapID, volumeID string) error {
 	id := GenerateSnapshotDiskName(snapID)
-	if rb.volumeID == "" {
-		return nil
-	}
-
+	rb.lock.Lock()
+	defer rb.lock.Unlock()
 	if err := rb.assertOpen(id, volumeID); err != nil {
 		return err
+	}
+
+	if rb.volumeID == "" {
+		return nil
 	}
 
 	err := rb.replica.Close()
@@ -112,6 +120,7 @@ func (rb *Backup) CloseSnapshot(snapID, volumeID string) error {
 	rb.replica = nil
 	rb.volumeID = ""
 	rb.snapshotID = ""
+
 	return err
 }
 
@@ -121,10 +130,12 @@ func (rb *Backup) CompareSnapshot(snapID, compareSnapID, volumeID string) (*back
 	if compareSnapID != "" {
 		compareID = GenerateSnapshotDiskName(compareSnapID)
 	}
-
+	rb.lock.Lock()
 	if err := rb.assertOpen(id, volumeID); err != nil {
+		rb.lock.Unlock()
 		return nil, err
 	}
+	rb.lock.Unlock()
 
 	rb.replica.Lock()
 	defer rb.replica.Unlock()
