@@ -160,17 +160,6 @@ func (c *ReplicaClient) Revert(name, created string) error {
 	return nil
 }
 
-func (c *ReplicaClient) SetRebuilding(rebuilding bool) error {
-	r, err := c.GetReplica()
-	if err != nil {
-		return err
-	}
-
-	return c.post(r.Actions["setrebuilding"], &rest.RebuildingInput{
-		Rebuilding: rebuilding,
-	}, nil)
-}
-
 func (c *ReplicaClient) RemoveDisk(disk string, force bool) error {
 	conn, err := grpc.Dial(c.replicaServiceURL, grpc.WithInsecure())
 	if err != nil {
@@ -225,6 +214,17 @@ func (c *ReplicaClient) MarkDiskAsRemoved(disk string) error {
 
 	return c.post(r.Actions["markdiskasremoved"], &rest.MarkDiskAsRemovedInput{
 		Name: disk,
+	}, nil)
+}
+
+func (c *ReplicaClient) SetRebuilding(rebuilding bool) error {
+	r, err := c.GetReplica()
+	if err != nil {
+		return err
+	}
+
+	return c.post(r.Actions["setrebuilding"], &rest.RebuildingInput{
+		Rebuilding: rebuilding,
 	}, nil)
 }
 
