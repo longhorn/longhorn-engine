@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/sirupsen/logrus"
 
@@ -14,8 +13,6 @@ import (
 	"github.com/longhorn/longhorn-engine/types"
 	"github.com/longhorn/longhorn-engine/util"
 )
-
-const BackupStatusRetryAttempts = 3600
 
 func (t *Task) CreateBackup(snapshot, dest string, labels []string, credential map[string]string) (string, error) {
 	var replica *types.ControllerReplicaInfo
@@ -79,24 +76,26 @@ func (t *Task) createBackup(replicaInController *types.ControllerReplicaInfo, sn
 		logrus.Errorf("Failed backing up %s on %s to %s", snapshot, replicaInController.Address, dest)
 		return "", err
 	}
-
-	var backup, backupErr string
-
-	for i := 0; i < BackupStatusRetryAttempts; i++ {
-		_, backup, backupErr, err = repClient.GetBackupStatus(backupID)
-		if err != nil {
-			return backup, err
-		}
-
-		if backupErr != "" {
-			return "", fmt.Errorf(backupErr)
-		}
-		if backup != "" {
-			break
-		}
-		time.Sleep(1 * time.Second)
+	//Store the backupID - Replica IP mapping in controller
+	if err := t.client.BackupReplicaMappingCreate(backupID, replicaInController.Address); err != nil {
+		return "", err
 	}
-	return backup, nil
+	return backupID, nil
+}
+
+func (t *Task) FetchBackupStatus(backupID string, replicaIP string) ([]byte, error) {
+	repClient, err := replicaClient.NewReplicaClient(replicaIP)
+	if err != nil {
+		logrus.Errorf("Cannot create a replica client for IP[%v]: %v", replicaIP, err)
+		return nil, err
+	}
+
+	backupStatus, err := repClient.GetBackupStatus(backupID)
+	if err != nil {
+		logrus.Errorf("Failed to fetch backup object: %v", err)
+		return nil, err
+	}
+	return backupStatus, nil
 }
 
 func (t *Task) RestoreBackup(backup string) error {

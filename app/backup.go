@@ -22,6 +22,7 @@ func BackupCmd() cli.Command {
 		ShortName: "backup",
 		Subcommands: []cli.Command{
 			BackupCreateCmd(),
+			BackupStatusCmd(),
 			BackupRestoreCmd(),
 			RestoreToFileCmd(),
 			cmd.BackupRemoveCmd(),
@@ -51,6 +52,51 @@ func BackupCreateCmd() cli.Command {
 			}
 		},
 	}
+}
+
+func BackupStatusCmd() cli.Command {
+	return cli.Command{
+		Name:  "status",
+		Usage: "query the progress of the backup: status <backupID>",
+		Action: func(c *cli.Context) {
+			if err := checkBackupProgress(c); err != nil {
+				logrus.Fatalf("Error querying backup status: %v", err)
+			}
+		},
+	}
+}
+
+func checkBackupProgress(c *cli.Context) error {
+	backupID := c.Args().First()
+	if backupID == "" {
+		return fmt.Errorf("Missing required parameter backupID")
+	}
+
+	client := getCli(c)
+	br, err := client.BackupReplicaMappingGet()
+	if err != nil {
+		return err
+	}
+	replicaAddress, present := br[backupID]
+	if present == false {
+		return fmt.Errorf("couldn't find replica address for backup:%v", backupID)
+	}
+
+	if replicaAddress == "" {
+		return fmt.Errorf("replica address is empty")
+	}
+
+
+	//Fetch backupObject using the replicaIP
+	task := sync.NewTask(c.GlobalString("url"))
+
+	backupStatus, err := task.FetchBackupStatus(backupID, replicaAddress)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(string(backupStatus))
+	return nil
 }
 
 func BackupRestoreCmd() cli.Command {
