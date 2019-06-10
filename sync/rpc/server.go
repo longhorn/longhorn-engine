@@ -232,6 +232,11 @@ func (*SyncAgentServer) BackupCreate(ctx context.Context, req *BackupCreateReque
 	return reply, nil
 }
 
+func (s *SyncAgentServer) BackupGetStatus(ctx context.Context, req *BackupProgressRequest) (*BackupProgressReply, error) {
+	//not implemented
+	return nil, fmt.Errorf("not implemented")
+}
+
 func (*SyncAgentServer) BackupRemove(ctx context.Context, req *BackupRemoveRequest) (*Empty, error) {
 	cmd := reexec.Command("sbackup", "delete", req.Backup)
 	cmd.SysProcAttr = &syscall.SysProcAttr{

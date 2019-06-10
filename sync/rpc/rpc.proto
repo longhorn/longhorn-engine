@@ -10,6 +10,7 @@ service SyncAgentService {
     rpc BackupRemove(BackupRemoveRequest) returns (Empty) {}
     rpc BackupRestore(BackupRestoreRequest) returns (Empty) {}
     rpc BackupRestoreIncrementally(BackupRestoreIncrementallyRequest) returns (Empty) {}
+    rpc BackupGetStatus(BackupProgressRequest) returns (BackupProgressReply) {}
 }
 
 message FileRemoveRequest {
@@ -55,6 +56,17 @@ message BackupCreateReply {
 message BackupRemoveRequest {
     string backup = 1;
 };
+
+message BackupProgressRequest {
+    string backup = 1;
+}
+
+message BackupProgressReply {
+    int32 progress = 1;
+    string backupURL = 2;
+    string backupError = 3;
+    string snapshotName = 4;
+}
 
 message BackupRestoreRequest {
     string backup = 1;
