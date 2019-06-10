@@ -102,18 +102,6 @@ func (c *ReplicaClient) OpenReplica() error {
 	return nil
 }
 
-func (c *ReplicaClient) Revert(name, created string) error {
-	r, err := c.GetReplica()
-	if err != nil {
-		return err
-	}
-
-	return c.post(r.Actions["revert"], rest.RevertInput{
-		Name:    name,
-		Created: created,
-	}, nil)
-}
-
 func (c *ReplicaClient) Close() error {
 	conn, err := grpc.Dial(c.replicaServiceURL, grpc.WithInsecure())
 	if err != nil {
@@ -130,6 +118,18 @@ func (c *ReplicaClient) Close() error {
 	}
 
 	return nil
+}
+
+func (c *ReplicaClient) Revert(name, created string) error {
+	r, err := c.GetReplica()
+	if err != nil {
+		return err
+	}
+
+	return c.post(r.Actions["revert"], rest.RevertInput{
+		Name:    name,
+		Created: created,
+	}, nil)
 }
 
 func (c *ReplicaClient) SetRebuilding(rebuilding bool) error {
