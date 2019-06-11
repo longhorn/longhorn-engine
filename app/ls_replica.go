@@ -8,8 +8,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 
-	"github.com/rancher/longhorn-engine/controller/client"
-	replicaClient "github.com/rancher/longhorn-engine/replica/client"
+	"github.com/longhorn/longhorn-engine/controller/client"
+	replicaClient "github.com/longhorn/longhorn-engine/replica/client"
 )
 
 func LsReplicaCmd() cli.Command {

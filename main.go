@@ -15,9 +15,9 @@ import (
 	"github.com/longhorn/sparse-tools/cli/sfold"
 	"github.com/longhorn/sparse-tools/cli/ssync"
 
-	"github.com/rancher/longhorn-engine/app"
-	"github.com/rancher/longhorn-engine/backup"
-	"github.com/rancher/longhorn-engine/meta"
+	"github.com/longhorn/longhorn-engine/app"
+	"github.com/longhorn/longhorn-engine/backup"
+	"github.com/longhorn/longhorn-engine/meta"
 )
 
 // following variables will be filled by `-ldflags "-X ..."`

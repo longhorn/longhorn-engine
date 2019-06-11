@@ -11,7 +11,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/rancher/longhorn-engine/controller/rest"
+	"github.com/longhorn/longhorn-engine/controller/rest"
 )
 
 type ControllerClient struct {

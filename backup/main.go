@@ -13,8 +13,8 @@ import (
 
 	"github.com/rancher/backupstore"
 
-	"github.com/rancher/longhorn-engine/replica"
-	"github.com/rancher/longhorn-engine/util"
+	"github.com/longhorn/longhorn-engine/replica"
+	"github.com/longhorn/longhorn-engine/util"
 )
 
 var (

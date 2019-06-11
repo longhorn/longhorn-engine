@@ -5,7 +5,7 @@ import (
 	"sync"
 
 	"github.com/frostschutz/go-fibmap"
-	"github.com/rancher/longhorn-engine/types"
+	"github.com/longhorn/longhorn-engine/types"
 )
 
 type diffDisk struct {

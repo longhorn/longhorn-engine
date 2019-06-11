@@ -8,10 +8,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
-	"github.com/rancher/longhorn-engine/frontend/socket"
-	"github.com/rancher/longhorn-engine/iscsi"
-	"github.com/rancher/longhorn-engine/types"
-	"github.com/rancher/longhorn-engine/util"
+	"github.com/longhorn/longhorn-engine/frontend/socket"
+	"github.com/longhorn/longhorn-engine/iscsi"
+	"github.com/longhorn/longhorn-engine/types"
+	"github.com/longhorn/longhorn-engine/util"
 )
 
 const (

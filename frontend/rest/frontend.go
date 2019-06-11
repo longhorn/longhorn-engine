@@ -7,7 +7,7 @@ import (
 	"github.com/gorilla/handlers"
 	"github.com/sirupsen/logrus"
 
-	"github.com/rancher/longhorn-engine/types"
+	"github.com/longhorn/longhorn-engine/types"
 )
 
 const (

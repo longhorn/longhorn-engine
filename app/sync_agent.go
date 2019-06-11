@@ -12,7 +12,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
-	"github.com/rancher/longhorn-engine/sync/rpc"
+	"github.com/longhorn/longhorn-engine/sync/rpc"
 )
 
 func SyncAgentCmd() cli.Command {

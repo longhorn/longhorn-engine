@@ -11,8 +11,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 
-	"github.com/rancher/longhorn-engine/sync"
-	"github.com/rancher/longhorn-engine/util"
+	"github.com/longhorn/longhorn-engine/sync"
+	"github.com/longhorn/longhorn-engine/util"
 )
 
 func SnapshotCmd() cli.Command {

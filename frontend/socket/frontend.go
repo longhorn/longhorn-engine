@@ -9,8 +9,8 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/rancher/longhorn-engine/rpc"
-	"github.com/rancher/longhorn-engine/types"
+	"github.com/longhorn/longhorn-engine/rpc"
+	"github.com/longhorn/longhorn-engine/types"
 )
 
 const (

@@ -7,8 +7,8 @@ import (
 	"github.com/rancher/go-rancher/api"
 	"github.com/yasker/go-websocket-toolbox/handler"
 
-	"github.com/rancher/longhorn-engine/replica/rest"
-	"github.com/rancher/longhorn-engine/types"
+	"github.com/longhorn/longhorn-engine/replica/rest"
+	"github.com/longhorn/longhorn-engine/types"
 
 	// add pprof endpoint
 	_ "net/http/pprof"

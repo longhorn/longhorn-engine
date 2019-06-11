@@ -5,8 +5,8 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/rancher/longhorn-engine/replica"
-	"github.com/rancher/longhorn-engine/rpc"
+	"github.com/longhorn/longhorn-engine/replica"
+	"github.com/longhorn/longhorn-engine/rpc"
 )
 
 type Server struct {

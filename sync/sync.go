@@ -7,10 +7,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
-	"github.com/rancher/longhorn-engine/controller/client"
-	"github.com/rancher/longhorn-engine/controller/rest"
-	"github.com/rancher/longhorn-engine/replica"
-	replicaClient "github.com/rancher/longhorn-engine/replica/client"
+	"github.com/longhorn/longhorn-engine/controller/client"
+	"github.com/longhorn/longhorn-engine/controller/rest"
+	"github.com/longhorn/longhorn-engine/replica"
+	replicaClient "github.com/longhorn/longhorn-engine/replica/client"
 )
 
 var (

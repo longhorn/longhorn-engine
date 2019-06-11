@@ -26,7 +26,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 
-	"github.com/rancher/longhorn-engine/types"
+	"github.com/longhorn/longhorn-engine/types"
 )
 
 var (

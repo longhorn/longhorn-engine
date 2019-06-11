@@ -9,7 +9,7 @@ import (
 
 	journal "github.com/longhorn/sparse-tools/stats"
 
-	"github.com/rancher/longhorn-engine/types"
+	"github.com/longhorn/longhorn-engine/types"
 )
 
 type Metrics struct {
