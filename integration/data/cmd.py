@@ -1,10 +1,13 @@
 import json
+import time
 import subprocess
 from os import path
 
 
 CONTROLLER = "http://localhost:9501"
 CONTROLLER_NO_FRONTEND = "http://localhost:9801"
+
+RETRY_COUNTS = 100
 
 
 def _file(f):
@@ -57,10 +60,25 @@ def snapshot_purge(url=CONTROLLER):
     return subprocess.check_call(cmd)
 
 
+def backup_status(backupID, url=CONTROLLER):
+    output = ""
+    cmd = [_bin(), '--url', url, 'backup', 'status', backupID]
+    for x in range(RETRY_COUNTS):
+        backup = json.loads(subprocess.check_output(cmd).strip())
+        if 'backupURL' in backup.keys():
+            output = backup['backupURL']
+            break
+        elif 'backupError' in backup.keys():
+            output = backup['backupError']
+            break
+        time.sleep(1)
+    return output
+
+
 def backup_create(snapshot, dest, url=CONTROLLER):
     cmd = [_bin(), '--url', url, '--debug',
            'backup', 'create', snapshot, '--dest', dest]
-    return subprocess.check_output(cmd).strip()
+    return backup_status(subprocess.check_output(cmd).strip())
 
 
 def backup_rm(backup, url=CONTROLLER):

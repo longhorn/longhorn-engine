@@ -41,6 +41,8 @@ VOLUME_CONFIG_FILE = "volume.cfg"
 VOLUME_TMP_CONFIG_FILE = "volume.cfg.tmp"
 MESSAGE_TYPE_ERROR = "error"
 
+RETRY_COUNTS = 100
+
 
 @pytest.fixture
 def grpc_controller_client(request):
@@ -624,6 +626,23 @@ def test_snapshot_last(bin, grpc_controller_client,
     subprocess.check_call(cmd)
 
 
+def get_backup_url(bin, backupID):
+    assert backupID != ""
+    rValue = ""
+    cmd = [bin, 'backup', 'status', backupID]
+    for x in range(RETRY_COUNTS):
+        output = subprocess.check_output(cmd).strip()
+        backup = json.loads(output)
+        if backup['progress'] == 100 and 'backupURL' in backup.keys():
+            rValue = backup['backupURL']
+            break
+        elif 'backupError' in backup.keys():
+            rValue = backup['backupError']
+            break
+        time.sleep(1)
+    return rValue
+
+
 def backup_core(bin, grpc_controller_client,
                 grpc_replica_client,
                 grpc_replica_client2,
@@ -649,7 +668,8 @@ def backup_core(bin, grpc_controller_client,
            '--dest', backup_target,
            '--label', 'name=backup1',
            '--label', 'type=' + backup_type]
-    backup1 = subprocess.check_output(cmd, env=env).strip()
+    backupID = subprocess.check_output(cmd, env=env).strip()
+    backup1 = get_backup_url(bin, backupID)
 
     cmd = [bin, 'snapshot', 'create']
     snapshot2 = subprocess.check_output(cmd).strip()
@@ -659,7 +679,8 @@ def backup_core(bin, grpc_controller_client,
 
     cmd = [bin, 'backup', 'create', snapshot2,
            '--dest', backup_target]
-    backup2 = subprocess.check_output(cmd, env=env).strip()
+    backupID = subprocess.check_output(cmd, env=env).strip()
+    backup2 = get_backup_url(bin, backupID)
 
     cmd = [bin, 'backup', 'inspect', backup1]
     data = subprocess.check_output(cmd, env=env)
@@ -679,7 +700,8 @@ def backup_core(bin, grpc_controller_client,
     assert backup2_info["VolumeName"] == VOLUME_NAME
     assert backup2_info["VolumeSize"] == VOLUME_SIZE
     assert backup2_info["SnapshotName"] == snapshot2
-    assert len(backup2_info["Labels"]) == 0
+    if backup2_info["Labels"] is not None:
+        assert len(backup2_info["Labels"]) == 0
 
     cmd = [bin, 'backup', 'ls', backup_target]
     data = subprocess.check_output(cmd, env=env).strip()
