@@ -15,8 +15,8 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
-	"github.com/rancher/longhorn-engine-launcher/rpc"
-	"github.com/rancher/longhorn-engine/util"
+	"github.com/longhorn/longhorn-engine-launcher/rpc"
+	"github.com/longhorn/longhorn-engine/util"
 )
 
 const (

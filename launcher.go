@@ -14,9 +14,9 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
-	"github.com/rancher/longhorn-engine-launcher/rpc"
-	"github.com/rancher/longhorn-engine/iscsi"
-	"github.com/rancher/longhorn-engine/util"
+	"github.com/longhorn/longhorn-engine-launcher/rpc"
+	"github.com/longhorn/longhorn-engine/iscsi"
+	"github.com/longhorn/longhorn-engine/util"
 )
 
 const (

@@ -16,7 +16,7 @@ import (
 	"time"
 
 	"github.com/gorilla/handlers"
-	iutil "github.com/rancher/go-iscsi-helper/util"
+	iutil "github.com/longhorn/go-iscsi-helper/util"
 	"github.com/satori/go.uuid"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
@@ -302,9 +302,5 @@ func ResolveBackingFilepath(fileOrDirpath string) (string, error) {
 }
 
 func GetInitiatorNS() string {
-	path, err := iutil.GetHostNamespacePath(HostProc)
-	if err != nil {
-		logrus.Warnf("GetHostNamespacePath error, will use default path: %v", path, err)
-	}
-	return path
+	return iutil.GetHostNamespacePath(HostProc)
 }

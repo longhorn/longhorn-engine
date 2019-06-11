@@ -11,8 +11,8 @@ ENV PATH /go/bin:$PATH
 ENV DAPPER_DOCKER_SOCKET true
 ENV DAPPER_ENV TAG REPO
 ENV DAPPER_OUTPUT bin
-ENV DAPPER_RUN_ARGS --privileged --tmpfs /go/src/github.com/rancher/longhorn-engine/integration/.venv:exec --tmpfs /go/src/github.com/rancher/longhorn-engine/integration/.tox:exec -v /dev:/host/dev -v /proc:/host/proc
-ENV DAPPER_SOURCE /go/src/github.com/rancher/longhorn-engine-launcher
+ENV DAPPER_RUN_ARGS --privileged --tmpfs /go/src/github.com/longhorn/longhorn-engine/integration/.venv:exec --tmpfs /go/src/github.com/longhorn/longhorn-engine/integration/.tox:exec -v /dev:/host/dev -v /proc:/host/proc
+ENV DAPPER_SOURCE /go/src/github.com/longhorn/longhorn-engine-launcher
 ENV TRASH_CACHE ${DAPPER_SOURCE}/.trash-cache
 WORKDIR ${DAPPER_SOURCE}
 
