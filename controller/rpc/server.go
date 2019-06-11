@@ -75,8 +75,13 @@ func (cs *ControllerServer) VolumeSnapshot(ctx context.Context, req *VolumeSnaps
 }
 
 func (cs *ControllerServer) VolumeRevert(ctx context.Context, req *VolumeRevertRequest) (*Volume, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method VolumeRevert not implemented")
+	if err := cs.c.Revert(req.Name); err != nil {
+		return nil, err
+	}
+
+	return cs.getVolume(), nil
 }
+
 func (cs *ControllerServer) VolumeFrontendStart(ctx context.Context, req *VolumeFrontendStartRequest) (*Volume, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method VolumeFrontendStart not implemented")
 }

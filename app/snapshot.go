@@ -144,7 +144,7 @@ func revertSnapshot(c *cli.Context) error {
 		return fmt.Errorf("Missing parameter for snapshot")
 	}
 
-	err := cli.RevertSnapshot(name)
+	err := cli.VolumeRevert(name)
 	if err != nil {
 		return err
 	}

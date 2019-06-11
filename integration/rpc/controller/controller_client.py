@@ -22,3 +22,7 @@ class ControllerClient(object):
         return self.stub.VolumeSnapshot(controller_pb2.VolumeSnapshotRequest(
             name=name, labels=labels
         )).name
+
+    def volume_revert(self, name=""):
+        return self.stub.VolumeRevert(controller_pb2.VolumeRevertRequest(
+            name=name))

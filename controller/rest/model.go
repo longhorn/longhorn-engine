@@ -43,11 +43,6 @@ type DiskCollection struct {
 	Data []string `json:"data"`
 }
 
-type RevertInput struct {
-	client.Resource
-	Name string `json:"name"`
-}
-
 type JournalInput struct {
 	client.Resource
 	Limit int `json:"limit"`
@@ -100,7 +95,6 @@ func NewVolume(context *api.ApiContext, name, endpoint, frontend, frontendState 
 	}
 
 	if replicas != 0 {
-		v.Actions["revert"] = context.UrlBuilder.ActionLink(v.Resource, "revert")
 		v.Actions["startfrontend"] = context.UrlBuilder.ActionLink(v.Resource, "startfrontend")
 		v.Actions["shutdownfrontend"] = context.UrlBuilder.ActionLink(v.Resource, "shutdownfrontend")
 		v.Actions["preparerestore"] = context.UrlBuilder.ActionLink(v.Resource, "preparerestore")
@@ -142,7 +136,6 @@ func NewSchema() *client.Schemas {
 	schemas.AddType("error", client.ServerApiError{})
 	schemas.AddType("apiVersion", client.Resource{})
 	schemas.AddType("schema", client.Schema{})
-	schemas.AddType("revertInput", RevertInput{})
 	schemas.AddType("journalInput", JournalInput{})
 	schemas.AddType("prepareRebuildOutput", PrepareRebuildOutput{})
 	schemas.AddType("portInput", PortInput{})
@@ -170,10 +163,6 @@ func NewSchema() *client.Schemas {
 
 	volumes := schemas.AddType("volume", Volume{})
 	volumes.ResourceActions = map[string]client.Action{
-		"revert": {
-			Input:  "revertInput",
-			Output: "volume",
-		},
 		"startfrontend": {
 			Input:  "startFrontendInput",
 			Output: "volume",

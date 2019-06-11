@@ -103,7 +103,7 @@ func (t *Task) RestoreBackup(backup string) error {
 	}
 
 	// call to controller to revert to sfile
-	if err := t.client.RevertSnapshot(snapshotID); err != nil {
+	if err := t.client.VolumeRevert(snapshotID); err != nil {
 		return fmt.Errorf("Fail to revert to snapshot %v", snapshotID)
 	}
 	return nil

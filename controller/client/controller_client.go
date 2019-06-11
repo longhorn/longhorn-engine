@@ -86,35 +86,24 @@ func (c *ControllerClient) VolumeSnapshot(name string, labels map[string]string)
 	return reply.Name, nil
 }
 
-func (c *ControllerClient) RevertVolume(name string) (*rest.Volume, error) {
-	volume, err := c.GetVolume()
+func (c *ControllerClient) VolumeRevert(snapshot string) error {
+	conn, err := grpc.Dial(c.grpcAddress, grpc.WithInsecure())
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("cannot connect to ControllerService %v: %v", c.grpcAddress, err)
 	}
+	defer conn.Close()
+	controllerServiceClient := congtrollerrpc.NewControllerServiceClient(conn)
 
-	input := &rest.RevertInput{
-		Name: name,
-	}
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
+	defer cancel()
 
-	output := &rest.Volume{}
-
-	err = c.post(volume.Actions["revert"], input, output)
-	if err != nil {
-		return nil, err
-	}
-
-	return output, err
-}
-
-func (c *ControllerClient) RevertSnapshot(snapshot string) error {
-	volume, err := c.GetVolume()
-	if err != nil {
-		return err
-	}
-
-	return c.post(volume.Actions["revert"], rest.RevertInput{
+	if _, err := controllerServiceClient.VolumeRevert(ctx, &congtrollerrpc.VolumeRevertRequest{
 		Name: snapshot,
-	}, nil)
+	}); err != nil {
+		return fmt.Errorf("failed to revert to snapshot %v for volume %v: %v", snapshot, c.grpcAddress, err)
+	}
+
+	return nil
 }
 
 func (c *ControllerClient) ListJournal(limit int) error {

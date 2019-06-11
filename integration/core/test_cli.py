@@ -368,7 +368,7 @@ def test_revert(controller_client, grpc_controller_client,
                         'volume-snap-foo1.img']
     assert r1.chain == r2.chain
 
-    v.revert(name='foo1')
+    grpc_controller_client.volume_revert(name='foo1')
 
     r1 = grpc_replica_client.replica_get()
     r2 = grpc_replica_client2.replica_get()
