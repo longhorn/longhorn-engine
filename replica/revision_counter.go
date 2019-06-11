@@ -9,7 +9,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/rancher/sparse-tools/sparse"
+	"github.com/longhorn/sparse-tools/sparse"
 )
 
 const (

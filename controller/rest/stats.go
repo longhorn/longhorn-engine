@@ -5,8 +5,9 @@ import (
 	"net/http"
 
 	"github.com/rancher/go-rancher/api"
-	journal "github.com/rancher/sparse-tools/stats"
 	"github.com/yasker/go-websocket-toolbox/broadcaster"
+
+	journal "github.com/longhorn/sparse-tools/stats"
 
 	"github.com/rancher/longhorn-engine/types"
 )
