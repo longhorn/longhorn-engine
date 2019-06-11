@@ -12,6 +12,7 @@ from os import path
 import pytest
 
 from cmd import snapshot_create
+from cmd import RETRY_COUNTS
 from utils import read_file, checksum_data, SIZE
 from frontend import restdev, blockdev
 from frontend import PAGE_SIZE, LONGHORN_DEV_DIR, get_socket_path  # NOQA
@@ -63,8 +64,6 @@ BACKING_FILE = 'backing_file.raw'
 VOLUME_NAME = 'test-volume_1.0'
 VOLUME2_NAME = 'test-volume_2.0'
 VOLUME_HEAD = 'volume-head'
-
-RETRY_COUNTS = 100
 
 thread_failed = False
 
