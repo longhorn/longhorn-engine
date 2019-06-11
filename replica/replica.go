@@ -17,9 +17,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
+	"github.com/longhorn/sparse-tools/sparse"
+
 	"github.com/rancher/longhorn-engine/types"
 	"github.com/rancher/longhorn-engine/util"
-	"github.com/rancher/sparse-tools/sparse"
 )
 
 const (

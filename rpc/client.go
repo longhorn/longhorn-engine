@@ -8,7 +8,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	journal "github.com/rancher/sparse-tools/stats"
+	journal "github.com/longhorn/sparse-tools/stats"
 )
 
 var (
