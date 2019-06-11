@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/rancher/longhorn-engine/types"
+	"github.com/longhorn/longhorn-engine/types"
 )
 
 type Factory struct {

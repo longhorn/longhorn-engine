@@ -6,7 +6,7 @@ import (
 	"github.com/rancher/go-rancher/api"
 	"github.com/rancher/go-rancher/client"
 
-	"github.com/rancher/longhorn-engine/meta"
+	"github.com/longhorn/longhorn-engine/meta"
 )
 
 func (s *Server) UpdatePort(rw http.ResponseWriter, req *http.Request) error {

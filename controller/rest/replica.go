@@ -8,7 +8,7 @@ import (
 	"github.com/rancher/go-rancher/client"
 	"github.com/yasker/go-websocket-toolbox/broadcaster"
 
-	"github.com/rancher/longhorn-engine/types"
+	"github.com/longhorn/longhorn-engine/types"
 )
 
 func (s *Server) ListReplicas(rw http.ResponseWriter, req *http.Request) error {

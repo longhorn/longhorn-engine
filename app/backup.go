@@ -11,9 +11,9 @@ import (
 	"github.com/rancher/backupstore"
 	"github.com/rancher/backupstore/cmd"
 
-	"github.com/rancher/longhorn-engine/sync"
-	"github.com/rancher/longhorn-engine/types"
-	"github.com/rancher/longhorn-engine/util"
+	"github.com/longhorn/longhorn-engine/sync"
+	"github.com/longhorn/longhorn-engine/types"
+	"github.com/longhorn/longhorn-engine/util"
 )
 
 func BackupCmd() cli.Command {

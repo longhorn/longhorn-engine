@@ -19,8 +19,8 @@ import (
 
 	"github.com/longhorn/sparse-tools/sparse"
 
-	"github.com/rancher/longhorn-engine/types"
-	"github.com/rancher/longhorn-engine/util"
+	"github.com/longhorn/longhorn-engine/types"
+	"github.com/longhorn/longhorn-engine/util"
 )
 
 const (

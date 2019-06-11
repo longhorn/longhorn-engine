@@ -11,13 +11,13 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 
-	"github.com/rancher/longhorn-engine/backend/dynamic"
-	"github.com/rancher/longhorn-engine/backend/file"
-	"github.com/rancher/longhorn-engine/backend/remote"
-	"github.com/rancher/longhorn-engine/controller"
-	"github.com/rancher/longhorn-engine/controller/rest"
-	"github.com/rancher/longhorn-engine/types"
-	"github.com/rancher/longhorn-engine/util"
+	"github.com/longhorn/longhorn-engine/backend/dynamic"
+	"github.com/longhorn/longhorn-engine/backend/file"
+	"github.com/longhorn/longhorn-engine/backend/remote"
+	"github.com/longhorn/longhorn-engine/controller"
+	"github.com/longhorn/longhorn-engine/controller/rest"
+	"github.com/longhorn/longhorn-engine/types"
+	"github.com/longhorn/longhorn-engine/util"
 )
 
 func ControllerCmd() cli.Command {

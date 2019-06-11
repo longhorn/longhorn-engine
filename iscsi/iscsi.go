@@ -11,7 +11,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/yasker/nsfilelock"
 
-	"github.com/rancher/longhorn-engine/util"
+	"github.com/longhorn/longhorn-engine/util"
 )
 
 var (

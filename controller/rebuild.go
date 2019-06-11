@@ -7,8 +7,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
-	"github.com/rancher/longhorn-engine/replica/client"
-	"github.com/rancher/longhorn-engine/types"
+	"github.com/longhorn/longhorn-engine/replica/client"
+	"github.com/longhorn/longhorn-engine/types"
 )
 
 func getReplicaDisksAndHead(address string) (map[string]struct{}, string, error) {

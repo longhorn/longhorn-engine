@@ -1,11 +1,11 @@
 package controller
 
 import (
-	"github.com/rancher/longhorn-engine/frontend/rest"
-	"github.com/rancher/longhorn-engine/frontend/socket"
-	"github.com/rancher/longhorn-engine/frontend/tcmu"
-	"github.com/rancher/longhorn-engine/frontend/tgt"
-	"github.com/rancher/longhorn-engine/types"
+	"github.com/longhorn/longhorn-engine/frontend/rest"
+	"github.com/longhorn/longhorn-engine/frontend/socket"
+	"github.com/longhorn/longhorn-engine/frontend/tcmu"
+	"github.com/longhorn/longhorn-engine/frontend/tgt"
+	"github.com/longhorn/longhorn-engine/types"
 )
 
 var (
