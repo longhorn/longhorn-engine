@@ -10,9 +10,10 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	iutil "github.com/rancher/go-iscsi-helper/util"
 	"github.com/sirupsen/logrus"
 	"github.com/yasker/go-websocket-toolbox/broadcaster"
+
+	iutil "github.com/longhorn/go-iscsi-helper/util"
 
 	"github.com/rancher/longhorn-engine/types"
 	"github.com/rancher/longhorn-engine/util"

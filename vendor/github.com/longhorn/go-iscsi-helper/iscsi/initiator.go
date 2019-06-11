@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/rancher/go-iscsi-helper/util"
+	"github.com/longhorn/go-iscsi-helper/util"
 )
 
 var (
