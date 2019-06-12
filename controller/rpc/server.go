@@ -162,11 +162,25 @@ func (cs *ControllerServer) ReplicaUpdate(ctx context.Context, req *ControllerRe
 }
 
 func (cs *ControllerServer) ReplicaPrepareRebuild(ctx context.Context, req *ReplicaAddress) (*ReplicaPrepareRebuildReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ReplicaPrepareRebuild not implemented")
+	disks, err := cs.c.PrepareRebuildReplica(req.Address)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ReplicaPrepareRebuildReply{
+		Replica: cs.getControllerReplica(req.Address),
+		Disks:   disks,
+	}, nil
 }
+
 func (cs *ControllerServer) ReplicaVerifyRebuild(ctx context.Context, req *ReplicaAddress) (*ControllerReplica, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ReplicaVerifyRebuild not implemented")
+	if err := cs.c.VerifyRebuildReplica(req.Address); err != nil {
+		return nil, err
+	}
+
+	return cs.getControllerReplica(req.Address), nil
 }
+
 func (cs *ControllerServer) JournalList(ctx context.Context, req *JournalListRequest) (*empty.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method JournalList not implemented")
 }

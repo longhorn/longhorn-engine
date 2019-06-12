@@ -36,3 +36,7 @@ type ControllerReplicaInfo struct {
 	Address string `json:"address"`
 	Mode    Mode   `json:"mode"`
 }
+
+type PrepareRebuildOutput struct {
+	Disks []string `json:"disks"`
+}

@@ -310,7 +310,7 @@ func (t *Task) AddReplica(replica string) error {
 		return err
 	}
 
-	output, err := t.client.PrepareRebuild(rest.EncodeID(replica))
+	output, err := t.client.ReplicaPrepareRebuild(replica)
 	if err != nil {
 		return err
 	}
@@ -358,7 +358,7 @@ func (t *Task) reloadAndVerify(address string, repClient *replicaClient.ReplicaC
 		return err
 	}
 
-	if err := t.client.VerifyRebuildReplica(rest.EncodeID(address)); err != nil {
+	if err := t.client.ReplicaVerifyRebuild(address); err != nil {
 		return err
 	}
 

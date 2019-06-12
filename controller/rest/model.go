@@ -48,11 +48,6 @@ type JournalInput struct {
 	Limit int `json:"limit"`
 }
 
-type PrepareRebuildOutput struct {
-	client.Resource
-	Disks []string `json:"disks"`
-}
-
 type PortInput struct {
 	client.Resource
 	Port int `json:"port"`
@@ -101,8 +96,6 @@ func NewReplica(context *api.ApiContext, address string, mode types.Mode) *Repli
 		Address: address,
 		Mode:    string(mode),
 	}
-	r.Actions["preparerebuild"] = context.UrlBuilder.ActionLink(r.Resource, "preparerebuild")
-	r.Actions["verifyrebuild"] = context.UrlBuilder.ActionLink(r.Resource, "verifyrebuild")
 	return r
 }
 
@@ -125,7 +118,6 @@ func NewSchema() *client.Schemas {
 	schemas.AddType("apiVersion", client.Resource{})
 	schemas.AddType("schema", client.Schema{})
 	schemas.AddType("journalInput", JournalInput{})
-	schemas.AddType("prepareRebuildOutput", PrepareRebuildOutput{})
 	schemas.AddType("portInput", PortInput{})
 	schemas.AddType("startFrontendInput", StartFrontendInput{})
 	schemas.AddType("version", Version{})
@@ -133,11 +125,7 @@ func NewSchema() *client.Schemas {
 	replica := schemas.AddType("replica", Replica{})
 	replica.CollectionMethods = []string{"GET", "POST"}
 	replica.ResourceMethods = []string{"GET", "PUT"}
-	replica.ResourceActions = map[string]client.Action{
-		"preparerebuild": {
-			Output: "prepareRebuildOutput",
-		},
-	}
+	replica.ResourceActions = map[string]client.Action{}
 
 	f := replica.ResourceFields["address"]
 	f.Create = true

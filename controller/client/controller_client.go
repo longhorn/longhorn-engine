@@ -246,28 +246,53 @@ func (c *ControllerClient) ReplicaUpdate(replica *types.ControllerReplicaInfo) (
 	return GetControllerReplicaInfo(cr), nil
 }
 
+func (c *ControllerClient) ReplicaPrepareRebuild(address string) (*types.PrepareRebuildOutput, error) {
+	conn, err := grpc.Dial(c.grpcAddress, grpc.WithInsecure())
+	if err != nil {
+		return nil, fmt.Errorf("cannot connect to ControllerService %v: %v", c.grpcAddress, err)
+	}
+	defer conn.Close()
+	controllerServiceClient := congtrollerrpc.NewControllerServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
+	defer cancel()
+
+	reply, err := controllerServiceClient.ReplicaPrepareRebuild(ctx, &congtrollerrpc.ReplicaAddress{
+		Address: address,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to prepare rebuilding replica %v for volume %v: %v", address, c.grpcAddress, err)
+	}
+
+	return &types.PrepareRebuildOutput{
+		Disks: reply.Disks,
+	}, nil
+}
+
+func (c *ControllerClient) ReplicaVerifyRebuild(address string) error {
+	conn, err := grpc.Dial(c.grpcAddress, grpc.WithInsecure())
+	if err != nil {
+		return fmt.Errorf("cannot connect to ControllerService %v: %v", c.grpcAddress, err)
+	}
+	defer conn.Close()
+	controllerServiceClient := congtrollerrpc.NewControllerServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
+	defer cancel()
+
+	if _, err := controllerServiceClient.ReplicaVerifyRebuild(ctx, &congtrollerrpc.ReplicaAddress{
+		Address: address,
+	}); err != nil {
+		return fmt.Errorf("failed to verify rebuilded replica %v for volume %v: %v", address, c.grpcAddress, err)
+	}
+
+	return nil
+}
+
 func (c *ControllerClient) GetReplica(address string) (*rest.Replica, error) {
 	resp := &rest.Replica{}
 	err := c.get("/replicas/"+address, &resp)
 	return resp, err
-}
-
-func (c *ControllerClient) VerifyRebuildReplica(address string) error {
-	replica, err := c.GetReplica(address)
-	if err != nil {
-		return err
-	}
-	return c.post(replica.Actions["verifyrebuild"], &replica, nil)
-}
-
-func (c *ControllerClient) PrepareRebuild(address string) (*rest.PrepareRebuildOutput, error) {
-	var output rest.PrepareRebuildOutput
-	replica, err := c.GetReplica(address)
-	if err != nil {
-		return nil, err
-	}
-	err = c.post(replica.Actions["preparerebuild"], &replica, &output)
-	return &output, err
 }
 
 func (c *ControllerClient) GetVolume() (*rest.Volume, error) {
