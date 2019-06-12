@@ -88,12 +88,23 @@ func (cs *ControllerServer) VolumeFrontendStart(ctx context.Context, req *Volume
 func (cs *ControllerServer) VolumeFrontendShutdown(ctx context.Context, req *empty.Empty) (*Volume, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method VolumeFrontendShutdown not implemented")
 }
+
 func (cs *ControllerServer) VolumePrepareRestore(ctx context.Context, req *VolumePrepareRestoreRequest) (*Volume, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method VolumePrepareRestore not implemented")
+	if err := cs.c.PrepareRestore(req.LastRestored); err != nil {
+		return nil, err
+	}
+
+	return cs.getVolume(), nil
 }
+
 func (cs *ControllerServer) VolumeFinishRestore(ctx context.Context, req *VolumeFinishRestoreRequest) (*Volume, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method VolumeFinishRestore not implemented")
+	if err := cs.c.FinishRestore(req.CurrentRestored); err != nil {
+		return nil, err
+	}
+
+	return cs.getVolume(), nil
 }
+
 func (cs *ControllerServer) ReplicaList(ctx context.Context, req *empty.Empty) (*ReplicaListReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReplicaList not implemented")
 }

@@ -106,6 +106,46 @@ func (c *ControllerClient) VolumeRevert(snapshot string) error {
 	return nil
 }
 
+func (c *ControllerClient) VolumePrepareRestore(lastRestored string) error {
+	conn, err := grpc.Dial(c.grpcAddress, grpc.WithInsecure())
+	if err != nil {
+		return fmt.Errorf("cannot connect to ControllerService %v: %v", c.grpcAddress, err)
+	}
+	defer conn.Close()
+	controllerServiceClient := congtrollerrpc.NewControllerServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
+	defer cancel()
+
+	if _, err := controllerServiceClient.VolumePrepareRestore(ctx, &congtrollerrpc.VolumePrepareRestoreRequest{
+		LastRestored: lastRestored,
+	}); err != nil {
+		return fmt.Errorf("failed to prepare restoring for volume %v: %v", c.grpcAddress, err)
+	}
+
+	return nil
+}
+
+func (c *ControllerClient) VolumeFinishRestore(currentRestored string) error {
+	conn, err := grpc.Dial(c.grpcAddress, grpc.WithInsecure())
+	if err != nil {
+		return fmt.Errorf("cannot connect to ControllerService %v: %v", c.grpcAddress, err)
+	}
+	defer conn.Close()
+	controllerServiceClient := congtrollerrpc.NewControllerServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
+	defer cancel()
+
+	if _, err := controllerServiceClient.VolumeFinishRestore(ctx, &congtrollerrpc.VolumeFinishRestoreRequest{
+		CurrentRestored: currentRestored,
+	}); err != nil {
+		return fmt.Errorf("failed to finish restoring for volume %v: %v", c.grpcAddress, err)
+	}
+
+	return nil
+}
+
 func (c *ControllerClient) ListJournal(limit int) error {
 	err := c.post("/journal", &rest.JournalInput{Limit: limit}, nil)
 	return err
@@ -180,32 +220,6 @@ func (c *ControllerClient) PrepareRebuild(address string) (*rest.PrepareRebuildO
 	}
 	err = c.post(replica.Actions["preparerebuild"], &replica, &output)
 	return &output, err
-}
-
-func (c *ControllerClient) PrepareRestore(lastRestored string) error {
-	volume, err := c.GetVolume()
-	if err != nil {
-		return err
-	}
-
-	input := &rest.PrepareRestoreInput{
-		LastRestored: lastRestored,
-	}
-
-	return c.post(volume.Actions["preparerestore"], input, nil)
-}
-
-func (c *ControllerClient) FinishRestore(currentRestored string) error {
-	volume, err := c.GetVolume()
-	if err != nil {
-		return err
-	}
-
-	input := &rest.FinishRestoreInput{
-		CurrentRestored: currentRestored,
-	}
-
-	return c.post(volume.Actions["finishrestore"], input, nil)
 }
 
 func (c *ControllerClient) GetVolume() (*rest.Volume, error) {
