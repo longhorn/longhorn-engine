@@ -79,10 +79,10 @@ RUN cd /usr/src && \
     dpkg -i ./pkg/tgt_*.deb
 
 # Build longhorn-engine-launcher
-RUN cd /go/src/github.com/rancher && \
-    git clone https://github.com/rancher/longhorn-engine-launcher.git && \
+RUN cd /go/src/github.com/longhorn && \
+    git clone https://github.com/longhorn/longhorn-engine-launcher.git && \
     cd longhorn-engine-launcher && \
-    git checkout f8b9b473c7d08603ec99272c738af4bab5dac2d9 && \
+    git checkout 60cd930107ef19273b9c490814b69a59669e306f && \
     go build && \
     cp longhorn-engine-launcher /usr/local/bin
 
