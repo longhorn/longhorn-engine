@@ -20,7 +20,7 @@ def test_frontend_switch(controller_no_frontend,  # NOQA
     open_replica(grpc_replica1)
     open_replica(grpc_replica2)
 
-    replicas = controller.list_replica()
+    replicas = grpc_controller_no_frontend.replica_list()
     assert len(replicas) == 0
 
     v = grpc_controller_no_frontend.volume_start(replicas=[

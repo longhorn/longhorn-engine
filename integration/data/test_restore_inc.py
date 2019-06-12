@@ -47,7 +47,7 @@ def restore_inc_test(controller, grpc_controller,  # NOQA
     launcher.start_engine_frontend(FRONTEND_TGT_BLOCKDEV,
                                    url=LAUNCHER)
     dev = common.get_dev(grpc_replica1, grpc_replica2,
-                         controller, grpc_controller)
+                         grpc_controller)
 
     zero_string = b'\x00'.decode('utf-8')
 
@@ -223,7 +223,7 @@ def start_no_frontend_volume(c, grpc_c, grpc_r1, grpc_r2):
     open_replica(grpc_r1)
     open_replica(grpc_r2)
 
-    standby_replicas = c.list_replica()
+    standby_replicas = grpc_c.replica_list()
     assert len(standby_replicas) == 0
 
     v = c.list_volume()[0]

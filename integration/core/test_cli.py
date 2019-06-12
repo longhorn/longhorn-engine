@@ -62,7 +62,7 @@ def cleanup_controller(client, grpc_client):
     v = client.list_volume()[0]
     if v.replicaCount != 0:
         grpc_client.volume_shutdown()
-    for r in client.list_replica():
+    for r in grpc_client.replica_list():
         grpc_client.replica_delete(r.address)
     return client
 
@@ -183,7 +183,7 @@ def getNow():
     return datetime.datetime.utcnow().replace(microsecond=0).isoformat()
 
 
-def test_replica_add_rebuild(bin, controller_client,
+def test_replica_add_rebuild(bin, controller_client, grpc_controller_client,
                              grpc_replica_client, grpc_replica_client2):
     open_replica(grpc_replica_client)
     open_replica(grpc_replica_client2)
@@ -222,7 +222,7 @@ def test_replica_add_rebuild(bin, controller_client,
     volume = controller_client.list_volume()[0]
     assert volume.replicaCount == 2
 
-    replicas = controller_client.list_replica()
+    replicas = grpc_controller_client.replica_list()
     assert len(replicas) == 2
 
     for r in replicas:
@@ -279,6 +279,7 @@ def test_replica_add_rebuild(bin, controller_client,
 
 
 def test_replica_add_after_rebuild_failed(bin, controller_client,
+                                          grpc_controller_client,
                                           grpc_replica_client,
                                           grpc_replica_client2):
     open_replica(grpc_replica_client)
@@ -305,7 +306,7 @@ def test_replica_add_after_rebuild_failed(bin, controller_client,
     volume = controller_client.list_volume()[0]
     assert volume.replicaCount == 2
 
-    replicas = controller_client.list_replica()
+    replicas = grpc_controller_client.replica_list()
     assert len(replicas) == 2
 
     for r in replicas:
@@ -332,7 +333,7 @@ def test_replica_failure_detection(controller_client,
 
     detected = False
     for i in range(10):
-        replicas = controller_client.list_replica()
+        replicas = grpc_controller_client.replica_list()
         assert len(replicas) == 2
         for r in replicas:
             if r.address == REPLICA and r.mode == 'ERR':

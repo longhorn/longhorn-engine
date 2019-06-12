@@ -13,7 +13,7 @@ def test_ha_single_replica_failure(controller, grpc_controller,  # NOQA
     open_replica(grpc_replica1)
     open_replica(grpc_replica2)
 
-    replicas = controller.list_replica()
+    replicas = grpc_controller.replica_list()
     assert len(replicas) == 0
 
     v = grpc_controller.volume_start(replicas=[
@@ -22,7 +22,7 @@ def test_ha_single_replica_failure(controller, grpc_controller,  # NOQA
     ])
     assert v.replicaCount == 2
 
-    replicas = controller.list_replica()
+    replicas = grpc_controller.replica_list()
     assert len(replicas) == 2
     assert replicas[0].mode == "RW"
     assert replicas[1].mode == "RW"
@@ -37,7 +37,7 @@ def test_ha_single_replica_failure(controller, grpc_controller,  # NOQA
 
     verify_async(dev, 10, 128, 1)
 
-    common.verify_replica_state(controller, 1, "ERR")
+    common.verify_replica_state(grpc_controller, 1, "ERR")
 
     verify_read(dev, data_offset, data)
 
@@ -47,7 +47,7 @@ def test_ha_single_replica_rebuild(controller, grpc_controller,  # NOQA
     open_replica(grpc_replica1)
     open_replica(grpc_replica2)
 
-    replicas = controller.list_replica()
+    replicas = grpc_controller.replica_list()
     assert len(replicas) == 0
 
     v = grpc_controller.volume_start(replicas=[
@@ -56,7 +56,7 @@ def test_ha_single_replica_rebuild(controller, grpc_controller,  # NOQA
     ])
     assert v.replicaCount == 2
 
-    replicas = controller.list_replica()
+    replicas = grpc_controller.replica_list()
     assert len(replicas) == 2
     assert replicas[0].mode == "RW"
     assert replicas[1].mode == "RW"
@@ -72,7 +72,7 @@ def test_ha_single_replica_rebuild(controller, grpc_controller,  # NOQA
 
     verify_async(dev, 10, 128, 1)
 
-    common.verify_replica_state(controller, 1, "ERR")
+    common.verify_replica_state(grpc_controller, 1, "ERR")
 
     verify_read(dev, data_offset, data)
 
@@ -84,7 +84,7 @@ def test_ha_single_replica_rebuild(controller, grpc_controller,  # NOQA
 
     verify_async(dev, 10, 128, 1)
 
-    common.verify_replica_state(controller, 1, "RW")
+    common.verify_replica_state(grpc_controller, 1, "RW")
 
     verify_read(dev, data_offset, data)
 
@@ -111,7 +111,7 @@ def test_ha_double_replica_rebuild(controller, grpc_controller,  # NOQA
     open_replica(grpc_replica1)
     open_replica(grpc_replica2)
 
-    replicas = controller.list_replica()
+    replicas = grpc_controller.replica_list()
     assert len(replicas) == 0
 
     v = grpc_controller.volume_start(replicas=[
@@ -120,7 +120,7 @@ def test_ha_double_replica_rebuild(controller, grpc_controller,  # NOQA
     ])
     assert v.replicaCount == 2
 
-    replicas = controller.list_replica()
+    replicas = grpc_controller.replica_list()
     assert len(replicas) == 2
     assert replicas[0].mode == "RW"
     assert replicas[1].mode == "RW"
@@ -138,7 +138,7 @@ def test_ha_double_replica_rebuild(controller, grpc_controller,  # NOQA
 
     verify_async(dev, 10, 128, 1)
 
-    common.verify_replica_state(controller, 1, "ERR")
+    common.verify_replica_state(grpc_controller, 1, "ERR")
 
     verify_read(dev, data1_offset, data1)
 
@@ -154,7 +154,7 @@ def test_ha_double_replica_rebuild(controller, grpc_controller,  # NOQA
     # Restart volume
     common.cleanup_controller(controller, grpc_controller)
 
-    replicas = controller.list_replica()
+    replicas = grpc_controller.replica_list()
     assert len(replicas) == 0
 
     # NOTE the order is reversed here
@@ -165,7 +165,7 @@ def test_ha_double_replica_rebuild(controller, grpc_controller,  # NOQA
     assert v.replicaCount == 2
 
     # replica2 is out because of lower revision counter
-    replicas = controller.list_replica()
+    replicas = grpc_controller.replica_list()
     assert len(replicas) == 2
     assert replicas[0].mode == "ERR"
     assert replicas[1].mode == "RW"
@@ -184,7 +184,7 @@ def test_ha_double_replica_rebuild(controller, grpc_controller,  # NOQA
 
     verify_async(dev, 10, 128, 1)
 
-    common.verify_replica_state(controller, 1, "RW")
+    common.verify_replica_state(grpc_controller, 1, "RW")
 
     verify_read(dev, data1_offset, data1)
     verify_read(dev, data2_offset, data2)
@@ -200,7 +200,7 @@ def test_ha_revision_counter_consistency(controller, grpc_controller,  # NOQA
     open_replica(grpc_replica1)
     open_replica(grpc_replica2)
 
-    replicas = controller.list_replica()
+    replicas = grpc_controller.replica_list()
     assert len(replicas) == 0
 
     v = grpc_controller.volume_start(replicas=[
@@ -209,7 +209,7 @@ def test_ha_revision_counter_consistency(controller, grpc_controller,  # NOQA
     ])
     assert v.replicaCount == 2
 
-    replicas = controller.list_replica()
+    replicas = grpc_controller.replica_list()
     assert len(replicas) == 2
     assert replicas[0].mode == "RW"
     assert replicas[1].mode == "RW"
@@ -233,7 +233,7 @@ def test_snapshot_tree_rebuild(controller, grpc_controller,  # NOQA
     open_replica(grpc_replica1)
     open_replica(grpc_replica2)
 
-    replicas = controller.list_replica()
+    replicas = grpc_controller.replica_list()
     assert len(replicas) == 0
 
     v = grpc_controller.volume_start(replicas=[
@@ -242,7 +242,7 @@ def test_snapshot_tree_rebuild(controller, grpc_controller,  # NOQA
     ])
     assert v.replicaCount == 2
 
-    replicas = controller.list_replica()
+    replicas = grpc_controller.replica_list()
     assert len(replicas) == 2
     assert replicas[0].mode == "RW"
     assert replicas[1].mode == "RW"
@@ -260,7 +260,7 @@ def test_snapshot_tree_rebuild(controller, grpc_controller,  # NOQA
 
     verify_async(dev, 10, 128, 1)
 
-    common.verify_replica_state(controller, 1, "ERR")
+    common.verify_replica_state(grpc_controller, 1, "ERR")
 
     verify_read(dev, data_offset, data)
 
@@ -272,7 +272,7 @@ def test_snapshot_tree_rebuild(controller, grpc_controller,  # NOQA
 
     verify_async(dev, 10, 128, 1)
 
-    common.verify_replica_state(controller, 1, "RW")
+    common.verify_replica_state(grpc_controller, 1, "RW")
 
     snapshot_tree_verify(dev, offset, length, snap, snap_data)
 
@@ -284,7 +284,7 @@ def test_ha_single_backing_replica_rebuild(controller, grpc_controller,  # NOQA
     open_replica(grpc_backing_replica1)
     open_replica(grpc_backing_replica2)
 
-    replicas = controller.list_replica()
+    replicas = grpc_controller.replica_list()
     assert len(replicas) == 0
 
     v = grpc_controller.volume_start(replicas=[
@@ -293,7 +293,7 @@ def test_ha_single_backing_replica_rebuild(controller, grpc_controller,  # NOQA
     ])
     assert v.replicaCount == 2
 
-    replicas = controller.list_replica()
+    replicas = grpc_controller.replica_list()
     assert len(replicas) == 2
     assert replicas[0].mode == "RW"
     assert replicas[1].mode == "RW"
@@ -309,7 +309,7 @@ def test_ha_single_backing_replica_rebuild(controller, grpc_controller,  # NOQA
 
     verify_async(dev, 10, 128, 1)
 
-    common.verify_replica_state(controller, 1, "ERR")
+    common.verify_replica_state(grpc_controller, 1, "ERR")
 
     verify_read(dev, data_offset, data)
 
@@ -321,7 +321,7 @@ def test_ha_single_backing_replica_rebuild(controller, grpc_controller,  # NOQA
 
     verify_async(dev, 10, 128, 1)
 
-    common.verify_replica_state(controller, 1, "RW")
+    common.verify_replica_state(grpc_controller, 1, "RW")
 
     verify_read(dev, data_offset, data)
 
@@ -348,7 +348,7 @@ def test_ha_remove_extra_disks(controller, grpc_controller,  # NOQA
     prepare_backup_dir(BACKUP_DIR)
     open_replica(grpc_replica1)
 
-    replicas = controller.list_replica()
+    replicas = grpc_controller.replica_list()
     assert len(replicas) == 0
 
     v = grpc_controller.volume_start(replicas=[
@@ -356,7 +356,7 @@ def test_ha_remove_extra_disks(controller, grpc_controller,  # NOQA
     ])
     assert v.replicaCount == 1
 
-    replicas = controller.list_replica()
+    replicas = grpc_controller.replica_list()
     assert len(replicas) == 1
     assert replicas[0].mode == "RW"
 
@@ -372,7 +372,7 @@ def test_ha_remove_extra_disks(controller, grpc_controller,  # NOQA
     common.cleanup_controller(controller, grpc_controller)
 
     open_replica(grpc_replica2)
-    replicas = controller.list_replica()
+    replicas = grpc_controller.replica_list()
     assert len(replicas) == 0
 
     v = grpc_controller.volume_start(replicas=[
@@ -380,7 +380,7 @@ def test_ha_remove_extra_disks(controller, grpc_controller,  # NOQA
     ])
     assert v.replicaCount == 1
 
-    replicas = controller.list_replica()
+    replicas = grpc_controller.replica_list()
     assert len(replicas) == 1
     assert replicas[0].mode == "RW"
 

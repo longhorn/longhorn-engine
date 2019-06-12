@@ -84,11 +84,10 @@ def _base():
 def dev(request):
     grpc_replica1 = grpc_replica_client(request, GRPC_REPLICA1)
     grpc_replica2 = grpc_replica_client(request, GRPC_REPLICA2)
-    controller = controller_client(request)
+    controller_client(request)
     grpc_controller = grpc_controller_client()
 
-    return get_dev(grpc_replica1, grpc_replica2,
-                   controller, grpc_controller)
+    return get_dev(grpc_replica1, grpc_replica2, grpc_controller)
 
 
 @pytest.fixture()
@@ -97,11 +96,11 @@ def backing_dev(request):
                                         GRPC_BACKED_REPLICA1)
     grpc_replica2 = grpc_replica_client(request,
                                         GRPC_BACKED_REPLICA2)
-    controller = controller_client(request)
+    controller_client(request)
     grpc_controller = grpc_controller_client()
 
     return get_backing_dev(grpc_replica1, grpc_replica2,
-                           controller, grpc_controller)
+                           grpc_controller)
 
 
 @pytest.fixture()
@@ -156,7 +155,7 @@ def cleanup_controller(client, grpc_client):
     v = client.list_volume()[0]
     if v.replicaCount != 0:
         grpc_client.volume_shutdown()
-    for r in client.list_replica():
+    for r in grpc_client.replica_list():
         grpc_client.replica_delete(r.address)
     return client
 
@@ -291,9 +290,9 @@ def verify_loop(dev, times, offset, length):
         verify_data(dev, offset, data)
 
 
-def verify_replica_state(c, index, state):
+def verify_replica_state(grpc_c, index, state):
     for i in range(10):
-        replicas = c.list_replica()
+        replicas = grpc_c.replica_list()
         assert len(replicas) == 2
 
         if replicas[index].mode == state:
@@ -329,12 +328,12 @@ def verify_async(dev, times, length, count):
         raise Exception("data_verifier thread failed")
 
 
-def get_dev(grpc_replica1, grpc_replica2, controller, grpc_controller):
+def get_dev(grpc_replica1, grpc_replica2, grpc_controller):
     prepare_backup_dir(BACKUP_DIR)
     open_replica(grpc_replica1)
     open_replica(grpc_replica2)
 
-    replicas = controller.list_replica()
+    replicas = grpc_controller.replica_list()
     assert len(replicas) == 0
 
     v = grpc_controller.volume_start(replicas=[
@@ -348,12 +347,12 @@ def get_dev(grpc_replica1, grpc_replica2, controller, grpc_controller):
 
 
 def get_backing_dev(grpc_backing_replica1, grpc_backing_replica2,
-                    controller, grpc_controller):
+                    grpc_controller):
     prepare_backup_dir(BACKUP_DIR)
     open_replica(grpc_backing_replica1)
     open_replica(grpc_backing_replica2)
 
-    replicas = controller.list_replica()
+    replicas = grpc_controller.replica_list()
     assert len(replicas) == 0
 
     v = grpc_controller.volume_start(replicas=[

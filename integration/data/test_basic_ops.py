@@ -42,7 +42,7 @@ def test_frontend_show(controller, grpc_controller,  # NOQA
     common.open_replica(grpc_replica1)
     common.open_replica(grpc_replica2)
 
-    replicas = controller.list_replica()
+    replicas = grpc_controller.replica_list()
     assert len(replicas) == 0
 
     v = grpc_controller.volume_start(replicas=[
@@ -71,7 +71,7 @@ def test_cleanup_leftover_blockdev(controller, grpc_controller,  # NOQA
     common.open_replica(grpc_replica1)
     common.open_replica(grpc_replica2)
 
-    replicas = controller.list_replica()
+    replicas = grpc_controller.replica_list()
     assert len(replicas) == 0
 
     blockdev = path.join(frontend.LONGHORN_DEV_DIR, common.VOLUME_NAME)

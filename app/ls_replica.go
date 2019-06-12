@@ -10,6 +10,7 @@ import (
 
 	"github.com/longhorn/longhorn-engine/controller/client"
 	replicaClient "github.com/longhorn/longhorn-engine/replica/client"
+	"github.com/longhorn/longhorn-engine/types"
 )
 
 func LsReplicaCmd() cli.Command {
@@ -33,7 +34,7 @@ func getCli(c *cli.Context) *client.ControllerClient {
 func lsReplica(c *cli.Context) error {
 	controllerClient := getCli(c)
 
-	reps, err := controllerClient.ListReplicas()
+	reps, err := controllerClient.ReplicaList()
 	if err != nil {
 		return err
 	}
@@ -42,7 +43,7 @@ func lsReplica(c *cli.Context) error {
 	tw := tabwriter.NewWriter(os.Stdout, 0, 20, 1, ' ', 0)
 	fmt.Fprintf(tw, format, "ADDRESS", "MODE", "CHAIN")
 	for _, r := range reps {
-		if r.Mode == "ERR" {
+		if r.Mode == types.ERR {
 			fmt.Fprintf(tw, format, r.Address, r.Mode, "")
 			continue
 		}

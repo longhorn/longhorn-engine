@@ -8,14 +8,7 @@ import (
 
 	"github.com/longhorn/longhorn-engine/controller"
 	"github.com/longhorn/longhorn-engine/meta"
-	"github.com/longhorn/longhorn-engine/types"
 )
-
-type Replica struct {
-	client.Resource
-	Address string `json:"address"`
-	Mode    string `json:"mode"`
-}
 
 type Volume struct {
 	client.Resource
@@ -31,11 +24,6 @@ type Volume struct {
 type VolumeCollection struct {
 	client.Collection
 	Data []Volume `json:"data"`
-}
-
-type ReplicaCollection struct {
-	client.Collection
-	Data []Replica `json:"data"`
 }
 
 type DiskCollection struct {
@@ -86,19 +74,6 @@ func NewVolume(context *api.ApiContext, name, endpoint, frontend, frontendState 
 	return v
 }
 
-func NewReplica(context *api.ApiContext, address string, mode types.Mode) *Replica {
-	r := &Replica{
-		Resource: client.Resource{
-			Id:      EncodeID(address),
-			Type:    "replica",
-			Actions: map[string]string{},
-		},
-		Address: address,
-		Mode:    string(mode),
-	}
-	return r
-}
-
 func DencodeID(id string) (string, error) {
 	b, err := base64.StdEncoding.DecodeString(id)
 	if err != nil {
@@ -121,19 +96,6 @@ func NewSchema() *client.Schemas {
 	schemas.AddType("portInput", PortInput{})
 	schemas.AddType("startFrontendInput", StartFrontendInput{})
 	schemas.AddType("version", Version{})
-
-	replica := schemas.AddType("replica", Replica{})
-	replica.CollectionMethods = []string{"GET", "POST"}
-	replica.ResourceMethods = []string{"GET", "PUT"}
-	replica.ResourceActions = map[string]client.Action{}
-
-	f := replica.ResourceFields["address"]
-	f.Create = true
-	replica.ResourceFields["address"] = f
-
-	f = replica.ResourceFields["mode"]
-	f.Update = true
-	replica.ResourceFields["mode"] = f
 
 	volumes := schemas.AddType("volume", Volume{})
 	volumes.ResourceActions = map[string]client.Action{

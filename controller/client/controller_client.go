@@ -10,6 +10,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -180,10 +181,49 @@ func (c *ControllerClient) ListJournal(limit int) error {
 	return err
 }
 
-func (c *ControllerClient) ListReplicas() ([]rest.Replica, error) {
-	var resp rest.ReplicaCollection
-	err := c.get("/replicas", &resp)
-	return resp.Data, err
+func (c *ControllerClient) ReplicaList() ([]*types.ControllerReplicaInfo, error) {
+	conn, err := grpc.Dial(c.grpcAddress, grpc.WithInsecure())
+	if err != nil {
+		return nil, fmt.Errorf("cannot connect to ControllerService %v: %v", c.grpcAddress, err)
+	}
+	defer conn.Close()
+	controllerServiceClient := congtrollerrpc.NewControllerServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
+	defer cancel()
+
+	reply, err := controllerServiceClient.ReplicaList(ctx, &empty.Empty{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list replicas for volume %v: %v", c.grpcAddress, err)
+	}
+
+	replicas := []*types.ControllerReplicaInfo{}
+	for _, cr := range reply.Replicas {
+		replicas = append(replicas, GetControllerReplicaInfo(cr))
+	}
+
+	return replicas, nil
+}
+
+func (c *ControllerClient) ReplicaGet(address string) (*types.ControllerReplicaInfo, error) {
+	conn, err := grpc.Dial(c.grpcAddress, grpc.WithInsecure())
+	if err != nil {
+		return nil, fmt.Errorf("cannot connect to ControllerService %v: %v", c.grpcAddress, err)
+	}
+	defer conn.Close()
+	controllerServiceClient := congtrollerrpc.NewControllerServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
+	defer cancel()
+
+	cr, err := controllerServiceClient.ReplicaGet(ctx, &congtrollerrpc.ReplicaAddress{
+		Address: address,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get replica %v for volume %v: %v", address, c.grpcAddress, err)
+	}
+
+	return GetControllerReplicaInfo(cr), nil
 }
 
 func (c *ControllerClient) ReplicaCreate(address string) (*types.ControllerReplicaInfo, error) {
@@ -287,12 +327,6 @@ func (c *ControllerClient) ReplicaVerifyRebuild(address string) error {
 	}
 
 	return nil
-}
-
-func (c *ControllerClient) GetReplica(address string) (*rest.Replica, error) {
-	resp := &rest.Replica{}
-	err := c.get("/replicas/"+address, &resp)
-	return resp, err
 }
 
 func (c *ControllerClient) GetVolume() (*rest.Volume, error) {

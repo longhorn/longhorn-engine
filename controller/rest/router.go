@@ -16,7 +16,6 @@ import (
 
 const (
 	StreamTypeVolume  = "volumes"
-	StreamTypeReplica = "replicas"
 	StreamTypeMetrics = "metrics"
 )
 
@@ -46,10 +45,6 @@ func NewRouter(s *Server) *mux.Router {
 	router.Methods("POST").Path("/v1/volumes/{id}").Queries("action", "startfrontend").Handler(f(schemas, s.StartFrontend))
 	router.Methods("POST").Path("/v1/volumes/{id}").Queries("action", "shutdownfrontend").Handler(f(schemas, s.ShutdownFrontend))
 
-	// Replicas
-	router.Methods("GET").Path("/v1/replicas").Handler(f(schemas, s.ListReplicas))
-	router.Methods("GET").Path("/v1/replicas/{id}").Handler(f(schemas, s.GetReplica))
-
 	// Journal
 	router.Methods("POST").Path("/v1/journal").Handler(f(schemas, s.ListJournal))
 
@@ -62,9 +57,6 @@ func NewRouter(s *Server) *mux.Router {
 	// WebSockets
 	volumeListStream := handler.NewStreamHandlerFunc(StreamTypeVolume, s.processEventVolumeList, s.c.Broadcaster, types.EventTypeVolume, types.EventTypeReplica)
 	router.Path("/v1/ws/volumes").Handler(f(schemas, volumeListStream))
-
-	replicaListStream := handler.NewStreamHandlerFunc(StreamTypeReplica, s.processEventReplicaList, s.c.Broadcaster, types.EventTypeReplica)
-	router.Path("/v1/ws/replicas").Handler(f(schemas, replicaListStream))
 
 	metricsStream := handler.NewStreamHandlerFunc(StreamTypeMetrics, s.processEventMetrics, s.c.Broadcaster, types.EventTypeMetrics)
 	router.Path("/v1/ws/metrics").Handler(f(schemas, metricsStream))

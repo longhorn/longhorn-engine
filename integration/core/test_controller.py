@@ -37,7 +37,7 @@ def cleanup(client, grpc_client):
     v = client.list_volume()[0]
     if v.replicaCount != 0:
         grpc_client.volume_shutdown()
-    for r in client.list_replica():
+    for r in grpc_client.replica_list():
         grpc_client.replica_delete(r.address)
     return client
 
@@ -51,8 +51,8 @@ def random_num():
     return random.randint(0, 1000000)
 
 
-def test_replica_list(client):
-    replicas = client.list_replica()
+def test_replica_list(grpc_client):
+    replicas = grpc_client.replica_list()
     assert len(replicas) == 0
 
 
@@ -64,24 +64,24 @@ def test_replica_create(client, grpc_client):
     grpc_client.replica_create(address=f)
     grpc_client.replica_create(address=f)
 
-    r = client.list_replica()
-    assert len(r) == 1
-    assert r[0].address == f
-    assert r[0].mode == 'WO'
+    rs = grpc_client.replica_list()
+    assert len(rs) == 1
+    assert rs[0].address == f
+    assert rs[0].mode == 'WO'
 
     f2 = 'file://' + random_str()
     with pytest.raises(grpc.RpcError) as e:
         grpc_client.replica_create(address=f2)
     assert 'Can only have one WO replica at a time' in str(e.value)
 
-    r = grpc_client.replica_update(r[0].address, mode='RW')
+    r = grpc_client.replica_update(rs[0].address, mode='RW')
     assert r.mode == 'RW'
 
     replica2 = grpc_client.replica_create(address=f2)
     assert replica2.address == f2
 
-    r = client.list_replica()
-    assert len(r) == 2
+    rs = grpc_client.replica_list()
+    assert len(rs) == 2
 
 
 def test_replica_delete(client, grpc_client):
@@ -93,24 +93,24 @@ def test_replica_delete(client, grpc_client):
     r3 = grpc_client.replica_create(address=f+'3')
     grpc_client.replica_update(r3.address, mode='RW')
 
-    r = client.list_replica()
-    assert len(r) == 3
+    rs = grpc_client.replica_list()
+    assert len(rs) == 3
 
     grpc_client.replica_delete(r1.address)
-    r = client.list_replica()
-    assert len(r) == 2
+    rs = grpc_client.replica_list()
+    assert len(rs) == 2
 
     grpc_client.replica_delete(r1.address)
-    r = client.list_replica()
-    assert len(r) == 2
+    rs = grpc_client.replica_list()
+    assert len(rs) == 2
 
     grpc_client.replica_delete(r2.address)
-    r = client.list_replica()
-    assert len(r) == 1
+    rs = grpc_client.replica_list()
+    assert len(rs) == 1
 
     grpc_client.replica_delete(r3.address)
-    r = client.list_replica()
-    assert len(r) == 0
+    rs = grpc_client.replica_list()
+    assert len(rs) == 0
 
 
 def test_replica_change(client, grpc_client):
@@ -121,7 +121,7 @@ def test_replica_change(client, grpc_client):
     r1 = grpc_client.replica_update(r1.address, mode='RW')
     assert r1.mode == 'RW'
 
-    r1 = client.reload(r1)
+    r1 = grpc_client.replica_get(r1.address)
     assert r1.mode == 'RW'
 
 
@@ -135,7 +135,7 @@ def test_start(client, grpc_client):
     addresses = ['file://' + random_str(), 'file://' + random_str()]
     v = grpc_client.volume_start(replicas=addresses)
 
-    rs = client.list_replica()
+    rs = grpc_client.replica_list()
     assert len(rs) == 2
     assert v.replicaCount == 2
 
@@ -156,5 +156,5 @@ def test_shutdown(client, grpc_client):
     v = grpc_client.volume_shutdown()
     assert v.replicaCount == 0
 
-    r = client.list_replica()
-    assert len(r) == 0
+    rs = grpc_client.replica_list()
+    assert len(rs) == 0

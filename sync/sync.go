@@ -8,7 +8,6 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/longhorn/longhorn-engine/controller/client"
-	"github.com/longhorn/longhorn-engine/controller/rest"
 	"github.com/longhorn/longhorn-engine/replica"
 	replicaClient "github.com/longhorn/longhorn-engine/replica/client"
 	"github.com/longhorn/longhorn-engine/types"
@@ -33,13 +32,13 @@ func NewTask(controller string) *Task {
 func (t *Task) DeleteSnapshot(snapshot string) error {
 	var err error
 
-	replicas, err := t.client.ListReplicas()
+	replicas, err := t.client.ReplicaList()
 	if err != nil {
 		return err
 	}
 
 	for _, r := range replicas {
-		if ok, err := t.isRebuilding(&r); err != nil {
+		if ok, err := t.isRebuilding(r); err != nil {
 			return err
 		} else if ok {
 			return fmt.Errorf("Can not remove a snapshot because %s is rebuilding", r.Address)
@@ -47,7 +46,7 @@ func (t *Task) DeleteSnapshot(snapshot string) error {
 	}
 
 	for _, replica := range replicas {
-		if err = t.markSnapshotAsRemoved(&replica, snapshot); err != nil {
+		if err = t.markSnapshotAsRemoved(replica, snapshot); err != nil {
 			return err
 		}
 	}
@@ -60,13 +59,13 @@ func (t *Task) PurgeSnapshots() error {
 
 	leaves := []string{}
 
-	replicas, err := t.client.ListReplicas()
+	replicas, err := t.client.ReplicaList()
 	if err != nil {
 		return err
 	}
 
 	for _, r := range replicas {
-		if ok, err := t.isRebuilding(&r); err != nil {
+		if ok, err := t.isRebuilding(r); err != nil {
 			return err
 		} else if ok {
 			return fmt.Errorf("Can not purge snapshots because %s is rebuilding", r.Address)
@@ -87,7 +86,7 @@ func (t *Task) PurgeSnapshots() error {
 		// Mark system generated snapshots as removed
 		if !info.UserCreated && !info.Removed {
 			for _, replica := range replicas {
-				if err = t.markSnapshotAsRemoved(&replica, snapshot); err != nil {
+				if err = t.markSnapshotAsRemoved(replica, snapshot); err != nil {
 					return err
 				}
 			}
@@ -117,11 +116,11 @@ func (t *Task) PurgeSnapshots() error {
 				}
 
 				for _, replica := range replicas {
-					ops, err := t.prepareRemoveSnapshot(&replica, snapshot)
+					ops, err := t.prepareRemoveSnapshot(replica, snapshot)
 					if err != nil {
 						return err
 					}
-					if err := t.processRemoveSnapshot(&replica, snapshot, ops); err != nil {
+					if err := t.processRemoveSnapshot(replica, snapshot, ops); err != nil {
 						return err
 					}
 				}
@@ -138,7 +137,7 @@ func (t *Task) PurgeSnapshots() error {
 	return nil
 }
 
-func (t *Task) rmDisk(replicaInController *rest.Replica, disk string, force bool) error {
+func (t *Task) rmDisk(replicaInController *types.ControllerReplicaInfo, disk string, force bool) error {
 	repClient, err := replicaClient.NewReplicaClient(replicaInController.Address)
 	if err != nil {
 		return err
@@ -147,7 +146,7 @@ func (t *Task) rmDisk(replicaInController *rest.Replica, disk string, force bool
 	return repClient.RemoveDisk(disk, force)
 }
 
-func (t *Task) replaceDisk(replicaInController *rest.Replica, target, source string) error {
+func (t *Task) replaceDisk(replicaInController *types.ControllerReplicaInfo, target, source string) error {
 	repClient, err := replicaClient.NewReplicaClient(replicaInController.Address)
 	if err != nil {
 		return err
@@ -170,7 +169,7 @@ func getNameAndIndex(chain []string, snapshot string) (string, int) {
 	return snapshot, index
 }
 
-func (t *Task) isRebuilding(replicaInController *rest.Replica) (bool, error) {
+func (t *Task) isRebuilding(replicaInController *types.ControllerReplicaInfo) (bool, error) {
 	repClient, err := replicaClient.NewReplicaClient(replicaInController.Address)
 	if err != nil {
 		return false, err
@@ -184,7 +183,7 @@ func (t *Task) isRebuilding(replicaInController *rest.Replica) (bool, error) {
 	return replica.Rebuilding, nil
 }
 
-func (t *Task) isDirty(replicaInController *rest.Replica) (bool, error) {
+func (t *Task) isDirty(replicaInController *types.ControllerReplicaInfo) (bool, error) {
 	repClient, err := replicaClient.NewReplicaClient(replicaInController.Address)
 	if err != nil {
 		return false, err
@@ -198,8 +197,8 @@ func (t *Task) isDirty(replicaInController *rest.Replica) (bool, error) {
 	return replica.Dirty, nil
 }
 
-func (t *Task) prepareRemoveSnapshot(replicaInController *rest.Replica, snapshot string) ([]*types.PrepareRemoveAction, error) {
-	if replicaInController.Mode != "RW" {
+func (t *Task) prepareRemoveSnapshot(replicaInController *types.ControllerReplicaInfo, snapshot string) ([]*types.PrepareRemoveAction, error) {
+	if replicaInController.Mode != types.RW {
 		return nil, fmt.Errorf("Can only removed snapshot from replica in mode RW, got %s", replicaInController.Mode)
 	}
 
@@ -216,8 +215,8 @@ func (t *Task) prepareRemoveSnapshot(replicaInController *rest.Replica, snapshot
 	return operations, nil
 }
 
-func (t *Task) markSnapshotAsRemoved(replicaInController *rest.Replica, snapshot string) error {
-	if replicaInController.Mode != "RW" {
+func (t *Task) markSnapshotAsRemoved(replicaInController *types.ControllerReplicaInfo, snapshot string) error {
+	if replicaInController.Mode != types.RW {
 		return fmt.Errorf("Can only mark snapshot as removed from replica in mode RW, got %s", replicaInController.Mode)
 	}
 
@@ -233,12 +232,12 @@ func (t *Task) markSnapshotAsRemoved(replicaInController *rest.Replica, snapshot
 	return nil
 }
 
-func (t *Task) processRemoveSnapshot(replicaInController *rest.Replica, snapshot string, ops []*types.PrepareRemoveAction) error {
+func (t *Task) processRemoveSnapshot(replicaInController *types.ControllerReplicaInfo, snapshot string, ops []*types.PrepareRemoveAction) error {
 	if len(ops) == 0 {
 		return nil
 	}
 
-	if replicaInController.Mode != "RW" {
+	if replicaInController.Mode != types.RW {
 		return fmt.Errorf("Can only removed snapshot from replica in mode RW, got %s", replicaInController.Mode)
 	}
 
@@ -433,37 +432,37 @@ func (t *Task) getTransferClients(address string) (*replicaClient.ReplicaClient,
 	return fromClient, toClient, nil
 }
 
-func (t *Task) getFromReplica() (rest.Replica, error) {
-	replicas, err := t.client.ListReplicas()
+func (t *Task) getFromReplica() (*types.ControllerReplicaInfo, error) {
+	replicas, err := t.client.ReplicaList()
 	if err != nil {
-		return rest.Replica{}, err
+		return &types.ControllerReplicaInfo{}, err
 	}
 
 	for _, r := range replicas {
-		if r.Mode == "RW" {
+		if r.Mode == types.RW {
 			return r, nil
 		}
 	}
 
-	return rest.Replica{}, fmt.Errorf("Failed to find good replica to copy from")
+	return &types.ControllerReplicaInfo{}, fmt.Errorf("Failed to find good replica to copy from")
 }
 
-func (t *Task) getToReplica(address string) (rest.Replica, error) {
-	replicas, err := t.client.ListReplicas()
+func (t *Task) getToReplica(address string) (*types.ControllerReplicaInfo, error) {
+	replicas, err := t.client.ReplicaList()
 	if err != nil {
-		return rest.Replica{}, err
+		return &types.ControllerReplicaInfo{}, err
 	}
 
 	for _, r := range replicas {
 		if r.Address == address {
-			if r.Mode != "WO" {
-				return rest.Replica{}, fmt.Errorf("Replica %s is not in mode WO got: %s", address, r.Mode)
+			if r.Mode != types.WO {
+				return &types.ControllerReplicaInfo{}, fmt.Errorf("Replica %s is not in mode WO got: %s", address, r.Mode)
 			}
 			return r, nil
 		}
 	}
 
-	return rest.Replica{}, fmt.Errorf("Failed to find target replica to copy to")
+	return &types.ControllerReplicaInfo{}, fmt.Errorf("Failed to find target replica to copy to")
 }
 
 func getNonBackingDisks(address string) (map[string]types.DiskInfo, error) {
@@ -488,12 +487,12 @@ func getNonBackingDisks(address string) (map[string]types.DiskInfo, error) {
 	return disks, err
 }
 
-func GetSnapshotsInfo(replicas []rest.Replica) (outputDisks map[string]types.DiskInfo, err error) {
+func GetSnapshotsInfo(replicas []*types.ControllerReplicaInfo) (outputDisks map[string]types.DiskInfo, err error) {
 	defer func() {
 		err = errors.Wrapf(err, "BUG: cannot get snapshot info")
 	}()
 	for _, r := range replicas {
-		if r.Mode != "RW" {
+		if r.Mode != types.RW {
 			continue
 		}
 

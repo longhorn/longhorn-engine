@@ -27,6 +27,17 @@ class ControllerClient(object):
         return self.stub.VolumeRevert(controller_pb2.VolumeRevertRequest(
             name=name))
 
+    def replica_list(self):
+        cr_list = self.stub.ReplicaList(empty_pb2.Empty()).replicas
+        r_list = []
+        for cr in cr_list:
+            r_list.append(ControllerReplicaInfo(cr))
+        return r_list
+
+    def replica_get(self, address):
+        return ControllerReplicaInfo(self.stub.ReplicaGet(
+            controller_pb2.ReplicaAddress(address=address)))
+
     def replica_create(self, address):
         return ControllerReplicaInfo(
             self.stub.ReplicaCreate(
