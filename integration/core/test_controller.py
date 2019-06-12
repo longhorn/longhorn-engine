@@ -38,7 +38,7 @@ def cleanup(client, grpc_client):
     if v.replicaCount != 0:
         grpc_client.volume_shutdown()
     for r in client.list_replica():
-        client.delete(r)
+        grpc_client.replica_delete(r.address)
     return client
 
 
@@ -96,19 +96,19 @@ def test_replica_delete(client, grpc_client):
     r = client.list_replica()
     assert len(r) == 3
 
-    client.delete(r1)
+    grpc_client.replica_delete(r1.address)
     r = client.list_replica()
     assert len(r) == 2
 
-    client.delete(r1)
+    grpc_client.replica_delete(r1.address)
     r = client.list_replica()
     assert len(r) == 2
 
-    client.delete(r2)
+    grpc_client.replica_delete(r2.address)
     r = client.list_replica()
     assert len(r) == 1
 
-    client.delete(r3)
+    grpc_client.replica_delete(r3.address)
     r = client.list_replica()
     assert len(r) == 0
 

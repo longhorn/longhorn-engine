@@ -63,17 +63,6 @@ func (s *Server) getReplica(context *api.ApiContext, id string) *Replica {
 	return nil
 }
 
-func (s *Server) DeleteReplica(rw http.ResponseWriter, req *http.Request) error {
-	vars := mux.Vars(req)
-	id, err := DencodeID(vars["id"])
-	if err != nil {
-		rw.WriteHeader(http.StatusNotFound)
-		return nil
-	}
-
-	return s.c.RemoveReplica(id)
-}
-
 func (s *Server) PrepareRebuildReplica(rw http.ResponseWriter, req *http.Request) error {
 	vars := mux.Vars(req)
 	id, err := DencodeID(vars["id"])

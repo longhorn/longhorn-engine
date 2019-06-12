@@ -76,7 +76,7 @@ def test_ha_single_replica_rebuild(controller, grpc_controller,  # NOQA
 
     verify_read(dev, data_offset, data)
 
-    controller.delete(replicas[1])
+    grpc_controller.replica_delete(replicas[1].address)
 
     # Rebuild replica2
     open_replica(grpc_replica2)
@@ -178,7 +178,7 @@ def test_ha_double_replica_rebuild(controller, grpc_controller,  # NOQA
     assert r2.revisionCounter == 1
     grpc_replica2.replica_close()
 
-    controller.delete(replicas[0])
+    grpc_controller.replica_delete(replicas[0].address)
 
     cmd.add_replica(common.REPLICA2)
 
@@ -264,7 +264,7 @@ def test_snapshot_tree_rebuild(controller, grpc_controller,  # NOQA
 
     verify_read(dev, data_offset, data)
 
-    controller.delete(replicas[1])
+    grpc_controller.replica_delete(replicas[1].address)
 
     # Rebuild replica2
     open_replica(grpc_replica2)
@@ -313,7 +313,7 @@ def test_ha_single_backing_replica_rebuild(controller, grpc_controller,  # NOQA
 
     verify_read(dev, data_offset, data)
 
-    controller.delete(replicas[1])
+    grpc_controller.replica_delete(replicas[1].address)
 
     # Rebuild replica2
     open_replica(grpc_backing_replica2)

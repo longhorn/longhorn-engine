@@ -157,7 +157,7 @@ def cleanup_controller(client, grpc_client):
     if v.replicaCount != 0:
         grpc_client.volume_shutdown()
     for r in client.list_replica():
-        client.delete(r)
+        grpc_client.replica_delete(r.address)
     return client
 
 

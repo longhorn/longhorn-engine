@@ -146,7 +146,11 @@ func (cs *ControllerServer) ReplicaCreate(ctx context.Context, req *ReplicaAddre
 }
 
 func (cs *ControllerServer) ReplicaDelete(ctx context.Context, req *ReplicaAddress) (*empty.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ReplicaDelete not implemented")
+	if err := cs.c.RemoveReplica(req.Address); err != nil {
+		return nil, err
+	}
+
+	return &empty.Empty{}, nil
 }
 
 func (cs *ControllerServer) ReplicaUpdate(ctx context.Context, req *ControllerReplica) (*ControllerReplica, error) {

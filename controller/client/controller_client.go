@@ -207,31 +207,24 @@ func (c *ControllerClient) ReplicaCreate(address string) (*types.ControllerRepli
 	return GetControllerReplicaInfo(cr), nil
 }
 
-func (c *ControllerClient) DeleteReplica(address string) (*rest.Replica, error) {
-	reps, err := c.ListReplicas()
+func (c *ControllerClient) ReplicaDelete(address string) error {
+	conn, err := grpc.Dial(c.grpcAddress, grpc.WithInsecure())
 	if err != nil {
-		return nil, err
+		return fmt.Errorf("cannot connect to ControllerService %v: %v", c.grpcAddress, err)
+	}
+	defer conn.Close()
+	controllerServiceClient := congtrollerrpc.NewControllerServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
+	defer cancel()
+
+	if _, err := controllerServiceClient.ReplicaDelete(ctx, &congtrollerrpc.ReplicaAddress{
+		Address: address,
+	}); err != nil {
+		return fmt.Errorf("failed to delete replica %v for volume %v: %v", address, c.grpcAddress, err)
 	}
 
-	for _, rep := range reps {
-		if rep.Address == address {
-			httpReq, err := http.NewRequest("DELETE", rep.Links["self"], nil)
-			if err != nil {
-				return nil, err
-			}
-			httpResp, err := http.DefaultClient.Do(httpReq)
-			if err != nil {
-				return nil, err
-			}
-			if httpResp.StatusCode >= 300 {
-				content, _ := ioutil.ReadAll(httpResp.Body)
-				return nil, fmt.Errorf("Bad response: %d %s: %s", httpResp.StatusCode, httpResp.Status, content)
-			}
-			return &rep, nil
-		}
-	}
-
-	return nil, nil
+	return nil
 }
 
 func (c *ControllerClient) ReplicaUpdate(replica *types.ControllerReplicaInfo) (*types.ControllerReplicaInfo, error) {
