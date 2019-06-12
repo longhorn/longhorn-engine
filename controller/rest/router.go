@@ -45,9 +45,6 @@ func NewRouter(s *Server) *mux.Router {
 	router.Methods("POST").Path("/v1/volumes/{id}").Queries("action", "startfrontend").Handler(f(schemas, s.StartFrontend))
 	router.Methods("POST").Path("/v1/volumes/{id}").Queries("action", "shutdownfrontend").Handler(f(schemas, s.ShutdownFrontend))
 
-	// Journal
-	router.Methods("POST").Path("/v1/journal").Handler(f(schemas, s.ListJournal))
-
 	// Settings
 	router.Methods("POST").Path("/v1/settings/updateport").Handler(f(schemas, s.UpdatePort))
 

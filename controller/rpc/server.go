@@ -10,6 +10,8 @@ import (
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/status"
 
+	journal "github.com/longhorn/sparse-tools/stats"
+
 	"github.com/longhorn/longhorn-engine/controller"
 	"github.com/longhorn/longhorn-engine/types"
 )
@@ -200,8 +202,11 @@ func (cs *ControllerServer) ReplicaVerifyRebuild(ctx context.Context, req *Repli
 }
 
 func (cs *ControllerServer) JournalList(ctx context.Context, req *JournalListRequest) (*empty.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method JournalList not implemented")
+	//ListJournal flushes operation journal (replica read/write, ping, etc.) accumulated since previous flush
+	journal.PrintLimited(int(req.Limit))
+	return &empty.Empty{}, nil
 }
+
 func (cs *ControllerServer) PortUpdate(ctx context.Context, req *PortUpdateRequest) (*empty.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PortUpdate not implemented")
 }

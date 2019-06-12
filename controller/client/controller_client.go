@@ -176,11 +176,6 @@ func (c *ControllerClient) VolumeFinishRestore(currentRestored string) error {
 	return nil
 }
 
-func (c *ControllerClient) ListJournal(limit int) error {
-	err := c.post("/journal", &rest.JournalInput{Limit: limit}, nil)
-	return err
-}
-
 func (c *ControllerClient) ReplicaList() ([]*types.ControllerReplicaInfo, error) {
 	conn, err := grpc.Dial(c.grpcAddress, grpc.WithInsecure())
 	if err != nil {
@@ -324,6 +319,26 @@ func (c *ControllerClient) ReplicaVerifyRebuild(address string) error {
 		Address: address,
 	}); err != nil {
 		return fmt.Errorf("failed to verify rebuilded replica %v for volume %v: %v", address, c.grpcAddress, err)
+	}
+
+	return nil
+}
+
+func (c *ControllerClient) JournalList(limit int) error {
+	conn, err := grpc.Dial(c.grpcAddress, grpc.WithInsecure())
+	if err != nil {
+		return fmt.Errorf("cannot connect to ControllerService %v: %v", c.grpcAddress, err)
+	}
+	defer conn.Close()
+	controllerServiceClient := congtrollerrpc.NewControllerServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
+	defer cancel()
+
+	if _, err := controllerServiceClient.JournalList(ctx, &congtrollerrpc.JournalListRequest{
+		Limit: int64(limit),
+	}); err != nil {
+		return fmt.Errorf("failed to list journal for volume %v: %v", c.grpcAddress, err)
 	}
 
 	return nil

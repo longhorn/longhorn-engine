@@ -4,10 +4,7 @@ import (
 	"fmt"
 	"net/http"
 
-	"github.com/rancher/go-rancher/api"
 	"github.com/yasker/go-websocket-toolbox/broadcaster"
-
-	journal "github.com/longhorn/sparse-tools/stats"
 
 	"github.com/longhorn/longhorn-engine/types"
 )
@@ -18,17 +15,6 @@ type Metrics struct {
 	ReadLatency    uint64 `json:"readLatency,string"`
 	WriteLatency   uint64 `json:"writeLatency,string"`
 	IOPS           uint64 `json:"iops,string"`
-}
-
-//ListJournal flushes operation journal (replica read/write, ping, etc.) accumulated since previous flush
-func (s *Server) ListJournal(rw http.ResponseWriter, req *http.Request) error {
-	var input JournalInput
-	apiContext := api.GetApiContext(req)
-	if err := apiContext.Read(&input); err != nil {
-		return err
-	}
-	journal.PrintLimited(input.Limit)
-	return nil
 }
 
 func (s *Server) processEventMetrics(e *broadcaster.Event, r *http.Request) (interface{}, error) {
