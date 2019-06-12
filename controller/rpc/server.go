@@ -11,6 +11,7 @@ import (
 	"google.golang.org/grpc/status"
 
 	"github.com/longhorn/longhorn-engine/controller"
+	"github.com/longhorn/longhorn-engine/types"
 )
 
 type ControllerServer struct {
@@ -43,6 +44,30 @@ func (cs *ControllerServer) getVolume() *Volume {
 		IsRestoring:   cs.c.IsRestoring(),
 		LastRestored:  cs.c.LastRestored(),
 	}
+}
+
+func (cs *ControllerServer) getControllerReplica(address string) *ControllerReplica {
+	for _, r := range cs.c.ListReplicas() {
+		if r.Address == address {
+			cr := &ControllerReplica{
+				Address: &ReplicaAddress{
+					Address: r.Address,
+				}}
+			switch r.Mode {
+			case types.WO:
+				cr.Mode = ReplicaMode_WO
+			case types.RW:
+				cr.Mode = ReplicaMode_RW
+			case types.ERR:
+				cr.Mode = ReplicaMode_ERR
+			default:
+				return nil
+			}
+			return cr
+		}
+	}
+
+	return nil
 }
 
 func (cs *ControllerServer) VolumeGet(ctx context.Context, req *empty.Empty) (*Volume, error) {
@@ -111,15 +136,27 @@ func (cs *ControllerServer) ReplicaList(ctx context.Context, req *empty.Empty) (
 func (cs *ControllerServer) ReplicaGet(ctx context.Context, req *ReplicaAddress) (*ControllerReplica, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReplicaGet not implemented")
 }
+
 func (cs *ControllerServer) ReplicaCreate(ctx context.Context, req *ReplicaAddress) (*ControllerReplica, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ReplicaCreate not implemented")
+	if err := cs.c.AddReplica(req.Address); err != nil {
+		return nil, err
+	}
+
+	return cs.getControllerReplica(req.Address), nil
 }
+
 func (cs *ControllerServer) ReplicaDelete(ctx context.Context, req *ReplicaAddress) (*empty.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReplicaDelete not implemented")
 }
+
 func (cs *ControllerServer) ReplicaUpdate(ctx context.Context, req *ControllerReplica) (*ControllerReplica, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method ReplicaUpdate not implemented")
+	if err := cs.c.SetReplicaMode(req.Address.Address, types.Mode(req.Mode.String())); err != nil {
+		return nil, err
+	}
+
+	return cs.getControllerReplica(req.Address.Address), nil
 }
+
 func (cs *ControllerServer) ReplicaPrepareRebuild(ctx context.Context, req *ReplicaAddress) (*ReplicaPrepareRebuildReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReplicaPrepareRebuild not implemented")
 }

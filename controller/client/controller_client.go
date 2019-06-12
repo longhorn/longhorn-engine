@@ -16,6 +16,7 @@ import (
 
 	"github.com/longhorn/longhorn-engine/controller/rest"
 	congtrollerrpc "github.com/longhorn/longhorn-engine/controller/rpc"
+	"github.com/longhorn/longhorn-engine/types"
 	"github.com/longhorn/longhorn-engine/util"
 )
 
@@ -42,6 +43,34 @@ func NewControllerClient(controller string) *ControllerClient {
 		controller:  controller,
 		grpcAddress: grpcAddress,
 	}
+}
+
+func GetControllerReplicaInfo(cr *congtrollerrpc.ControllerReplica) *types.ControllerReplicaInfo {
+	return &types.ControllerReplicaInfo{
+		Address: cr.Address.Address,
+		Mode:    types.Mode(cr.Mode.String()),
+	}
+}
+
+func GetControllerReplica(r *types.ControllerReplicaInfo) *congtrollerrpc.ControllerReplica {
+	cr := &congtrollerrpc.ControllerReplica{
+		Address: &congtrollerrpc.ReplicaAddress{
+			Address: r.Address,
+		},
+	}
+
+	switch r.Mode {
+	case types.WO:
+		cr.Mode = congtrollerrpc.ReplicaMode_WO
+	case types.RW:
+		cr.Mode = congtrollerrpc.ReplicaMode_RW
+	case types.ERR:
+		cr.Mode = congtrollerrpc.ReplicaMode_ERR
+	default:
+		return nil
+	}
+
+	return cr
 }
 
 func (c *ControllerClient) VolumeStart(replicas ...string) error {
@@ -157,12 +186,25 @@ func (c *ControllerClient) ListReplicas() ([]rest.Replica, error) {
 	return resp.Data, err
 }
 
-func (c *ControllerClient) CreateReplica(address string) (*rest.Replica, error) {
-	var resp rest.Replica
-	err := c.post("/replicas", &rest.Replica{
+func (c *ControllerClient) ReplicaCreate(address string) (*types.ControllerReplicaInfo, error) {
+	conn, err := grpc.Dial(c.grpcAddress, grpc.WithInsecure())
+	if err != nil {
+		return nil, fmt.Errorf("cannot connect to ControllerService %v: %v", c.grpcAddress, err)
+	}
+	defer conn.Close()
+	controllerServiceClient := congtrollerrpc.NewControllerServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
+	defer cancel()
+
+	cr, err := controllerServiceClient.ReplicaCreate(ctx, &congtrollerrpc.ReplicaAddress{
 		Address: address,
-	}, &resp)
-	return &resp, err
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to create replica %v for volume %v: %v", address, c.grpcAddress, err)
+	}
+
+	return GetControllerReplicaInfo(cr), nil
 }
 
 func (c *ControllerClient) DeleteReplica(address string) (*rest.Replica, error) {
@@ -192,10 +234,23 @@ func (c *ControllerClient) DeleteReplica(address string) (*rest.Replica, error) 
 	return nil, nil
 }
 
-func (c *ControllerClient) UpdateReplica(replica rest.Replica) (rest.Replica, error) {
-	var resp rest.Replica
-	err := c.put(replica.Links["self"], &replica, &resp)
-	return resp, err
+func (c *ControllerClient) ReplicaUpdate(replica *types.ControllerReplicaInfo) (*types.ControllerReplicaInfo, error) {
+	conn, err := grpc.Dial(c.grpcAddress, grpc.WithInsecure())
+	if err != nil {
+		return nil, fmt.Errorf("cannot connect to ControllerService %v: %v", c.grpcAddress, err)
+	}
+	defer conn.Close()
+	controllerServiceClient := congtrollerrpc.NewControllerServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
+	defer cancel()
+
+	cr, err := controllerServiceClient.ReplicaUpdate(ctx, GetControllerReplica(replica))
+	if err != nil {
+		return nil, fmt.Errorf("failed to update replica %v for volume %v: %v", replica.Address, c.grpcAddress, err)
+	}
+
+	return GetControllerReplicaInfo(cr), nil
 }
 
 func (c *ControllerClient) GetReplica(address string) (*rest.Replica, error) {

@@ -2,10 +2,10 @@ import time
 import random
 import sys
 import os
+import grpc
 
 import pytest
 import cattle
-from cattle import ApiError
 
 # include directory intergration/rpc for module import
 sys.path.append(
@@ -56,13 +56,13 @@ def test_replica_list(client):
     assert len(replicas) == 0
 
 
-def test_replica_create(client):
+def test_replica_create(client, grpc_client):
     f = 'file://' + random_str()
-    replica = client.create_replica(address=f)
+    replica = grpc_client.replica_create(address=f)
     assert replica.address == f
 
-    client.create_replica(address=f)
-    client.create_replica(address=f)
+    grpc_client.replica_create(address=f)
+    grpc_client.replica_create(address=f)
 
     r = client.list_replica()
     assert len(r) == 1
@@ -70,29 +70,28 @@ def test_replica_create(client):
     assert r[0].mode == 'WO'
 
     f2 = 'file://' + random_str()
-    with pytest.raises(ApiError) as e:
-        client.create_replica(address=f2)
-    assert e.value.error.status == 500
-    assert e.value.error.message == 'Can only have one WO replica at a time'
+    with pytest.raises(grpc.RpcError) as e:
+        grpc_client.replica_create(address=f2)
+    assert 'Can only have one WO replica at a time' in str(e.value)
 
-    r = client.update(r[0], mode='RW')
+    r = grpc_client.replica_update(r[0].address, mode='RW')
     assert r.mode == 'RW'
 
-    replica2 = client.create_replica(address=f2)
+    replica2 = grpc_client.replica_create(address=f2)
     assert replica2.address == f2
 
     r = client.list_replica()
     assert len(r) == 2
 
 
-def test_replica_delete(client):
+def test_replica_delete(client, grpc_client):
     f = 'file://' + random_str()
-    r1 = client.create_replica(address=f+'1')
-    client.update(r1, mode='RW')
-    r2 = client.create_replica(address=f+'2')
-    client.update(r2, mode='RW')
-    r3 = client.create_replica(address=f+'3')
-    client.update(r3, mode='RW')
+    r1 = grpc_client.replica_create(address=f+'1')
+    grpc_client.replica_update(r1.address, mode='RW')
+    r2 = grpc_client.replica_create(address=f+'2')
+    grpc_client.replica_update(r2.address, mode='RW')
+    r3 = grpc_client.replica_create(address=f+'3')
+    grpc_client.replica_update(r3.address, mode='RW')
 
     r = client.list_replica()
     assert len(r) == 3
@@ -114,12 +113,12 @@ def test_replica_delete(client):
     assert len(r) == 0
 
 
-def test_replica_change(client):
+def test_replica_change(client, grpc_client):
     f = 'file://' + random_str()
-    r1 = client.create_replica(address=f)
+    r1 = grpc_client.replica_create(address=f)
     assert r1.mode == 'WO'
 
-    r1 = client.update(r1, mode='RW')
+    r1 = grpc_client.replica_update(r1.address, mode='RW')
     assert r1.mode == 'RW'
 
     r1 = client.reload(r1)

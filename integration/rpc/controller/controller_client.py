@@ -26,3 +26,20 @@ class ControllerClient(object):
     def volume_revert(self, name=""):
         return self.stub.VolumeRevert(controller_pb2.VolumeRevertRequest(
             name=name))
+
+    def replica_create(self, address):
+        return ControllerReplicaInfo(
+            self.stub.ReplicaCreate(
+                controller_pb2.ReplicaAddress(address=address)))
+
+    def replica_update(self, address, mode):
+        return ControllerReplicaInfo(
+            self.stub.ReplicaUpdate(
+                controller_pb2.ControllerReplica(
+                    address=controller_pb2.ReplicaAddress(address=address), mode=mode)))
+
+
+class ControllerReplicaInfo(object):
+    def __init__(self, cr):
+        self.address = cr.address.address
+        self.mode = controller_pb2.ReplicaMode.Name(cr.mode)

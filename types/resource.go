@@ -31,3 +31,8 @@ type PrepareRemoveAction struct {
 	Source string `json:"source"`
 	Target string `json:"target"`
 }
+
+type ControllerReplicaInfo struct {
+	Address string `json:"address"`
+	Mode    Mode   `json:"mode"`
+}
