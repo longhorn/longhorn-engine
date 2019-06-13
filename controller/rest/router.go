@@ -6,9 +6,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/rancher/go-rancher/api"
 	"github.com/rancher/go-rancher/client"
-	"github.com/yasker/go-websocket-toolbox/handler"
-
-	"github.com/longhorn/longhorn-engine/types"
 
 	// add pprof endpoint
 	_ "net/http/pprof"
@@ -47,13 +44,6 @@ func NewRouter(s *Server) *mux.Router {
 
 	// Settings
 	router.Methods("POST").Path("/v1/settings/updateport").Handler(f(schemas, s.UpdatePort))
-
-	// WebSockets
-	volumeListStream := handler.NewStreamHandlerFunc(StreamTypeVolume, s.processEventVolumeList, s.c.Broadcaster, types.EventTypeVolume, types.EventTypeReplica)
-	router.Path("/v1/ws/volumes").Handler(f(schemas, volumeListStream))
-
-	metricsStream := handler.NewStreamHandlerFunc(StreamTypeMetrics, s.processEventMetrics, s.c.Broadcaster, types.EventTypeMetrics)
-	router.Path("/v1/ws/metrics").Handler(f(schemas, metricsStream))
 
 	router.PathPrefix("/debug/pprof/").Handler(http.DefaultServeMux)
 

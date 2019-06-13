@@ -6,7 +6,6 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/rancher/go-rancher/api"
 	"github.com/rancher/go-rancher/client"
-	"github.com/yasker/go-websocket-toolbox/broadcaster"
 )
 
 func (s *Server) ListVolumes(rw http.ResponseWriter, req *http.Request) error {
@@ -25,15 +24,6 @@ func (s *Server) volumeList(apiContext *api.ApiContext) (*client.GenericCollecti
 			s.listVolumes(apiContext)[0],
 		},
 	}, nil
-}
-
-func (s *Server) processEventVolumeList(e *broadcaster.Event, r *http.Request) (interface{}, error) {
-	apiContext := api.GetApiContext(r)
-	list, err := s.volumeList(apiContext)
-	if err != nil {
-		return nil, err
-	}
-	return apiContext.PopulateCollection(list)
 }
 
 func (s *Server) GetVolume(rw http.ResponseWriter, req *http.Request) error {

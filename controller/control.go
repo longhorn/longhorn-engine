@@ -12,7 +12,6 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"github.com/yasker/go-websocket-toolbox/broadcaster"
 	"google.golang.org/grpc"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
@@ -54,8 +53,6 @@ type Controller struct {
 	shutdownWG sync.WaitGroup
 	lastError  error
 
-	Broadcaster *broadcaster.Broadcaster
-
 	metrics *types.Metrics
 }
 
@@ -67,7 +64,6 @@ func NewController(name string, factory types.BackendFactory, frontend types.Fro
 		launcher:    launcher,
 		launcherID:  launcherID,
 		isRestoring: false,
-		Broadcaster: &broadcaster.Broadcaster{},
 		metrics:     &types.Metrics{},
 	}
 	c.reset()
@@ -225,7 +221,6 @@ func (c *Controller) Snapshot(name string, labels map[string]string) (string, er
 	if err := c.handleErrorNoLock(c.backend.Snapshot(name, true, created, labels)); err != nil {
 		return "", err
 	}
-	c.Broadcaster.Notify(broadcaster.NewSimpleEvent(types.EventTypeReplica))
 	return name, nil
 }
 
@@ -263,8 +258,6 @@ func (c *Controller) addReplicaNoLock(newBackend types.Backend, address string, 
 
 	go c.monitoring(address, newBackend)
 
-	c.Broadcaster.Notify(broadcaster.NewSimpleEvent(types.EventTypeReplica))
-
 	return nil
 }
 
@@ -295,7 +288,6 @@ func (c *Controller) RemoveReplica(address string) error {
 		}
 	}
 
-	c.Broadcaster.Notify(broadcaster.NewSimpleEvent(types.EventTypeReplica))
 	return nil
 }
 
@@ -327,7 +319,6 @@ func (c *Controller) setReplicaModeNoLock(address string, mode types.Mode) {
 				r.Mode = mode
 				c.replicas[i] = r
 				c.backend.SetMode(address, mode)
-				c.Broadcaster.Notify(broadcaster.NewSimpleEvent(types.EventTypeReplica))
 			} else {
 				logrus.Infof("Ignore set replica %v to mode %v due to it's ERR",
 					address, mode)
@@ -735,13 +726,7 @@ func (c *Controller) metricsStart() {
 	go func() {
 		for {
 			time.Sleep(1 * time.Second)
-			latestMetrics := c.metrics
 			c.metrics = &types.Metrics{}
-			e := &broadcaster.Event{
-				Type: types.EventTypeMetrics,
-				Data: latestMetrics,
-			}
-			c.Broadcaster.Notify(e)
 		}
 	}()
 }
