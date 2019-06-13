@@ -1,4 +1,5 @@
 import random
+import time
 from os import path
 
 import pytest
@@ -20,6 +21,34 @@ def test_basic_rw(dev):  # NOQA
         length = base - offset
         data = common.random_string(length)
         common.verify_data(dev, offset, data)
+
+
+def test_rw_with_metric(controller, grpc_controller,  # NOQA
+                        grpc_replica1, grpc_replica2):  # NOQA
+    rw_dev = common.get_dev(grpc_replica1, grpc_replica2,
+                            grpc_controller)
+
+    replies = grpc_controller.metric_get()
+    # skip the first metric since its fields are 0
+    next(replies).metric
+
+    for i in range(0, 5):
+        base = random.randint(1, SIZE - PAGE_SIZE)
+        offset = (base / PAGE_SIZE) * PAGE_SIZE
+        length = base - offset
+        data = common.random_string(length)
+        common.verify_data(rw_dev, offset, data)
+
+        while 1:
+            try:
+                metric = next(replies).metric
+                # it's hard to confirm the accurate value of metric
+                assert metric.readBandwidth != 0
+                assert metric.writeBandwidth != 0
+                assert metric.iOPS != 0
+                break
+            except StopIteration:
+                time.sleep(1)
 
 
 def test_beyond_boundary(dev):  # NOQA

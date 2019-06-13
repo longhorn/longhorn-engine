@@ -158,3 +158,20 @@ def test_shutdown(client, grpc_client):
 
     rs = grpc_client.replica_list()
     assert len(rs) == 0
+
+
+def test_metric(client, grpc_client):
+    replies = grpc_client.metric_get()
+
+    cnt = 0
+    while cnt < 5:
+        try:
+            metric = next(replies).metric
+            assert metric.readBandwidth == 0
+            assert metric.writeBandwidth == 0
+            assert metric.readLatency == 0
+            assert metric.writeLatency == 0
+            assert metric.iOPS == 0
+            cnt = cnt + 1
+        except StopIteration:
+            time.sleep(1)

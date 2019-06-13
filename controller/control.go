@@ -53,18 +53,20 @@ type Controller struct {
 	shutdownWG sync.WaitGroup
 	lastError  error
 
-	metrics *types.Metrics
+	latestMetrics *types.Metrics
+	metrics       *types.Metrics
 }
 
 func NewController(name string, factory types.BackendFactory, frontend types.Frontend, launcher, launcherID string) *Controller {
 	c := &Controller{
-		factory:     factory,
-		Name:        name,
-		frontend:    frontend,
-		launcher:    launcher,
-		launcherID:  launcherID,
-		isRestoring: false,
-		metrics:     &types.Metrics{},
+		factory:       factory,
+		Name:          name,
+		frontend:      frontend,
+		launcher:      launcher,
+		launcherID:    launcherID,
+		isRestoring:   false,
+		metrics:       &types.Metrics{},
+		latestMetrics: &types.Metrics{},
 	}
 	c.reset()
 	c.metricsStart()
@@ -726,7 +728,12 @@ func (c *Controller) metricsStart() {
 	go func() {
 		for {
 			time.Sleep(1 * time.Second)
+			c.latestMetrics = c.metrics
 			c.metrics = &types.Metrics{}
 		}
 	}()
+}
+
+func (c *Controller) GetLatestMetics() *types.Metrics {
+	return c.latestMetrics
 }

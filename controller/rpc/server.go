@@ -17,6 +17,10 @@ import (
 	"github.com/longhorn/longhorn-engine/types"
 )
 
+const (
+	GRPCRetryCount = 5
+)
+
 type ControllerServer struct {
 	c *controller.Controller
 }
@@ -230,7 +234,37 @@ func (cs *ControllerServer) VersionDetailGet(ctx context.Context, req *empty.Emp
 }
 
 func (cs *ControllerServer) MetricGet(req *empty.Empty, srv ControllerService_MetricGetServer) error {
-	return status.Errorf(codes.Unimplemented, "method MetricGet not implemented")
+	cnt := 0
+	for {
+		latestMetics := cs.c.GetLatestMetics()
+		metric := &Metric{}
+		if latestMetics.IOPS.Read != 0 {
+			metric.ReadBandwidth = latestMetics.Bandwidth.Read
+			metric.ReadLatency = latestMetics.TotalLatency.Read / latestMetics.IOPS.Read
+		}
+		if latestMetics.IOPS.Write != 0 {
+			metric.WriteBandwidth = latestMetics.Bandwidth.Write
+			metric.WriteLatency = latestMetics.TotalLatency.Write / latestMetics.IOPS.Write
+		}
+		metric.IOPS = latestMetics.IOPS.Read + latestMetics.IOPS.Write
+
+		if err := srv.Send(&MetricGetReply{
+			Metric: metric,
+		}); err != nil {
+			logrus.Errorf("failed to send metric in gRPC streaming: %v", err)
+			cnt++
+		} else {
+			cnt = 0
+		}
+
+		if cnt >= GRPCRetryCount {
+			break
+		}
+
+		time.Sleep(1 * time.Second)
+	}
+
+	return nil
 }
 
 func (hc *ControllerHealthCheckServer) Check(context.Context, *healthpb.HealthCheckRequest) (*healthpb.HealthCheckResponse, error) {

@@ -53,6 +53,9 @@ class ControllerClient(object):
                 controller_pb2.ControllerReplica(
                     address=controller_pb2.ReplicaAddress(address=address), mode=mode)))
 
+    def metric_get(self):
+        return self.stub.MetricGet(empty_pb2.Empty())
+
 
 class ControllerReplicaInfo(object):
     def __init__(self, cr):
