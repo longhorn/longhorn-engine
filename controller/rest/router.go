@@ -48,9 +48,6 @@ func NewRouter(s *Server) *mux.Router {
 	// Settings
 	router.Methods("POST").Path("/v1/settings/updateport").Handler(f(schemas, s.UpdatePort))
 
-	// Version
-	router.Methods("GET").Path("/v1/version/details").Handler(f(schemas, s.GetVersionDetails))
-
 	// WebSockets
 	volumeListStream := handler.NewStreamHandlerFunc(StreamTypeVolume, s.processEventVolumeList, s.c.Broadcaster, types.EventTypeVolume, types.EventTypeReplica)
 	router.Path("/v1/ws/volumes").Handler(f(schemas, volumeListStream))

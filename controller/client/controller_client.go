@@ -17,6 +17,7 @@ import (
 
 	"github.com/longhorn/longhorn-engine/controller/rest"
 	congtrollerrpc "github.com/longhorn/longhorn-engine/controller/rpc"
+	"github.com/longhorn/longhorn-engine/meta"
 	"github.com/longhorn/longhorn-engine/types"
 	"github.com/longhorn/longhorn-engine/util"
 )
@@ -359,14 +360,34 @@ func (c *ControllerClient) GetVolume() (*rest.Volume, error) {
 	return &volumes.Data[0], nil
 }
 
-func (c *ControllerClient) GetVersion() (*rest.Version, error) {
-	var version rest.Version
-
-	err := c.get("/version/details", &version)
+func (c *ControllerClient) VersionDetailGet() (*meta.VersionOutput, error) {
+	conn, err := grpc.Dial(c.grpcAddress, grpc.WithInsecure())
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("cannot connect to ControllerService %v: %v", c.grpcAddress, err)
 	}
-	return &version, nil
+	defer conn.Close()
+	controllerServiceClient := congtrollerrpc.NewControllerServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
+	defer cancel()
+
+	reply, err := controllerServiceClient.VersionDetailGet(ctx, &empty.Empty{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get version detail: %v", err)
+	}
+
+	return &meta.VersionOutput{
+		Version:                 reply.Version.Version,
+		GitCommit:               reply.Version.GitCommit,
+		BuildDate:               reply.Version.BuildDate,
+		CLIAPIVersion:           int(reply.Version.CliAPIVersion),
+		CLIAPIMinVersion:        int(reply.Version.CliAPIMinVersion),
+		ControllerAPIVersion:    int(reply.Version.ControllerAPIVersion),
+		ControllerAPIMinVersion: int(reply.Version.ControllerAPIMinVersion),
+		DataFormatVersion:       int(reply.Version.DataFormatVersion),
+		DataFormatMinVersion:    int(reply.Version.DataFormatMinVersion),
+	}, nil
+
 }
 
 func (c *ControllerClient) post(path string, req, resp interface{}) error {

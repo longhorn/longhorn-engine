@@ -39,11 +39,11 @@ func version(c *cli.Context) error {
 	if !c.Bool("client-only") {
 		url := c.GlobalString("url")
 		controllerClient := client.NewControllerClient(url)
-		resp, err := controllerClient.GetVersion()
+		version, err := controllerClient.VersionDetailGet()
 		if err != nil {
 			return err
 		}
-		v.ServerVersion = &resp.VersionOutput
+		v.ServerVersion = version
 	}
 	output, err := json.MarshalIndent(v, "", "\t")
 	if err != nil {

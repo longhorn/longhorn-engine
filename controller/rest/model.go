@@ -7,7 +7,6 @@ import (
 	"github.com/rancher/go-rancher/client"
 
 	"github.com/longhorn/longhorn-engine/controller"
-	"github.com/longhorn/longhorn-engine/meta"
 )
 
 type Volume struct {
@@ -39,11 +38,6 @@ type JournalInput struct {
 type PortInput struct {
 	client.Resource
 	Port int `json:"port"`
-}
-
-type Version struct {
-	client.Resource
-	meta.VersionOutput
 }
 
 type StartFrontendInput struct {
@@ -95,7 +89,6 @@ func NewSchema() *client.Schemas {
 	schemas.AddType("journalInput", JournalInput{})
 	schemas.AddType("portInput", PortInput{})
 	schemas.AddType("startFrontendInput", StartFrontendInput{})
-	schemas.AddType("version", Version{})
 
 	volumes := schemas.AddType("volume", Volume{})
 	volumes.ResourceActions = map[string]client.Action{

@@ -10,6 +10,7 @@ import (
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/status"
 
+	"github.com/longhorn/longhorn-engine/meta"
 	journal "github.com/longhorn/sparse-tools/stats"
 
 	"github.com/longhorn/longhorn-engine/controller"
@@ -210,9 +211,24 @@ func (cs *ControllerServer) JournalList(ctx context.Context, req *JournalListReq
 func (cs *ControllerServer) PortUpdate(ctx context.Context, req *PortUpdateRequest) (*empty.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method PortUpdate not implemented")
 }
+
 func (cs *ControllerServer) VersionDetailGet(ctx context.Context, req *empty.Empty) (*VersionDetailGetReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method VersionDetailGet not implemented")
+	version := meta.GetVersion()
+	return &VersionDetailGetReply{
+		Version: &VersionOutput{
+			Version:                 version.Version,
+			GitCommit:               version.GitCommit,
+			BuildDate:               version.BuildDate,
+			CliAPIVersion:           int64(version.CLIAPIVersion),
+			CliAPIMinVersion:        int64(version.CLIAPIMinVersion),
+			ControllerAPIVersion:    int64(version.ControllerAPIVersion),
+			ControllerAPIMinVersion: int64(version.ControllerAPIMinVersion),
+			DataFormatVersion:       int64(version.DataFormatVersion),
+			DataFormatMinVersion:    int64(version.DataFormatMinVersion),
+		},
+	}, nil
 }
+
 func (cs *ControllerServer) MetricGet(req *empty.Empty, srv ControllerService_MetricGetServer) error {
 	return status.Errorf(codes.Unimplemented, "method MetricGet not implemented")
 }
