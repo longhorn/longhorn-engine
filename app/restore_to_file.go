@@ -10,8 +10,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 
+	"github.com/longhorn/backupstore"
 	"github.com/longhorn/longhorn-engine/util"
-	"github.com/rancher/backupstore"
 )
 
 const (
