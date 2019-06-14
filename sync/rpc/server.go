@@ -1,7 +1,6 @@
 package rpc
 
 import (
-	"bytes"
 	"errors"
 	"fmt"
 	"os"
@@ -13,6 +12,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 
+	"github.com/longhorn/longhorn-engine/backup"
+	"github.com/longhorn/longhorn-engine/replica"
 	"github.com/longhorn/longhorn-engine/types"
 	"github.com/longhorn/longhorn-engine/util"
 )
@@ -24,6 +25,7 @@ type SyncAgentServer struct {
 	startPort       int
 	endPort         int
 	processesByPort map[int]string
+	backupList      sync.Map
 }
 
 func NewSyncAgentServer(startPort, endPort int) *SyncAgentServer {
@@ -180,7 +182,7 @@ func (s *SyncAgentServer) ReceiverLaunch(ctx context.Context, req *ReceiverLaunc
 	return &ReceiverLaunchReply{Port: int32(port)}, nil
 }
 
-func (*SyncAgentServer) BackupCreate(ctx context.Context, req *BackupCreateRequest) (*BackupCreateReply, error) {
+func (s *SyncAgentServer) BackupCreate(ctx context.Context, req *BackupCreateRequest) (*BackupCreateReply, error) {
 	backupType, err := util.CheckBackupType(req.BackupTarget)
 	if err != nil {
 		return nil, err
@@ -198,43 +200,44 @@ func (*SyncAgentServer) BackupCreate(ctx context.Context, req *BackupCreateReque
 		}
 	}
 
-	buf := new(bytes.Buffer)
-
-	cmdline := []string{"sbackup", "create", req.SnapshotFileName,
-		"--dest", req.BackupTarget,
-		"--volume", req.VolumeName}
-	for _, label := range req.Labels {
-		cmdline = append(cmdline, "--label", label)
-	}
-	cmd := reexec.Command(cmdline...)
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Pdeathsig: syscall.SIGKILL,
-	}
-	cmd.Stdout = buf
-	cmd.Stderr = os.Stdout
-	if err := cmd.Start(); err != nil {
+	backupID, replicaObj, err := backup.DoBackupCreate(req.VolumeName, req.SnapshotFileName, req.BackupTarget, req.Labels)
+	if err != nil {
+		logrus.Errorf("Error creating backup: %v", err)
 		return nil, err
 	}
-
-	logrus.Infof("Running %s %v", cmd.Path, cmd.Args)
-	err = cmd.Wait()
 
 	reply := &BackupCreateReply{
-		Backup: buf.String(),
+		Backup: backupID,
 	}
 	fmt.Fprintf(os.Stdout, reply.Backup)
-	if err != nil {
-		logrus.Infof("Error running %s %v: %v", "sbackup", cmd.Args, err)
-		return nil, err
-	}
 
-	logrus.Infof("Done running %s %v, returns %v", "sbackup", cmd.Args, reply.Backup)
+	s.backupList.Store(backupID, replicaObj)
+
+	logrus.Infof("Done initiating backup creation, received backupID: %v", reply.Backup)
 	return reply, nil
 }
 
 func (s *SyncAgentServer) BackupGetStatus(ctx context.Context, req *BackupProgressRequest) (*BackupProgressReply, error) {
-	//not implemented
-	return nil, fmt.Errorf("not implemented")
+	if req.Backup == "" {
+		return nil, fmt.Errorf("bad request: empty backup name")
+	}
+
+	obj, present := s.backupList.Load(req.Backup)
+	if present == false {
+		return nil, fmt.Errorf("backup name[%v] not found", req.Backup)
+	}
+
+	replicaObj, ok := obj.(*replica.Backup)
+	if ok == false {
+		return nil, fmt.Errorf("invalid return value from sync.map")
+	}
+
+	reply := &BackupProgressReply{
+		Progress:    int32(replicaObj.BackupProgress),
+		BackupURL:   replicaObj.BackupURL,
+		BackupError: replicaObj.BackupError,
+	}
+	return reply, nil
 }
 
 func (*SyncAgentServer) BackupRemove(ctx context.Context, req *BackupRemoveRequest) (*Empty, error) {

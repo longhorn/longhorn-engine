@@ -4,15 +4,18 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/sirupsen/logrus"
 
+	"github.com/longhorn/backupstore"
 	"github.com/longhorn/longhorn-engine/replica"
 	replicaClient "github.com/longhorn/longhorn-engine/replica/client"
 	"github.com/longhorn/longhorn-engine/types"
 	"github.com/longhorn/longhorn-engine/util"
-	"github.com/rancher/backupstore"
 )
+
+const BackupStatusRetryAttempts = 3600
 
 func (t *Task) CreateBackup(snapshot, dest string, labels []string, credential map[string]string) (string, error) {
 	var replica *types.ControllerReplicaInfo
@@ -71,10 +74,27 @@ func (t *Task) createBackup(replicaInController *types.ControllerReplicaInfo, sn
 
 	logrus.Infof("Backing up %s on %s, to %s", snapshot, replicaInController.Address, dest)
 
-	backup, err := repClient.CreateBackup(snapshot, dest, volumeName, labels, credential)
+	backupID, err := repClient.CreateBackup(snapshot, dest, volumeName, labels, credential)
 	if err != nil {
 		logrus.Errorf("Failed backing up %s on %s to %s", snapshot, replicaInController.Address, dest)
 		return "", err
+	}
+
+	var backup, backupErr string
+
+	for i := 0; i < BackupStatusRetryAttempts; i++ {
+		_, backup, backupErr, err = repClient.GetBackupStatus(backupID)
+		if err != nil {
+			return backup, err
+		}
+
+		if backupErr != "" {
+			return "", fmt.Errorf(backupErr)
+		}
+		if backup != "" {
+			break
+		}
+		time.Sleep(1 * time.Second)
 	}
 	return backup, nil
 }

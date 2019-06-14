@@ -1,6 +1,7 @@
 package client
 
 import (
+	"encoding/json"
 	"fmt"
 	"strconv"
 	"strings"
@@ -436,6 +437,28 @@ func (c *ReplicaClient) CreateBackup(snapshot, dest, volume string, labels []str
 	}
 
 	return reply.Backup, nil
+}
+
+func (c *ReplicaClient) GetBackupStatus(backupName string) (int, string, string, error) {
+	conn, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure())
+	if err != nil {
+		return -1, "", "", fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
+	}
+	defer conn.Close()
+	syncAgentServiceClient := syncagentrpc.NewSyncAgentServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
+	defer cancel()
+
+	reply, err := syncAgentServiceClient.BackupGetStatus(ctx, &syncagentrpc.BackupProgressRequest{
+		Backup: backupName,
+	})
+
+	if err != nil {
+		return -1, "", "", fmt.Errorf("failed to fetch backup object for %v: %v", backupName, err)
+	}
+
+	return int(reply.Progress), reply.BackupURL, reply.BackupError, nil
 }
 
 func (c *ReplicaClient) RmBackup(backup string) error {

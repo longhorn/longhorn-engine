@@ -7,11 +7,10 @@ import (
 	"runtime"
 	"runtime/debug"
 
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 
-	"github.com/rancher/backupstore"
+	"github.com/longhorn/backupstore"
 
 	"github.com/longhorn/longhorn-engine/replica"
 	"github.com/longhorn/longhorn-engine/util"
@@ -20,26 +19,6 @@ import (
 var (
 	VERSION = "0.0.0"
 	log     = logrus.WithFields(logrus.Fields{"pkg": "backup"})
-
-	backupCreateCmd = cli.Command{
-		Name:  "create",
-		Usage: "create a backup in backupstore: create <snapshot>",
-		Flags: []cli.Flag{
-			cli.StringFlag{
-				Name:  "dest",
-				Usage: "destination of backup if driver supports, would be url like s3://bucket@region/path/ or vfs:///path/",
-			},
-			cli.StringFlag{
-				Name:  "volume",
-				Usage: "volume name",
-			},
-			cli.StringSliceFlag{
-				Name:  "label",
-				Usage: "specify labels for backup, in the format of `--label key1=value1 --label key2=value2`",
-			},
-		},
-		Action: cmdBackupCreate,
-	}
 
 	backupRestoreCmd = cli.Command{
 		Name:  "restore",
@@ -83,7 +62,6 @@ func Main() {
 	app := cli.NewApp()
 	app.Version = VERSION
 	app.Commands = []cli.Command{
-		backupCreateCmd,
 		backupRestoreCmd,
 	}
 	app.Run(os.Args)
@@ -124,65 +102,46 @@ func RequiredMissingError(name string) error {
 	return fmt.Errorf("Cannot find valid required parameter: %v", name)
 }
 
-func cmdBackupCreate(c *cli.Context) {
-	if err := doBackupCreate(c); err != nil {
-		panic(err)
-	}
-}
-
-func doBackupCreate(c *cli.Context) error {
+func DoBackupCreate(volumeName string, snapshotName string, destURL string, labels []string) (string, *replica.Backup, error) {
 	var (
 		err         error
 		backingFile *replica.BackingFile
 		labelMap    map[string]string
 	)
 
-	if c.NArg() == 0 {
-		return RequiredMissingError("snapshot name")
-	}
-	snapshotName := c.Args()[0]
-	if snapshotName == "" {
-		return RequiredMissingError("snapshot name")
+	if volumeName == "" || snapshotName == "" || destURL == "" {
+		return "", nil, fmt.Errorf("missing input parameter")
 	}
 
-	destURL := c.String("dest")
-	if destURL == "" {
-		return RequiredMissingError("dest")
-	}
-
-	volumeName := c.String("volume")
-	if volumeName == "" {
-		return RequiredMissingError("volume")
-	}
 	if !util.ValidVolumeName(volumeName) {
-		return fmt.Errorf("Invalid volume name %v for backup", volumeName)
+		return "", nil, fmt.Errorf("Invalid volume name %v for backup", volumeName)
 	}
-	labels := c.StringSlice("label")
+
 	if labels != nil {
 		labelMap, err = util.ParseLabels(labels)
 		if err != nil {
-			return errors.Wrap(err, "cannot parse backup labels")
+			return "", nil, fmt.Errorf("cannot parse backup labels")
 		}
 	}
 
 	dir, err := os.Getwd()
 	if err != nil {
-		return err
+		return "", nil, err
 	}
 
 	volumeInfo, err := replica.ReadInfo(dir)
 	if err != nil {
-		return err
+		return "", nil, err
 	}
 	if volumeInfo.BackingFileName != "" {
 		backingFileName := volumeInfo.BackingFileName
 		if _, err := os.Stat(backingFileName); err != nil {
-			return err
+			return "", nil, err
 		}
 
 		backingFile, err = openBackingFile(backingFileName)
 		if err != nil {
-			return err
+			return "", nil, err
 		}
 	}
 	replicaBackup := replica.NewBackup(backingFile)
@@ -205,12 +164,13 @@ func doBackupCreate(c *cli.Context) error {
 		DeltaOps: replicaBackup,
 		Labels:   labelMap,
 	}
-	backupURL, err := backupstore.CreateDeltaBlockBackup(config)
+
+	backupID, err := backupstore.CreateDeltaBlockBackup(config)
 	if err != nil {
-		return err
+		return "", nil, err
 	}
-	fmt.Println(backupURL)
-	return nil
+
+	return backupID, replicaBackup, nil
 }
 
 func cmdBackupRestore(c *cli.Context) {
