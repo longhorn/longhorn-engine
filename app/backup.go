@@ -1,6 +1,7 @@
 package app
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 
@@ -57,19 +58,75 @@ func BackupCreateCmd() cli.Command {
 func BackupStatusCmd() cli.Command {
 	return cli.Command{
 		Name:  "status",
-		Usage: "query the progress of the backup: status <backupID>",
+		Usage: "query the progress of the backup: status [<backupID>]",
 		Action: func(c *cli.Context) {
-			if err := checkBackupProgress(c); err != nil {
+			if err := checkBackupStatus(c); err != nil {
 				logrus.Fatalf("Error querying backup status: %v", err)
 			}
 		},
 	}
 }
 
-func checkBackupProgress(c *cli.Context) error {
+func getBackupStatus(c *cli.Context, backupID string, replicaAddress string) (*sync.BackupStatusInfo, error) {
+	if backupID == "" {
+		return nil, fmt.Errorf("Missing required parameter backupID")
+	}
+	//Fetch backupObject using the replicaIP
+	task := sync.NewTask(c.GlobalString("url"))
+
+	backupStatus, err := task.FetchBackupStatus(backupID, replicaAddress)
+	if err != nil {
+		return nil, err
+	}
+
+	return backupStatus, nil
+}
+
+func fetchAllBackups(c *cli.Context) error {
+	backupProgressList := make(map[string]*sync.BackupStatusInfo)
+
+	cli := getCli(c)
+	backupReplicaMap, err := cli.BackupReplicaMappingGet()
+	if err != nil {
+		return fmt.Errorf("failed to get list of backupIDs:%v", err)
+	}
+
+	for backupID, replicaAddress := range backupReplicaMap {
+		status, err := getBackupStatus(c, backupID, replicaAddress)
+		if err != nil {
+			if strings.Contains(err.Error(), "backup not found") {
+				err := cli.BackupReplicaMappingDelete(backupID)
+				if err != nil {
+					return err
+				}
+			} else {
+				return err
+			}
+		}
+		if status == nil {
+			continue
+		}
+
+		backupProgressList[backupID] = status
+	}
+
+	if backupProgressList == nil {
+		return nil
+	}
+
+	output, err := cmd.ResponseOutput(backupProgressList)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(string(output))
+	return nil
+}
+
+func checkBackupStatus(c *cli.Context) error {
 	backupID := c.Args().First()
 	if backupID == "" {
-		return fmt.Errorf("Missing required parameter backupID")
+		return fetchAllBackups(c)
 	}
 
 	client := getCli(c)
@@ -86,15 +143,15 @@ func checkBackupProgress(c *cli.Context) error {
 		return fmt.Errorf("replica address is empty")
 	}
 
-
-	//Fetch backupObject using the replicaIP
-	task := sync.NewTask(c.GlobalString("url"))
-
-	backupStatus, err := task.FetchBackupStatus(backupID, replicaAddress)
+	status, err := getBackupStatus(c, backupID, replicaAddress)
 	if err != nil {
 		return err
 	}
 
+	backupStatus, err := json.Marshal(status)
+	if err != nil {
+		return err
+	}
 	fmt.Println(string(backupStatus))
 	return nil
 }
