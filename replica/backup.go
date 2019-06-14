@@ -29,7 +29,7 @@ type Backup struct {
 	backingFile    *BackingFile
 	replica        *Replica
 	volumeID       string
-	snapshotID     string
+	SnapshotID     string
 	BackupError    string
 	BackupProgress int
 	BackupURL      string
@@ -76,12 +76,12 @@ func (rb *Backup) OpenSnapshot(snapID, volumeID string) error {
 	id := GenerateSnapshotDiskName(snapID)
 	rb.lock.Lock()
 	defer rb.lock.Unlock()
-	if rb.volumeID == volumeID && rb.snapshotID == id {
+	if rb.volumeID == volumeID && rb.SnapshotID == id {
 		return nil
 	}
 
 	if rb.volumeID != "" {
-		return fmt.Errorf("Volume %s and snapshot %s are already open, close first", rb.volumeID, rb.snapshotID)
+		return fmt.Errorf("Volume %s and snapshot %s are already open, close first", rb.volumeID, rb.SnapshotID)
 	}
 
 	dir, err := os.Getwd()
@@ -95,14 +95,14 @@ func (rb *Backup) OpenSnapshot(snapID, volumeID string) error {
 
 	rb.replica = r
 	rb.volumeID = volumeID
-	rb.snapshotID = id
+	rb.SnapshotID = id
 
 	return nil
 }
 
 func (rb *Backup) assertOpen(id, volumeID string) error {
-	if rb.volumeID != volumeID || rb.snapshotID != id {
-		return fmt.Errorf("Invalid state volume [%s] and snapshot [%s] are open, not volume [%s], snapshot [%s]", rb.volumeID, rb.snapshotID, volumeID, id)
+	if rb.volumeID != volumeID || rb.SnapshotID != id {
+		return fmt.Errorf("Invalid state volume [%s] and snapshot [%s] are open, not volume [%s], snapshot [%s]", rb.volumeID, rb.SnapshotID, volumeID, id)
 	}
 	return nil
 }
@@ -114,7 +114,7 @@ func (rb *Backup) ReadSnapshot(snapID, volumeID string, start int64, data []byte
 	if err := rb.assertOpen(id, volumeID); err != nil {
 		return err
 	}
-	if rb.snapshotID != id && rb.volumeID != volumeID {
+	if rb.SnapshotID != id && rb.volumeID != volumeID {
 		return fmt.Errorf("Snapshot %s and volume %s are not open", id, volumeID)
 	}
 
@@ -138,7 +138,12 @@ func (rb *Backup) CloseSnapshot(snapID, volumeID string) error {
 
 	rb.replica = nil
 	rb.volumeID = ""
-	rb.snapshotID = ""
+	//Keeping the SnapshotID value populated as this will be used by the engine for displaying the progress
+	//associated with this snapshot.
+	//Also, this serves the purpose to ensure if the snapshot file is open or not as assertOpen function will check
+	//for both volumeID and SnapshotID to be ""
+
+	//rb.snapshotID = ""
 
 	return err
 }
