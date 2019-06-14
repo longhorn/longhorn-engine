@@ -7,7 +7,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/rancher/backupstore"
+	"github.com/longhorn/backupstore"
 )
 
 const (

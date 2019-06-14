@@ -8,8 +8,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 
-	"github.com/rancher/backupstore"
-	"github.com/rancher/backupstore/cmd"
+	"github.com/longhorn/backupstore"
+	"github.com/longhorn/backupstore/cmd"
 
 	"github.com/longhorn/longhorn-engine/sync"
 	"github.com/longhorn/longhorn-engine/types"
