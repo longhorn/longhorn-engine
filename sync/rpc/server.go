@@ -232,10 +232,16 @@ func (s *SyncAgentServer) BackupGetStatus(ctx context.Context, req *BackupProgre
 		return nil, fmt.Errorf("invalid return value from sync.map")
 	}
 
+	snapshotName, err := replica.GetSnapshotNameFromDiskName(replicaObj.SnapshotID)
+	if err != nil {
+		return nil, fmt.Errorf("couldn't get snapshot name: %v", err)
+	}
+
 	reply := &BackupProgressReply{
-		Progress:    int32(replicaObj.BackupProgress),
-		BackupURL:   replicaObj.BackupURL,
-		BackupError: replicaObj.BackupError,
+		Progress:     int32(replicaObj.BackupProgress),
+		BackupURL:    replicaObj.BackupURL,
+		BackupError:  replicaObj.BackupError,
+		SnapshotName: snapshotName,
 	}
 	return reply, nil
 }
