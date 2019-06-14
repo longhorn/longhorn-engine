@@ -4,12 +4,12 @@ import subprocess
 import time
 import threading
 import sys
+import grpc
 
 import os
 from os import path
 
 import pytest
-import cattle
 
 from cmd import snapshot_create
 from utils import read_file, checksum_data, SIZE
@@ -49,11 +49,8 @@ GRPC_STANDBY_REPLICA2 = 'localhost:9552'
 STANDBY_REPLICA1_PATH = '/tmp/standby_vol_replica_1/'
 STANDBY_REPLICA2_PATH = '/tmp/standby_vol_replica_2/'
 
-GRPC_CONTROLLER = "localhost:9505"
-GRPC_CONTROLLER_NO_FRONTEND = "localhost:9805"
-
-CONTROLLER_SCHEMA = "http://localhost:9501/v1/schemas"
-CONTROLLER_NO_FRONTEND_SCHEMA = "http://localhost:9801/v1/schemas"
+GRPC_CONTROLLER = "localhost:9501"
+GRPC_CONTROLLER_NO_FRONTEND = "localhost:9801"
 
 LONGHORN_BINARY = './bin/longhorn'
 LONGHORN_UPGRADE_BINARY = '/opt/longhorn'
@@ -84,8 +81,7 @@ def _base():
 def dev(request):
     grpc_replica1 = grpc_replica_client(request, GRPC_REPLICA1)
     grpc_replica2 = grpc_replica_client(request, GRPC_REPLICA2)
-    controller_client(request)
-    grpc_controller = grpc_controller_client()
+    grpc_controller = grpc_controller_client(request)
 
     return get_dev(grpc_replica1, grpc_replica2, grpc_controller)
 
@@ -96,68 +92,47 @@ def backing_dev(request):
                                         GRPC_BACKED_REPLICA1)
     grpc_replica2 = grpc_replica_client(request,
                                         GRPC_BACKED_REPLICA2)
-    controller_client(request)
-    grpc_controller = grpc_controller_client()
+    grpc_controller = grpc_controller_client(request)
 
     return get_backing_dev(grpc_replica1, grpc_replica2,
                            grpc_controller)
 
 
 @pytest.fixture()
-def controller(request):
-    return controller_client(request)
+def grpc_controller(request):
+    return grpc_controller_client(request)
+
+
+def grpc_controller_client(request):
+    c = ControllerClient(GRPC_CONTROLLER)
+    request.addfinalizer(lambda: cleanup_controller(c))
+    return cleanup_controller(c)
 
 
 @pytest.fixture()
-def grpc_controller():
-    return grpc_controller_client()
+def grpc_controller_no_frontend(request):
+    return grpc_controller_no_frontend_client(request)
 
 
-def controller_client(request):
-    url = CONTROLLER_SCHEMA
-    c = cattle.from_env(url=url)
-    grpc_c = ControllerClient(GRPC_CONTROLLER)
-    request.addfinalizer(lambda: cleanup_controller(c, grpc_c))
-    c = cleanup_controller(c, grpc_c)
-    assert c.list_volume()[0].replicaCount == 0
-    return c
+def grpc_controller_no_frontend_client(request):
+    c = ControllerClient(GRPC_CONTROLLER_NO_FRONTEND)
+    request.addfinalizer(lambda: cleanup_controller(c))
+    return cleanup_controller(c)
 
 
-def grpc_controller_client():
-    return ControllerClient(GRPC_CONTROLLER)
+def cleanup_controller(grpc_client):
+    try:
+        v = grpc_client.volume_get()
+    except grpc.RpcError as grpc_err:
+        if "Socket closed" not in grpc_err.details():
+            raise grpc_err
+        return grpc_client
 
-
-@pytest.fixture()
-def controller_no_frontend(request):
-    return controller_no_frontend_client(request)
-
-
-@pytest.fixture()
-def grpc_controller_no_frontend():
-    return grpc_controller_no_frontend_client()
-
-
-def controller_no_frontend_client(request):
-    url = CONTROLLER_NO_FRONTEND_SCHEMA
-    c = cattle.from_env(url=url)
-    grpc_c = ControllerClient(GRPC_CONTROLLER_NO_FRONTEND)
-    request.addfinalizer(lambda: cleanup_controller(c, grpc_c))
-    c = cleanup_controller(c, grpc_c)
-    assert c.list_volume()[0].replicaCount == 0
-    return c
-
-
-def grpc_controller_no_frontend_client():
-    return ControllerClient(GRPC_CONTROLLER_NO_FRONTEND)
-
-
-def cleanup_controller(client, grpc_client):
-    v = client.list_volume()[0]
     if v.replicaCount != 0:
         grpc_client.volume_shutdown()
     for r in grpc_client.replica_list():
         grpc_client.replica_delete(r.address)
-    return client
+    return grpc_client
 
 
 @pytest.fixture()

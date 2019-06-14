@@ -21,7 +21,7 @@ func (t *Task) CreateBackup(snapshot, dest string, labels []string, credential m
 		return "", fmt.Errorf("Can not backup the head disk in the chain")
 	}
 
-	volume, err := t.client.GetVolume()
+	volume, err := t.client.VolumeGet()
 	if err != nil {
 		return "", err
 	}

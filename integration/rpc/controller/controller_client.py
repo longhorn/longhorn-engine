@@ -10,6 +10,9 @@ class ControllerClient(object):
         self.channel = grpc.insecure_channel(url)
         self.stub = controller_pb2_grpc.ControllerServiceStub(self.channel)
 
+    def volume_get(self):
+        return self.stub.VolumeGet(empty_pb2.Empty())
+
     def volume_start(self, replicas):
         return self.stub.VolumeStart(controller_pb2.VolumeStartRequest(
             replicaAddresses=replicas,
@@ -55,6 +58,13 @@ class ControllerClient(object):
 
     def metric_get(self):
         return self.stub.MetricGet(empty_pb2.Empty())
+
+    def port_update(self, port):
+        try:
+            self.stub.PortUpdate(controller_pb2.PortUpdateRequest(port=port))
+        except grpc.RpcError as grpc_err:
+            if "Socket closed" not in grpc_err.details():
+                raise grpc_err
 
 
 class ControllerReplicaInfo(object):

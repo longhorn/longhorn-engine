@@ -1,14 +1,17 @@
 package rpc
 
 import (
+	"fmt"
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
-	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
-	"google.golang.org/grpc/status"
+	"google.golang.org/grpc/reflection"
 
 	"github.com/longhorn/longhorn-engine/meta"
 	journal "github.com/longhorn/sparse-tools/stats"
@@ -39,6 +42,18 @@ func NewControllerHealthCheckServer(cs *ControllerServer) *ControllerHealthCheck
 	return &ControllerHealthCheckServer{
 		cs: cs,
 	}
+}
+
+func GetControllerGRPCServer(c *controller.Controller) *grpc.Server {
+	grpcServer := grpc.NewServer()
+
+	cs := NewControllerServer(c)
+	RegisterControllerServiceServer(grpcServer, cs)
+
+	healthpb.RegisterHealthServer(grpcServer, NewControllerHealthCheckServer(cs))
+	reflection.Register(grpcServer)
+
+	return grpcServer
 }
 
 func (cs *ControllerServer) replicaToControllerReplica(r *types.Replica) *ControllerReplica {
@@ -93,7 +108,7 @@ func (cs *ControllerServer) listControllerReplica() []*ControllerReplica {
 }
 
 func (cs *ControllerServer) VolumeGet(ctx context.Context, req *empty.Empty) (*Volume, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method VolumeGet not implemented")
+	return cs.getVolume(), nil
 }
 
 func (cs *ControllerServer) VolumeStart(ctx context.Context, req *VolumeStartRequest) (*Volume, error) {
@@ -130,10 +145,19 @@ func (cs *ControllerServer) VolumeRevert(ctx context.Context, req *VolumeRevertR
 }
 
 func (cs *ControllerServer) VolumeFrontendStart(ctx context.Context, req *VolumeFrontendStartRequest) (*Volume, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method VolumeFrontendStart not implemented")
+	if err := cs.c.StartFrontend(req.Frontend); err != nil {
+		return nil, err
+	}
+
+	return cs.getVolume(), nil
 }
+
 func (cs *ControllerServer) VolumeFrontendShutdown(ctx context.Context, req *empty.Empty) (*Volume, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method VolumeFrontendShutdown not implemented")
+	if err := cs.c.ShutdownFrontend(); err != nil {
+		return nil, err
+	}
+
+	return cs.getVolume(), nil
 }
 
 func (cs *ControllerServer) VolumePrepareRestore(ctx context.Context, req *VolumePrepareRestoreRequest) (*Volume, error) {
@@ -213,7 +237,30 @@ func (cs *ControllerServer) JournalList(ctx context.Context, req *JournalListReq
 }
 
 func (cs *ControllerServer) PortUpdate(ctx context.Context, req *PortUpdateRequest) (*empty.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method PortUpdate not implemented")
+	oldServer := cs.c.GRPCServer
+	oldAddr := cs.c.GRPCAddress
+	addrs := strings.Split(oldAddr, ":")
+	newAddr := addrs[0] + ":" + strconv.Itoa(int(req.Port))
+
+	logrus.Infof("About to change to listen to %v", newAddr)
+
+	cs.c.Lock()
+	cs.c.GRPCAddress = newAddr
+	cs.c.GRPCServer = GetControllerGRPCServer(cs.c)
+	if cs.c.GRPCServer == nil {
+		cs.c.Unlock()
+		return nil, fmt.Errorf("Failed to start a new gRPC server %v", newAddr)
+	}
+	cs.c.StartGRPCServer()
+	cs.c.Unlock()
+
+	// this will immediate shutdown all the existing connections.
+	// the pending requests would error out.
+	// we won't use GracefulStop() since there is no timeout setting.
+	oldServer.Stop()
+
+	// unreachable since the grpc server stopped.
+	return &empty.Empty{}, nil
 }
 
 func (cs *ControllerServer) VersionDetailGet(ctx context.Context, req *empty.Empty) (*VersionDetailGetReply, error) {

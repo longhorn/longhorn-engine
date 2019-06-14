@@ -281,7 +281,7 @@ func find(list []string, item string) int {
 }
 
 func (t *Task) AddReplica(replica string) error {
-	volume, err := t.client.GetVolume()
+	volume, err := t.client.VolumeGet()
 	if err != nil {
 		return err
 	}

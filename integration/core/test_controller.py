@@ -5,7 +5,6 @@ import os
 import grpc
 
 import pytest
-import cattle
 
 # include directory intergration/rpc for module import
 sys.path.append(
@@ -16,30 +15,29 @@ sys.path.append(
 from controller.controller_client import ControllerClient  # NOQA
 
 
-GRPC_CONTROLLER = "localhost:9505"
+GRPC_CONTROLLER = "localhost:9501"
 
 
 @pytest.fixture
-def client(request):
-    url = 'http://localhost:9501/v1/schemas'
-    c = cattle.from_env(url=url)
-    grpc_c = ControllerClient(GRPC_CONTROLLER)
-    request.addfinalizer(lambda: cleanup(c, grpc_c))
-    return cleanup(c, grpc_c)
+def grpc_client(request):
+    c = ControllerClient(GRPC_CONTROLLER)
+    request.addfinalizer(lambda: cleanup(c))
+    return cleanup(c)
 
 
-@pytest.fixture
-def grpc_client():
-    return ControllerClient(GRPC_CONTROLLER)
+def cleanup(grpc_client):
+    try:
+        v = grpc_client.volume_get()
+    except grpc.RpcError as grpc_err:
+        if "Socket closed" not in grpc_err.details():
+            raise grpc_err
+        return grpc_client
 
-
-def cleanup(client, grpc_client):
-    v = client.list_volume()[0]
     if v.replicaCount != 0:
         grpc_client.volume_shutdown()
     for r in grpc_client.replica_list():
         grpc_client.replica_delete(r.address)
-    return client
+    return grpc_client
 
 
 @pytest.fixture
@@ -56,7 +54,7 @@ def test_replica_list(grpc_client):
     assert len(replicas) == 0
 
 
-def test_replica_create(client, grpc_client):
+def test_replica_create(grpc_client):
     f = 'file://' + random_str()
     replica = grpc_client.replica_create(address=f)
     assert replica.address == f
@@ -84,7 +82,7 @@ def test_replica_create(client, grpc_client):
     assert len(rs) == 2
 
 
-def test_replica_delete(client, grpc_client):
+def test_replica_delete(grpc_client):
     f = 'file://' + random_str()
     r1 = grpc_client.replica_create(address=f+'1')
     grpc_client.replica_update(r1.address, mode='RW')
@@ -113,7 +111,7 @@ def test_replica_delete(client, grpc_client):
     assert len(rs) == 0
 
 
-def test_replica_change(client, grpc_client):
+def test_replica_change(grpc_client):
     f = 'file://' + random_str()
     r1 = grpc_client.replica_create(address=f)
     assert r1.mode == 'WO'
@@ -125,11 +123,8 @@ def test_replica_change(client, grpc_client):
     assert r1.mode == 'RW'
 
 
-def test_start(client, grpc_client):
-    vs = client.list_volume()
-    assert len(vs) == 1
-
-    v = vs[0]
+def test_start(grpc_client):
+    v = grpc_client.volume_get()
     assert v.replicaCount == 0
 
     addresses = ['file://' + random_str(), 'file://' + random_str()]
@@ -143,10 +138,8 @@ def test_start(client, grpc_client):
     assert set(found_addresses) == set(addresses)
 
 
-def test_shutdown(client, grpc_client):
-    vs = client.list_volume()
-    assert len(vs) == 1
-    v = vs[0]
+def test_shutdown(grpc_client):
+    v = grpc_client.volume_get()
     assert v.replicaCount == 0
 
     addresses = ['file://' + random_str(), 'file://' + random_str()]
@@ -160,7 +153,7 @@ def test_shutdown(client, grpc_client):
     assert len(rs) == 0
 
 
-def test_metric(client, grpc_client):
+def test_metric(grpc_client):
     replies = grpc_client.metric_get()
 
     cnt = 0
@@ -175,3 +168,25 @@ def test_metric(client, grpc_client):
             cnt = cnt + 1
         except StopIteration:
             time.sleep(1)
+
+
+def test_port_update():
+    grpc_client = ControllerClient(GRPC_CONTROLLER)
+    v = grpc_client.volume_get()
+    assert v.replicaCount == 0
+
+    addresses = ['file://' + random_str(), 'file://' + random_str()]
+    v = grpc_client.volume_start(replicas=addresses)
+    assert v.replicaCount == 2
+
+    new_url = "localhost:9505"
+    new_port = 9505
+    grpc_client.port_update(new_port)
+
+    new_grpc_client = ControllerClient(new_url)
+    v = new_grpc_client .volume_get()
+    assert v.replicaCount == 2
+
+    cleanup(new_grpc_client)
+    old_port = 9501
+    new_grpc_client.port_update(old_port)

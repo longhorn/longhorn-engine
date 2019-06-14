@@ -10,7 +10,7 @@ import common
 import frontend
 from common import dev  # NOQA
 from common import PAGE_SIZE, SIZE  # NOQA
-from common import controller, grpc_controller, read_dev, write_dev  # NOQA
+from common import grpc_controller, read_dev, write_dev  # NOQA
 from common import grpc_replica1, grpc_replica2  # NOQA
 
 
@@ -23,7 +23,7 @@ def test_basic_rw(dev):  # NOQA
         common.verify_data(dev, offset, data)
 
 
-def test_rw_with_metric(controller, grpc_controller,  # NOQA
+def test_rw_with_metric(grpc_controller,  # NOQA
                         grpc_replica1, grpc_replica2):  # NOQA
     rw_dev = common.get_dev(grpc_replica1, grpc_replica2,
                             grpc_controller)
@@ -66,7 +66,7 @@ def test_beyond_boundary(dev):  # NOQA
     test_basic_rw(dev)
 
 
-def test_frontend_show(controller, grpc_controller,  # NOQA
+def test_frontend_show(grpc_controller,  # NOQA
                        grpc_replica1, grpc_replica2):  # NOQA
     common.open_replica(grpc_replica1)
     common.open_replica(grpc_replica2)
@@ -95,7 +95,7 @@ def test_frontend_show(controller, grpc_controller,  # NOQA
 
 
 # https://github.com/rancher/longhorn/issues/401
-def test_cleanup_leftover_blockdev(controller, grpc_controller,  # NOQA
+def test_cleanup_leftover_blockdev(grpc_controller,  # NOQA
                                    grpc_replica1, grpc_replica2):  # NOQA
     common.open_replica(grpc_replica1)
     common.open_replica(grpc_replica2)

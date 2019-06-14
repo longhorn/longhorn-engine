@@ -17,7 +17,7 @@ import (
 
 	"github.com/gorilla/handlers"
 	iutil "github.com/longhorn/go-iscsi-helper/util"
-	"github.com/satori/go.uuid"
+	uuid "github.com/satori/go.uuid"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 )
@@ -65,18 +65,6 @@ func GetGRPCAddress(address string) string {
 	}
 
 	return address
-}
-
-func GetControllerGRPCAddress(address string) (string, error) {
-	address = GetGRPCAddress(address)
-
-	port, err := GetPortFromAddress(address)
-	if err != nil {
-		return "", err
-	}
-
-	return strings.Replace(address, fmt.Sprintf(":%d", port), fmt.Sprintf(":%d", port+4), -1), nil
-
 }
 
 func GetPortFromAddress(address string) (int, error) {

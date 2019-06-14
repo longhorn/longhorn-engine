@@ -4,10 +4,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
-	"net/http"
-	"os"
 
-	"github.com/gorilla/handlers"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 
@@ -15,7 +12,7 @@ import (
 	"github.com/longhorn/longhorn-engine/backend/file"
 	"github.com/longhorn/longhorn-engine/backend/remote"
 	"github.com/longhorn/longhorn-engine/controller"
-	"github.com/longhorn/longhorn-engine/controller/rest"
+	controllerrpc "github.com/longhorn/longhorn-engine/controller/rpc"
 	"github.com/longhorn/longhorn-engine/types"
 	"github.com/longhorn/longhorn-engine/util"
 )
@@ -98,16 +95,6 @@ func startController(c *cli.Context) error {
 		control.Shutdown()
 	})
 
-	server := rest.NewServer(control)
-	router := http.Handler(rest.NewRouter(server))
-
-	router = util.FilteredLoggingHandler(map[string]struct{}{
-		"/v1":          {},
-		"/v1/volumes":  {},
-		"/v1/replicas": {},
-	}, os.Stdout, router)
-	router = handlers.ProxyHeaders(router)
-
 	if len(replicas) > 0 {
 		logrus.Infof("Starting with replicas %q", replicas)
 		if err := control.Start(replicas...); err != nil {
@@ -115,17 +102,9 @@ func startController(c *cli.Context) error {
 		}
 	}
 
-	httpServer := &http.Server{
-		Addr:    listen,
-		Handler: router,
-	}
-	control.RestServer = httpServer
+	control.GRPCAddress = util.GetGRPCAddress(listen)
+	control.GRPCServer = controllerrpc.GetControllerGRPCServer(control)
 
-	if err := control.SetControllerGRPCServer(listen); err != nil {
-		return err
-	}
-
-	control.StartRestServer()
 	control.StartGRPCServer()
 	return control.WaitForShutdown()
 }

@@ -3,9 +3,6 @@ package controller
 import (
 	"fmt"
 	"net"
-	"net/http"
-	"strconv"
-	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -13,12 +10,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
-	healthpb "google.golang.org/grpc/health/grpc_health_v1"
-	"google.golang.org/grpc/reflection"
 
 	iutil "github.com/longhorn/go-iscsi-helper/util"
 
-	controllerrpc "github.com/longhorn/longhorn-engine/controller/rpc"
 	"github.com/longhorn/longhorn-engine/types"
 	"github.com/longhorn/longhorn-engine/util"
 )
@@ -45,7 +39,6 @@ type Controller struct {
 
 	listenAddr string
 	listenPort string
-	RestServer *http.Server
 
 	GRPCAddress string
 	GRPCServer  *grpc.Server
@@ -71,26 +64,6 @@ func NewController(name string, factory types.BackendFactory, frontend types.Fro
 	c.reset()
 	c.metricsStart()
 	return c
-}
-
-func (c *Controller) SetControllerGRPCServer(address string) error {
-	grpcServer := grpc.NewServer()
-
-	grpcAddress, err := util.GetControllerGRPCAddress(address)
-	if err != nil {
-		return err
-	}
-	c.GRPCAddress = grpcAddress
-
-	cs := controllerrpc.NewControllerServer(c)
-	controllerrpc.RegisterControllerServiceServer(grpcServer, cs)
-
-	healthpb.RegisterHealthServer(grpcServer, controllerrpc.NewControllerHealthCheckServer(cs))
-	reflection.Register(grpcServer)
-
-	c.GRPCServer = grpcServer
-
-	return nil
 }
 
 func (c *Controller) StartGRPCServer() error {
@@ -126,23 +99,6 @@ func (c *Controller) StartGRPCServer() error {
 		return
 	}()
 	logrus.Infof("Listening on %s", c.GRPCAddress)
-
-	return nil
-}
-
-func (c *Controller) StartRestServer() error {
-	if c.RestServer == nil {
-		return fmt.Errorf("cannot find rest server")
-	}
-	c.shutdownWG.Add(1)
-	go func() {
-		addr := c.RestServer.Addr
-		err := c.RestServer.ListenAndServe()
-		logrus.Errorf("Rest server at %v is down: %v", addr, err)
-		c.lastError = err
-		c.shutdownWG.Done()
-	}()
-	logrus.Infof("Listening on %s", c.RestServer.Addr)
 
 	return nil
 }
@@ -653,32 +609,6 @@ func (c *Controller) cleanupRestoreInfo() {
 	c.lastRestored = ""
 	c.isRestoring = false
 	return
-}
-
-func (c *Controller) UpdatePort(newPort int) error {
-	oldServer := c.RestServer
-	if oldServer == nil {
-		return fmt.Errorf("old rest server doesn't exist")
-	}
-	oldAddr := c.RestServer.Addr
-	handler := c.RestServer.Handler
-	addrs := strings.Split(oldAddr, ":")
-	newAddr := addrs[0] + ":" + strconv.Itoa(newPort)
-
-	logrus.Infof("About to change to listen to %v", newAddr)
-	newServer := &http.Server{
-		Addr:    newAddr,
-		Handler: handler,
-	}
-	c.RestServer = newServer
-	c.StartRestServer()
-
-	// this will immediate shutdown all the existing connections. the
-	// pending http requests would error out
-	if err := oldServer.Close(); err != nil {
-		logrus.Warnf("Failed to close old server at %v: %v", oldAddr, err)
-	}
-	return nil
 }
 
 func (c *Controller) launcherStartFrontend() error {
