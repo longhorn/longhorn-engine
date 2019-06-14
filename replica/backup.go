@@ -26,16 +26,35 @@ type DeltaBlockBackupOperations interface {
 
 type Backup struct {
 	lock           sync.Mutex
-	backingFile *BackingFile
-	replica     *Replica
-	volumeID    string
-	snapshotID  string
+	backingFile    *BackingFile
+	replica        *Replica
+	volumeID       string
+	snapshotID     string
+	BackupError    string
+	BackupProgress int
+	BackupURL      string
 }
 
 func NewBackup(backingFile *BackingFile) *Backup {
 	return &Backup{
 		backingFile: backingFile,
 	}
+}
+
+func (rb *Backup) UpdateBackupStatus(snapID, volumeID string, progress int, url string, errString string) error {
+	id := GenerateSnapshotDiskName(snapID)
+	rb.lock.Lock()
+	defer rb.lock.Unlock()
+	if err := rb.assertOpen(id, volumeID); err != nil {
+		logrus.Errorf("Returning Error from UpdateBackupProgress")
+		return err
+	}
+
+	rb.BackupProgress = progress
+	rb.BackupURL = url
+	rb.BackupError = errString
+
+	return nil
 }
 
 func (rb *Backup) HasSnapshot(snapID, volumeID string) bool {
