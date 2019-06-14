@@ -32,10 +32,10 @@ message Empty {
 }
 
 service LonghornEngineLauncherService {
-	rpc StartEngine(StartEngineRequest) returns (EngineResponse) {}
-	rpc StopEngine(StopEngineRequest) returns (EngineResponse) {}
-	rpc GetEngine(GetEngineRequest) returns (EngineResponse) {}
-	rpc ListEngines(Empty) returns (ListEnginesResponse) {}
+	rpc EngineStart(EngineStartRequest) returns (EngineResponse) {}
+	rpc EngineStop(EngineStopRequest) returns (EngineResponse) {}
+	rpc EngineGet(EngineGetRequest) returns (EngineResponse) {}
+	rpc EngineList(EngineListRequest) returns (EngineListResponse) {}
 
 	//rpc StartReplica(StartReplicaRequest) returns (StartReplicaResponse) {}
 	//rpc StopReplica(StopReplicaRequest) returns (StopReplicaResponse) {}
@@ -51,17 +51,18 @@ message EngineSpec {
 
 message EngineStatus {
 	string status = 1;
+	string error_msg = 2;
 }
 
-message StartEngineRequest {
+message EngineStartRequest {
 	EngineSpec spec = 1;
 }
 
-message StopEngineRequest {
+message EngineStopRequest {
 	string name = 1;
 }
 
-message GetEngineRequest {
+message EngineGetRequest {
 	string name = 1;
 }
 
@@ -70,6 +71,9 @@ message EngineResponse {
 	EngineStatus status = 2;
 }
 
-message ListEnginesResponse{
+message EngineListRequest{
+}
+
+message EngineListResponse{
 	repeated EngineResponse engines = 1;
 }

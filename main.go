@@ -365,6 +365,7 @@ func main() {
 		EngineFrontendShutdownCmd(),
 
 		StartLauncherCmd(),
+		EngineCmd(),
 	}
 	if err := a.Run(os.Args); err != nil {
 		logrus.Fatal("Error when executing command: ", err)

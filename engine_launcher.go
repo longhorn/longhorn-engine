@@ -82,8 +82,9 @@ func (l *EngineLauncher) StartMonitoring() {
 			done = true
 			break
 		case p := <-l.processUpdateCh:
-			//TODO need lock if going to modify engine process
-			logrus.Infof("Process update: %+v", p)
+			p.lock.RLock()
+			logrus.Infof("Process update: %v: state %v: Error: %v", p.Name, p.Status, p.ErrorMsg)
+			p.lock.RUnlock()
 		}
 		if done {
 			break
@@ -125,14 +126,18 @@ func (l *EngineLauncher) StartRPCServer() error {
 	return nil
 }
 
-func (l *EngineLauncher) StartEngine(ctx context.Context, req *rpc.StartEngineRequest) (ret *rpc.EngineResponse, err error) {
+func (l *EngineLauncher) EngineStart(ctx context.Context, req *rpc.EngineStartRequest) (ret *rpc.EngineResponse, err error) {
+	if req.Spec.Name == "" || req.Spec.Binary == "" {
+		return nil, fmt.Errorf("missing required argument")
+	}
+
 	p := &Process{
 		Name:          req.Spec.Name,
 		Binary:        req.Spec.Binary,
 		Args:          req.Spec.Args,
 		ReservedPorts: req.Spec.ReservedPorts,
 
-		Status: EngineStatusStopped,
+		Status: EngineStatusRunning,
 
 		lock: &sync.RWMutex{},
 	}
@@ -148,7 +153,7 @@ func (l *EngineLauncher) StartEngine(ctx context.Context, req *rpc.StartEngineRe
 	return resp, nil
 }
 
-func (l *EngineLauncher) StopEngine(ctx context.Context, req *rpc.StopEngineRequest) (ret *rpc.EngineResponse, err error) {
+func (l *EngineLauncher) EngineStop(ctx context.Context, req *rpc.EngineStopRequest) (ret *rpc.EngineResponse, err error) {
 	p := l.findProcess(req.Name)
 	if p == nil {
 		return nil, fmt.Errorf("cannot find process %v", req.Name)
@@ -181,7 +186,7 @@ func (l *EngineLauncher) findProcess(name string) *Process {
 	return l.processes[name]
 }
 
-func (l *EngineLauncher) GetEngine(ctx context.Context, req *rpc.GetEngineRequest) (*rpc.EngineResponse, error) {
+func (l *EngineLauncher) EngineGet(ctx context.Context, req *rpc.EngineGetRequest) (*rpc.EngineResponse, error) {
 	p := l.findProcess(req.Name)
 	if p == nil {
 		return nil, fmt.Errorf("cannot find process %v", req.Name)
@@ -190,11 +195,11 @@ func (l *EngineLauncher) GetEngine(ctx context.Context, req *rpc.GetEngineReques
 	return p.RPCResponse(), nil
 }
 
-func (l *EngineLauncher) ListEngines(ctx context.Context, req *rpc.Empty) (*rpc.ListEnginesResponse, error) {
+func (l *EngineLauncher) EngineList(ctx context.Context, req *rpc.EngineListRequest) (*rpc.EngineListResponse, error) {
 	l.lock.RLock()
 	defer l.lock.RUnlock()
 
-	resp := &rpc.ListEnginesResponse{
+	resp := &rpc.EngineListResponse{
 		Engines: []*rpc.EngineResponse{},
 	}
 	for _, p := range l.processes {
@@ -256,7 +261,8 @@ func (p *Process) RPCResponse() *rpc.EngineResponse {
 		},
 
 		Status: &rpc.EngineStatus{
-			Status: string(p.Status),
+			Status:   string(p.Status),
+			ErrorMsg: p.ErrorMsg,
 		},
 	}
 }
@@ -277,5 +283,5 @@ func (p *Process) Stop() {
 func (p *Process) IsStopped() bool {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
-	return p.Status == EngineStatusStopped
+	return p.Status == EngineStatusStopped || p.Status == EngineStatusError
 }
