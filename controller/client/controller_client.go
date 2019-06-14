@@ -13,6 +13,7 @@ import (
 	"github.com/longhorn/longhorn-engine/meta"
 	"github.com/longhorn/longhorn-engine/types"
 	"github.com/longhorn/longhorn-engine/util"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 )
 
 type ControllerClient struct {
@@ -446,4 +447,29 @@ func (c *ControllerClient) VersionDetailGet() (*meta.VersionOutput, error) {
 		DataFormatMinVersion:    int(reply.Version.DataFormatMinVersion),
 	}, nil
 
+}
+
+func (c *ControllerClient) Check() error {
+	conn, err := grpc.Dial(c.grpcAddress, grpc.WithInsecure())
+	if err != nil {
+		return fmt.Errorf("cannot connect to ControllerService %v: %v", c.grpcAddress, err)
+	}
+	defer conn.Close()
+	healthCheckClient := healthpb.NewHealthClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
+	defer cancel()
+
+	reply, err := healthCheckClient.Check(ctx, &healthpb.HealthCheckRequest{
+		Service: "",
+	})
+	if err != nil {
+		return fmt.Errorf("failed to list journal for volume %v: %v", c.grpcAddress, err)
+	}
+
+	if reply.Status != healthpb.HealthCheckResponse_SERVING {
+		return fmt.Errorf("gRPC controller server is not serving")
+	}
+
+	return nil
 }
