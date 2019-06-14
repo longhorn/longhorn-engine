@@ -9,7 +9,7 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
-	congtrollerrpc "github.com/longhorn/longhorn-engine/controller/rpc"
+	contollerpb "github.com/longhorn/longhorn-engine/controller/rpc/pb"
 	"github.com/longhorn/longhorn-engine/meta"
 	"github.com/longhorn/longhorn-engine/types"
 	"github.com/longhorn/longhorn-engine/util"
@@ -29,7 +29,7 @@ func NewControllerClient(address string) *ControllerClient {
 	}
 }
 
-func GetVolumeInfo(v *congtrollerrpc.Volume) *types.VolumeInfo {
+func GetVolumeInfo(v *contollerpb.Volume) *types.VolumeInfo {
 	return &types.VolumeInfo{
 		Name:          v.Name,
 		ReplicaCount:  int(v.ReplicaCount),
@@ -41,27 +41,27 @@ func GetVolumeInfo(v *congtrollerrpc.Volume) *types.VolumeInfo {
 	}
 }
 
-func GetControllerReplicaInfo(cr *congtrollerrpc.ControllerReplica) *types.ControllerReplicaInfo {
+func GetControllerReplicaInfo(cr *contollerpb.ControllerReplica) *types.ControllerReplicaInfo {
 	return &types.ControllerReplicaInfo{
 		Address: cr.Address.Address,
 		Mode:    types.Mode(cr.Mode.String()),
 	}
 }
 
-func GetControllerReplica(r *types.ControllerReplicaInfo) *congtrollerrpc.ControllerReplica {
-	cr := &congtrollerrpc.ControllerReplica{
-		Address: &congtrollerrpc.ReplicaAddress{
+func GetControllerReplica(r *types.ControllerReplicaInfo) *contollerpb.ControllerReplica {
+	cr := &contollerpb.ControllerReplica{
+		Address: &contollerpb.ReplicaAddress{
 			Address: r.Address,
 		},
 	}
 
 	switch r.Mode {
 	case types.WO:
-		cr.Mode = congtrollerrpc.ReplicaMode_WO
+		cr.Mode = contollerpb.ReplicaMode_WO
 	case types.RW:
-		cr.Mode = congtrollerrpc.ReplicaMode_RW
+		cr.Mode = contollerpb.ReplicaMode_RW
 	case types.ERR:
-		cr.Mode = congtrollerrpc.ReplicaMode_ERR
+		cr.Mode = contollerpb.ReplicaMode_ERR
 	default:
 		return nil
 	}
@@ -75,7 +75,7 @@ func (c *ControllerClient) VolumeGet() (*types.VolumeInfo, error) {
 		return nil, fmt.Errorf("cannot connect to ControllerService %v: %v", c.grpcAddress, err)
 	}
 	defer conn.Close()
-	controllerServiceClient := congtrollerrpc.NewControllerServiceClient(conn)
+	controllerServiceClient := contollerpb.NewControllerServiceClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
 	defer cancel()
@@ -94,12 +94,12 @@ func (c *ControllerClient) VolumeStart(replicas ...string) error {
 		return fmt.Errorf("cannot connect to ControllerService %v: %v", c.grpcAddress, err)
 	}
 	defer conn.Close()
-	controllerServiceClient := congtrollerrpc.NewControllerServiceClient(conn)
+	controllerServiceClient := contollerpb.NewControllerServiceClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
 	defer cancel()
 
-	if _, err := controllerServiceClient.VolumeStart(ctx, &congtrollerrpc.VolumeStartRequest{
+	if _, err := controllerServiceClient.VolumeStart(ctx, &contollerpb.VolumeStartRequest{
 		ReplicaAddresses: replicas,
 	}); err != nil {
 		return fmt.Errorf("failed to start volume %v: %v", c.grpcAddress, err)
@@ -114,12 +114,12 @@ func (c *ControllerClient) VolumeSnapshot(name string, labels map[string]string)
 		return "", fmt.Errorf("cannot connect to ControllerService %v: %v", c.grpcAddress, err)
 	}
 	defer conn.Close()
-	controllerServiceClient := congtrollerrpc.NewControllerServiceClient(conn)
+	controllerServiceClient := contollerpb.NewControllerServiceClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
 	defer cancel()
 
-	reply, err := controllerServiceClient.VolumeSnapshot(ctx, &congtrollerrpc.VolumeSnapshotRequest{
+	reply, err := controllerServiceClient.VolumeSnapshot(ctx, &contollerpb.VolumeSnapshotRequest{
 		Name:   name,
 		Labels: labels,
 	})
@@ -136,12 +136,12 @@ func (c *ControllerClient) VolumeRevert(snapshot string) error {
 		return fmt.Errorf("cannot connect to ControllerService %v: %v", c.grpcAddress, err)
 	}
 	defer conn.Close()
-	controllerServiceClient := congtrollerrpc.NewControllerServiceClient(conn)
+	controllerServiceClient := contollerpb.NewControllerServiceClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
 	defer cancel()
 
-	if _, err := controllerServiceClient.VolumeRevert(ctx, &congtrollerrpc.VolumeRevertRequest{
+	if _, err := controllerServiceClient.VolumeRevert(ctx, &contollerpb.VolumeRevertRequest{
 		Name: snapshot,
 	}); err != nil {
 		return fmt.Errorf("failed to revert to snapshot %v for volume %v: %v", snapshot, c.grpcAddress, err)
@@ -156,12 +156,12 @@ func (c *ControllerClient) VolumeFrontendStart(frontend string) error {
 		return fmt.Errorf("cannot connect to ControllerService %v: %v", c.grpcAddress, err)
 	}
 	defer conn.Close()
-	controllerServiceClient := congtrollerrpc.NewControllerServiceClient(conn)
+	controllerServiceClient := contollerpb.NewControllerServiceClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
 	defer cancel()
 
-	if _, err := controllerServiceClient.VolumeFrontendStart(ctx, &congtrollerrpc.VolumeFrontendStartRequest{
+	if _, err := controllerServiceClient.VolumeFrontendStart(ctx, &contollerpb.VolumeFrontendStartRequest{
 		Frontend: frontend,
 	}); err != nil {
 		return fmt.Errorf("failed to start frontend %v for volume %v: %v", frontend, c.grpcAddress, err)
@@ -176,7 +176,7 @@ func (c *ControllerClient) VolumeFrontendShutdown() error {
 		return fmt.Errorf("cannot connect to ControllerService %v: %v", c.grpcAddress, err)
 	}
 	defer conn.Close()
-	controllerServiceClient := congtrollerrpc.NewControllerServiceClient(conn)
+	controllerServiceClient := contollerpb.NewControllerServiceClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
 	defer cancel()
@@ -194,12 +194,12 @@ func (c *ControllerClient) VolumePrepareRestore(lastRestored string) error {
 		return fmt.Errorf("cannot connect to ControllerService %v: %v", c.grpcAddress, err)
 	}
 	defer conn.Close()
-	controllerServiceClient := congtrollerrpc.NewControllerServiceClient(conn)
+	controllerServiceClient := contollerpb.NewControllerServiceClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
 	defer cancel()
 
-	if _, err := controllerServiceClient.VolumePrepareRestore(ctx, &congtrollerrpc.VolumePrepareRestoreRequest{
+	if _, err := controllerServiceClient.VolumePrepareRestore(ctx, &contollerpb.VolumePrepareRestoreRequest{
 		LastRestored: lastRestored,
 	}); err != nil {
 		return fmt.Errorf("failed to prepare restoring for volume %v: %v", c.grpcAddress, err)
@@ -214,12 +214,12 @@ func (c *ControllerClient) VolumeFinishRestore(currentRestored string) error {
 		return fmt.Errorf("cannot connect to ControllerService %v: %v", c.grpcAddress, err)
 	}
 	defer conn.Close()
-	controllerServiceClient := congtrollerrpc.NewControllerServiceClient(conn)
+	controllerServiceClient := contollerpb.NewControllerServiceClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
 	defer cancel()
 
-	if _, err := controllerServiceClient.VolumeFinishRestore(ctx, &congtrollerrpc.VolumeFinishRestoreRequest{
+	if _, err := controllerServiceClient.VolumeFinishRestore(ctx, &contollerpb.VolumeFinishRestoreRequest{
 		CurrentRestored: currentRestored,
 	}); err != nil {
 		return fmt.Errorf("failed to finish restoring for volume %v: %v", c.grpcAddress, err)
@@ -234,7 +234,7 @@ func (c *ControllerClient) ReplicaList() ([]*types.ControllerReplicaInfo, error)
 		return nil, fmt.Errorf("cannot connect to ControllerService %v: %v", c.grpcAddress, err)
 	}
 	defer conn.Close()
-	controllerServiceClient := congtrollerrpc.NewControllerServiceClient(conn)
+	controllerServiceClient := contollerpb.NewControllerServiceClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
 	defer cancel()
@@ -258,12 +258,12 @@ func (c *ControllerClient) ReplicaGet(address string) (*types.ControllerReplicaI
 		return nil, fmt.Errorf("cannot connect to ControllerService %v: %v", c.grpcAddress, err)
 	}
 	defer conn.Close()
-	controllerServiceClient := congtrollerrpc.NewControllerServiceClient(conn)
+	controllerServiceClient := contollerpb.NewControllerServiceClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
 	defer cancel()
 
-	cr, err := controllerServiceClient.ReplicaGet(ctx, &congtrollerrpc.ReplicaAddress{
+	cr, err := controllerServiceClient.ReplicaGet(ctx, &contollerpb.ReplicaAddress{
 		Address: address,
 	})
 	if err != nil {
@@ -279,12 +279,12 @@ func (c *ControllerClient) ReplicaCreate(address string) (*types.ControllerRepli
 		return nil, fmt.Errorf("cannot connect to ControllerService %v: %v", c.grpcAddress, err)
 	}
 	defer conn.Close()
-	controllerServiceClient := congtrollerrpc.NewControllerServiceClient(conn)
+	controllerServiceClient := contollerpb.NewControllerServiceClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
 	defer cancel()
 
-	cr, err := controllerServiceClient.ReplicaCreate(ctx, &congtrollerrpc.ReplicaAddress{
+	cr, err := controllerServiceClient.ReplicaCreate(ctx, &contollerpb.ReplicaAddress{
 		Address: address,
 	})
 	if err != nil {
@@ -300,12 +300,12 @@ func (c *ControllerClient) ReplicaDelete(address string) error {
 		return fmt.Errorf("cannot connect to ControllerService %v: %v", c.grpcAddress, err)
 	}
 	defer conn.Close()
-	controllerServiceClient := congtrollerrpc.NewControllerServiceClient(conn)
+	controllerServiceClient := contollerpb.NewControllerServiceClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
 	defer cancel()
 
-	if _, err := controllerServiceClient.ReplicaDelete(ctx, &congtrollerrpc.ReplicaAddress{
+	if _, err := controllerServiceClient.ReplicaDelete(ctx, &contollerpb.ReplicaAddress{
 		Address: address,
 	}); err != nil {
 		return fmt.Errorf("failed to delete replica %v for volume %v: %v", address, c.grpcAddress, err)
@@ -320,7 +320,7 @@ func (c *ControllerClient) ReplicaUpdate(replica *types.ControllerReplicaInfo) (
 		return nil, fmt.Errorf("cannot connect to ControllerService %v: %v", c.grpcAddress, err)
 	}
 	defer conn.Close()
-	controllerServiceClient := congtrollerrpc.NewControllerServiceClient(conn)
+	controllerServiceClient := contollerpb.NewControllerServiceClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
 	defer cancel()
@@ -339,12 +339,12 @@ func (c *ControllerClient) ReplicaPrepareRebuild(address string) (*types.Prepare
 		return nil, fmt.Errorf("cannot connect to ControllerService %v: %v", c.grpcAddress, err)
 	}
 	defer conn.Close()
-	controllerServiceClient := congtrollerrpc.NewControllerServiceClient(conn)
+	controllerServiceClient := contollerpb.NewControllerServiceClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
 	defer cancel()
 
-	reply, err := controllerServiceClient.ReplicaPrepareRebuild(ctx, &congtrollerrpc.ReplicaAddress{
+	reply, err := controllerServiceClient.ReplicaPrepareRebuild(ctx, &contollerpb.ReplicaAddress{
 		Address: address,
 	})
 	if err != nil {
@@ -362,12 +362,12 @@ func (c *ControllerClient) ReplicaVerifyRebuild(address string) error {
 		return fmt.Errorf("cannot connect to ControllerService %v: %v", c.grpcAddress, err)
 	}
 	defer conn.Close()
-	controllerServiceClient := congtrollerrpc.NewControllerServiceClient(conn)
+	controllerServiceClient := contollerpb.NewControllerServiceClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
 	defer cancel()
 
-	if _, err := controllerServiceClient.ReplicaVerifyRebuild(ctx, &congtrollerrpc.ReplicaAddress{
+	if _, err := controllerServiceClient.ReplicaVerifyRebuild(ctx, &contollerpb.ReplicaAddress{
 		Address: address,
 	}); err != nil {
 		return fmt.Errorf("failed to verify rebuilded replica %v for volume %v: %v", address, c.grpcAddress, err)
@@ -382,12 +382,12 @@ func (c *ControllerClient) JournalList(limit int) error {
 		return fmt.Errorf("cannot connect to ControllerService %v: %v", c.grpcAddress, err)
 	}
 	defer conn.Close()
-	controllerServiceClient := congtrollerrpc.NewControllerServiceClient(conn)
+	controllerServiceClient := contollerpb.NewControllerServiceClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
 	defer cancel()
 
-	if _, err := controllerServiceClient.JournalList(ctx, &congtrollerrpc.JournalListRequest{
+	if _, err := controllerServiceClient.JournalList(ctx, &contollerpb.JournalListRequest{
 		Limit: int64(limit),
 	}); err != nil {
 		return fmt.Errorf("failed to list journal for volume %v: %v", c.grpcAddress, err)
@@ -402,12 +402,12 @@ func (c *ControllerClient) PortUpdate(port int) error {
 		return fmt.Errorf("cannot connect to ControllerService %v: %v", c.grpcAddress, err)
 	}
 	defer conn.Close()
-	controllerServiceClient := congtrollerrpc.NewControllerServiceClient(conn)
+	controllerServiceClient := contollerpb.NewControllerServiceClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
 	defer cancel()
 
-	if _, err := controllerServiceClient.PortUpdate(ctx, &congtrollerrpc.PortUpdateRequest{
+	if _, err := controllerServiceClient.PortUpdate(ctx, &contollerpb.PortUpdateRequest{
 		Port: int32(port),
 	}); err != nil {
 		if !strings.Contains(err.Error(), "transport is closing") {
@@ -424,7 +424,7 @@ func (c *ControllerClient) VersionDetailGet() (*meta.VersionOutput, error) {
 		return nil, fmt.Errorf("cannot connect to ControllerService %v: %v", c.grpcAddress, err)
 	}
 	defer conn.Close()
-	controllerServiceClient := congtrollerrpc.NewControllerServiceClient(conn)
+	controllerServiceClient := contollerpb.NewControllerServiceClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
 	defer cancel()

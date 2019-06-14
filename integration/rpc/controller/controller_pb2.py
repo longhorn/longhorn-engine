@@ -19,16 +19,16 @@ from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
 
 DESCRIPTOR = _descriptor.FileDescriptor(
   name='controller.proto',
-  package='rpc',
+  package='pb',
   syntax='proto3',
   serialized_options=None,
-  serialized_pb=_b('\n\x10\x63ontroller.proto\x12\x03rpc\x1a\x1bgoogle/protobuf/empty.proto\"\x92\x01\n\x06Volume\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x14\n\x0creplicaCount\x18\x02 \x01(\x05\x12\x10\n\x08\x65ndpoint\x18\x03 \x01(\t\x12\x10\n\x08\x66rontend\x18\x04 \x01(\t\x12\x15\n\rfrontendState\x18\x05 \x01(\t\x12\x13\n\x0bisRestoring\x18\x06 \x01(\x08\x12\x14\n\x0clastRestored\x18\x07 \x01(\t\"!\n\x0eReplicaAddress\x12\x0f\n\x07\x61\x64\x64ress\x18\x01 \x01(\t\"Y\n\x11\x43ontrollerReplica\x12$\n\x07\x61\x64\x64ress\x18\x01 \x01(\x0b\x32\x13.rpc.ReplicaAddress\x12\x1e\n\x04mode\x18\x02 \x01(\x0e\x32\x10.rpc.ReplicaMode\".\n\x12VolumeStartRequest\x12\x18\n\x10replicaAddresses\x18\x01 \x03(\t\"\x8c\x01\n\x15VolumeSnapshotRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x36\n\x06labels\x18\x02 \x03(\x0b\x32&.rpc.VolumeSnapshotRequest.LabelsEntry\x1a-\n\x0bLabelsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"#\n\x13VolumeSnapshotReply\x12\x0c\n\x04name\x18\x01 \x01(\t\"#\n\x13VolumeRevertRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\".\n\x1aVolumeFrontendStartRequest\x12\x10\n\x08\x66rontend\x18\x01 \x01(\t\"3\n\x1bVolumePrepareRestoreRequest\x12\x14\n\x0clastRestored\x18\x01 \x01(\t\"5\n\x1aVolumeFinishRestoreRequest\x12\x17\n\x0f\x63urrentRestored\x18\x01 \x01(\t\"<\n\x10ReplicaListReply\x12(\n\x08replicas\x18\x01 \x03(\x0b\x32\x16.rpc.ControllerReplica\"T\n\x1aReplicaPrepareRebuildReply\x12\'\n\x07replica\x18\x01 \x01(\x0b\x32\x16.rpc.ControllerReplica\x12\r\n\x05\x64isks\x18\x02 \x03(\t\"#\n\x12JournalListRequest\x12\r\n\x05limit\x18\x01 \x01(\x03\"!\n\x11PortUpdateRequest\x12\x0c\n\x04port\x18\x01 \x01(\x05\"\xef\x01\n\rVersionOutput\x12\x0f\n\x07version\x18\x01 \x01(\t\x12\x11\n\tgitCommit\x18\x02 \x01(\t\x12\x11\n\tbuildDate\x18\x03 \x01(\t\x12\x15\n\rcliAPIVersion\x18\x04 \x01(\x03\x12\x18\n\x10\x63liAPIMinVersion\x18\x05 \x01(\x03\x12\x1c\n\x14\x63ontrollerAPIVersion\x18\x06 \x01(\x03\x12\x1f\n\x17\x63ontrollerAPIMinVersion\x18\x07 \x01(\x03\x12\x19\n\x11\x64\x61taFormatVersion\x18\x08 \x01(\x03\x12\x1c\n\x14\x64\x61taFormatMinVersion\x18\t \x01(\x03\"<\n\x15VersionDetailGetReply\x12#\n\x07version\x18\x01 \x01(\x0b\x32\x12.rpc.VersionOutput\"p\n\x06Metric\x12\x15\n\rreadBandwidth\x18\x01 \x01(\x04\x12\x16\n\x0ewriteBandwidth\x18\x02 \x01(\x04\x12\x13\n\x0breadLatency\x18\x03 \x01(\x04\x12\x14\n\x0cwriteLatency\x18\x04 \x01(\x04\x12\x0c\n\x04iOPS\x18\x05 \x01(\x04\"-\n\x0eMetricGetReply\x12\x1b\n\x06metric\x18\x01 \x01(\x0b\x32\x0b.rpc.Metric*&\n\x0bReplicaMode\x12\x06\n\x02WO\x10\x00\x12\x06\n\x02RW\x10\x01\x12\x07\n\x03\x45RR\x10\x02\x32\x8c\n\n\x11\x43ontrollerService\x12\x30\n\tVolumeGet\x12\x16.google.protobuf.Empty\x1a\x0b.rpc.Volume\x12\x33\n\x0bVolumeStart\x12\x17.rpc.VolumeStartRequest\x1a\x0b.rpc.Volume\x12\x35\n\x0eVolumeShutdown\x12\x16.google.protobuf.Empty\x1a\x0b.rpc.Volume\x12\x46\n\x0eVolumeSnapshot\x12\x1a.rpc.VolumeSnapshotRequest\x1a\x18.rpc.VolumeSnapshotReply\x12\x35\n\x0cVolumeRevert\x12\x18.rpc.VolumeRevertRequest\x1a\x0b.rpc.Volume\x12\x43\n\x13VolumeFrontendStart\x12\x1f.rpc.VolumeFrontendStartRequest\x1a\x0b.rpc.Volume\x12=\n\x16VolumeFrontendShutdown\x12\x16.google.protobuf.Empty\x1a\x0b.rpc.Volume\x12\x45\n\x14VolumePrepareRestore\x12 .rpc.VolumePrepareRestoreRequest\x1a\x0b.rpc.Volume\x12\x43\n\x13VolumeFinishRestore\x12\x1f.rpc.VolumeFinishRestoreRequest\x1a\x0b.rpc.Volume\x12<\n\x0bReplicaList\x12\x16.google.protobuf.Empty\x1a\x15.rpc.ReplicaListReply\x12\x39\n\nReplicaGet\x12\x13.rpc.ReplicaAddress\x1a\x16.rpc.ControllerReplica\x12<\n\rReplicaCreate\x12\x13.rpc.ReplicaAddress\x1a\x16.rpc.ControllerReplica\x12<\n\rReplicaDelete\x12\x13.rpc.ReplicaAddress\x1a\x16.google.protobuf.Empty\x12?\n\rReplicaUpdate\x12\x16.rpc.ControllerReplica\x1a\x16.rpc.ControllerReplica\x12M\n\x15ReplicaPrepareRebuild\x12\x13.rpc.ReplicaAddress\x1a\x1f.rpc.ReplicaPrepareRebuildReply\x12\x43\n\x14ReplicaVerifyRebuild\x12\x13.rpc.ReplicaAddress\x1a\x16.rpc.ControllerReplica\x12>\n\x0bJournalList\x12\x17.rpc.JournalListRequest\x1a\x16.google.protobuf.Empty\x12<\n\nPortUpdate\x12\x16.rpc.PortUpdateRequest\x1a\x16.google.protobuf.Empty\x12\x46\n\x10VersionDetailGet\x12\x16.google.protobuf.Empty\x1a\x1a.rpc.VersionDetailGetReply\x12:\n\tMetricGet\x12\x16.google.protobuf.Empty\x1a\x13.rpc.MetricGetReply0\x01\x62\x06proto3')
+  serialized_pb=_b('\n\x10\x63ontroller.proto\x12\x02pb\x1a\x1bgoogle/protobuf/empty.proto\"\x92\x01\n\x06Volume\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x14\n\x0creplicaCount\x18\x02 \x01(\x05\x12\x10\n\x08\x65ndpoint\x18\x03 \x01(\t\x12\x10\n\x08\x66rontend\x18\x04 \x01(\t\x12\x15\n\rfrontendState\x18\x05 \x01(\t\x12\x13\n\x0bisRestoring\x18\x06 \x01(\x08\x12\x14\n\x0clastRestored\x18\x07 \x01(\t\"!\n\x0eReplicaAddress\x12\x0f\n\x07\x61\x64\x64ress\x18\x01 \x01(\t\"W\n\x11\x43ontrollerReplica\x12#\n\x07\x61\x64\x64ress\x18\x01 \x01(\x0b\x32\x12.pb.ReplicaAddress\x12\x1d\n\x04mode\x18\x02 \x01(\x0e\x32\x0f.pb.ReplicaMode\".\n\x12VolumeStartRequest\x12\x18\n\x10replicaAddresses\x18\x01 \x03(\t\"\x8b\x01\n\x15VolumeSnapshotRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x35\n\x06labels\x18\x02 \x03(\x0b\x32%.pb.VolumeSnapshotRequest.LabelsEntry\x1a-\n\x0bLabelsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"#\n\x13VolumeSnapshotReply\x12\x0c\n\x04name\x18\x01 \x01(\t\"#\n\x13VolumeRevertRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\".\n\x1aVolumeFrontendStartRequest\x12\x10\n\x08\x66rontend\x18\x01 \x01(\t\"3\n\x1bVolumePrepareRestoreRequest\x12\x14\n\x0clastRestored\x18\x01 \x01(\t\"5\n\x1aVolumeFinishRestoreRequest\x12\x17\n\x0f\x63urrentRestored\x18\x01 \x01(\t\";\n\x10ReplicaListReply\x12\'\n\x08replicas\x18\x01 \x03(\x0b\x32\x15.pb.ControllerReplica\"S\n\x1aReplicaPrepareRebuildReply\x12&\n\x07replica\x18\x01 \x01(\x0b\x32\x15.pb.ControllerReplica\x12\r\n\x05\x64isks\x18\x02 \x03(\t\"#\n\x12JournalListRequest\x12\r\n\x05limit\x18\x01 \x01(\x03\"!\n\x11PortUpdateRequest\x12\x0c\n\x04port\x18\x01 \x01(\x05\"\xef\x01\n\rVersionOutput\x12\x0f\n\x07version\x18\x01 \x01(\t\x12\x11\n\tgitCommit\x18\x02 \x01(\t\x12\x11\n\tbuildDate\x18\x03 \x01(\t\x12\x15\n\rcliAPIVersion\x18\x04 \x01(\x03\x12\x18\n\x10\x63liAPIMinVersion\x18\x05 \x01(\x03\x12\x1c\n\x14\x63ontrollerAPIVersion\x18\x06 \x01(\x03\x12\x1f\n\x17\x63ontrollerAPIMinVersion\x18\x07 \x01(\x03\x12\x19\n\x11\x64\x61taFormatVersion\x18\x08 \x01(\x03\x12\x1c\n\x14\x64\x61taFormatMinVersion\x18\t \x01(\x03\";\n\x15VersionDetailGetReply\x12\"\n\x07version\x18\x01 \x01(\x0b\x32\x11.pb.VersionOutput\"p\n\x06Metric\x12\x15\n\rreadBandwidth\x18\x01 \x01(\x04\x12\x16\n\x0ewriteBandwidth\x18\x02 \x01(\x04\x12\x13\n\x0breadLatency\x18\x03 \x01(\x04\x12\x14\n\x0cwriteLatency\x18\x04 \x01(\x04\x12\x0c\n\x04iOPS\x18\x05 \x01(\x04\",\n\x0eMetricGetReply\x12\x1a\n\x06metric\x18\x01 \x01(\x0b\x32\n.pb.Metric*&\n\x0bReplicaMode\x12\x06\n\x02WO\x10\x00\x12\x06\n\x02RW\x10\x01\x12\x07\n\x03\x45RR\x10\x02\x32\xed\t\n\x11\x43ontrollerService\x12/\n\tVolumeGet\x12\x16.google.protobuf.Empty\x1a\n.pb.Volume\x12\x31\n\x0bVolumeStart\x12\x16.pb.VolumeStartRequest\x1a\n.pb.Volume\x12\x34\n\x0eVolumeShutdown\x12\x16.google.protobuf.Empty\x1a\n.pb.Volume\x12\x44\n\x0eVolumeSnapshot\x12\x19.pb.VolumeSnapshotRequest\x1a\x17.pb.VolumeSnapshotReply\x12\x33\n\x0cVolumeRevert\x12\x17.pb.VolumeRevertRequest\x1a\n.pb.Volume\x12\x41\n\x13VolumeFrontendStart\x12\x1e.pb.VolumeFrontendStartRequest\x1a\n.pb.Volume\x12<\n\x16VolumeFrontendShutdown\x12\x16.google.protobuf.Empty\x1a\n.pb.Volume\x12\x43\n\x14VolumePrepareRestore\x12\x1f.pb.VolumePrepareRestoreRequest\x1a\n.pb.Volume\x12\x41\n\x13VolumeFinishRestore\x12\x1e.pb.VolumeFinishRestoreRequest\x1a\n.pb.Volume\x12;\n\x0bReplicaList\x12\x16.google.protobuf.Empty\x1a\x14.pb.ReplicaListReply\x12\x37\n\nReplicaGet\x12\x12.pb.ReplicaAddress\x1a\x15.pb.ControllerReplica\x12:\n\rReplicaCreate\x12\x12.pb.ReplicaAddress\x1a\x15.pb.ControllerReplica\x12;\n\rReplicaDelete\x12\x12.pb.ReplicaAddress\x1a\x16.google.protobuf.Empty\x12=\n\rReplicaUpdate\x12\x15.pb.ControllerReplica\x1a\x15.pb.ControllerReplica\x12K\n\x15ReplicaPrepareRebuild\x12\x12.pb.ReplicaAddress\x1a\x1e.pb.ReplicaPrepareRebuildReply\x12\x41\n\x14ReplicaVerifyRebuild\x12\x12.pb.ReplicaAddress\x1a\x15.pb.ControllerReplica\x12=\n\x0bJournalList\x12\x16.pb.JournalListRequest\x1a\x16.google.protobuf.Empty\x12;\n\nPortUpdate\x12\x15.pb.PortUpdateRequest\x1a\x16.google.protobuf.Empty\x12\x45\n\x10VersionDetailGet\x12\x16.google.protobuf.Empty\x1a\x19.pb.VersionDetailGetReply\x12\x39\n\tMetricGet\x12\x16.google.protobuf.Empty\x1a\x12.pb.MetricGetReply0\x01\x62\x06proto3')
   ,
   dependencies=[google_dot_protobuf_dot_empty__pb2.DESCRIPTOR,])
 
 _REPLICAMODE = _descriptor.EnumDescriptor(
   name='ReplicaMode',
-  full_name='rpc.ReplicaMode',
+  full_name='pb.ReplicaMode',
   filename=None,
   file=DESCRIPTOR,
   values=[
@@ -47,8 +47,8 @@ _REPLICAMODE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=1435,
-  serialized_end=1473,
+  serialized_start=1427,
+  serialized_end=1465,
 )
 _sym_db.RegisterEnumDescriptor(_REPLICAMODE)
 
@@ -61,55 +61,55 @@ ERR = 2
 
 _VOLUME = _descriptor.Descriptor(
   name='Volume',
-  full_name='rpc.Volume',
+  full_name='pb.Volume',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='name', full_name='rpc.Volume.name', index=0,
+      name='name', full_name='pb.Volume.name', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='replicaCount', full_name='rpc.Volume.replicaCount', index=1,
+      name='replicaCount', full_name='pb.Volume.replicaCount', index=1,
       number=2, type=5, cpp_type=1, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='endpoint', full_name='rpc.Volume.endpoint', index=2,
+      name='endpoint', full_name='pb.Volume.endpoint', index=2,
       number=3, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='frontend', full_name='rpc.Volume.frontend', index=3,
+      name='frontend', full_name='pb.Volume.frontend', index=3,
       number=4, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='frontendState', full_name='rpc.Volume.frontendState', index=4,
+      name='frontendState', full_name='pb.Volume.frontendState', index=4,
       number=5, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='isRestoring', full_name='rpc.Volume.isRestoring', index=5,
+      name='isRestoring', full_name='pb.Volume.isRestoring', index=5,
       number=6, type=8, cpp_type=7, label=1,
       has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='lastRestored', full_name='rpc.Volume.lastRestored', index=6,
+      name='lastRestored', full_name='pb.Volume.lastRestored', index=6,
       number=7, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
@@ -127,20 +127,20 @@ _VOLUME = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=55,
-  serialized_end=201,
+  serialized_start=54,
+  serialized_end=200,
 )
 
 
 _REPLICAADDRESS = _descriptor.Descriptor(
   name='ReplicaAddress',
-  full_name='rpc.ReplicaAddress',
+  full_name='pb.ReplicaAddress',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='address', full_name='rpc.ReplicaAddress.address', index=0,
+      name='address', full_name='pb.ReplicaAddress.address', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
@@ -158,27 +158,27 @@ _REPLICAADDRESS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=203,
-  serialized_end=236,
+  serialized_start=202,
+  serialized_end=235,
 )
 
 
 _CONTROLLERREPLICA = _descriptor.Descriptor(
   name='ControllerReplica',
-  full_name='rpc.ControllerReplica',
+  full_name='pb.ControllerReplica',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='address', full_name='rpc.ControllerReplica.address', index=0,
+      name='address', full_name='pb.ControllerReplica.address', index=0,
       number=1, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='mode', full_name='rpc.ControllerReplica.mode', index=1,
+      name='mode', full_name='pb.ControllerReplica.mode', index=1,
       number=2, type=14, cpp_type=8, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -196,20 +196,20 @@ _CONTROLLERREPLICA = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=238,
-  serialized_end=327,
+  serialized_start=237,
+  serialized_end=324,
 )
 
 
 _VOLUMESTARTREQUEST = _descriptor.Descriptor(
   name='VolumeStartRequest',
-  full_name='rpc.VolumeStartRequest',
+  full_name='pb.VolumeStartRequest',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='replicaAddresses', full_name='rpc.VolumeStartRequest.replicaAddresses', index=0,
+      name='replicaAddresses', full_name='pb.VolumeStartRequest.replicaAddresses', index=0,
       number=1, type=9, cpp_type=9, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -227,27 +227,27 @@ _VOLUMESTARTREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=329,
-  serialized_end=375,
+  serialized_start=326,
+  serialized_end=372,
 )
 
 
 _VOLUMESNAPSHOTREQUEST_LABELSENTRY = _descriptor.Descriptor(
   name='LabelsEntry',
-  full_name='rpc.VolumeSnapshotRequest.LabelsEntry',
+  full_name='pb.VolumeSnapshotRequest.LabelsEntry',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='key', full_name='rpc.VolumeSnapshotRequest.LabelsEntry.key', index=0,
+      name='key', full_name='pb.VolumeSnapshotRequest.LabelsEntry.key', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='value', full_name='rpc.VolumeSnapshotRequest.LabelsEntry.value', index=1,
+      name='value', full_name='pb.VolumeSnapshotRequest.LabelsEntry.value', index=1,
       number=2, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
@@ -265,26 +265,26 @@ _VOLUMESNAPSHOTREQUEST_LABELSENTRY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=473,
-  serialized_end=518,
+  serialized_start=469,
+  serialized_end=514,
 )
 
 _VOLUMESNAPSHOTREQUEST = _descriptor.Descriptor(
   name='VolumeSnapshotRequest',
-  full_name='rpc.VolumeSnapshotRequest',
+  full_name='pb.VolumeSnapshotRequest',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='name', full_name='rpc.VolumeSnapshotRequest.name', index=0,
+      name='name', full_name='pb.VolumeSnapshotRequest.name', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='labels', full_name='rpc.VolumeSnapshotRequest.labels', index=1,
+      name='labels', full_name='pb.VolumeSnapshotRequest.labels', index=1,
       number=2, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -302,20 +302,20 @@ _VOLUMESNAPSHOTREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=378,
-  serialized_end=518,
+  serialized_start=375,
+  serialized_end=514,
 )
 
 
 _VOLUMESNAPSHOTREPLY = _descriptor.Descriptor(
   name='VolumeSnapshotReply',
-  full_name='rpc.VolumeSnapshotReply',
+  full_name='pb.VolumeSnapshotReply',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='name', full_name='rpc.VolumeSnapshotReply.name', index=0,
+      name='name', full_name='pb.VolumeSnapshotReply.name', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
@@ -333,20 +333,20 @@ _VOLUMESNAPSHOTREPLY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=520,
-  serialized_end=555,
+  serialized_start=516,
+  serialized_end=551,
 )
 
 
 _VOLUMEREVERTREQUEST = _descriptor.Descriptor(
   name='VolumeRevertRequest',
-  full_name='rpc.VolumeRevertRequest',
+  full_name='pb.VolumeRevertRequest',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='name', full_name='rpc.VolumeRevertRequest.name', index=0,
+      name='name', full_name='pb.VolumeRevertRequest.name', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
@@ -364,20 +364,20 @@ _VOLUMEREVERTREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=557,
-  serialized_end=592,
+  serialized_start=553,
+  serialized_end=588,
 )
 
 
 _VOLUMEFRONTENDSTARTREQUEST = _descriptor.Descriptor(
   name='VolumeFrontendStartRequest',
-  full_name='rpc.VolumeFrontendStartRequest',
+  full_name='pb.VolumeFrontendStartRequest',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='frontend', full_name='rpc.VolumeFrontendStartRequest.frontend', index=0,
+      name='frontend', full_name='pb.VolumeFrontendStartRequest.frontend', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
@@ -395,20 +395,20 @@ _VOLUMEFRONTENDSTARTREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=594,
-  serialized_end=640,
+  serialized_start=590,
+  serialized_end=636,
 )
 
 
 _VOLUMEPREPARERESTOREREQUEST = _descriptor.Descriptor(
   name='VolumePrepareRestoreRequest',
-  full_name='rpc.VolumePrepareRestoreRequest',
+  full_name='pb.VolumePrepareRestoreRequest',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='lastRestored', full_name='rpc.VolumePrepareRestoreRequest.lastRestored', index=0,
+      name='lastRestored', full_name='pb.VolumePrepareRestoreRequest.lastRestored', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
@@ -426,20 +426,20 @@ _VOLUMEPREPARERESTOREREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=642,
-  serialized_end=693,
+  serialized_start=638,
+  serialized_end=689,
 )
 
 
 _VOLUMEFINISHRESTOREREQUEST = _descriptor.Descriptor(
   name='VolumeFinishRestoreRequest',
-  full_name='rpc.VolumeFinishRestoreRequest',
+  full_name='pb.VolumeFinishRestoreRequest',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='currentRestored', full_name='rpc.VolumeFinishRestoreRequest.currentRestored', index=0,
+      name='currentRestored', full_name='pb.VolumeFinishRestoreRequest.currentRestored', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
@@ -457,20 +457,20 @@ _VOLUMEFINISHRESTOREREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=695,
-  serialized_end=748,
+  serialized_start=691,
+  serialized_end=744,
 )
 
 
 _REPLICALISTREPLY = _descriptor.Descriptor(
   name='ReplicaListReply',
-  full_name='rpc.ReplicaListReply',
+  full_name='pb.ReplicaListReply',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='replicas', full_name='rpc.ReplicaListReply.replicas', index=0,
+      name='replicas', full_name='pb.ReplicaListReply.replicas', index=0,
       number=1, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -488,27 +488,27 @@ _REPLICALISTREPLY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=750,
-  serialized_end=810,
+  serialized_start=746,
+  serialized_end=805,
 )
 
 
 _REPLICAPREPAREREBUILDREPLY = _descriptor.Descriptor(
   name='ReplicaPrepareRebuildReply',
-  full_name='rpc.ReplicaPrepareRebuildReply',
+  full_name='pb.ReplicaPrepareRebuildReply',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='replica', full_name='rpc.ReplicaPrepareRebuildReply.replica', index=0,
+      name='replica', full_name='pb.ReplicaPrepareRebuildReply.replica', index=0,
       number=1, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='disks', full_name='rpc.ReplicaPrepareRebuildReply.disks', index=1,
+      name='disks', full_name='pb.ReplicaPrepareRebuildReply.disks', index=1,
       number=2, type=9, cpp_type=9, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -526,20 +526,20 @@ _REPLICAPREPAREREBUILDREPLY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=812,
-  serialized_end=896,
+  serialized_start=807,
+  serialized_end=890,
 )
 
 
 _JOURNALLISTREQUEST = _descriptor.Descriptor(
   name='JournalListRequest',
-  full_name='rpc.JournalListRequest',
+  full_name='pb.JournalListRequest',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='limit', full_name='rpc.JournalListRequest.limit', index=0,
+      name='limit', full_name='pb.JournalListRequest.limit', index=0,
       number=1, type=3, cpp_type=2, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -557,20 +557,20 @@ _JOURNALLISTREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=898,
-  serialized_end=933,
+  serialized_start=892,
+  serialized_end=927,
 )
 
 
 _PORTUPDATEREQUEST = _descriptor.Descriptor(
   name='PortUpdateRequest',
-  full_name='rpc.PortUpdateRequest',
+  full_name='pb.PortUpdateRequest',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='port', full_name='rpc.PortUpdateRequest.port', index=0,
+      name='port', full_name='pb.PortUpdateRequest.port', index=0,
       number=1, type=5, cpp_type=1, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -588,76 +588,76 @@ _PORTUPDATEREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=935,
-  serialized_end=968,
+  serialized_start=929,
+  serialized_end=962,
 )
 
 
 _VERSIONOUTPUT = _descriptor.Descriptor(
   name='VersionOutput',
-  full_name='rpc.VersionOutput',
+  full_name='pb.VersionOutput',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='version', full_name='rpc.VersionOutput.version', index=0,
+      name='version', full_name='pb.VersionOutput.version', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='gitCommit', full_name='rpc.VersionOutput.gitCommit', index=1,
+      name='gitCommit', full_name='pb.VersionOutput.gitCommit', index=1,
       number=2, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='buildDate', full_name='rpc.VersionOutput.buildDate', index=2,
+      name='buildDate', full_name='pb.VersionOutput.buildDate', index=2,
       number=3, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='cliAPIVersion', full_name='rpc.VersionOutput.cliAPIVersion', index=3,
+      name='cliAPIVersion', full_name='pb.VersionOutput.cliAPIVersion', index=3,
       number=4, type=3, cpp_type=2, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='cliAPIMinVersion', full_name='rpc.VersionOutput.cliAPIMinVersion', index=4,
+      name='cliAPIMinVersion', full_name='pb.VersionOutput.cliAPIMinVersion', index=4,
       number=5, type=3, cpp_type=2, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='controllerAPIVersion', full_name='rpc.VersionOutput.controllerAPIVersion', index=5,
+      name='controllerAPIVersion', full_name='pb.VersionOutput.controllerAPIVersion', index=5,
       number=6, type=3, cpp_type=2, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='controllerAPIMinVersion', full_name='rpc.VersionOutput.controllerAPIMinVersion', index=6,
+      name='controllerAPIMinVersion', full_name='pb.VersionOutput.controllerAPIMinVersion', index=6,
       number=7, type=3, cpp_type=2, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='dataFormatVersion', full_name='rpc.VersionOutput.dataFormatVersion', index=7,
+      name='dataFormatVersion', full_name='pb.VersionOutput.dataFormatVersion', index=7,
       number=8, type=3, cpp_type=2, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='dataFormatMinVersion', full_name='rpc.VersionOutput.dataFormatMinVersion', index=8,
+      name='dataFormatMinVersion', full_name='pb.VersionOutput.dataFormatMinVersion', index=8,
       number=9, type=3, cpp_type=2, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -675,20 +675,20 @@ _VERSIONOUTPUT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=971,
-  serialized_end=1210,
+  serialized_start=965,
+  serialized_end=1204,
 )
 
 
 _VERSIONDETAILGETREPLY = _descriptor.Descriptor(
   name='VersionDetailGetReply',
-  full_name='rpc.VersionDetailGetReply',
+  full_name='pb.VersionDetailGetReply',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='version', full_name='rpc.VersionDetailGetReply.version', index=0,
+      name='version', full_name='pb.VersionDetailGetReply.version', index=0,
       number=1, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -706,48 +706,48 @@ _VERSIONDETAILGETREPLY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1212,
-  serialized_end=1272,
+  serialized_start=1206,
+  serialized_end=1265,
 )
 
 
 _METRIC = _descriptor.Descriptor(
   name='Metric',
-  full_name='rpc.Metric',
+  full_name='pb.Metric',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='readBandwidth', full_name='rpc.Metric.readBandwidth', index=0,
+      name='readBandwidth', full_name='pb.Metric.readBandwidth', index=0,
       number=1, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='writeBandwidth', full_name='rpc.Metric.writeBandwidth', index=1,
+      name='writeBandwidth', full_name='pb.Metric.writeBandwidth', index=1,
       number=2, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='readLatency', full_name='rpc.Metric.readLatency', index=2,
+      name='readLatency', full_name='pb.Metric.readLatency', index=2,
       number=3, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='writeLatency', full_name='rpc.Metric.writeLatency', index=3,
+      name='writeLatency', full_name='pb.Metric.writeLatency', index=3,
       number=4, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='iOPS', full_name='rpc.Metric.iOPS', index=4,
+      name='iOPS', full_name='pb.Metric.iOPS', index=4,
       number=5, type=4, cpp_type=4, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -765,20 +765,20 @@ _METRIC = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1274,
-  serialized_end=1386,
+  serialized_start=1267,
+  serialized_end=1379,
 )
 
 
 _METRICGETREPLY = _descriptor.Descriptor(
   name='MetricGetReply',
-  full_name='rpc.MetricGetReply',
+  full_name='pb.MetricGetReply',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='metric', full_name='rpc.MetricGetReply.metric', index=0,
+      name='metric', full_name='pb.MetricGetReply.metric', index=0,
       number=1, type=11, cpp_type=10, label=1,
       has_default_value=False, default_value=None,
       message_type=None, enum_type=None, containing_type=None,
@@ -796,8 +796,8 @@ _METRICGETREPLY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1388,
-  serialized_end=1433,
+  serialized_start=1381,
+  serialized_end=1425,
 )
 
 _CONTROLLERREPLICA.fields_by_name['address'].message_type = _REPLICAADDRESS
@@ -832,28 +832,28 @@ _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 Volume = _reflection.GeneratedProtocolMessageType('Volume', (_message.Message,), dict(
   DESCRIPTOR = _VOLUME,
   __module__ = 'controller_pb2'
-  # @@protoc_insertion_point(class_scope:rpc.Volume)
+  # @@protoc_insertion_point(class_scope:pb.Volume)
   ))
 _sym_db.RegisterMessage(Volume)
 
 ReplicaAddress = _reflection.GeneratedProtocolMessageType('ReplicaAddress', (_message.Message,), dict(
   DESCRIPTOR = _REPLICAADDRESS,
   __module__ = 'controller_pb2'
-  # @@protoc_insertion_point(class_scope:rpc.ReplicaAddress)
+  # @@protoc_insertion_point(class_scope:pb.ReplicaAddress)
   ))
 _sym_db.RegisterMessage(ReplicaAddress)
 
 ControllerReplica = _reflection.GeneratedProtocolMessageType('ControllerReplica', (_message.Message,), dict(
   DESCRIPTOR = _CONTROLLERREPLICA,
   __module__ = 'controller_pb2'
-  # @@protoc_insertion_point(class_scope:rpc.ControllerReplica)
+  # @@protoc_insertion_point(class_scope:pb.ControllerReplica)
   ))
 _sym_db.RegisterMessage(ControllerReplica)
 
 VolumeStartRequest = _reflection.GeneratedProtocolMessageType('VolumeStartRequest', (_message.Message,), dict(
   DESCRIPTOR = _VOLUMESTARTREQUEST,
   __module__ = 'controller_pb2'
-  # @@protoc_insertion_point(class_scope:rpc.VolumeStartRequest)
+  # @@protoc_insertion_point(class_scope:pb.VolumeStartRequest)
   ))
 _sym_db.RegisterMessage(VolumeStartRequest)
 
@@ -862,12 +862,12 @@ VolumeSnapshotRequest = _reflection.GeneratedProtocolMessageType('VolumeSnapshot
   LabelsEntry = _reflection.GeneratedProtocolMessageType('LabelsEntry', (_message.Message,), dict(
     DESCRIPTOR = _VOLUMESNAPSHOTREQUEST_LABELSENTRY,
     __module__ = 'controller_pb2'
-    # @@protoc_insertion_point(class_scope:rpc.VolumeSnapshotRequest.LabelsEntry)
+    # @@protoc_insertion_point(class_scope:pb.VolumeSnapshotRequest.LabelsEntry)
     ))
   ,
   DESCRIPTOR = _VOLUMESNAPSHOTREQUEST,
   __module__ = 'controller_pb2'
-  # @@protoc_insertion_point(class_scope:rpc.VolumeSnapshotRequest)
+  # @@protoc_insertion_point(class_scope:pb.VolumeSnapshotRequest)
   ))
 _sym_db.RegisterMessage(VolumeSnapshotRequest)
 _sym_db.RegisterMessage(VolumeSnapshotRequest.LabelsEntry)
@@ -875,91 +875,91 @@ _sym_db.RegisterMessage(VolumeSnapshotRequest.LabelsEntry)
 VolumeSnapshotReply = _reflection.GeneratedProtocolMessageType('VolumeSnapshotReply', (_message.Message,), dict(
   DESCRIPTOR = _VOLUMESNAPSHOTREPLY,
   __module__ = 'controller_pb2'
-  # @@protoc_insertion_point(class_scope:rpc.VolumeSnapshotReply)
+  # @@protoc_insertion_point(class_scope:pb.VolumeSnapshotReply)
   ))
 _sym_db.RegisterMessage(VolumeSnapshotReply)
 
 VolumeRevertRequest = _reflection.GeneratedProtocolMessageType('VolumeRevertRequest', (_message.Message,), dict(
   DESCRIPTOR = _VOLUMEREVERTREQUEST,
   __module__ = 'controller_pb2'
-  # @@protoc_insertion_point(class_scope:rpc.VolumeRevertRequest)
+  # @@protoc_insertion_point(class_scope:pb.VolumeRevertRequest)
   ))
 _sym_db.RegisterMessage(VolumeRevertRequest)
 
 VolumeFrontendStartRequest = _reflection.GeneratedProtocolMessageType('VolumeFrontendStartRequest', (_message.Message,), dict(
   DESCRIPTOR = _VOLUMEFRONTENDSTARTREQUEST,
   __module__ = 'controller_pb2'
-  # @@protoc_insertion_point(class_scope:rpc.VolumeFrontendStartRequest)
+  # @@protoc_insertion_point(class_scope:pb.VolumeFrontendStartRequest)
   ))
 _sym_db.RegisterMessage(VolumeFrontendStartRequest)
 
 VolumePrepareRestoreRequest = _reflection.GeneratedProtocolMessageType('VolumePrepareRestoreRequest', (_message.Message,), dict(
   DESCRIPTOR = _VOLUMEPREPARERESTOREREQUEST,
   __module__ = 'controller_pb2'
-  # @@protoc_insertion_point(class_scope:rpc.VolumePrepareRestoreRequest)
+  # @@protoc_insertion_point(class_scope:pb.VolumePrepareRestoreRequest)
   ))
 _sym_db.RegisterMessage(VolumePrepareRestoreRequest)
 
 VolumeFinishRestoreRequest = _reflection.GeneratedProtocolMessageType('VolumeFinishRestoreRequest', (_message.Message,), dict(
   DESCRIPTOR = _VOLUMEFINISHRESTOREREQUEST,
   __module__ = 'controller_pb2'
-  # @@protoc_insertion_point(class_scope:rpc.VolumeFinishRestoreRequest)
+  # @@protoc_insertion_point(class_scope:pb.VolumeFinishRestoreRequest)
   ))
 _sym_db.RegisterMessage(VolumeFinishRestoreRequest)
 
 ReplicaListReply = _reflection.GeneratedProtocolMessageType('ReplicaListReply', (_message.Message,), dict(
   DESCRIPTOR = _REPLICALISTREPLY,
   __module__ = 'controller_pb2'
-  # @@protoc_insertion_point(class_scope:rpc.ReplicaListReply)
+  # @@protoc_insertion_point(class_scope:pb.ReplicaListReply)
   ))
 _sym_db.RegisterMessage(ReplicaListReply)
 
 ReplicaPrepareRebuildReply = _reflection.GeneratedProtocolMessageType('ReplicaPrepareRebuildReply', (_message.Message,), dict(
   DESCRIPTOR = _REPLICAPREPAREREBUILDREPLY,
   __module__ = 'controller_pb2'
-  # @@protoc_insertion_point(class_scope:rpc.ReplicaPrepareRebuildReply)
+  # @@protoc_insertion_point(class_scope:pb.ReplicaPrepareRebuildReply)
   ))
 _sym_db.RegisterMessage(ReplicaPrepareRebuildReply)
 
 JournalListRequest = _reflection.GeneratedProtocolMessageType('JournalListRequest', (_message.Message,), dict(
   DESCRIPTOR = _JOURNALLISTREQUEST,
   __module__ = 'controller_pb2'
-  # @@protoc_insertion_point(class_scope:rpc.JournalListRequest)
+  # @@protoc_insertion_point(class_scope:pb.JournalListRequest)
   ))
 _sym_db.RegisterMessage(JournalListRequest)
 
 PortUpdateRequest = _reflection.GeneratedProtocolMessageType('PortUpdateRequest', (_message.Message,), dict(
   DESCRIPTOR = _PORTUPDATEREQUEST,
   __module__ = 'controller_pb2'
-  # @@protoc_insertion_point(class_scope:rpc.PortUpdateRequest)
+  # @@protoc_insertion_point(class_scope:pb.PortUpdateRequest)
   ))
 _sym_db.RegisterMessage(PortUpdateRequest)
 
 VersionOutput = _reflection.GeneratedProtocolMessageType('VersionOutput', (_message.Message,), dict(
   DESCRIPTOR = _VERSIONOUTPUT,
   __module__ = 'controller_pb2'
-  # @@protoc_insertion_point(class_scope:rpc.VersionOutput)
+  # @@protoc_insertion_point(class_scope:pb.VersionOutput)
   ))
 _sym_db.RegisterMessage(VersionOutput)
 
 VersionDetailGetReply = _reflection.GeneratedProtocolMessageType('VersionDetailGetReply', (_message.Message,), dict(
   DESCRIPTOR = _VERSIONDETAILGETREPLY,
   __module__ = 'controller_pb2'
-  # @@protoc_insertion_point(class_scope:rpc.VersionDetailGetReply)
+  # @@protoc_insertion_point(class_scope:pb.VersionDetailGetReply)
   ))
 _sym_db.RegisterMessage(VersionDetailGetReply)
 
 Metric = _reflection.GeneratedProtocolMessageType('Metric', (_message.Message,), dict(
   DESCRIPTOR = _METRIC,
   __module__ = 'controller_pb2'
-  # @@protoc_insertion_point(class_scope:rpc.Metric)
+  # @@protoc_insertion_point(class_scope:pb.Metric)
   ))
 _sym_db.RegisterMessage(Metric)
 
 MetricGetReply = _reflection.GeneratedProtocolMessageType('MetricGetReply', (_message.Message,), dict(
   DESCRIPTOR = _METRICGETREPLY,
   __module__ = 'controller_pb2'
-  # @@protoc_insertion_point(class_scope:rpc.MetricGetReply)
+  # @@protoc_insertion_point(class_scope:pb.MetricGetReply)
   ))
 _sym_db.RegisterMessage(MetricGetReply)
 
@@ -968,16 +968,16 @@ _VOLUMESNAPSHOTREQUEST_LABELSENTRY._options = None
 
 _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   name='ControllerService',
-  full_name='rpc.ControllerService',
+  full_name='pb.ControllerService',
   file=DESCRIPTOR,
   index=0,
   serialized_options=None,
-  serialized_start=1476,
-  serialized_end=2768,
+  serialized_start=1468,
+  serialized_end=2729,
   methods=[
   _descriptor.MethodDescriptor(
     name='VolumeGet',
-    full_name='rpc.ControllerService.VolumeGet',
+    full_name='pb.ControllerService.VolumeGet',
     index=0,
     containing_service=None,
     input_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
@@ -986,7 +986,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   ),
   _descriptor.MethodDescriptor(
     name='VolumeStart',
-    full_name='rpc.ControllerService.VolumeStart',
+    full_name='pb.ControllerService.VolumeStart',
     index=1,
     containing_service=None,
     input_type=_VOLUMESTARTREQUEST,
@@ -995,7 +995,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   ),
   _descriptor.MethodDescriptor(
     name='VolumeShutdown',
-    full_name='rpc.ControllerService.VolumeShutdown',
+    full_name='pb.ControllerService.VolumeShutdown',
     index=2,
     containing_service=None,
     input_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
@@ -1004,7 +1004,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   ),
   _descriptor.MethodDescriptor(
     name='VolumeSnapshot',
-    full_name='rpc.ControllerService.VolumeSnapshot',
+    full_name='pb.ControllerService.VolumeSnapshot',
     index=3,
     containing_service=None,
     input_type=_VOLUMESNAPSHOTREQUEST,
@@ -1013,7 +1013,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   ),
   _descriptor.MethodDescriptor(
     name='VolumeRevert',
-    full_name='rpc.ControllerService.VolumeRevert',
+    full_name='pb.ControllerService.VolumeRevert',
     index=4,
     containing_service=None,
     input_type=_VOLUMEREVERTREQUEST,
@@ -1022,7 +1022,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   ),
   _descriptor.MethodDescriptor(
     name='VolumeFrontendStart',
-    full_name='rpc.ControllerService.VolumeFrontendStart',
+    full_name='pb.ControllerService.VolumeFrontendStart',
     index=5,
     containing_service=None,
     input_type=_VOLUMEFRONTENDSTARTREQUEST,
@@ -1031,7 +1031,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   ),
   _descriptor.MethodDescriptor(
     name='VolumeFrontendShutdown',
-    full_name='rpc.ControllerService.VolumeFrontendShutdown',
+    full_name='pb.ControllerService.VolumeFrontendShutdown',
     index=6,
     containing_service=None,
     input_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
@@ -1040,7 +1040,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   ),
   _descriptor.MethodDescriptor(
     name='VolumePrepareRestore',
-    full_name='rpc.ControllerService.VolumePrepareRestore',
+    full_name='pb.ControllerService.VolumePrepareRestore',
     index=7,
     containing_service=None,
     input_type=_VOLUMEPREPARERESTOREREQUEST,
@@ -1049,7 +1049,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   ),
   _descriptor.MethodDescriptor(
     name='VolumeFinishRestore',
-    full_name='rpc.ControllerService.VolumeFinishRestore',
+    full_name='pb.ControllerService.VolumeFinishRestore',
     index=8,
     containing_service=None,
     input_type=_VOLUMEFINISHRESTOREREQUEST,
@@ -1058,7 +1058,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   ),
   _descriptor.MethodDescriptor(
     name='ReplicaList',
-    full_name='rpc.ControllerService.ReplicaList',
+    full_name='pb.ControllerService.ReplicaList',
     index=9,
     containing_service=None,
     input_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
@@ -1067,7 +1067,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   ),
   _descriptor.MethodDescriptor(
     name='ReplicaGet',
-    full_name='rpc.ControllerService.ReplicaGet',
+    full_name='pb.ControllerService.ReplicaGet',
     index=10,
     containing_service=None,
     input_type=_REPLICAADDRESS,
@@ -1076,7 +1076,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   ),
   _descriptor.MethodDescriptor(
     name='ReplicaCreate',
-    full_name='rpc.ControllerService.ReplicaCreate',
+    full_name='pb.ControllerService.ReplicaCreate',
     index=11,
     containing_service=None,
     input_type=_REPLICAADDRESS,
@@ -1085,7 +1085,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   ),
   _descriptor.MethodDescriptor(
     name='ReplicaDelete',
-    full_name='rpc.ControllerService.ReplicaDelete',
+    full_name='pb.ControllerService.ReplicaDelete',
     index=12,
     containing_service=None,
     input_type=_REPLICAADDRESS,
@@ -1094,7 +1094,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   ),
   _descriptor.MethodDescriptor(
     name='ReplicaUpdate',
-    full_name='rpc.ControllerService.ReplicaUpdate',
+    full_name='pb.ControllerService.ReplicaUpdate',
     index=13,
     containing_service=None,
     input_type=_CONTROLLERREPLICA,
@@ -1103,7 +1103,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   ),
   _descriptor.MethodDescriptor(
     name='ReplicaPrepareRebuild',
-    full_name='rpc.ControllerService.ReplicaPrepareRebuild',
+    full_name='pb.ControllerService.ReplicaPrepareRebuild',
     index=14,
     containing_service=None,
     input_type=_REPLICAADDRESS,
@@ -1112,7 +1112,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   ),
   _descriptor.MethodDescriptor(
     name='ReplicaVerifyRebuild',
-    full_name='rpc.ControllerService.ReplicaVerifyRebuild',
+    full_name='pb.ControllerService.ReplicaVerifyRebuild',
     index=15,
     containing_service=None,
     input_type=_REPLICAADDRESS,
@@ -1121,7 +1121,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   ),
   _descriptor.MethodDescriptor(
     name='JournalList',
-    full_name='rpc.ControllerService.JournalList',
+    full_name='pb.ControllerService.JournalList',
     index=16,
     containing_service=None,
     input_type=_JOURNALLISTREQUEST,
@@ -1130,7 +1130,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   ),
   _descriptor.MethodDescriptor(
     name='PortUpdate',
-    full_name='rpc.ControllerService.PortUpdate',
+    full_name='pb.ControllerService.PortUpdate',
     index=17,
     containing_service=None,
     input_type=_PORTUPDATEREQUEST,
@@ -1139,7 +1139,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   ),
   _descriptor.MethodDescriptor(
     name='VersionDetailGet',
-    full_name='rpc.ControllerService.VersionDetailGet',
+    full_name='pb.ControllerService.VersionDetailGet',
     index=18,
     containing_service=None,
     input_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
@@ -1148,7 +1148,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   ),
   _descriptor.MethodDescriptor(
     name='MetricGet',
-    full_name='rpc.ControllerService.MetricGet',
+    full_name='pb.ControllerService.MetricGet',
     index=19,
     containing_service=None,
     input_type=google_dot_protobuf_dot_empty__pb2._EMPTY,

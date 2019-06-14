@@ -16,102 +16,102 @@ class ControllerServiceStub(object):
       channel: A grpc.Channel.
     """
     self.VolumeGet = channel.unary_unary(
-        '/rpc.ControllerService/VolumeGet',
+        '/pb.ControllerService/VolumeGet',
         request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
         response_deserializer=controller__pb2.Volume.FromString,
         )
     self.VolumeStart = channel.unary_unary(
-        '/rpc.ControllerService/VolumeStart',
+        '/pb.ControllerService/VolumeStart',
         request_serializer=controller__pb2.VolumeStartRequest.SerializeToString,
         response_deserializer=controller__pb2.Volume.FromString,
         )
     self.VolumeShutdown = channel.unary_unary(
-        '/rpc.ControllerService/VolumeShutdown',
+        '/pb.ControllerService/VolumeShutdown',
         request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
         response_deserializer=controller__pb2.Volume.FromString,
         )
     self.VolumeSnapshot = channel.unary_unary(
-        '/rpc.ControllerService/VolumeSnapshot',
+        '/pb.ControllerService/VolumeSnapshot',
         request_serializer=controller__pb2.VolumeSnapshotRequest.SerializeToString,
         response_deserializer=controller__pb2.VolumeSnapshotReply.FromString,
         )
     self.VolumeRevert = channel.unary_unary(
-        '/rpc.ControllerService/VolumeRevert',
+        '/pb.ControllerService/VolumeRevert',
         request_serializer=controller__pb2.VolumeRevertRequest.SerializeToString,
         response_deserializer=controller__pb2.Volume.FromString,
         )
     self.VolumeFrontendStart = channel.unary_unary(
-        '/rpc.ControllerService/VolumeFrontendStart',
+        '/pb.ControllerService/VolumeFrontendStart',
         request_serializer=controller__pb2.VolumeFrontendStartRequest.SerializeToString,
         response_deserializer=controller__pb2.Volume.FromString,
         )
     self.VolumeFrontendShutdown = channel.unary_unary(
-        '/rpc.ControllerService/VolumeFrontendShutdown',
+        '/pb.ControllerService/VolumeFrontendShutdown',
         request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
         response_deserializer=controller__pb2.Volume.FromString,
         )
     self.VolumePrepareRestore = channel.unary_unary(
-        '/rpc.ControllerService/VolumePrepareRestore',
+        '/pb.ControllerService/VolumePrepareRestore',
         request_serializer=controller__pb2.VolumePrepareRestoreRequest.SerializeToString,
         response_deserializer=controller__pb2.Volume.FromString,
         )
     self.VolumeFinishRestore = channel.unary_unary(
-        '/rpc.ControllerService/VolumeFinishRestore',
+        '/pb.ControllerService/VolumeFinishRestore',
         request_serializer=controller__pb2.VolumeFinishRestoreRequest.SerializeToString,
         response_deserializer=controller__pb2.Volume.FromString,
         )
     self.ReplicaList = channel.unary_unary(
-        '/rpc.ControllerService/ReplicaList',
+        '/pb.ControllerService/ReplicaList',
         request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
         response_deserializer=controller__pb2.ReplicaListReply.FromString,
         )
     self.ReplicaGet = channel.unary_unary(
-        '/rpc.ControllerService/ReplicaGet',
+        '/pb.ControllerService/ReplicaGet',
         request_serializer=controller__pb2.ReplicaAddress.SerializeToString,
         response_deserializer=controller__pb2.ControllerReplica.FromString,
         )
     self.ReplicaCreate = channel.unary_unary(
-        '/rpc.ControllerService/ReplicaCreate',
+        '/pb.ControllerService/ReplicaCreate',
         request_serializer=controller__pb2.ReplicaAddress.SerializeToString,
         response_deserializer=controller__pb2.ControllerReplica.FromString,
         )
     self.ReplicaDelete = channel.unary_unary(
-        '/rpc.ControllerService/ReplicaDelete',
+        '/pb.ControllerService/ReplicaDelete',
         request_serializer=controller__pb2.ReplicaAddress.SerializeToString,
         response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
         )
     self.ReplicaUpdate = channel.unary_unary(
-        '/rpc.ControllerService/ReplicaUpdate',
+        '/pb.ControllerService/ReplicaUpdate',
         request_serializer=controller__pb2.ControllerReplica.SerializeToString,
         response_deserializer=controller__pb2.ControllerReplica.FromString,
         )
     self.ReplicaPrepareRebuild = channel.unary_unary(
-        '/rpc.ControllerService/ReplicaPrepareRebuild',
+        '/pb.ControllerService/ReplicaPrepareRebuild',
         request_serializer=controller__pb2.ReplicaAddress.SerializeToString,
         response_deserializer=controller__pb2.ReplicaPrepareRebuildReply.FromString,
         )
     self.ReplicaVerifyRebuild = channel.unary_unary(
-        '/rpc.ControllerService/ReplicaVerifyRebuild',
+        '/pb.ControllerService/ReplicaVerifyRebuild',
         request_serializer=controller__pb2.ReplicaAddress.SerializeToString,
         response_deserializer=controller__pb2.ControllerReplica.FromString,
         )
     self.JournalList = channel.unary_unary(
-        '/rpc.ControllerService/JournalList',
+        '/pb.ControllerService/JournalList',
         request_serializer=controller__pb2.JournalListRequest.SerializeToString,
         response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
         )
     self.PortUpdate = channel.unary_unary(
-        '/rpc.ControllerService/PortUpdate',
+        '/pb.ControllerService/PortUpdate',
         request_serializer=controller__pb2.PortUpdateRequest.SerializeToString,
         response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
         )
     self.VersionDetailGet = channel.unary_unary(
-        '/rpc.ControllerService/VersionDetailGet',
+        '/pb.ControllerService/VersionDetailGet',
         request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
         response_deserializer=controller__pb2.VersionDetailGetReply.FromString,
         )
     self.MetricGet = channel.unary_stream(
-        '/rpc.ControllerService/MetricGet',
+        '/pb.ControllerService/MetricGet',
         request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
         response_deserializer=controller__pb2.MetricGetReply.FromString,
         )
@@ -366,5 +366,5 @@ def add_ControllerServiceServicer_to_server(servicer, server):
       ),
   }
   generic_handler = grpc.method_handlers_generic_handler(
-      'rpc.ControllerService', rpc_method_handlers)
+      'pb.ControllerService', rpc_method_handlers)
   server.add_generic_rpc_handlers((generic_handler,))
