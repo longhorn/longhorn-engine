@@ -12,6 +12,8 @@ import (
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+
+	"github.com/longhorn/longhorn-engine/controller/client"
 )
 
 const (
@@ -94,13 +96,13 @@ func (c *Controller) Stop() {
 	c.cmd.Process.Signal(syscall.SIGINT)
 
 	// wait for the controller to shutdown
-	client := NewControllerClient("http://" + c.Listen)
+	controllerCli := client.NewControllerClient(c.Listen)
 	// we're listening as the backup
 	if c.BackupListen != "" {
-		client = NewControllerClient("http://" + c.BackupListen)
+		controllerCli = client.NewControllerClient(c.BackupListen)
 	}
 	for i := 0; i < WaitCount; i++ {
-		if err := client.TestConnection(); err != nil {
+		if err := controllerCli.Check(); err != nil {
 			return
 		}
 		logrus.Infof("launcher: wait for controller to shutdown")
@@ -155,25 +157,24 @@ func (c *Controller) RestoreBackupBinary() error {
 }
 
 func (c *Controller) SwitchPortToBackup() (err error) {
-	client := NewControllerClient("http://" + c.Listen)
-	if err := client.UpdatePort(BackupListenPort); err != nil {
-		if !strings.Contains(err.Error(), "EOF") {
-			return err
-		}
+	controllerCli := client.NewControllerClient(c.Listen)
+	if err := controllerCli.PortUpdate(BackupListenPort); err != nil {
+		return err
 	}
+
 	addrs := strings.Split(c.Listen, ":")
 	addr := addrs[0]
 	c.BackupListen = addr + ":" + strconv.Itoa(BackupListenPort)
 
-	client = NewControllerClient("http://" + c.BackupListen)
+	controllerCli = client.NewControllerClient(c.BackupListen)
 	for i := 0; i < SwitchWaitCount; i++ {
-		if err := client.TestConnection(); err == nil {
+		if err := controllerCli.Check(); err == nil {
 			break
 		}
 		logrus.Infof("launcher: wait for controller to switch to %v", c.BackupListen)
 		time.Sleep(SwitchWaitInterval)
 	}
-	if err := client.TestConnection(); err != nil {
+	if err := controllerCli.Check(); err != nil {
 		return errors.Wrapf(err, "test connection to %v failed", c.BackupListen)
 	}
 	logrus.Infof("launcher: original controller updated listen to %v", c.BackupListen)
@@ -190,22 +191,20 @@ func (c *Controller) SwitchPortToOriginal() (err error) {
 		return fmt.Errorf("unable to parse listen port %v", c.Listen)
 	}
 
-	client := NewControllerClient("http://" + c.BackupListen)
-	if err := client.UpdatePort(port); err != nil {
-		if !strings.Contains(err.Error(), "EOF") {
-			return err
-		}
+	controllerCli := client.NewControllerClient(c.BackupListen)
+	if err := controllerCli.PortUpdate(port); err != nil {
+		return err
 	}
 
-	client = NewControllerClient("http://" + c.Listen)
+	controllerCli = client.NewControllerClient(c.Listen)
 	for i := 0; i < SwitchWaitCount; i++ {
-		if err := client.TestConnection(); err == nil {
+		if err := controllerCli.Check(); err == nil {
 			break
 		}
 		logrus.Infof("launcher: wait for controller to switch to %v", c.Listen)
 		time.Sleep(SwitchWaitInterval)
 	}
-	if err := client.TestConnection(); err != nil {
+	if err := controllerCli.Check(); err != nil {
 		return errors.Wrapf(err, "test connection to %v failed", c.Listen)
 	}
 	c.BackupListen = ""
@@ -244,17 +243,18 @@ func (c *Controller) FinalizeUpgrade() error {
 }
 
 func (c *Controller) StartFrontend(frontend string) error {
-	client := NewControllerClient("http://" + c.Listen)
-	if err := client.StartFrontend(frontend); err != nil {
+	controllerCli := client.NewControllerClient(c.Listen)
+	if err := controllerCli.VolumeFrontendStart(frontend); err != nil {
 		return err
 	}
+
 	logrus.Infof("launcher: Controller frontend %v started", frontend)
 	return nil
 }
 
 func (c *Controller) ShutdownFrontend() error {
-	client := NewControllerClient("http://" + c.Listen)
-	if err := client.ShutdownFrontend(); err != nil {
+	controllerCli := client.NewControllerClient(c.Listen)
+	if err := controllerCli.VolumeFrontendShutdown(); err != nil {
 		return err
 	}
 	logrus.Info("launcher: Controller frontend has been shut down")
