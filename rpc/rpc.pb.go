@@ -13,14 +13,14 @@ It has these top-level messages:
 	Identity
 	Frontend
 	Empty
-	EngineSpec
-	EngineStatus
-	EngineStartRequest
-	EngineStopRequest
-	EngineGetRequest
-	EngineResponse
-	EngineListRequest
-	EngineListResponse
+	ProcessSpec
+	ProcessStatus
+	ProcessCreateRequest
+	ProcessDeleteRequest
+	ProcessGetRequest
+	ProcessResponse
+	ProcessListRequest
+	ProcessListResponse
 */
 package rpc
 
@@ -140,162 +140,162 @@ func (m *Empty) String() string            { return proto.CompactTextString(m) }
 func (*Empty) ProtoMessage()               {}
 func (*Empty) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{4} }
 
-type EngineSpec struct {
+type ProcessSpec struct {
 	Name          string   `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
 	Binary        string   `protobuf:"bytes,2,opt,name=binary" json:"binary,omitempty"`
 	Args          []string `protobuf:"bytes,3,rep,name=args" json:"args,omitempty"`
 	ReservedPorts []int32  `protobuf:"varint,4,rep,packed,name=reserved_ports,json=reservedPorts" json:"reserved_ports,omitempty"`
 }
 
-func (m *EngineSpec) Reset()                    { *m = EngineSpec{} }
-func (m *EngineSpec) String() string            { return proto.CompactTextString(m) }
-func (*EngineSpec) ProtoMessage()               {}
-func (*EngineSpec) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{5} }
+func (m *ProcessSpec) Reset()                    { *m = ProcessSpec{} }
+func (m *ProcessSpec) String() string            { return proto.CompactTextString(m) }
+func (*ProcessSpec) ProtoMessage()               {}
+func (*ProcessSpec) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{5} }
 
-func (m *EngineSpec) GetName() string {
+func (m *ProcessSpec) GetName() string {
 	if m != nil {
 		return m.Name
 	}
 	return ""
 }
 
-func (m *EngineSpec) GetBinary() string {
+func (m *ProcessSpec) GetBinary() string {
 	if m != nil {
 		return m.Binary
 	}
 	return ""
 }
 
-func (m *EngineSpec) GetArgs() []string {
+func (m *ProcessSpec) GetArgs() []string {
 	if m != nil {
 		return m.Args
 	}
 	return nil
 }
 
-func (m *EngineSpec) GetReservedPorts() []int32 {
+func (m *ProcessSpec) GetReservedPorts() []int32 {
 	if m != nil {
 		return m.ReservedPorts
 	}
 	return nil
 }
 
-type EngineStatus struct {
+type ProcessStatus struct {
 	Status   string `protobuf:"bytes,1,opt,name=status" json:"status,omitempty"`
 	ErrorMsg string `protobuf:"bytes,2,opt,name=error_msg,json=errorMsg" json:"error_msg,omitempty"`
 }
 
-func (m *EngineStatus) Reset()                    { *m = EngineStatus{} }
-func (m *EngineStatus) String() string            { return proto.CompactTextString(m) }
-func (*EngineStatus) ProtoMessage()               {}
-func (*EngineStatus) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{6} }
+func (m *ProcessStatus) Reset()                    { *m = ProcessStatus{} }
+func (m *ProcessStatus) String() string            { return proto.CompactTextString(m) }
+func (*ProcessStatus) ProtoMessage()               {}
+func (*ProcessStatus) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{6} }
 
-func (m *EngineStatus) GetStatus() string {
+func (m *ProcessStatus) GetStatus() string {
 	if m != nil {
 		return m.Status
 	}
 	return ""
 }
 
-func (m *EngineStatus) GetErrorMsg() string {
+func (m *ProcessStatus) GetErrorMsg() string {
 	if m != nil {
 		return m.ErrorMsg
 	}
 	return ""
 }
 
-type EngineStartRequest struct {
-	Spec *EngineSpec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
+type ProcessCreateRequest struct {
+	Spec *ProcessSpec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
 }
 
-func (m *EngineStartRequest) Reset()                    { *m = EngineStartRequest{} }
-func (m *EngineStartRequest) String() string            { return proto.CompactTextString(m) }
-func (*EngineStartRequest) ProtoMessage()               {}
-func (*EngineStartRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{7} }
+func (m *ProcessCreateRequest) Reset()                    { *m = ProcessCreateRequest{} }
+func (m *ProcessCreateRequest) String() string            { return proto.CompactTextString(m) }
+func (*ProcessCreateRequest) ProtoMessage()               {}
+func (*ProcessCreateRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{7} }
 
-func (m *EngineStartRequest) GetSpec() *EngineSpec {
+func (m *ProcessCreateRequest) GetSpec() *ProcessSpec {
 	if m != nil {
 		return m.Spec
 	}
 	return nil
 }
 
-type EngineStopRequest struct {
+type ProcessDeleteRequest struct {
 	Name string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
 }
 
-func (m *EngineStopRequest) Reset()                    { *m = EngineStopRequest{} }
-func (m *EngineStopRequest) String() string            { return proto.CompactTextString(m) }
-func (*EngineStopRequest) ProtoMessage()               {}
-func (*EngineStopRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{8} }
+func (m *ProcessDeleteRequest) Reset()                    { *m = ProcessDeleteRequest{} }
+func (m *ProcessDeleteRequest) String() string            { return proto.CompactTextString(m) }
+func (*ProcessDeleteRequest) ProtoMessage()               {}
+func (*ProcessDeleteRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{8} }
 
-func (m *EngineStopRequest) GetName() string {
+func (m *ProcessDeleteRequest) GetName() string {
 	if m != nil {
 		return m.Name
 	}
 	return ""
 }
 
-type EngineGetRequest struct {
+type ProcessGetRequest struct {
 	Name string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
 }
 
-func (m *EngineGetRequest) Reset()                    { *m = EngineGetRequest{} }
-func (m *EngineGetRequest) String() string            { return proto.CompactTextString(m) }
-func (*EngineGetRequest) ProtoMessage()               {}
-func (*EngineGetRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{9} }
+func (m *ProcessGetRequest) Reset()                    { *m = ProcessGetRequest{} }
+func (m *ProcessGetRequest) String() string            { return proto.CompactTextString(m) }
+func (*ProcessGetRequest) ProtoMessage()               {}
+func (*ProcessGetRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{9} }
 
-func (m *EngineGetRequest) GetName() string {
+func (m *ProcessGetRequest) GetName() string {
 	if m != nil {
 		return m.Name
 	}
 	return ""
 }
 
-type EngineResponse struct {
-	Spec   *EngineSpec   `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
-	Status *EngineStatus `protobuf:"bytes,2,opt,name=status" json:"status,omitempty"`
+type ProcessResponse struct {
+	Spec   *ProcessSpec   `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
+	Status *ProcessStatus `protobuf:"bytes,2,opt,name=status" json:"status,omitempty"`
 }
 
-func (m *EngineResponse) Reset()                    { *m = EngineResponse{} }
-func (m *EngineResponse) String() string            { return proto.CompactTextString(m) }
-func (*EngineResponse) ProtoMessage()               {}
-func (*EngineResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{10} }
+func (m *ProcessResponse) Reset()                    { *m = ProcessResponse{} }
+func (m *ProcessResponse) String() string            { return proto.CompactTextString(m) }
+func (*ProcessResponse) ProtoMessage()               {}
+func (*ProcessResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{10} }
 
-func (m *EngineResponse) GetSpec() *EngineSpec {
+func (m *ProcessResponse) GetSpec() *ProcessSpec {
 	if m != nil {
 		return m.Spec
 	}
 	return nil
 }
 
-func (m *EngineResponse) GetStatus() *EngineStatus {
+func (m *ProcessResponse) GetStatus() *ProcessStatus {
 	if m != nil {
 		return m.Status
 	}
 	return nil
 }
 
-type EngineListRequest struct {
+type ProcessListRequest struct {
 }
 
-func (m *EngineListRequest) Reset()                    { *m = EngineListRequest{} }
-func (m *EngineListRequest) String() string            { return proto.CompactTextString(m) }
-func (*EngineListRequest) ProtoMessage()               {}
-func (*EngineListRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{11} }
+func (m *ProcessListRequest) Reset()                    { *m = ProcessListRequest{} }
+func (m *ProcessListRequest) String() string            { return proto.CompactTextString(m) }
+func (*ProcessListRequest) ProtoMessage()               {}
+func (*ProcessListRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{11} }
 
-type EngineListResponse struct {
-	Engines []*EngineResponse `protobuf:"bytes,1,rep,name=engines" json:"engines,omitempty"`
+type ProcessListResponse struct {
+	Processes []*ProcessResponse `protobuf:"bytes,1,rep,name=processes" json:"processes,omitempty"`
 }
 
-func (m *EngineListResponse) Reset()                    { *m = EngineListResponse{} }
-func (m *EngineListResponse) String() string            { return proto.CompactTextString(m) }
-func (*EngineListResponse) ProtoMessage()               {}
-func (*EngineListResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{12} }
+func (m *ProcessListResponse) Reset()                    { *m = ProcessListResponse{} }
+func (m *ProcessListResponse) String() string            { return proto.CompactTextString(m) }
+func (*ProcessListResponse) ProtoMessage()               {}
+func (*ProcessListResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{12} }
 
-func (m *EngineListResponse) GetEngines() []*EngineResponse {
+func (m *ProcessListResponse) GetProcesses() []*ProcessResponse {
 	if m != nil {
-		return m.Engines
+		return m.Processes
 	}
 	return nil
 }
@@ -306,14 +306,14 @@ func init() {
 	proto.RegisterType((*Identity)(nil), "Identity")
 	proto.RegisterType((*Frontend)(nil), "Frontend")
 	proto.RegisterType((*Empty)(nil), "Empty")
-	proto.RegisterType((*EngineSpec)(nil), "EngineSpec")
-	proto.RegisterType((*EngineStatus)(nil), "EngineStatus")
-	proto.RegisterType((*EngineStartRequest)(nil), "EngineStartRequest")
-	proto.RegisterType((*EngineStopRequest)(nil), "EngineStopRequest")
-	proto.RegisterType((*EngineGetRequest)(nil), "EngineGetRequest")
-	proto.RegisterType((*EngineResponse)(nil), "EngineResponse")
-	proto.RegisterType((*EngineListRequest)(nil), "EngineListRequest")
-	proto.RegisterType((*EngineListResponse)(nil), "EngineListResponse")
+	proto.RegisterType((*ProcessSpec)(nil), "ProcessSpec")
+	proto.RegisterType((*ProcessStatus)(nil), "ProcessStatus")
+	proto.RegisterType((*ProcessCreateRequest)(nil), "ProcessCreateRequest")
+	proto.RegisterType((*ProcessDeleteRequest)(nil), "ProcessDeleteRequest")
+	proto.RegisterType((*ProcessGetRequest)(nil), "ProcessGetRequest")
+	proto.RegisterType((*ProcessResponse)(nil), "ProcessResponse")
+	proto.RegisterType((*ProcessListRequest)(nil), "ProcessListRequest")
+	proto.RegisterType((*ProcessListResponse)(nil), "ProcessListResponse")
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -553,163 +553,163 @@ var _LonghornLauncherService_serviceDesc = grpc.ServiceDesc{
 	Metadata: "rpc.proto",
 }
 
-// Client API for LonghornEngineLauncherService service
+// Client API for LonghornProcessLauncherService service
 
-type LonghornEngineLauncherServiceClient interface {
-	EngineStart(ctx context.Context, in *EngineStartRequest, opts ...grpc.CallOption) (*EngineResponse, error)
-	EngineStop(ctx context.Context, in *EngineStopRequest, opts ...grpc.CallOption) (*EngineResponse, error)
-	EngineGet(ctx context.Context, in *EngineGetRequest, opts ...grpc.CallOption) (*EngineResponse, error)
-	EngineList(ctx context.Context, in *EngineListRequest, opts ...grpc.CallOption) (*EngineListResponse, error)
+type LonghornProcessLauncherServiceClient interface {
+	ProcessCreate(ctx context.Context, in *ProcessCreateRequest, opts ...grpc.CallOption) (*ProcessResponse, error)
+	ProcessDelete(ctx context.Context, in *ProcessDeleteRequest, opts ...grpc.CallOption) (*ProcessResponse, error)
+	ProcessGet(ctx context.Context, in *ProcessGetRequest, opts ...grpc.CallOption) (*ProcessResponse, error)
+	ProcessList(ctx context.Context, in *ProcessListRequest, opts ...grpc.CallOption) (*ProcessListResponse, error)
 }
 
-type longhornEngineLauncherServiceClient struct {
+type longhornProcessLauncherServiceClient struct {
 	cc *grpc.ClientConn
 }
 
-func NewLonghornEngineLauncherServiceClient(cc *grpc.ClientConn) LonghornEngineLauncherServiceClient {
-	return &longhornEngineLauncherServiceClient{cc}
+func NewLonghornProcessLauncherServiceClient(cc *grpc.ClientConn) LonghornProcessLauncherServiceClient {
+	return &longhornProcessLauncherServiceClient{cc}
 }
 
-func (c *longhornEngineLauncherServiceClient) EngineStart(ctx context.Context, in *EngineStartRequest, opts ...grpc.CallOption) (*EngineResponse, error) {
-	out := new(EngineResponse)
-	err := grpc.Invoke(ctx, "/LonghornEngineLauncherService/EngineStart", in, out, c.cc, opts...)
+func (c *longhornProcessLauncherServiceClient) ProcessCreate(ctx context.Context, in *ProcessCreateRequest, opts ...grpc.CallOption) (*ProcessResponse, error) {
+	out := new(ProcessResponse)
+	err := grpc.Invoke(ctx, "/LonghornProcessLauncherService/ProcessCreate", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *longhornEngineLauncherServiceClient) EngineStop(ctx context.Context, in *EngineStopRequest, opts ...grpc.CallOption) (*EngineResponse, error) {
-	out := new(EngineResponse)
-	err := grpc.Invoke(ctx, "/LonghornEngineLauncherService/EngineStop", in, out, c.cc, opts...)
+func (c *longhornProcessLauncherServiceClient) ProcessDelete(ctx context.Context, in *ProcessDeleteRequest, opts ...grpc.CallOption) (*ProcessResponse, error) {
+	out := new(ProcessResponse)
+	err := grpc.Invoke(ctx, "/LonghornProcessLauncherService/ProcessDelete", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *longhornEngineLauncherServiceClient) EngineGet(ctx context.Context, in *EngineGetRequest, opts ...grpc.CallOption) (*EngineResponse, error) {
-	out := new(EngineResponse)
-	err := grpc.Invoke(ctx, "/LonghornEngineLauncherService/EngineGet", in, out, c.cc, opts...)
+func (c *longhornProcessLauncherServiceClient) ProcessGet(ctx context.Context, in *ProcessGetRequest, opts ...grpc.CallOption) (*ProcessResponse, error) {
+	out := new(ProcessResponse)
+	err := grpc.Invoke(ctx, "/LonghornProcessLauncherService/ProcessGet", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *longhornEngineLauncherServiceClient) EngineList(ctx context.Context, in *EngineListRequest, opts ...grpc.CallOption) (*EngineListResponse, error) {
-	out := new(EngineListResponse)
-	err := grpc.Invoke(ctx, "/LonghornEngineLauncherService/EngineList", in, out, c.cc, opts...)
+func (c *longhornProcessLauncherServiceClient) ProcessList(ctx context.Context, in *ProcessListRequest, opts ...grpc.CallOption) (*ProcessListResponse, error) {
+	out := new(ProcessListResponse)
+	err := grpc.Invoke(ctx, "/LonghornProcessLauncherService/ProcessList", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// Server API for LonghornEngineLauncherService service
+// Server API for LonghornProcessLauncherService service
 
-type LonghornEngineLauncherServiceServer interface {
-	EngineStart(context.Context, *EngineStartRequest) (*EngineResponse, error)
-	EngineStop(context.Context, *EngineStopRequest) (*EngineResponse, error)
-	EngineGet(context.Context, *EngineGetRequest) (*EngineResponse, error)
-	EngineList(context.Context, *EngineListRequest) (*EngineListResponse, error)
+type LonghornProcessLauncherServiceServer interface {
+	ProcessCreate(context.Context, *ProcessCreateRequest) (*ProcessResponse, error)
+	ProcessDelete(context.Context, *ProcessDeleteRequest) (*ProcessResponse, error)
+	ProcessGet(context.Context, *ProcessGetRequest) (*ProcessResponse, error)
+	ProcessList(context.Context, *ProcessListRequest) (*ProcessListResponse, error)
 }
 
-func RegisterLonghornEngineLauncherServiceServer(s *grpc.Server, srv LonghornEngineLauncherServiceServer) {
-	s.RegisterService(&_LonghornEngineLauncherService_serviceDesc, srv)
+func RegisterLonghornProcessLauncherServiceServer(s *grpc.Server, srv LonghornProcessLauncherServiceServer) {
+	s.RegisterService(&_LonghornProcessLauncherService_serviceDesc, srv)
 }
 
-func _LonghornEngineLauncherService_EngineStart_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(EngineStartRequest)
+func _LonghornProcessLauncherService_ProcessCreate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ProcessCreateRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(LonghornEngineLauncherServiceServer).EngineStart(ctx, in)
+		return srv.(LonghornProcessLauncherServiceServer).ProcessCreate(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/LonghornEngineLauncherService/EngineStart",
+		FullMethod: "/LonghornProcessLauncherService/ProcessCreate",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LonghornEngineLauncherServiceServer).EngineStart(ctx, req.(*EngineStartRequest))
+		return srv.(LonghornProcessLauncherServiceServer).ProcessCreate(ctx, req.(*ProcessCreateRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _LonghornEngineLauncherService_EngineStop_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(EngineStopRequest)
+func _LonghornProcessLauncherService_ProcessDelete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ProcessDeleteRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(LonghornEngineLauncherServiceServer).EngineStop(ctx, in)
+		return srv.(LonghornProcessLauncherServiceServer).ProcessDelete(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/LonghornEngineLauncherService/EngineStop",
+		FullMethod: "/LonghornProcessLauncherService/ProcessDelete",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LonghornEngineLauncherServiceServer).EngineStop(ctx, req.(*EngineStopRequest))
+		return srv.(LonghornProcessLauncherServiceServer).ProcessDelete(ctx, req.(*ProcessDeleteRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _LonghornEngineLauncherService_EngineGet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(EngineGetRequest)
+func _LonghornProcessLauncherService_ProcessGet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ProcessGetRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(LonghornEngineLauncherServiceServer).EngineGet(ctx, in)
+		return srv.(LonghornProcessLauncherServiceServer).ProcessGet(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/LonghornEngineLauncherService/EngineGet",
+		FullMethod: "/LonghornProcessLauncherService/ProcessGet",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LonghornEngineLauncherServiceServer).EngineGet(ctx, req.(*EngineGetRequest))
+		return srv.(LonghornProcessLauncherServiceServer).ProcessGet(ctx, req.(*ProcessGetRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _LonghornEngineLauncherService_EngineList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(EngineListRequest)
+func _LonghornProcessLauncherService_ProcessList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ProcessListRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(LonghornEngineLauncherServiceServer).EngineList(ctx, in)
+		return srv.(LonghornProcessLauncherServiceServer).ProcessList(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/LonghornEngineLauncherService/EngineList",
+		FullMethod: "/LonghornProcessLauncherService/ProcessList",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LonghornEngineLauncherServiceServer).EngineList(ctx, req.(*EngineListRequest))
+		return srv.(LonghornProcessLauncherServiceServer).ProcessList(ctx, req.(*ProcessListRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-var _LonghornEngineLauncherService_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "LonghornEngineLauncherService",
-	HandlerType: (*LonghornEngineLauncherServiceServer)(nil),
+var _LonghornProcessLauncherService_serviceDesc = grpc.ServiceDesc{
+	ServiceName: "LonghornProcessLauncherService",
+	HandlerType: (*LonghornProcessLauncherServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "EngineStart",
-			Handler:    _LonghornEngineLauncherService_EngineStart_Handler,
+			MethodName: "ProcessCreate",
+			Handler:    _LonghornProcessLauncherService_ProcessCreate_Handler,
 		},
 		{
-			MethodName: "EngineStop",
-			Handler:    _LonghornEngineLauncherService_EngineStop_Handler,
+			MethodName: "ProcessDelete",
+			Handler:    _LonghornProcessLauncherService_ProcessDelete_Handler,
 		},
 		{
-			MethodName: "EngineGet",
-			Handler:    _LonghornEngineLauncherService_EngineGet_Handler,
+			MethodName: "ProcessGet",
+			Handler:    _LonghornProcessLauncherService_ProcessGet_Handler,
 		},
 		{
-			MethodName: "EngineList",
-			Handler:    _LonghornEngineLauncherService_EngineList_Handler,
+			MethodName: "ProcessList",
+			Handler:    _LonghornProcessLauncherService_ProcessList_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
@@ -719,40 +719,41 @@ var _LonghornEngineLauncherService_serviceDesc = grpc.ServiceDesc{
 func init() { proto.RegisterFile("rpc.proto", fileDescriptor0) }
 
 var fileDescriptor0 = []byte{
-	// 560 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x84, 0x54, 0xcd, 0x6b, 0xdb, 0x4e,
-	0x10, 0x75, 0x64, 0xc7, 0x8e, 0xc6, 0x3f, 0xfb, 0x97, 0xac, 0x21, 0x15, 0x2a, 0xa5, 0x66, 0x69,
-	0x12, 0xb7, 0x07, 0x41, 0x1d, 0x42, 0x2f, 0x85, 0x1e, 0x9a, 0x34, 0x18, 0x5c, 0x28, 0x32, 0x2d,
-	0xbd, 0x05, 0x45, 0x9a, 0xc8, 0x82, 0x78, 0x77, 0xbb, 0xbb, 0x76, 0xf1, 0xad, 0xff, 0x75, 0xaf,
-	0x45, 0x2b, 0xad, 0x2a, 0x7f, 0x90, 0xde, 0x76, 0x66, 0xde, 0x7c, 0xbc, 0xe7, 0x67, 0x81, 0x2b,
-	0x45, 0x1c, 0x08, 0xc9, 0x35, 0xa7, 0xef, 0xa1, 0x7d, 0xc3, 0xd2, 0x8c, 0x21, 0x39, 0x85, 0xf6,
-	0x7d, 0xc6, 0x22, 0xb9, 0xf6, 0x0e, 0x86, 0x07, 0x23, 0x37, 0x2c, 0x23, 0xe2, 0xc3, 0x91, 0x44,
-	0xf1, 0x98, 0xc5, 0x91, 0xf2, 0x9c, 0x61, 0x73, 0xe4, 0x86, 0x55, 0x4c, 0xbf, 0x41, 0x6b, 0xc2,
-	0x1e, 0x78, 0xde, 0xbb, 0xe2, 0x8f, 0xcb, 0x05, 0xda, 0xde, 0x22, 0xca, 0x7b, 0x1f, 0x24, 0x67,
-	0x1a, 0x59, 0xe2, 0x39, 0xa6, 0x52, 0xc5, 0x79, 0x0d, 0x59, 0x22, 0x78, 0xc6, 0xb4, 0xd7, 0x2c,
-	0x6a, 0x36, 0xa6, 0x3e, 0x1c, 0x4d, 0x12, 0x64, 0x3a, 0xd3, 0x6b, 0xd2, 0x07, 0x67, 0x72, 0x5d,
-	0xce, 0x75, 0x26, 0xd7, 0xf4, 0x1c, 0x8e, 0x3e, 0xd5, 0x66, 0xd8, 0x77, 0x89, 0xa8, 0x62, 0xda,
-	0x81, 0xc3, 0x9b, 0x85, 0xd0, 0x6b, 0xaa, 0x00, 0x0a, 0x8a, 0x33, 0x81, 0x31, 0x21, 0xd0, 0x62,
-	0x51, 0x75, 0xa8, 0x79, 0xd7, 0xa8, 0x3b, 0x1b, 0xd4, 0x09, 0xb4, 0x22, 0x99, 0x2a, 0xaf, 0x69,
-	0x68, 0x9b, 0x37, 0x39, 0x83, 0xbe, 0x44, 0x85, 0x72, 0x85, 0xc9, 0x9d, 0xe0, 0x52, 0x2b, 0xaf,
-	0x35, 0x6c, 0x8e, 0x0e, 0xc3, 0x9e, 0xcd, 0x7e, 0xc9, 0x93, 0xf4, 0x23, 0xfc, 0x57, 0x2e, 0xd5,
-	0x91, 0x5e, 0xaa, 0x7c, 0x85, 0x32, 0x2f, 0xab, 0x50, 0x11, 0x91, 0xe7, 0xe0, 0xa2, 0x94, 0x5c,
-	0xde, 0x2d, 0x54, 0x6a, 0x25, 0x32, 0x89, 0xcf, 0x2a, 0xa5, 0x57, 0x40, 0xaa, 0x21, 0x52, 0x87,
-	0xf8, 0x63, 0x89, 0x4a, 0x93, 0x97, 0xd0, 0x52, 0x02, 0x63, 0x33, 0xa8, 0x3b, 0xee, 0x06, 0x7f,
-	0xc9, 0x85, 0xa6, 0x40, 0x2f, 0xe0, 0xc4, 0xb6, 0x71, 0x61, 0xbb, 0xf6, 0xf0, 0xa6, 0xe7, 0x70,
-	0x5c, 0x00, 0x6f, 0x51, 0x3f, 0x85, 0xfb, 0x0e, 0xfd, 0x02, 0x17, 0xa2, 0x12, 0x9c, 0x29, 0xfc,
-	0xe7, 0x0d, 0xe4, 0xac, 0xe2, 0xeb, 0x18, 0x48, 0x2f, 0xa8, 0xcb, 0x61, 0xe9, 0xd3, 0x81, 0x3d,
-	0x75, 0x9a, 0x29, 0x7b, 0x02, 0xfd, 0x60, 0x69, 0x17, 0xc9, 0x72, 0xe5, 0x6b, 0xe8, 0xa0, 0xc9,
-	0xe6, 0x12, 0x36, 0x47, 0xdd, 0xf1, 0xff, 0xc1, 0xe6, 0x51, 0xa1, 0xad, 0x8f, 0x7f, 0x39, 0xf0,
-	0x6c, 0xca, 0x59, 0x3a, 0xe7, 0x92, 0x4d, 0xa3, 0x25, 0x8b, 0xe7, 0x28, 0x67, 0x28, 0x57, 0x59,
-	0x8c, 0x84, 0x42, 0xef, 0xab, 0x48, 0x65, 0x94, 0x60, 0xe9, 0xfb, 0x4e, 0x39, 0xc6, 0x6f, 0x07,
-	0x85, 0x5f, 0x1a, 0xc4, 0x87, 0xce, 0x2d, 0x6a, 0xe3, 0xec, 0x32, 0xe9, 0x1f, 0x06, 0x79, 0x48,
-	0x1b, 0xe4, 0x15, 0xf4, 0xcc, 0xaf, 0x51, 0x79, 0xd0, 0x0d, 0xac, 0x55, 0x6b, 0x13, 0x2e, 0xe0,
-	0x78, 0x36, 0x5f, 0xea, 0x84, 0xff, 0x64, 0x4f, 0x03, 0xdf, 0xc0, 0xc0, 0x8c, 0x2b, 0x6e, 0xa8,
-	0x61, 0xed, 0x73, 0x03, 0x7b, 0x6a, 0x87, 0x6e, 0xc1, 0xed, 0x95, 0x15, 0x76, 0xfc, 0xfb, 0x00,
-	0x5e, 0x58, 0x09, 0x4a, 0x31, 0xb7, 0x84, 0xb8, 0x82, 0x6e, 0xcd, 0x5c, 0x64, 0x10, 0xec, 0x5a,
-	0xcd, 0xdf, 0x96, 0x98, 0x36, 0xc8, 0x65, 0xf5, 0x6f, 0xd2, 0x5c, 0x10, 0x12, 0xec, 0x38, 0x6d,
-	0x5f, 0xd3, 0x5b, 0x70, 0x2b, 0xa3, 0x91, 0x93, 0x60, 0xdb, 0x74, 0xfb, 0x5a, 0xde, 0xd9, 0x3d,
-	0xb9, 0x09, 0xaa, 0x3d, 0x35, 0x9b, 0xf8, 0x83, 0x60, 0xd7, 0x25, 0xb4, 0x71, 0xdf, 0x36, 0x1f,
-	0xb6, 0xcb, 0x3f, 0x01, 0x00, 0x00, 0xff, 0xff, 0x29, 0x32, 0x6a, 0xf7, 0xe5, 0x04, 0x00, 0x00,
+	// 567 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x84, 0x54, 0xcd, 0x6f, 0xd3, 0x4e,
+	0x10, 0x4d, 0x9d, 0x34, 0xad, 0x27, 0xbf, 0xf4, 0x57, 0xb6, 0xa5, 0x58, 0x46, 0x42, 0xd1, 0x0a,
+	0xda, 0xa8, 0x87, 0x3d, 0x04, 0x0e, 0x08, 0x71, 0x23, 0xa5, 0x8a, 0x14, 0xa4, 0xca, 0x11, 0x5c,
+	0x38, 0x54, 0xae, 0x3d, 0x75, 0x2c, 0x25, 0xbb, 0x66, 0x77, 0x13, 0x94, 0x1b, 0x67, 0xfe, 0x6a,
+	0xe4, 0xb5, 0xd7, 0x71, 0x3e, 0x28, 0xb7, 0xf9, 0x78, 0x6f, 0x76, 0xe6, 0xe9, 0xd9, 0xe0, 0xca,
+	0x2c, 0x62, 0x99, 0x14, 0x5a, 0xd0, 0x8f, 0xd0, 0xbe, 0xe1, 0x49, 0xca, 0x91, 0x5c, 0x40, 0xfb,
+	0x21, 0xe5, 0xa1, 0x5c, 0x79, 0x07, 0xbd, 0x83, 0xbe, 0x1b, 0x94, 0x19, 0xf1, 0xe1, 0x58, 0x62,
+	0x36, 0x4b, 0xa3, 0x50, 0x79, 0x4e, 0xaf, 0xd9, 0x77, 0x83, 0x2a, 0xa7, 0xdf, 0xa0, 0x35, 0xe2,
+	0x8f, 0x22, 0xe7, 0x2e, 0xc5, 0x6c, 0x31, 0x47, 0xcb, 0x2d, 0xb2, 0x9c, 0xfb, 0x28, 0x05, 0xd7,
+	0xc8, 0x63, 0xcf, 0x31, 0x9d, 0x2a, 0xcf, 0x7b, 0xc8, 0xe3, 0x4c, 0xa4, 0x5c, 0x7b, 0xcd, 0xa2,
+	0x67, 0x73, 0xea, 0xc3, 0xf1, 0x28, 0x46, 0xae, 0x53, 0xbd, 0x22, 0x27, 0xe0, 0x8c, 0x86, 0xe5,
+	0x5c, 0x67, 0x34, 0xa4, 0x97, 0x70, 0xfc, 0xb9, 0x36, 0xc3, 0xc6, 0x25, 0xa2, 0xca, 0xe9, 0x11,
+	0x1c, 0xde, 0xcc, 0x33, 0xbd, 0xa2, 0x1a, 0x3a, 0x77, 0x52, 0x44, 0xa8, 0xd4, 0x24, 0xc3, 0x88,
+	0x10, 0x68, 0xf1, 0xb0, 0xda, 0xd4, 0xc4, 0xb5, 0xdb, 0x9d, 0x8d, 0xdb, 0x09, 0xb4, 0x42, 0x99,
+	0x28, 0xaf, 0x69, 0xee, 0x36, 0x31, 0x79, 0x03, 0x27, 0x12, 0x15, 0xca, 0x25, 0xc6, 0xf7, 0x99,
+	0x90, 0x5a, 0x79, 0xad, 0x5e, 0xb3, 0x7f, 0x18, 0x74, 0x6d, 0xf5, 0x2e, 0x2f, 0xd2, 0x21, 0x74,
+	0xed, 0xab, 0x3a, 0xd4, 0x0b, 0x95, 0xbf, 0xa1, 0x4c, 0x64, 0x35, 0x2a, 0x32, 0xf2, 0x12, 0x5c,
+	0x94, 0x52, 0xc8, 0xfb, 0xb9, 0x4a, 0xac, 0x48, 0xa6, 0xf0, 0x45, 0x25, 0xf4, 0x3d, 0x9c, 0x97,
+	0x53, 0x3e, 0x49, 0x0c, 0x35, 0x06, 0xf8, 0x63, 0x81, 0x4a, 0x93, 0x1e, 0xb4, 0x54, 0x86, 0x91,
+	0x19, 0xd5, 0x19, 0xfc, 0xc7, 0x6a, 0x07, 0x06, 0xa6, 0x43, 0xaf, 0x2b, 0xe6, 0x10, 0x67, 0xb8,
+	0x66, 0xee, 0x39, 0x9f, 0x5e, 0xc1, 0xb3, 0x12, 0x7b, 0x8b, 0xfa, 0x29, 0xe0, 0x77, 0xf8, 0xbf,
+	0x04, 0x06, 0xa8, 0x32, 0xc1, 0x15, 0xfe, 0x7b, 0x13, 0x72, 0x59, 0x1d, 0xee, 0x18, 0xcc, 0x09,
+	0xdb, 0x10, 0xc6, 0x0a, 0x41, 0xcf, 0x81, 0x94, 0x8d, 0x71, 0xaa, 0xec, 0x1a, 0xf4, 0x06, 0xce,
+	0x36, 0xaa, 0xe5, 0xb3, 0x0c, 0xdc, 0xac, 0x28, 0x63, 0x2e, 0x68, 0xb3, 0xdf, 0x19, 0x9c, 0xb2,
+	0xad, 0xdd, 0x82, 0x35, 0x64, 0xf0, 0xcb, 0x81, 0x17, 0x63, 0xc1, 0x93, 0xa9, 0x90, 0x7c, 0x1c,
+	0x2e, 0x78, 0x34, 0x45, 0x39, 0x41, 0xb9, 0x4c, 0x23, 0x24, 0x14, 0xba, 0x5f, 0xb3, 0x44, 0x86,
+	0x31, 0x96, 0x9f, 0xc2, 0x11, 0x2b, 0x02, 0xbf, 0xcd, 0x0a, 0x0b, 0x35, 0x88, 0x0f, 0x47, 0xb7,
+	0xa8, 0x8d, 0xd9, 0xcb, 0xa2, 0x7f, 0xc8, 0xf2, 0x94, 0x36, 0xc8, 0x6b, 0xe8, 0x4e, 0x74, 0x28,
+	0x75, 0x65, 0x4b, 0x97, 0x59, 0xf7, 0xd6, 0x26, 0x5c, 0xc1, 0xe9, 0x64, 0xba, 0xd0, 0xb1, 0xf8,
+	0xc9, 0x9f, 0x06, 0x5e, 0xc3, 0x99, 0x19, 0x57, 0xec, 0x50, 0xc3, 0xda, 0x70, 0x03, 0x7b, 0x61,
+	0x87, 0x6e, 0xc1, 0xed, 0x96, 0x15, 0x76, 0xf0, 0xdb, 0x81, 0x57, 0x56, 0x02, 0x2b, 0xe9, 0x96,
+	0x12, 0x1f, 0x2a, 0xd3, 0x16, 0x76, 0x23, 0xcf, 0xd9, 0x3e, 0xfb, 0xf9, 0x3b, 0x52, 0xd3, 0x46,
+	0x8d, 0x5b, 0x18, 0x6e, 0xcd, 0xdd, 0x30, 0xe0, 0x5e, 0xee, 0x3b, 0x80, 0xb5, 0x01, 0x09, 0x61,
+	0x3b, 0x6e, 0xfc, 0xcb, 0x8b, 0x9d, 0x9a, 0x35, 0xc8, 0x19, 0xdb, 0xb5, 0x8f, 0x7f, 0xce, 0xf6,
+	0xb8, 0x87, 0x36, 0x1e, 0xda, 0xe6, 0xf7, 0xf7, 0xf6, 0x4f, 0x00, 0x00, 0x00, 0xff, 0xff, 0xe2,
+	0xf5, 0xa6, 0xe2, 0x0b, 0x05, 0x00, 0x00,
 }

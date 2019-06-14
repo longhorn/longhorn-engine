@@ -20,11 +20,11 @@ import (
 )
 
 /* Lock order
-   1. EngineLauncher.lock
-   2. EngineProcess.lock
+   1. ProcessLauncher.lock
+   2. ProcessProcess.lock
 */
 
-type EngineLauncher struct {
+type ProcessLauncher struct {
 	listen string
 
 	rpcService    *grpc.Server
@@ -36,12 +36,12 @@ type EngineLauncher struct {
 	shutdownCh      chan struct{}
 }
 
-type EngineStatus string
+type ProcessStatus string
 
 const (
-	EngineStatusRunning = EngineStatus("running")
-	EngineStatusStopped = EngineStatus("stopped")
-	EngineStatusError   = EngineStatus("error")
+	ProcessStatusRunning = ProcessStatus("running")
+	ProcessStatusStopped = ProcessStatus("stopped")
+	ProcessStatusError   = ProcessStatus("error")
 )
 
 type Process struct {
@@ -50,7 +50,7 @@ type Process struct {
 	Args          []string
 	ReservedPorts []int32
 
-	Status EngineStatus
+	Status ProcessStatus
 
 	lock     *sync.RWMutex
 	cmd      *exec.Cmd
@@ -58,8 +58,8 @@ type Process struct {
 	UpdateCh chan *Process
 }
 
-func NewEngineLauncher(listen string) (*EngineLauncher, error) {
-	l := &EngineLauncher{
+func NewProcessLauncher(listen string) (*ProcessLauncher, error) {
+	l := &ProcessLauncher{
 		listen:        listen,
 		rpcShutdownCh: make(chan error),
 
@@ -73,7 +73,7 @@ func NewEngineLauncher(listen string) (*EngineLauncher, error) {
 	return l, nil
 }
 
-func (l *EngineLauncher) StartMonitoring() {
+func (l *ProcessLauncher) StartMonitoring() {
 	for {
 		done := false
 		select {
@@ -92,7 +92,7 @@ func (l *EngineLauncher) StartMonitoring() {
 	}
 }
 
-func (l *EngineLauncher) Shutdown() {
+func (l *ProcessLauncher) Shutdown() {
 	l.lock.Lock()
 	defer l.lock.Unlock()
 
@@ -100,7 +100,7 @@ func (l *EngineLauncher) Shutdown() {
 	close(l.shutdownCh)
 }
 
-func (l *EngineLauncher) WaitForShutdown() error {
+func (l *ProcessLauncher) WaitForShutdown() error {
 	select {
 	case rpcError := <-l.rpcShutdownCh:
 		logrus.Warnf("launcher: Receive rpc shutdown: %v", rpcError)
@@ -109,14 +109,14 @@ func (l *EngineLauncher) WaitForShutdown() error {
 	return nil
 }
 
-func (l *EngineLauncher) StartRPCServer() error {
+func (l *ProcessLauncher) StartRPCServer() error {
 	listen, err := net.Listen("tcp", l.listen)
 	if err != nil {
 		return errors.Wrap(err, "Failed to listen")
 	}
 
 	l.rpcService = grpc.NewServer()
-	rpc.RegisterLonghornEngineLauncherServiceServer(l.rpcService, l)
+	rpc.RegisterLonghornProcessLauncherServiceServer(l.rpcService, l)
 	reflection.Register(l.rpcService)
 
 	l.rpcShutdownCh = make(chan error)
@@ -126,7 +126,7 @@ func (l *EngineLauncher) StartRPCServer() error {
 	return nil
 }
 
-func (l *EngineLauncher) EngineStart(ctx context.Context, req *rpc.EngineStartRequest) (ret *rpc.EngineResponse, err error) {
+func (l *ProcessLauncher) ProcessCreate(ctx context.Context, req *rpc.ProcessCreateRequest) (ret *rpc.ProcessResponse, err error) {
 	if req.Spec.Name == "" || req.Spec.Binary == "" {
 		return nil, fmt.Errorf("missing required argument")
 	}
@@ -137,7 +137,7 @@ func (l *EngineLauncher) EngineStart(ctx context.Context, req *rpc.EngineStartRe
 		Args:          req.Spec.Args,
 		ReservedPorts: req.Spec.ReservedPorts,
 
-		Status: EngineStatusRunning,
+		Status: ProcessStatusRunning,
 
 		lock: &sync.RWMutex{},
 	}
@@ -146,25 +146,31 @@ func (l *EngineLauncher) EngineStart(ctx context.Context, req *rpc.EngineStartRe
 		return nil, err
 	}
 
-	// get response before
-	resp := p.RPCResponse()
 	p.Start()
 
-	return resp, nil
+	return p.RPCResponse(), nil
 }
 
-func (l *EngineLauncher) EngineStop(ctx context.Context, req *rpc.EngineStopRequest) (ret *rpc.EngineResponse, err error) {
+func (l *ProcessLauncher) ProcessDelete(ctx context.Context, req *rpc.ProcessDeleteRequest) (ret *rpc.ProcessResponse, err error) {
 	p := l.findProcess(req.Name)
 	if p == nil {
 		return nil, fmt.Errorf("cannot find process %v", req.Name)
 	}
 
-	p.Stop()
+	if !p.IsStopped() {
+		p.Stop()
+	}
 
-	return p.RPCResponse(), nil
+	resp := p.RPCResponse()
+
+	if err := l.unregisterProcess(p); err != nil {
+		return nil, err
+	}
+
+	return resp, nil
 }
 
-func (l *EngineLauncher) registerProcess(p *Process) error {
+func (l *ProcessLauncher) registerProcess(p *Process) error {
 	l.lock.Lock()
 	defer l.lock.Unlock()
 
@@ -179,14 +185,32 @@ func (l *EngineLauncher) registerProcess(p *Process) error {
 	return nil
 }
 
-func (l *EngineLauncher) findProcess(name string) *Process {
+func (l *ProcessLauncher) unregisterProcess(p *Process) error {
+	l.lock.Lock()
+	defer l.lock.Unlock()
+
+	_, exists := l.processes[p.Name]
+	if !exists {
+		return nil
+	}
+
+	if !p.IsStopped() {
+		return fmt.Errorf("cannot unregister running process")
+	}
+
+	delete(l.processes, p.Name)
+
+	return nil
+}
+
+func (l *ProcessLauncher) findProcess(name string) *Process {
 	l.lock.RLock()
 	defer l.lock.RUnlock()
 
 	return l.processes[name]
 }
 
-func (l *EngineLauncher) EngineGet(ctx context.Context, req *rpc.EngineGetRequest) (*rpc.EngineResponse, error) {
+func (l *ProcessLauncher) ProcessGet(ctx context.Context, req *rpc.ProcessGetRequest) (*rpc.ProcessResponse, error) {
 	p := l.findProcess(req.Name)
 	if p == nil {
 		return nil, fmt.Errorf("cannot find process %v", req.Name)
@@ -195,15 +219,15 @@ func (l *EngineLauncher) EngineGet(ctx context.Context, req *rpc.EngineGetReques
 	return p.RPCResponse(), nil
 }
 
-func (l *EngineLauncher) EngineList(ctx context.Context, req *rpc.EngineListRequest) (*rpc.EngineListResponse, error) {
+func (l *ProcessLauncher) ProcessList(ctx context.Context, req *rpc.ProcessListRequest) (*rpc.ProcessListResponse, error) {
 	l.lock.RLock()
 	defer l.lock.RUnlock()
 
-	resp := &rpc.EngineListResponse{
-		Engines: []*rpc.EngineResponse{},
+	resp := &rpc.ProcessListResponse{
+		Processes: []*rpc.ProcessResponse{},
 	}
 	for _, p := range l.processes {
-		resp.Engines = append(resp.Engines, p.RPCResponse())
+		resp.Processes = append(resp.Processes, p.RPCResponse())
 	}
 	return resp, nil
 }
@@ -232,7 +256,7 @@ func (p *Process) Start() error {
 
 		if err := cmd.Run(); err != nil {
 			p.lock.Lock()
-			p.Status = EngineStatusError
+			p.Status = ProcessStatusError
 			p.ErrorMsg = err.Error()
 			p.lock.Unlock()
 
@@ -240,7 +264,7 @@ func (p *Process) Start() error {
 			return
 		}
 		p.lock.Lock()
-		p.Status = EngineStatusStopped
+		p.Status = ProcessStatusStopped
 		p.lock.Unlock()
 
 		p.UpdateCh <- p
@@ -249,18 +273,18 @@ func (p *Process) Start() error {
 	return nil
 }
 
-func (p *Process) RPCResponse() *rpc.EngineResponse {
+func (p *Process) RPCResponse() *rpc.ProcessResponse {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
-	return &rpc.EngineResponse{
-		Spec: &rpc.EngineSpec{
+	return &rpc.ProcessResponse{
+		Spec: &rpc.ProcessSpec{
 			Name:          p.Name,
 			Binary:        p.Binary,
 			Args:          p.Args,
 			ReservedPorts: p.ReservedPorts,
 		},
 
-		Status: &rpc.EngineStatus{
+		Status: &rpc.ProcessStatus{
 			Status:   string(p.Status),
 			ErrorMsg: p.ErrorMsg,
 		},
@@ -283,5 +307,5 @@ func (p *Process) Stop() {
 func (p *Process) IsStopped() bool {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
-	return p.Status == EngineStatusStopped || p.Status == EngineStatusError
+	return p.Status == ProcessStatusStopped || p.Status == ProcessStatusError
 }

@@ -31,49 +31,49 @@ message Frontend {
 message Empty {
 }
 
-service LonghornEngineLauncherService {
-	rpc EngineStart(EngineStartRequest) returns (EngineResponse) {}
-	rpc EngineStop(EngineStopRequest) returns (EngineResponse) {}
-	rpc EngineGet(EngineGetRequest) returns (EngineResponse) {}
-	rpc EngineList(EngineListRequest) returns (EngineListResponse) {}
+service LonghornProcessLauncherService {
+	rpc ProcessCreate(ProcessCreateRequest) returns (ProcessResponse) {}
+	rpc ProcessDelete(ProcessDeleteRequest) returns (ProcessResponse) {}
+	rpc ProcessGet(ProcessGetRequest) returns (ProcessResponse) {}
+	rpc ProcessList(ProcessListRequest) returns (ProcessListResponse) {}
 
 	//rpc StartReplica(StartReplicaRequest) returns (StartReplicaResponse) {}
 	//rpc StopReplica(StopReplicaRequest) returns (StopReplicaResponse) {}
 	//rpc ListReplicas(ListReplicasRequest) returns (ListReplicasResponse) {}
 }
 
-message EngineSpec {
+message ProcessSpec {
 	string name = 1;
 	string binary = 2;
 	repeated string args = 3;
 	repeated int32 reserved_ports = 4;
 }
 
-message EngineStatus {
+message ProcessStatus {
 	string status = 1;
 	string error_msg = 2;
 }
 
-message EngineStartRequest {
-	EngineSpec spec = 1;
+message ProcessCreateRequest {
+	ProcessSpec spec = 1;
 }
 
-message EngineStopRequest {
+message ProcessDeleteRequest {
 	string name = 1;
 }
 
-message EngineGetRequest {
+message ProcessGetRequest {
 	string name = 1;
 }
 
-message EngineResponse {
-	EngineSpec spec = 1;
-	EngineStatus status = 2;
+message ProcessResponse {
+	ProcessSpec spec = 1;
+	ProcessStatus status = 2;
 }
 
-message EngineListRequest{
+message ProcessListRequest{
 }
 
-message EngineListResponse{
-	repeated EngineResponse engines = 1;
+message ProcessListResponse{
+	repeated ProcessResponse processes = 1;
 }
