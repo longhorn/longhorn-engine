@@ -363,6 +363,8 @@ func main() {
 		FrontendShutdownCmd(),
 		EngineFrontendStartCmd(),
 		EngineFrontendShutdownCmd(),
+
+		StartLauncherCmd(),
 	}
 	if err := a.Run(os.Args); err != nil {
 		logrus.Fatal("Error when executing command: ", err)

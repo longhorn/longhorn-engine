@@ -30,3 +30,46 @@ message Frontend {
 
 message Empty {
 }
+
+service LonghornEngineLauncherService {
+	rpc StartEngine(StartEngineRequest) returns (EngineResponse) {}
+	rpc StopEngine(StopEngineRequest) returns (EngineResponse) {}
+	rpc GetEngine(GetEngineRequest) returns (EngineResponse) {}
+	rpc ListEngines(Empty) returns (ListEnginesResponse) {}
+
+	//rpc StartReplica(StartReplicaRequest) returns (StartReplicaResponse) {}
+	//rpc StopReplica(StopReplicaRequest) returns (StopReplicaResponse) {}
+	//rpc ListReplicas(ListReplicasRequest) returns (ListReplicasResponse) {}
+}
+
+message EngineSpec {
+	string name = 1;
+	string binary = 2;
+	repeated string args = 3;
+	repeated int32 reserved_ports = 4;
+}
+
+message EngineStatus {
+	string status = 1;
+}
+
+message StartEngineRequest {
+	EngineSpec spec = 1;
+}
+
+message StopEngineRequest {
+	string name = 1;
+}
+
+message GetEngineRequest {
+	string name = 1;
+}
+
+message EngineResponse {
+	EngineSpec spec = 1;
+	EngineStatus status = 2;
+}
+
+message ListEnginesResponse{
+	repeated EngineResponse engines = 1;
+}
