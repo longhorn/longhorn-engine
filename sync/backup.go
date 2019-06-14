@@ -14,6 +14,13 @@ import (
 	"github.com/longhorn/longhorn-engine/util"
 )
 
+type BackupStatusInfo struct {
+	Progress     int    `json:"progress"`
+	BackupURL    string `json:"backupURL,omitempty"`
+	BackupError  string `json:"backupError,omitempty"`
+	SnapshotName string `json:"snapshotName"`
+}
+
 func (t *Task) CreateBackup(snapshot, dest string, labels []string, credential map[string]string) (string, error) {
 	var replica *types.ControllerReplicaInfo
 
@@ -73,7 +80,6 @@ func (t *Task) createBackup(replicaInController *types.ControllerReplicaInfo, sn
 
 	backupID, err := repClient.CreateBackup(snapshot, dest, volumeName, labels, credential)
 	if err != nil {
-		logrus.Errorf("Failed backing up %s on %s to %s", snapshot, replicaInController.Address, dest)
 		return "", err
 	}
 	//Store the backupID - Replica IP mapping in controller
@@ -83,19 +89,27 @@ func (t *Task) createBackup(replicaInController *types.ControllerReplicaInfo, sn
 	return backupID, nil
 }
 
-func (t *Task) FetchBackupStatus(backupID string, replicaIP string) ([]byte, error) {
+func (t *Task) FetchBackupStatus(backupID string, replicaIP string) (*BackupStatusInfo, error) {
 	repClient, err := replicaClient.NewReplicaClient(replicaIP)
 	if err != nil {
 		logrus.Errorf("Cannot create a replica client for IP[%v]: %v", replicaIP, err)
 		return nil, err
 	}
 
-	backupStatus, err := repClient.GetBackupStatus(backupID)
+	progress, url, backupErr, snapshot, err := repClient.GetBackupStatus(backupID)
 	if err != nil {
 		logrus.Errorf("Failed to fetch backup object: %v", err)
 		return nil, err
 	}
-	return backupStatus, nil
+
+	info := &BackupStatusInfo{
+		Progress:     progress,
+		BackupURL:    url,
+		BackupError:  backupErr,
+		SnapshotName: snapshot,
+	}
+
+	return info, nil
 }
 
 func (t *Task) RestoreBackup(backup string) error {
