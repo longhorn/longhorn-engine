@@ -86,7 +86,7 @@ func ProcessCreateCmd() cli.Command {
 		},
 		Action: func(c *cli.Context) {
 			if err := startProcess(c); err != nil {
-				logrus.Fatalf("Error running engine start command: %v.", err)
+				logrus.Fatalf("Error running process create command: %v.", err)
 			}
 		},
 	}
@@ -124,7 +124,7 @@ func startProcess(c *cli.Context) error {
 		},
 	})
 	if err != nil {
-		return fmt.Errorf("failed to start engine: %v", err)
+		return fmt.Errorf("failed to start process: %v", err)
 	}
 	return printJSON(RPCToProcess(obj))
 }
@@ -139,7 +139,7 @@ func ProcessDeleteCmd() cli.Command {
 		},
 		Action: func(c *cli.Context) {
 			if err := stopProcess(c); err != nil {
-				logrus.Fatalf("Error running engine stop command: %v.", err)
+				logrus.Fatalf("Error running process delete command: %v.", err)
 			}
 		},
 	}
@@ -165,7 +165,7 @@ func stopProcess(c *cli.Context) error {
 		Name: c.String("name"),
 	})
 	if err != nil {
-		return fmt.Errorf("failed to stop engine: %v", err)
+		return fmt.Errorf("failed to stop process: %v", err)
 	}
 	return printJSON(RPCToProcess(obj))
 }
@@ -180,7 +180,7 @@ func ProcessGetCmd() cli.Command {
 		},
 		Action: func(c *cli.Context) {
 			if err := getProcess(c); err != nil {
-				logrus.Fatalf("Error running engine stop command: %v.", err)
+				logrus.Fatalf("Error running process get command: %v.", err)
 			}
 		},
 	}
@@ -206,7 +206,7 @@ func getProcess(c *cli.Context) error {
 		Name: c.String("name"),
 	})
 	if err != nil {
-		return fmt.Errorf("failed to get engine: %v", err)
+		return fmt.Errorf("failed to get process: %v", err)
 	}
 	return printJSON(RPCToProcess(obj))
 }
@@ -237,7 +237,7 @@ func listProcess(c *cli.Context) error {
 
 	obj, err := client.ProcessList(ctx, &rpc.ProcessListRequest{})
 	if err != nil {
-		return fmt.Errorf("failed to list engine: %v", err)
+		return fmt.Errorf("failed to list process: %v", err)
 	}
 	return printJSON(RPCToProcessList(obj))
 }
