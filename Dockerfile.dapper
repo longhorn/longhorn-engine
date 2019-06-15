@@ -80,10 +80,10 @@ RUN cd /usr/src && \
 
 # Build longhorn-engine-launcher
 RUN cd /go/src/github.com/longhorn && \
-    git clone https://github.com/longhorn/longhorn-instance-manager.git longhorn-engine-launcher && \
+    git clone https://github.com/yasker/longhorn-engine-launcher.git && \
     cd longhorn-engine-launcher && \
-    git checkout 8b2a20159feae45c6a8d766c7213155effdbd65c && \
-    go build -o ./longhorn-engine-launcher && \
+    git checkout c677417dced2b1eff83b4c058b583e2209b32076 && \
+    go build && \
     cp longhorn-engine-launcher /usr/local/bin
 
 VOLUME /tmp
