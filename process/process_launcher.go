@@ -6,6 +6,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -17,6 +19,7 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	"github.com/longhorn/longhorn-engine-launcher/rpc"
+	"github.com/longhorn/longhorn-engine-launcher/util"
 )
 
 /* Lock order
@@ -25,7 +28,9 @@ import (
 */
 
 type Launcher struct {
-	listen string
+	listen       string
+	portRangeMin int32
+	portRangeMax int32
 
 	rpcService    *grpc.Server
 	rpcShutdownCh chan error
@@ -34,6 +39,8 @@ type Launcher struct {
 	processes       map[string]*Process
 	processUpdateCh chan *Process
 	shutdownCh      chan struct{}
+
+	availablePorts *util.Bitmap
 }
 
 const (
@@ -50,27 +57,38 @@ const (
 )
 
 type Process struct {
-	Name          string
-	Binary        string
-	Args          []string
-	ReservedPorts []int32
+	Name      string
+	Binary    string
+	Args      []string
+	PortCount int32
+	PortArgs  []string
 
-	State    State
-	ErrorMsg string
+	State     State
+	ErrorMsg  string
+	PortStart int32
+	PortEnd   int32
 
 	lock     *sync.RWMutex
 	cmd      *exec.Cmd
 	UpdateCh chan *Process
 }
 
-func NewLauncher(listen string) (*Launcher, error) {
+func NewLauncher(listen, portRange string) (*Launcher, error) {
+	start, end, err := ParsePortRange(portRange)
+	if err != nil {
+		return nil, err
+	}
 	l := &Launcher{
-		listen:        listen,
+		listen:       listen,
+		portRangeMin: start,
+		portRangeMax: end,
+
 		rpcShutdownCh: make(chan error),
 
 		lock:            &sync.RWMutex{},
 		processes:       map[string]*Process{},
 		processUpdateCh: make(chan *Process),
+		availablePorts:  util.NewBitmap(start, end),
 
 		shutdownCh: make(chan struct{}),
 	}
@@ -136,10 +154,9 @@ func (l *Launcher) ProcessCreate(ctx context.Context, req *rpc.ProcessCreateRequ
 	}
 
 	p := &Process{
-		Name:          req.Spec.Name,
-		Binary:        req.Spec.Binary,
-		Args:          req.Spec.Args,
-		ReservedPorts: req.Spec.ReservedPorts,
+		Name:   req.Spec.Name,
+		Binary: req.Spec.Binary,
+		Args:   req.Spec.Args,
 
 		State: StateRunning,
 
@@ -175,12 +192,19 @@ func (l *Launcher) ProcessDelete(ctx context.Context, req *rpc.ProcessDeleteRequ
 }
 
 func (l *Launcher) registerProcess(p *Process) error {
+	var err error
+
 	l.lock.Lock()
 	defer l.lock.Unlock()
 
 	_, exists := l.processes[p.Name]
 	if exists {
 		return fmt.Errorf("engine process %v already exists", p.Name)
+	}
+
+	p.PortStart, p.PortEnd, err = l.allocatePorts(p.PortCount)
+	if err != nil {
+		return errors.Wrapf(err, "cannot allocate %v ports for %v", p.PortCount, p.Name)
 	}
 
 	p.UpdateCh = l.processUpdateCh
@@ -200,6 +224,10 @@ func (l *Launcher) unregisterProcess(p *Process) error {
 
 	if !p.IsStopped() {
 		return fmt.Errorf("cannot unregister running process")
+	}
+	if err := l.releasePorts(p.PortStart, p.PortEnd); err != nil {
+		return errors.Wrapf(err, "cannot deallocate %v ports (%v-%v) for %v",
+			p.PortCount, p.PortStart, p.PortEnd, p.Name)
 	}
 
 	delete(l.processes, p.Name)
@@ -234,6 +262,24 @@ func (l *Launcher) ProcessList(ctx context.Context, req *rpc.ProcessListRequest)
 		resp.Processes[p.Name] = p.RPCResponse()
 	}
 	return resp, nil
+}
+
+func (l *Launcher) allocatePorts(portCount int32) (int32, int32, error) {
+	if portCount < 0 {
+		return 0, 0, fmt.Errorf("invalid port count %v", portCount)
+	}
+	start, end, err := l.availablePorts.AllocateRange(portCount)
+	if err != nil {
+		return 0, 0, errors.Wrapf(err, "fail to allocate %v ports", portCount)
+	}
+	return int32(start), int32(end), nil
+}
+
+func (l *Launcher) releasePorts(start, end int32) error {
+	if start < 0 || end < 0 {
+		return fmt.Errorf("invalid start/end port %v %v", start, end)
+	}
+	return l.availablePorts.ReleaseRange(start, end)
 }
 
 func (p *Process) Start() error {
@@ -282,15 +328,18 @@ func (p *Process) RPCResponse() *rpc.ProcessResponse {
 	defer p.lock.RUnlock()
 	return &rpc.ProcessResponse{
 		Spec: &rpc.ProcessSpec{
-			Name:          p.Name,
-			Binary:        p.Binary,
-			Args:          p.Args,
-			ReservedPorts: p.ReservedPorts,
+			Name:      p.Name,
+			Binary:    p.Binary,
+			Args:      p.Args,
+			PortCount: p.PortCount,
+			PortArgs:  p.PortArgs,
 		},
 
 		Status: &rpc.ProcessStatus{
-			State:    string(p.State),
-			ErrorMsg: p.ErrorMsg,
+			State:     string(p.State),
+			ErrorMsg:  p.ErrorMsg,
+			PortStart: p.PortStart,
+			PortEnd:   p.PortEnd,
 		},
 	}
 }
@@ -312,4 +361,23 @@ func (p *Process) IsStopped() bool {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 	return p.State == StateStopped || p.State == StateError
+}
+
+func ParsePortRange(portRange string) (int32, int32, error) {
+	if portRange == "" {
+		return 0, 0, fmt.Errorf("Empty port range")
+	}
+	parts := strings.Split(portRange, "-")
+	if len(parts) != 2 {
+		return 0, 0, fmt.Errorf("Invalid format for range: %s", portRange)
+	}
+	portStart, err := strconv.Atoi(strings.TrimSpace(parts[0]))
+	if err != nil {
+		return 0, 0, fmt.Errorf("Invalid start port for range: %s", err)
+	}
+	portEnd, err := strconv.Atoi(strings.TrimSpace(parts[1]))
+	if err != nil {
+		return 0, 0, fmt.Errorf("Invalid end port for range: %s", err)
+	}
+	return int32(portStart), int32(portEnd), nil
 }

@@ -25,6 +25,10 @@ func StartProcessLauncherCmd() cli.Command {
 				Name:  "listen",
 				Value: "localhost:8500",
 			},
+			cli.StringFlag{
+				Name:  "port-range",
+				Value: "9500-30000",
+			},
 		},
 		Action: func(c *cli.Context) {
 			if err := startLauncher(c); err != nil {
@@ -36,8 +40,9 @@ func StartProcessLauncherCmd() cli.Command {
 
 func startLauncher(c *cli.Context) error {
 	listen := c.String("listen")
+	portRange := c.String("port-range")
 
-	l, err := process.NewLauncher(listen)
+	l, err := process.NewLauncher(listen, portRange)
 	if err != nil {
 		return err
 	}
@@ -80,8 +85,11 @@ func ProcessCreateCmd() cli.Command {
 			cli.StringFlag{
 				Name: "binary",
 			},
-			cli.IntSliceFlag{
-				Name: "reserved-ports",
+			cli.IntFlag{
+				Name: "port-count",
+			},
+			cli.StringSliceFlag{
+				Name: "port-args",
 			},
 		},
 		Action: func(c *cli.Context) {
@@ -108,19 +116,13 @@ func startProcess(c *cli.Context) error {
 	ctx, cancel := context.WithTimeout(context.Background(), FrontendTimeout)
 	defer cancel()
 
-	//NOTE: is there a better way?
-	ports := []int32{}
-	cPorts := c.IntSlice("reserved-ports")
-	for i := 0; i < len(cPorts); i++ {
-		ports[i] = int32(cPorts[i])
-	}
-
 	obj, err := client.ProcessCreate(ctx, &rpc.ProcessCreateRequest{
 		Spec: &rpc.ProcessSpec{
-			Name:          c.String("name"),
-			Binary:        c.String("binary"),
-			Args:          c.Args(),
-			ReservedPorts: ports,
+			Name:      c.String("name"),
+			Binary:    c.String("binary"),
+			Args:      c.Args(),
+			PortCount: int32(c.Int("port-count")),
+			PortArgs:  c.StringSlice("port-args"),
 		},
 	})
 	if err != nil {
@@ -254,12 +256,15 @@ func printJSON(obj interface{}) error {
 
 func RPCToProcess(obj *rpc.ProcessResponse) *api.Process {
 	return &api.Process{
-		Name:          obj.Spec.Name,
-		Binary:        obj.Spec.Binary,
-		Args:          obj.Spec.Args,
-		ReservedPorts: obj.Spec.ReservedPorts,
-		State:         obj.Status.State,
-		ErrorMsg:      obj.Status.ErrorMsg,
+		Name:      obj.Spec.Name,
+		Binary:    obj.Spec.Binary,
+		Args:      obj.Spec.Args,
+		PortCount: obj.Spec.PortCount,
+		PortArgs:  obj.Spec.PortArgs,
+		State:     obj.Status.State,
+		ErrorMsg:  obj.Status.ErrorMsg,
+		PortStart: obj.Status.PortStart,
+		PortEnd:   obj.Status.PortEnd,
 	}
 }
 
