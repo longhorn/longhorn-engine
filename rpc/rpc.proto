@@ -50,7 +50,7 @@ message ProcessSpec {
 }
 
 message ProcessStatus {
-	string status = 1;
+	string state = 1;
 	string error_msg = 2;
 }
 

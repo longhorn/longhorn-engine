@@ -37,7 +37,7 @@ func StartProcessLauncherCmd() cli.Command {
 func startLauncher(c *cli.Context) error {
 	listen := c.String("listen")
 
-	l, err := process.NewProcessLauncher(listen)
+	l, err := process.NewLauncher(listen)
 	if err != nil {
 		return err
 	}
@@ -72,7 +72,7 @@ func ProcessCmd() cli.Command {
 
 func ProcessCreateCmd() cli.Command {
 	return cli.Command{
-		Name: "start",
+		Name: "create",
 		Flags: []cli.Flag{
 			cli.StringFlag{
 				Name: "name",
@@ -131,7 +131,7 @@ func startProcess(c *cli.Context) error {
 
 func ProcessDeleteCmd() cli.Command {
 	return cli.Command{
-		Name: "stop",
+		Name: "delete",
 		Flags: []cli.Flag{
 			cli.StringFlag{
 				Name: "name",
@@ -258,7 +258,7 @@ func RPCToProcess(obj *rpc.ProcessResponse) *api.Process {
 		Binary:        obj.Spec.Binary,
 		Args:          obj.Spec.Args,
 		ReservedPorts: obj.Spec.ReservedPorts,
-		Status:        obj.Status.Status,
+		Status:        obj.Status.State,
 		ErrorMsg:      obj.Status.ErrorMsg,
 	}
 }

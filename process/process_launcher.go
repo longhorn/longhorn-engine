@@ -20,11 +20,11 @@ import (
 )
 
 /* Lock order
-   1. ProcessLauncher.lock
-   2. ProcessProcess.lock
+   1. Launcher.lock
+   2. Process.lock
 */
 
-type ProcessLauncher struct {
+type Launcher struct {
 	listen string
 
 	rpcService    *grpc.Server
@@ -41,12 +41,12 @@ const (
 	WaitCount    = 60
 )
 
-type ProcessStatus string
+type State string
 
 const (
-	ProcessStatusRunning = ProcessStatus("running")
-	ProcessStatusStopped = ProcessStatus("stopped")
-	ProcessStatusError   = ProcessStatus("error")
+	StateRunning = State("running")
+	StateStopped = State("stopped")
+	StateError   = State("error")
 )
 
 type Process struct {
@@ -55,16 +55,16 @@ type Process struct {
 	Args          []string
 	ReservedPorts []int32
 
-	Status ProcessStatus
+	State    State
+	ErrorMsg string
 
 	lock     *sync.RWMutex
 	cmd      *exec.Cmd
-	ErrorMsg string
 	UpdateCh chan *Process
 }
 
-func NewProcessLauncher(listen string) (*ProcessLauncher, error) {
-	l := &ProcessLauncher{
+func NewLauncher(listen string) (*Launcher, error) {
+	l := &Launcher{
 		listen:        listen,
 		rpcShutdownCh: make(chan error),
 
@@ -78,7 +78,7 @@ func NewProcessLauncher(listen string) (*ProcessLauncher, error) {
 	return l, nil
 }
 
-func (l *ProcessLauncher) StartMonitoring() {
+func (l *Launcher) StartMonitoring() {
 	for {
 		done := false
 		select {
@@ -88,7 +88,7 @@ func (l *ProcessLauncher) StartMonitoring() {
 			break
 		case p := <-l.processUpdateCh:
 			p.lock.RLock()
-			logrus.Infof("Process update: %v: state %v: Error: %v", p.Name, p.Status, p.ErrorMsg)
+			logrus.Infof("Process update: %v: state %v: Error: %v", p.Name, p.State, p.ErrorMsg)
 			p.lock.RUnlock()
 		}
 		if done {
@@ -97,7 +97,7 @@ func (l *ProcessLauncher) StartMonitoring() {
 	}
 }
 
-func (l *ProcessLauncher) Shutdown() {
+func (l *Launcher) Shutdown() {
 	l.lock.Lock()
 	defer l.lock.Unlock()
 
@@ -105,7 +105,7 @@ func (l *ProcessLauncher) Shutdown() {
 	close(l.shutdownCh)
 }
 
-func (l *ProcessLauncher) WaitForShutdown() error {
+func (l *Launcher) WaitForShutdown() error {
 	select {
 	case rpcError := <-l.rpcShutdownCh:
 		logrus.Warnf("launcher: Receive rpc shutdown: %v", rpcError)
@@ -113,7 +113,7 @@ func (l *ProcessLauncher) WaitForShutdown() error {
 	}
 }
 
-func (l *ProcessLauncher) StartRPCServer() error {
+func (l *Launcher) StartRPCServer() error {
 	listen, err := net.Listen("tcp", l.listen)
 	if err != nil {
 		return errors.Wrap(err, "Failed to listen")
@@ -130,7 +130,7 @@ func (l *ProcessLauncher) StartRPCServer() error {
 	return nil
 }
 
-func (l *ProcessLauncher) ProcessCreate(ctx context.Context, req *rpc.ProcessCreateRequest) (ret *rpc.ProcessResponse, err error) {
+func (l *Launcher) ProcessCreate(ctx context.Context, req *rpc.ProcessCreateRequest) (ret *rpc.ProcessResponse, err error) {
 	if req.Spec.Name == "" || req.Spec.Binary == "" {
 		return nil, fmt.Errorf("missing required argument")
 	}
@@ -141,7 +141,7 @@ func (l *ProcessLauncher) ProcessCreate(ctx context.Context, req *rpc.ProcessCre
 		Args:          req.Spec.Args,
 		ReservedPorts: req.Spec.ReservedPorts,
 
-		Status: ProcessStatusRunning,
+		State: StateRunning,
 
 		lock: &sync.RWMutex{},
 	}
@@ -155,7 +155,7 @@ func (l *ProcessLauncher) ProcessCreate(ctx context.Context, req *rpc.ProcessCre
 	return p.RPCResponse(), nil
 }
 
-func (l *ProcessLauncher) ProcessDelete(ctx context.Context, req *rpc.ProcessDeleteRequest) (ret *rpc.ProcessResponse, err error) {
+func (l *Launcher) ProcessDelete(ctx context.Context, req *rpc.ProcessDeleteRequest) (ret *rpc.ProcessResponse, err error) {
 	p := l.findProcess(req.Name)
 	if p == nil {
 		return nil, fmt.Errorf("cannot find process %v", req.Name)
@@ -174,7 +174,7 @@ func (l *ProcessLauncher) ProcessDelete(ctx context.Context, req *rpc.ProcessDel
 	return resp, nil
 }
 
-func (l *ProcessLauncher) registerProcess(p *Process) error {
+func (l *Launcher) registerProcess(p *Process) error {
 	l.lock.Lock()
 	defer l.lock.Unlock()
 
@@ -189,7 +189,7 @@ func (l *ProcessLauncher) registerProcess(p *Process) error {
 	return nil
 }
 
-func (l *ProcessLauncher) unregisterProcess(p *Process) error {
+func (l *Launcher) unregisterProcess(p *Process) error {
 	l.lock.Lock()
 	defer l.lock.Unlock()
 
@@ -207,14 +207,14 @@ func (l *ProcessLauncher) unregisterProcess(p *Process) error {
 	return nil
 }
 
-func (l *ProcessLauncher) findProcess(name string) *Process {
+func (l *Launcher) findProcess(name string) *Process {
 	l.lock.RLock()
 	defer l.lock.RUnlock()
 
 	return l.processes[name]
 }
 
-func (l *ProcessLauncher) ProcessGet(ctx context.Context, req *rpc.ProcessGetRequest) (*rpc.ProcessResponse, error) {
+func (l *Launcher) ProcessGet(ctx context.Context, req *rpc.ProcessGetRequest) (*rpc.ProcessResponse, error) {
 	p := l.findProcess(req.Name)
 	if p == nil {
 		return nil, fmt.Errorf("cannot find process %v", req.Name)
@@ -223,7 +223,7 @@ func (l *ProcessLauncher) ProcessGet(ctx context.Context, req *rpc.ProcessGetReq
 	return p.RPCResponse(), nil
 }
 
-func (l *ProcessLauncher) ProcessList(ctx context.Context, req *rpc.ProcessListRequest) (*rpc.ProcessListResponse, error) {
+func (l *Launcher) ProcessList(ctx context.Context, req *rpc.ProcessListRequest) (*rpc.ProcessListResponse, error) {
 	l.lock.RLock()
 	defer l.lock.RUnlock()
 
@@ -260,7 +260,7 @@ func (p *Process) Start() error {
 
 		if err := cmd.Run(); err != nil {
 			p.lock.Lock()
-			p.Status = ProcessStatusError
+			p.State = StateError
 			p.ErrorMsg = err.Error()
 			p.lock.Unlock()
 
@@ -268,7 +268,7 @@ func (p *Process) Start() error {
 			return
 		}
 		p.lock.Lock()
-		p.Status = ProcessStatusStopped
+		p.State = StateStopped
 		p.lock.Unlock()
 
 		p.UpdateCh <- p
@@ -289,7 +289,7 @@ func (p *Process) RPCResponse() *rpc.ProcessResponse {
 		},
 
 		Status: &rpc.ProcessStatus{
-			Status:   string(p.Status),
+			State:    string(p.State),
 			ErrorMsg: p.ErrorMsg,
 		},
 	}
@@ -311,5 +311,5 @@ func (p *Process) Stop() {
 func (p *Process) IsStopped() bool {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
-	return p.Status == ProcessStatusStopped || p.Status == ProcessStatusError
+	return p.State == StateStopped || p.State == StateError
 }
