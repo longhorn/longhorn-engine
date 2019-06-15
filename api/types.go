@@ -5,6 +5,6 @@ type Process struct {
 	Binary        string   `json:"binary"`
 	Args          []string `json:"args"`
 	ReservedPorts []int32  `json:"reservedPorts"`
-	Status        string   `json:"status"`
+	State         string   `json:"state"`
 	ErrorMsg      string   `json:"errorMsg"`
 }

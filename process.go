@@ -258,7 +258,7 @@ func RPCToProcess(obj *rpc.ProcessResponse) *api.Process {
 		Binary:        obj.Spec.Binary,
 		Args:          obj.Spec.Args,
 		ReservedPorts: obj.Spec.ReservedPorts,
-		Status:        obj.Status.State,
+		State:         obj.Status.State,
 		ErrorMsg:      obj.Status.ErrorMsg,
 	}
 }
