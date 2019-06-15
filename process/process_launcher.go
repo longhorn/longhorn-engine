@@ -1,4 +1,4 @@
-package main
+package process
 
 import (
 	"fmt"
@@ -35,6 +35,11 @@ type ProcessLauncher struct {
 	processUpdateCh chan *Process
 	shutdownCh      chan struct{}
 }
+
+const (
+	WaitInterval = time.Second
+	WaitCount    = 60
+)
 
 type ProcessStatus string
 
@@ -106,7 +111,6 @@ func (l *ProcessLauncher) WaitForShutdown() error {
 		logrus.Warnf("launcher: Receive rpc shutdown: %v", rpcError)
 		return rpcError
 	}
-	return nil
 }
 
 func (l *ProcessLauncher) StartRPCServer() error {

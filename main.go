@@ -15,8 +15,10 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
-	"github.com/longhorn/longhorn-engine-launcher/rpc"
 	"github.com/longhorn/longhorn-engine/util"
+
+	"github.com/longhorn/longhorn-engine-launcher/engine"
+	"github.com/longhorn/longhorn-engine-launcher/rpc"
 )
 
 const (
@@ -173,12 +175,12 @@ func start(c *cli.Context) error {
 		return err
 	}
 
-	l, err := NewLauncher(launcherListen, longhornBinary, frontend, name, size)
+	l, err := engine.NewLauncher(launcherListen, longhornBinary, frontend, name, size)
 	if err != nil {
 		return err
 	}
 	id := util.UUID()
-	controller := NewController(id, longhornBinary, name, listen, l.frontend, backends, replicas)
+	controller := engine.NewController(id, longhornBinary, name, listen, frontend, backends, replicas)
 	if err := l.StartController(controller); err != nil {
 		return err
 	}

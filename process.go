@@ -12,6 +12,8 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
+	"github.com/longhorn/longhorn-engine-launcher/api"
+	"github.com/longhorn/longhorn-engine-launcher/process"
 	"github.com/longhorn/longhorn-engine-launcher/rpc"
 )
 
@@ -35,7 +37,7 @@ func StartProcessLauncherCmd() cli.Command {
 func startLauncher(c *cli.Context) error {
 	listen := c.String("listen")
 
-	l, err := NewProcessLauncher(listen)
+	l, err := process.NewProcessLauncher(listen)
 	if err != nil {
 		return err
 	}
@@ -124,7 +126,7 @@ func startProcess(c *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to start engine: %v", err)
 	}
-	return printJSON(obj)
+	return printJSON(RPCToProcess(obj))
 }
 
 func ProcessDeleteCmd() cli.Command {
@@ -165,7 +167,7 @@ func stopProcess(c *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to stop engine: %v", err)
 	}
-	return printJSON(obj)
+	return printJSON(RPCToProcess(obj))
 }
 
 func ProcessGetCmd() cli.Command {
@@ -206,7 +208,7 @@ func getProcess(c *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to get engine: %v", err)
 	}
-	return printJSON(obj)
+	return printJSON(RPCToProcess(obj))
 }
 
 func ProcessListCmd() cli.Command {
@@ -237,7 +239,7 @@ func listProcess(c *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("failed to list engine: %v", err)
 	}
-	return printJSON(obj)
+	return printJSON(RPCToProcessList(obj))
 }
 
 func printJSON(obj interface{}) error {
@@ -248,4 +250,23 @@ func printJSON(obj interface{}) error {
 
 	fmt.Println(string(output))
 	return nil
+}
+
+func RPCToProcess(obj *rpc.ProcessResponse) *api.Process {
+	return &api.Process{
+		Name:          obj.Spec.Name,
+		Binary:        obj.Spec.Binary,
+		Args:          obj.Spec.Args,
+		ReservedPorts: obj.Spec.ReservedPorts,
+		Status:        obj.Status.Status,
+		ErrorMsg:      obj.Status.ErrorMsg,
+	}
+}
+
+func RPCToProcessList(obj *rpc.ProcessListResponse) map[string]*api.Process {
+	ret := map[string]*api.Process{}
+	for name, p := range obj.Processes {
+		ret[name] = RPCToProcess(p)
+	}
+	return ret
 }

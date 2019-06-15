@@ -1,4 +1,4 @@
-package main
+package engine
 
 import (
 	"fmt"
@@ -186,7 +186,6 @@ func (l *Launcher) WaitForShutdown() error {
 		logrus.Warnf("launcher: Receive rpc shutdown: %v", rpcError)
 		return rpcError
 	}
-	return nil
 }
 
 func (l *Launcher) Shutdown() {
