@@ -75,5 +75,5 @@ message ProcessListRequest{
 }
 
 message ProcessListResponse{
-	repeated ProcessResponse processes = 1;
+	map<string, ProcessResponse> processes = 1;
 }

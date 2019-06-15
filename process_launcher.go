@@ -224,10 +224,10 @@ func (l *ProcessLauncher) ProcessList(ctx context.Context, req *rpc.ProcessListR
 	defer l.lock.RUnlock()
 
 	resp := &rpc.ProcessListResponse{
-		Processes: []*rpc.ProcessResponse{},
+		Processes: map[string]*rpc.ProcessResponse{},
 	}
 	for _, p := range l.processes {
-		resp.Processes = append(resp.Processes, p.RPCResponse())
+		resp.Processes[p.Name] = p.RPCResponse()
 	}
 	return resp, nil
 }
