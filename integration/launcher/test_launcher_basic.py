@@ -23,31 +23,44 @@ def wait_for_process_deletion(name):
     assert deleted
 
 
-def test_start_stop_replica():
+def test_start_stop_replicas():
     rs = process_list()
     assert(len(rs) == 0)
 
     tmp_dir = tempfile.mkdtemp()
-    listen1 = "localhost:10001"
-    name = "replica1"
-    r = process_create(name, ["replica", "--listen", listen1, tmp_dir])
-    assert(r["name"] == name)
-    assert(r["state"] == PROC_STATE_RUNNING)
+    listen = "--listen,localhost:"
+    port_count = 15
+    name_base = "replica"
 
-    r = process_get(name)
-    assert(r["name"] == name)
-    assert(r["state"] == PROC_STATE_RUNNING)
+    for i in range(10):
+        name = name_base + str(i)
+        r = process_create(name, ["replica", tmp_dir],
+                           port_count=port_count, port_args=[listen])
+        assert(r["name"] == name)
+        assert(r["state"] == PROC_STATE_RUNNING)
 
-    rs = process_list()
-    assert(len(rs) == 1)
-    assert(name in rs)
-    assert(rs[name]["name"] == name)
-    assert(rs[name]["state"] == PROC_STATE_RUNNING)
+        r = process_get(name)
+        assert(r["name"] == name)
+        assert(r["state"] == PROC_STATE_RUNNING)
 
-    r = process_delete(name)
-    assert(r["name"] == name)
+        rs = process_list()
+        assert(len(rs) == i+1)
+        assert(name in rs)
+        assert(rs[name]["name"] == name)
+        assert(rs[name]["state"] == PROC_STATE_RUNNING)
 
-    wait_for_process_deletion(name)
+    for i in range(10):
+        rs = process_list()
+        assert(len(rs) == 10 - i)
+
+        name = name_base + str(i)
+        r = process_delete(name)
+        assert(r["name"] == name)
+
+        wait_for_process_deletion(name)
+
+        rs = process_list()
+        assert(len(rs) == 9 - i)
 
     rs = process_list()
     assert(len(rs) == 0)
