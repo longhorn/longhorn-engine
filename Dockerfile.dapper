@@ -78,6 +78,11 @@ RUN cd /usr/src && \
     ./scripts/build-pkg.sh deb && \
     dpkg -i ./pkg/tgt_*.deb
 
+# Build cache for tox
+RUN mkdir integration/
+COPY integration/setup.py integration/tox.ini integration/requirements.txt integration/flake8-requirements.txt integration/
+RUN cd integration && tox --notest
+
 # Build longhorn-engine-launcher
 RUN cd /go/src/github.com/longhorn && \
     git clone https://github.com/yasker/longhorn-engine-launcher.git && \
