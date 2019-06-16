@@ -2,6 +2,7 @@ package app
 
 import (
 	"errors"
+	"fmt"
 	"net"
 	"os"
 	"os/exec"
@@ -48,6 +49,10 @@ func ReplicaCmd() cli.Command {
 				Name:  "restore-name",
 				Usage: "specify the snapshot name for restore, must be used with --restore-from",
 			},
+			cli.IntFlag{
+				Name:  "sync-agent-port-count",
+				Value: 10,
+			},
 		},
 		Action: func(c *cli.Context) {
 			if err := startReplica(c); err != nil {
@@ -91,7 +96,7 @@ func startReplica(c *cli.Context) error {
 		}
 	}
 
-	controlAddress, dataAddress, syncAddress, err := util.ParseAddresses(address)
+	controlAddress, dataAddress, syncAddress, syncPort, err := util.ParseAddresses(address)
 	if err != nil {
 		return err
 	}
@@ -138,7 +143,9 @@ func startReplica(c *cli.Context) error {
 		}
 
 		go func() {
-			cmd := exec.Command(exe, "sync-agent", "--listen", syncAddress)
+			cmd := exec.Command(exe, "sync-agent", "--listen", syncAddress,
+				"--listen-port-range",
+				fmt.Sprintf("%v-%v", syncPort+1, syncPort+c.Int("sync-agent-port-count")))
 			cmd.SysProcAttr = &syscall.SysProcAttr{
 				Pdeathsig: syscall.SIGKILL,
 			}
