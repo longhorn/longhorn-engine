@@ -27,7 +27,7 @@ func StartProcessLauncherCmd() cli.Command {
 			},
 			cli.StringFlag{
 				Name:  "port-range",
-				Value: "9500-30000",
+				Value: "10000-30000",
 			},
 		},
 		Action: func(c *cli.Context) {
@@ -89,7 +89,8 @@ func ProcessCreateCmd() cli.Command {
 				Name: "port-count",
 			},
 			cli.StringSliceFlag{
-				Name: "port-args",
+				Name:  "port-args",
+				Usage: "Automatically add additional arguments when starting the process. In case of space, use `,` instead.",
 			},
 		},
 		Action: func(c *cli.Context) {

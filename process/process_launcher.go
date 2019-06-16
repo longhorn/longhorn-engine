@@ -154,9 +154,11 @@ func (l *Launcher) ProcessCreate(ctx context.Context, req *rpc.ProcessCreateRequ
 	}
 
 	p := &Process{
-		Name:   req.Spec.Name,
-		Binary: req.Spec.Binary,
-		Args:   req.Spec.Args,
+		Name:      req.Spec.Name,
+		Binary:    req.Spec.Binary,
+		Args:      req.Spec.Args,
+		PortCount: req.Spec.PortCount,
+		PortArgs:  req.Spec.PortArgs,
 
 		State: StateRunning,
 
@@ -202,9 +204,22 @@ func (l *Launcher) registerProcess(p *Process) error {
 		return fmt.Errorf("engine process %v already exists", p.Name)
 	}
 
+	if len(p.PortArgs) > int(p.PortCount) {
+		return fmt.Errorf("too many port args %v for port count %v", p.PortArgs, p.PortCount)
+	}
+
 	p.PortStart, p.PortEnd, err = l.allocatePorts(p.PortCount)
 	if err != nil {
 		return errors.Wrapf(err, "cannot allocate %v ports for %v", p.PortCount, p.Name)
+	}
+
+	if len(p.PortArgs) != 0 {
+		for i, arg := range p.PortArgs {
+			if p.PortStart+int32(i) > p.PortEnd {
+				return fmt.Errorf("cannot fit port args %v", arg)
+			}
+			p.Args = append(p.Args, strings.Split(arg+strconv.Itoa(int(p.PortStart)+i), ",")...)
+		}
 	}
 
 	p.UpdateCh = l.processUpdateCh
@@ -294,13 +309,13 @@ func (p *Process) Start() error {
 	}
 
 	go func() {
+		p.lock.Lock()
 		cmd := exec.Command(binary, p.Args...)
 		cmd.SysProcAttr = &syscall.SysProcAttr{
 			Pdeathsig: syscall.SIGKILL,
 		}
 		cmd.Stdout = os.Stdout
 		cmd.Stderr = os.Stderr
-		p.lock.Lock()
 		p.cmd = cmd
 		p.lock.Unlock()
 

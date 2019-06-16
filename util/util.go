@@ -66,7 +66,6 @@ func (b *Bitmap) AllocateRange(count int32) (int32, int32, error) {
 	}
 	bEnd := bStart + count - 1
 	b.data.RemoveRange(uint64(bStart), uint64(bEnd)+1)
-	fmt.Printf("%v", b.data.String())
 	return b.base + bStart, b.base + bEnd, nil
 }
 
@@ -83,6 +82,5 @@ func (b *Bitmap) ReleaseRange(start, end int32) error {
 		return fmt.Errorf("exceed range: %v-%v (%v-%v)", start, end, bStart, bEnd)
 	}
 	b.data.AddRange(uint64(bStart), uint64(bEnd)+1)
-	fmt.Printf("%v", b.data.String())
 	return nil
 }
