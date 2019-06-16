@@ -31,3 +31,22 @@ type PrepareRemoveAction struct {
 	Source string `json:"source"`
 	Target string `json:"target"`
 }
+
+type VolumeInfo struct {
+	Name          string `json:"name"`
+	ReplicaCount  int    `json:"replicaCount"`
+	Endpoint      string `json:"endpoint"`
+	Frontend      string `json:"frontend"`
+	FrontendState string `json:"frontendState"`
+	IsRestoring   bool   `json:"isRestoring"`
+	LastRestored  string `json:"lastRestored"`
+}
+
+type ControllerReplicaInfo struct {
+	Address string `json:"address"`
+	Mode    Mode   `json:"mode"`
+}
+
+type PrepareRebuildOutput struct {
+	Disks []string `json:"disks"`
+}

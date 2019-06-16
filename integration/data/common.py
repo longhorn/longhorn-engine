@@ -4,12 +4,12 @@ import subprocess
 import time
 import threading
 import sys
+import grpc
 
 import os
 from os import path
 
 import pytest
-import cattle
 
 from cmd import snapshot_create
 from utils import read_file, checksum_data, SIZE
@@ -23,6 +23,7 @@ sys.path.append(
     )
 )
 from replica.replica_client import ReplicaClient  # NOQA
+from controller.controller_client import ControllerClient  # NOQA
 
 
 REPLICA1 = 'tcp://localhost:9502'
@@ -48,8 +49,8 @@ GRPC_STANDBY_REPLICA2 = 'localhost:9552'
 STANDBY_REPLICA1_PATH = '/tmp/standby_vol_replica_1/'
 STANDBY_REPLICA2_PATH = '/tmp/standby_vol_replica_2/'
 
-CONTROLLER_SCHEMA = "http://localhost:9501/v1/schemas"
-CONTROLLER_NO_FRONTEND_SCHEMA = "http://localhost:9801/v1/schemas"
+GRPC_CONTROLLER = "localhost:9501"
+GRPC_CONTROLLER_NO_FRONTEND = "localhost:9801"
 
 LONGHORN_BINARY = './bin/longhorn'
 LONGHORN_UPGRADE_BINARY = '/opt/longhorn'
@@ -80,9 +81,9 @@ def _base():
 def dev(request):
     grpc_replica1 = grpc_replica_client(request, GRPC_REPLICA1)
     grpc_replica2 = grpc_replica_client(request, GRPC_REPLICA2)
-    controller = controller_client(request)
+    grpc_controller = grpc_controller_client(request)
 
-    return get_dev(grpc_replica1, grpc_replica2, controller)
+    return get_dev(grpc_replica1, grpc_replica2, grpc_controller)
 
 
 @pytest.fixture()
@@ -91,47 +92,47 @@ def backing_dev(request):
                                         GRPC_BACKED_REPLICA1)
     grpc_replica2 = grpc_replica_client(request,
                                         GRPC_BACKED_REPLICA2)
-    controller = controller_client(request)
+    grpc_controller = grpc_controller_client(request)
 
     return get_backing_dev(grpc_replica1, grpc_replica2,
-                           controller)
+                           grpc_controller)
 
 
 @pytest.fixture()
-def controller(request):
-    return controller_client(request)
+def grpc_controller(request):
+    return grpc_controller_client(request)
 
 
-def controller_client(request):
-    url = CONTROLLER_SCHEMA
-    c = cattle.from_env(url=url)
+def grpc_controller_client(request):
+    c = ControllerClient(GRPC_CONTROLLER)
     request.addfinalizer(lambda: cleanup_controller(c))
-    c = cleanup_controller(c)
-    assert c.list_volume()[0].replicaCount == 0
-    return c
+    return cleanup_controller(c)
 
 
 @pytest.fixture()
-def controller_no_frontend(request):
-    return controller_no_frontend_client(request)
+def grpc_controller_no_frontend(request):
+    return grpc_controller_no_frontend_client(request)
 
 
-def controller_no_frontend_client(request):
-    url = CONTROLLER_NO_FRONTEND_SCHEMA
-    c = cattle.from_env(url=url)
+def grpc_controller_no_frontend_client(request):
+    c = ControllerClient(GRPC_CONTROLLER_NO_FRONTEND)
     request.addfinalizer(lambda: cleanup_controller(c))
-    c = cleanup_controller(c)
-    assert c.list_volume()[0].replicaCount == 0
-    return c
+    return cleanup_controller(c)
 
 
-def cleanup_controller(client):
-    v = client.list_volume()[0]
+def cleanup_controller(grpc_client):
+    try:
+        v = grpc_client.volume_get()
+    except grpc.RpcError as grpc_err:
+        if "Socket closed" not in grpc_err.details():
+            raise grpc_err
+        return grpc_client
+
     if v.replicaCount != 0:
-        v = v.shutdown()
-    for r in client.list_replica():
-        client.delete(r)
-    return client
+        grpc_client.volume_shutdown()
+    for r in grpc_client.replica_list():
+        grpc_client.replica_delete(r.address)
+    return grpc_client
 
 
 @pytest.fixture()
@@ -165,9 +166,9 @@ def grpc_standby_replica2(request):
 
 
 def grpc_replica_client(request, url):
-    grpc_c = ReplicaClient(url)
-    request.addfinalizer(lambda: cleanup_replica(grpc_c))
-    return cleanup_replica(grpc_c)
+    c = ReplicaClient(url)
+    request.addfinalizer(lambda: cleanup_replica(c))
+    return cleanup_replica(c)
 
 
 def cleanup_replica(grpc_client):
@@ -264,9 +265,9 @@ def verify_loop(dev, times, offset, length):
         verify_data(dev, offset, data)
 
 
-def verify_replica_state(c, index, state):
+def verify_replica_state(grpc_c, index, state):
     for i in range(10):
-        replicas = c.list_replica()
+        replicas = grpc_c.replica_list()
         assert len(replicas) == 2
 
         if replicas[index].mode == state:
@@ -302,16 +303,15 @@ def verify_async(dev, times, length, count):
         raise Exception("data_verifier thread failed")
 
 
-def get_dev(grpc_replica1, grpc_replica2, controller):
+def get_dev(grpc_replica1, grpc_replica2, grpc_controller):
     prepare_backup_dir(BACKUP_DIR)
     open_replica(grpc_replica1)
     open_replica(grpc_replica2)
 
-    replicas = controller.list_replica()
+    replicas = grpc_controller.replica_list()
     assert len(replicas) == 0
 
-    v = controller.list_volume()[0]
-    v = v.start(replicas=[
+    v = grpc_controller.volume_start(replicas=[
         REPLICA1,
         REPLICA2
     ])
@@ -322,16 +322,15 @@ def get_dev(grpc_replica1, grpc_replica2, controller):
 
 
 def get_backing_dev(grpc_backing_replica1, grpc_backing_replica2,
-                    controller):
+                    grpc_controller):
     prepare_backup_dir(BACKUP_DIR)
     open_replica(grpc_backing_replica1)
     open_replica(grpc_backing_replica2)
 
-    replicas = controller.list_replica()
+    replicas = grpc_controller.replica_list()
     assert len(replicas) == 0
 
-    v = controller.list_volume()[0]
-    v = v.start(replicas=[
+    v = grpc_controller.volume_start(replicas=[
         BACKED_REPLICA1,
         BACKED_REPLICA2
     ])

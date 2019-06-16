@@ -17,7 +17,7 @@ import (
 
 	"github.com/gorilla/handlers"
 	iutil "github.com/longhorn/go-iscsi-helper/util"
-	"github.com/satori/go.uuid"
+	uuid "github.com/satori/go.uuid"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 )
@@ -49,6 +49,40 @@ func ParseAddresses(name string) (string, string, string, error) {
 	return fmt.Sprintf("%s:%d", host, port),
 		fmt.Sprintf("%s:%d", host, port+1),
 		fmt.Sprintf("%s:%d", host, port+2), nil
+}
+
+func GetGRPCAddress(address string) string {
+	if strings.HasPrefix(address, "tcp://") {
+		address = strings.TrimPrefix(address, "tcp://")
+	}
+
+	if strings.HasPrefix(address, "http://") {
+		address = strings.TrimPrefix(address, "http://")
+	}
+
+	if strings.HasSuffix(address, "/v1") {
+		address = strings.TrimSuffix(address, "/v1")
+	}
+
+	return address
+}
+
+func GetPortFromAddress(address string) (int, error) {
+	if strings.HasSuffix(address, "/v1") {
+		address = strings.TrimSuffix(address, "/v1")
+	}
+
+	parts := strings.Split(address, ":")
+	if len(parts) < 2 {
+		return 0, fmt.Errorf("Invalid address %s, must have a port in it", address)
+	}
+
+	port, err := strconv.Atoi(parts[1])
+	if err != nil {
+		return 0, err
+	}
+
+	return port, nil
 }
 
 func UUID() string {

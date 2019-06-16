@@ -2,16 +2,14 @@ package controller
 
 import (
 	"fmt"
-	"net/http"
-	"strconv"
-	"strings"
+	"net"
 	"sync"
 	"sync/atomic"
 	"time"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"github.com/yasker/go-websocket-toolbox/broadcaster"
+	"google.golang.org/grpc"
 
 	iutil "github.com/longhorn/go-iscsi-helper/util"
 
@@ -41,44 +39,66 @@ type Controller struct {
 
 	listenAddr string
 	listenPort string
-	RestServer *http.Server
+
+	GRPCAddress string
+	GRPCServer  *grpc.Server
+
 	shutdownWG sync.WaitGroup
 	lastError  error
 
-	Broadcaster *broadcaster.Broadcaster
-
-	metrics *types.Metrics
+	latestMetrics *types.Metrics
+	metrics       *types.Metrics
 }
 
 func NewController(name string, factory types.BackendFactory, frontend types.Frontend, launcher, launcherID string) *Controller {
 	c := &Controller{
-		factory:     factory,
-		Name:        name,
-		frontend:    frontend,
-		launcher:    launcher,
-		launcherID:  launcherID,
-		isRestoring: false,
-		Broadcaster: &broadcaster.Broadcaster{},
-		metrics:     &types.Metrics{},
+		factory:       factory,
+		Name:          name,
+		frontend:      frontend,
+		launcher:      launcher,
+		launcherID:    launcherID,
+		isRestoring:   false,
+		metrics:       &types.Metrics{},
+		latestMetrics: &types.Metrics{},
 	}
 	c.reset()
 	c.metricsStart()
 	return c
 }
 
-func (c *Controller) StartRestServer() error {
-	if c.RestServer == nil {
-		return fmt.Errorf("cannot find rest server")
+func (c *Controller) StartGRPCServer() error {
+	if c.GRPCServer == nil {
+		return fmt.Errorf("cannot find grpc server")
 	}
+
+	grpcPort, err := util.GetPortFromAddress(c.GRPCAddress)
+	if err != nil {
+		return err
+	}
+
+	if c.GRPCAddress == "" || grpcPort == 0 {
+		return fmt.Errorf("cannot find grpc address or port")
+	}
+
 	c.shutdownWG.Add(1)
 	go func() {
-		addr := c.RestServer.Addr
-		err := c.RestServer.ListenAndServe()
-		logrus.Errorf("Rest server at %v is down: %v", addr, err)
+		defer c.shutdownWG.Done()
+
+		grpcAddress := c.GRPCAddress
+		listener, err := net.Listen("tcp", c.GRPCAddress)
+		if err != nil {
+			logrus.Errorf("Failed to listen %v: %v", grpcAddress, err)
+			c.lastError = err
+			return
+		}
+
+		logrus.Infof(" Listening on gRPC Controller server: %v", grpcAddress)
+		err = c.GRPCServer.Serve(listener)
+		logrus.Errorf("GRPC server at %v is down: %v", grpcAddress, err)
 		c.lastError = err
-		c.shutdownWG.Done()
+		return
 	}()
-	logrus.Infof("Listening on %s", c.RestServer.Addr)
+	logrus.Infof("Listening on %s", c.GRPCAddress)
 
 	return nil
 }
@@ -159,7 +179,6 @@ func (c *Controller) Snapshot(name string, labels map[string]string) (string, er
 	if err := c.handleErrorNoLock(c.backend.Snapshot(name, true, created, labels)); err != nil {
 		return "", err
 	}
-	c.Broadcaster.Notify(broadcaster.NewSimpleEvent(types.EventTypeReplica))
 	return name, nil
 }
 
@@ -197,8 +216,6 @@ func (c *Controller) addReplicaNoLock(newBackend types.Backend, address string, 
 
 	go c.monitoring(address, newBackend)
 
-	c.Broadcaster.Notify(broadcaster.NewSimpleEvent(types.EventTypeReplica))
-
 	return nil
 }
 
@@ -229,7 +246,6 @@ func (c *Controller) RemoveReplica(address string) error {
 		}
 	}
 
-	c.Broadcaster.Notify(broadcaster.NewSimpleEvent(types.EventTypeReplica))
 	return nil
 }
 
@@ -261,7 +277,6 @@ func (c *Controller) setReplicaModeNoLock(address string, mode types.Mode) {
 				r.Mode = mode
 				c.replicas[i] = r
 				c.backend.SetMode(address, mode)
-				c.Broadcaster.Notify(broadcaster.NewSimpleEvent(types.EventTypeReplica))
 			} else {
 				logrus.Infof("Ignore set replica %v to mode %v due to it's ERR",
 					address, mode)
@@ -596,32 +611,6 @@ func (c *Controller) cleanupRestoreInfo() {
 	return
 }
 
-func (c *Controller) UpdatePort(newPort int) error {
-	oldServer := c.RestServer
-	if oldServer == nil {
-		return fmt.Errorf("old rest server doesn't exist")
-	}
-	oldAddr := c.RestServer.Addr
-	handler := c.RestServer.Handler
-	addrs := strings.Split(oldAddr, ":")
-	newAddr := addrs[0] + ":" + strconv.Itoa(newPort)
-
-	logrus.Infof("About to change to listen to %v", newAddr)
-	newServer := &http.Server{
-		Addr:    newAddr,
-		Handler: handler,
-	}
-	c.RestServer = newServer
-	c.StartRestServer()
-
-	// this will immediate shutdown all the existing connections. the
-	// pending http requests would error out
-	if err := oldServer.Close(); err != nil {
-		logrus.Warnf("Failed to close old server at %v: %v", oldAddr, err)
-	}
-	return nil
-}
-
 func (c *Controller) launcherStartFrontend() error {
 	if c.launcher == "" {
 		return nil
@@ -669,13 +658,12 @@ func (c *Controller) metricsStart() {
 	go func() {
 		for {
 			time.Sleep(1 * time.Second)
-			latestMetrics := c.metrics
+			c.latestMetrics = c.metrics
 			c.metrics = &types.Metrics{}
-			e := &broadcaster.Event{
-				Type: types.EventTypeMetrics,
-				Data: latestMetrics,
-			}
-			c.Broadcaster.Notify(e)
 		}
 	}()
+}
+
+func (c *Controller) GetLatestMetics() *types.Metrics {
+	return c.latestMetrics
 }

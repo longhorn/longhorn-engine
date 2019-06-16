@@ -12,6 +12,7 @@ import (
 	"github.com/urfave/cli"
 
 	"github.com/longhorn/longhorn-engine/sync"
+	"github.com/longhorn/longhorn-engine/types"
 	"github.com/longhorn/longhorn-engine/util"
 )
 
@@ -127,7 +128,7 @@ func createSnapshot(c *cli.Context) error {
 		}
 	}
 
-	id, err := cli.Snapshot(name, labelMap)
+	id, err := cli.VolumeSnapshot(name, labelMap)
 	if err != nil {
 		return err
 	}
@@ -144,7 +145,7 @@ func revertSnapshot(c *cli.Context) error {
 		return fmt.Errorf("Missing parameter for snapshot")
 	}
 
-	err := cli.RevertSnapshot(name)
+	err := cli.VolumeRevert(name)
 	if err != nil {
 		return err
 	}
@@ -181,7 +182,7 @@ func purgeSnapshot(c *cli.Context) error {
 func lsSnapshot(c *cli.Context) error {
 	cli := getCli(c)
 
-	replicas, err := cli.ListReplicas()
+	replicas, err := cli.ReplicaList()
 	if err != nil {
 		return err
 	}
@@ -189,7 +190,7 @@ func lsSnapshot(c *cli.Context) error {
 	first := true
 	snapshots := []string{}
 	for _, r := range replicas {
-		if r.Mode != "RW" {
+		if r.Mode != types.RW {
 			continue
 		}
 
@@ -235,7 +236,7 @@ func infoSnapshot(c *cli.Context) error {
 
 	cli := getCli(c)
 
-	replicas, err := cli.ListReplicas()
+	replicas, err := cli.ReplicaList()
 	if err != nil {
 		return err
 	}

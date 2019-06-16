@@ -7,33 +7,33 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/longhorn/longhorn-engine/controller/rest"
 	"github.com/longhorn/longhorn-engine/replica"
 	replicaClient "github.com/longhorn/longhorn-engine/replica/client"
+	"github.com/longhorn/longhorn-engine/types"
 	"github.com/longhorn/longhorn-engine/util"
 	"github.com/rancher/backupstore"
 )
 
 func (t *Task) CreateBackup(snapshot, dest string, labels []string, credential map[string]string) (string, error) {
-	var replica *rest.Replica
+	var replica *types.ControllerReplicaInfo
 
 	if snapshot == VolumeHeadName {
 		return "", fmt.Errorf("Can not backup the head disk in the chain")
 	}
 
-	volume, err := t.client.GetVolume()
+	volume, err := t.client.VolumeGet()
 	if err != nil {
 		return "", err
 	}
 
-	replicas, err := t.client.ListReplicas()
+	replicas, err := t.client.ReplicaList()
 	if err != nil {
 		return "", err
 	}
 
 	for _, r := range replicas {
-		if r.Mode == "RW" {
-			replica = &r
+		if r.Mode == types.RW {
+			replica = r
 			break
 		}
 	}
@@ -49,8 +49,8 @@ func (t *Task) CreateBackup(snapshot, dest string, labels []string, credential m
 	return backup, nil
 }
 
-func (t *Task) createBackup(replicaInController *rest.Replica, snapshot, dest, volumeName string, labels []string, credential map[string]string) (string, error) {
-	if replicaInController.Mode != "RW" {
+func (t *Task) createBackup(replicaInController *types.ControllerReplicaInfo, snapshot, dest, volumeName string, labels []string, credential map[string]string) (string, error) {
+	if replicaInController.Mode != types.RW {
 		return "", fmt.Errorf("Can only create backup from replica in mode RW, got %s", replicaInController.Mode)
 	}
 
@@ -80,13 +80,13 @@ func (t *Task) createBackup(replicaInController *rest.Replica, snapshot, dest, v
 }
 
 func (t *Task) RestoreBackup(backup string) error {
-	replicas, err := t.client.ListReplicas()
+	replicas, err := t.client.ReplicaList()
 	if err != nil {
 		return err
 	}
 
 	for _, r := range replicas {
-		if ok, err := t.isRebuilding(&r); err != nil {
+		if ok, err := t.isRebuilding(r); err != nil {
 			return err
 		} else if ok {
 			return fmt.Errorf("Can not restore from backup because %s is rebuilding", r.Address)
@@ -97,20 +97,20 @@ func (t *Task) RestoreBackup(backup string) error {
 	snapshotID := util.UUID()
 	snapshotFile := replica.GenerateSnapshotDiskName(snapshotID)
 	for _, replica := range replicas {
-		if err := t.restoreBackup(&replica, backup, snapshotFile); err != nil {
+		if err := t.restoreBackup(replica, backup, snapshotFile); err != nil {
 			return err
 		}
 	}
 
 	// call to controller to revert to sfile
-	if err := t.client.RevertSnapshot(snapshotID); err != nil {
+	if err := t.client.VolumeRevert(snapshotID); err != nil {
 		return fmt.Errorf("Fail to revert to snapshot %v", snapshotID)
 	}
 	return nil
 }
 
-func (t *Task) restoreBackup(replicaInController *rest.Replica, backup string, snapshotFile string) error {
-	if replicaInController.Mode != "RW" {
+func (t *Task) restoreBackup(replicaInController *types.ControllerReplicaInfo, backup string, snapshotFile string) error {
+	if replicaInController.Mode != types.RW {
 		return fmt.Errorf("Can only restore backup from replica in mode RW, got %s", replicaInController.Mode)
 	}
 
@@ -129,18 +129,18 @@ func (t *Task) restoreBackup(replicaInController *rest.Replica, backup string, s
 }
 
 func (t *Task) RestoreBackupIncrementally(backup, backupName, lastRestored string) error {
-	replicas, err := t.client.ListReplicas()
+	replicas, err := t.client.ReplicaList()
 	if err != nil {
 		return err
 	}
 
 	for _, r := range replicas {
-		if ok, err := t.isRebuilding(&r); err != nil {
+		if ok, err := t.isRebuilding(r); err != nil {
 			return err
 		} else if ok {
 			return fmt.Errorf("can not incrementally restore from backup because %s is rebuilding", r.Address)
 		}
-		if ok, err := t.isDirty(&r); err != nil {
+		if ok, err := t.isDirty(r); err != nil {
 			return err
 		} else if ok {
 			return fmt.Errorf("BUG: replica %s of standby volume cannot be dirty", r.Address)
@@ -173,9 +173,9 @@ func (t *Task) RestoreBackupIncrementally(backup, backupName, lastRestored strin
 	wg.Add(len(replicas))
 
 	for _, r := range replicas {
-		go func(replica rest.Replica) {
+		go func(replica *types.ControllerReplicaInfo) {
 			defer wg.Done()
-			err := t.restoreBackupIncrementally(&replica, snapshotDiskName, backup, lastRestored, isValidLastRestored)
+			err := t.restoreBackupIncrementally(replica, snapshotDiskName, backup, lastRestored, isValidLastRestored)
 			if err != nil {
 				errorMap.Store(replica.Address, err)
 			}
@@ -193,8 +193,8 @@ func (t *Task) RestoreBackupIncrementally(backup, backupName, lastRestored strin
 	return err
 }
 
-func (t *Task) restoreBackupIncrementally(replicaInController *rest.Replica, snapshotDiskName, backup, lastRestored string, isValidLastRestored bool) error {
-	if replicaInController.Mode != "RW" {
+func (t *Task) restoreBackupIncrementally(replicaInController *types.ControllerReplicaInfo, snapshotDiskName, backup, lastRestored string, isValidLastRestored bool) error {
+	if replicaInController.Mode != types.RW {
 		return fmt.Errorf("can only incrementally restore backup from replica in mode RW, got mode %s", replicaInController.Mode)
 	}
 

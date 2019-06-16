@@ -80,9 +80,9 @@ RUN cd /usr/src && \
 
 # Build longhorn-engine-launcher
 RUN cd /go/src/github.com/longhorn && \
-    git clone https://github.com/longhorn/longhorn-engine-launcher.git && \
+    git clone https://github.com/shuo-wu/longhorn-engine-launcher.git && \
     cd longhorn-engine-launcher && \
-    git checkout 60cd930107ef19273b9c490814b69a59669e306f && \
+    git checkout 59ae82f4738fde13fcf8a2191494c8b16b1bd7f0 && \
     go build && \
     cp longhorn-engine-launcher /usr/local/bin
 

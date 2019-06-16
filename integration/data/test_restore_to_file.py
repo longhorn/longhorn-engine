@@ -3,9 +3,9 @@ import pyqcow
 
 import cmd
 import common
-from common import controller, backup_targets  # NOQA
+from common import grpc_controller, backup_targets  # NOQA
 from common import grpc_replica1, grpc_replica2  # NOQA
-from common import grpc_backing_replica1, grpc_backing_replica2  # NOQAs
+from common import grpc_backing_replica1, grpc_backing_replica2  # NOQA
 from common import read_dev, read_file, read_from_backing_file
 from utils import file, create_backup, rm_backups, rm_snaps
 from utils import checksum_data, SIZE
@@ -285,22 +285,23 @@ def restore_to_file_without_backing_file_test(dev, backup_target):
 
 def test_restore_to_file_with_backing_file(grpc_backing_replica1,  # NOQA
                                            grpc_backing_replica2,  # NOQA
-                                           controller, backup_targets):  # NOQA
+                                           grpc_controller, backup_targets):  # NOQA
     for backup_target in backup_targets:
         backing_dev = common.get_backing_dev(grpc_backing_replica1,
                                              grpc_backing_replica2,
-                                             controller)
+                                             grpc_controller)
         restore_to_file_with_backing_file_test(backing_dev, backup_target)
         common.cleanup_replica(grpc_backing_replica1)
         common.cleanup_replica(grpc_backing_replica2)
-        common.cleanup_controller(controller)
+        common.cleanup_controller(grpc_controller)
 
 
 def test_restore_to_file_without_backing_file(grpc_replica1, grpc_replica2,  # NOQA
-                                              controller, backup_targets):  # NOQA
+                                              grpc_controller, backup_targets):  # NOQA
     for backup_target in backup_targets:
-        dev = common.get_dev(grpc_replica1, grpc_replica2, controller)
+        dev = common.get_dev(grpc_replica1, grpc_replica2,
+                             grpc_controller)
         restore_to_file_without_backing_file_test(dev, backup_target)
         common.cleanup_replica(grpc_replica1)
         common.cleanup_replica(grpc_replica2)
-        common.cleanup_controller(controller)
+        common.cleanup_controller(grpc_controller)

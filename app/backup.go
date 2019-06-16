@@ -164,21 +164,21 @@ func doRestoreBackupIncrementally(c *cli.Context) error {
 	lastRestored := c.String("last-restored")
 
 	cli := getCli(c)
-	err = cli.PrepareRestore(lastRestored)
+	err = cli.VolumePrepareRestore(lastRestored)
 	if err != nil {
 		return err
 	}
 
 	if err := task.RestoreBackupIncrementally(backup, backupName, lastRestored); err != nil {
 		// failed to restore, no need to update field lastRestored
-		if extraErr := cli.FinishRestore(""); extraErr != nil {
+		if extraErr := cli.VolumeFinishRestore(""); extraErr != nil {
 			return errors.Wrapf(extraErr, "failed to execute and finsish incrementally restoring: %v", err)
 		}
 		return err
 	}
 
 	// TODO: will error out here cause dead lock?
-	if err = cli.FinishRestore(backupName); err != nil {
+	if err = cli.VolumeFinishRestore(backupName); err != nil {
 		return errors.Wrapf(err, "failed to finsish incrementally restoring")
 	}
 

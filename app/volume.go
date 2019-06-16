@@ -8,15 +8,6 @@ import (
 	"github.com/urfave/cli"
 )
 
-type VolumeInfo struct {
-	Name         string `json:"name"`
-	ReplicaCount int    `json:"replicaCount"`
-	Endpoint     string `json:"endpoint"`
-	Frontend     string `json:"frontend"`
-	IsRestoring  bool   `json:"isRestoring"`
-	LastRestored string `json:"lastRestored"`
-}
-
 func InfoCmd() cli.Command {
 	return cli.Command{
 		Name: "info",
@@ -31,21 +22,12 @@ func InfoCmd() cli.Command {
 func info(c *cli.Context) error {
 	cli := getCli(c)
 
-	volume, err := cli.GetVolume()
+	volumeInfo, err := cli.VolumeGet()
 	if err != nil {
 		return err
 	}
 
-	info := VolumeInfo{
-		Name:         volume.Name,
-		ReplicaCount: volume.ReplicaCount,
-		Endpoint:     volume.Endpoint,
-		Frontend:     volume.Frontend,
-		IsRestoring:  volume.IsRestoring,
-		LastRestored: volume.LastRestored,
-	}
-
-	output, err := json.MarshalIndent(info, "", "\t")
+	output, err := json.MarshalIndent(volumeInfo, "", "\t")
 	if err != nil {
 		return err
 	}
