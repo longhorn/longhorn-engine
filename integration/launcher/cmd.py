@@ -18,9 +18,15 @@ def launcher(url):
 
 
 def process_create(name, args,
+                   port_count=0, port_args=[],
                    url=LAUNCHER, binary=LONGHORN_BINARY):
     cmd = launcher(url) + ['process', 'create', '--name', name,
-                           '--binary', binary, '--'] + args
+                           '--binary', binary]
+    if port_count != 0:
+        cmd = cmd + ['--port-count', str(port_count)]
+        for a in port_args:
+            cmd = cmd + ['--port-args', a]
+    cmd = cmd + ['--'] + args
     return json.loads(subprocess.check_output(cmd))
 
 
