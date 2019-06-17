@@ -98,7 +98,6 @@ func (t *Task) FetchBackupStatus(backupID string, replicaIP string) (*BackupStat
 
 	progress, url, backupErr, snapshot, err := repClient.GetBackupStatus(backupID)
 	if err != nil {
-		logrus.Errorf("Failed to fetch backup object: %v", err)
 		return nil, err
 	}
 
