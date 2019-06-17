@@ -12,3 +12,17 @@ type Process struct {
 	PortStart int32  `json:"portStart"`
 	PortEnd   int32  `json:"portEnd"`
 }
+
+type Engine struct {
+	Name       string
+	VolumeName string
+	Binary     string
+	ListenAddr string
+	Listen     string
+	Size       int64
+	Frontend   string
+	Backends   []string
+	Replicas   []string
+
+	Endpoint string
+}

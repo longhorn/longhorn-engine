@@ -1,32 +1,59 @@
 syntax="proto3";
 
-service LonghornLauncherService {
-	rpc UpgradeEngine(Engine) returns (Empty) {}
-	rpc GetInfo(Empty) returns (Info) {}
-	rpc StartFrontend(Identity) returns (Empty) {}
-	rpc ShutdownFrontend(Identity) returns (Empty) {}
-	rpc StartEngineFrontend(Frontend) returns (Empty) {}
-	rpc ShutdownEngineFrontend(Empty) returns (Empty) {}
+service LonghornEngineService {
+	rpc EngineCreate(EngineCreateRequest) returns (EngineResponse) {}
+	rpc EngineDelete(EngineRequest) returns (Empty) {}
+	rpc EngineGet(EngineRequest) returns (EngineResponse) {}
+	rpc EngineUpgrade(EngineUpgradeRequest) returns (Empty) {}
+
+	rpc FrontendStartCallback(EngineRequest) returns (Empty) {}
+	rpc FrontendShutdownCallback(EngineRequest) returns (Empty) {}
+
+	rpc FrontendStart(FrontendStartRequest) returns (Empty) {}
+	rpc FrontendShutdown(FrontendShutdownRequest) returns (Empty) {}
 }
 
-message Engine {
-	string binary = 1;
-	repeated string replicas = 2;
+message EngineSpec {
+	string name = 1;
+	string volumeName = 2;
+	string binary = 3;
+	string listen = 4;
+	string listen_addr = 5;
+	int64 size = 6;
+	string frontend = 7;
+	repeated string backends = 8;
+	repeated string replicas = 9;
 }
 
-message Info {
-	string volume = 1;
+message EngineStatus {
+	string endpoint = 1;
+}
+
+message EngineResponse {
+	EngineSpec spec = 1;
+	EngineStatus status = 2;
+}
+
+message EngineCreateRequest {
+	EngineSpec spec = 1;
+}
+
+message EngineRequest {
+	string name = 1;
+}
+
+message EngineUpgradeRequest {
+	EngineSpec spec = 1;
+}
+
+message FrontendStartRequest {
+	string name = 1;
 	string frontend = 2;
-	string endpoint = 3;
 }
 
-message Identity {
-	string ID = 1;
+message FrontendShutdownRequest {
+	string name = 1;
 }
-
-message Frontend {
-	string Frontend = 1;
-};
 
 message Empty {
 }
@@ -36,10 +63,6 @@ service LonghornProcessLauncherService {
 	rpc ProcessDelete(ProcessDeleteRequest) returns (ProcessResponse) {}
 	rpc ProcessGet(ProcessGetRequest) returns (ProcessResponse) {}
 	rpc ProcessList(ProcessListRequest) returns (ProcessListResponse) {}
-
-	//rpc StartReplica(StartReplicaRequest) returns (StartReplicaResponse) {}
-	//rpc StopReplica(StopReplicaRequest) returns (StopReplicaResponse) {}
-	//rpc ListReplicas(ListReplicasRequest) returns (ListReplicasResponse) {}
 }
 
 message ProcessSpec {

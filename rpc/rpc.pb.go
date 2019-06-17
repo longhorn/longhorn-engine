@@ -8,10 +8,14 @@ It is generated from these files:
 	rpc.proto
 
 It has these top-level messages:
-	Engine
-	Info
-	Identity
-	Frontend
+	EngineSpec
+	EngineStatus
+	EngineResponse
+	EngineCreateRequest
+	EngineRequest
+	EngineUpgradeRequest
+	FrontendStartRequest
+	FrontendShutdownRequest
 	Empty
 	ProcessSpec
 	ProcessStatus
@@ -44,90 +48,210 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 
-type Engine struct {
-	Binary   string   `protobuf:"bytes,1,opt,name=binary" json:"binary,omitempty"`
-	Replicas []string `protobuf:"bytes,2,rep,name=replicas" json:"replicas,omitempty"`
+type EngineSpec struct {
+	Name       string   `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
+	VolumeName string   `protobuf:"bytes,2,opt,name=volumeName" json:"volumeName,omitempty"`
+	Binary     string   `protobuf:"bytes,3,opt,name=binary" json:"binary,omitempty"`
+	Listen     string   `protobuf:"bytes,4,opt,name=listen" json:"listen,omitempty"`
+	ListenAddr string   `protobuf:"bytes,5,opt,name=listen_addr,json=listenAddr" json:"listen_addr,omitempty"`
+	Size       int64    `protobuf:"varint,6,opt,name=size" json:"size,omitempty"`
+	Frontend   string   `protobuf:"bytes,7,opt,name=frontend" json:"frontend,omitempty"`
+	Backends   []string `protobuf:"bytes,8,rep,name=backends" json:"backends,omitempty"`
+	Replicas   []string `protobuf:"bytes,9,rep,name=replicas" json:"replicas,omitempty"`
 }
 
-func (m *Engine) Reset()                    { *m = Engine{} }
-func (m *Engine) String() string            { return proto.CompactTextString(m) }
-func (*Engine) ProtoMessage()               {}
-func (*Engine) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
+func (m *EngineSpec) Reset()                    { *m = EngineSpec{} }
+func (m *EngineSpec) String() string            { return proto.CompactTextString(m) }
+func (*EngineSpec) ProtoMessage()               {}
+func (*EngineSpec) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{0} }
 
-func (m *Engine) GetBinary() string {
+func (m *EngineSpec) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+func (m *EngineSpec) GetVolumeName() string {
+	if m != nil {
+		return m.VolumeName
+	}
+	return ""
+}
+
+func (m *EngineSpec) GetBinary() string {
 	if m != nil {
 		return m.Binary
 	}
 	return ""
 }
 
-func (m *Engine) GetReplicas() []string {
+func (m *EngineSpec) GetListen() string {
+	if m != nil {
+		return m.Listen
+	}
+	return ""
+}
+
+func (m *EngineSpec) GetListenAddr() string {
+	if m != nil {
+		return m.ListenAddr
+	}
+	return ""
+}
+
+func (m *EngineSpec) GetSize() int64 {
+	if m != nil {
+		return m.Size
+	}
+	return 0
+}
+
+func (m *EngineSpec) GetFrontend() string {
+	if m != nil {
+		return m.Frontend
+	}
+	return ""
+}
+
+func (m *EngineSpec) GetBackends() []string {
+	if m != nil {
+		return m.Backends
+	}
+	return nil
+}
+
+func (m *EngineSpec) GetReplicas() []string {
 	if m != nil {
 		return m.Replicas
 	}
 	return nil
 }
 
-type Info struct {
-	Volume   string `protobuf:"bytes,1,opt,name=volume" json:"volume,omitempty"`
-	Frontend string `protobuf:"bytes,2,opt,name=frontend" json:"frontend,omitempty"`
-	Endpoint string `protobuf:"bytes,3,opt,name=endpoint" json:"endpoint,omitempty"`
+type EngineStatus struct {
+	Endpoint string `protobuf:"bytes,1,opt,name=endpoint" json:"endpoint,omitempty"`
 }
 
-func (m *Info) Reset()                    { *m = Info{} }
-func (m *Info) String() string            { return proto.CompactTextString(m) }
-func (*Info) ProtoMessage()               {}
-func (*Info) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
+func (m *EngineStatus) Reset()                    { *m = EngineStatus{} }
+func (m *EngineStatus) String() string            { return proto.CompactTextString(m) }
+func (*EngineStatus) ProtoMessage()               {}
+func (*EngineStatus) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{1} }
 
-func (m *Info) GetVolume() string {
-	if m != nil {
-		return m.Volume
-	}
-	return ""
-}
-
-func (m *Info) GetFrontend() string {
-	if m != nil {
-		return m.Frontend
-	}
-	return ""
-}
-
-func (m *Info) GetEndpoint() string {
+func (m *EngineStatus) GetEndpoint() string {
 	if m != nil {
 		return m.Endpoint
 	}
 	return ""
 }
 
-type Identity struct {
-	ID string `protobuf:"bytes,1,opt,name=ID" json:"ID,omitempty"`
+type EngineResponse struct {
+	Spec   *EngineSpec   `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
+	Status *EngineStatus `protobuf:"bytes,2,opt,name=status" json:"status,omitempty"`
 }
 
-func (m *Identity) Reset()                    { *m = Identity{} }
-func (m *Identity) String() string            { return proto.CompactTextString(m) }
-func (*Identity) ProtoMessage()               {}
-func (*Identity) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
+func (m *EngineResponse) Reset()                    { *m = EngineResponse{} }
+func (m *EngineResponse) String() string            { return proto.CompactTextString(m) }
+func (*EngineResponse) ProtoMessage()               {}
+func (*EngineResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{2} }
 
-func (m *Identity) GetID() string {
+func (m *EngineResponse) GetSpec() *EngineSpec {
 	if m != nil {
-		return m.ID
+		return m.Spec
+	}
+	return nil
+}
+
+func (m *EngineResponse) GetStatus() *EngineStatus {
+	if m != nil {
+		return m.Status
+	}
+	return nil
+}
+
+type EngineCreateRequest struct {
+	Spec *EngineSpec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
+}
+
+func (m *EngineCreateRequest) Reset()                    { *m = EngineCreateRequest{} }
+func (m *EngineCreateRequest) String() string            { return proto.CompactTextString(m) }
+func (*EngineCreateRequest) ProtoMessage()               {}
+func (*EngineCreateRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
+
+func (m *EngineCreateRequest) GetSpec() *EngineSpec {
+	if m != nil {
+		return m.Spec
+	}
+	return nil
+}
+
+type EngineRequest struct {
+	Name string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
+}
+
+func (m *EngineRequest) Reset()                    { *m = EngineRequest{} }
+func (m *EngineRequest) String() string            { return proto.CompactTextString(m) }
+func (*EngineRequest) ProtoMessage()               {}
+func (*EngineRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{4} }
+
+func (m *EngineRequest) GetName() string {
+	if m != nil {
+		return m.Name
 	}
 	return ""
 }
 
-type Frontend struct {
-	Frontend string `protobuf:"bytes,1,opt,name=Frontend" json:"Frontend,omitempty"`
+type EngineUpgradeRequest struct {
+	Spec *EngineSpec `protobuf:"bytes,1,opt,name=spec" json:"spec,omitempty"`
 }
 
-func (m *Frontend) Reset()                    { *m = Frontend{} }
-func (m *Frontend) String() string            { return proto.CompactTextString(m) }
-func (*Frontend) ProtoMessage()               {}
-func (*Frontend) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{3} }
+func (m *EngineUpgradeRequest) Reset()                    { *m = EngineUpgradeRequest{} }
+func (m *EngineUpgradeRequest) String() string            { return proto.CompactTextString(m) }
+func (*EngineUpgradeRequest) ProtoMessage()               {}
+func (*EngineUpgradeRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{5} }
 
-func (m *Frontend) GetFrontend() string {
+func (m *EngineUpgradeRequest) GetSpec() *EngineSpec {
+	if m != nil {
+		return m.Spec
+	}
+	return nil
+}
+
+type FrontendStartRequest struct {
+	Name     string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
+	Frontend string `protobuf:"bytes,2,opt,name=frontend" json:"frontend,omitempty"`
+}
+
+func (m *FrontendStartRequest) Reset()                    { *m = FrontendStartRequest{} }
+func (m *FrontendStartRequest) String() string            { return proto.CompactTextString(m) }
+func (*FrontendStartRequest) ProtoMessage()               {}
+func (*FrontendStartRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{6} }
+
+func (m *FrontendStartRequest) GetName() string {
+	if m != nil {
+		return m.Name
+	}
+	return ""
+}
+
+func (m *FrontendStartRequest) GetFrontend() string {
 	if m != nil {
 		return m.Frontend
+	}
+	return ""
+}
+
+type FrontendShutdownRequest struct {
+	Name string `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
+}
+
+func (m *FrontendShutdownRequest) Reset()                    { *m = FrontendShutdownRequest{} }
+func (m *FrontendShutdownRequest) String() string            { return proto.CompactTextString(m) }
+func (*FrontendShutdownRequest) ProtoMessage()               {}
+func (*FrontendShutdownRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{7} }
+
+func (m *FrontendShutdownRequest) GetName() string {
+	if m != nil {
+		return m.Name
 	}
 	return ""
 }
@@ -138,7 +262,7 @@ type Empty struct {
 func (m *Empty) Reset()                    { *m = Empty{} }
 func (m *Empty) String() string            { return proto.CompactTextString(m) }
 func (*Empty) ProtoMessage()               {}
-func (*Empty) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{4} }
+func (*Empty) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{8} }
 
 type ProcessSpec struct {
 	Name      string   `protobuf:"bytes,1,opt,name=name" json:"name,omitempty"`
@@ -151,7 +275,7 @@ type ProcessSpec struct {
 func (m *ProcessSpec) Reset()                    { *m = ProcessSpec{} }
 func (m *ProcessSpec) String() string            { return proto.CompactTextString(m) }
 func (*ProcessSpec) ProtoMessage()               {}
-func (*ProcessSpec) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{5} }
+func (*ProcessSpec) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{9} }
 
 func (m *ProcessSpec) GetName() string {
 	if m != nil {
@@ -198,7 +322,7 @@ type ProcessStatus struct {
 func (m *ProcessStatus) Reset()                    { *m = ProcessStatus{} }
 func (m *ProcessStatus) String() string            { return proto.CompactTextString(m) }
 func (*ProcessStatus) ProtoMessage()               {}
-func (*ProcessStatus) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{6} }
+func (*ProcessStatus) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{10} }
 
 func (m *ProcessStatus) GetState() string {
 	if m != nil {
@@ -235,7 +359,7 @@ type ProcessCreateRequest struct {
 func (m *ProcessCreateRequest) Reset()                    { *m = ProcessCreateRequest{} }
 func (m *ProcessCreateRequest) String() string            { return proto.CompactTextString(m) }
 func (*ProcessCreateRequest) ProtoMessage()               {}
-func (*ProcessCreateRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{7} }
+func (*ProcessCreateRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{11} }
 
 func (m *ProcessCreateRequest) GetSpec() *ProcessSpec {
 	if m != nil {
@@ -251,7 +375,7 @@ type ProcessDeleteRequest struct {
 func (m *ProcessDeleteRequest) Reset()                    { *m = ProcessDeleteRequest{} }
 func (m *ProcessDeleteRequest) String() string            { return proto.CompactTextString(m) }
 func (*ProcessDeleteRequest) ProtoMessage()               {}
-func (*ProcessDeleteRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{8} }
+func (*ProcessDeleteRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{12} }
 
 func (m *ProcessDeleteRequest) GetName() string {
 	if m != nil {
@@ -267,7 +391,7 @@ type ProcessGetRequest struct {
 func (m *ProcessGetRequest) Reset()                    { *m = ProcessGetRequest{} }
 func (m *ProcessGetRequest) String() string            { return proto.CompactTextString(m) }
 func (*ProcessGetRequest) ProtoMessage()               {}
-func (*ProcessGetRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{9} }
+func (*ProcessGetRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{13} }
 
 func (m *ProcessGetRequest) GetName() string {
 	if m != nil {
@@ -284,7 +408,7 @@ type ProcessResponse struct {
 func (m *ProcessResponse) Reset()                    { *m = ProcessResponse{} }
 func (m *ProcessResponse) String() string            { return proto.CompactTextString(m) }
 func (*ProcessResponse) ProtoMessage()               {}
-func (*ProcessResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{10} }
+func (*ProcessResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{14} }
 
 func (m *ProcessResponse) GetSpec() *ProcessSpec {
 	if m != nil {
@@ -306,7 +430,7 @@ type ProcessListRequest struct {
 func (m *ProcessListRequest) Reset()                    { *m = ProcessListRequest{} }
 func (m *ProcessListRequest) String() string            { return proto.CompactTextString(m) }
 func (*ProcessListRequest) ProtoMessage()               {}
-func (*ProcessListRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{11} }
+func (*ProcessListRequest) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{15} }
 
 type ProcessListResponse struct {
 	Processes map[string]*ProcessResponse `protobuf:"bytes,1,rep,name=processes" json:"processes,omitempty" protobuf_key:"bytes,1,opt,name=key" protobuf_val:"bytes,2,opt,name=value"`
@@ -315,7 +439,7 @@ type ProcessListResponse struct {
 func (m *ProcessListResponse) Reset()                    { *m = ProcessListResponse{} }
 func (m *ProcessListResponse) String() string            { return proto.CompactTextString(m) }
 func (*ProcessListResponse) ProtoMessage()               {}
-func (*ProcessListResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{12} }
+func (*ProcessListResponse) Descriptor() ([]byte, []int) { return fileDescriptor0, []int{16} }
 
 func (m *ProcessListResponse) GetProcesses() map[string]*ProcessResponse {
 	if m != nil {
@@ -325,10 +449,14 @@ func (m *ProcessListResponse) GetProcesses() map[string]*ProcessResponse {
 }
 
 func init() {
-	proto.RegisterType((*Engine)(nil), "Engine")
-	proto.RegisterType((*Info)(nil), "Info")
-	proto.RegisterType((*Identity)(nil), "Identity")
-	proto.RegisterType((*Frontend)(nil), "Frontend")
+	proto.RegisterType((*EngineSpec)(nil), "EngineSpec")
+	proto.RegisterType((*EngineStatus)(nil), "EngineStatus")
+	proto.RegisterType((*EngineResponse)(nil), "EngineResponse")
+	proto.RegisterType((*EngineCreateRequest)(nil), "EngineCreateRequest")
+	proto.RegisterType((*EngineRequest)(nil), "EngineRequest")
+	proto.RegisterType((*EngineUpgradeRequest)(nil), "EngineUpgradeRequest")
+	proto.RegisterType((*FrontendStartRequest)(nil), "FrontendStartRequest")
+	proto.RegisterType((*FrontendShutdownRequest)(nil), "FrontendShutdownRequest")
 	proto.RegisterType((*Empty)(nil), "Empty")
 	proto.RegisterType((*ProcessSpec)(nil), "ProcessSpec")
 	proto.RegisterType((*ProcessStatus)(nil), "ProcessStatus")
@@ -348,229 +476,295 @@ var _ grpc.ClientConn
 // is compatible with the grpc package it is being compiled against.
 const _ = grpc.SupportPackageIsVersion4
 
-// Client API for LonghornLauncherService service
+// Client API for LonghornEngineService service
 
-type LonghornLauncherServiceClient interface {
-	UpgradeEngine(ctx context.Context, in *Engine, opts ...grpc.CallOption) (*Empty, error)
-	GetInfo(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Info, error)
-	StartFrontend(ctx context.Context, in *Identity, opts ...grpc.CallOption) (*Empty, error)
-	ShutdownFrontend(ctx context.Context, in *Identity, opts ...grpc.CallOption) (*Empty, error)
-	StartEngineFrontend(ctx context.Context, in *Frontend, opts ...grpc.CallOption) (*Empty, error)
-	ShutdownEngineFrontend(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error)
+type LonghornEngineServiceClient interface {
+	EngineCreate(ctx context.Context, in *EngineCreateRequest, opts ...grpc.CallOption) (*EngineResponse, error)
+	EngineDelete(ctx context.Context, in *EngineRequest, opts ...grpc.CallOption) (*Empty, error)
+	EngineGet(ctx context.Context, in *EngineRequest, opts ...grpc.CallOption) (*EngineResponse, error)
+	EngineUpgrade(ctx context.Context, in *EngineUpgradeRequest, opts ...grpc.CallOption) (*Empty, error)
+	FrontendStartCallback(ctx context.Context, in *EngineRequest, opts ...grpc.CallOption) (*Empty, error)
+	FrontendShutdownCallback(ctx context.Context, in *EngineRequest, opts ...grpc.CallOption) (*Empty, error)
+	FrontendStart(ctx context.Context, in *FrontendStartRequest, opts ...grpc.CallOption) (*Empty, error)
+	FrontendShutdown(ctx context.Context, in *FrontendShutdownRequest, opts ...grpc.CallOption) (*Empty, error)
 }
 
-type longhornLauncherServiceClient struct {
+type longhornEngineServiceClient struct {
 	cc *grpc.ClientConn
 }
 
-func NewLonghornLauncherServiceClient(cc *grpc.ClientConn) LonghornLauncherServiceClient {
-	return &longhornLauncherServiceClient{cc}
+func NewLonghornEngineServiceClient(cc *grpc.ClientConn) LonghornEngineServiceClient {
+	return &longhornEngineServiceClient{cc}
 }
 
-func (c *longhornLauncherServiceClient) UpgradeEngine(ctx context.Context, in *Engine, opts ...grpc.CallOption) (*Empty, error) {
+func (c *longhornEngineServiceClient) EngineCreate(ctx context.Context, in *EngineCreateRequest, opts ...grpc.CallOption) (*EngineResponse, error) {
+	out := new(EngineResponse)
+	err := grpc.Invoke(ctx, "/LonghornEngineService/EngineCreate", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *longhornEngineServiceClient) EngineDelete(ctx context.Context, in *EngineRequest, opts ...grpc.CallOption) (*Empty, error) {
 	out := new(Empty)
-	err := grpc.Invoke(ctx, "/LonghornLauncherService/UpgradeEngine", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/LonghornEngineService/EngineDelete", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *longhornLauncherServiceClient) GetInfo(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Info, error) {
-	out := new(Info)
-	err := grpc.Invoke(ctx, "/LonghornLauncherService/GetInfo", in, out, c.cc, opts...)
+func (c *longhornEngineServiceClient) EngineGet(ctx context.Context, in *EngineRequest, opts ...grpc.CallOption) (*EngineResponse, error) {
+	out := new(EngineResponse)
+	err := grpc.Invoke(ctx, "/LonghornEngineService/EngineGet", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *longhornLauncherServiceClient) StartFrontend(ctx context.Context, in *Identity, opts ...grpc.CallOption) (*Empty, error) {
+func (c *longhornEngineServiceClient) EngineUpgrade(ctx context.Context, in *EngineUpgradeRequest, opts ...grpc.CallOption) (*Empty, error) {
 	out := new(Empty)
-	err := grpc.Invoke(ctx, "/LonghornLauncherService/StartFrontend", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/LonghornEngineService/EngineUpgrade", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *longhornLauncherServiceClient) ShutdownFrontend(ctx context.Context, in *Identity, opts ...grpc.CallOption) (*Empty, error) {
+func (c *longhornEngineServiceClient) FrontendStartCallback(ctx context.Context, in *EngineRequest, opts ...grpc.CallOption) (*Empty, error) {
 	out := new(Empty)
-	err := grpc.Invoke(ctx, "/LonghornLauncherService/ShutdownFrontend", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/LonghornEngineService/FrontendStartCallback", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *longhornLauncherServiceClient) StartEngineFrontend(ctx context.Context, in *Frontend, opts ...grpc.CallOption) (*Empty, error) {
+func (c *longhornEngineServiceClient) FrontendShutdownCallback(ctx context.Context, in *EngineRequest, opts ...grpc.CallOption) (*Empty, error) {
 	out := new(Empty)
-	err := grpc.Invoke(ctx, "/LonghornLauncherService/StartEngineFrontend", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/LonghornEngineService/FrontendShutdownCallback", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *longhornLauncherServiceClient) ShutdownEngineFrontend(ctx context.Context, in *Empty, opts ...grpc.CallOption) (*Empty, error) {
+func (c *longhornEngineServiceClient) FrontendStart(ctx context.Context, in *FrontendStartRequest, opts ...grpc.CallOption) (*Empty, error) {
 	out := new(Empty)
-	err := grpc.Invoke(ctx, "/LonghornLauncherService/ShutdownEngineFrontend", in, out, c.cc, opts...)
+	err := grpc.Invoke(ctx, "/LonghornEngineService/FrontendStart", in, out, c.cc, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// Server API for LonghornLauncherService service
-
-type LonghornLauncherServiceServer interface {
-	UpgradeEngine(context.Context, *Engine) (*Empty, error)
-	GetInfo(context.Context, *Empty) (*Info, error)
-	StartFrontend(context.Context, *Identity) (*Empty, error)
-	ShutdownFrontend(context.Context, *Identity) (*Empty, error)
-	StartEngineFrontend(context.Context, *Frontend) (*Empty, error)
-	ShutdownEngineFrontend(context.Context, *Empty) (*Empty, error)
+func (c *longhornEngineServiceClient) FrontendShutdown(ctx context.Context, in *FrontendShutdownRequest, opts ...grpc.CallOption) (*Empty, error) {
+	out := new(Empty)
+	err := grpc.Invoke(ctx, "/LonghornEngineService/FrontendShutdown", in, out, c.cc, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
 }
 
-func RegisterLonghornLauncherServiceServer(s *grpc.Server, srv LonghornLauncherServiceServer) {
-	s.RegisterService(&_LonghornLauncherService_serviceDesc, srv)
+// Server API for LonghornEngineService service
+
+type LonghornEngineServiceServer interface {
+	EngineCreate(context.Context, *EngineCreateRequest) (*EngineResponse, error)
+	EngineDelete(context.Context, *EngineRequest) (*Empty, error)
+	EngineGet(context.Context, *EngineRequest) (*EngineResponse, error)
+	EngineUpgrade(context.Context, *EngineUpgradeRequest) (*Empty, error)
+	FrontendStartCallback(context.Context, *EngineRequest) (*Empty, error)
+	FrontendShutdownCallback(context.Context, *EngineRequest) (*Empty, error)
+	FrontendStart(context.Context, *FrontendStartRequest) (*Empty, error)
+	FrontendShutdown(context.Context, *FrontendShutdownRequest) (*Empty, error)
 }
 
-func _LonghornLauncherService_UpgradeEngine_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Engine)
+func RegisterLonghornEngineServiceServer(s *grpc.Server, srv LonghornEngineServiceServer) {
+	s.RegisterService(&_LonghornEngineService_serviceDesc, srv)
+}
+
+func _LonghornEngineService_EngineCreate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EngineCreateRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(LonghornLauncherServiceServer).UpgradeEngine(ctx, in)
+		return srv.(LonghornEngineServiceServer).EngineCreate(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/LonghornLauncherService/UpgradeEngine",
+		FullMethod: "/LonghornEngineService/EngineCreate",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LonghornLauncherServiceServer).UpgradeEngine(ctx, req.(*Engine))
+		return srv.(LonghornEngineServiceServer).EngineCreate(ctx, req.(*EngineCreateRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _LonghornLauncherService_GetInfo_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Empty)
+func _LonghornEngineService_EngineDelete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EngineRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(LonghornLauncherServiceServer).GetInfo(ctx, in)
+		return srv.(LonghornEngineServiceServer).EngineDelete(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/LonghornLauncherService/GetInfo",
+		FullMethod: "/LonghornEngineService/EngineDelete",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LonghornLauncherServiceServer).GetInfo(ctx, req.(*Empty))
+		return srv.(LonghornEngineServiceServer).EngineDelete(ctx, req.(*EngineRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _LonghornLauncherService_StartFrontend_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Identity)
+func _LonghornEngineService_EngineGet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EngineRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(LonghornLauncherServiceServer).StartFrontend(ctx, in)
+		return srv.(LonghornEngineServiceServer).EngineGet(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/LonghornLauncherService/StartFrontend",
+		FullMethod: "/LonghornEngineService/EngineGet",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LonghornLauncherServiceServer).StartFrontend(ctx, req.(*Identity))
+		return srv.(LonghornEngineServiceServer).EngineGet(ctx, req.(*EngineRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _LonghornLauncherService_ShutdownFrontend_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Identity)
+func _LonghornEngineService_EngineUpgrade_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EngineUpgradeRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(LonghornLauncherServiceServer).ShutdownFrontend(ctx, in)
+		return srv.(LonghornEngineServiceServer).EngineUpgrade(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/LonghornLauncherService/ShutdownFrontend",
+		FullMethod: "/LonghornEngineService/EngineUpgrade",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LonghornLauncherServiceServer).ShutdownFrontend(ctx, req.(*Identity))
+		return srv.(LonghornEngineServiceServer).EngineUpgrade(ctx, req.(*EngineUpgradeRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _LonghornLauncherService_StartEngineFrontend_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Frontend)
+func _LonghornEngineService_FrontendStartCallback_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EngineRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(LonghornLauncherServiceServer).StartEngineFrontend(ctx, in)
+		return srv.(LonghornEngineServiceServer).FrontendStartCallback(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/LonghornLauncherService/StartEngineFrontend",
+		FullMethod: "/LonghornEngineService/FrontendStartCallback",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LonghornLauncherServiceServer).StartEngineFrontend(ctx, req.(*Frontend))
+		return srv.(LonghornEngineServiceServer).FrontendStartCallback(ctx, req.(*EngineRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _LonghornLauncherService_ShutdownEngineFrontend_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(Empty)
+func _LonghornEngineService_FrontendShutdownCallback_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EngineRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(LonghornLauncherServiceServer).ShutdownEngineFrontend(ctx, in)
+		return srv.(LonghornEngineServiceServer).FrontendShutdownCallback(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/LonghornLauncherService/ShutdownEngineFrontend",
+		FullMethod: "/LonghornEngineService/FrontendShutdownCallback",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LonghornLauncherServiceServer).ShutdownEngineFrontend(ctx, req.(*Empty))
+		return srv.(LonghornEngineServiceServer).FrontendShutdownCallback(ctx, req.(*EngineRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-var _LonghornLauncherService_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "LonghornLauncherService",
-	HandlerType: (*LonghornLauncherServiceServer)(nil),
+func _LonghornEngineService_FrontendStart_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FrontendStartRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LonghornEngineServiceServer).FrontendStart(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/LonghornEngineService/FrontendStart",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LonghornEngineServiceServer).FrontendStart(ctx, req.(*FrontendStartRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _LonghornEngineService_FrontendShutdown_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(FrontendShutdownRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(LonghornEngineServiceServer).FrontendShutdown(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/LonghornEngineService/FrontendShutdown",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(LonghornEngineServiceServer).FrontendShutdown(ctx, req.(*FrontendShutdownRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+var _LonghornEngineService_serviceDesc = grpc.ServiceDesc{
+	ServiceName: "LonghornEngineService",
+	HandlerType: (*LonghornEngineServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
-			MethodName: "UpgradeEngine",
-			Handler:    _LonghornLauncherService_UpgradeEngine_Handler,
+			MethodName: "EngineCreate",
+			Handler:    _LonghornEngineService_EngineCreate_Handler,
 		},
 		{
-			MethodName: "GetInfo",
-			Handler:    _LonghornLauncherService_GetInfo_Handler,
+			MethodName: "EngineDelete",
+			Handler:    _LonghornEngineService_EngineDelete_Handler,
 		},
 		{
-			MethodName: "StartFrontend",
-			Handler:    _LonghornLauncherService_StartFrontend_Handler,
+			MethodName: "EngineGet",
+			Handler:    _LonghornEngineService_EngineGet_Handler,
 		},
 		{
-			MethodName: "ShutdownFrontend",
-			Handler:    _LonghornLauncherService_ShutdownFrontend_Handler,
+			MethodName: "EngineUpgrade",
+			Handler:    _LonghornEngineService_EngineUpgrade_Handler,
 		},
 		{
-			MethodName: "StartEngineFrontend",
-			Handler:    _LonghornLauncherService_StartEngineFrontend_Handler,
+			MethodName: "FrontendStartCallback",
+			Handler:    _LonghornEngineService_FrontendStartCallback_Handler,
 		},
 		{
-			MethodName: "ShutdownEngineFrontend",
-			Handler:    _LonghornLauncherService_ShutdownEngineFrontend_Handler,
+			MethodName: "FrontendShutdownCallback",
+			Handler:    _LonghornEngineService_FrontendShutdownCallback_Handler,
+		},
+		{
+			MethodName: "FrontendStart",
+			Handler:    _LonghornEngineService_FrontendStart_Handler,
+		},
+		{
+			MethodName: "FrontendShutdown",
+			Handler:    _LonghornEngineService_FrontendShutdown_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},
@@ -743,46 +937,55 @@ var _LonghornProcessLauncherService_serviceDesc = grpc.ServiceDesc{
 func init() { proto.RegisterFile("rpc.proto", fileDescriptor0) }
 
 var fileDescriptor0 = []byte{
-	// 651 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x84, 0x54, 0x4d, 0x6f, 0xd3, 0x40,
-	0x10, 0x8d, 0x9d, 0xaf, 0x66, 0x42, 0x4b, 0xd9, 0x86, 0x62, 0x8c, 0x40, 0xd1, 0x82, 0xda, 0xa8,
-	0x07, 0x1f, 0x02, 0x87, 0xaa, 0xe2, 0x52, 0xb5, 0xa1, 0x8a, 0x54, 0x10, 0x72, 0x04, 0x17, 0x0e,
-	0x91, 0xeb, 0x4c, 0x5d, 0x8b, 0x74, 0xd7, 0xec, 0xae, 0x8b, 0x22, 0x71, 0xe0, 0x0a, 0xbf, 0x84,
-	0x9f, 0x89, 0xbc, 0xf6, 0x3a, 0x4e, 0x1b, 0xca, 0x6d, 0xbe, 0xe7, 0xed, 0xf3, 0x1b, 0x43, 0x47,
-	0x24, 0xa1, 0x97, 0x08, 0xae, 0x38, 0x7d, 0x0b, 0xad, 0x11, 0x8b, 0x62, 0x86, 0x64, 0x17, 0x5a,
-	0x17, 0x31, 0x0b, 0xc4, 0xc2, 0xb1, 0xfa, 0xd6, 0xa0, 0xe3, 0x17, 0x1e, 0x71, 0x61, 0x43, 0x60,
-	0x32, 0x8f, 0xc3, 0x40, 0x3a, 0x76, 0xbf, 0x3e, 0xe8, 0xf8, 0xa5, 0x4f, 0x3f, 0x43, 0x63, 0xcc,
-	0x2e, 0x79, 0xd6, 0x7b, 0xc3, 0xe7, 0xe9, 0x35, 0x9a, 0xde, 0xdc, 0xcb, 0x7a, 0x2f, 0x05, 0x67,
-	0x0a, 0xd9, 0xcc, 0xb1, 0x75, 0xa6, 0xf4, 0xb3, 0x1c, 0xb2, 0x59, 0xc2, 0x63, 0xa6, 0x9c, 0x7a,
-	0x9e, 0x33, 0x3e, 0x75, 0x61, 0x63, 0x3c, 0x43, 0xa6, 0x62, 0xb5, 0x20, 0x5b, 0x60, 0x8f, 0x4f,
-	0x8b, 0xb9, 0xf6, 0xf8, 0x94, 0xee, 0xc1, 0xc6, 0xbb, 0xca, 0x0c, 0x63, 0x17, 0x15, 0xa5, 0x4f,
-	0xdb, 0xd0, 0x1c, 0x5d, 0x27, 0x6a, 0x41, 0x7f, 0x59, 0xd0, 0xfd, 0x28, 0x78, 0x88, 0x52, 0x4e,
-	0x12, 0x0c, 0x09, 0x81, 0x06, 0x0b, 0x4a, 0xa8, 0xda, 0xae, 0x3c, 0xde, 0x5e, 0x79, 0x3c, 0x81,
-	0x46, 0x20, 0x22, 0xe9, 0xd4, 0xf5, 0xc3, 0xb5, 0x4d, 0x9e, 0x03, 0x24, 0x5c, 0xa8, 0x69, 0xc8,
-	0x53, 0xa6, 0x9c, 0x46, 0xdf, 0x1a, 0x34, 0xfd, 0x4e, 0x16, 0x39, 0xc9, 0x02, 0xe4, 0x19, 0x68,
-	0x67, 0xaa, 0xfb, 0x9a, 0x39, 0x61, 0x59, 0xe0, 0x58, 0x44, 0x92, 0xfe, 0x80, 0x4d, 0x03, 0x45,
-	0x05, 0x2a, 0x95, 0xa4, 0x07, 0x4d, 0xa9, 0x02, 0x65, 0xd0, 0xe4, 0x4e, 0x36, 0x03, 0x85, 0xe0,
-	0x62, 0x7a, 0x2d, 0x23, 0x43, 0x9c, 0x0e, 0xbc, 0x97, 0x51, 0xb9, 0x5f, 0xaa, 0x40, 0xe4, 0xd4,
-	0x15, 0xfb, 0x27, 0x59, 0x80, 0x3c, 0x05, 0xbd, 0x6e, 0x9a, 0x71, 0x92, 0x83, 0x6b, 0x67, 0xfe,
-	0x88, 0xcd, 0xe8, 0x21, 0xf4, 0x8a, 0xed, 0x27, 0x02, 0x03, 0x85, 0x3e, 0x7e, 0x4b, 0x51, 0x2a,
-	0xd2, 0x87, 0x86, 0x4c, 0x30, 0xd4, 0x18, 0xba, 0xc3, 0x07, 0x5e, 0x85, 0x2d, 0x5f, 0x67, 0xe8,
-	0x41, 0xd9, 0x79, 0x8a, 0x73, 0x5c, 0x76, 0xae, 0xe1, 0x92, 0xee, 0xc3, 0xa3, 0xa2, 0xf6, 0x0c,
-	0xd5, 0x7d, 0x85, 0x5f, 0xe0, 0x61, 0x51, 0xe8, 0xa3, 0x4c, 0x38, 0x93, 0xf8, 0x7f, 0x24, 0x64,
-	0x0f, 0x5a, 0x52, 0x53, 0xa7, 0x79, 0xe9, 0x0e, 0xb7, 0xbc, 0x15, 0x42, 0xfd, 0x22, 0x4b, 0x7b,
-	0x40, 0x8a, 0xc4, 0x79, 0x2c, 0x0d, 0x0c, 0xfa, 0xc7, 0x82, 0x9d, 0x95, 0x70, 0xb1, 0xf7, 0x18,
-	0x3a, 0x49, 0x1e, 0x46, 0xe9, 0x58, 0xfd, 0xfa, 0xa0, 0x3b, 0x7c, 0xe9, 0xad, 0x29, 0x34, 0x31,
-	0x94, 0x23, 0xa6, 0xc4, 0xc2, 0x5f, 0x76, 0xb9, 0x1f, 0x60, 0x6b, 0x35, 0x49, 0xb6, 0xa1, 0xfe,
-	0x15, 0xcd, 0x39, 0x65, 0x26, 0xd9, 0x83, 0xe6, 0x4d, 0x30, 0x4f, 0xb1, 0xc0, 0xbe, 0xed, 0xdd,
-	0x7a, 0xbf, 0x9f, 0xa7, 0x8f, 0xec, 0x43, 0x6b, 0xf8, 0xd3, 0x86, 0x27, 0xe7, 0x9c, 0x45, 0x57,
-	0x5c, 0xb0, 0xf3, 0x20, 0x65, 0xe1, 0x15, 0x8a, 0x09, 0x8a, 0x9b, 0x38, 0x44, 0x42, 0x61, 0xf3,
-	0x53, 0x12, 0x89, 0x60, 0x86, 0xc5, 0xf1, 0xb6, 0xbd, 0xdc, 0x70, 0x5b, 0x5e, 0x2e, 0xfa, 0x1a,
-	0x71, 0xa1, 0x7d, 0x86, 0x4a, 0x9f, 0x67, 0x11, 0x74, 0x9b, 0x5e, 0xe6, 0xd2, 0x1a, 0x79, 0x05,
-	0x9b, 0x5a, 0x2c, 0xe5, 0x21, 0x75, 0x3c, 0x73, 0x6f, 0x95, 0x09, 0xfb, 0xb0, 0x3d, 0xb9, 0x4a,
-	0xd5, 0x8c, 0x7f, 0x67, 0xf7, 0x17, 0x1e, 0xc0, 0x8e, 0x1e, 0x97, 0x63, 0xa8, 0xd4, 0x1a, 0x73,
-	0xa5, 0x76, 0xd7, 0x0c, 0xbd, 0x55, 0x6e, 0x50, 0x96, 0xb5, 0xc3, 0xdf, 0x36, 0xbc, 0x30, 0x14,
-	0x98, 0x8f, 0x71, 0x8b, 0x89, 0xa3, 0xf2, 0xa0, 0x72, 0x49, 0x93, 0xc7, 0xde, 0x3a, 0x89, 0xbb,
-	0x77, 0xa8, 0xa6, 0xb5, 0x4a, 0x6f, 0x2e, 0xea, 0x65, 0xef, 0x8a, 0xc8, 0xd7, 0xf6, 0xbe, 0x01,
-	0x58, 0x8a, 0x9c, 0x10, 0xef, 0x8e, 0xe2, 0xff, 0xb1, 0xb1, 0x5b, 0x11, 0x15, 0xd9, 0xf1, 0xee,
-	0x4a, 0xd4, 0xed, 0xad, 0xd3, 0x1d, 0xad, 0x5d, 0xb4, 0xf4, 0x0f, 0xfb, 0xf5, 0xdf, 0x00, 0x00,
-	0x00, 0xff, 0xff, 0xce, 0x1e, 0xc9, 0x10, 0xbd, 0x05, 0x00, 0x00,
+	// 793 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x56, 0xdd, 0x4e, 0xe3, 0x46,
+	0x14, 0x8e, 0xf3, 0x07, 0x39, 0x21, 0x81, 0x0e, 0x49, 0xeb, 0xa6, 0x2a, 0x44, 0x46, 0xa5, 0x11,
+	0x52, 0x47, 0x34, 0x45, 0x80, 0xb8, 0x43, 0x34, 0x70, 0x43, 0x51, 0x65, 0x54, 0xa9, 0x52, 0x2f,
+	0x22, 0x63, 0x4f, 0x83, 0x45, 0x32, 0x76, 0x67, 0x26, 0x54, 0x59, 0xed, 0x0b, 0xec, 0x3e, 0xc9,
+	0xde, 0xed, 0xf3, 0xed, 0xdd, 0x6a, 0x7e, 0xec, 0xc4, 0x89, 0x09, 0xdc, 0xcd, 0xf9, 0x3f, 0x3e,
+	0xdf, 0xf9, 0x8e, 0x0c, 0x35, 0x16, 0xfb, 0x38, 0x66, 0x91, 0x88, 0x9c, 0x2f, 0x16, 0xc0, 0x80,
+	0x8e, 0x42, 0x4a, 0xee, 0x63, 0xe2, 0x23, 0x04, 0x65, 0xea, 0x4d, 0x88, 0x6d, 0x75, 0xad, 0x5e,
+	0xcd, 0x55, 0x6f, 0xb4, 0x07, 0xf0, 0x1c, 0x8d, 0xa7, 0x13, 0x72, 0x27, 0x2d, 0x45, 0x65, 0x59,
+	0xd0, 0xa0, 0x6f, 0xa1, 0xfa, 0x10, 0x52, 0x8f, 0xcd, 0xec, 0x92, 0xb2, 0x19, 0x49, 0xea, 0xc7,
+	0x21, 0x17, 0x84, 0xda, 0x65, 0xad, 0xd7, 0x12, 0xda, 0x87, 0xba, 0x7e, 0x0d, 0xbd, 0x20, 0x60,
+	0x76, 0x45, 0x27, 0xd4, 0xaa, 0xcb, 0x20, 0x60, 0xb2, 0x09, 0x1e, 0xbe, 0x23, 0x76, 0xb5, 0x6b,
+	0xf5, 0x4a, 0xae, 0x7a, 0xa3, 0x0e, 0x6c, 0xfe, 0xcb, 0x22, 0x2a, 0x08, 0x0d, 0xec, 0x0d, 0x15,
+	0x91, 0xca, 0xd2, 0xf6, 0xe0, 0xf9, 0x4f, 0x84, 0x06, 0xdc, 0xde, 0xec, 0x96, 0xa4, 0x2d, 0x91,
+	0xa5, 0x8d, 0x91, 0x78, 0x1c, 0xfa, 0x1e, 0xb7, 0x6b, 0xda, 0x96, 0xc8, 0xce, 0x11, 0x6c, 0x99,
+	0x4f, 0x17, 0x9e, 0x98, 0x2a, 0x5f, 0x42, 0x83, 0x38, 0x0a, 0xa9, 0x30, 0x03, 0x48, 0x65, 0xe7,
+	0x6f, 0x68, 0x6a, 0x5f, 0x97, 0xf0, 0x38, 0xa2, 0x9c, 0xa0, 0x7d, 0x28, 0xf3, 0x98, 0xf8, 0xca,
+	0xb3, 0xde, 0xaf, 0xe3, 0xf9, 0x14, 0x5d, 0x65, 0x40, 0x3f, 0x41, 0x95, 0xab, 0xc4, 0x6a, 0x66,
+	0xf5, 0x7e, 0x03, 0x2f, 0x56, 0x73, 0x8d, 0xd1, 0x39, 0x85, 0x5d, 0xad, 0xbf, 0x62, 0xc4, 0x13,
+	0xc4, 0x25, 0xff, 0x4d, 0x09, 0x17, 0xaf, 0xa6, 0x77, 0x0e, 0xa0, 0x91, 0x74, 0xa4, 0x23, 0x72,
+	0xb0, 0x73, 0xce, 0xa0, 0xa5, 0x9d, 0xfe, 0x8a, 0x47, 0xcc, 0x0b, 0xde, 0x9e, 0xfd, 0x1a, 0x5a,
+	0xd7, 0x66, 0xbe, 0xf7, 0xc2, 0x63, 0x62, 0x4d, 0x91, 0x0c, 0x36, 0xc5, 0x2c, 0x36, 0xce, 0x2f,
+	0xf0, 0x5d, 0x9a, 0xe7, 0x71, 0x2a, 0x82, 0xe8, 0x7f, 0xba, 0xae, 0xdf, 0x0d, 0xa8, 0x0c, 0x26,
+	0xb1, 0x98, 0x39, 0x1f, 0x2c, 0xa8, 0xff, 0xc9, 0x22, 0x9f, 0x70, 0xfe, 0xe2, 0x62, 0xce, 0x17,
+	0xaf, 0x98, 0x59, 0x3c, 0x04, 0x65, 0x8f, 0x8d, 0xb8, 0x5d, 0x52, 0x78, 0xab, 0x37, 0xfa, 0x11,
+	0x20, 0x8e, 0x98, 0x18, 0xfa, 0xd1, 0x94, 0x0a, 0xb5, 0x90, 0x15, 0xb7, 0x26, 0x35, 0x57, 0x52,
+	0x81, 0x7e, 0x00, 0x25, 0x0c, 0x55, 0x5c, 0x45, 0xef, 0x89, 0x54, 0x5c, 0xb2, 0x11, 0x77, 0xde,
+	0x43, 0x23, 0x69, 0x45, 0x2f, 0x4a, 0x0b, 0x2a, 0x12, 0xbc, 0xa4, 0x1b, 0x2d, 0xc8, 0x1c, 0x84,
+	0xb1, 0x88, 0x0d, 0x27, 0x7c, 0x94, 0xcc, 0x41, 0x29, 0xfe, 0xe0, 0xa3, 0xb4, 0x3e, 0x97, 0xc3,
+	0x54, 0x44, 0x31, 0xf5, 0xd5, 0x74, 0xd1, 0xf7, 0xa0, 0xca, 0x0d, 0xe5, 0x08, 0x75, 0x73, 0x1b,
+	0x52, 0x1e, 0xd0, 0xc0, 0x39, 0x87, 0x96, 0xa9, 0x9e, 0x5d, 0x90, 0x6e, 0x06, 0xc2, 0x2d, 0xbc,
+	0x30, 0x2d, 0x83, 0xe1, 0x51, 0x1a, 0xf9, 0x3b, 0x19, 0x13, 0xb1, 0x76, 0x51, 0x7e, 0x86, 0x6f,
+	0x8c, 0xef, 0x0d, 0x59, 0x07, 0xb6, 0xf3, 0x0f, 0x6c, 0x1b, 0xc7, 0x94, 0x09, 0xaf, 0x76, 0x82,
+	0x0e, 0x97, 0xa8, 0xd0, 0xc4, 0x99, 0x81, 0xa6, 0x5c, 0x68, 0x01, 0x32, 0x86, 0xdb, 0x90, 0x27,
+	0x6d, 0x38, 0x9f, 0x2c, 0xd8, 0xcd, 0xa8, 0x4d, 0xdd, 0x4b, 0xa8, 0xc5, 0x5a, 0x4d, 0xb8, 0x6d,
+	0x75, 0x4b, 0xbd, 0x7a, 0xff, 0x00, 0xe7, 0x38, 0x26, 0x3a, 0xc2, 0x07, 0x54, 0xb0, 0x99, 0x3b,
+	0x8f, 0xea, 0xdc, 0x41, 0x33, 0x6b, 0x44, 0x3b, 0x50, 0x7a, 0x22, 0x33, 0xf3, 0xc9, 0xf2, 0x89,
+	0x0e, 0xa1, 0xf2, 0xec, 0x8d, 0xa7, 0xc4, 0xf4, 0xbe, 0x83, 0x97, 0xbe, 0xdf, 0xd5, 0xe6, 0x8b,
+	0xe2, 0xb9, 0xd5, 0xff, 0x5c, 0x82, 0xf6, 0x6d, 0x44, 0x47, 0x8f, 0x11, 0xa3, 0x86, 0x53, 0x84,
+	0x3d, 0x87, 0x3e, 0x41, 0x67, 0xc9, 0xb1, 0xd1, 0x28, 0xa2, 0x16, 0xce, 0x61, 0x7d, 0x67, 0x1b,
+	0x67, 0xaf, 0x8c, 0x53, 0x40, 0xbd, 0x24, 0x50, 0x83, 0x88, 0x9a, 0x38, 0x43, 0xfb, 0x4e, 0x15,
+	0x6b, 0xc6, 0x14, 0x10, 0x86, 0x9a, 0x36, 0xdd, 0x10, 0xb1, 0xe2, 0x96, 0x93, 0xf9, 0x38, 0xb9,
+	0x20, 0xe6, 0x38, 0xa0, 0x36, 0xce, 0x3b, 0x16, 0x0b, 0x15, 0x7e, 0x85, 0x76, 0xe6, 0x2a, 0x5c,
+	0x79, 0xe3, 0xb1, 0x3c, 0xb5, 0x6b, 0x9a, 0x3a, 0x01, 0x7b, 0xf9, 0x00, 0xbc, 0x21, 0xea, 0x18,
+	0x1a, 0x99, 0x42, 0xa8, 0x8d, 0xf3, 0xce, 0xd1, 0x42, 0xc4, 0x29, 0xec, 0x2c, 0xd7, 0x41, 0x36,
+	0x7e, 0xe1, 0xf6, 0xcc, 0xe3, 0xfa, 0x1f, 0x8b, 0xb0, 0x97, 0x20, 0x96, 0xec, 0x8e, 0x37, 0xa5,
+	0xfe, 0x23, 0x61, 0x09, 0x74, 0x17, 0x29, 0xff, 0x0d, 0x76, 0x6d, 0x9c, 0xc7, 0xc8, 0xce, 0xca,
+	0x66, 0x38, 0x85, 0x85, 0x58, 0x03, 0x5f, 0x1a, 0x9b, 0xe1, 0x64, 0x6e, 0xec, 0x09, 0xc0, 0x9c,
+	0x93, 0x08, 0xe1, 0x15, 0x82, 0xbe, 0x50, 0xb1, 0xbe, 0xc0, 0x01, 0xb4, 0x8b, 0x57, 0x19, 0xd5,
+	0x69, 0xe5, 0xd1, 0xc4, 0x29, 0x3c, 0x54, 0xd5, 0x4f, 0xc1, 0x6f, 0x5f, 0x03, 0x00, 0x00, 0xff,
+	0xff, 0x69, 0x9f, 0x71, 0xab, 0x21, 0x08, 0x00, 0x00,
 }

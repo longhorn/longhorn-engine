@@ -13,6 +13,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
+	"github.com/longhorn/longhorn-engine-launcher/engine"
 	"github.com/longhorn/longhorn-engine-launcher/process"
 	"github.com/longhorn/longhorn-engine-launcher/rpc"
 )
@@ -23,7 +24,7 @@ const (
 
 func StartLauncherCmd() cli.Command {
 	return cli.Command{
-		Name: "start-launcher",
+		Name: "daemon",
 		Flags: []cli.Flag{
 			cli.StringFlag{
 				Name:  "listen",
@@ -43,7 +44,7 @@ func StartLauncherCmd() cli.Command {
 }
 
 func startLauncher(c *cli.Context) error {
-	listenAddr := c.String("listen")
+	listen := c.String("listen")
 	portRange := c.String("port-range")
 
 	shutdownCh := make(chan error)
@@ -51,18 +52,23 @@ func startLauncher(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	s, err := engine.NewService(l, listen)
+	if err != nil {
+		return err
+	}
 
-	listen, err := net.Listen("tcp", listenAddr)
+	listenAt, err := net.Listen("tcp", listen)
 	if err != nil {
 		return errors.Wrap(err, "Failed to listen")
 	}
 
 	rpcService := grpc.NewServer()
 	rpc.RegisterLonghornProcessLauncherServiceServer(rpcService, l)
+	rpc.RegisterLonghornEngineServiceServer(rpcService, s)
 	reflection.Register(rpcService)
 
 	go func() {
-		if err := rpcService.Serve(listen); err != nil {
+		if err := rpcService.Serve(listenAt); err != nil {
 			logrus.Errorf("Stopping due to %v:", err)
 		}
 		close(shutdownCh)
@@ -94,6 +100,7 @@ func main() {
 	a.Commands = []cli.Command{
 		StartLauncherCmd(),
 		ProcessCmd(),
+		EngineCmd(),
 	}
 	if err := a.Run(os.Args); err != nil {
 		logrus.Fatal("Error when executing command: ", err)
