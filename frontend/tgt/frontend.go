@@ -8,8 +8,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
+	"github.com/longhorn/go-iscsi-helper/iscsiblk"
 	"github.com/longhorn/longhorn-engine/frontend/socket"
-	"github.com/longhorn/longhorn-engine/iscsi"
 	"github.com/longhorn/longhorn-engine/types"
 	"github.com/longhorn/longhorn-engine/util"
 )
@@ -24,7 +24,7 @@ type Tgt struct {
 	s *socket.Socket
 
 	isUp       bool
-	scsiDevice *iscsi.ScsiDevice
+	scsiDevice *iscsiblk.ScsiDevice
 }
 
 func New() types.Frontend {
@@ -64,7 +64,7 @@ func (t *Tgt) Shutdown() error {
 		if err := util.RemoveDevice(dev); err != nil {
 			return fmt.Errorf("Fail to remove device %s: %v", dev, err)
 		}
-		if err := iscsi.StopScsi(t.s.Volume); err != nil {
+		if err := iscsiblk.StopScsi(t.s.Volume); err != nil {
 			return fmt.Errorf("Fail to stop SCSI device: %v", err)
 		}
 	}
@@ -97,13 +97,13 @@ func (t *Tgt) getDev() string {
 func (t *Tgt) startScsiDevice() error {
 	if t.scsiDevice == nil {
 		bsOpts := fmt.Sprintf("size=%v", t.s.Size)
-		scsiDev, err := iscsi.NewScsiDevice(t.s.Volume, t.s.GetSocketPath(), "longhorn", bsOpts)
+		scsiDev, err := iscsiblk.NewScsiDevice(t.s.Volume, t.s.GetSocketPath(), "longhorn", bsOpts)
 		if err != nil {
 			return err
 		}
 		t.scsiDevice = scsiDev
 	}
-	if err := iscsi.StartScsi(t.scsiDevice); err != nil {
+	if err := iscsiblk.StartScsi(t.scsiDevice); err != nil {
 		return err
 	}
 	logrus.Infof("SCSI device %s created", t.scsiDevice.Device)

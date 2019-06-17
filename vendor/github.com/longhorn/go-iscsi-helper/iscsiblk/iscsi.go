@@ -1,4 +1,4 @@
-package iscsi
+package iscsiblk
 
 import (
 	"fmt"
@@ -6,12 +6,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/longhorn/go-iscsi-helper/iscsi"
-	iutil "github.com/longhorn/go-iscsi-helper/util"
 	"github.com/sirupsen/logrus"
 	"github.com/yasker/nsfilelock"
 
-	"github.com/longhorn/longhorn-engine/util"
+	"github.com/longhorn/go-iscsi-helper/iscsi"
+	"github.com/longhorn/go-iscsi-helper/util"
 )
 
 var (
@@ -23,6 +22,8 @@ var (
 
 	RetryCounts   = 5
 	RetryInterval = 3
+
+	HostProc = "/host/proc"
 )
 
 type ScsiDevice struct {
@@ -43,8 +44,12 @@ func NewScsiDevice(name, backingFile, bsType, bsOpts string) (*ScsiDevice, error
 	return dev, nil
 }
 
+func Volume2ISCSIName(name string) string {
+	return strings.Replace(name, "_", ":", -1)
+}
+
 func GetTargetName(name string) string {
-	return "iqn.2014-09.com.rancher:" + util.Volume2ISCSIName(name)
+	return "iqn.2014-09.com.rancher:" + Volume2ISCSIName(name)
 }
 
 func SetupTarget(dev *ScsiDevice) error {
@@ -65,13 +70,13 @@ func SetupTarget(dev *ScsiDevice) error {
 }
 
 func StartScsi(dev *ScsiDevice) error {
-	lock := nsfilelock.NewLockWithTimeout(util.GetInitiatorNS(), LockFile, LockTimeout)
+	lock := nsfilelock.NewLockWithTimeout(util.GetHostNamespacePath(HostProc), LockFile, LockTimeout)
 	if err := lock.Lock(); err != nil {
 		return fmt.Errorf("Fail to lock: %v", err)
 	}
 	defer lock.Unlock()
 
-	ne, err := iutil.NewNamespaceExecutor(util.GetInitiatorNS())
+	ne, err := util.NewNamespaceExecutor(util.GetHostNamespacePath(HostProc))
 	if err != nil {
 		return err
 	}
@@ -80,7 +85,7 @@ func StartScsi(dev *ScsiDevice) error {
 		return err
 	}
 
-	localIP, err := iutil.GetIPToHost()
+	localIP, err := util.GetIPToHost()
 	if err != nil {
 		return err
 	}
@@ -131,7 +136,7 @@ func StartScsi(dev *ScsiDevice) error {
 }
 
 func StopScsi(volumeName string) error {
-	lock := nsfilelock.NewLockWithTimeout(util.GetInitiatorNS(), LockFile, LockTimeout)
+	lock := nsfilelock.NewLockWithTimeout(util.GetHostNamespacePath(HostProc), LockFile, LockTimeout)
 	if err := lock.Lock(); err != nil {
 		return fmt.Errorf("Fail to lock: %v", err)
 	}
@@ -148,11 +153,11 @@ func StopScsi(volumeName string) error {
 }
 
 func LogoutTarget(target string) error {
-	ne, err := iutil.NewNamespaceExecutor(util.GetInitiatorNS())
+	ne, err := util.NewNamespaceExecutor(util.GetHostNamespacePath(HostProc))
 	if err != nil {
 		return err
 	}
-	ip, err := iutil.GetIPToHost()
+	ip, err := util.GetIPToHost()
 	if err != nil {
 		return err
 	}
