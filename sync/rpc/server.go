@@ -18,6 +18,10 @@ import (
 	"github.com/longhorn/longhorn-engine/util"
 )
 
+const (
+	MaxBackupSize = 5
+)
+
 type SyncAgentServer struct {
 	sync.Mutex
 
@@ -25,7 +29,18 @@ type SyncAgentServer struct {
 	startPort       int
 	endPort         int
 	processesByPort map[int]string
-	backupList      sync.Map
+
+	BackupList *BackupList
+}
+
+type BackupList struct {
+	sync.RWMutex
+	backups []*BackupInfo
+}
+
+type BackupInfo struct {
+	backupID     string
+	backupStatus *replica.Backup
 }
 
 func NewSyncAgentServer(startPort, endPort int) *SyncAgentServer {
@@ -34,6 +49,10 @@ func NewSyncAgentServer(startPort, endPort int) *SyncAgentServer {
 		startPort:       startPort,
 		endPort:         endPort,
 		processesByPort: map[int]string{},
+
+		BackupList: &BackupList{
+			RWMutex: sync.RWMutex{},
+		},
 	}
 }
 
@@ -209,9 +228,10 @@ func (s *SyncAgentServer) BackupCreate(ctx context.Context, req *BackupCreateReq
 	reply := &BackupCreateReply{
 		Backup: backupID,
 	}
-	fmt.Fprintf(os.Stdout, reply.Backup)
 
-	s.backupList.Store(backupID, replicaObj)
+	if err := s.BackupList.BackupAdd(backupID, replicaObj); err != nil {
+		return nil, fmt.Errorf("failed to add the backup object: %v", err)
+	}
 
 	logrus.Infof("Done initiating backup creation, received backupID: %v", reply.Backup)
 	return reply, nil
@@ -222,14 +242,9 @@ func (s *SyncAgentServer) BackupGetStatus(ctx context.Context, req *BackupProgre
 		return nil, fmt.Errorf("bad request: empty backup name")
 	}
 
-	obj, present := s.backupList.Load(req.Backup)
-	if present == false {
-		return nil, fmt.Errorf("backup name[%v] not found", req.Backup)
-	}
-
-	replicaObj, ok := obj.(*replica.Backup)
-	if ok == false {
-		return nil, fmt.Errorf("invalid return value from sync.map")
+	replicaObj, err := s.BackupList.BackupGet(req.Backup)
+	if err != nil {
+		return nil, err
 	}
 
 	snapshotName, err := replica.GetSnapshotNameFromDiskName(replicaObj.SnapshotID)
@@ -307,4 +322,111 @@ func (*SyncAgentServer) BackupRestoreIncrementally(ctx context.Context, req *Bac
 
 	logrus.Infof("Done running %s %v", "sbackup", cmd.Args)
 	return &Empty{}, nil
+}
+
+// The APIs BackupAdd, BackupGet, Refresh, BackupDelete implement the CRUD interface for the backup object
+// The slice Backup.backupList is implemented similar to a FIFO queue.
+
+// BackupAdd creates a new backupList object and appends to the end of the list maintained by backup object
+func (b *BackupList) BackupAdd(backupID string, backup *replica.Backup) error {
+	if backupID == "" {
+		return fmt.Errorf("empty backupID")
+	}
+
+	b.Lock()
+	b.backups = append(b.backups, &BackupInfo{
+		backupID:     backupID,
+		backupStatus: backup,
+	})
+	b.Unlock()
+
+	if err := b.Refresh(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+// BackupGet takes backupID input and will return the backup object corresponding to that backupID or error if not found
+func (b *BackupList) BackupGet(backupID string) (*replica.Backup, error) {
+	if backupID == "" {
+		return nil, fmt.Errorf("empty backupID")
+	}
+
+	if err := b.Refresh(); err != nil {
+		return nil, err
+	}
+
+	b.RLock()
+	defer b.RUnlock()
+
+	for _, info := range b.backups {
+		if info.backupID == backupID {
+			return info.backupStatus, nil
+		}
+	}
+	return nil, fmt.Errorf("backup not found %v", backupID)
+}
+
+// remove deletes the object present at slice[index] and returns the remaining elements of slice yet maintaining
+// the original order of elements in the slice
+func (*BackupList) remove(b []*BackupInfo, index int) ([]*BackupInfo, error) {
+	if b == nil {
+		return nil, fmt.Errorf("empty list")
+	}
+	if index >= len(b) || index < 0 {
+		return nil, fmt.Errorf("BUG: attempting to delete an out of range index entry from backupList")
+	}
+	return append(b[:index], b[index+1:]...), nil
+}
+
+// Refresh deletes all the old completed backups from the front. Old backups are the completed backups
+// that are created before MaxBackupSize completed backups
+func (b *BackupList) Refresh() error {
+	b.Lock()
+	defer b.Unlock()
+
+	var index, completed int
+
+	for index = len(b.backups) - 1; index >= 0; index-- {
+		if b.backups[index].backupStatus.BackupProgress == 100 {
+			if completed == MaxBackupSize {
+				break
+			}
+			completed++
+		}
+	}
+	if completed == MaxBackupSize {
+		//Remove all the older completed backups in the range backupList[0:index]
+		for ; index >= 0; index-- {
+			if b.backups[index].backupStatus.BackupProgress == 100 {
+				updatedList, err := b.remove(b.backups, index)
+				if err != nil {
+					return err
+				}
+				b.backups = updatedList
+				//As this backupList[index] is removed, will have to decrement the index by one
+				index--
+			}
+		}
+	}
+	return nil
+}
+
+// BackupDelete will delete the entry in the slice with the corresponding backupID
+func (b *BackupList) BackupDelete(backupID string) error {
+	b.Lock()
+	defer b.Unlock()
+
+	for index, backup := range b.backups {
+		if backup.backupID == backupID {
+			updatedList, err := b.remove(b.backups, index)
+			if err != nil {
+				return err
+			}
+			b.backups = updatedList
+			return nil
+		}
+	}
+	return fmt.Errorf("backup not found %v", backupID)
 }

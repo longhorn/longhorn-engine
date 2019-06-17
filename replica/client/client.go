@@ -454,7 +454,7 @@ func (c *ReplicaClient) GetBackupStatus(backupName string) (int, string, string,
 	})
 
 	if err != nil {
-		return 0, "", "", "", fmt.Errorf("failed to fetch backup object for %v: %v", backupName, err)
+		return 0, "", "", "", err
 	}
 
 	return int(reply.Progress), reply.BackupURL, reply.BackupError, reply.SnapshotName, nil
