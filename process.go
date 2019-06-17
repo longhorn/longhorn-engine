@@ -3,9 +3,6 @@ package main
 import (
 	"encoding/json"
 	"fmt"
-	"os"
-	"os/signal"
-	"syscall"
 
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
@@ -13,55 +10,8 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/longhorn/longhorn-engine-launcher/api"
-	"github.com/longhorn/longhorn-engine-launcher/process"
 	"github.com/longhorn/longhorn-engine-launcher/rpc"
 )
-
-func StartProcessLauncherCmd() cli.Command {
-	return cli.Command{
-		Name: "start-launcher",
-		Flags: []cli.Flag{
-			cli.StringFlag{
-				Name:  "listen",
-				Value: "localhost:8500",
-			},
-			cli.StringFlag{
-				Name:  "port-range",
-				Value: "10000-30000",
-			},
-		},
-		Action: func(c *cli.Context) {
-			if err := startLauncher(c); err != nil {
-				logrus.Fatalf("Error running start command: %v.", err)
-			}
-		},
-	}
-}
-
-func startLauncher(c *cli.Context) error {
-	listen := c.String("listen")
-	portRange := c.String("port-range")
-
-	l, err := process.NewLauncher(listen, portRange)
-	if err != nil {
-		return err
-	}
-
-	if err := l.StartRPCServer(); err != nil {
-		return err
-	}
-	logrus.Infof("Launcher listening to %v", listen)
-
-	sigs := make(chan os.Signal, 1)
-	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-	go func() {
-		sig := <-sigs
-		logrus.Infof("Receive %v to exit", sig)
-		l.Shutdown()
-	}()
-
-	return l.WaitForShutdown()
-}
 
 func ProcessCmd() cli.Command {
 	return cli.Command{

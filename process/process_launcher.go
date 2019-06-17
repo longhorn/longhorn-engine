@@ -2,7 +2,6 @@ package process
 
 import (
 	"fmt"
-	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -16,7 +15,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
 
 	"github.com/longhorn/longhorn-engine-launcher/rpc"
 	"github.com/longhorn/longhorn-engine-launcher/util"
@@ -28,7 +26,6 @@ import (
 */
 
 type Launcher struct {
-	listen       string
 	portRangeMin int32
 	portRangeMax int32
 
@@ -38,7 +35,7 @@ type Launcher struct {
 	lock            *sync.RWMutex
 	processes       map[string]*Process
 	processUpdateCh chan *Process
-	shutdownCh      chan struct{}
+	shutdownCh      chan error
 
 	availablePorts *util.Bitmap
 }
@@ -73,13 +70,12 @@ type Process struct {
 	UpdateCh chan *Process
 }
 
-func NewLauncher(listen, portRange string) (*Launcher, error) {
+func NewLauncher(portRange string, shutdownCh chan error) (*Launcher, error) {
 	start, end, err := ParsePortRange(portRange)
 	if err != nil {
 		return nil, err
 	}
 	l := &Launcher{
-		listen:       listen,
 		portRangeMin: start,
 		portRangeMax: end,
 
@@ -90,7 +86,7 @@ func NewLauncher(listen, portRange string) (*Launcher, error) {
 		processUpdateCh: make(chan *Process),
 		availablePorts:  util.NewBitmap(start, end),
 
-		shutdownCh: make(chan struct{}),
+		shutdownCh: shutdownCh,
 	}
 	go l.StartMonitoring()
 	return l, nil
@@ -121,31 +117,6 @@ func (l *Launcher) Shutdown() {
 
 	l.rpcService.Stop()
 	close(l.shutdownCh)
-}
-
-func (l *Launcher) WaitForShutdown() error {
-	select {
-	case rpcError := <-l.rpcShutdownCh:
-		logrus.Warnf("launcher: Receive rpc shutdown: %v", rpcError)
-		return rpcError
-	}
-}
-
-func (l *Launcher) StartRPCServer() error {
-	listen, err := net.Listen("tcp", l.listen)
-	if err != nil {
-		return errors.Wrap(err, "Failed to listen")
-	}
-
-	l.rpcService = grpc.NewServer()
-	rpc.RegisterLonghornProcessLauncherServiceServer(l.rpcService, l)
-	reflection.Register(l.rpcService)
-
-	l.rpcShutdownCh = make(chan error)
-	go func() {
-		l.rpcShutdownCh <- l.rpcService.Serve(listen)
-	}()
-	return nil
 }
 
 func (l *Launcher) ProcessCreate(ctx context.Context, req *rpc.ProcessCreateRequest) (ret *rpc.ProcessResponse, err error) {

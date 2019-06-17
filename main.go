@@ -1,349 +1,83 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
+	"net"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	"github.com/docker/go-units"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/reflection"
 
-	"github.com/longhorn/longhorn-engine/util"
-
-	"github.com/longhorn/longhorn-engine-launcher/engine"
+	"github.com/longhorn/longhorn-engine-launcher/process"
 	"github.com/longhorn/longhorn-engine-launcher/rpc"
 )
 
 const (
-	UpgradeTimeout  = 120 * time.Second
-	InfoTimeout     = 10 * time.Second
 	FrontendTimeout = 60 * time.Second
 )
 
-func StartCmd() cli.Command {
+func StartLauncherCmd() cli.Command {
 	return cli.Command{
-		Name: "start",
+		Name: "start-launcher",
 		Flags: []cli.Flag{
 			cli.StringFlag{
-				Name:  "longhorn-binary",
-				Value: "/usr/local/bin/longhorn",
-			},
-			cli.StringFlag{
-				Name:  "launcher-listen",
-				Value: "localhost:9510",
-			},
-			cli.StringFlag{
-				Name: "size",
-			},
-			cli.StringFlag{
 				Name:  "listen",
-				Value: "localhost:9501",
+				Value: "localhost:8500",
 			},
 			cli.StringFlag{
-				Name:  "frontend",
-				Usage: "Supports tgt-blockdev or tgt-iscsi, or leave it empty to disable frontend",
-			},
-			cli.StringSliceFlag{
-				Name:  "enable-backend",
-				Value: (*cli.StringSlice)(&[]string{"tcp"}),
-			},
-			cli.StringSliceFlag{
-				Name: "replica",
+				Name:  "port-range",
+				Value: "10000-30000",
 			},
 		},
 		Action: func(c *cli.Context) {
-			if err := start(c); err != nil {
+			if err := startLauncher(c); err != nil {
 				logrus.Fatalf("Error running start command: %v.", err)
 			}
 		},
 	}
 }
 
-func UpgradeCmd() cli.Command {
-	return cli.Command{
-		Name: "upgrade",
-		Flags: []cli.Flag{
-			cli.StringFlag{
-				Name: "longhorn-binary",
-			},
-			cli.StringSliceFlag{
-				Name: "replica",
-			},
-		},
-		Action: func(c *cli.Context) {
-			if err := upgrade(c); err != nil {
-				logrus.Fatalf("Error running upgrade command: %v.", err)
-			}
-		},
-	}
-}
+func startLauncher(c *cli.Context) error {
+	listenAddr := c.String("listen")
+	portRange := c.String("port-range")
 
-func InfoCmd() cli.Command {
-	return cli.Command{
-		Name: "info",
-		Action: func(c *cli.Context) {
-			if err := info(c); err != nil {
-				logrus.Fatalf("Error running endpoint command: %v.", err)
-			}
-		},
-	}
-}
-
-func FrontendStartCmd() cli.Command {
-	return cli.Command{
-		Name: "frontend-start",
-		Flags: []cli.Flag{
-			cli.StringFlag{
-				Name: "id",
-			},
-		},
-		Action: func(c *cli.Context) {
-			if err := startFrontend(c); err != nil {
-				logrus.Fatalf("Error running frontend-start command: %v.", err)
-			}
-		},
-	}
-}
-
-func FrontendShutdownCmd() cli.Command {
-	return cli.Command{
-		Name: "frontend-shutdown",
-		Flags: []cli.Flag{
-			cli.StringFlag{
-				Name: "id",
-			},
-		},
-		Action: func(c *cli.Context) {
-			if err := shutdownFrontend(c); err != nil {
-				logrus.Fatalf("Error running frontend-start command: %v.", err)
-			}
-		},
-	}
-}
-
-func EngineFrontendStartCmd() cli.Command {
-	return cli.Command{
-		Name:  "engine-frontend-start",
-		Usage: "Set frontend to tgt-blockdev or tgt-iscsi and start engine frontend with it. Only valid if no frontend has been set",
-		Action: func(c *cli.Context) {
-			if err := startEngineFrontend(c); err != nil {
-				logrus.Fatalf("Error running engine-frontend-start command: %v.", err)
-			}
-		},
-	}
-}
-
-func EngineFrontendShutdownCmd() cli.Command {
-	return cli.Command{
-		Name:  "engine-frontend-shutdown",
-		Usage: "Shutdown the engine frontend. Only valid if the frontend has been set.",
-		Action: func(c *cli.Context) {
-			if err := shutdownEngineFrontend(c); err != nil {
-				logrus.Fatalf("Error running engine-frontend-shutdown command: %v.", err)
-			}
-		},
-	}
-}
-
-func start(c *cli.Context) error {
-	if c.NArg() == 0 {
-		return errors.New("volume name is required")
-	}
-	name := c.Args()[0]
-
-	launcherListen := c.String("launcher-listen")
-	longhornBinary := c.String("longhorn-binary")
-
-	listen := c.String("listen")
-	backends := c.StringSlice("enable-backend")
-	replicas := c.StringSlice("replica")
-	frontend := c.String("frontend")
-
-	sizeString := c.String("size")
-	if sizeString == "" {
-		return fmt.Errorf("Invalid empty size")
-	}
-	size, err := units.RAMInBytes(sizeString)
+	shutdownCh := make(chan error)
+	l, err := process.NewLauncher(portRange, shutdownCh)
 	if err != nil {
 		return err
 	}
 
-	l, err := engine.NewLauncher(launcherListen, longhornBinary, frontend, name, size)
+	listen, err := net.Listen("tcp", listenAddr)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "Failed to listen")
 	}
-	id := util.UUID()
-	controller := engine.NewController(id, longhornBinary, name, listen, frontend, backends, replicas)
-	if err := l.StartController(controller); err != nil {
-		return err
-	}
-	if err := l.StartRPCServer(); err != nil {
-		return err
-	}
+
+	rpcService := grpc.NewServer()
+	rpc.RegisterLonghornProcessLauncherServiceServer(rpcService, l)
+	reflection.Register(rpcService)
+
+	go func() {
+		if err := rpcService.Serve(listen); err != nil {
+			logrus.Errorf("Stopping due to %v:", err)
+		}
+		close(shutdownCh)
+	}()
+	logrus.Infof("Launcher listening to %v", listen)
 
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		sig := <-sigs
 		logrus.Infof("Receive %v to exit", sig)
-		l.Shutdown()
+		rpcService.Stop()
 	}()
 
-	return l.WaitForShutdown()
-}
-
-func upgrade(c *cli.Context) error {
-	url := c.GlobalString("url")
-	conn, err := grpc.Dial(url, grpc.WithInsecure())
-	if err != nil {
-		return fmt.Errorf("cannot connect to %v: %v", url, err)
-	}
-	defer conn.Close()
-
-	longhornBinary := c.String("longhorn-binary")
-	replicas := c.StringSlice("replica")
-
-	if longhornBinary == "" || len(replicas) == 0 {
-		return fmt.Errorf("missing required parameters")
-	}
-
-	client := rpc.NewLonghornLauncherServiceClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), UpgradeTimeout)
-	defer cancel()
-
-	if _, err := client.UpgradeEngine(ctx, &rpc.Engine{
-		Binary:   longhornBinary,
-		Replicas: replicas,
-	}); err != nil {
-		return fmt.Errorf("failed to upgrade: %v", err)
-	}
-	return nil
-}
-
-func info(c *cli.Context) error {
-	url := c.GlobalString("url")
-	conn, err := grpc.Dial(url, grpc.WithInsecure())
-	if err != nil {
-		return fmt.Errorf("cannot connect to %v: %v", url, err)
-	}
-	defer conn.Close()
-
-	client := rpc.NewLonghornLauncherServiceClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), InfoTimeout)
-	defer cancel()
-
-	endpoint, err := client.GetInfo(ctx, &rpc.Empty{})
-	if err != nil {
-		return fmt.Errorf("failed to get endpoint: %v", err)
-	}
-
-	output, err := json.MarshalIndent(endpoint, "", "\t")
-	if err != nil {
-		return err
-	}
-
-	fmt.Println(string(output))
-	return nil
-}
-
-func startFrontend(c *cli.Context) error {
-	id := c.String("id")
-	if id == "" {
-		return fmt.Errorf("missing parameter id")
-	}
-
-	url := c.GlobalString("url")
-	conn, err := grpc.Dial(url, grpc.WithInsecure())
-	if err != nil {
-		return fmt.Errorf("cannot connect to %v: %v", url, err)
-	}
-	defer conn.Close()
-
-	client := rpc.NewLonghornLauncherServiceClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), FrontendTimeout)
-	defer cancel()
-
-	if _, err := client.StartFrontend(ctx, &rpc.Identity{
-		ID: id,
-	}); err != nil {
-		return fmt.Errorf("failed to start frontend: %v", err)
-	}
-	return nil
-}
-
-func shutdownFrontend(c *cli.Context) error {
-	id := c.String("id")
-	if id == "" {
-		return fmt.Errorf("missing parameter id")
-	}
-
-	url := c.GlobalString("url")
-	conn, err := grpc.Dial(url, grpc.WithInsecure())
-	if err != nil {
-		return fmt.Errorf("cannot connect to %v: %v", url, err)
-	}
-	defer conn.Close()
-
-	client := rpc.NewLonghornLauncherServiceClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), FrontendTimeout)
-	defer cancel()
-
-	if _, err := client.ShutdownFrontend(ctx, &rpc.Identity{
-		ID: id,
-	}); err != nil {
-		return fmt.Errorf("failed to start frontend: %v", err)
-	}
-	return nil
-}
-
-func startEngineFrontend(c *cli.Context) error {
-	if c.NArg() == 0 {
-		return fmt.Errorf("frontend is required as the first argument")
-	}
-	frontend := c.Args()[0]
-
-	url := c.GlobalString("url")
-	conn, err := grpc.Dial(url, grpc.WithInsecure())
-	if err != nil {
-		return fmt.Errorf("cannot connect to %v: %v", url, err)
-	}
-	defer conn.Close()
-
-	client := rpc.NewLonghornLauncherServiceClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), FrontendTimeout)
-	defer cancel()
-
-	if _, err := client.StartEngineFrontend(ctx, &rpc.Frontend{
-		Frontend: frontend,
-	}); err != nil {
-		return fmt.Errorf("failed to start engine frontend: %v", err)
-	}
-	return nil
-}
-
-func shutdownEngineFrontend(c *cli.Context) error {
-	url := c.GlobalString("url")
-	conn, err := grpc.Dial(url, grpc.WithInsecure())
-	if err != nil {
-		return fmt.Errorf("cannot connect to %v: %v", url, err)
-	}
-	defer conn.Close()
-
-	client := rpc.NewLonghornLauncherServiceClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), FrontendTimeout)
-	defer cancel()
-
-	if _, err := client.ShutdownEngineFrontend(ctx, &rpc.Empty{}); err != nil {
-		return fmt.Errorf("failed to shutdown engine frontend: %v", err)
-	}
-	return nil
+	return <-shutdownCh
 }
 
 func main() {
@@ -351,22 +85,14 @@ func main() {
 	a.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  "url",
-			Value: "localhost:9510",
+			Value: "localhost:8500",
 		},
 		cli.BoolFlag{
 			Name: "debug",
 		},
 	}
 	a.Commands = []cli.Command{
-		StartCmd(),
-		UpgradeCmd(),
-		InfoCmd(),
-		FrontendStartCmd(),
-		FrontendShutdownCmd(),
-		EngineFrontendStartCmd(),
-		EngineFrontendShutdownCmd(),
-
-		StartProcessLauncherCmd(),
+		StartLauncherCmd(),
 		ProcessCmd(),
 	}
 	if err := a.Run(os.Args); err != nil {
