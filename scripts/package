@@ -10,7 +10,7 @@ PROJECT=`basename "$PWD"`
 cd ./package
 
 TAG=${TAG:-${VERSION}}
-REPO=${REPO:-rancher}
+REPO=${REPO:-longhornio}
 IMAGE=${REPO}/${PROJECT}:${TAG}
 
 if [ ! -x ../bin/longhorn ]; then
