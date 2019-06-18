@@ -348,3 +348,27 @@ func (hc *ControllerHealthCheckServer) Watch(req *healthpb.HealthCheckRequest, w
 		time.Sleep(time.Second)
 	}
 }
+
+func (cs *ControllerServer) BackupReplicaMappingCreate(ctx context.Context,
+	req *controllerpb.BackupReplicaMapping) (*empty.Empty, error) {
+	if err := cs.c.BackupReplicaMappingCreate(req.Backup, req.ReplicaAddress); err != nil {
+		return nil, err
+	}
+
+	return &empty.Empty{}, nil
+}
+
+func (cs *ControllerServer) BackupReplicaMappingGet(ctx context.Context, req *empty.Empty) (*controllerpb.BackupReplicaMap, error) {
+	return &controllerpb.BackupReplicaMap{
+		BackupReplicaMap: cs.c.BackupReplicaMappingGet(),
+	}, nil
+}
+
+func (cs *ControllerServer) BackupReplicaMappingDelete(ctx context.Context,
+	req *controllerpb.BackupReplicaMappingDeleteRequest) (*empty.Empty, error) {
+	if err := cs.c.BackupReplicaMappingDelete(req.Backup); err != nil {
+		return nil, err
+	}
+
+	return &empty.Empty{}, nil
+}

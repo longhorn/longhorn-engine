@@ -48,6 +48,7 @@ type Controller struct {
 
 	latestMetrics *types.Metrics
 	metrics       *types.Metrics
+	backupList    map[string]string
 }
 
 func NewController(name string, factory types.BackendFactory, frontend types.Frontend, launcher, launcherID string) *Controller {
@@ -666,4 +667,30 @@ func (c *Controller) metricsStart() {
 
 func (c *Controller) GetLatestMetics() *types.Metrics {
 	return c.latestMetrics
+}
+
+func (c *Controller) BackupReplicaMappingCreate(id string, replicaAddress string) error {
+	c.Lock()
+	defer c.Unlock()
+	if c.backupList == nil {
+		c.backupList = make(map[string]string)
+	}
+	c.backupList[id] = replicaAddress
+	return nil
+}
+
+func (c *Controller) BackupReplicaMappingGet() map[string]string {
+	c.Lock()
+	defer c.Unlock()
+	return c.backupList
+}
+
+func (c *Controller) BackupReplicaMappingDelete(id string) error {
+	c.Lock()
+	defer c.Unlock()
+	if _, present := c.backupList[id]; present == false {
+		return fmt.Errorf("backupID not found: %v", id)
+	}
+	delete(c.backupList, id)
+	return nil
 }
