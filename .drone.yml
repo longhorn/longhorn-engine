@@ -17,6 +17,24 @@ steps:
   - name: socket
     path: /var/run/docker.sock
 
+- name: docker-publish-master
+  image: plugins/docker
+  settings:
+    context: package/
+    custom_dns: 1.1.1.1
+    dockerfile: Dockerfile.dapper
+    password:
+      from_secret: docker_password
+    repo: longhornio/longhorn-engine
+    tag: master
+    username:
+      from_secret: docker_username
+  when:
+    branch:
+    - master
+    event:
+    - push
+
 volumes:
 - name: socket
   host:
