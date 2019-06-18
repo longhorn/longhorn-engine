@@ -10,3 +10,6 @@ python -m grpc_tools.protoc -I replica/rpc -I vendor/github.com/golang/protobuf/
 
 # sync agent
 protoc -I sync/rpc sync/rpc/rpc.proto --go_out=plugins=grpc:sync/rpc
+
+# engine manager
+python -m grpc_tools.protoc -I vendor/github.com/longhorn/longhorn-engine-launcher/rpc -I vendor/github.com/golang/protobuf/ptypes/ --python_out=integration/rpc/engine_manager --grpc_python_out=integration/rpc/engine_manager vendor/github.com/longhorn/longhorn-engine-launcher/rpc/rpc.proto
