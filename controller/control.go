@@ -12,6 +12,7 @@ import (
 	"google.golang.org/grpc"
 
 	iutil "github.com/longhorn/go-iscsi-helper/util"
+	emclient "github.com/longhorn/longhorn-engine-launcher/client"
 
 	"github.com/longhorn/longhorn-engine/types"
 	"github.com/longhorn/longhorn-engine/util"
@@ -292,8 +293,8 @@ func (c *Controller) startFrontend() error {
 			return errors.Wrap(err, "failed to start up frontend")
 		}
 		if c.launcher != "" {
-			if err := c.launcherStartFrontend(); err != nil {
-				logrus.Errorf("Shutting down frontend due to failed to start up launcher: %v", err)
+			if err := c.frontendStartCallback(); err != nil {
+				logrus.Errorf("Shutting down frontend due to failed to callback launcher: %v", err)
 				if err := c.frontend.Shutdown(); err != nil {
 					logrus.Errorf("Failed to shutdown frontend: %v", err)
 				}
@@ -484,7 +485,7 @@ func (c *Controller) shutdownFrontend() error {
 	// shutdown launcher's frontend if applied
 	if c.launcher != "" {
 		logrus.Infof("Asking the launcher to shutdown the frontend")
-		if err := c.launcherShutdownFrontend(); err != nil {
+		if err := c.frontendShutdownCallback(); err != nil {
 			return err
 		}
 	}
@@ -611,33 +612,29 @@ func (c *Controller) cleanupRestoreInfo() {
 	return
 }
 
-func (c *Controller) launcherStartFrontend() error {
+func (c *Controller) frontendStartCallback() error {
 	if c.launcher == "" {
 		return nil
 	}
-	args := []string{
-		"--url", c.launcher,
-		"frontend-start",
-		"--id", c.launcherID,
-	}
-	if _, err := util.Execute(LauncherBinary, args...); err != nil {
+
+	client := emclient.NewEngineManagerClient(c.launcher)
+	if err := client.FrontendStartCallback(c.launcherID); err != nil {
 		return fmt.Errorf("failed to start frontend: %v", err)
 	}
+
 	return nil
 }
 
-func (c *Controller) launcherShutdownFrontend() error {
+func (c *Controller) frontendShutdownCallback() error {
 	if c.launcher == "" {
 		return nil
 	}
-	args := []string{
-		"--url", c.launcher,
-		"frontend-shutdown",
-		"--id", c.launcherID,
-	}
-	if _, err := util.Execute(LauncherBinary, args...); err != nil {
+
+	client := emclient.NewEngineManagerClient(c.launcher)
+	if err := client.FrontendShutdownCallback(c.launcherID); err != nil {
 		return fmt.Errorf("failed to shutdown frontend: %v", err)
 	}
+
 	return nil
 }
 

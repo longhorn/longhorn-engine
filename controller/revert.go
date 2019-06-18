@@ -65,7 +65,7 @@ func (c *Controller) Revert(name string) error {
 	}
 	if c.launcher != "" {
 		logrus.Infof("Asking the launcher to start the frontend")
-		if err := c.launcherStartFrontend(); err != nil {
+		if err := c.frontendStartCallback(); err != nil {
 			return err
 		}
 	}
