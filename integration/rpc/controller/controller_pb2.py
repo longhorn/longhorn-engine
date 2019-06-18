@@ -22,7 +22,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='pb',
   syntax='proto3',
   serialized_options=None,
-  serialized_pb=_b('\n\x10\x63ontroller.proto\x12\x02pb\x1a\x1bgoogle/protobuf/empty.proto\"\x92\x01\n\x06Volume\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x14\n\x0creplicaCount\x18\x02 \x01(\x05\x12\x10\n\x08\x65ndpoint\x18\x03 \x01(\t\x12\x10\n\x08\x66rontend\x18\x04 \x01(\t\x12\x15\n\rfrontendState\x18\x05 \x01(\t\x12\x13\n\x0bisRestoring\x18\x06 \x01(\x08\x12\x14\n\x0clastRestored\x18\x07 \x01(\t\"!\n\x0eReplicaAddress\x12\x0f\n\x07\x61\x64\x64ress\x18\x01 \x01(\t\"W\n\x11\x43ontrollerReplica\x12#\n\x07\x61\x64\x64ress\x18\x01 \x01(\x0b\x32\x12.pb.ReplicaAddress\x12\x1d\n\x04mode\x18\x02 \x01(\x0e\x32\x0f.pb.ReplicaMode\".\n\x12VolumeStartRequest\x12\x18\n\x10replicaAddresses\x18\x01 \x03(\t\"\x8b\x01\n\x15VolumeSnapshotRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x35\n\x06labels\x18\x02 \x03(\x0b\x32%.pb.VolumeSnapshotRequest.LabelsEntry\x1a-\n\x0bLabelsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"#\n\x13VolumeSnapshotReply\x12\x0c\n\x04name\x18\x01 \x01(\t\"#\n\x13VolumeRevertRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\".\n\x1aVolumeFrontendStartRequest\x12\x10\n\x08\x66rontend\x18\x01 \x01(\t\"3\n\x1bVolumePrepareRestoreRequest\x12\x14\n\x0clastRestored\x18\x01 \x01(\t\"5\n\x1aVolumeFinishRestoreRequest\x12\x17\n\x0f\x63urrentRestored\x18\x01 \x01(\t\";\n\x10ReplicaListReply\x12\'\n\x08replicas\x18\x01 \x03(\x0b\x32\x15.pb.ControllerReplica\"S\n\x1aReplicaPrepareRebuildReply\x12&\n\x07replica\x18\x01 \x01(\x0b\x32\x15.pb.ControllerReplica\x12\r\n\x05\x64isks\x18\x02 \x03(\t\"#\n\x12JournalListRequest\x12\r\n\x05limit\x18\x01 \x01(\x03\"!\n\x11PortUpdateRequest\x12\x0c\n\x04port\x18\x01 \x01(\x05\"\xef\x01\n\rVersionOutput\x12\x0f\n\x07version\x18\x01 \x01(\t\x12\x11\n\tgitCommit\x18\x02 \x01(\t\x12\x11\n\tbuildDate\x18\x03 \x01(\t\x12\x15\n\rcliAPIVersion\x18\x04 \x01(\x03\x12\x18\n\x10\x63liAPIMinVersion\x18\x05 \x01(\x03\x12\x1c\n\x14\x63ontrollerAPIVersion\x18\x06 \x01(\x03\x12\x1f\n\x17\x63ontrollerAPIMinVersion\x18\x07 \x01(\x03\x12\x19\n\x11\x64\x61taFormatVersion\x18\x08 \x01(\x03\x12\x1c\n\x14\x64\x61taFormatMinVersion\x18\t \x01(\x03\";\n\x15VersionDetailGetReply\x12\"\n\x07version\x18\x01 \x01(\x0b\x32\x11.pb.VersionOutput\"p\n\x06Metric\x12\x15\n\rreadBandwidth\x18\x01 \x01(\x04\x12\x16\n\x0ewriteBandwidth\x18\x02 \x01(\x04\x12\x13\n\x0breadLatency\x18\x03 \x01(\x04\x12\x14\n\x0cwriteLatency\x18\x04 \x01(\x04\x12\x0c\n\x04iOPS\x18\x05 \x01(\x04\",\n\x0eMetricGetReply\x12\x1a\n\x06metric\x18\x01 \x01(\x0b\x32\n.pb.Metric\">\n\x14\x42\x61\x63kupReplicaMapping\x12\x0e\n\x06\x62\x61\x63kup\x18\x01 \x01(\t\x12\x16\n\x0ereplicaAddress\x18\x02 \x01(\t\"\x91\x01\n\x10\x42\x61\x63kupReplicaMap\x12\x44\n\x10\x62\x61\x63kupReplicaMap\x18\x01 \x03(\x0b\x32*.pb.BackupReplicaMap.BackupReplicaMapEntry\x1a\x37\n\x15\x42\x61\x63kupReplicaMapEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"3\n!BackupReplicaMappingDeleteRequest\x12\x0e\n\x06\x62\x61\x63kup\x18\x01 \x01(\t*&\n\x0bReplicaMode\x12\x06\n\x02WO\x10\x00\x12\x06\n\x02RW\x10\x01\x12\x07\n\x03\x45RR\x10\x02\x32\xe3\x0b\n\x11\x43ontrollerService\x12/\n\tVolumeGet\x12\x16.google.protobuf.Empty\x1a\n.pb.Volume\x12\x31\n\x0bVolumeStart\x12\x16.pb.VolumeStartRequest\x1a\n.pb.Volume\x12\x34\n\x0eVolumeShutdown\x12\x16.google.protobuf.Empty\x1a\n.pb.Volume\x12\x44\n\x0eVolumeSnapshot\x12\x19.pb.VolumeSnapshotRequest\x1a\x17.pb.VolumeSnapshotReply\x12\x33\n\x0cVolumeRevert\x12\x17.pb.VolumeRevertRequest\x1a\n.pb.Volume\x12\x41\n\x13VolumeFrontendStart\x12\x1e.pb.VolumeFrontendStartRequest\x1a\n.pb.Volume\x12<\n\x16VolumeFrontendShutdown\x12\x16.google.protobuf.Empty\x1a\n.pb.Volume\x12\x43\n\x14VolumePrepareRestore\x12\x1f.pb.VolumePrepareRestoreRequest\x1a\n.pb.Volume\x12\x41\n\x13VolumeFinishRestore\x12\x1e.pb.VolumeFinishRestoreRequest\x1a\n.pb.Volume\x12;\n\x0bReplicaList\x12\x16.google.protobuf.Empty\x1a\x14.pb.ReplicaListReply\x12\x37\n\nReplicaGet\x12\x12.pb.ReplicaAddress\x1a\x15.pb.ControllerReplica\x12:\n\rReplicaCreate\x12\x12.pb.ReplicaAddress\x1a\x15.pb.ControllerReplica\x12;\n\rReplicaDelete\x12\x12.pb.ReplicaAddress\x1a\x16.google.protobuf.Empty\x12=\n\rReplicaUpdate\x12\x15.pb.ControllerReplica\x1a\x15.pb.ControllerReplica\x12K\n\x15ReplicaPrepareRebuild\x12\x12.pb.ReplicaAddress\x1a\x1e.pb.ReplicaPrepareRebuildReply\x12\x41\n\x14ReplicaVerifyRebuild\x12\x12.pb.ReplicaAddress\x1a\x15.pb.ControllerReplica\x12N\n\x1a\x42\x61\x63kupReplicaMappingCreate\x12\x18.pb.BackupReplicaMapping\x1a\x16.google.protobuf.Empty\x12G\n\x17\x42\x61\x63kupReplicaMappingGet\x12\x16.google.protobuf.Empty\x1a\x14.pb.BackupReplicaMap\x12[\n\x1a\x42\x61\x63kupReplicaMappingDelete\x12%.pb.BackupReplicaMappingDeleteRequest\x1a\x16.google.protobuf.Empty\x12=\n\x0bJournalList\x12\x16.pb.JournalListRequest\x1a\x16.google.protobuf.Empty\x12;\n\nPortUpdate\x12\x15.pb.PortUpdateRequest\x1a\x16.google.protobuf.Empty\x12\x45\n\x10VersionDetailGet\x12\x16.google.protobuf.Empty\x1a\x19.pb.VersionDetailGetReply\x12\x39\n\tMetricGet\x12\x16.google.protobuf.Empty\x1a\x12.pb.MetricGetReply0\x01\x62\x06proto3')
+  serialized_pb=_b('\n\x10\x63ontroller.proto\x12\x02pb\x1a\x1bgoogle/protobuf/empty.proto\"\xa5\x01\n\x06Volume\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x14\n\x0creplicaCount\x18\x02 \x01(\x05\x12\x10\n\x08\x65ndpoint\x18\x03 \x01(\t\x12\x10\n\x08\x66rontend\x18\x04 \x01(\t\x12\x15\n\rfrontendState\x18\x05 \x01(\t\x12\x13\n\x0bisRestoring\x18\x06 \x01(\x08\x12\x14\n\x0clastRestored\x18\x07 \x01(\t\x12\x11\n\tisPurging\x18\x08 \x01(\x08\"!\n\x0eReplicaAddress\x12\x0f\n\x07\x61\x64\x64ress\x18\x01 \x01(\t\"W\n\x11\x43ontrollerReplica\x12#\n\x07\x61\x64\x64ress\x18\x01 \x01(\x0b\x32\x12.pb.ReplicaAddress\x12\x1d\n\x04mode\x18\x02 \x01(\x0e\x32\x0f.pb.ReplicaMode\".\n\x12VolumeStartRequest\x12\x18\n\x10replicaAddresses\x18\x01 \x03(\t\"\x8b\x01\n\x15VolumeSnapshotRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x35\n\x06labels\x18\x02 \x03(\x0b\x32%.pb.VolumeSnapshotRequest.LabelsEntry\x1a-\n\x0bLabelsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"#\n\x13VolumeSnapshotReply\x12\x0c\n\x04name\x18\x01 \x01(\t\"#\n\x13VolumeRevertRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\".\n\x1aVolumeFrontendStartRequest\x12\x10\n\x08\x66rontend\x18\x01 \x01(\t\"3\n\x1bVolumePrepareRestoreRequest\x12\x14\n\x0clastRestored\x18\x01 \x01(\t\"5\n\x1aVolumeFinishRestoreRequest\x12\x17\n\x0f\x63urrentRestored\x18\x01 \x01(\t\";\n\x10ReplicaListReply\x12\'\n\x08replicas\x18\x01 \x03(\x0b\x32\x15.pb.ControllerReplica\"S\n\x1aReplicaPrepareRebuildReply\x12&\n\x07replica\x18\x01 \x01(\x0b\x32\x15.pb.ControllerReplica\x12\r\n\x05\x64isks\x18\x02 \x03(\t\"#\n\x12JournalListRequest\x12\r\n\x05limit\x18\x01 \x01(\x03\"!\n\x11PortUpdateRequest\x12\x0c\n\x04port\x18\x01 \x01(\x05\"\xef\x01\n\rVersionOutput\x12\x0f\n\x07version\x18\x01 \x01(\t\x12\x11\n\tgitCommit\x18\x02 \x01(\t\x12\x11\n\tbuildDate\x18\x03 \x01(\t\x12\x15\n\rcliAPIVersion\x18\x04 \x01(\x03\x12\x18\n\x10\x63liAPIMinVersion\x18\x05 \x01(\x03\x12\x1c\n\x14\x63ontrollerAPIVersion\x18\x06 \x01(\x03\x12\x1f\n\x17\x63ontrollerAPIMinVersion\x18\x07 \x01(\x03\x12\x19\n\x11\x64\x61taFormatVersion\x18\x08 \x01(\x03\x12\x1c\n\x14\x64\x61taFormatMinVersion\x18\t \x01(\x03\";\n\x15VersionDetailGetReply\x12\"\n\x07version\x18\x01 \x01(\x0b\x32\x11.pb.VersionOutput\"p\n\x06Metric\x12\x15\n\rreadBandwidth\x18\x01 \x01(\x04\x12\x16\n\x0ewriteBandwidth\x18\x02 \x01(\x04\x12\x13\n\x0breadLatency\x18\x03 \x01(\x04\x12\x14\n\x0cwriteLatency\x18\x04 \x01(\x04\x12\x0c\n\x04iOPS\x18\x05 \x01(\x04\",\n\x0eMetricGetReply\x12\x1a\n\x06metric\x18\x01 \x01(\x0b\x32\n.pb.Metric\">\n\x14\x42\x61\x63kupReplicaMapping\x12\x0e\n\x06\x62\x61\x63kup\x18\x01 \x01(\t\x12\x16\n\x0ereplicaAddress\x18\x02 \x01(\t\"\x91\x01\n\x10\x42\x61\x63kupReplicaMap\x12\x44\n\x10\x62\x61\x63kupReplicaMap\x18\x01 \x03(\x0b\x32*.pb.BackupReplicaMap.BackupReplicaMapEntry\x1a\x37\n\x15\x42\x61\x63kupReplicaMapEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"3\n!BackupReplicaMappingDeleteRequest\x12\x0e\n\x06\x62\x61\x63kup\x18\x01 \x01(\t*&\n\x0bReplicaMode\x12\x06\n\x02WO\x10\x00\x12\x06\n\x02RW\x10\x01\x12\x07\n\x03\x45RR\x10\x02\x32\xd6\x0c\n\x11\x43ontrollerService\x12/\n\tVolumeGet\x12\x16.google.protobuf.Empty\x1a\n.pb.Volume\x12\x31\n\x0bVolumeStart\x12\x16.pb.VolumeStartRequest\x1a\n.pb.Volume\x12\x34\n\x0eVolumeShutdown\x12\x16.google.protobuf.Empty\x1a\n.pb.Volume\x12\x44\n\x0eVolumeSnapshot\x12\x19.pb.VolumeSnapshotRequest\x1a\x17.pb.VolumeSnapshotReply\x12\x33\n\x0cVolumeRevert\x12\x17.pb.VolumeRevertRequest\x1a\n.pb.Volume\x12\x41\n\x13VolumeFrontendStart\x12\x1e.pb.VolumeFrontendStartRequest\x1a\n.pb.Volume\x12<\n\x16VolumeFrontendShutdown\x12\x16.google.protobuf.Empty\x1a\n.pb.Volume\x12\x43\n\x14VolumePrepareRestore\x12\x1f.pb.VolumePrepareRestoreRequest\x1a\n.pb.Volume\x12\x41\n\x13VolumeFinishRestore\x12\x1e.pb.VolumeFinishRestoreRequest\x1a\n.pb.Volume\x12\x38\n\x12VolumePreparePurge\x12\x16.google.protobuf.Empty\x1a\n.pb.Volume\x12\x37\n\x11VolumeFinishPurge\x12\x16.google.protobuf.Empty\x1a\n.pb.Volume\x12;\n\x0bReplicaList\x12\x16.google.protobuf.Empty\x1a\x14.pb.ReplicaListReply\x12\x37\n\nReplicaGet\x12\x12.pb.ReplicaAddress\x1a\x15.pb.ControllerReplica\x12:\n\rReplicaCreate\x12\x12.pb.ReplicaAddress\x1a\x15.pb.ControllerReplica\x12;\n\rReplicaDelete\x12\x12.pb.ReplicaAddress\x1a\x16.google.protobuf.Empty\x12=\n\rReplicaUpdate\x12\x15.pb.ControllerReplica\x1a\x15.pb.ControllerReplica\x12K\n\x15ReplicaPrepareRebuild\x12\x12.pb.ReplicaAddress\x1a\x1e.pb.ReplicaPrepareRebuildReply\x12\x41\n\x14ReplicaVerifyRebuild\x12\x12.pb.ReplicaAddress\x1a\x15.pb.ControllerReplica\x12N\n\x1a\x42\x61\x63kupReplicaMappingCreate\x12\x18.pb.BackupReplicaMapping\x1a\x16.google.protobuf.Empty\x12G\n\x17\x42\x61\x63kupReplicaMappingGet\x12\x16.google.protobuf.Empty\x1a\x14.pb.BackupReplicaMap\x12[\n\x1a\x42\x61\x63kupReplicaMappingDelete\x12%.pb.BackupReplicaMappingDeleteRequest\x1a\x16.google.protobuf.Empty\x12=\n\x0bJournalList\x12\x16.pb.JournalListRequest\x1a\x16.google.protobuf.Empty\x12;\n\nPortUpdate\x12\x15.pb.PortUpdateRequest\x1a\x16.google.protobuf.Empty\x12\x45\n\x10VersionDetailGet\x12\x16.google.protobuf.Empty\x1a\x19.pb.VersionDetailGetReply\x12\x39\n\tMetricGet\x12\x16.google.protobuf.Empty\x1a\x12.pb.MetricGetReply0\x01\x62\x06proto3')
   ,
   dependencies=[google_dot_protobuf_dot_empty__pb2.DESCRIPTOR,])
 
@@ -47,8 +47,8 @@ _REPLICAMODE = _descriptor.EnumDescriptor(
   ],
   containing_type=None,
   serialized_options=None,
-  serialized_start=1692,
-  serialized_end=1730,
+  serialized_start=1711,
+  serialized_end=1749,
 )
 _sym_db.RegisterEnumDescriptor(_REPLICAMODE)
 
@@ -115,6 +115,13 @@ _VOLUME = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='isPurging', full_name='pb.Volume.isPurging', index=7,
+      number=8, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -128,7 +135,7 @@ _VOLUME = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=54,
-  serialized_end=200,
+  serialized_end=219,
 )
 
 
@@ -158,8 +165,8 @@ _REPLICAADDRESS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=202,
-  serialized_end=235,
+  serialized_start=221,
+  serialized_end=254,
 )
 
 
@@ -196,8 +203,8 @@ _CONTROLLERREPLICA = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=237,
-  serialized_end=324,
+  serialized_start=256,
+  serialized_end=343,
 )
 
 
@@ -227,8 +234,8 @@ _VOLUMESTARTREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=326,
-  serialized_end=372,
+  serialized_start=345,
+  serialized_end=391,
 )
 
 
@@ -265,8 +272,8 @@ _VOLUMESNAPSHOTREQUEST_LABELSENTRY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=469,
-  serialized_end=514,
+  serialized_start=488,
+  serialized_end=533,
 )
 
 _VOLUMESNAPSHOTREQUEST = _descriptor.Descriptor(
@@ -302,8 +309,8 @@ _VOLUMESNAPSHOTREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=375,
-  serialized_end=514,
+  serialized_start=394,
+  serialized_end=533,
 )
 
 
@@ -333,8 +340,8 @@ _VOLUMESNAPSHOTREPLY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=516,
-  serialized_end=551,
+  serialized_start=535,
+  serialized_end=570,
 )
 
 
@@ -364,8 +371,8 @@ _VOLUMEREVERTREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=553,
-  serialized_end=588,
+  serialized_start=572,
+  serialized_end=607,
 )
 
 
@@ -395,8 +402,8 @@ _VOLUMEFRONTENDSTARTREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=590,
-  serialized_end=636,
+  serialized_start=609,
+  serialized_end=655,
 )
 
 
@@ -426,8 +433,8 @@ _VOLUMEPREPARERESTOREREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=638,
-  serialized_end=689,
+  serialized_start=657,
+  serialized_end=708,
 )
 
 
@@ -457,8 +464,8 @@ _VOLUMEFINISHRESTOREREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=691,
-  serialized_end=744,
+  serialized_start=710,
+  serialized_end=763,
 )
 
 
@@ -488,8 +495,8 @@ _REPLICALISTREPLY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=746,
-  serialized_end=805,
+  serialized_start=765,
+  serialized_end=824,
 )
 
 
@@ -526,8 +533,8 @@ _REPLICAPREPAREREBUILDREPLY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=807,
-  serialized_end=890,
+  serialized_start=826,
+  serialized_end=909,
 )
 
 
@@ -557,8 +564,8 @@ _JOURNALLISTREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=892,
-  serialized_end=927,
+  serialized_start=911,
+  serialized_end=946,
 )
 
 
@@ -588,8 +595,8 @@ _PORTUPDATEREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=929,
-  serialized_end=962,
+  serialized_start=948,
+  serialized_end=981,
 )
 
 
@@ -675,8 +682,8 @@ _VERSIONOUTPUT = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=965,
-  serialized_end=1204,
+  serialized_start=984,
+  serialized_end=1223,
 )
 
 
@@ -706,8 +713,8 @@ _VERSIONDETAILGETREPLY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1206,
-  serialized_end=1265,
+  serialized_start=1225,
+  serialized_end=1284,
 )
 
 
@@ -765,8 +772,8 @@ _METRIC = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1267,
-  serialized_end=1379,
+  serialized_start=1286,
+  serialized_end=1398,
 )
 
 
@@ -796,8 +803,8 @@ _METRICGETREPLY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1381,
-  serialized_end=1425,
+  serialized_start=1400,
+  serialized_end=1444,
 )
 
 
@@ -834,8 +841,8 @@ _BACKUPREPLICAMAPPING = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1427,
-  serialized_end=1489,
+  serialized_start=1446,
+  serialized_end=1508,
 )
 
 
@@ -872,8 +879,8 @@ _BACKUPREPLICAMAP_BACKUPREPLICAMAPENTRY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1582,
-  serialized_end=1637,
+  serialized_start=1601,
+  serialized_end=1656,
 )
 
 _BACKUPREPLICAMAP = _descriptor.Descriptor(
@@ -902,8 +909,8 @@ _BACKUPREPLICAMAP = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1492,
-  serialized_end=1637,
+  serialized_start=1511,
+  serialized_end=1656,
 )
 
 
@@ -933,8 +940,8 @@ _BACKUPREPLICAMAPPINGDELETEREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1639,
-  serialized_end=1690,
+  serialized_start=1658,
+  serialized_end=1709,
 )
 
 _CONTROLLERREPLICA.fields_by_name['address'].message_type = _REPLICAADDRESS
@@ -1144,8 +1151,8 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=0,
   serialized_options=None,
-  serialized_start=1733,
-  serialized_end=3240,
+  serialized_start=1752,
+  serialized_end=3374,
   methods=[
   _descriptor.MethodDescriptor(
     name='VolumeGet',
@@ -1229,9 +1236,27 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
     serialized_options=None,
   ),
   _descriptor.MethodDescriptor(
+    name='VolumePreparePurge',
+    full_name='pb.ControllerService.VolumePreparePurge',
+    index=9,
+    containing_service=None,
+    input_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
+    output_type=_VOLUME,
+    serialized_options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='VolumeFinishPurge',
+    full_name='pb.ControllerService.VolumeFinishPurge',
+    index=10,
+    containing_service=None,
+    input_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
+    output_type=_VOLUME,
+    serialized_options=None,
+  ),
+  _descriptor.MethodDescriptor(
     name='ReplicaList',
     full_name='pb.ControllerService.ReplicaList',
-    index=9,
+    index=11,
     containing_service=None,
     input_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
     output_type=_REPLICALISTREPLY,
@@ -1240,7 +1265,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='ReplicaGet',
     full_name='pb.ControllerService.ReplicaGet',
-    index=10,
+    index=12,
     containing_service=None,
     input_type=_REPLICAADDRESS,
     output_type=_CONTROLLERREPLICA,
@@ -1249,7 +1274,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='ReplicaCreate',
     full_name='pb.ControllerService.ReplicaCreate',
-    index=11,
+    index=13,
     containing_service=None,
     input_type=_REPLICAADDRESS,
     output_type=_CONTROLLERREPLICA,
@@ -1258,7 +1283,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='ReplicaDelete',
     full_name='pb.ControllerService.ReplicaDelete',
-    index=12,
+    index=14,
     containing_service=None,
     input_type=_REPLICAADDRESS,
     output_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
@@ -1267,7 +1292,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='ReplicaUpdate',
     full_name='pb.ControllerService.ReplicaUpdate',
-    index=13,
+    index=15,
     containing_service=None,
     input_type=_CONTROLLERREPLICA,
     output_type=_CONTROLLERREPLICA,
@@ -1276,7 +1301,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='ReplicaPrepareRebuild',
     full_name='pb.ControllerService.ReplicaPrepareRebuild',
-    index=14,
+    index=16,
     containing_service=None,
     input_type=_REPLICAADDRESS,
     output_type=_REPLICAPREPAREREBUILDREPLY,
@@ -1285,7 +1310,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='ReplicaVerifyRebuild',
     full_name='pb.ControllerService.ReplicaVerifyRebuild',
-    index=15,
+    index=17,
     containing_service=None,
     input_type=_REPLICAADDRESS,
     output_type=_CONTROLLERREPLICA,
@@ -1294,7 +1319,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='BackupReplicaMappingCreate',
     full_name='pb.ControllerService.BackupReplicaMappingCreate',
-    index=16,
+    index=18,
     containing_service=None,
     input_type=_BACKUPREPLICAMAPPING,
     output_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
@@ -1303,7 +1328,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='BackupReplicaMappingGet',
     full_name='pb.ControllerService.BackupReplicaMappingGet',
-    index=17,
+    index=19,
     containing_service=None,
     input_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
     output_type=_BACKUPREPLICAMAP,
@@ -1312,7 +1337,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='BackupReplicaMappingDelete',
     full_name='pb.ControllerService.BackupReplicaMappingDelete',
-    index=18,
+    index=20,
     containing_service=None,
     input_type=_BACKUPREPLICAMAPPINGDELETEREQUEST,
     output_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
@@ -1321,7 +1346,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='JournalList',
     full_name='pb.ControllerService.JournalList',
-    index=19,
+    index=21,
     containing_service=None,
     input_type=_JOURNALLISTREQUEST,
     output_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
@@ -1330,7 +1355,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='PortUpdate',
     full_name='pb.ControllerService.PortUpdate',
-    index=20,
+    index=22,
     containing_service=None,
     input_type=_PORTUPDATEREQUEST,
     output_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
@@ -1339,7 +1364,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='VersionDetailGet',
     full_name='pb.ControllerService.VersionDetailGet',
-    index=21,
+    index=23,
     containing_service=None,
     input_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
     output_type=_VERSIONDETAILGETREPLY,
@@ -1348,7 +1373,7 @@ _CONTROLLERSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='MetricGet',
     full_name='pb.ControllerService.MetricGet',
-    index=22,
+    index=24,
     containing_service=None,
     input_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
     output_type=_METRICGETREPLY,

@@ -60,6 +60,16 @@ class ControllerServiceStub(object):
         request_serializer=controller__pb2.VolumeFinishRestoreRequest.SerializeToString,
         response_deserializer=controller__pb2.Volume.FromString,
         )
+    self.VolumePreparePurge = channel.unary_unary(
+        '/pb.ControllerService/VolumePreparePurge',
+        request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+        response_deserializer=controller__pb2.Volume.FromString,
+        )
+    self.VolumeFinishPurge = channel.unary_unary(
+        '/pb.ControllerService/VolumeFinishPurge',
+        request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+        response_deserializer=controller__pb2.Volume.FromString,
+        )
     self.ReplicaList = channel.unary_unary(
         '/pb.ControllerService/ReplicaList',
         request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
@@ -193,6 +203,20 @@ class ControllerServiceServicer(object):
     raise NotImplementedError('Method not implemented!')
 
   def VolumeFinishRestore(self, request, context):
+    # missing associated documentation comment in .proto file
+    pass
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
+  def VolumePreparePurge(self, request, context):
+    # missing associated documentation comment in .proto file
+    pass
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
+  def VolumeFinishPurge(self, request, context):
     # missing associated documentation comment in .proto file
     pass
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -343,6 +367,16 @@ def add_ControllerServiceServicer_to_server(servicer, server):
       'VolumeFinishRestore': grpc.unary_unary_rpc_method_handler(
           servicer.VolumeFinishRestore,
           request_deserializer=controller__pb2.VolumeFinishRestoreRequest.FromString,
+          response_serializer=controller__pb2.Volume.SerializeToString,
+      ),
+      'VolumePreparePurge': grpc.unary_unary_rpc_method_handler(
+          servicer.VolumePreparePurge,
+          request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+          response_serializer=controller__pb2.Volume.SerializeToString,
+      ),
+      'VolumeFinishPurge': grpc.unary_unary_rpc_method_handler(
+          servicer.VolumeFinishPurge,
+          request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
           response_serializer=controller__pb2.Volume.SerializeToString,
       ),
       'ReplicaList': grpc.unary_unary_rpc_method_handler(

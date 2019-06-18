@@ -177,6 +177,22 @@ func (cs *ControllerServer) VolumeFinishRestore(ctx context.Context, req *contro
 	return cs.getVolume(), nil
 }
 
+func (cs *ControllerServer) VolumePreparePurge(ctx context.Context, req *empty.Empty) (*controllerpb.Volume, error) {
+	if err := cs.c.PreparePurge(); err != nil {
+		return nil, err
+	}
+
+	return cs.getVolume(), nil
+}
+
+func (cs *ControllerServer) VolumeFinishPurge(ctx context.Context, req *empty.Empty) (*controllerpb.Volume, error) {
+	if err := cs.c.FinishPurge(); err != nil {
+		return nil, err
+	}
+
+	return cs.getVolume(), nil
+}
+
 func (cs *ControllerServer) ReplicaList(ctx context.Context, req *empty.Empty) (*controllerpb.ReplicaListReply, error) {
 	return &controllerpb.ReplicaListReply{
 		Replicas: cs.listControllerReplica(),
