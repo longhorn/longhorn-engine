@@ -55,7 +55,9 @@ func (t *Task) DeleteSnapshot(snapshot string) error {
 }
 
 func (t *Task) PurgeSnapshots() error {
-	var err error
+	if err := t.client.VolumePreparePurge(); err != nil {
+		return err
+	}
 
 	leaves := []string{}
 
@@ -132,6 +134,10 @@ func (t *Task) PurgeSnapshots() error {
 		if err != nil {
 			return err
 		}
+	}
+
+	if err := t.client.VolumeFinishPurge(); err != nil {
+		return err
 	}
 
 	return nil
