@@ -473,3 +473,63 @@ func (c *ControllerClient) Check() error {
 
 	return nil
 }
+
+func (c *ControllerClient) BackupReplicaMappingCreate(backupID string, replicaAddress string) error {
+	conn, err := grpc.Dial(c.grpcAddress, grpc.WithInsecure())
+	if err != nil {
+		return fmt.Errorf("cannot connect to ControllerService %v: %v", c.grpcAddress, err)
+	}
+	defer conn.Close()
+	controllerServiceClient := contollerpb.NewControllerServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
+	defer cancel()
+
+	if _, err := controllerServiceClient.BackupReplicaMappingCreate(ctx, &contollerpb.BackupReplicaMapping{
+		Backup:         backupID,
+		ReplicaAddress: replicaAddress,
+	}); err != nil {
+		return fmt.Errorf("failed to store replica %v for backup %v: %v", replicaAddress, backupID, err)
+	}
+
+	return nil
+}
+
+func (c *ControllerClient) BackupReplicaMappingGet() (map[string]string, error) {
+	conn, err := grpc.Dial(c.grpcAddress, grpc.WithInsecure())
+	if err != nil {
+		return nil, fmt.Errorf("cannot connect to ControllerService %v: %v", c.grpcAddress, err)
+	}
+	defer conn.Close()
+	controllerServiceClient := contollerpb.NewControllerServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
+	defer cancel()
+
+	br, err := controllerServiceClient.BackupReplicaMappingGet(ctx, &empty.Empty{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get backup replica mapping: %v", err)
+	}
+
+	return br.BackupReplicaMap, nil
+}
+
+func (c *ControllerClient) BackupReplicaMappingDelete(backupID string) error {
+	conn, err := grpc.Dial(c.grpcAddress, grpc.WithInsecure())
+	if err != nil {
+		return fmt.Errorf("cannot connect to ControllerService %v: %v", c.grpcAddress, err)
+	}
+	defer conn.Close()
+	controllerServiceClient := contollerpb.NewControllerServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
+	defer cancel()
+
+	if _, err := controllerServiceClient.BackupReplicaMappingDelete(ctx, &contollerpb.BackupReplicaMappingDeleteRequest{
+		Backup: backupID,
+	}); err != nil {
+		return fmt.Errorf("failed to delete backup %v: %v", backupID, err)
+	}
+
+	return nil
+}
