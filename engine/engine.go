@@ -71,7 +71,7 @@ func (e *Engine) updatePort(newPort int) (string, error) {
 		if err := controllerCli.Check(); err == nil {
 			break
 		}
-		logrus.Infof("launcher: wait for engine controller to switch to %v", newListen)
+		logrus.Infof("wait for engine controller to switch to %v", newListen)
 		time.Sleep(SwitchWaitInterval)
 	}
 	if err := controllerCli.Check(); err != nil {

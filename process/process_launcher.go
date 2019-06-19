@@ -329,7 +329,7 @@ func (p *Process) Start() error {
 					p.lock.Unlock()
 					return
 				}
-				logrus.Infof("launcher: wait for gRPC service of process %v to start", p.Name)
+				logrus.Infof("wait for gRPC service of process %v to start", p.Name)
 				time.Sleep(types.WaitInterval)
 			}
 			// fail to start the process, then try to stop it.
@@ -377,7 +377,7 @@ func (p *Process) Stop() {
 		if p.IsStopped() {
 			return
 		}
-		logrus.Infof("launcher: wait for process %v to shutdown", p.Name)
+		logrus.Infof("wait for process %v to shutdown", p.Name)
 		time.Sleep(types.WaitInterval)
 	}
 	logrus.Debugf("launcher: cannot graceful stop process %v in %v seconds, will send SIGKILL to force stopping it", p.Name, types.WaitCount)
