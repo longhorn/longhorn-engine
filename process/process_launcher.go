@@ -2,7 +2,6 @@ package process
 
 import (
 	"fmt"
-	"os"
 	"os/exec"
 	"path/filepath"
 	"strconv"
@@ -297,8 +296,8 @@ func (p *Process) Start() error {
 		cmd.SysProcAttr = &syscall.SysProcAttr{
 			Pdeathsig: syscall.SIGKILL,
 		}
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
+		cmd.Stdout = logrus.StandardLogger().WithField(util.LogComponentField, p.Name).Writer()
+		cmd.Stderr = logrus.StandardLogger().WithField(util.LogComponentField, p.Name).Writer()
 		p.cmd = cmd
 		p.lock.Unlock()
 

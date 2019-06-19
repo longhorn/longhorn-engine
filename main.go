@@ -19,6 +19,7 @@ import (
 	"github.com/longhorn/longhorn-engine-launcher/process"
 	"github.com/longhorn/longhorn-engine-launcher/rpc"
 	"github.com/longhorn/longhorn-engine-launcher/types"
+	"github.com/longhorn/longhorn-engine-launcher/util"
 )
 
 func StartCmd() cli.Command {
@@ -28,6 +29,10 @@ func StartCmd() cli.Command {
 			cli.StringFlag{
 				Name:  "listen",
 				Value: "localhost:8500",
+			},
+			cli.StringFlag{
+				Name:  "logs-dir",
+				Value: "./logs",
 			},
 			cli.StringFlag{
 				Name:  "port-range",
@@ -44,7 +49,12 @@ func StartCmd() cli.Command {
 
 func start(c *cli.Context) error {
 	listen := c.String("listen")
+	logsDir := c.String("logs-dir")
 	portRange := c.String("port-range")
+
+	if err := util.SetUpLogger(logsDir); err != nil {
+		return err
+	}
 
 	shutdownCh := make(chan error)
 	pl, err := process.NewLauncher(portRange, shutdownCh)
