@@ -38,6 +38,8 @@ type Launcher struct {
 	shutdownCh      chan error
 
 	availablePorts *util.Bitmap
+
+	logsDir string
 }
 
 type State string
@@ -65,9 +67,11 @@ type Process struct {
 	lock     *sync.RWMutex
 	cmd      *exec.Cmd
 	UpdateCh chan *Process
+
+	logger *util.LonghornWriter
 }
 
-func NewLauncher(portRange string, shutdownCh chan error) (*Launcher, error) {
+func NewLauncher(portRange string, logsDir string, shutdownCh chan error) (*Launcher, error) {
 	start, end, err := ParsePortRange(portRange)
 	if err != nil {
 		return nil, err
@@ -84,6 +88,8 @@ func NewLauncher(portRange string, shutdownCh chan error) (*Launcher, error) {
 		availablePorts:  util.NewBitmap(start, end),
 
 		shutdownCh: shutdownCh,
+
+		logsDir: logsDir,
 	}
 	go l.StartMonitoring()
 	return l, nil
@@ -121,6 +127,11 @@ func (l *Launcher) ProcessCreate(ctx context.Context, req *rpc.ProcessCreateRequ
 		return nil, fmt.Errorf("missing required argument")
 	}
 
+	logger, err := util.NewLonghornWriter(req.Spec.Name, l.logsDir)
+	if err != nil {
+		return nil, err
+	}
+
 	p := &Process{
 		Name:      req.Spec.Name,
 		Binary:    req.Spec.Binary,
@@ -131,6 +142,8 @@ func (l *Launcher) ProcessCreate(ctx context.Context, req *rpc.ProcessCreateRequ
 		State: StateStarting,
 
 		lock: &sync.RWMutex{},
+
+		logger: logger,
 	}
 
 	if err := l.registerProcess(p); err != nil {
@@ -160,6 +173,10 @@ func (l *Launcher) ProcessDelete(ctx context.Context, req *rpc.ProcessDeleteRequ
 	resp := p.RPCResponse()
 
 	go l.unregisterProcess(p)
+
+	if err := p.logger.Close(); err != nil {
+		return nil, err
+	}
 
 	return resp, nil
 }
@@ -296,8 +313,8 @@ func (p *Process) Start() error {
 		cmd.SysProcAttr = &syscall.SysProcAttr{
 			Pdeathsig: syscall.SIGKILL,
 		}
-		cmd.Stdout = logrus.StandardLogger().WithField(util.LogComponentField, p.Name).Writer()
-		cmd.Stderr = logrus.StandardLogger().WithField(util.LogComponentField, p.Name).Writer()
+		cmd.Stdout = p.logger
+		cmd.Stderr = p.logger
 		p.cmd = cmd
 		p.lock.Unlock()
 

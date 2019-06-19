@@ -57,7 +57,7 @@ func start(c *cli.Context) error {
 	}
 
 	shutdownCh := make(chan error)
-	pl, err := process.NewLauncher(portRange, shutdownCh)
+	pl, err := process.NewLauncher(portRange, logsDir, shutdownCh)
 	if err != nil {
 		return err
 	}

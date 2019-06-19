@@ -17,6 +17,31 @@ type LonghornFormatter struct {
 	*logrus.TextFormatter
 
 	LogsDir string
+
+	logFiles []*os.File
+}
+
+type LonghornWriter struct {
+	file *os.File
+	name string
+	path string
+}
+
+func NewLonghornWriter(name string, logsDir string) (*LonghornWriter, error) {
+	logPath := filepath.Join(logsDir, name+".log")
+	logPath, err := filepath.Abs(logPath)
+	if err != nil {
+		return nil, err
+	}
+	file, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0644)
+	if err != nil {
+		return nil, err
+	}
+	return &LonghornWriter{
+		file: file,
+		name: name,
+		path: logPath,
+	}, nil
 }
 
 func SetUpLogger(logsDir string) error {
@@ -66,8 +91,30 @@ func (l LonghornFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 		logMsg.Write(msg)
 	} else {
 		logMsg.WriteString(entry.Message)
-		logMsg.WriteString("\n")
 	}
 
 	return logMsg.Bytes(), nil
+}
+
+func (l LonghornWriter) Close() error {
+	if err := l.file.Close(); err != nil {
+		return err
+	}
+	if err := os.Remove(l.path); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (l LonghornWriter) Write(input []byte) (int, error) {
+	msg := string(input)
+	logrus.WithField(LogComponentField, l.name).Println(msg)
+	outLen, err := l.file.Write(input)
+	if err != nil {
+		return 0, err
+	}
+	if err := l.file.Sync(); err != nil {
+		return 0, err
+	}
+	return outLen, nil
 }
