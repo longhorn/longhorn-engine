@@ -95,7 +95,7 @@ export AWS_ENDPOINTS=http://127.0.0.1:9000
 #pid_controller_no_frontend=$!
 
 # engine launcher
-/usr/local/bin/longhorn-engine-launcher start-launcher &
+/usr/local/bin/longhorn-engine-launcher daemon &
 pid_launcher=$!
 
 # make sure everything is running before continue integration test
