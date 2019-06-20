@@ -1,24 +1,28 @@
 syntax="proto3";
 
-service LonghornEngineService {
+import "google/protobuf/empty.proto";
+
+service LonghornEngineManagerService {
 	rpc EngineCreate(EngineCreateRequest) returns (EngineResponse) {}
-	rpc EngineDelete(EngineRequest) returns (Empty) {}
+	rpc EngineDelete(EngineRequest) returns (EngineResponse) {}
 	rpc EngineGet(EngineRequest) returns (EngineResponse) {}
-	rpc EngineUpgrade(EngineUpgradeRequest) returns (Empty) {}
+	rpc EngineList(google.protobuf.Empty) returns (EngineListResponse) {}
+	rpc EngineUpgrade(EngineUpgradeRequest) returns (EngineResponse) {}
 
-	rpc FrontendStartCallback(EngineRequest) returns (Empty) {}
-	rpc FrontendShutdownCallback(EngineRequest) returns (Empty) {}
+	rpc FrontendStart(FrontendStartRequest) returns (google.protobuf.Empty) {}
+	rpc FrontendShutdown(EngineRequest) returns (google.protobuf.Empty) {}
 
-	rpc FrontendStart(FrontendStartRequest) returns (Empty) {}
-	rpc FrontendShutdown(FrontendShutdownRequest) returns (Empty) {}
+	rpc FrontendStartCallback(EngineRequest) returns (google.protobuf.Empty) {}
+	rpc FrontendShutdownCallback(EngineRequest) returns (google.protobuf.Empty) {}
+
 }
 
 message EngineSpec {
 	string name = 1;
-	string volumeName = 2;
+	string volume_name = 2;
 	string binary = 3;
 	string listen = 4;
-	string listen_addr = 5;
+	string listen_ip = 5;
 	int64 size = 6;
 	string frontend = 7;
 	repeated string backends = 8;
@@ -26,7 +30,8 @@ message EngineSpec {
 }
 
 message EngineStatus {
-	string endpoint = 1;
+	ProcessStatus process_status = 1;
+	string endpoint = 2;
 }
 
 message EngineResponse {
@@ -46,16 +51,13 @@ message EngineUpgradeRequest {
 	EngineSpec spec = 1;
 }
 
+message EngineListResponse {
+	map<string, EngineResponse> engines = 1;
+}
+
 message FrontendStartRequest {
 	string name = 1;
 	string frontend = 2;
-}
-
-message FrontendShutdownRequest {
-	string name = 1;
-}
-
-message Empty {
 }
 
 service LonghornProcessLauncherService {
