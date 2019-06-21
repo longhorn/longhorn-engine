@@ -13,7 +13,7 @@ then
         echo "Usage: launch-simple-file <volume_name> <size> <frontend> "
         echo "<volume_name>: Required. User defined volume name"
         echo "<size>: Optional. User defined volume size"
-        echo "<frontend>: Optional. By default 'tgt'. "
+        echo "<frontend>: Optional. By default 'tgt-blockdev'. "
 	exit -1
 fi
 
@@ -26,17 +26,31 @@ fi
 if [ -z $frontend ]
 then
         echo Use default frontend TGT block device
-        frontend="tgt"
+        frontend="tgt-blockdev"
 fi
-
-launcher="longhorn controller"
-extra_opts=""
-
-[[ $frontend == "tgt-"* ]] && launcher="longhorn-engine-launcher start" && extra_opts="--size $size"
 
 img=/volume/volume.img
 
 truncate -s $size $img
 
-sleep 1
-exec $launcher --listen 0.0.0.0:9501 --frontend $frontend --enable-backend file --replica file://$img $extra_opts $volume
+
+function start() {
+    set +e
+    while true;
+    do
+        /usr/local/bin/grpc_health_probe -addr localhost:8500
+        if [[ $? -eq 0 ]];
+        then
+            echo longhorn instance manager is ready
+            break;
+        fi
+        sleep 1
+    done
+    set -e
+
+    longhorn-instance-manager engine create --name "$volume-e" --volume-name $volume --binary /usr/local/bin/longhorn --size $size --listen-ip 0.0.0.0 --frontend $frontend --enable-backend file --replica file://$img
+}
+
+start &
+
+exec longhorn-instance-manager daemon

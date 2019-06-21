@@ -5,7 +5,7 @@ const (
 	CLIAPIVersion    = 1
 	CLIAPIMinVersion = 1
 
-	// ControllerAPIVersion used to communicate with engine-launcher
+	// ControllerAPIVersion used to communicate with instance-manager
 	ControllerAPIVersion    = 1
 	ControllerAPIMinVersion = 1
 

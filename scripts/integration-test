@@ -74,8 +74,8 @@ export AWS_ENDPOINTS=http://127.0.0.1:9000
 #./bin/longhorn replica --listen localhost:9612 --backing-file $temp4 $temp6 &
 #pid_backing_replica2=$!
 #
-## for live upgrade test
-#cp ./bin/longhorn /opt/
+# for live upgrade test
+cp ./bin/longhorn /opt/
 #
 #./bin/longhorn replica --listen localhost:9522 $temp &
 #pid_upgrade_replica1=$!
@@ -94,12 +94,12 @@ export AWS_ENDPOINTS=http://127.0.0.1:9000
 #	--enable-backend file --size 4Mb test-volume_2.0 &
 #pid_controller_no_frontend=$!
 
-# engine launcher
-/usr/local/bin/longhorn-engine-launcher start-launcher &
-pid_launcher=$!
+# instance manager
+/usr/local/bin/longhorn-instance-manager --debug daemon &
+pid_im=$!
 
 # make sure everything is running before continue integration test
-ps $pid_launcher
+ps $pid_im
 #ps $pid_controller
 #ps $pid_controller_no_frontend
 #ps $pid_replica1

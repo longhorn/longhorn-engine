@@ -17,7 +17,7 @@ fi
 
 cp /usr/src/tgt/pkg/tgt_*.deb ./bin/
 
-cp /usr/local/bin/longhorn-engine-launcher ./bin/
+cp /usr/local/bin/longhorn-instance-manager ./bin/
 
 docker build -t ${IMAGE} -f package/Dockerfile .
 
