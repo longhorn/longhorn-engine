@@ -1,7 +1,10 @@
 package util
 
 import (
+	"encoding/json"
 	"fmt"
+	"os"
+	"os/exec"
 	"sync"
 
 	"github.com/RoaringBitmap/roaring"
@@ -82,5 +85,33 @@ func (b *Bitmap) ReleaseRange(start, end int32) error {
 		return fmt.Errorf("exceed range: %v-%v (%v-%v)", start, end, bStart, bEnd)
 	}
 	b.data.AddRange(uint64(bStart), uint64(bEnd)+1)
+	return nil
+}
+
+func RemoveFile(file string) error {
+	if _, err := os.Stat(file); os.IsNotExist(err) {
+		// file doesn't exist
+		return nil
+	}
+
+	cmd := exec.Command("rm", file)
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("fail to remove file %v: %v", file, err)
+	}
+
+	return nil
+}
+
+func GetURL(host string, port int) string {
+	return fmt.Sprintf("%s:%d", host, port)
+}
+
+func PrintJSON(obj interface{}) error {
+	output, err := json.MarshalIndent(obj, "", "\t")
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(string(output))
 	return nil
 }

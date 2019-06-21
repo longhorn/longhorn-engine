@@ -22,7 +22,7 @@ const (
 	FrontendTimeout = 60 * time.Second
 )
 
-func StartLauncherCmd() cli.Command {
+func StartCmd() cli.Command {
 	return cli.Command{
 		Name: "daemon",
 		Flags: []cli.Flag{
@@ -36,23 +36,23 @@ func StartLauncherCmd() cli.Command {
 			},
 		},
 		Action: func(c *cli.Context) {
-			if err := startLauncher(c); err != nil {
+			if err := start(c); err != nil {
 				logrus.Fatalf("Error running start command: %v.", err)
 			}
 		},
 	}
 }
 
-func startLauncher(c *cli.Context) error {
+func start(c *cli.Context) error {
 	listen := c.String("listen")
 	portRange := c.String("port-range")
 
 	shutdownCh := make(chan error)
-	l, err := process.NewLauncher(portRange, shutdownCh)
+	pl, err := process.NewLauncher(portRange, shutdownCh)
 	if err != nil {
 		return err
 	}
-	s, err := engine.NewService(l, listen)
+	em, err := engine.NewEngineManager(pl, listen)
 	if err != nil {
 		return err
 	}
@@ -63,8 +63,8 @@ func startLauncher(c *cli.Context) error {
 	}
 
 	rpcService := grpc.NewServer()
-	rpc.RegisterLonghornProcessLauncherServiceServer(rpcService, l)
-	rpc.RegisterLonghornEngineServiceServer(rpcService, s)
+	rpc.RegisterLonghornProcessLauncherServiceServer(rpcService, pl)
+	rpc.RegisterLonghornEngineManagerServiceServer(rpcService, em)
 	reflection.Register(rpcService)
 
 	go func() {
@@ -73,7 +73,7 @@ func startLauncher(c *cli.Context) error {
 		}
 		close(shutdownCh)
 	}()
-	logrus.Infof("Launcher listening to %v", listen)
+	logrus.Infof("Engine Manager listening to %v", listen)
 
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
@@ -98,9 +98,9 @@ func main() {
 		},
 	}
 	a.Commands = []cli.Command{
-		StartLauncherCmd(),
-		ProcessCmd(),
+		StartCmd(),
 		EngineCmd(),
+		ProcessCmd(),
 	}
 	if err := a.Run(os.Args); err != nil {
 		logrus.Fatal("Error when executing command: ", err)

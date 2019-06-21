@@ -6,11 +6,9 @@ import (
 	"github.com/docker/go-units"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
-	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 
-	"github.com/longhorn/longhorn-engine-launcher/api"
-	"github.com/longhorn/longhorn-engine-launcher/rpc"
+	"github.com/longhorn/longhorn-engine-launcher/client"
+	"github.com/longhorn/longhorn-engine-launcher/util"
 )
 
 func EngineCmd() cli.Command {
@@ -19,6 +17,11 @@ func EngineCmd() cli.Command {
 		Subcommands: []cli.Command{
 			EngineCreateCmd(),
 			EngineGetCmd(),
+			EngineListCmd(),
+			EngineUpgradeCmd(),
+			EngineDeleteCmd(),
+			FrontendStartCmd(),
+			FrontendShutdownCmd(),
 			FrontendStartCallbackCmd(),
 			FrontendShutdownCallbackCmd(),
 		},
@@ -30,10 +33,10 @@ func EngineCreateCmd() cli.Command {
 		Name: "create",
 		Flags: []cli.Flag{
 			cli.StringFlag{
-				Name: "volume-name",
+				Name: "name",
 			},
 			cli.StringFlag{
-				Name: "name",
+				Name: "volume-name",
 			},
 			cli.StringFlag{
 				Name: "binary",
@@ -45,7 +48,7 @@ func EngineCreateCmd() cli.Command {
 				Name: "listen",
 			},
 			cli.StringFlag{
-				Name: "listen-addr",
+				Name: "listen-ip",
 			},
 			cli.StringFlag{
 				Name:  "frontend",
@@ -74,18 +77,8 @@ func createEngine(c *cli.Context) error {
 	backends := c.StringSlice("enable-backend")
 	replicas := c.StringSlice("replica")
 	frontend := c.String("frontend")
-	if name == "" || volumeName == "" || binary == "" {
-		return fmt.Errorf("missing required parameter")
-	}
-
 	listen := c.String("listen")
-	listenAddr := c.String("listen-addr")
-	if listenAddr != "" {
-		listenAddr = listenAddr + ":"
-	}
-	if listen == "" && listenAddr == "" {
-		return fmt.Errorf("missing required parameter")
-	}
+	listenIP := c.String("listen-ip")
 
 	sizeString := c.String("size")
 	if sizeString == "" {
@@ -97,38 +90,22 @@ func createEngine(c *cli.Context) error {
 	}
 
 	url := c.GlobalString("url")
-	conn, err := grpc.Dial(url, grpc.WithInsecure())
+	cli := client.NewEngineManagerClient(url)
+	engine, err := cli.EngineCreate(int64(size), name, volumeName, binary, listen, listenIP, frontend, backends, replicas)
 	if err != nil {
-		return fmt.Errorf("cannot connect to %v: %v", url, err)
+		return err
 	}
-	defer conn.Close()
-
-	client := rpc.NewLonghornEngineServiceClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), FrontendTimeout)
-	defer cancel()
-
-	obj, err := client.EngineCreate(ctx, &rpc.EngineCreateRequest{
-		Spec: &rpc.EngineSpec{
-			Name:       name,
-			VolumeName: volumeName,
-			Binary:     binary,
-			Listen:     listen,
-			ListenAddr: listenAddr,
-			Size:       size,
-			Frontend:   frontend,
-			Backends:   backends,
-			Replicas:   replicas,
-		},
-	})
-	if err != nil {
-		return fmt.Errorf("failed to start process: %v", err)
-	}
-	return printJSON(RPCToEngine(obj))
+	return util.PrintJSON(engine)
 }
 
 func EngineGetCmd() cli.Command {
 	return cli.Command{
 		Name: "get",
+		Flags: []cli.Flag{
+			cli.StringFlag{
+				Name: "name",
+			},
+		},
 		Action: func(c *cli.Context) {
 			if err := getEngine(c); err != nil {
 				logrus.Fatalf("Error running engine get command: %v.", err)
@@ -138,7 +115,173 @@ func EngineGetCmd() cli.Command {
 }
 
 func getEngine(c *cli.Context) error {
-	return fmt.Errorf("not implemented")
+	name := c.String("name")
+
+	url := c.GlobalString("url")
+	cli := client.NewEngineManagerClient(url)
+	engine, err := cli.EngineGet(name)
+	if err != nil {
+		return err
+	}
+	return util.PrintJSON(engine)
+}
+
+func EngineListCmd() cli.Command {
+	return cli.Command{
+		Name: "ls",
+		Action: func(c *cli.Context) {
+			if err := listEngine(c); err != nil {
+				logrus.Fatalf("Error running engine list command: %v.", err)
+			}
+		},
+	}
+}
+
+func listEngine(c *cli.Context) error {
+	url := c.GlobalString("url")
+	cli := client.NewEngineManagerClient(url)
+	engines, err := cli.EngineList()
+	if err != nil {
+		return err
+	}
+	return util.PrintJSON(engines)
+}
+
+func EngineUpgradeCmd() cli.Command {
+	return cli.Command{
+		Name: "upgrade",
+		Flags: []cli.Flag{
+			cli.StringFlag{
+				Name: "name",
+			},
+			cli.StringFlag{
+				Name: "binary",
+			},
+			cli.StringFlag{
+				Name: "size",
+			},
+			cli.StringSliceFlag{
+				Name: "replica",
+			},
+		},
+		Action: func(c *cli.Context) {
+			if err := upgradeEngine(c); err != nil {
+				logrus.Fatalf("Error running engine upgrade command: %v.", err)
+			}
+		},
+	}
+}
+
+func upgradeEngine(c *cli.Context) error {
+	name := c.String("name")
+	binary := c.String("binary")
+	replicas := c.StringSlice("replica")
+
+	sizeString := c.String("size")
+	if sizeString == "" {
+		return fmt.Errorf("Invalid empty size")
+	}
+	size, err := units.RAMInBytes(sizeString)
+	if err != nil {
+		return err
+	}
+
+	url := c.GlobalString("url")
+	cli := client.NewEngineManagerClient(url)
+	engine, err := cli.EngineUpgrade(size, name, binary, replicas)
+	if err != nil {
+		return err
+	}
+
+	return util.PrintJSON(engine)
+}
+
+func EngineDeleteCmd() cli.Command {
+	return cli.Command{
+		Name: "delete",
+		Flags: []cli.Flag{
+			cli.StringFlag{
+				Name: "name",
+			},
+		},
+		Action: func(c *cli.Context) {
+			if err := deleteEngine(c); err != nil {
+				logrus.Fatalf("Error running engine delete command: %v.", err)
+			}
+		},
+	}
+}
+
+func deleteEngine(c *cli.Context) error {
+	name := c.String("name")
+
+	url := c.GlobalString("url")
+	cli := client.NewEngineManagerClient(url)
+	engine, err := cli.EngineDelete(name)
+	if err != nil {
+		return err
+	}
+	return util.PrintJSON(engine)
+}
+
+func FrontendStartCmd() cli.Command {
+	name := "frontend-start"
+	return cli.Command{
+		Name: name,
+		Flags: []cli.Flag{
+			cli.StringFlag{
+				Name: "name",
+			},
+			cli.StringFlag{
+				Name: "frontend",
+			},
+		},
+		Action: func(c *cli.Context) {
+			if err := startFrontend(c); err != nil {
+				logrus.Fatalf("Error running %v command: %v.", name, err)
+			}
+		},
+	}
+}
+
+func startFrontend(c *cli.Context) error {
+	name := c.String("name")
+	frontend := c.String("frontend")
+
+	url := c.GlobalString("url")
+	cli := client.NewEngineManagerClient(url)
+	if err := cli.FrontendStart(name, frontend); err != nil {
+		return err
+	}
+	return nil
+}
+
+func FrontendShutdownCmd() cli.Command {
+	name := "frontend-shutdown"
+	return cli.Command{
+		Name: name,
+		Flags: []cli.Flag{
+			cli.StringFlag{
+				Name: "name",
+			},
+		},
+		Action: func(c *cli.Context) {
+			if err := shutdownFrontend(c); err != nil {
+				logrus.Fatalf("Error running %v command: %v.", name, err)
+			}
+		},
+	}
+}
+
+func shutdownFrontend(c *cli.Context) error {
+	name := c.String("name")
+
+	url := c.GlobalString("url")
+	cli := client.NewEngineManagerClient(url)
+	if err := cli.FrontendShutdown(name); err != nil {
+		return err
+	}
+	return nil
 }
 
 func FrontendStartCallbackCmd() cli.Command {
@@ -147,7 +290,7 @@ func FrontendStartCallbackCmd() cli.Command {
 		Name: name,
 		Flags: []cli.Flag{
 			cli.StringFlag{
-				Name: "id",
+				Name: "name",
 			},
 		},
 		Action: func(c *cli.Context) {
@@ -159,26 +302,12 @@ func FrontendStartCallbackCmd() cli.Command {
 }
 
 func startFrontendCallback(c *cli.Context) error {
-	id := c.String("id")
-	if id == "" {
-		return fmt.Errorf("missing parameter id")
-	}
+	name := c.String("name")
 
 	url := c.GlobalString("url")
-	conn, err := grpc.Dial(url, grpc.WithInsecure())
-	if err != nil {
-		return fmt.Errorf("cannot connect to %v: %v", url, err)
-	}
-	defer conn.Close()
-
-	client := rpc.NewLonghornEngineServiceClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), FrontendTimeout)
-	defer cancel()
-
-	if _, err := client.FrontendStartCallback(ctx, &rpc.EngineRequest{
-		Name: id,
-	}); err != nil {
-		return fmt.Errorf("failed to start frontend: %v", err)
+	cli := client.NewEngineManagerClient(url)
+	if err := cli.FrontendStartCallback(name); err != nil {
+		return err
 	}
 	return nil
 }
@@ -189,7 +318,7 @@ func FrontendShutdownCallbackCmd() cli.Command {
 		Name: name,
 		Flags: []cli.Flag{
 			cli.StringFlag{
-				Name: "id",
+				Name: "name",
 			},
 		},
 		Action: func(c *cli.Context) {
@@ -201,42 +330,12 @@ func FrontendShutdownCallbackCmd() cli.Command {
 }
 
 func shutdownFrontendCallback(c *cli.Context) error {
-	id := c.String("id")
-	if id == "" {
-		return fmt.Errorf("missing parameter id")
-	}
+	name := c.String("name")
 
 	url := c.GlobalString("url")
-	conn, err := grpc.Dial(url, grpc.WithInsecure())
-	if err != nil {
-		return fmt.Errorf("cannot connect to %v: %v", url, err)
-	}
-	defer conn.Close()
-
-	client := rpc.NewLonghornEngineServiceClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), FrontendTimeout)
-	defer cancel()
-
-	if _, err := client.FrontendShutdownCallback(ctx, &rpc.EngineRequest{
-		Name: id,
-	}); err != nil {
-		return fmt.Errorf("failed to start frontend: %v", err)
+	cli := client.NewEngineManagerClient(url)
+	if err := cli.FrontendShutdownCallback(name); err != nil {
+		return err
 	}
 	return nil
-}
-
-func RPCToEngine(obj *rpc.EngineResponse) *api.Engine {
-	return &api.Engine{
-		Name:       obj.Spec.Name,
-		VolumeName: obj.Spec.VolumeName,
-		Binary:     obj.Spec.Binary,
-		ListenAddr: obj.Spec.ListenAddr,
-		Listen:     obj.Spec.Listen,
-		Size:       obj.Spec.Size,
-		Frontend:   obj.Spec.Frontend,
-		Backends:   obj.Spec.Backends,
-		Replicas:   obj.Spec.Replicas,
-
-		Endpoint: obj.Status.Endpoint,
-	}
 }

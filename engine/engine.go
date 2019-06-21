@@ -1,74 +1,84 @@
 package engine
 
 import (
-	"fmt"
-	"sync"
+	"strings"
+	"time"
+
+	"github.com/pkg/errors"
+	uuid "github.com/satori/go.uuid"
+	"github.com/sirupsen/logrus"
+
+	"github.com/longhorn/longhorn-engine/controller/client"
 
 	"github.com/longhorn/longhorn-engine-launcher/rpc"
+	"github.com/longhorn/longhorn-engine-launcher/util"
 )
 
 type Engine struct {
-	lock *sync.RWMutex
-
-	Name       string
-	VolumeName string
-	Binary     string
-	ListenAddr string
-	Listen     string
+	EngineName string
 	Size       int64
-	Frontend   string
-	Backends   []string
+	Binary     string
+	Listen     string
 	Replicas   []string
-
-	backupListen string
-	backupBinary string
-
-	Endpoint string
 }
 
-func NewEngine(req *rpc.EngineCreateRequest) *Engine {
-	e := &Engine{
-		Name:       req.Spec.Name,
-		VolumeName: req.Spec.VolumeName,
-		Binary:     req.Spec.Binary,
-		Size:       req.Spec.Size,
-		Listen:     req.Spec.Listen,
-		ListenAddr: req.Spec.ListenAddr,
-		Frontend:   req.Spec.Frontend,
-		Backends:   req.Spec.Backends,
-		Replicas:   req.Spec.Replicas,
+func GenerateEngineName(name string) string {
+	return name + "-" + uuid.NewV4().String()[:8]
+}
 
-		lock: &sync.RWMutex{},
+func NewEngine(spec *rpc.EngineSpec) *Engine {
+	e := &Engine{
+		EngineName: GenerateEngineName(spec.Name),
+		Size:       spec.Size,
+		Binary:     spec.Binary,
+		Listen:     spec.Listen,
+		Replicas:   spec.Replicas,
 	}
 	return e
 }
 
-func (e *Engine) RPCResponse() *rpc.EngineResponse {
-	e.lock.RLock()
-	defer e.lock.RUnlock()
+func (e *Engine) startFrontend(frontend string) error {
+	controllerCli := client.NewControllerClient(e.Listen)
 
-	return &rpc.EngineResponse{
-		Spec: &rpc.EngineSpec{
-			Name:       e.Name,
-			VolumeName: e.VolumeName,
-			Binary:     e.Binary,
-			Listen:     e.Listen,
-			ListenAddr: e.ListenAddr,
-			Size:       e.Size,
-			Frontend:   e.Frontend,
-			Backends:   e.Backends,
-			Replicas:   e.Replicas,
-		},
-		Status: &rpc.EngineStatus{
-			Endpoint: e.Endpoint,
-		},
+	if err := controllerCli.VolumeFrontendStart(frontend); err != nil {
+		return err
 	}
+
+	return nil
 }
 
-func (e *Engine) startFrontendCallback() error {
-	return fmt.Errorf("not implemented")
+func (e *Engine) shutdownFrontend() error {
+	controllerCli := client.NewControllerClient(e.Listen)
+
+	if err := controllerCli.VolumeFrontendShutdown(); err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func (e *Engine) shutdownFrontendCallback() error {
-	return fmt.Errorf("not implemented")
+func (e *Engine) updatePort(newPort int) (string, error) {
+	controllerCli := client.NewControllerClient(e.Listen)
+	if err := controllerCli.PortUpdate(newPort); err != nil {
+		return "", err
+	}
+
+	addrParts := strings.Split(e.Listen, ":")
+	newListen := util.GetURL(addrParts[0], newPort)
+
+	controllerCli = client.NewControllerClient(newListen)
+	for i := 0; i < SwitchWaitCount; i++ {
+		if err := controllerCli.Check(); err == nil {
+			break
+		}
+		logrus.Infof("launcher: wait for engine controller to switch to %v", newListen)
+		time.Sleep(SwitchWaitInterval)
+	}
+	if err := controllerCli.Check(); err != nil {
+		return "", errors.Wrapf(err, "test connection to %v failed", newListen)
+	}
+
+	e.Listen = newListen
+
+	return newListen, nil
 }

@@ -7,6 +7,10 @@ type Process struct {
 	PortCount int32    `json:"portCount"`
 	PortArgs  []string `json:"portArgs"`
 
+	ProcessStatus ProcessStatus `json:"processStatus"`
+}
+
+type ProcessStatus struct {
 	State     string `json:"state"`
 	ErrorMsg  string `json:"errorMsg"`
 	PortStart int32  `json:"portStart"`
@@ -14,15 +18,16 @@ type Process struct {
 }
 
 type Engine struct {
-	Name       string
-	VolumeName string
-	Binary     string
-	ListenAddr string
-	Listen     string
-	Size       int64
-	Frontend   string
-	Backends   []string
-	Replicas   []string
+	Name       string   `json:"name"`
+	VolumeName string   `json:"volumeName"`
+	Binary     string   `json:"binary"`
+	ListenIP   string   `json:"listenIP"`
+	Listen     string   `json:"listen"`
+	Size       int64    `json:"size"`
+	Frontend   string   `json:"frontend"`
+	Backends   []string `json:"backends"`
+	Replicas   []string `json:"replicas"`
 
-	Endpoint string
+	ProcessStatus ProcessStatus `json:"processStatus"`
+	Endpoint      string        `json:"endpoint"`
 }
