@@ -83,13 +83,16 @@ RUN mkdir integration/
 COPY integration/setup.py integration/tox.ini integration/requirements.txt integration/flake8-requirements.txt integration/
 RUN cd integration && tox --notest
 
-# Build longhorn-engine-launcher
+# Build longhorn-instance-manager
 RUN cd /go/src/github.com/longhorn && \
-    git clone https://github.com/yasker/longhorn-engine-launcher.git && \
-    cd longhorn-engine-launcher && \
-    git checkout c677417dced2b1eff83b4c058b583e2209b32076 && \
-    go build && \
-    cp longhorn-engine-launcher /usr/local/bin
+    git clone https://github.com/longhorn/longhorn-instance-manager.git && \
+    cd longhorn-instance-manager && \
+    git checkout 1d82885f48603f428e1a4d747068f1f0a9186d09 && \
+    go build -o ./longhorn-instance-manager && \
+    cp longhorn-instance-manager /usr/local/bin
+
+RUN wget -O /usr/local/bin/grpc_health_probe https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/v0.3.0/grpc_health_probe-linux-amd64 && \
+    chmod +x /usr/local/bin/grpc_health_probe
 
 VOLUME /tmp
 ENV TMPDIR /tmp
