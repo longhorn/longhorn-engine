@@ -2,4 +2,4 @@
 
 mount --rbind /host/dev /dev
 
-exec longhorn-engine-launcher "$@"
+exec longhorn-instance-manager "$@"
