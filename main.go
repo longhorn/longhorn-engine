@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -16,10 +15,6 @@ import (
 	"github.com/longhorn/longhorn-engine-launcher/engine"
 	"github.com/longhorn/longhorn-engine-launcher/process"
 	"github.com/longhorn/longhorn-engine-launcher/rpc"
-)
-
-const (
-	FrontendTimeout = 60 * time.Second
 )
 
 func StartCmd() cli.Command {

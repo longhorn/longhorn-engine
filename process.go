@@ -1,16 +1,13 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
-	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 
-	"github.com/longhorn/longhorn-engine-launcher/api"
-	"github.com/longhorn/longhorn-engine-launcher/rpc"
+	"github.com/longhorn/longhorn-engine-launcher/client"
+	"github.com/longhorn/longhorn-engine-launcher/util"
 )
 
 func ProcessCmd() cli.Command {
@@ -44,42 +41,23 @@ func ProcessCreateCmd() cli.Command {
 			},
 		},
 		Action: func(c *cli.Context) {
-			if err := startProcess(c); err != nil {
+			if err := createProcess(c); err != nil {
 				logrus.Fatalf("Error running process create command: %v.", err)
 			}
 		},
 	}
 }
 
-func startProcess(c *cli.Context) error {
-	if c.String("name") == "" || c.String("binary") == "" {
-		return fmt.Errorf("missing required parameter")
-	}
-
+func createProcess(c *cli.Context) error {
 	url := c.GlobalString("url")
-	conn, err := grpc.Dial(url, grpc.WithInsecure())
-	if err != nil {
-		return fmt.Errorf("cannot connect to %v: %v", url, err)
-	}
-	defer conn.Close()
 
-	client := rpc.NewLonghornProcessLauncherServiceClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), FrontendTimeout)
-	defer cancel()
-
-	obj, err := client.ProcessCreate(ctx, &rpc.ProcessCreateRequest{
-		Spec: &rpc.ProcessSpec{
-			Name:      c.String("name"),
-			Binary:    c.String("binary"),
-			Args:      c.Args(),
-			PortCount: int32(c.Int("port-count")),
-			PortArgs:  c.StringSlice("port-args"),
-		},
-	})
+	cli := client.NewProcessLauncherClient(url)
+	process, err := cli.ProcessCreate(c.String("name"), c.String("binary"),
+		c.Int("port-count"), c.Args(), c.StringSlice("port-args"))
 	if err != nil {
-		return fmt.Errorf("failed to start process: %v", err)
+		return fmt.Errorf("failed to create process: %v", err)
 	}
-	return printJSON(RPCToProcess(obj))
+	return util.PrintJSON(process)
 }
 
 func ProcessDeleteCmd() cli.Command {
@@ -91,36 +69,22 @@ func ProcessDeleteCmd() cli.Command {
 			},
 		},
 		Action: func(c *cli.Context) {
-			if err := stopProcess(c); err != nil {
+			if err := deleteProcess(c); err != nil {
 				logrus.Fatalf("Error running process delete command: %v.", err)
 			}
 		},
 	}
 }
 
-func stopProcess(c *cli.Context) error {
-	if c.String("name") == "" {
-		return fmt.Errorf("missing required parameter")
-	}
-
+func deleteProcess(c *cli.Context) error {
 	url := c.GlobalString("url")
-	conn, err := grpc.Dial(url, grpc.WithInsecure())
-	if err != nil {
-		return fmt.Errorf("cannot connect to %v: %v", url, err)
-	}
-	defer conn.Close()
 
-	client := rpc.NewLonghornProcessLauncherServiceClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), FrontendTimeout)
-	defer cancel()
-
-	obj, err := client.ProcessDelete(ctx, &rpc.ProcessDeleteRequest{
-		Name: c.String("name"),
-	})
+	cli := client.NewProcessLauncherClient(url)
+	process, err := cli.ProcessDelete(c.String("name"))
 	if err != nil {
-		return fmt.Errorf("failed to stop process: %v", err)
+		return fmt.Errorf("failed to delete process: %v", err)
 	}
-	return printJSON(RPCToProcess(obj))
+	return util.PrintJSON(process)
 }
 
 func ProcessGetCmd() cli.Command {
@@ -140,28 +104,14 @@ func ProcessGetCmd() cli.Command {
 }
 
 func getProcess(c *cli.Context) error {
-	if c.String("name") == "" {
-		return fmt.Errorf("missing required parameter")
-	}
-
 	url := c.GlobalString("url")
-	conn, err := grpc.Dial(url, grpc.WithInsecure())
-	if err != nil {
-		return fmt.Errorf("cannot connect to %v: %v", url, err)
-	}
-	defer conn.Close()
 
-	client := rpc.NewLonghornProcessLauncherServiceClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), FrontendTimeout)
-	defer cancel()
-
-	obj, err := client.ProcessGet(ctx, &rpc.ProcessGetRequest{
-		Name: c.String("name"),
-	})
+	cli := client.NewProcessLauncherClient(url)
+	process, err := cli.ProcessGet(c.String("name"))
 	if err != nil {
-		return fmt.Errorf("failed to get process: %v", err)
+		return fmt.Errorf("failed to delete process: %v", err)
 	}
-	return printJSON(RPCToProcess(obj))
+	return util.PrintJSON(process)
 }
 
 func ProcessListCmd() cli.Command {
@@ -178,51 +128,11 @@ func ProcessListCmd() cli.Command {
 
 func listProcess(c *cli.Context) error {
 	url := c.GlobalString("url")
-	conn, err := grpc.Dial(url, grpc.WithInsecure())
+
+	cli := client.NewProcessLauncherClient(url)
+	processes, err := cli.ProcessList()
 	if err != nil {
-		return fmt.Errorf("cannot connect to %v: %v", url, err)
+		return fmt.Errorf("failed to list processes: %v", err)
 	}
-	defer conn.Close()
-
-	client := rpc.NewLonghornProcessLauncherServiceClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), FrontendTimeout)
-	defer cancel()
-
-	obj, err := client.ProcessList(ctx, &rpc.ProcessListRequest{})
-	if err != nil {
-		return fmt.Errorf("failed to list process: %v", err)
-	}
-	return printJSON(RPCToProcessList(obj))
-}
-
-func printJSON(obj interface{}) error {
-	output, err := json.MarshalIndent(obj, "", "\t")
-	if err != nil {
-		return err
-	}
-
-	fmt.Println(string(output))
-	return nil
-}
-
-func RPCToProcess(obj *rpc.ProcessResponse) *api.Process {
-	return &api.Process{
-		Name:      obj.Spec.Name,
-		Binary:    obj.Spec.Binary,
-		Args:      obj.Spec.Args,
-		PortCount: obj.Spec.PortCount,
-		PortArgs:  obj.Spec.PortArgs,
-		State:     obj.Status.State,
-		ErrorMsg:  obj.Status.ErrorMsg,
-		PortStart: obj.Status.PortStart,
-		PortEnd:   obj.Status.PortEnd,
-	}
-}
-
-func RPCToProcessList(obj *rpc.ProcessListResponse) map[string]*api.Process {
-	ret := map[string]*api.Process{}
-	for name, p := range obj.Processes {
-		ret[name] = RPCToProcess(p)
-	}
-	return ret
+	return util.PrintJSON(processes)
 }
