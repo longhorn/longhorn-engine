@@ -7,21 +7,20 @@ cd $(dirname $0)/..
 
 PROJECT=`basename "$PWD"`
 
-cd ./package
-
 TAG=${TAG:-${VERSION}}
-REPO=${REPO:-rancher}
+REPO=${REPO:-longhornio}
 IMAGE=${REPO}/${PROJECT}:${TAG}
 
-if [ ! -x ../bin/longhorn ]; then
-    ../scripts/build
+if [ ! -x ./bin/longhorn ]; then
+    ./scripts/build
 fi
 
-cp ../bin/longhorn* .
-cp /usr/src/tgt/pkg/tgt_*.deb .
-cp /usr/local/bin/longhorn-engine-launcher .
-docker build -t ${IMAGE} .
+cp /usr/src/tgt/pkg/tgt_*.deb ./bin/
+
+cp /usr/local/bin/longhorn-engine-launcher ./bin/
+
+docker build -t ${IMAGE} -f package/Dockerfile .
 
 echo Built ${IMAGE}
 
-echo ${IMAGE} > ../bin/latest_image
+echo ${IMAGE} > ./bin/latest_image
