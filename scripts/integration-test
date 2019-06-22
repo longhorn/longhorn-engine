@@ -116,16 +116,16 @@ ps $pid_im
 #	$pid_backing_replica1 $pid_backing_replica2 \
 #	$pid_upgrade_replica1 $pid_upgrade_replica2 \
 #	$pid_standby_replica1 $pid_standby_replica2" EXIT
-#
-## start minio server to test s3 backup and set credential keys
-#export MINIO_ACCESS_KEY=test-access-key
-#export MINIO_SECRET_KEY=test-secret-key
-## create default bucket
-#mkdir -p /data/backupbucket
-## run minio server
-#/usr/bin/minio server /data &
-#
-#export BACKUPTARGETS=s3://backupbucket@us-east-1/backupstore,vfs:///data/backupbucket
+
+# start minio server to test s3 backup and set credential keys
+export MINIO_ACCESS_KEY=test-access-key
+export MINIO_SECRET_KEY=test-secret-key
+# create default bucket
+mkdir -p /data/backupbucket
+# run minio server
+/usr/bin/minio server /data &
+
+export BACKUPTARGETS=s3://backupbucket@us-east-1/backupstore,vfs:///data/backupbucket
 
 cd integration
 find -depth -name __pycache__ -o -name "*.pyc" -exec rm -rf {} \;

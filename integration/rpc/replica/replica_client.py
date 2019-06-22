@@ -7,6 +7,7 @@ from google.protobuf import empty_pb2
 
 class ReplicaClient(object):
     def __init__(self, url):
+        self.address = url
         self.channel = grpc.insecure_channel(url)
         self.stub = replica_pb2_grpc.ReplicaServiceStub(self.channel)
 
