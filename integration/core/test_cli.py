@@ -1,98 +1,32 @@
 import time
 import random
-import sys
 from os import path
 import os
 import subprocess
 import json
 import datetime
-import grpc
-
 import pytest
 
 from urlparse import urlparse
 
-# include directory intergration/rpc for module import
-sys.path.append(
-    os.path.abspath(
-        os.path.join(os.path.split(__file__)[0], "../rpc")
-    )
+from common import (  # NOQA
+    engine_manager_client, grpc_controller_client,  # NOQA
+    grpc_replica_client, grpc_replica_client2,  # NOQA
+    get_backend_replica_url,
+    cleanup_replica, cleanup_controller,
+
+    VOLUME_NAME, SIZE_STR, ENGINE_NAME,
+    RETRY_COUNTS2, FRONTEND_TGT_BLOCKDEV,
 )
-from replica.replica_client import ReplicaClient  # NOQA
-from controller.controller_client import ControllerClient  # NOQA
 
-
-GRPC_CONTROLLER = "localhost:9501"
-
-REPLICA = 'tcp://localhost:9502'
-REPLICA2 = 'tcp://localhost:9512'
-
-GRPC_REPLICA = 'localhost:9502'
-GRPC_REPLICA2 = 'localhost:9512'
 
 BACKUP_DEST = '/data/backupbucket'
-
-VOLUME_NAME = 'test-volume_1.0'
-VOLUME_SIZE = str(4 * 1024 * 1024)  # 4M
 
 VOLUME_HEAD = "volume-head"
 
 VOLUME_CONFIG_FILE = "volume.cfg"
 VOLUME_TMP_CONFIG_FILE = "volume.cfg.tmp"
 MESSAGE_TYPE_ERROR = "error"
-
-FRONTEND_TGT_BLOCKDEV = "tgt-blockdev"
-LAUNCHER = "localhost:9510"
-
-RETRY_COUNTS = 100
-
-
-@pytest.fixture
-def grpc_controller_client(request):
-    c = ControllerClient(GRPC_CONTROLLER)
-    request.addfinalizer(lambda: cleanup_controller(c))
-    return cleanup_controller(c)
-
-
-def cleanup_controller(grpc_client):
-    try:
-        v = grpc_client.volume_get()
-    except grpc.RpcError as grpc_err:
-        if "Socket closed" not in grpc_err.details():
-            raise grpc_err
-        return grpc_client
-
-    if v.replicaCount != 0:
-        grpc_client.volume_shutdown()
-    for r in grpc_client.replica_list():
-        grpc_client.replica_delete(r.address)
-    return grpc_client
-
-
-@pytest.fixture
-def grpc_replica_client(request):
-    c = ReplicaClient(GRPC_REPLICA)
-    request.addfinalizer(lambda: cleanup_replica(c))
-    return cleanup_replica(c)
-
-
-@pytest.fixture
-def grpc_replica_client2(request):
-    c = ReplicaClient(GRPC_REPLICA2)
-    request.addfinalizer(lambda: cleanup_replica(c))
-    return cleanup_replica(c)
-
-
-def cleanup_replica(grpc_client):
-    r = grpc_client.replica_get()
-    if r.state == 'initial':
-        return grpc_client
-    if r.state == 'closed':
-        grpc_client.replica_open()
-    grpc_client.replica_delete()
-    r = grpc_client.replica_reload()
-    assert r.state == 'initial'
-    return grpc_client
 
 
 @pytest.fixture()
@@ -105,26 +39,6 @@ def backup_targets():
 @pytest.fixture
 def random_str():
     return 'random-{0}-{1}'.format(random_num(), int(time.time()))
-
-
-def launcher_bin():
-    c = '/usr/local/bin/longhorn-engine-launcher'
-    assert path.exists(c)
-    return c
-
-
-def launcher(url):
-    return [launcher_bin(), "--url", url]
-
-
-def start_engine_frontend(frontend, url=LAUNCHER):
-    cmd = launcher(url) + ['engine-frontend-start', frontend]
-    subprocess.check_output(cmd)
-
-
-def shutdown_engine_frontend(url=LAUNCHER):
-    cmd = launcher(url) + ['engine-frontend-shutdown']
-    subprocess.check_output(cmd)
 
 
 def random_num():
@@ -170,6 +84,11 @@ def setup_module():
     assert os.path.exists(BACKUP_DEST)
 
 
+def getNow():
+    time.sleep(1)
+    return datetime.datetime.utcnow().replace(microsecond=0).isoformat()
+
+
 def open_replica(grpc_client):
     r = grpc_client.replica_get()
     assert r.state == 'initial'
@@ -189,24 +108,22 @@ def open_replica(grpc_client):
     return r
 
 
-def test_replica_add_start(bin, grpc_controller_client,
-                           grpc_replica_client):
+def test_replica_add_start(bin, grpc_controller_client,  # NOQA
+                           grpc_replica_client):  # NOQA
     open_replica(grpc_replica_client)
 
-    cmd = [bin, '--debug', 'add-replica', REPLICA]
+    cmd = [bin, '--debug', '--url', grpc_controller_client.address,
+           'add-replica',
+           get_backend_replica_url(grpc_replica_client.address)]
     subprocess.check_call(cmd)
 
     volume = grpc_controller_client.volume_get()
     assert volume.replicaCount == 1
 
 
-def getNow():
-    time.sleep(1)
-    return datetime.datetime.utcnow().replace(microsecond=0).isoformat()
-
-
-def test_replica_add_rebuild(bin, grpc_controller_client,
-                             grpc_replica_client, grpc_replica_client2):
+def test_replica_add_rebuild(bin, grpc_controller_client,  # NOQA
+                             grpc_replica_client,  # NOQA
+                             grpc_replica_client2):  # NOQA
     open_replica(grpc_replica_client)
     open_replica(grpc_replica_client2)
 
@@ -221,24 +138,28 @@ def test_replica_add_rebuild(bin, grpc_controller_client,
     r = grpc_replica_client.replica_snapshot(
         name=snap1, user_created=True, created=createtime1)
 
-    l = grpc_replica_client2.replica_get()
+    r2 = grpc_replica_client2.replica_get()
 
     assert r.chain == ['volume-head-002.img',
                        'volume-snap-001.img',
                        'volume-snap-000.img']
 
-    assert l.chain != ['volume-head-002.img',
-                       'volume-snap-001.img',
-                       'volume-snap-000.img']
+    assert r2.chain != ['volume-head-002.img',
+                        'volume-snap-001.img',
+                        'volume-snap-000.img']
 
     grpc_replica_client.replica_close()
-    cmd = [bin, '--debug', 'add-replica', REPLICA]
+    cmd = [bin, '--debug', '--url', grpc_controller_client.address,
+           'add-replica',
+           get_backend_replica_url(grpc_replica_client.address)]
     subprocess.check_call(cmd)
 
     volume = grpc_controller_client.volume_get()
     assert volume.replicaCount == 1
 
-    cmd = [bin, '--debug', 'add-replica', REPLICA2]
+    cmd = [bin, '--debug', '--url', grpc_controller_client.address,
+           'add-replica',
+           get_backend_replica_url(grpc_replica_client2.address)]
     subprocess.check_call(cmd)
 
     volume = grpc_controller_client.volume_get()
@@ -250,7 +171,8 @@ def test_replica_add_rebuild(bin, grpc_controller_client,
     for r in replicas:
         assert r.mode == 'RW'
 
-    cmd = [bin, '--debug', 'snapshot', 'info']
+    cmd = [bin, '--debug', '--url', grpc_controller_client.address,
+           'snapshot', 'info']
     output = subprocess.check_output(cmd)
     info = json.loads(output)
 
@@ -300,9 +222,9 @@ def test_replica_add_rebuild(bin, grpc_controller_client,
     assert snap0_info["labels"]["key"] == "value"
 
 
-def test_replica_add_after_rebuild_failed(bin, grpc_controller_client,
-                                          grpc_replica_client,
-                                          grpc_replica_client2):
+def test_replica_add_after_rebuild_failed(bin, grpc_controller_client,  # NOQA
+                                          grpc_replica_client,  # NOQA
+                                          grpc_replica_client2):  # NOQA
     open_replica(grpc_replica_client)
     open_replica(grpc_replica_client2)
 
@@ -311,7 +233,9 @@ def test_replica_add_after_rebuild_failed(bin, grpc_controller_client,
         name='000', created=datetime.datetime.utcnow().isoformat())
     grpc_replica_client.replica_close()
 
-    cmd = [bin, '--debug', 'add-replica', REPLICA]
+    cmd = [bin, '--debug', '--url', grpc_controller_client.address,
+           'add-replica',
+           get_backend_replica_url(grpc_replica_client.address)]
     subprocess.check_call(cmd)
 
     volume = grpc_controller_client.volume_get()
@@ -321,7 +245,9 @@ def test_replica_add_after_rebuild_failed(bin, grpc_controller_client,
     grpc_replica_client2.rebuilding_set(rebuilding=True)
     grpc_replica_client2.replica_close()
 
-    cmd = [bin, '--debug', 'add-replica', REPLICA2]
+    cmd = [bin, '--debug', '--url', grpc_controller_client.address,
+           'add-replica',
+           get_backend_replica_url(grpc_replica_client2.address)]
     subprocess.check_call(cmd)
 
     volume = grpc_controller_client.volume_get()
@@ -334,15 +260,17 @@ def test_replica_add_after_rebuild_failed(bin, grpc_controller_client,
         assert r.mode == 'RW'
 
 
-def test_replica_failure_detection(grpc_controller_client,
-                                   grpc_replica_client,
-                                   grpc_replica_client2):
+def test_replica_failure_detection(grpc_controller_client,  # NOQA
+                                   grpc_replica_client,  # NOQA
+                                   grpc_replica_client2):  # NOQA
     open_replica(grpc_replica_client)
     open_replica(grpc_replica_client2)
 
+    r1_url = get_backend_replica_url(grpc_replica_client.address)
+    r2_url = get_backend_replica_url(grpc_replica_client2.address)
     v = grpc_controller_client.volume_start(replicas=[
-        REPLICA,
-        REPLICA2,
+        r1_url,
+        r2_url,
     ])
     assert v.replicaCount == 2
 
@@ -356,7 +284,7 @@ def test_replica_failure_detection(grpc_controller_client,
         replicas = grpc_controller_client.replica_list()
         assert len(replicas) == 2
         for r in replicas:
-            if r.address == REPLICA and r.mode == 'ERR':
+            if r.address == r1_url and r.mode == 'ERR':
                 detected = True
                 break
         if detected:
@@ -365,14 +293,18 @@ def test_replica_failure_detection(grpc_controller_client,
     assert detected
 
 
-def test_revert(grpc_controller_client,
-                grpc_replica_client, grpc_replica_client2):
+def test_revert(engine_manager_client,  # NOQA
+                grpc_controller_client,  # NOQA
+                grpc_replica_client,  # NOQA
+                grpc_replica_client2):  # NOQA
     open_replica(grpc_replica_client)
     open_replica(grpc_replica_client2)
 
+    r1_url = get_backend_replica_url(grpc_replica_client.address)
+    r2_url = get_backend_replica_url(grpc_replica_client2.address)
     v = grpc_controller_client.volume_start(replicas=[
-        REPLICA,
-        REPLICA2,
+        r1_url,
+        r2_url,
     ])
     assert v.replicaCount == 2
 
@@ -389,23 +321,26 @@ def test_revert(grpc_controller_client,
                         'volume-snap-foo1.img']
     assert r1.chain == r2.chain
 
-    shutdown_engine_frontend()
+    engine_manager_client.frontend_shutdown(ENGINE_NAME)
     grpc_controller_client.volume_revert(name='foo1')
-    start_engine_frontend(FRONTEND_TGT_BLOCKDEV)
+    engine_manager_client.frontend_start(ENGINE_NAME,
+                                         FRONTEND_TGT_BLOCKDEV)
     r1 = grpc_replica_client.replica_get()
     r2 = grpc_replica_client2.replica_get()
     assert r1.chain == ['volume-head-003.img', 'volume-snap-foo1.img']
     assert r1.chain == r2.chain
 
 
-def test_snapshot(bin, grpc_controller_client,
-                  grpc_replica_client, grpc_replica_client2):
+def test_snapshot(bin, grpc_controller_client,  # NOQA
+                  grpc_replica_client, grpc_replica_client2):  # NOQA
     open_replica(grpc_replica_client)
     open_replica(grpc_replica_client2)
 
+    r1_url = get_backend_replica_url(grpc_replica_client.address)
+    r2_url = get_backend_replica_url(grpc_replica_client2.address)
     v = grpc_controller_client.volume_start(replicas=[
-        REPLICA,
-        REPLICA2,
+        r1_url,
+        r2_url,
     ])
     assert v.replicaCount == 2
 
@@ -415,7 +350,8 @@ def test_snapshot(bin, grpc_controller_client,
     snap2 = grpc_controller_client.volume_snapshot(name='foo2')
     assert snap2 == 'foo2'
 
-    cmd = [bin, '--debug', 'snapshot']
+    cmd = [bin, '--debug', '--url', grpc_controller_client.address,
+           'snapshot']
     output = subprocess.check_output(cmd)
 
     assert output == '''ID
@@ -424,14 +360,16 @@ def test_snapshot(bin, grpc_controller_client,
 '''.format(snap2, snap)
 
 
-def test_snapshot_ls(bin, grpc_controller_client,
-                     grpc_replica_client, grpc_replica_client2):
+def test_snapshot_ls(bin, grpc_controller_client,  # NOQA
+                     grpc_replica_client, grpc_replica_client2):  # NOQA
     open_replica(grpc_replica_client)
     open_replica(grpc_replica_client2)
 
+    r1_url = get_backend_replica_url(grpc_replica_client.address)
+    r2_url = get_backend_replica_url(grpc_replica_client2.address)
     v = grpc_controller_client.volume_start(replicas=[
-        REPLICA,
-        REPLICA2,
+        r1_url,
+        r2_url,
     ])
     assert v.replicaCount == 2
 
@@ -441,7 +379,8 @@ def test_snapshot_ls(bin, grpc_controller_client,
     snap2 = grpc_controller_client.volume_snapshot()
     assert snap2 != ''
 
-    cmd = [bin, '--debug', 'snapshot', 'ls']
+    cmd = [bin, '--debug', '--url', grpc_controller_client.address,
+           'snapshot', 'ls']
     output = subprocess.check_output(cmd)
 
     assert output == '''ID
@@ -450,14 +389,16 @@ def test_snapshot_ls(bin, grpc_controller_client,
 '''.format(snap2, snap)
 
 
-def test_snapshot_info(bin, grpc_controller_client,
-                       grpc_replica_client, grpc_replica_client2):
+def test_snapshot_info(bin, grpc_controller_client,  # NOQA
+                       grpc_replica_client, grpc_replica_client2):  # NOQA
     open_replica(grpc_replica_client)
     open_replica(grpc_replica_client2)
 
+    r1_url = get_backend_replica_url(grpc_replica_client.address)
+    r2_url = get_backend_replica_url(grpc_replica_client2.address)
     v = grpc_controller_client.volume_start(replicas=[
-        REPLICA,
-        REPLICA2,
+        r1_url,
+        r2_url,
     ])
     assert v.replicaCount == 2
 
@@ -468,7 +409,8 @@ def test_snapshot_info(bin, grpc_controller_client,
         labels={"name": "snap", "key": "value"})
     assert snap2 != ''
 
-    cmd = [bin, '--debug', 'snapshot', 'info']
+    cmd = [bin, '--debug', '--url', grpc_controller_client.address,
+           'snapshot', 'info']
     output = subprocess.check_output(cmd)
     info = json.loads(output)
 
@@ -505,28 +447,34 @@ def test_snapshot_info(bin, grpc_controller_client,
     assert len(snap_info["labels"]) == 0
 
 
-def test_snapshot_create(bin, grpc_controller_client,
-                         grpc_replica_client,
-                         grpc_replica_client2):
+def test_snapshot_create(bin, grpc_controller_client,  # NOQA
+                         grpc_replica_client,  # NOQA
+                         grpc_replica_client2):  # NOQA
     open_replica(grpc_replica_client)
     open_replica(grpc_replica_client2)
 
+    r1_url = get_backend_replica_url(grpc_replica_client.address)
+    r2_url = get_backend_replica_url(grpc_replica_client2.address)
     v = grpc_controller_client.volume_start(replicas=[
-        REPLICA,
-        REPLICA2,
+        r1_url,
+        r2_url,
     ])
     assert v.replicaCount == 2
 
-    cmd = [bin, 'snapshot', 'create']
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'snapshot', 'create']
     snap0 = subprocess.check_output(cmd).strip()
     expected = grpc_replica_client.replica_get().chain[1]
     assert expected == 'volume-snap-{}.img'.format(snap0)
 
-    cmd = [bin, 'snapshot', 'create',
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'snapshot', 'create',
            '--label', 'name=snap1', '--label', 'key=value']
     snap1 = subprocess.check_output(cmd).strip()
 
-    cmd = [bin, '--debug', 'snapshot', 'ls']
+    cmd = [bin, '--debug',
+           '--url', grpc_controller_client.address,
+           'snapshot', 'ls']
     ls_output = subprocess.check_output(cmd)
 
     assert ls_output == '''ID
@@ -534,7 +482,8 @@ def test_snapshot_create(bin, grpc_controller_client,
 {}
 '''.format(snap1, snap0)
 
-    cmd = [bin, 'snapshot', 'info']
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'snapshot', 'info']
     output = subprocess.check_output(cmd)
     info = json.loads(output)
 
@@ -551,18 +500,21 @@ def test_snapshot_create(bin, grpc_controller_client,
     assert len(info[VOLUME_HEAD]["labels"]) == 0
 
 
-def test_snapshot_rm(bin, grpc_controller_client,
-                     grpc_replica_client, grpc_replica_client2):
+def test_snapshot_rm(bin, grpc_controller_client,  # NOQA
+                     grpc_replica_client, grpc_replica_client2):  # NOQA
     open_replica(grpc_replica_client)
     open_replica(grpc_replica_client2)
 
+    r1_url = get_backend_replica_url(grpc_replica_client.address)
+    r2_url = get_backend_replica_url(grpc_replica_client2.address)
     v = grpc_controller_client.volume_start(replicas=[
-        REPLICA,
-        REPLICA2,
+        r1_url,
+        r2_url,
     ])
     assert v.replicaCount == 2
 
-    cmd = [bin, 'snapshot', 'create']
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'snapshot', 'create']
     subprocess.check_call(cmd)
     output = subprocess.check_output(cmd).strip()
 
@@ -571,7 +523,8 @@ def test_snapshot_rm(bin, grpc_controller_client,
     assert chain[0] == 'volume-head-002.img'
     assert chain[1] == 'volume-snap-{}.img'.format(output)
 
-    cmd = [bin, 'snapshot', 'rm', output]
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'snapshot', 'rm', output]
     subprocess.check_call(cmd)
 
     new_chain = grpc_replica_client.replica_get().chain
@@ -580,19 +533,22 @@ def test_snapshot_rm(bin, grpc_controller_client,
     assert chain[2] == new_chain[1]
 
 
-def test_snapshot_rm_empty(bin, grpc_controller_client,
-                           grpc_replica_client,
-                           grpc_replica_client2):
+def test_snapshot_rm_empty(bin, grpc_controller_client,  # NOQA
+                           grpc_replica_client,  # NOQA
+                           grpc_replica_client2):  # NOQA
     open_replica(grpc_replica_client)
     open_replica(grpc_replica_client2)
 
+    r1_url = get_backend_replica_url(grpc_replica_client.address)
+    r2_url = get_backend_replica_url(grpc_replica_client2.address)
     v = grpc_controller_client.volume_start(replicas=[
-        REPLICA,
-        REPLICA2,
+        r1_url,
+        r2_url,
     ])
     assert v.replicaCount == 2
 
-    cmd = [bin, 'snapshot', 'create']
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'snapshot', 'create']
 
     # first snapshot
     output1 = subprocess.check_output(cmd).strip()
@@ -611,7 +567,8 @@ def test_snapshot_rm_empty(bin, grpc_controller_client,
 
     # remove the first snapshot(empty), it will fold second snapshot(empty)
     # to the first snapshot(empty) and rename it to second snapshot
-    cmd = [bin, 'snapshot', 'rm', output1]
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'snapshot', 'rm', output1]
     subprocess.check_call(cmd)
     new_chain = grpc_replica_client.replica_get().chain
     assert len(new_chain) == 2
@@ -619,20 +576,25 @@ def test_snapshot_rm_empty(bin, grpc_controller_client,
     assert chain[1] == new_chain[1]
 
 
-def test_snapshot_last(bin, grpc_controller_client,
-                       grpc_replica_client,
-                       grpc_replica_client2):
+def test_snapshot_last(bin, grpc_controller_client,  # NOQA
+                       grpc_replica_client,  # NOQA
+                       grpc_replica_client2):  # NOQA
     open_replica(grpc_replica_client)
     open_replica(grpc_replica_client2)
 
+    r1_url = get_backend_replica_url(grpc_replica_client.address)
+    r2_url = get_backend_replica_url(grpc_replica_client2.address)
     v = grpc_controller_client.volume_start(replicas=[
-        REPLICA,
+        r1_url,
     ])
     assert v.replicaCount == 1
 
-    cmd = [bin, 'add', REPLICA2]
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'add', r2_url]
     subprocess.check_output(cmd)
-    output = subprocess.check_output([bin, 'snapshot', 'ls'])
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'snapshot', 'ls']
+    output = subprocess.check_output(cmd)
     output = output.splitlines()[1]
 
     chain = grpc_replica_client.replica_get().chain
@@ -646,15 +608,16 @@ def test_snapshot_last(bin, grpc_controller_client,
     assert chain[1] == 'volume-snap-{}.img'.format(output)
 
     # it will be marked as removed
-    cmd = [bin, 'snapshot', 'rm', output]
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'snapshot', 'rm', output]
     subprocess.check_call(cmd)
 
 
-def get_backup_url(bin, backupID):
+def get_backup_url(bin, url, backupID):
     assert backupID != ""
     rValue = ""
-    cmd = [bin, 'backup', 'status', backupID]
-    for x in range(RETRY_COUNTS):
+    cmd = [bin, '--url', url, 'backup', 'status', backupID]
+    for x in range(RETRY_COUNTS2):
         output = subprocess.check_output(cmd).strip()
         backup = json.loads(output)
         assert 'state' in backup.keys()
@@ -676,18 +639,19 @@ def get_backup_url(bin, backupID):
     return rValue
 
 
-def restore_backup(bin, backupURL, env, grpc_c):
-    shutdown_engine_frontend()
+def restore_backup(engine_manager_client,  # NOQA
+                   bin, url, backup_url, env, grpc_c):
+    engine_manager_client.frontend_shutdown(ENGINE_NAME)
     v = grpc_c.volume_get()
     assert v.frontendState == "down"
 
-    cmd = [bin, 'backup', 'restore', backupURL]
+    cmd = [bin, '--url', url, 'backup', 'restore', backup_url]
     subprocess.check_call(cmd, env=env)
 
-    status_cmd = [bin, 'backup', 'restore-status']
+    status_cmd = [bin, '--url', url, 'backup', 'restore-status']
     completed = 0
     rs = json.loads(subprocess.check_output(status_cmd).strip())
-    for x in range(RETRY_COUNTS):
+    for x in range(RETRY_COUNTS2):
         time.sleep(3)
         completed = 0
         rs = json.loads(subprocess.check_output(status_cmd).strip())
@@ -705,76 +669,89 @@ def restore_backup(bin, backupURL, env, grpc_c):
         if completed == len(rs):
             return
     assert completed == len(rs)
-    start_engine_frontend(FRONTEND_TGT_BLOCKDEV)
+    engine_manager_client.frontend_start(ENGINE_NAME,
+                                         FRONTEND_TGT_BLOCKDEV)
     v = grpc_c.volume_get()
     assert v.frontendState == "up"
 
 
-def backup_core(bin, grpc_controller_client,
-                grpc_replica_client,
-                grpc_replica_client2,
+def backup_core(bin, engine_manager_client,  # NOQA
+                grpc_controller_client,  # NOQA
+                grpc_replica_client,  # NOQA
+                grpc_replica_client2,  # NOQA
                 backup_target):
     open_replica(grpc_replica_client)
     open_replica(grpc_replica_client2)
 
+    r1_url = get_backend_replica_url(grpc_replica_client.address)
+    r2_url = get_backend_replica_url(grpc_replica_client2.address)
     v = grpc_controller_client.volume_start(replicas=[
-        REPLICA,
-        REPLICA2,
+        r1_url,
+        r2_url,
     ])
     assert v.replicaCount == 2
 
     env = dict(os.environ)
     backup_type = urlparse(backup_target).scheme
-    cmd = [bin, 'snapshot', 'create']
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'snapshot', 'create']
     snapshot1 = subprocess.check_output(cmd).strip()
     output = grpc_replica_client.replica_get().chain[1]
 
     assert output == 'volume-snap-{}.img'.format(snapshot1)
 
-    cmd = [bin, 'backup', 'create', snapshot1,
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'backup', 'create', snapshot1,
            '--dest', backup_target,
            '--label', 'name=backup1',
            '--label', 'type=' + backup_type]
     backupID = subprocess.check_output(cmd, env=env).strip()
-    backup1 = get_backup_url(bin, backupID)
+    backup1 = get_backup_url(bin, grpc_controller_client.address,
+                             backupID)
 
-    cmd = [bin, 'snapshot', 'create']
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'snapshot', 'create']
     snapshot2 = subprocess.check_output(cmd).strip()
     output = grpc_replica_client.replica_get().chain[1]
 
     assert output == 'volume-snap-{}.img'.format(snapshot2)
 
-    cmd = [bin, 'backup', 'create', snapshot2,
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'backup', 'create', snapshot2,
            '--dest', backup_target]
     backupID = subprocess.check_output(cmd, env=env).strip()
-    backup2 = get_backup_url(bin, backupID)
+    backup2 = get_backup_url(bin, grpc_controller_client.address,
+                             backupID)
 
-    cmd = [bin, 'backup', 'inspect', backup1]
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'backup', 'inspect', backup1]
     data = subprocess.check_output(cmd, env=env)
     backup1_info = json.loads(data)
     assert backup1_info["URL"] == backup1
     assert backup1_info["VolumeName"] == VOLUME_NAME
-    assert backup1_info["VolumeSize"] == VOLUME_SIZE
+    assert backup1_info["VolumeSize"] == SIZE_STR
     assert backup1_info["SnapshotName"] == snapshot1
     assert len(backup1_info["Labels"]) == 2
     assert backup1_info["Labels"]["name"] == "backup1"
     assert backup1_info["Labels"]["type"] == backup_type
 
-    cmd = [bin, 'backup', 'inspect', backup2]
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'backup', 'inspect', backup2]
     data = subprocess.check_output(cmd, env=env)
     backup2_info = json.loads(data)
     assert backup2_info["URL"] == backup2
     assert backup2_info["VolumeName"] == VOLUME_NAME
-    assert backup2_info["VolumeSize"] == VOLUME_SIZE
+    assert backup2_info["VolumeSize"] == SIZE_STR
     assert backup2_info["SnapshotName"] == snapshot2
     if backup2_info["Labels"] is not None:
         assert len(backup2_info["Labels"]) == 0
 
-    cmd = [bin, 'backup', 'ls', backup_target]
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'backup', 'ls', backup_target]
     data = subprocess.check_output(cmd, env=env).strip()
     volume_info = json.loads(data)[VOLUME_NAME]
     assert volume_info["Name"] == VOLUME_NAME
-    assert volume_info["Size"] == VOLUME_SIZE
+    assert volume_info["Size"] == SIZE_STR
     backup_list = volume_info["Backups"]
     assert backup_list[backup1]["URL"] == backup1_info["URL"]
     assert backup_list[backup1]["SnapshotName"] == backup1_info["SnapshotName"]
@@ -797,8 +774,8 @@ def backup_core(bin, grpc_controller_client,
     os.rename(volume_cfg_path, volume_tmp_cfg_path)
     assert path.exists(volume_tmp_cfg_path)
 
-    cmd = [bin, 'backup', 'ls',
-           '--volume-only', backup_target]
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'backup', 'ls', '--volume-only', backup_target]
     data = subprocess.check_output(cmd, env=env)
     volume_info_dict = json.loads(data)
 
@@ -810,8 +787,8 @@ def backup_core(bin, grpc_controller_client,
     os.rename(volume_tmp_cfg_path, volume_cfg_path)
     assert path.exists(volume_cfg_path)
 
-    cmd = [bin, 'backup', 'ls',
-           '--volume-only', backup_target]
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'backup', 'ls', '--volume-only', backup_target]
     data = subprocess.check_output(cmd, env=env)
     volume_info_dict = json.loads(data)
 
@@ -820,52 +797,65 @@ def backup_core(bin, grpc_controller_client,
     assert volume_info_dict[VOLUME_NAME].get("Messages", None) is not None
     assert MESSAGE_TYPE_ERROR not in volume_info_dict[VOLUME_NAME]["Messages"]
 
-    cmd = [bin, 'backup', 'inspect',
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'backup', 'inspect',
            backup_target + "?backup=backup-1234"
-           + "&volume=test-volume_1.0"]
+           + "&volume=" + VOLUME_NAME]
     # cannot find the backup
     with pytest.raises(subprocess.CalledProcessError):
         subprocess.check_call(cmd, env=env)
 
-    restore_backup(bin, backup1, env, grpc_controller_client)
-    restore_backup(bin, backup2, env, grpc_controller_client)
+    restore_backup(engine_manager_client,
+                   bin, grpc_controller_client.address,
+                   backup1, env, grpc_controller_client)
+    restore_backup(engine_manager_client,
+                   bin, grpc_controller_client.address,
+                   backup2, env, grpc_controller_client)
 
-    cmd = [bin, 'backup', 'rm', backup1]
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'backup', 'rm', backup1]
     subprocess.check_call(cmd, env=env)
-    cmd = [bin, 'backup', 'rm', backup2]
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'backup', 'rm', backup2]
     subprocess.check_call(cmd, env=env)
 
     assert os.path.exists(BACKUP_DEST)
 
-    cmd = [bin, 'backup', 'inspect',
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'backup', 'inspect',
            backup_target + "?backup=backup-1234"
-           + "&volume=test-volume_1.0"]
+           + "&volume="+VOLUME_NAME]
     # cannot find the backup
     with pytest.raises(subprocess.CalledProcessError):
         subprocess.check_call(cmd, env=env)
 
-    cmd = [bin, 'backup', 'inspect', "xxx"]
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'backup', 'inspect', "xxx"]
     # cannot find the backup
     with pytest.raises(subprocess.CalledProcessError):
         subprocess.check_call(cmd, env=env)
-    start_engine_frontend(FRONTEND_TGT_BLOCKDEV)
+    engine_manager_client.frontend_start(ENGINE_NAME,
+                                         FRONTEND_TGT_BLOCKDEV)
     v = grpc_controller_client.volume_get()
     assert v.frontendState == "up"
 
 
-def test_snapshot_purge_basic(bin, grpc_controller_client,
-                              grpc_replica_client,
-                              grpc_replica_client2):
+def test_snapshot_purge_basic(bin, grpc_controller_client,  # NOQA
+                              grpc_replica_client,  # NOQA
+                              grpc_replica_client2):  # NOQA
     open_replica(grpc_replica_client)
     open_replica(grpc_replica_client2)
 
+    r1_url = get_backend_replica_url(grpc_replica_client.address)
+    r2_url = get_backend_replica_url(grpc_replica_client2.address)
     v = grpc_controller_client.volume_start(replicas=[
-        REPLICA,
-        REPLICA2,
+        r1_url,
+        r2_url,
     ])
     assert v.replicaCount == 2
 
-    cmd = [bin, 'snapshot', 'create']
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'snapshot', 'create']
     snap0 = subprocess.check_output(cmd).strip()
     snap1 = subprocess.check_output(cmd).strip()
 
@@ -875,7 +865,8 @@ def test_snapshot_purge_basic(bin, grpc_controller_client,
     assert chain[1] == 'volume-snap-{}.img'.format(snap1)
     assert chain[2] == 'volume-snap-{}.img'.format(snap0)
 
-    cmd = [bin, 'snapshot', 'rm', snap0]
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'snapshot', 'rm', snap0]
     subprocess.check_call(cmd)
 
     new_chain = grpc_replica_client.replica_get().chain
@@ -883,7 +874,8 @@ def test_snapshot_purge_basic(bin, grpc_controller_client,
     assert chain[0] == new_chain[0]
     assert chain[1] == new_chain[1]
 
-    cmd = [bin, 'snapshot', 'info']
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'snapshot', 'info']
     output = subprocess.check_output(cmd)
     info = json.loads(output)
 
@@ -894,10 +886,12 @@ def test_snapshot_purge_basic(bin, grpc_controller_client,
     assert info[snap1]["removed"] is False
     assert info[VOLUME_HEAD]["parent"] == snap1
 
-    cmd = [bin, 'snapshot', 'purge']
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'snapshot', 'purge']
     subprocess.check_call(cmd)
 
-    cmd = [bin, 'snapshot', 'info']
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'snapshot', 'info']
     output = subprocess.check_output(cmd)
     info = json.loads(output)
 
@@ -906,19 +900,22 @@ def test_snapshot_purge_basic(bin, grpc_controller_client,
     assert info[snap1]["parent"] == ""
 
 
-def test_snapshot_purge_head_parent(bin, grpc_controller_client,
-                                    grpc_replica_client,
-                                    grpc_replica_client2):
+def test_snapshot_purge_head_parent(bin, grpc_controller_client,  # NOQA
+                                    grpc_replica_client,  # NOQA
+                                    grpc_replica_client2):  # NOQA
     open_replica(grpc_replica_client)
     open_replica(grpc_replica_client2)
 
+    r1_url = get_backend_replica_url(grpc_replica_client.address)
+    r2_url = get_backend_replica_url(grpc_replica_client2.address)
     v = grpc_controller_client.volume_start(replicas=[
-        REPLICA,
-        REPLICA2,
+        r1_url,
+        r2_url,
     ])
     assert v.replicaCount == 2
 
-    cmd = [bin, 'snapshot', 'create']
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'snapshot', 'create']
     snap0 = subprocess.check_output(cmd).strip()
     snap1 = subprocess.check_output(cmd).strip()
 
@@ -928,7 +925,8 @@ def test_snapshot_purge_head_parent(bin, grpc_controller_client,
     assert chain[1] == 'volume-snap-{}.img'.format(snap1)
     assert chain[2] == 'volume-snap-{}.img'.format(snap0)
 
-    cmd = [bin, 'snapshot', 'rm', snap1]
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'snapshot', 'rm', snap1]
     subprocess.check_call(cmd)
 
     new_chain = grpc_replica_client.replica_get().chain
@@ -936,7 +934,8 @@ def test_snapshot_purge_head_parent(bin, grpc_controller_client,
     assert chain[0] == new_chain[0]
     assert chain[2] == new_chain[1]
 
-    cmd = [bin, 'snapshot', 'info']
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'snapshot', 'info']
     output = subprocess.check_output(cmd)
     info = json.loads(output)
 
@@ -947,10 +946,12 @@ def test_snapshot_purge_head_parent(bin, grpc_controller_client,
     assert info[snap1]["removed"] is True
     assert info[VOLUME_HEAD]["parent"] == snap1
 
-    cmd = [bin, 'snapshot', 'purge']
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'snapshot', 'purge']
     subprocess.check_call(cmd)
 
-    cmd = [bin, 'snapshot', 'info']
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'snapshot', 'info']
     output = subprocess.check_output(cmd)
     info = json.loads(output)
 
@@ -963,11 +964,13 @@ def test_snapshot_purge_head_parent(bin, grpc_controller_client,
     assert info[VOLUME_HEAD]["parent"] == snap1
 
 
-def test_backup_cli(bin, grpc_controller_client,
-                    grpc_replica_client, grpc_replica_client2,
+def test_backup_cli(bin, engine_manager_client,  # NOQA
+                    grpc_controller_client,  # NOQA
+                    grpc_replica_client, grpc_replica_client2,  # NOQA
                     backup_targets):
     for backup_target in backup_targets:
-        backup_core(bin, grpc_controller_client,
+        backup_core(bin, engine_manager_client,
+                    grpc_controller_client,
                     grpc_replica_client, grpc_replica_client2,
                     backup_target)
         cleanup_replica(grpc_replica_client)
