@@ -83,6 +83,12 @@ func start(c *cli.Context) error {
 
 func main() {
 	a := cli.NewApp()
+	a.Before = func(c *cli.Context) error {
+		if c.GlobalBool("debug") {
+			logrus.SetLevel(logrus.DebugLevel)
+		}
+		return nil
+	}
 	a.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  "url",
