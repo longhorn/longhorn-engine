@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/sirupsen/logrus"
 
@@ -22,6 +23,10 @@ type DeltaBlockBackupOperations interface {
 	ReadSnapshot(id, volumeID string, start int64, data []byte) error
 	CloseSnapshot(id, volumeID string) error
 }
+
+type DeltaRestoreOperations interface {
+	UpdateRestoreStatus(snapshot string, restoreProgress int, err error)
+}
 */
 
 type Backup struct {
@@ -35,10 +40,33 @@ type Backup struct {
 	BackupURL      string
 }
 
+type Restore struct {
+	sync.Mutex
+	restoreID       string
+	SnapshotName    string
+	RestoreProgress int
+	RestoreError    error
+	LastUpdatedAt   time.Time
+}
+
+func NewRestore(snapshotName string) *Restore {
+	return &Restore{SnapshotName: snapshotName}
+}
+
 func NewBackup(backingFile *BackingFile) *Backup {
 	return &Backup{
 		backingFile: backingFile,
 	}
+}
+
+func (rr *Restore) UpdateRestoreStatus(snapshot string, rp int, re error) {
+	rr.Lock()
+	defer rr.Unlock()
+
+	rr.SnapshotName = snapshot
+	rr.RestoreProgress = rp
+	rr.RestoreError = re
+	rr.LastUpdatedAt = time.Now()
 }
 
 func (rb *Backup) UpdateBackupStatus(snapID, volumeID string, progress int, url string, errString string) error {
