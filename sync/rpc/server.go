@@ -30,7 +30,8 @@ type SyncAgentServer struct {
 	endPort         int
 	processesByPort map[int]string
 
-	BackupList *BackupList
+	BackupList  *BackupList
+	RestoreList *replica.Restore
 }
 
 type BackupList struct {
@@ -282,25 +283,73 @@ func (*SyncAgentServer) BackupRemove(ctx context.Context, req *BackupRemoveReque
 	return &Empty{}, nil
 }
 
-func (*SyncAgentServer) BackupRestore(ctx context.Context, req *BackupRestoreRequest) (*Empty, error) {
-	cmd := reexec.Command("sbackup", "restore", req.Backup, "--to", req.SnapshotFileName)
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Pdeathsig: syscall.SIGKILL,
+func (s *SyncAgentServer) isRestorationInProgress() bool {
+	if s.RestoreList != nil && s.RestoreList.RestoreProgress != 100 && s.RestoreList.RestoreError == nil {
+		return true
 	}
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Start(); err != nil {
+	return false
+}
+
+func (s *SyncAgentServer) BackupRestore(ctx context.Context, req *BackupRestoreRequest) (*Empty, error) {
+	backupType, err := util.CheckBackupType(req.Backup)
+	if err != nil {
 		return nil, err
 	}
-
-	logrus.Infof("Running %s %v", cmd.Path, cmd.Args)
-	if err := cmd.Wait(); err != nil {
-		logrus.Infof("Error running %s %v: %v", "sbackup", cmd.Args, err)
-		return nil, err
+	// set aws credential
+	if backupType == "s3" {
+		credential := req.Credential
+		// validate environment variable first, since CronJob has set credential to environment variable.
+		if credential != nil && credential[types.AWSAccessKey] != "" && credential[types.AWSSecretKey] != "" {
+			os.Setenv(types.AWSAccessKey, credential[types.AWSAccessKey])
+			os.Setenv(types.AWSSecretKey, credential[types.AWSSecretKey])
+			os.Setenv(types.AWSEndPoint, credential[types.AWSEndPoint])
+		} else if os.Getenv(types.AWSAccessKey) == "" || os.Getenv(types.AWSSecretKey) == "" {
+			return nil, errors.New("could not backup to s3 without setting credential secret")
+		}
+	}
+	s.Lock()
+	if s.isRestorationInProgress() {
+		s.Unlock()
+		return nil, fmt.Errorf("cannot initate backup restore as there is one already in progress")
+	}
+	restoreObj := replica.NewRestore(req.SnapshotFileName)
+	if err := backup.DoBackupRestore(req.Backup, restoreObj, req.SnapshotFileName); err != nil {
+		s.Unlock()
+		return nil, fmt.Errorf("error initiating restore [%v]", err)
 	}
 
-	logrus.Infof("Done running %s %v", "sbackup", cmd.Args)
+	s.RestoreList = restoreObj
+	logrus.Infof("Successfully initiated restore for snapshot [%v]", restoreObj.SnapshotName)
+	s.Unlock()
+
 	return &Empty{}, nil
+}
+
+func (s *SyncAgentServer) BackupRestoreStatus(ctx context.Context, req *Empty) (*BackupRestoreStatusReply, error) {
+	s.Lock()
+	restoreStatus := s.RestoreList
+	s.Unlock()
+
+	if restoreStatus == nil {
+		logrus.Infof("no backup restore operation is going on")
+		return &BackupRestoreStatusReply{}, nil
+	}
+
+	reply := &BackupRestoreStatusReply{
+		Progress:     int32(restoreStatus.RestoreProgress),
+		DestFileName: restoreStatus.SnapshotName,
+	}
+	if s.RestoreList.RestoreError != nil {
+		reply.Error = restoreStatus.RestoreError.Error()
+	}
+
+	if restoreStatus.RestoreProgress == 100 {
+		//Create the meta file as the file is now available
+		if err := backup.CreateNewSnapshotMetafile(restoreStatus.SnapshotName + ".meta"); err != nil {
+			return nil, err
+		}
+	}
+	return reply, nil
 }
 
 func (*SyncAgentServer) BackupRestoreIncrementally(ctx context.Context, req *BackupRestoreIncrementallyRequest) (*Empty, error) {
