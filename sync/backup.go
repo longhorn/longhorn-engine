@@ -2,6 +2,7 @@ package sync
 
 import (
 	"fmt"
+	"os"
 	"strings"
 	"sync"
 
@@ -18,6 +19,12 @@ type BackupStatusInfo struct {
 	Progress     int    `json:"progress"`
 	BackupURL    string `json:"backupURL,omitempty"`
 	BackupError  string `json:"backupError,omitempty"`
+	SnapshotName string `json:"snapshotName"`
+}
+
+type RestoreStatus struct {
+	Progress     int    `json:"progress"`
+	RestoreError string `json:"backupError,omitempty"`
 	SnapshotName string `json:"snapshotName"`
 }
 
@@ -134,10 +141,6 @@ func (t *Task) RestoreBackup(backup string) error {
 		}
 	}
 
-	// call to controller to revert to sfile
-	if err := t.client.VolumeRevert(snapshotID); err != nil {
-		return fmt.Errorf("Fail to revert to snapshot %v", snapshotID)
-	}
 	return nil
 }
 
@@ -150,14 +153,130 @@ func (t *Task) restoreBackup(replicaInController *types.ControllerReplicaInfo, b
 	if err != nil {
 		return err
 	}
+	credential := map[string]string{}
+	backupType, err := util.CheckBackupType(backup)
+	if err != nil {
+		return err
+	}
+	if backupType == "s3" {
+		accessKey := os.Getenv(types.AWSAccessKey)
+		if accessKey == "" {
+			return fmt.Errorf("Missing environment variable AWS_ACCESS_KEY_ID for s3 backup")
+		}
+		secretKey := os.Getenv(types.AWSSecretKey)
+		if secretKey == "" {
+			return fmt.Errorf("Missing environment variable AWS_SECRET_ACCESS_KEY for s3 backup")
+		}
+		credential[types.AWSAccessKey] = accessKey
+		credential[types.AWSSecretKey] = secretKey
+		credential[types.AWSEndPoint] = os.Getenv(types.AWSEndPoint)
+	}
 
 	logrus.Infof("Restoring backup %s on %s", backup, replicaInController.Address)
 
-	if err := repClient.RestoreBackup(backup, snapshotFile); err != nil {
+	if err := repClient.RestoreBackup(backup, snapshotFile, credential); err != nil {
 		logrus.Errorf("Failed restoring backup %s on %s", backup, replicaInController.Address)
 		return err
 	}
+
 	return nil
+}
+
+func (*Task) IsRestorationComplete(rsList []*RestoreStatus) bool {
+	if rsList == nil {
+		return false
+	}
+	for _, r := range rsList {
+		if r.Progress != 100 {
+			return false
+		}
+	}
+	return true
+}
+
+func (t *Task) GetRestoreStatus() ([]*RestoreStatus, error) {
+	var restoreStatusList []*RestoreStatus
+	isIncrementalFullRestore := false
+	snapshotFile := ""
+	replicas, err := t.client.ReplicaList()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, r := range replicas {
+		repClient, err := replicaClient.NewReplicaClient(r.Address)
+		if err != nil {
+			logrus.Errorf("Cannot create a replica client for IP[%v]: %v", r.Address, err)
+			return nil, err
+		}
+
+		rsList, err := repClient.BackupRestoreStatus()
+		if err != nil {
+			return nil, err
+		}
+
+		if rsList.DestFileName == "" {
+			//No Active Backup Restore happening
+			continue
+		}
+
+		snapshotFile = rsList.DestFileName
+
+		restoreStatusList = append(restoreStatusList, &RestoreStatus{
+			Progress:     int(rsList.Progress),
+			RestoreError: rsList.Error,
+			SnapshotName: rsList.DestFileName,
+		})
+
+		//Check if this is incremental full restore
+		if rsList.Progress == 100 && strings.HasSuffix(snapshotFile, ".snap_tmp") {
+			isIncrementalFullRestore = true
+			tmpSnapshotDiskName := snapshotFile
+			snapshotDiskName, err := replica.GetSnapshotNameFromTempFileName(snapshotFile)
+			snapshotDiskMetaName := replica.GenerateSnapshotDiskMetaName(snapshotDiskName)
+			tmpSnapshotDiskMetaName := replica.GenerateSnapshotDiskMetaName(tmpSnapshotDiskName)
+
+			defer func() {
+				// try to cleanup tmp files
+				repClient.RemoveFile(tmpSnapshotDiskName)
+				repClient.RemoveFile(tmpSnapshotDiskMetaName)
+			}()
+
+			// replace old snapshot
+			if err = repClient.RenameFile(tmpSnapshotDiskName, snapshotDiskName); err != nil {
+				return nil, fmt.Errorf("failed to replace old snapshot %v with the fully restored file %v: %v", snapshotDiskName, tmpSnapshotDiskName, err)
+			}
+			if err = repClient.RenameFile(tmpSnapshotDiskMetaName, snapshotDiskMetaName); err != nil {
+				return nil, fmt.Errorf("failed to replace old snapshot meta %v with the fully restored meta file %v: %v", snapshotDiskMetaName, tmpSnapshotDiskMetaName, err)
+			}
+
+			// snapshot files get changed, need reload
+			_, err = repClient.ReloadReplica()
+			if err != nil {
+				logrus.Warnf("Failed to reload replica %v: %v", r.Address, err)
+			}
+		}
+	}
+
+	if len(restoreStatusList) == 0 {
+		//No Active Backup Restore happening
+		return nil, nil
+	}
+
+	// Not required to revert the snapshot for incremental full backup as it's renamed and replica is reloaded
+	if !isIncrementalFullRestore && t.IsRestorationComplete(restoreStatusList) {
+		snapshotID, err := replica.GetSnapshotNameFromDiskName(snapshotFile)
+		if err != nil {
+			return nil, err
+		}
+
+		// call to controller to revert to sfile
+		if err := t.client.VolumeRevert(snapshotID); err != nil {
+			return nil, fmt.Errorf("Fail to revert to snapshot %v: %v", snapshotID, err)
+		}
+	}
+
+	return restoreStatusList, nil
 }
 
 func (t *Task) RestoreBackupIncrementally(backup, backupName, lastRestored string) error {
@@ -260,28 +379,13 @@ func (t *Task) restoreBackupIncrementally(replicaInController *types.ControllerR
 		}
 	} else {
 		// cannot restore backup incrementally, do full restoration instead
-		snapshotDiskMetaName := replica.GenerateSnapshotDiskMetaName(snapshotDiskName)
 		tmpSnapshotDiskName := replica.GenerateSnapTempFileName(snapshotDiskName)
-		tmpSnapshotDiskMetaName := replica.GenerateSnapshotDiskMetaName(tmpSnapshotDiskName)
-
-		defer func() {
-			// try to cleanup tmp files
-			repClient.RemoveFile(tmpSnapshotDiskName)
-			repClient.RemoveFile(tmpSnapshotDiskMetaName)
-		}()
 
 		if err = t.restoreBackup(replicaInController, backup, tmpSnapshotDiskName); err != nil {
 			return fmt.Errorf("failed to do full restoration in RestoreBackupIncrementally: %v", err)
 		}
-		logrus.Infof("Replica %v done restoreBackup in RestoreBackupIncrementally", replicaInController.Address)
-
-		// replace old snapshot
-		if err = repClient.RenameFile(tmpSnapshotDiskName, snapshotDiskName); err != nil {
-			return fmt.Errorf("failed to replace old snapshot %v with the fully restored file %v: %v", snapshotDiskName, tmpSnapshotDiskName, err)
-		}
-		if err = repClient.RenameFile(tmpSnapshotDiskMetaName, snapshotDiskMetaName); err != nil {
-			return fmt.Errorf("failed to replace old snapshot meta %v with the fully restored meta file %v: %v", snapshotDiskMetaName, tmpSnapshotDiskMetaName, err)
-		}
+		logrus.Infof("Replica %v initiated restoreBackup in RestoreBackupIncrementally", replicaInController.Address)
+		return nil
 	}
 
 	// snapshot files get changed, need reload
