@@ -26,6 +26,7 @@ func BackupCmd() cli.Command {
 			BackupCreateCmd(),
 			BackupStatusCmd(),
 			BackupRestoreCmd(),
+			BackupRestoreStatusCmd(),
 			RestoreToFileCmd(),
 			cmd.BackupRemoveCmd(),
 			cmd.BackupListCmd(),
@@ -179,6 +180,18 @@ func BackupRestoreCmd() cli.Command {
 	}
 }
 
+func BackupRestoreStatusCmd() cli.Command {
+	return cli.Command{
+		Name:  "restore-status",
+		Usage: "check the status of restore of the backup to current volume: restore-status",
+		Action: func(c *cli.Context) {
+			if err := restoreStatus(c); err != nil {
+				logrus.Fatalf("Error running restore status command: %v", err)
+			}
+		},
+	}
+}
+
 func createBackup(c *cli.Context) error {
 	url := c.GlobalString("url")
 	task := sync.NewTask(url)
@@ -240,15 +253,53 @@ func doRestoreBackup(c *cli.Context) error {
 	url := c.GlobalString("url")
 	task := sync.NewTask(url)
 
-	backup := c.Args().First()
-	if backup == "" {
+	backupURL := c.Args().First()
+	if backupURL == "" {
 		return fmt.Errorf("Missing required parameter backup")
 	}
 
-	if err := task.RestoreBackup(backup); err != nil {
+	cli := getCli(c)
+	//lastRestored Flag is empty for regular Restore backup
+	err := cli.VolumePrepareRestore("")
+	if err != nil {
+		return err
+	}
+	if err := task.RestoreBackup(backupURL); err != nil {
+		//Finish Restore as initiation failed
+		if err = cli.VolumeFinishRestore(""); err != nil {
+			return errors.Wrapf(err, "failed to finish restoring")
+		}
 		return err
 	}
 
+	return nil
+}
+
+func restoreStatus(c *cli.Context) error {
+	return checkRestoreStatus(c)
+}
+
+func checkRestoreStatus(c *cli.Context) error {
+	task := sync.NewTask(c.GlobalString("url"))
+	rsList, err := task.GetRestoreStatus()
+	if err != nil {
+		return err
+	}
+
+	if task.IsRestorationComplete(rsList) {
+		cli := getCli(c)
+		//Current Restored Flag empty for regular Restore backup
+		if err = cli.VolumeFinishRestore(""); err != nil {
+			return errors.Wrapf(err, "failed to finish incrementally restoring")
+		}
+	}
+
+	restoreStatusList, err := json.Marshal(rsList)
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(string(restoreStatusList))
 	return nil
 }
 

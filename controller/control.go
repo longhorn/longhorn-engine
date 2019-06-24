@@ -590,7 +590,7 @@ func (c *Controller) PrepareRestore(lastRestored string) error {
 	if c.isRestoring {
 		return fmt.Errorf("volume %v is restoring", c.Name)
 	}
-	if c.lastRestored != "" && c.lastRestored != lastRestored {
+	if c.lastRestored != "" && c.lastRestored != lastRestored && lastRestored != "" {
 		return fmt.Errorf("flag lastRestored %v in command doesn't match field LastRestored %v in engine", lastRestored, c.lastRestored)
 	}
 	c.isRestoring = true
