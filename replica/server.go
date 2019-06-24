@@ -6,11 +6,12 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
-	"github.com/longhorn/backupstore"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
+	"github.com/longhorn/backupstore"
 	"github.com/longhorn/longhorn-engine/util"
 )
 
@@ -21,6 +22,9 @@ const (
 	Dirty      = State("dirty")
 	Rebuilding = State("rebuilding")
 	Error      = State("error")
+
+	ProgressBasedTimeoutInMinutes    = 5
+	PeriodicRefreshIntervalInSeconds = 2
 )
 
 type State string
@@ -310,6 +314,28 @@ func (s *Server) PingResponse() error {
 	return nil
 }
 
+func postRestoreOperations(snapName string, replica *Replica) {
+	newDisk := disk{
+		Parent:      "",
+		Name:        snapName,
+		Removed:     false,
+		UserCreated: false,
+		Created:     util.Now(),
+	}
+
+	if err := replica.encodeToFile(newDisk, snapName+metadataSuffix); err != nil {
+		logrus.Errorf("failed to encode the restored content to file[%v]: %v", snapName+metadataSuffix, err)
+		return
+	}
+
+	r, err := replica.Revert(snapName, util.Now())
+	if err != nil {
+		logrus.Errorf("failed to revert snapshot[%v]: %v", snapName, err)
+		return
+	}
+	r.Close()
+}
+
 func (s *Server) Restore(url, name string) (err error) {
 	defer func() {
 		err = errors.Wrapf(err, "fail to restore url %v to snapshot %v", url, name)
@@ -354,25 +380,60 @@ func (s *Server) Restore(url, name string) (err error) {
 		return err
 	}
 
-	if err := backupstore.RestoreDeltaBlockBackup(backupURL, toFile); err != nil {
+	restoreObj := NewRestore(toFile)
+
+	config := &backupstore.DeltaRestoreConfig{
+		BackupURL: backupURL,
+		DeltaOps:  restoreObj,
+		Filename:  toFile,
+	}
+
+	if err := backupstore.RestoreDeltaBlockBackup(config); err != nil {
+		logrus.Errorf("failed to initiate Restore backup for url[%v]: %v", backupURL, err)
 		return err
 	}
 
-	newDisk := disk{
-		Parent:      "",
-		Name:        snapName,
-		Removed:     false,
-		UserCreated: false,
-		Created:     util.Now(),
-	}
+	var (
+		restoreProgress int
+		restoreError    error
+	)
+	periodicChecker := time.NewTicker(PeriodicRefreshIntervalInSeconds * time.Second)
+	go func() {
+		for t := range periodicChecker.C {
+			logrus.Debugf("checking restore progress at %v", t)
+			restoreObj.Lock()
+			restoreProgress = restoreObj.RestoreProgress
+			restoreError = restoreObj.RestoreError
+			lastUpdate := restoreObj.LastUpdatedAt
+			restoreObj.Unlock()
 
-	if err := r.encodeToFile(newDisk, snapName+metadataSuffix); err != nil {
-		return err
-	}
+			if restoreProgress == 100 {
+				break
+			}
+			if restoreError != nil {
+				break
+			}
+			now := time.Now()
+			diff := now.Sub(lastUpdate)
+			restoreObj.Unlock()
 
-	r, err = r.Revert(snapName, util.Now())
-	if err != nil {
-		return err
-	}
-	return r.Close()
+			if diff.Minutes() > ProgressBasedTimeoutInMinutes {
+				logrus.Errorf("no restore update happened since %v minutes. Returning failure",
+					ProgressBasedTimeoutInMinutes)
+				periodicChecker.Stop()
+				return
+			}
+		}
+		periodicChecker.Stop()
+
+		if restoreProgress == 100 {
+			logrus.Infof("Successfully completed backup restore")
+			postRestoreOperations(snapName, r)
+		}
+		if restoreError != nil {
+			logrus.Errorf("Backup Restore failed: %v", restoreObj.RestoreError)
+			return
+		}
+	}()
+	return nil
 }
