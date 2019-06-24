@@ -96,8 +96,7 @@ func longhornCli() {
 	}
 	a.Flags = []cli.Flag{
 		cli.StringFlag{
-			Name:  "url",
-			Value: "http://localhost:9501",
+			Name: "url",
 		},
 		cli.BoolFlag{
 			Name: "debug",
