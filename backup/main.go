@@ -178,35 +178,32 @@ func cmdBackupRestore(c *cli.Context) {
 		if err := doBackupRestoreIncrementally(c); err != nil {
 			panic(err)
 		}
-	} else {
-		if err := doBackupRestore(c); err != nil {
-			panic(err)
-		}
 	}
 }
 
-func doBackupRestore(c *cli.Context) error {
-	if c.NArg() == 0 {
-		return RequiredMissingError("backup URL")
-	}
-	backupURL := c.Args()[0]
+func DoBackupRestore(backupURL string, restoreObj *replica.Restore, toFile string) error {
 	if backupURL == "" {
 		return RequiredMissingError("backup URL")
 	}
 	backupURL = util.UnescapeURL(backupURL)
 
-	toFile := c.String("to")
 	if toFile == "" {
-		return RequiredMissingError("to")
+		return RequiredMissingError("snapshot")
 	}
 
-	if err := backupstore.RestoreDeltaBlockBackup(backupURL, toFile); err != nil {
+	log.Debugf("Starting restore from %v into snapshot %v", backupURL, toFile)
+
+	config := &backupstore.DeltaRestoreConfig{
+		BackupURL: backupURL,
+		DeltaOps:  restoreObj,
+		Filename:  toFile,
+	}
+
+	err := backupstore.RestoreDeltaBlockBackup(config)
+	if err != nil {
 		return err
 	}
 
-	if err := createNewSnapshotMetafile(toFile + ".meta"); err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -246,7 +243,7 @@ func doBackupRestoreIncrementally(c *cli.Context) error {
 	return nil
 }
 
-func createNewSnapshotMetafile(file string) error {
+func CreateNewSnapshotMetafile(file string) error {
 	f, err := os.Create(file + ".tmp")
 	if err != nil {
 		return err
