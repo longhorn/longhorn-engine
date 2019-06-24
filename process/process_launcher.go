@@ -278,6 +278,26 @@ func (l *Launcher) ProcessList(ctx context.Context, req *rpc.ProcessListRequest)
 	return resp, nil
 }
 
+func (l *Launcher) ProcessLog(req *rpc.LogRequest, srv rpc.LonghornProcessLauncherService_ProcessLogServer) error {
+	p := l.findProcess(req.Name)
+	if p == nil {
+		return fmt.Errorf("cannot find process %v", req.Name)
+	}
+	doneChan := make(chan struct{})
+	logChan, err := p.logger.StreamLog(doneChan)
+	if err != nil {
+		return err
+	}
+	for logLine := range logChan {
+		if err := srv.Send(&rpc.LogResponse{Line: logLine}); err != nil {
+			doneChan <- struct{}{}
+			close(doneChan)
+			return err
+		}
+	}
+	return nil
+}
+
 func (l *Launcher) allocatePorts(portCount int32) (int32, int32, error) {
 	if portCount < 0 {
 		return 0, 0, fmt.Errorf("invalid port count %v", portCount)

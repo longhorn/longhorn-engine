@@ -198,6 +198,31 @@ func (cli *EngineManagerClient) EngineDelete(name string) (*api.Engine, error) {
 	return RPCToEngine(e), nil
 }
 
+func (cli *EngineManagerClient) EngineLog(volumeName string) (*api.LogStream, error) {
+	if volumeName == "" {
+		return nil, fmt.Errorf("failed to delete engine: missing parameter volumeName")
+	}
+
+	conn, err := grpc.Dial(cli.Address, grpc.WithInsecure())
+	if err != nil {
+		return nil, fmt.Errorf("cannot connect to EngineManager Service %v: %v", cli.Address, err)
+	}
+	defer conn.Close()
+	client := rpc.NewLonghornEngineManagerServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), types.GRPCServiceTimeout)
+	defer cancel()
+
+	stream, err := client.EngineLog(ctx, &rpc.LogRequest{
+		Name: volumeName,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get engine log of volume %v: %v", volumeName, err)
+	}
+
+	return api.NewLogStream(stream), nil
+}
+
 func (cli *EngineManagerClient) FrontendStart(name, frontend string) error {
 	if name == "" || frontend == "" {
 		return fmt.Errorf("failed to call gRPC FrontendStart: missing parameter")

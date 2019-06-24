@@ -1,6 +1,7 @@
 package util
 
 import (
+	"bufio"
 	"bytes"
 	"errors"
 	"os"
@@ -104,6 +105,29 @@ func (l LonghornWriter) Close() error {
 		return err
 	}
 	return nil
+}
+
+func (l LonghornWriter) StreamLog(done chan struct{}) (chan string, error) {
+	file, err := os.OpenFile(l.path, os.O_RDONLY, 0644)
+	if err != nil {
+		return nil, err
+	}
+	logChan := make(chan string)
+	scanner := bufio.NewScanner(file)
+	go func() {
+		for scanner.Scan() {
+			select {
+			case <-done:
+				close(logChan)
+				return
+			default:
+				logChan <- scanner.Text()
+			}
+		}
+		close(logChan)
+		file.Close()
+	}()
+	return logChan, nil
 }
 
 func (l LonghornWriter) Write(input []byte) (int, error) {

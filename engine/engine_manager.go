@@ -267,6 +267,31 @@ func (em *Manager) EngineUpgrade(ctx context.Context, req *rpc.EngineUpgradeRequ
 	return el.RPCResponse(response), nil
 }
 
+func (em *Manager) EngineLog(req *rpc.LogRequest, srv rpc.LonghornEngineManagerService_EngineLogServer) error {
+	logrus.Infof("Engine Manager getting logs for engine %v", req.Name)
+
+	em.lock.RLock()
+	defer em.lock.RUnlock()
+
+	el, exists := em.engineLaunchers[req.Name]
+	if !exists {
+		return fmt.Errorf("cannot find engine %v", req.Name)
+	}
+
+	el.lock.RLock()
+	err := el.engineLog(&rpc.LogRequest{
+		Name: el.currentEngine.EngineName,
+	}, srv, em.processLauncher)
+	el.lock.RUnlock()
+	if err != nil {
+		return err
+	}
+
+	logrus.Infof("Engine Manager has successfully retrieved logs for engine %v", req.Name)
+
+	return nil
+}
+
 func (em *Manager) validateBeforeUpgrade(spec *rpc.EngineSpec) (*Launcher, error) {
 	if _, err := os.Stat(spec.Binary); os.IsNotExist(err) {
 		return nil, errors.Wrap(err, "cannot find the binary to be upgraded")

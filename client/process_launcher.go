@@ -135,3 +135,27 @@ func (cli *ProcessLauncherClient) ProcessList() (map[string]*api.Process, error)
 	}
 	return RPCToProcessList(ps), nil
 }
+
+func (cli *ProcessLauncherClient) ProcessLog(name string) (*api.LogStream, error) {
+	if name == "" {
+		return nil, fmt.Errorf("failed to get process: missing required parameter name")
+	}
+
+	conn, err := grpc.Dial(cli.Address, grpc.WithInsecure())
+	if err != nil {
+		return nil, fmt.Errorf("cannot connect process manager service to %v: %v", cli.Address, err)
+	}
+	defer conn.Close()
+
+	client := rpc.NewLonghornProcessLauncherServiceClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), types.GRPCServiceTimeout)
+	defer cancel()
+
+	stream, err := client.ProcessLog(ctx, &rpc.LogRequest{
+		Name: name,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get process log of %v: %v", name, err)
+	}
+	return api.NewLogStream(stream), nil
+}

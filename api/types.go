@@ -1,5 +1,7 @@
 package api
 
+import "github.com/longhorn/longhorn-engine-launcher/rpc"
+
 type Process struct {
 	Name      string   `json:"name"`
 	Binary    string   `json:"binary"`
@@ -30,4 +32,22 @@ type Engine struct {
 
 	ProcessStatus ProcessStatus `json:"processStatus"`
 	Endpoint      string        `json:"endpoint"`
+}
+
+func NewLogStream(stream rpc.LonghornProcessLauncherService_ProcessLogClient) *LogStream {
+	return &LogStream{
+		stream: stream,
+	}
+}
+
+type LogStream struct {
+	stream rpc.LonghornProcessLauncherService_ProcessLogClient
+}
+
+func (s *LogStream) Recv() (string, error) {
+	resp, err := s.stream.Recv()
+	if err != nil {
+		return "", err
+	}
+	return resp.Line, nil
 }

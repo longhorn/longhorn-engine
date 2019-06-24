@@ -345,6 +345,16 @@ func (el *Launcher) restoreBackupBinary() error {
 	return nil
 }
 
+func (el *Launcher) engineLog(req *rpc.LogRequest, srv rpc.LonghornEngineManagerService_EngineLogServer,
+	processLauncher rpc.LonghornProcessLauncherServiceServer) error {
+
+	if err := processLauncher.ProcessLog(req, srv); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func (el *Launcher) startFrontend(frontend string) error {
 	logrus.Debugf("engine launcher %v: prepare to start frontend %v", el.LauncherName, frontend)
 

@@ -8,6 +8,7 @@ service LonghornEngineManagerService {
 	rpc EngineGet(EngineRequest) returns (EngineResponse) {}
 	rpc EngineList(google.protobuf.Empty) returns (EngineListResponse) {}
 	rpc EngineUpgrade(EngineUpgradeRequest) returns (EngineResponse) {}
+	rpc EngineLog(LogRequest) returns (stream LogResponse) {}
 
 	rpc FrontendStart(FrontendStartRequest) returns (google.protobuf.Empty) {}
 	rpc FrontendShutdown(EngineRequest) returns (google.protobuf.Empty) {}
@@ -65,6 +66,7 @@ service LonghornProcessLauncherService {
 	rpc ProcessDelete(ProcessDeleteRequest) returns (ProcessResponse) {}
 	rpc ProcessGet(ProcessGetRequest) returns (ProcessResponse) {}
 	rpc ProcessList(ProcessListRequest) returns (ProcessListResponse) {}
+	rpc ProcessLog(LogRequest) returns (stream LogResponse) {}
 }
 
 message ProcessSpec {
@@ -104,4 +106,12 @@ message ProcessListRequest{
 
 message ProcessListResponse{
 	map<string, ProcessResponse> processes = 1;
+}
+
+message LogRequest {
+	string name = 1;
+}
+
+message LogResponse{
+	string line = 2;
 }
