@@ -67,6 +67,11 @@ class ControllerClient(object):
             if "Socket closed" not in grpc_err.details():
                 raise grpc_err
 
+    def client_upgrade(self, address):
+        self.address = address
+        self.channel = grpc.insecure_channel(address)
+        self.stub = controller_pb2_grpc.ControllerServiceStub(self.channel)
+
 
 class ControllerReplicaInfo(object):
     def __init__(self, cr):

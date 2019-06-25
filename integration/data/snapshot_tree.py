@@ -1,10 +1,14 @@
 import cmd
-import common
-import launcher
-from common import read_dev, VOLUME_HEAD, FRONTEND_TGT_BLOCKDEV
+from common import (  # NOQA
+    read_dev, random_string, verify_data,
+    snapshot_revert_with_frontend,
+    restore_with_no_frontend,
+)
+from setting import VOLUME_HEAD
 
 
-def snapshot_tree_build(dev, offset, length, strict=True):
+def snapshot_tree_build(dev, address, engine_name,
+                        offset, length, strict=True):
     # snap["0a"] -> snap["0b"] -> snap["0c"]
     #                 |-> snap["1a"] -> snap["1b"] -> snap["1c"]
     #                 \-> snap["2a"] -> snap["2b"] -> snap["2c"]
@@ -13,47 +17,50 @@ def snapshot_tree_build(dev, offset, length, strict=True):
     snap = {}
     data = {}
 
-    snapshot_tree_create_node(dev, offset, length, snap, data, "0a")
-    snapshot_tree_create_node(dev, offset, length, snap, data, "0b")
-    snapshot_tree_create_node(dev, offset, length, snap, data, "0c")
+    snapshot_tree_create_node(dev, address, offset, length, snap, data, "0a")
+    snapshot_tree_create_node(dev, address, offset, length, snap, data, "0b")
+    snapshot_tree_create_node(dev, address, offset, length, snap, data, "0c")
 
-    common.snapshot_revert_with_frontend(snap["0b"])
+    snapshot_revert_with_frontend(address, engine_name, snap["0b"])
 
-    snapshot_tree_create_node(dev, offset, length, snap, data, "1a")
-    snapshot_tree_create_node(dev, offset, length, snap, data, "1b")
-    snapshot_tree_create_node(dev, offset, length, snap, data, "1c")
+    snapshot_tree_create_node(dev, address, offset, length, snap, data, "1a")
+    snapshot_tree_create_node(dev, address, offset, length, snap, data, "1b")
+    snapshot_tree_create_node(dev, address, offset, length, snap, data, "1c")
 
-    common.snapshot_revert_with_frontend(snap["0b"])
+    snapshot_revert_with_frontend(address, engine_name, snap["0b"])
 
-    snapshot_tree_create_node(dev, offset, length, snap, data, "2a")
-    snapshot_tree_create_node(dev, offset, length, snap, data, "2b")
-    snapshot_tree_create_node(dev, offset, length, snap, data, "2c")
+    snapshot_tree_create_node(dev, address, offset, length, snap, data, "2a")
+    snapshot_tree_create_node(dev, address, offset, length, snap, data, "2b")
+    snapshot_tree_create_node(dev, address, offset, length, snap, data, "2c")
 
-    common.snapshot_revert_with_frontend(snap["2a"])
+    snapshot_revert_with_frontend(address, engine_name, snap["2a"])
 
-    snapshot_tree_create_node(dev, offset, length, snap, data, "3a")
-    snapshot_tree_create_node(dev, offset, length, snap, data, "3b")
-    snapshot_tree_create_node(dev, offset, length, snap, data, "3c")
+    snapshot_tree_create_node(dev, address, offset, length, snap, data, "3a")
+    snapshot_tree_create_node(dev, address, offset, length, snap, data, "3b")
+    snapshot_tree_create_node(dev, address, offset, length, snap, data, "3c")
 
-    snapshot_tree_verify(dev, offset, length, snap, data, strict)
+    snapshot_tree_verify(dev, address, engine_name,
+                         offset, length, snap, data, strict)
     return snap, data
 
 
-def snapshot_tree_create_node(dev, offset, length, snap, data, name):
-    data[name] = common.random_string(length)
-    common.verify_data(dev, offset, data[name])
-    snap[name] = cmd.snapshot_create()
+def snapshot_tree_create_node(dev, address, offset, length, snap, data, name):
+    data[name] = random_string(length)
+    verify_data(dev, offset, data[name])
+    snap[name] = cmd.snapshot_create(address)
 
 
-def snapshot_tree_verify(dev, offset, length, snap, data, strict=False):
-    snapshot_tree_verify_relationship(snap, strict)
-    snapshot_tree_verify_data(dev, offset, length, snap, data)
+def snapshot_tree_verify(dev, address, engine_name,
+                         offset, length, snap, data, strict=False):
+    snapshot_tree_verify_relationship(address, snap, strict)
+    snapshot_tree_verify_data(dev, address, engine_name,
+                              offset, length, snap, data)
 
 
 # snapshot_tree_verify_relationship won't check head or initial snapshot if
 # "strict" is False
-def snapshot_tree_verify_relationship(snap, strict):
-    info = cmd.snapshot_info()
+def snapshot_tree_verify_relationship(address, snap, strict):
+    info = cmd.snapshot_info(address)
 
     assert snap["0a"] in info
     assert snap["0b"] in info[snap["0a"]]["children"]
@@ -114,7 +121,7 @@ def snapshot_tree_verify_relationship(snap, strict):
         assert info[VOLUME_HEAD]["parent"] == snap["3c"]
         assert not info[VOLUME_HEAD]["children"]
 
-        output = cmd.snapshot_ls()
+        output = cmd.snapshot_ls(address)
         assert output == '''ID
 {}
 {}
@@ -126,30 +133,43 @@ def snapshot_tree_verify_relationship(snap, strict):
            snap["2a"], snap["0b"], snap["0a"])
 
 
-def snapshot_tree_verify_data(dev, offset, length, snap, data):
-    snapshot_tree_verify_node(dev, offset, length, snap, data, "0a")
-    snapshot_tree_verify_node(dev, offset, length, snap, data, "0b")
-    snapshot_tree_verify_node(dev, offset, length, snap, data, "0c")
-    snapshot_tree_verify_node(dev, offset, length, snap, data, "1a")
-    snapshot_tree_verify_node(dev, offset, length, snap, data, "1b")
-    snapshot_tree_verify_node(dev, offset, length, snap, data, "1c")
-    snapshot_tree_verify_node(dev, offset, length, snap, data, "2a")
-    snapshot_tree_verify_node(dev, offset, length, snap, data, "2b")
-    snapshot_tree_verify_node(dev, offset, length, snap, data, "2c")
-    snapshot_tree_verify_node(dev, offset, length, snap, data, "3a")
-    snapshot_tree_verify_node(dev, offset, length, snap, data, "3b")
-    snapshot_tree_verify_node(dev, offset, length, snap, data, "3c")
+def snapshot_tree_verify_data(dev, address, engine_name,
+                              offset, length, snap, data):
+    snapshot_tree_verify_node(dev, address, engine_name,
+                              offset, length, snap, data, "0a")
+    snapshot_tree_verify_node(dev, address, engine_name,
+                              offset, length, snap, data, "0b")
+    snapshot_tree_verify_node(dev, address, engine_name,
+                              offset, length, snap, data, "0c")
+    snapshot_tree_verify_node(dev, address, engine_name,
+                              offset, length, snap, data, "1a")
+    snapshot_tree_verify_node(dev, address, engine_name,
+                              offset, length, snap, data, "1b")
+    snapshot_tree_verify_node(dev, address, engine_name,
+                              offset, length, snap, data, "1c")
+    snapshot_tree_verify_node(dev, address, engine_name,
+                              offset, length, snap, data, "2a")
+    snapshot_tree_verify_node(dev, address, engine_name,
+                              offset, length, snap, data, "2b")
+    snapshot_tree_verify_node(dev, address, engine_name,
+                              offset, length, snap, data, "2c")
+    snapshot_tree_verify_node(dev, address, engine_name,
+                              offset, length, snap, data, "3a")
+    snapshot_tree_verify_node(dev, address, engine_name,
+                              offset, length, snap, data, "3b")
+    snapshot_tree_verify_node(dev, address, engine_name,
+                              offset, length, snap, data, "3c")
 
 
-def snapshot_tree_verify_node(dev, offset, length, snap, data, name):
-    common.snapshot_revert_with_frontend(snap[name])
+def snapshot_tree_verify_node(dev, address, engine_name,
+                              offset, length, snap, data, name):
+    snapshot_revert_with_frontend(address, engine_name, snap[name])
     readed = read_dev(dev, offset, length)
     assert readed == data[name]
 
 
-def snapshot_tree_verify_backup_node(dev, offset, length, backup, data, name):
-    launcher.shutdown_engine_frontend()
-    cmd.backup_restore(backup[name])
-    launcher.start_engine_frontend(FRONTEND_TGT_BLOCKDEV)
+def snapshot_tree_verify_backup_node(dev, address, engine_name,
+                                     offset, length, backup, data, name):
+    restore_with_no_frontend(address, engine_name, backup[name])
     readed = read_dev(dev, offset, length)
     assert readed == data[name]
