@@ -17,6 +17,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/longhorn/longhorn-engine-launcher/rpc"
+	"github.com/longhorn/longhorn-engine-launcher/types"
 	"github.com/longhorn/longhorn-engine-launcher/util"
 )
 
@@ -48,9 +49,9 @@ const (
 type State string
 
 const (
-	StateRunning = State("running")
-	StateStopped = State("stopped")
-	StateError   = State("error")
+	StateRunning = State(types.ProcessStateRunning)
+	StateStopped = State(types.ProcessStateStopped)
+	StateError   = State(types.ProcessStateError)
 )
 
 type Process struct {
