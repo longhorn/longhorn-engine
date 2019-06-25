@@ -1,17 +1,12 @@
-import base64
 import os
 from os import path
 import stat
 import mmap
 import directio
 
-import cattle
-
-
-LONGHORN_DEV_DIR = '/dev/longhorn'
-LONGHORN_SOCKET_DIR = '/var/run'
-
-PAGE_SIZE = 512
+from setting import (
+    LONGHORN_SOCKET_DIR, LONGHORN_DEV_DIR, PAGE_SIZE,
+)
 
 
 def readat_direct(dev, offset, length):
@@ -58,39 +53,6 @@ def writeat_direct(dev, offset, data):
 
 def get_socket_path(volume):
     return path.join(LONGHORN_SOCKET_DIR, "longhorn-" + volume + ".sock")
-
-
-class restdev:
-
-    def __init__(self, volume):
-        url = 'http://localhost:9414/v1/schemas'
-        c = cattle.from_env(url=url)
-        dev = c.list_volume()[0]
-        assert dev.name == volume
-        self.dev = dev
-
-    def readat(self, offset, length):
-        try:
-            data = self.dev.readat(offset=offset, length=length)["data"]
-        except cattle.ApiError as e:
-            if 'EOF' in str(e):
-                return []
-            raise e
-        return base64.decodestring(data)
-
-    def writeat(self, offset, data):
-        l = len(data)
-        encoded_data = base64.encodestring(data)
-        try:
-            ret = self.dev.writeat(offset=offset, length=l, data=encoded_data)
-        except cattle.ApiError as e:
-            if 'EOF' in str(e):
-                raise IOError('No space left on the disk')
-            raise e
-        return ret
-
-    def ready(self):
-        return True
 
 
 class blockdev:

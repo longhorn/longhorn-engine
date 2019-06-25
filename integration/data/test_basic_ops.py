@@ -5,13 +5,18 @@ from os import path
 import pytest
 
 import cmd
-import launcher
-import common
-import frontend
-from common import dev  # NOQA
-from common import PAGE_SIZE, SIZE  # NOQA
-from common import grpc_controller, read_dev, write_dev  # NOQA
-from common import grpc_replica1, grpc_replica2  # NOQA
+from common import (  # NOQA
+    dev, get_dev, read_dev, write_dev,  # NOQA
+    grpc_engine_manager,  # NOQA
+    grpc_controller, grpc_replica1, grpc_replica2,  # NOQA
+    random_string, verify_data, get_backend_replica_url,
+    open_replica,
+)
+from frontend import get_socket_path
+from setting import (
+    LONGHORN_DEV_DIR, PAGE_SIZE, SIZE,
+    VOLUME_NAME, ENGINE_NAME,
+)
 
 
 def test_basic_rw(dev):  # NOQA
@@ -19,14 +24,13 @@ def test_basic_rw(dev):  # NOQA
         base = random.randint(1, SIZE - PAGE_SIZE)
         offset = (base / PAGE_SIZE) * PAGE_SIZE
         length = base - offset
-        data = common.random_string(length)
-        common.verify_data(dev, offset, data)
+        data = random_string(length)
+        verify_data(dev, offset, data)
 
 
 def test_rw_with_metric(grpc_controller,  # NOQA
                         grpc_replica1, grpc_replica2):  # NOQA
-    rw_dev = common.get_dev(grpc_replica1, grpc_replica2,
-                            grpc_controller)
+    rw_dev = get_dev(grpc_replica1, grpc_replica2, grpc_controller)
 
     replies = grpc_controller.metric_get()
     # skip the first metric since its fields are 0
@@ -36,8 +40,8 @@ def test_rw_with_metric(grpc_controller,  # NOQA
         base = random.randint(1, SIZE - PAGE_SIZE)
         offset = (base / PAGE_SIZE) * PAGE_SIZE
         length = base - offset
-        data = common.random_string(length)
-        common.verify_data(rw_dev, offset, data)
+        data = random_string(length)
+        verify_data(rw_dev, offset, data)
 
         while 1:
             try:
@@ -53,8 +57,8 @@ def test_rw_with_metric(grpc_controller,  # NOQA
 
 def test_beyond_boundary(dev):  # NOQA
     # check write at the boundary
-    data = common.random_string(128)
-    common.verify_data(dev, SIZE - 1 - 128, data)
+    data = random_string(128)
+    verify_data(dev, SIZE - 1 - 128, data)
 
     # out of bounds
     with pytest.raises(EnvironmentError) as err:
@@ -66,51 +70,48 @@ def test_beyond_boundary(dev):  # NOQA
     test_basic_rw(dev)
 
 
-def test_frontend_show(grpc_controller,  # NOQA
+def test_frontend_show(grpc_engine_manager, grpc_controller,  # NOQA
                        grpc_replica1, grpc_replica2):  # NOQA
-    common.open_replica(grpc_replica1)
-    common.open_replica(grpc_replica2)
+    open_replica(grpc_replica1)
+    open_replica(grpc_replica2)
 
     replicas = grpc_controller.replica_list()
     assert len(replicas) == 0
 
-    v = grpc_controller.volume_start(replicas=[
-        common.REPLICA1,
-        common.REPLICA2
-    ])
+    r1_url = get_backend_replica_url(grpc_replica1.address)
+    r2_url = get_backend_replica_url(grpc_replica2.address)
+    v = grpc_controller.volume_start(replicas=[r1_url, r2_url])
 
     ft = v.frontend
     if ft == "tgt" or ft == "tcmu":
-        assert v.endpoint == path.join(common.LONGHORN_DEV_DIR,
-                                       common.VOLUME_NAME)
+        assert v.endpoint == path.join(LONGHORN_DEV_DIR, VOLUME_NAME)
     elif ft == "socket":
-        assert v.endpoint == common.get_socket_path(common.VOLUME_NAME)
-        launcher_info = launcher.info()
-        assert launcher_info["endpoint"] == path.join(common.LONGHORN_DEV_DIR,
-                                                      common.VOLUME_NAME)
+        assert v.endpoint == get_socket_path(VOLUME_NAME)
+        engine = grpc_engine_manager.engine_get(ENGINE_NAME)
+        assert engine.status.endpoint == path.join(LONGHORN_DEV_DIR,
+                                                   VOLUME_NAME)
 
-    info = cmd.info()
-    assert info["name"] == common.VOLUME_NAME
+    info = cmd.info_get(grpc_controller.address)
+    assert info["name"] == VOLUME_NAME
     assert info["endpoint"] == v.endpoint
 
 
 # https://github.com/rancher/longhorn/issues/401
 def test_cleanup_leftover_blockdev(grpc_controller,  # NOQA
                                    grpc_replica1, grpc_replica2):  # NOQA
-    common.open_replica(grpc_replica1)
-    common.open_replica(grpc_replica2)
+    open_replica(grpc_replica1)
+    open_replica(grpc_replica2)
 
     replicas = grpc_controller.replica_list()
     assert len(replicas) == 0
 
-    blockdev = path.join(frontend.LONGHORN_DEV_DIR, common.VOLUME_NAME)
+    blockdev = path.join(LONGHORN_DEV_DIR, VOLUME_NAME)
     assert not path.exists(blockdev)
     open(blockdev, 'a').close()
 
-    grpc_controller.volume_start(replicas=[
-        common.REPLICA1,
-        common.REPLICA2
-    ])
+    r1_url = get_backend_replica_url(grpc_replica1.address)
+    r2_url = get_backend_replica_url(grpc_replica2.address)
+    grpc_controller.volume_start(replicas=[r1_url, r2_url])
 
-    info = cmd.info()
-    assert info["name"] == common.VOLUME_NAME
+    info = cmd.info_get(grpc_controller.address)
+    assert info["name"] == VOLUME_NAME

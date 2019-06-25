@@ -1,149 +1,132 @@
-import subprocess
-
-import pytest
-
 import cmd
-import common
-import launcher
-from common import grpc_controller, backup_targets  # NOQA
-from common import grpc_replica1, grpc_replica2  # NOQA
-from common import grpc_backing_replica1, grpc_backing_replica2  # NOQA
-from common import read_dev, read_from_backing_file
-from snapshot_tree import snapshot_tree_build, snapshot_tree_verify_backup_node
-from common import restore_with_no_frontend, \
-    FRONTEND_TGT_BLOCKDEV # NOQA
+from common import (  # NOQA
+    backup_targets,  # NOQA
+    grpc_controller, grpc_backing_controller,  # NOQA
+    grpc_replica1, grpc_replica2,  # NOQA
+    grpc_backing_replica1, grpc_backing_replica2,  # NOQA
+    cleanup_controller, cleanup_replica,
+    get_dev, get_backing_dev, read_dev,
+    read_from_backing_file,
+    random_string, verify_data, checksum_dev,
+    create_backup, rm_backups,
+    restore_with_no_frontend,
+)
+from snapshot_tree import (
+    snapshot_tree_build, snapshot_tree_verify_backup_node
+)
+from setting import (
+    VOLUME_NAME, VOLUME_BACKING_NAME, BLOCK_SIZE_STR,
+    ENGINE_NAME, ENGINE_BACKING_NAME,
+)
 
-VOLUME_NAME = 'test-volume_1.0'
-VOLUME_SIZE = str(4 * 1024 * 1024)  # 4M
-BLOCK_SIZE = str(2 * 1024 * 1024)  # 2M
 
-
-def backup_test(dev, backup_target, grpc_c):  # NOQA
+def backup_test(dev, address,  # NOQA
+                volume_name, engine_name, backup_target):
     offset = 0
     length = 128
 
-    snap1_data = common.random_string(length)
-    common.verify_data(dev, offset, snap1_data)
-    snap1_checksum = common.checksum_dev(dev)
-    snap1 = cmd.snapshot_create()
+    snap1_data = random_string(length)
+    verify_data(dev, offset, snap1_data)
+    snap1_checksum = checksum_dev(dev)
+    snap1 = cmd.snapshot_create(address)
 
-    backup1 = cmd.backup_create(snap1, backup_target)
-    backup1_info = cmd.backup_inspect(backup1)
-    assert backup1_info["URL"] == backup1
-    assert backup1_info["VolumeName"] == VOLUME_NAME
-    assert backup1_info["VolumeSize"] == VOLUME_SIZE
-    assert backup1_info["Size"] == BLOCK_SIZE
-    assert snap1 in backup1_info["SnapshotName"]
+    backup1_info = create_backup(address, snap1, backup_target)
+    assert backup1_info["VolumeName"] == volume_name
+    assert backup1_info["Size"] == BLOCK_SIZE_STR
 
-    snap2_data = common.random_string(length)
-    common.verify_data(dev, offset, snap2_data)
-    snap2_checksum = common.checksum_dev(dev)
-    snap2 = cmd.snapshot_create()
+    snap2_data = random_string(length)
+    verify_data(dev, offset, snap2_data)
+    snap2_checksum = checksum_dev(dev)
+    snap2 = cmd.snapshot_create(address)
 
-    backup2 = cmd.backup_create(snap2, backup_target)
-    backup2_info = cmd.backup_inspect(backup2)
-    assert backup2_info["URL"] == backup2
-    assert backup2_info["VolumeName"] == VOLUME_NAME
-    assert backup2_info["VolumeSize"] == VOLUME_SIZE
-    assert backup2_info["Size"] == BLOCK_SIZE
-    assert snap2 in backup2_info["SnapshotName"]
+    backup2_info = create_backup(address, snap2, backup_target)
+    assert backup2_info["VolumeName"] == volume_name
+    assert backup2_info["Size"] == BLOCK_SIZE_STR
 
-    snap3_data = common.random_string(length)
-    common.verify_data(dev, offset, snap3_data)
-    snap3_checksum = common.checksum_dev(dev)
-    snap3 = cmd.snapshot_create()
+    snap3_data = random_string(length)
+    verify_data(dev, offset, snap3_data)
+    snap3_checksum = checksum_dev(dev)
+    snap3 = cmd.snapshot_create(address)
 
-    backup3 = cmd.backup_create(snap3, backup_target)
-    backup3_info = cmd.backup_inspect(backup3)
-    assert backup3_info["URL"] == backup3
-    assert backup3_info["VolumeName"] == VOLUME_NAME
-    assert backup3_info["VolumeSize"] == VOLUME_SIZE
-    assert backup3_info["Size"] == BLOCK_SIZE
-    assert snap3 in backup3_info["SnapshotName"]
+    backup3_info = create_backup(address, snap3, backup_target)
+    assert backup3_info["VolumeName"] == volume_name
+    assert backup3_info["Size"] == BLOCK_SIZE_STR
 
-    restore_with_no_frontend(backup3, grpc_c)
+    restore_with_no_frontend(address, engine_name,
+                             backup3_info["URL"])
+
     readed = read_dev(dev, offset, length)
     assert readed == snap3_data
-    c = common.checksum_dev(dev)
+    c = checksum_dev(dev)
     assert c == snap3_checksum
 
-    cmd.backup_rm(backup3)
-    with pytest.raises(subprocess.CalledProcessError):
-        restore_with_no_frontend(backup3, grpc_c)
-    with pytest.raises(subprocess.CalledProcessError):
-        cmd.backup_inspect(backup3)
+    rm_backups(address, engine_name, [backup3_info["URL"]])
 
-    restore_with_no_frontend(backup1, grpc_c)
+    restore_with_no_frontend(address, engine_name,
+                             backup1_info["URL"])
     readed = read_dev(dev, offset, length)
     assert readed == snap1_data
-    c = common.checksum_dev(dev)
+    c = checksum_dev(dev)
     assert c == snap1_checksum
 
-    cmd.backup_rm(backup1)
-    with pytest.raises(subprocess.CalledProcessError):
-        restore_with_no_frontend(backup1, grpc_c)
-    with pytest.raises(subprocess.CalledProcessError):
-        cmd.backup_inspect(backup1)
+    rm_backups(address, engine_name, [backup1_info["URL"]])
 
-    restore_with_no_frontend(backup2, grpc_c)
+    restore_with_no_frontend(address, engine_name,
+                             backup2_info["URL"])
     readed = read_dev(dev, offset, length)
     assert readed == snap2_data
-    c = common.checksum_dev(dev)
+    c = checksum_dev(dev)
     assert c == snap2_checksum
 
-    cmd.backup_rm(backup2)
-    with pytest.raises(subprocess.CalledProcessError):
-        restore_with_no_frontend(backup2, grpc_c)
-    with pytest.raises(subprocess.CalledProcessError):
-        cmd.backup_inspect(backup2)
-    # Engine frontend is down, Start it up
-    launcher.start_engine_frontend(FRONTEND_TGT_BLOCKDEV)
-    v = grpc_c.volume_get()
-    assert v.frontendState == "up"
+    rm_backups(address, engine_name, [backup2_info["URL"]])
 
 
-def backup_with_backing_file_test(backing_dev, backup_target, grpc_c):  # NOQA
-    dev = backing_dev  # NOQA
+def backup_with_backing_file_test(backup_target,  # NOQA
+                                  grpc_backing_controller,  # NOQA
+                                  grpc_backing_replica1,  # NOQA
+                                  grpc_backing_replica2):  # NOQA
+    address = grpc_backing_controller.address
+
+    dev = get_backing_dev(grpc_backing_replica1,
+                          grpc_backing_replica2,
+                          grpc_backing_controller)
 
     offset = 0
     length = 256
 
-    snap0 = cmd.snapshot_create()
+    snap0 = cmd.snapshot_create(address)
     before = read_dev(dev, offset, length)
     assert before != ""
-    snap0_checksum = common.checksum_dev(dev)
+    snap0_checksum = checksum_dev(dev)
 
     exists = read_from_backing_file(offset, length)
     assert before == exists
 
-    backup0 = cmd.backup_create(snap0, backup_target)
-    backup0_info = cmd.backup_inspect(backup0)
-    assert backup0_info["URL"] == backup0
-    assert backup0_info["VolumeName"] == VOLUME_NAME
-    assert backup0_info["VolumeSize"] == VOLUME_SIZE
-    assert snap0 in backup0_info["SnapshotName"]
+    backup0_info = create_backup(address, snap0, backup_target)
+    assert backup0_info["VolumeName"] == VOLUME_BACKING_NAME
 
-    backup_test(dev, backup_target, grpc_c)
+    backup_test(dev, address, VOLUME_BACKING_NAME,
+                ENGINE_BACKING_NAME, backup_target)
 
-    restore_with_no_frontend(backup0, grpc_c)
+    restore_with_no_frontend(address, ENGINE_BACKING_NAME,
+                             backup0_info["URL"])
     after = read_dev(dev, offset, length)
     assert before == after
-    c = common.checksum_dev(dev)
+    c = checksum_dev(dev)
     assert c == snap0_checksum
 
-    cmd.backup_rm(backup0)
-    with pytest.raises(subprocess.CalledProcessError):
-        restore_with_no_frontend(backup0, grpc_c)
-    with pytest.raises(subprocess.CalledProcessError):
-        cmd.backup_inspect(backup0)
-    # Engine frontend is down, Start it up
-    launcher.start_engine_frontend(FRONTEND_TGT_BLOCKDEV)
-    v = grpc_c.volume_get()
-    assert v.frontendState == "up"
+    rm_backups(address, ENGINE_BACKING_NAME, [backup0_info["URL"]])
 
 
-def backup_hole_with_backing_file_test(backing_dev, backup_target, grpc_c):  # NOQA
-    dev = backing_dev  # NOQA
+def backup_hole_with_backing_file_test(backup_target,  # NOQA
+                                       grpc_backing_controller,  # NOQA
+                                       grpc_backing_replica1,  # NOQA
+                                       grpc_backing_replica2):  # NOQA
+    address = grpc_backing_controller.address
+
+    dev = get_backing_dev(grpc_backing_replica1,
+                          grpc_backing_replica2,
+                          grpc_backing_controller)
 
     offset1 = 512
     length1 = 256
@@ -157,110 +140,123 @@ def backup_hole_with_backing_file_test(backing_dev, backup_target, grpc_c):  # N
     hole_offset = 2 * 1024 * 1024
     hole_length = 1024
 
-    snap1_data = common.random_string(length1)
-    common.verify_data(dev, offset1, snap1_data)
-    snap1_checksum = common.checksum_dev(dev)
-    snap1 = cmd.snapshot_create()
+    snap1_data = random_string(length1)
+    verify_data(dev, offset1, snap1_data)
+    snap1_checksum = checksum_dev(dev)
+    snap1 = cmd.snapshot_create(address)
 
     boundary_data_backup1 = read_dev(dev, boundary_offset, boundary_length)
     hole_data_backup1 = read_dev(dev, hole_offset, hole_length)
-    backup1 = cmd.backup_create(snap1, backup_target)
+    backup1_info = create_backup(address, snap1, backup_target)
 
-    snap2_data = common.random_string(length2)
-    common.verify_data(dev, offset2, snap2_data)
-    snap2_checksum = common.checksum_dev(dev)
-    snap2 = cmd.snapshot_create()
+    snap2_data = random_string(length2)
+    verify_data(dev, offset2, snap2_data)
+    snap2_checksum = checksum_dev(dev)
+    snap2 = cmd.snapshot_create(address)
 
     boundary_data_backup2 = read_dev(dev, boundary_offset, boundary_length)
     hole_data_backup2 = read_dev(dev, hole_offset, hole_length)
-    backup2 = cmd.backup_create(snap2, backup_target)
+    backup2_info = create_backup(address, snap2, backup_target)
 
-    restore_with_no_frontend(backup1, grpc_c)
+    restore_with_no_frontend(address, ENGINE_BACKING_NAME,
+                             backup1_info["URL"])
     readed = read_dev(dev, boundary_offset, boundary_length)
     assert readed == boundary_data_backup1
     readed = read_dev(dev, hole_offset, hole_length)
     assert readed == hole_data_backup1
-    c = common.checksum_dev(dev)
+    c = checksum_dev(dev)
     assert c == snap1_checksum
 
-    restore_with_no_frontend(backup2, grpc_c)
+    restore_with_no_frontend(address, ENGINE_BACKING_NAME,
+                             backup2_info["URL"])
     readed = read_dev(dev, boundary_offset, boundary_length)
     assert readed == boundary_data_backup2
     readed = read_dev(dev, hole_offset, hole_length)
     assert readed == hole_data_backup2
-    c = common.checksum_dev(dev)
+    c = checksum_dev(dev)
     assert c == snap2_checksum
 
 
-def snapshot_tree_backup_test(dev, backup_target):  # NOQA
+def snapshot_tree_backup_test(backup_target, engine_name,  # NOQA
+                              grpc_controller, grpc_replica1, grpc_replica2):  # NOQA
+    address = grpc_controller.address
+
+    dev = get_dev(grpc_replica1, grpc_replica2,
+                  grpc_controller)
     offset = 0
     length = 128
     backup = {}
 
-    snap, data = snapshot_tree_build(dev, offset, length)
+    snap, data = snapshot_tree_build(dev, address, engine_name,
+                                     offset, length)
 
-    backup["0b"] = cmd.backup_create(snap["0b"], backup_target)
-    backup["0c"] = cmd.backup_create(snap["0c"], backup_target)
-    backup["1c"] = cmd.backup_create(snap["1c"], backup_target)
-    backup["2b"] = cmd.backup_create(snap["2b"], backup_target)
-    backup["2c"] = cmd.backup_create(snap["2c"], backup_target)
-    backup["3c"] = cmd.backup_create(snap["3c"], backup_target)
+    backup["0b"] = create_backup(address, snap["0b"], backup_target)["URL"]
+    backup["0c"] = create_backup(address, snap["0c"], backup_target)["URL"]
+    backup["1c"] = create_backup(address, snap["1c"], backup_target)["URL"]
+    backup["2b"] = create_backup(address, snap["2b"], backup_target)["URL"]
+    backup["2c"] = create_backup(address, snap["2c"], backup_target)["URL"]
+    backup["3c"] = create_backup(address, snap["3c"], backup_target)["URL"]
 
-    snapshot_tree_verify_backup_node(dev, offset, length, backup, data, "0b")
-    snapshot_tree_verify_backup_node(dev, offset, length, backup, data, "0c")
-    snapshot_tree_verify_backup_node(dev, offset, length, backup, data, "1c")
-    snapshot_tree_verify_backup_node(dev, offset, length, backup, data, "2b")
-    snapshot_tree_verify_backup_node(dev, offset, length, backup, data, "2c")
-    snapshot_tree_verify_backup_node(dev, offset, length, backup, data, "3c")
+    snapshot_tree_verify_backup_node(dev, address, engine_name,
+                                     offset, length, backup, data, "0b")
+    snapshot_tree_verify_backup_node(dev, address, engine_name,
+                                     offset, length, backup, data, "0c")
+    snapshot_tree_verify_backup_node(dev, address, engine_name,
+                                     offset, length, backup, data, "1c")
+    snapshot_tree_verify_backup_node(dev, address, engine_name,
+                                     offset, length, backup, data, "2b")
+    snapshot_tree_verify_backup_node(dev, address, engine_name,
+                                     offset, length, backup, data, "2c")
+    snapshot_tree_verify_backup_node(dev, address, engine_name,
+                                     offset, length, backup, data, "3c")
 
 
 def test_backup(grpc_replica1, grpc_replica2,  # NOQA
                 grpc_controller, backup_targets):  # NOQA
     for backup_target in backup_targets:
-        dev = common.get_dev(grpc_replica1, grpc_replica2,
-                             grpc_controller)
-        backup_test(dev, backup_target, grpc_controller)
-        cmd.sync_agent_server_reset()
-        common.cleanup_replica(grpc_replica1)
-        common.cleanup_replica(grpc_replica2)
-        common.cleanup_controller(grpc_controller)
+        dev = get_dev(grpc_replica1, grpc_replica2,
+                      grpc_controller)
+        backup_test(dev, grpc_controller.address,
+                    VOLUME_NAME, ENGINE_NAME, backup_target)
+        cmd.sync_agent_server_reset(grpc_controller.address)
+        cleanup_replica(grpc_replica1)
+        cleanup_replica(grpc_replica2)
+        cleanup_controller(grpc_controller)
 
 
 def test_snapshot_tree_backup(grpc_replica1, grpc_replica2,  # NOQA
                               grpc_controller, backup_targets):  # NOQA
     for backup_target in backup_targets:
-        dev = common.get_dev(grpc_replica1, grpc_replica2,
-                             grpc_controller)
-        snapshot_tree_backup_test(dev, backup_target)
-        cmd.sync_agent_server_reset()
-        common.cleanup_replica(grpc_replica1)
-        common.cleanup_replica(grpc_replica2)
-        common.cleanup_controller(grpc_controller)
+        snapshot_tree_backup_test(backup_target, ENGINE_NAME,
+                                  grpc_controller,
+                                  grpc_replica1, grpc_replica2)
+        cmd.sync_agent_server_reset(grpc_controller.address)
+        cleanup_replica(grpc_replica1)
+        cleanup_replica(grpc_replica2)
+        cleanup_controller(grpc_controller)
 
 
 def test_backup_with_backing_file(grpc_backing_replica1, grpc_backing_replica2,  # NOQA
-                                  grpc_controller, backup_targets):  # NOQA
+                                  grpc_backing_controller, backup_targets):  # NOQA
     for backup_target in backup_targets:
-        backing_dev = common.get_backing_dev(grpc_backing_replica1,
-                                             grpc_backing_replica2,
-                                             grpc_controller)
-        backup_with_backing_file_test(backing_dev, backup_target,  # NOQA
-                                      grpc_controller)
-        cmd.sync_agent_server_reset()
-        common.cleanup_replica(grpc_backing_replica1)
-        common.cleanup_replica(grpc_backing_replica2)
-        common.cleanup_controller(grpc_controller)
+        backup_with_backing_file_test(backup_target,
+                                      grpc_backing_controller,
+                                      grpc_backing_replica1,
+                                      grpc_backing_replica2)
+        cmd.sync_agent_server_reset(grpc_backing_controller.address)
+        cleanup_replica(grpc_backing_replica1)
+        cleanup_replica(grpc_backing_replica2)
+        cleanup_controller(grpc_backing_controller)
 
 
 def test_backup_hole_with_backing_file(grpc_backing_replica1, grpc_backing_replica2,  # NOQA
-                                       grpc_controller, backup_targets):  # NOQA
+                                       grpc_backing_controller, backup_targets):  # NOQA
     for backup_target in backup_targets:
-        backing_dev = common.get_backing_dev(grpc_backing_replica1,
-                                             grpc_backing_replica2,
-                                             grpc_controller)
-        backup_hole_with_backing_file_test(backing_dev, backup_target, # NOQA
-                                           grpc_controller) # NOQA
-        cmd.sync_agent_server_reset()
-        common.cleanup_replica(grpc_backing_replica1)
-        common.cleanup_replica(grpc_backing_replica2)
-        common.cleanup_controller(grpc_controller)
+        backup_hole_with_backing_file_test(backup_target,
+                                           grpc_backing_controller,
+                                           grpc_backing_replica1,
+                                           grpc_backing_replica2)
+        cmd.sync_agent_server_reset(grpc_backing_controller.address)
+        cleanup_replica(grpc_backing_replica1)
+        cleanup_replica(grpc_backing_replica2)
+        cleanup_controller(grpc_backing_controller)
