@@ -120,7 +120,7 @@ def restore_inc_test(grpc_controller,  # NOQA
         for blk in blocks:
             command = ["mv", blk, blk+".tmp"]
             subprocess.check_output(command).strip()
-        with pytest.raises(subprocess.CalledProcessError):
+        with pytest.raises(Exception):
             cmd.restore_inc(backup1, backup0_name, CONTROLLER_NO_FRONTEND)
         assert path.exists(STANDBY_REPLICA1_PATH + delta_file1)
         assert path.exists(STANDBY_REPLICA2_PATH + delta_file1)

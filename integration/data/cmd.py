@@ -75,6 +75,25 @@ def backup_status(backupID, url=CONTROLLER):
     return output
 
 
+def wait_for_restore_completion(url):
+    status_cmd = [_bin(), '--url', url, '--debug', 'backup', 'restore-status']
+    for x in range(RETRY_COUNTS):
+        time.sleep(2)
+        output = subprocess.check_output(status_cmd).strip()
+        rs = json.loads(output)
+        assert rs is not None
+        completed = 0
+        for status in rs:
+            if status['progress'] == 100:
+                completed += 1
+                continue
+            if 'restoreError' in status.keys():
+                assert status['restoreError'] == ""
+        if completed == len(rs):
+            return
+    assert completed == len(rs)
+
+
 def backup_create(snapshot, dest, url=CONTROLLER):
     cmd = [_bin(), '--url', url, '--debug',
            'backup', 'create', snapshot, '--dest', dest]
@@ -88,7 +107,8 @@ def backup_rm(backup, url=CONTROLLER):
 
 def backup_restore(backup, url=CONTROLLER):
     cmd = [_bin(), '--url', url, '--debug', 'backup', 'restore', backup]
-    return subprocess.check_output(cmd).strip()
+    subprocess.check_output(cmd).strip()
+    return wait_for_restore_completion(url)
 
 
 def backup_inspect(backup, url=CONTROLLER):
@@ -120,4 +140,5 @@ def restore_to_file(backup_url, backing_file='', output_file='', format='',
 def restore_inc(backup_url, last_restored, url=CONTROLLER):
     cmd = [_bin(), '--url', url, '--debug', 'backup', 'restore',
            backup_url, '--incrementally', '--last-restored', last_restored]
-    return subprocess.check_output(cmd)
+    subprocess.check_output(cmd)
+    return wait_for_restore_completion(url)

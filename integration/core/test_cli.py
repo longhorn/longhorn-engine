@@ -643,6 +643,28 @@ def get_backup_url(bin, backupID):
     return rValue
 
 
+def restore_backup(bin, backupURL, env):
+    cmd = [bin, 'backup', 'restore', backupURL]
+    subprocess.check_call(cmd, env=env)
+
+    status_cmd = [bin, 'backup', 'restore-status']
+
+    for x in range(RETRY_COUNTS):
+        time.sleep(2)
+        output = subprocess.check_output(status_cmd).strip()
+        rs = json.loads(output)
+        completed = 0
+        for status in rs:
+            if status['progress'] == 100:
+                completed += 1
+                continue
+            if 'restoreError' in status.keys():
+                assert status['restoreError'] == ""
+        if completed == len(rs):
+            return
+    assert completed == len(rs)
+
+
 def backup_core(bin, grpc_controller_client,
                 grpc_replica_client,
                 grpc_replica_client2,
@@ -760,11 +782,8 @@ def backup_core(bin, grpc_controller_client,
     with pytest.raises(subprocess.CalledProcessError):
         subprocess.check_call(cmd, env=env)
 
-    cmd = [bin, 'backup', 'restore', backup1]
-    subprocess.check_call(cmd, env=env)
-
-    cmd = [bin, 'backup', 'restore', backup2]
-    subprocess.check_call(cmd, env=env)
+    restore_backup(bin, backup1, env)
+    restore_backup(bin, backup2, env)
 
     cmd = [bin, 'backup', 'rm', backup1]
     subprocess.check_call(cmd, env=env)
