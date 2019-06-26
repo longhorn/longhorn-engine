@@ -41,17 +41,14 @@ type Launcher struct {
 	availablePorts *util.Bitmap
 }
 
-const (
-	WaitInterval = time.Second
-	WaitCount    = 60
-)
-
 type State string
 
 const (
-	StateRunning = State(types.ProcessStateRunning)
-	StateStopped = State(types.ProcessStateStopped)
-	StateError   = State(types.ProcessStateError)
+	StateStarting = State(types.ProcessStateStarting)
+	StateRunning  = State(types.ProcessStateRunning)
+	StateStopping = State(types.ProcessStateStopping)
+	StateStopped  = State(types.ProcessStateStopped)
+	StateError    = State(types.ProcessStateError)
 )
 
 type Process struct {
@@ -132,7 +129,7 @@ func (l *Launcher) ProcessCreate(ctx context.Context, req *rpc.ProcessCreateRequ
 		PortCount: req.Spec.PortCount,
 		PortArgs:  req.Spec.PortArgs,
 
-		State: StateRunning,
+		State: StateStarting,
 
 		lock: &sync.RWMutex{},
 	}
@@ -307,6 +304,32 @@ func (p *Process) Start() error {
 		p.UpdateCh <- p
 	}()
 
+	go func() {
+		if p.PortStart != 0 {
+			address := util.GetURL("localhost", int(p.PortStart))
+			for i := 0; i < types.WaitCount; i++ {
+				if util.GRPCServiceReadinessProbe(address) {
+					p.lock.Lock()
+					p.State = StateRunning
+					p.lock.Unlock()
+					return
+				}
+				logrus.Infof("launcher: wait for gRPC service of process %v to start", p.Name)
+				time.Sleep(types.WaitInterval)
+			}
+			// fail to start the process, then try to stop it.
+			if !p.IsStopped() {
+				p.Stop()
+			}
+		} else {
+			// launcher doesn't know the grpc address. directly set running state
+			p.lock.Lock()
+			p.State = StateRunning
+			p.lock.Unlock()
+		}
+		return
+	}()
+
 	return nil
 }
 
@@ -334,12 +357,12 @@ func (p *Process) RPCResponse() *rpc.ProcessResponse {
 func (p *Process) Stop() {
 	// We don't neeed lock here since cmd will deal with concurrency
 	p.cmd.Process.Signal(syscall.SIGINT)
-	for i := 0; i < WaitCount; i++ {
+	for i := 0; i < types.WaitCount; i++ {
 		if p.IsStopped() {
 			return
 		}
 		logrus.Infof("launcher: wait for process %v to shutdown", p.Name)
-		time.Sleep(WaitInterval)
+		time.Sleep(types.WaitInterval)
 	}
 	p.cmd.Process.Signal(syscall.SIGKILL)
 }

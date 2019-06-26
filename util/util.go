@@ -10,6 +10,10 @@ import (
 	"github.com/RoaringBitmap/roaring"
 )
 
+const (
+	GRPCHealthProbe = "/usr/bin/grpc_health_probe"
+)
+
 type Bitmap struct {
 	base int32
 	size int32
@@ -114,4 +118,12 @@ func PrintJSON(obj interface{}) error {
 
 	fmt.Println(string(output))
 	return nil
+}
+
+func GRPCServiceReadinessProbe(address string) bool {
+	cmd := exec.Command(GRPCHealthProbe, "-addr", address)
+	if err := cmd.Run(); err != nil {
+		return false
+	}
+	return true
 }
