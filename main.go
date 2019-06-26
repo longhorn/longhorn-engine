@@ -10,9 +10,11 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 	"google.golang.org/grpc"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 
 	"github.com/longhorn/longhorn-engine-launcher/engine"
+	"github.com/longhorn/longhorn-engine-launcher/health"
 	"github.com/longhorn/longhorn-engine-launcher/process"
 	"github.com/longhorn/longhorn-engine-launcher/rpc"
 )
@@ -51,6 +53,7 @@ func start(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	hc := health.NewHealthCheckServer(em, pl)
 
 	listenAt, err := net.Listen("tcp", listen)
 	if err != nil {
@@ -60,6 +63,7 @@ func start(c *cli.Context) error {
 	rpcService := grpc.NewServer()
 	rpc.RegisterLonghornProcessLauncherServiceServer(rpcService, pl)
 	rpc.RegisterLonghornEngineManagerServiceServer(rpcService, em)
+	healthpb.RegisterHealthServer(rpcService, hc)
 	reflection.Register(rpcService)
 
 	go func() {
