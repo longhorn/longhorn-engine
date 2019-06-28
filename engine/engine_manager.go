@@ -3,7 +3,9 @@ package engine
 import (
 	"fmt"
 	"os"
+	"strings"
 	"sync"
+	"time"
 
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
@@ -11,6 +13,7 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/longhorn/longhorn-engine-launcher/rpc"
+	"github.com/longhorn/longhorn-engine-launcher/types"
 	"github.com/longhorn/longhorn-engine-launcher/util"
 )
 
@@ -46,7 +49,7 @@ func (em *Manager) EngineCreate(ctx context.Context, req *rpc.EngineCreateReques
 		return nil, errors.Wrapf(err, "failed to register engine launcher %v", el.LauncherName)
 	}
 	if err := el.createEngineProcess(em.listen, em.processLauncher); err != nil {
-		em.unregisterEngineLauncher(el)
+		go em.unregisterEngineLauncher(req.Spec.Name)
 		return nil, errors.Wrapf(err, "failed to start engine %v", req.Spec.Name)
 	}
 
@@ -77,18 +80,42 @@ func (em *Manager) registerEngineLauncher(el *Launcher) error {
 	return nil
 }
 
-func (em *Manager) unregisterEngineLauncher(el *Launcher) error {
-	em.lock.Lock()
-	defer em.lock.Unlock()
+func (em *Manager) unregisterEngineLauncher(launcherName string) {
+	logrus.Debugf("Engine Manager starts to unregistered engine launcher %v", launcherName)
 
-	_, exists := em.engineLaunchers[el.LauncherName]
-	if exists {
-		return nil
+	em.lock.RLock()
+	el, exists := em.engineLaunchers[launcherName]
+	em.lock.RUnlock()
+	if !exists {
+		return
 	}
 
-	delete(em.engineLaunchers, el.LauncherName)
+	el.lock.RLock()
+	processName := el.currentEngine.EngineName
+	el.lock.RUnlock()
 
-	return nil
+	for i := 0; i < types.WaitCount; i++ {
+		if _, err := em.processLauncher.ProcessGet(nil, &rpc.ProcessGetRequest{
+			Name: processName,
+		}); err != nil && strings.Contains(err.Error(), "cannot find process") {
+			break
+		}
+		logrus.Infof("Engine Manager is waiting for engine %v to shutdown before unregistering the engine launcher", processName)
+		time.Sleep(types.WaitInterval)
+	}
+
+	if _, err := em.processLauncher.ProcessGet(nil, &rpc.ProcessGetRequest{
+		Name: processName,
+	}); err != nil && strings.Contains(err.Error(), "cannot find process") {
+		em.lock.Lock()
+		delete(em.engineLaunchers, launcherName)
+		em.lock.Unlock()
+		logrus.Infof("Engine Manager had successfully unregistered engine launcher %v, deletion completed", launcherName)
+	} else {
+		logrus.Errorf("Engine Manager fails to unregister engine launcher %v", launcherName)
+	}
+
+	return
 }
 
 func (em *Manager) EngineDelete(ctx context.Context, req *rpc.EngineRequest) (ret *rpc.EngineResponse, err error) {
@@ -103,18 +130,20 @@ func (em *Manager) EngineDelete(ctx context.Context, req *rpc.EngineRequest) (re
 	}
 	em.lock.Unlock()
 
-	response, err := el.deleteEngine(em.processLauncher)
+	el.lock.RLock()
+	processName := el.currentEngine.EngineName
+	el.lock.RUnlock()
+	processResp, err := el.deleteEngine(em.processLauncher, processName)
 	if err != nil {
 		return nil, err
 	}
+	response := el.RPCResponse(processResp.Status)
 
-	em.lock.Lock()
-	delete(em.engineLaunchers, el.LauncherName)
-	em.lock.Unlock()
+	go em.unregisterEngineLauncher(req.Name)
 
-	logrus.Infof("Engine Manager has successfully deleted engine %v", req.Name)
+	logrus.Infof("Engine Manager is deleting engine %v", req.Name)
 
-	return el.RPCResponse(response.Status), nil
+	return response, nil
 }
 
 func (em *Manager) EngineGet(ctx context.Context, req *rpc.EngineRequest) (ret *rpc.EngineResponse, err error) {
@@ -134,7 +163,8 @@ func (em *Manager) EngineGet(ctx context.Context, req *rpc.EngineRequest) (ret *
 	})
 	el.lock.RUnlock()
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get process info for engine %v", req.Name)
+		return nil, errors.Wrapf(err, "cannot find engine %v since failed to get related process info: %v",
+			req.Name, err)
 	}
 
 	logrus.Infof("Engine Manager has successfully get engine %v", req.Name)
@@ -154,14 +184,25 @@ func (em *Manager) EngineList(ctx context.Context, req *empty.Empty) (ret *rpc.E
 
 	for _, el := range em.engineLaunchers {
 		el.lock.RLock()
-		response, err := em.processLauncher.ProcessGet(nil, &rpc.ProcessGetRequest{
-			Name: el.currentEngine.EngineName,
-		})
+		processName := el.currentEngine.EngineName
 		el.lock.RUnlock()
+		response, err := em.processLauncher.ProcessGet(nil, &rpc.ProcessGetRequest{
+			Name: processName,
+		})
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to get process info for engine %v", el.LauncherName)
+			// Race condition: try to list the engine whose related process has been deleted
+			// but the engine launcher hasn't been unregistered from Engine Manager. Hence we
+			// will manually set process status for this kind of engine.
+			if strings.Contains(err.Error(), "cannot find process") {
+				ret.Engines[el.LauncherName] = el.RPCResponse(&rpc.ProcessStatus{
+					State: types.ProcessStateStopped,
+				})
+			} else {
+				return nil, errors.Wrapf(err, "failed to get process info for engine %v", el.LauncherName)
+			}
+		} else {
+			ret.Engines[el.LauncherName] = el.RPCResponse(response.Status)
 		}
-		ret.Engines[el.LauncherName] = el.RPCResponse(response.Status)
 	}
 
 	logrus.Infof("Engine Manager has successfully list all engines")

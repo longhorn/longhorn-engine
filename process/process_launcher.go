@@ -144,20 +144,23 @@ func (l *Launcher) ProcessCreate(ctx context.Context, req *rpc.ProcessCreateRequ
 }
 
 func (l *Launcher) ProcessDelete(ctx context.Context, req *rpc.ProcessDeleteRequest) (ret *rpc.ProcessResponse, err error) {
+	logrus.Debugf("launcher: prepare to delete process %v", req.Name)
+
 	p := l.findProcess(req.Name)
 	if p == nil {
 		return nil, fmt.Errorf("cannot find process %v", req.Name)
 	}
 
-	if !p.IsStopped() {
-		p.Stop()
+	p.lock.Lock()
+	if p.State != StateStopping && p.State != StateStopped && p.State != StateError {
+		p.State = StateStopping
+		go p.Stop()
 	}
+	p.lock.Unlock()
 
 	resp := p.RPCResponse()
 
-	if err := l.unregisterProcess(p); err != nil {
-		return nil, err
-	}
+	go l.unregisterProcess(p)
 
 	return resp, nil
 }
@@ -197,26 +200,37 @@ func (l *Launcher) registerProcess(p *Process) error {
 	return nil
 }
 
-func (l *Launcher) unregisterProcess(p *Process) error {
-	l.lock.Lock()
-	defer l.lock.Unlock()
-
+func (l *Launcher) unregisterProcess(p *Process) {
+	l.lock.RLock()
 	_, exists := l.processes[p.Name]
 	if !exists {
-		return nil
+		l.lock.RUnlock()
+		return
+	}
+	l.lock.RUnlock()
+
+	for i := 0; i < types.WaitCount; i++ {
+		if p.IsStopped() {
+			break
+		}
+		logrus.Debugf("launcher: wait for process %v to shutdown before unregistering process", p.Name)
+		time.Sleep(types.WaitInterval)
 	}
 
-	if !p.IsStopped() {
-		return fmt.Errorf("cannot unregister running process")
-	}
-	if err := l.releasePorts(p.PortStart, p.PortEnd); err != nil {
-		return errors.Wrapf(err, "cannot deallocate %v ports (%v-%v) for %v",
-			p.PortCount, p.PortStart, p.PortEnd, p.Name)
+	if p.IsStopped() {
+		l.lock.Lock()
+		defer l.lock.Unlock()
+		if err := l.releasePorts(p.PortStart, p.PortEnd); err != nil {
+			logrus.Errorf("launcher: cannot deallocate %v ports (%v-%v) for %v: %v",
+				p.PortCount, p.PortStart, p.PortEnd, p.Name, err)
+		}
+		logrus.Infof("launcher: successfully unregistered process %v", p.Name)
+		delete(l.processes, p.Name)
+	} else {
+		logrus.Errorf("launcher: failed to unregister process %v since it is state %v rather than stopped", p.Name, p.State)
 	}
 
-	delete(l.processes, p.Name)
-
-	return nil
+	return
 }
 
 func (l *Launcher) findProcess(name string) *Process {
@@ -292,6 +306,7 @@ func (p *Process) Start() error {
 			p.lock.Lock()
 			p.State = StateError
 			p.ErrorMsg = err.Error()
+			logrus.Infof("launcher: process %v error out, error msg: %v", p.Name, p.ErrorMsg)
 			p.lock.Unlock()
 
 			p.UpdateCh <- p
@@ -299,6 +314,7 @@ func (p *Process) Start() error {
 		}
 		p.lock.Lock()
 		p.State = StateStopped
+		logrus.Infof("launcher: process %v stopped")
 		p.lock.Unlock()
 
 		p.UpdateCh <- p
@@ -356,6 +372,7 @@ func (p *Process) RPCResponse() *rpc.ProcessResponse {
 
 func (p *Process) Stop() {
 	// We don't neeed lock here since cmd will deal with concurrency
+	logrus.Debugf("launcher: send SIGINT to stop process %v", p.Name)
 	p.cmd.Process.Signal(syscall.SIGINT)
 	for i := 0; i < types.WaitCount; i++ {
 		if p.IsStopped() {
@@ -364,6 +381,7 @@ func (p *Process) Stop() {
 		logrus.Infof("launcher: wait for process %v to shutdown", p.Name)
 		time.Sleep(types.WaitInterval)
 	}
+	logrus.Debugf("launcher: cannot graceful stop process %v in %v seconds, will send SIGKILL to force stopping it", p.Name, types.WaitCount)
 	p.cmd.Process.Signal(syscall.SIGKILL)
 }
 

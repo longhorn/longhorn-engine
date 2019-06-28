@@ -5,10 +5,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"sync"
 	"time"
-
-	"github.com/longhorn/longhorn-engine-launcher/util"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -17,6 +16,8 @@ import (
 	eutil "github.com/longhorn/longhorn-engine/util"
 
 	"github.com/longhorn/longhorn-engine-launcher/rpc"
+	"github.com/longhorn/longhorn-engine-launcher/types"
+	"github.com/longhorn/longhorn-engine-launcher/util"
 )
 
 const (
@@ -174,37 +175,18 @@ func (el *Launcher) createEngineProcess(engineManagerListen string,
 
 // During running this function, frontendShutdownCallback() will be called automatically.
 // Hence need to be careful about deadlock
-func (el *Launcher) deleteEngine(processLauncher rpc.LonghornProcessLauncherServiceServer) (*rpc.ProcessResponse, error) {
+func (el *Launcher) deleteEngine(processLauncher rpc.LonghornProcessLauncherServiceServer, processName string) (*rpc.ProcessResponse, error) {
 	logrus.Debugf("engine launcher %v: prepare to delete engine process %v",
 		el.LauncherName, el.currentEngine.EngineName)
 
 	response, err := processLauncher.ProcessDelete(nil, &rpc.ProcessDeleteRequest{
-		Name: el.currentEngine.EngineName,
+		Name: processName,
 	})
 	if err != nil {
 		return nil, err
 	}
 
 	return response, nil
-}
-
-// During running this function, frontendShutdownCallback() will be called automatically.
-// Hence need to be careful about deadlock
-func (el *Launcher) deleteBackupEngine(processLauncher rpc.LonghornProcessLauncherServiceServer) error {
-	logrus.Debugf("engine launcher %v: prepare to delete backup engine process %v",
-		el.LauncherName, el.backupEngine.EngineName)
-
-	if el.backupEngine == nil {
-		return fmt.Errorf("cannot delete, backup engine doesn't exist")
-	}
-
-	if _, err := processLauncher.ProcessDelete(nil, &rpc.ProcessDeleteRequest{
-		Name: el.backupEngine.EngineName,
-	}); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (el *Launcher) prepareUpgrade(spec *rpc.EngineSpec) error {
@@ -232,7 +214,13 @@ func (el *Launcher) prepareUpgrade(spec *rpc.EngineSpec) error {
 
 func (el *Launcher) rollbackUpgrade(processLauncher rpc.LonghornProcessLauncherServiceServer) error {
 	el.lock.Lock()
-	defer el.lock.Unlock()
+	launcherName := el.LauncherName
+	processName := el.currentEngine.EngineName
+	// swap engine process. current engine should be old engine process
+	newEngine := el.currentEngine
+	el.currentEngine = el.backupEngine
+	el.backupEngine = newEngine
+	el.lock.Unlock()
 
 	logrus.Debugf("engine launcher %v: rolling back upgrade", el.LauncherName)
 
@@ -241,15 +229,19 @@ func (el *Launcher) rollbackUpgrade(processLauncher rpc.LonghornProcessLauncherS
 	}
 
 	if el.backupEngine != nil {
-		el.lock.Unlock()
-		el.deleteEngine(processLauncher)
-		el.lock.Lock()
+		el.deleteEngine(processLauncher, processName)
 
-		el.currentEngine = el.backupEngine
-		el.backupEngine = nil
+		// need to wait for new engine process deletion before unset el.backupEngine.
+		isDeleted := el.waitForEngineProcessDeletion(processLauncher, processName)
+		if isDeleted {
+			el.lock.Lock()
+			el.backupEngine = nil
+			el.lock.Unlock()
+			logrus.Infof("engine launcher %v: successfully rolled back to backup engine", launcherName)
+		} else {
+			return fmt.Errorf("engine launcher %v: failed to rollback upgrade since new engine process cannot be deleted", launcherName)
+		}
 	}
-
-	logrus.Debugf("engine launcher %v: rollback completed", el.LauncherName)
 
 	return nil
 }
@@ -257,19 +249,53 @@ func (el *Launcher) rollbackUpgrade(processLauncher rpc.LonghornProcessLauncherS
 func (el *Launcher) finalizeUpgrade(processLauncher rpc.LonghornProcessLauncherServiceServer) {
 	logrus.Debugf("engine launcher %v: finalize upgrade", el.LauncherName)
 
-	if err := el.deleteBackupEngine(processLauncher); err != nil {
+	el.lock.RLock()
+	launcherName := el.LauncherName
+	processName := el.backupEngine.EngineName
+	el.lock.RUnlock()
+
+	if _, err := el.deleteEngine(processLauncher, processName); err != nil {
 		logrus.Warnf("failed to delete backup engine process %v: %v", el.backupEngine.EngineName, err)
 	}
 
-	el.lock.Lock()
-	defer el.lock.Unlock()
-
-	el.binaryBackup = ""
-	el.backupEngine = nil
-
-	logrus.Debugf("engine launcher %v: finalize completed", el.LauncherName)
+	// Need to wait for backup engine process deletion before unset el.backupEngine.
+	// Typically engine process deletion will cause frontend shutdown callback.
+	// But we don't want to shutdown frontend here since it's live upgrade.
+	// Hence frontend shutdown callback will check existence of el.backupEngine to avoid frontend down.
+	// Also need to block process since we cannot start another engine upgrade before completing this func.
+	isDeleted := el.waitForEngineProcessDeletion(processLauncher, processName)
+	if isDeleted {
+		el.lock.Lock()
+		el.binaryBackup = ""
+		el.backupEngine = nil
+		el.lock.Unlock()
+		logrus.Infof("engine launcher %v: successfully finalized backup engine", launcherName)
+	} else {
+		logrus.Errorf("engine launcher %v: failed to deleted backup engine process", el.LauncherName)
+	}
 
 	return
+}
+
+func (el *Launcher) waitForEngineProcessDeletion(processLauncher rpc.LonghornProcessLauncherServiceServer, processName string) bool {
+	for i := 0; i < types.WaitCount; i++ {
+		if _, err := processLauncher.ProcessGet(nil, &rpc.ProcessGetRequest{
+			Name: processName,
+		}); err != nil && strings.Contains(err.Error(), "cannot find process") {
+			break
+		}
+		logrus.Infof("engine launcher %v: waiting for engine process %v to shutdown before unregistering the engine launcher", el.LauncherName, processName)
+		time.Sleep(types.WaitInterval)
+	}
+
+	if _, err := processLauncher.ProcessGet(nil, &rpc.ProcessGetRequest{
+		Name: processName,
+	}); err != nil && strings.Contains(err.Error(), "cannot find process") {
+		logrus.Infof("engine launcher %v: successfully deleted engine process", el.LauncherName)
+		return true
+	}
+	logrus.Errorf("engine launcher %v: failed to deleted engine process", el.LauncherName)
+	return false
 }
 
 func (el *Launcher) backupBinary(newBinary string) error {
@@ -287,6 +313,9 @@ func (el *Launcher) backupBinary(newBinary string) error {
 }
 
 func (el *Launcher) restoreBackupBinary() error {
+	el.lock.Lock()
+	defer el.lock.Unlock()
+
 	if el.binaryBackup == "" {
 		return fmt.Errorf("cannot restore, binary backup doesn't exist")
 	}
