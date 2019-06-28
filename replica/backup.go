@@ -43,10 +43,15 @@ type Backup struct {
 type Restore struct {
 	sync.Mutex
 	restoreID       string
-	SnapshotName    string
+	SnapshotName    string //This will be deltaFileName in case of Incremental Restore
 	RestoreProgress int
 	RestoreError    error
 	LastUpdatedAt   time.Time
+	BackupURL       string
+
+	//Incremental Restore fields
+	LastRestored     string
+	SnapshotDiskName string
 }
 
 func NewRestore(snapshotName string) *Restore {
