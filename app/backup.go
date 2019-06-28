@@ -258,12 +258,17 @@ func doRestoreBackup(c *cli.Context) error {
 		return fmt.Errorf("Missing required parameter backup")
 	}
 
+	if backup, err := backupstore.InspectBackup(backupURL); err != nil || backup == nil {
+		return errors.Wrapf(err, "no backups found with url %v", backupURL)
+	}
+
 	cli := getCli(c)
 	//lastRestored Flag is empty for regular Restore backup
 	err := cli.VolumePrepareRestore("")
 	if err != nil {
 		return err
 	}
+
 	if err := task.RestoreBackup(backupURL); err != nil {
 		//Finish Restore as initiation failed
 		if err = cli.VolumeFinishRestore(""); err != nil {
@@ -283,14 +288,16 @@ func checkRestoreStatus(c *cli.Context) error {
 	task := sync.NewTask(c.GlobalString("url"))
 	rsList, err := task.GetRestoreStatus()
 	if err != nil {
+		logrus.Errorf("failed to get Restore Status: %v", err)
 		return err
 	}
 
-	if task.IsRestorationComplete(rsList) {
+	if rsList != nil && task.IsRestorationComplete(rsList) {
+		rs := rsList[0] //All of them will have the same flag value.
 		cli := getCli(c)
-		//Current Restored Flag empty for regular Restore backup
-		if err = cli.VolumeFinishRestore(""); err != nil {
-			return errors.Wrapf(err, "failed to finish incrementally restoring")
+		//backupName is empty for regular Restore backup
+		if err = cli.VolumeFinishRestore(rs.LastRestored); err != nil {
+			logrus.Errorf("failed to finish restoring[%v]: %v", rs.LastRestored, err)
 		}
 	}
 
@@ -304,14 +311,14 @@ func checkRestoreStatus(c *cli.Context) error {
 }
 
 func doRestoreBackupIncrementally(c *cli.Context) error {
-	url := c.GlobalString("url")
-	task := sync.NewTask(url)
+	task := sync.NewTask(c.GlobalString("url"))
 
 	backup := c.Args().First()
 	if backup == "" {
 		return fmt.Errorf("Missing required parameter backup")
 	}
-	backupName, err := backupstore.GetBackupFromBackupURL(backup)
+	backupURL := util.UnescapeURL(backup)
+	backupName, err := backupstore.GetBackupFromBackupURL(backupURL)
 	if err != nil {
 		return err
 	}
@@ -323,18 +330,18 @@ func doRestoreBackupIncrementally(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	if _, err := backupstore.InspectBackup(strings.Replace(backup, backupName, lastRestored, 1)); err != nil {
+		logrus.Warnf("Invalid argument last-restored, cannot find related backup %v, will do full restoration, err: %v",
+			lastRestored, err)
+		lastRestored = ""
+	}
 
 	if err := task.RestoreBackupIncrementally(backup, backupName, lastRestored); err != nil {
 		// failed to restore, no need to update field lastRestored
 		if extraErr := cli.VolumeFinishRestore(""); extraErr != nil {
-			return errors.Wrapf(extraErr, "failed to execute and finsish incrementally restoring: %v", err)
+			return errors.Wrapf(extraErr, "failed to execute and finish incrementally restoring: %v", err)
 		}
 		return err
-	}
-
-	// TODO: will error out here cause dead lock?
-	if err = cli.VolumeFinishRestore(backupName); err != nil {
-		return errors.Wrapf(err, "failed to finsish incrementally restoring")
 	}
 
 	return nil
