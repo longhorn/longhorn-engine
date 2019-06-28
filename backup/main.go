@@ -19,26 +19,6 @@ import (
 var (
 	VERSION = "0.0.0"
 	log     = logrus.WithFields(logrus.Fields{"pkg": "backup"})
-
-	backupRestoreCmd = cli.Command{
-		Name:  "restore",
-		Usage: "restore a backup to file: restore <backup>",
-		Flags: []cli.Flag{
-			cli.StringFlag{
-				Name:  "to",
-				Usage: "destination file of restoring, will be created if not exists",
-			},
-			cli.BoolFlag{
-				Name:  "incrementally, I",
-				Usage: "Whether do incremental restore",
-			},
-			cli.StringFlag{
-				Name:  "last-restored",
-				Usage: "last restored backup name, the backup should exist in the backupstore",
-			},
-		},
-		Action: cmdBackupRestore,
-	}
 )
 
 func cleanup() {
@@ -61,9 +41,7 @@ func Main() {
 
 	app := cli.NewApp()
 	app.Version = VERSION
-	app.Commands = []cli.Command{
-		backupRestoreCmd,
-	}
+	app.Commands = []cli.Command{}
 	app.Run(os.Args)
 }
 
@@ -173,14 +151,6 @@ func DoBackupCreate(volumeName string, snapshotName string, destURL string, labe
 	return backupID, replicaBackup, nil
 }
 
-func cmdBackupRestore(c *cli.Context) {
-	if c.Bool("incrementally") {
-		if err := doBackupRestoreIncrementally(c); err != nil {
-			panic(err)
-		}
-	}
-}
-
 func DoBackupRestore(backupURL string, restoreObj *replica.Restore, toFile string) error {
 	if backupURL == "" {
 		return RequiredMissingError("backup URL")
@@ -207,22 +177,16 @@ func DoBackupRestore(backupURL string, restoreObj *replica.Restore, toFile strin
 	return nil
 }
 
-func doBackupRestoreIncrementally(c *cli.Context) error {
-	if c.NArg() == 0 {
+func DoBackupRestoreIncrementally(url string, deltaFile string, lastRestored string, restoreObj *replica.Restore) error {
+	if url == "" {
 		return RequiredMissingError("backup URL")
 	}
-	backupURL := c.Args()[0]
-	if backupURL == "" {
-		return RequiredMissingError("backup URL")
-	}
-	backupURL = util.UnescapeURL(backupURL)
+	backupURL := util.UnescapeURL(url)
 
-	deltaFile := c.String("to")
 	if deltaFile == "" {
-		return RequiredMissingError("to")
+		return RequiredMissingError("delta file")
 	}
 
-	lastRestored := c.String("last-restored")
 	if lastRestored == "" {
 		return RequiredMissingError("last-restored")
 	}
@@ -236,7 +200,14 @@ func doBackupRestoreIncrementally(c *cli.Context) error {
 		}
 	}
 
-	if err := backupstore.RestoreDeltaBlockBackupIncrementally(backupURL, deltaFile, lastRestored); err != nil {
+	config := &backupstore.DeltaRestoreConfig{
+		BackupURL:      backupURL,
+		DeltaOps:       restoreObj,
+		LastBackupName: lastRestored,
+		Filename:       deltaFile,
+	}
+
+	if err := backupstore.RestoreDeltaBlockBackupIncrementally(config); err != nil {
 		return err
 	}
 
