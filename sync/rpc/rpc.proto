@@ -79,12 +79,16 @@ message BackupRestoreIncrementallyRequest {
     string backup = 1;
     string deltaFileName = 2;
     string lastRestoredBackupName = 3;
+    string snapshotDiskName = 4;
+    map<string, string> credential = 5;
 }
 
 message BackupRestoreStatusReply {
     int32 progress = 1;
     string error = 2;
     string destFileName = 3;
+    string snapshotDiskName = 4;
+    string backup = 5;
 }
 
 message Empty {
