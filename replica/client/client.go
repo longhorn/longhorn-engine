@@ -523,7 +523,8 @@ func (c *ReplicaClient) BackupRestoreStatus() (*syncagentrpc.BackupRestoreStatus
 	return reply, nil
 }
 
-func (c *ReplicaClient) RestoreBackupIncrementally(backup, deltaFile, lastRestored string) error {
+func (c *ReplicaClient) RestoreBackupIncrementally(backup, deltaFile, lastRestored, snapshotDiskName string,
+	credential map[string]string) error {
 	conn, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure())
 	if err != nil {
 		return fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
@@ -538,6 +539,8 @@ func (c *ReplicaClient) RestoreBackupIncrementally(backup, deltaFile, lastRestor
 		Backup:                 backup,
 		DeltaFileName:          deltaFile,
 		LastRestoredBackupName: lastRestored,
+		SnapshotDiskName:       snapshotDiskName,
+		Credential:             credential,
 	}); err != nil {
 		return fmt.Errorf("failed to incrementally restore backup %v to file %v: %v", backup, deltaFile, err)
 	}

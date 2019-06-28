@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/docker/docker/pkg/reexec"
 	"github.com/sirupsen/logrus"
@@ -20,6 +22,9 @@ import (
 
 const (
 	MaxBackupSize = 5
+
+	ProgressBasedTimeoutInMinutes    = 5
+	PeriodicRefreshIntervalInSeconds = 2
 )
 
 type SyncAgentServer struct {
@@ -31,7 +36,7 @@ type SyncAgentServer struct {
 	processesByPort map[int]string
 
 	BackupList  *BackupList
-	RestoreList *replica.Restore
+	RestoreInfo *replica.Restore
 }
 
 type BackupList struct {
@@ -284,7 +289,7 @@ func (*SyncAgentServer) BackupRemove(ctx context.Context, req *BackupRemoveReque
 }
 
 func (s *SyncAgentServer) isRestorationInProgress() bool {
-	if s.RestoreList != nil && s.RestoreList.RestoreProgress != 100 && s.RestoreList.RestoreError == nil {
+	if s.RestoreInfo != nil && s.RestoreInfo.RestoreProgress != 100 && s.RestoreInfo.RestoreError == nil {
 		return true
 	}
 	return false
@@ -308,69 +313,254 @@ func (s *SyncAgentServer) BackupRestore(ctx context.Context, req *BackupRestoreR
 		}
 	}
 	s.Lock()
+	defer s.Unlock()
 	if s.isRestorationInProgress() {
-		s.Unlock()
 		return nil, fmt.Errorf("cannot initate backup restore as there is one already in progress")
 	}
 	restoreObj := replica.NewRestore(req.SnapshotFileName)
+	restoreObj.BackupURL = req.Backup
 	if err := backup.DoBackupRestore(req.Backup, restoreObj, req.SnapshotFileName); err != nil {
-		s.Unlock()
 		return nil, fmt.Errorf("error initiating restore [%v]", err)
 	}
 
-	s.RestoreList = restoreObj
+	s.RestoreInfo = restoreObj
 	logrus.Infof("Successfully initiated restore for snapshot [%v]", restoreObj.SnapshotName)
-	s.Unlock()
+
+	go s.completeBackupRestore()
 
 	return &Empty{}, nil
+}
+
+func (s *SyncAgentServer) completeBackupRestore() {
+	if err := s.waitForRestoreComplete(); err != nil {
+		return
+	}
+	s.Lock()
+	if s.RestoreInfo == nil {
+		s.Unlock()
+		logrus.Errorf("BUG: Restore completed but object not found")
+		return
+	}
+
+	restoreStatus := &replica.Restore{
+		SnapshotName:     s.RestoreInfo.SnapshotName,
+		RestoreProgress:  s.RestoreInfo.RestoreProgress,
+		RestoreError:     s.RestoreInfo.RestoreError,
+		LastUpdatedAt:    s.RestoreInfo.LastUpdatedAt,
+		LastRestored:     s.RestoreInfo.LastRestored,
+		SnapshotDiskName: s.RestoreInfo.SnapshotDiskName,
+		BackupURL:        s.RestoreInfo.BackupURL,
+	}
+	s.Unlock()
+
+	snapshotFile := restoreStatus.SnapshotName
+
+	//Create the meta file as the file is now available
+	if err := backup.CreateNewSnapshotMetafile(restoreStatus.SnapshotName + ".meta"); err != nil {
+		logrus.Errorf("failed creating meta snapshot file: %v", err)
+		return
+	}
+
+	//Check if this is incremental full restore
+	if strings.HasSuffix(snapshotFile, ".snap_tmp") {
+		tmpSnapshotDiskName := snapshotFile
+		snapshotDiskName, err := replica.GetSnapshotNameFromTempFileName(tmpSnapshotDiskName)
+		if err != nil {
+			logrus.Errorf("failed to get snapshotName from tempFileName: %v", err)
+			return
+		}
+		snapshotDiskMetaName := replica.GenerateSnapshotDiskMetaName(snapshotDiskName)
+		tmpSnapshotDiskMetaName := replica.GenerateSnapshotDiskMetaName(tmpSnapshotDiskName)
+
+		defer func() {
+			// try to cleanup tmp files
+			fileRemoveReq := &FileRemoveRequest{
+				FileName: tmpSnapshotDiskName,
+			}
+			if _, err := s.FileRemove(nil, fileRemoveReq); err != nil {
+				logrus.Warnf("Failed to cleanup delta file %s: %v", fileRemoveReq.FileName, err)
+			}
+			fileRemoveReq.FileName = tmpSnapshotDiskMetaName
+			if _, err := s.FileRemove(nil, fileRemoveReq); err != nil {
+				logrus.Warnf("Failed to cleanup delta file %s: %v", fileRemoveReq.FileName, err)
+			}
+		}()
+
+		// replace old snapshot
+		fileRenameReq := &FileRenameRequest{
+			OldFileName: tmpSnapshotDiskName,
+			NewFileName: snapshotDiskName,
+		}
+		if _, err = s.FileRename(nil, fileRenameReq); err != nil {
+			logrus.Errorf("failed to replace old snapshot %v with the fully restored file %v: %v",
+				snapshotDiskName, tmpSnapshotDiskName, err)
+			return
+		}
+		fileRenameReq.OldFileName = tmpSnapshotDiskMetaName
+		fileRenameReq.NewFileName = snapshotDiskMetaName
+		if _, err = s.FileRename(nil, fileRenameReq); err != nil {
+			logrus.Errorf("failed to replace old snapshot meta %v with the fully restored meta file %v: %v",
+				snapshotDiskMetaName, tmpSnapshotDiskMetaName, err)
+			return
+		}
+	}
 }
 
 func (s *SyncAgentServer) BackupRestoreStatus(ctx context.Context, req *Empty) (*BackupRestoreStatusReply, error) {
 	s.Lock()
-	restoreStatus := s.RestoreList
-	s.Unlock()
-
-	if restoreStatus == nil {
+	if s.RestoreInfo == nil {
+		s.Unlock()
 		logrus.Infof("no backup restore operation is going on")
 		return &BackupRestoreStatusReply{}, nil
 	}
 
-	reply := &BackupRestoreStatusReply{
-		Progress:     int32(restoreStatus.RestoreProgress),
-		DestFileName: restoreStatus.SnapshotName,
+	restoreStatus := &replica.Restore{
+		SnapshotName:     s.RestoreInfo.SnapshotName,
+		RestoreProgress:  s.RestoreInfo.RestoreProgress,
+		RestoreError:     s.RestoreInfo.RestoreError,
+		LastUpdatedAt:    s.RestoreInfo.LastUpdatedAt,
+		LastRestored:     s.RestoreInfo.LastRestored,
+		SnapshotDiskName: s.RestoreInfo.SnapshotDiskName,
+		BackupURL:        s.RestoreInfo.BackupURL,
 	}
-	if s.RestoreList.RestoreError != nil {
+	s.Unlock()
+
+	reply := &BackupRestoreStatusReply{
+		Progress:         int32(restoreStatus.RestoreProgress),
+		DestFileName:     restoreStatus.SnapshotName,
+		SnapshotDiskName: restoreStatus.SnapshotDiskName,
+		Backup:           restoreStatus.BackupURL,
+	}
+	if s.RestoreInfo.RestoreError != nil {
 		reply.Error = restoreStatus.RestoreError.Error()
 	}
 
-	if restoreStatus.RestoreProgress == 100 {
-		//Create the meta file as the file is now available
-		if err := backup.CreateNewSnapshotMetafile(restoreStatus.SnapshotName + ".meta"); err != nil {
-			return nil, err
-		}
-	}
 	return reply, nil
 }
 
-func (*SyncAgentServer) BackupRestoreIncrementally(ctx context.Context, req *BackupRestoreIncrementallyRequest) (*Empty, error) {
-	cmd := reexec.Command("sbackup", "restore", req.Backup, "--incrementally", "--to", req.DeltaFileName, "--last-restored", req.LastRestoredBackupName)
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Pdeathsig: syscall.SIGKILL,
-	}
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Start(); err != nil {
+func (s *SyncAgentServer) BackupRestoreIncrementally(ctx context.Context, req *BackupRestoreIncrementallyRequest) (*Empty, error) {
+	backupType, err := util.CheckBackupType(req.Backup)
+	if err != nil {
 		return nil, err
 	}
-
-	logrus.Infof("Running %s %v", cmd.Path, cmd.Args)
-	if err := cmd.Wait(); err != nil {
-		logrus.Infof("Error running %s %v: %v", "sbackup", cmd.Args, err)
-		return nil, err
+	// set aws credential
+	if backupType == "s3" {
+		credential := req.Credential
+		// validate environment variable first, since CronJob has set credential to environment variable.
+		if credential != nil && credential[types.AWSAccessKey] != "" && credential[types.AWSSecretKey] != "" {
+			os.Setenv(types.AWSAccessKey, credential[types.AWSAccessKey])
+			os.Setenv(types.AWSSecretKey, credential[types.AWSSecretKey])
+			os.Setenv(types.AWSEndPoint, credential[types.AWSEndPoint])
+		} else if os.Getenv(types.AWSAccessKey) == "" || os.Getenv(types.AWSSecretKey) == "" {
+			return nil, errors.New("could not backup to s3 without setting credential secret")
+		}
 	}
 
-	logrus.Infof("Done running %s %v", "sbackup", cmd.Args)
+	s.Lock()
+	defer s.Unlock()
+	if s.isRestorationInProgress() {
+		return nil, fmt.Errorf("cannot initate backup restore as there is one already in progress")
+	}
+	restoreObj := replica.NewRestore(req.DeltaFileName)
+	restoreObj.LastRestored = req.LastRestoredBackupName
+	restoreObj.SnapshotDiskName = req.SnapshotDiskName
+	restoreObj.BackupURL = req.Backup
+
+	if err := backup.DoBackupRestoreIncrementally(req.Backup, req.DeltaFileName, req.LastRestoredBackupName, restoreObj); err != nil {
+		return nil, fmt.Errorf("error initiating restore [%v]", err)
+	}
+
+	s.RestoreInfo = restoreObj
+	logrus.Infof("Successfully initiated incremental restore to file [%v]", restoreObj.SnapshotName)
+
+	go func() {
+		s.completeIncrementalBackupRestore()
+	}()
 	return &Empty{}, nil
+}
+
+func (s *SyncAgentServer) completeIncrementalBackupRestore() {
+	if err := s.waitForRestoreComplete(); err != nil {
+		return
+	}
+	s.Lock()
+	if s.RestoreInfo == nil {
+		s.Unlock()
+		logrus.Errorf("BUG: Restore completed but object not found")
+		return
+	}
+
+	restoreStatus := &replica.Restore{
+		SnapshotName:     s.RestoreInfo.SnapshotName,
+		RestoreProgress:  s.RestoreInfo.RestoreProgress,
+		RestoreError:     s.RestoreInfo.RestoreError,
+		LastUpdatedAt:    s.RestoreInfo.LastUpdatedAt,
+		LastRestored:     s.RestoreInfo.LastRestored,
+		SnapshotDiskName: s.RestoreInfo.SnapshotDiskName,
+		BackupURL:        s.RestoreInfo.BackupURL,
+	}
+	s.Unlock()
+	deltaFileName := restoreStatus.SnapshotName
+
+	//Check for incremental Restore
+	if restoreStatus.RestoreProgress == 100 && restoreStatus.SnapshotDiskName != "" {
+		logrus.Infof("Cleaning up restore object by Coalescing and removing the file")
+		// coalesce delta file to snapshot/disk file
+		coalesceReq := &FileCoalesceRequest{
+			FromFileName: deltaFileName,
+			ToFileName:   restoreStatus.SnapshotDiskName,
+		}
+		if _, err := s.FileCoalesce(nil, coalesceReq); err != nil {
+			logrus.Errorf("Failed to coalesce %s on %s: %v", deltaFileName, restoreStatus.SnapshotDiskName, err)
+			return
+		}
+
+		// cleanup
+		fileRemoveReq := &FileRemoveRequest{
+			FileName: deltaFileName,
+		}
+		if _, err := s.FileRemove(nil, fileRemoveReq); err != nil {
+			logrus.Warnf("Failed to cleanup delta file %s: %v", deltaFileName, err)
+		}
+	}
+}
+
+func (s *SyncAgentServer) waitForRestoreComplete() error {
+	var (
+		restoreProgress int
+		restoreError    error
+	)
+	periodicChecker := time.NewTicker(PeriodicRefreshIntervalInSeconds * time.Second)
+
+	for range periodicChecker.C {
+		s.RestoreInfo.Lock()
+		restoreProgress = s.RestoreInfo.RestoreProgress
+		restoreError = s.RestoreInfo.RestoreError
+		lastUpdate := s.RestoreInfo.LastUpdatedAt
+		s.RestoreInfo.Unlock()
+
+		if restoreProgress == 100 {
+			logrus.Infof("Restore completed successfully in Server")
+			periodicChecker.Stop()
+			return nil
+		}
+		if restoreError != nil {
+			logrus.Errorf("Backup Restore Error Found in Server[%v]", restoreError)
+			periodicChecker.Stop()
+			return restoreError
+		}
+		now := time.Now()
+		diff := now.Sub(lastUpdate)
+
+		if diff.Minutes() > ProgressBasedTimeoutInMinutes {
+			logrus.Errorf("no restore update happened since %v minutes. Returning failure",
+				ProgressBasedTimeoutInMinutes)
+			periodicChecker.Stop()
+			return fmt.Errorf("no restore update happened since %v minutes. Returning failure",
+				ProgressBasedTimeoutInMinutes)
+		}
+	}
+	return nil
 }
 
 // The APIs BackupAdd, BackupGet, Refresh, BackupDelete implement the CRUD interface for the backup object
