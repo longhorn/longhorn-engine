@@ -55,6 +55,8 @@ type Launcher struct {
 
 	currentEngine *Engine
 	backupEngine  *Engine
+
+	isDeleting bool
 }
 
 func NewEngineLauncher(spec *rpc.EngineSpec) *Launcher {
@@ -195,6 +197,9 @@ func (el *Launcher) deleteEngine(processLauncher rpc.LonghornProcessLauncherServ
 		Name: processName,
 	})
 	if err != nil {
+		if strings.Contains(err.Error(), "cannot find process") {
+			return nil, nil
+		}
 		return nil, err
 	}
 

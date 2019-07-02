@@ -122,28 +122,46 @@ func (em *Manager) EngineDelete(ctx context.Context, req *rpc.EngineRequest) (re
 	logrus.Infof("Engine Manager starts to deleted engine %v", req.Name)
 
 	em.lock.Lock()
-
 	el, exists := em.engineLaunchers[req.Name]
 	if !exists {
 		em.lock.Unlock()
-		return nil, nil
+		return nil, fmt.Errorf("cannot find engine %v", req.Name)
 	}
 	em.lock.Unlock()
 
-	el.lock.RLock()
+	el.lock.Lock()
 	processName := el.currentEngine.EngineName
-	el.lock.RUnlock()
-	processResp, err := el.deleteEngine(em.processLauncher, processName)
-	if err != nil {
-		return nil, err
-	}
-	response := el.RPCResponse(processResp)
+	deletionRequired := !el.isDeleting
+	el.isDeleting = true
+	el.lock.Unlock()
 
-	go em.unregisterEngineLauncher(req.Name)
+	var processResp *rpc.ProcessResponse
+	if deletionRequired {
+		processResp, err = el.deleteEngine(em.processLauncher, processName)
+		if err != nil {
+			return nil, err
+		}
+
+		go em.unregisterEngineLauncher(req.Name)
+	} else {
+		logrus.Debugf("Engine Manager is already deleting engine %v", req.Name)
+		processResp, err = em.processLauncher.ProcessGet(nil, &rpc.ProcessGetRequest{
+			Name: processName,
+		})
+		if err != nil {
+			if strings.Contains(err.Error(), "cannot find process") {
+				processResp = nil
+			} else {
+				return nil, err
+			}
+		}
+	}
+
+	ret = el.RPCResponse(processResp)
 
 	logrus.Infof("Engine Manager is deleting engine %v", req.Name)
 
-	return response, nil
+	return ret, nil
 }
 
 func (em *Manager) EngineGet(ctx context.Context, req *rpc.EngineRequest) (ret *rpc.EngineResponse, err error) {
