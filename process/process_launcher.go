@@ -314,7 +314,7 @@ func (p *Process) Start() error {
 		}
 		p.lock.Lock()
 		p.State = StateStopped
-		logrus.Infof("launcher: process %v stopped")
+		logrus.Infof("launcher: process %v stopped", p.Name)
 		p.lock.Unlock()
 
 		p.UpdateCh <- p
