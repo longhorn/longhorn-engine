@@ -64,7 +64,7 @@ func (em *Manager) EngineCreate(ctx context.Context, req *rpc.EngineCreateReques
 
 	logrus.Infof("Engine Manager has successfully created engine %v", req.Spec.Name)
 
-	return el.RPCResponse(response.Status), nil
+	return el.RPCResponse(response), nil
 }
 
 func (em *Manager) registerEngineLauncher(el *Launcher) error {
@@ -137,7 +137,7 @@ func (em *Manager) EngineDelete(ctx context.Context, req *rpc.EngineRequest) (re
 	if err != nil {
 		return nil, err
 	}
-	response := el.RPCResponse(processResp.Status)
+	response := el.RPCResponse(processResp)
 
 	go em.unregisterEngineLauncher(req.Name)
 
@@ -169,7 +169,7 @@ func (em *Manager) EngineGet(ctx context.Context, req *rpc.EngineRequest) (ret *
 
 	logrus.Infof("Engine Manager has successfully get engine %v", req.Name)
 
-	return el.RPCResponse(response.Status), nil
+	return el.RPCResponse(response), nil
 }
 
 func (em *Manager) EngineList(ctx context.Context, req *empty.Empty) (ret *rpc.EngineListResponse, err error) {
@@ -190,19 +190,13 @@ func (em *Manager) EngineList(ctx context.Context, req *empty.Empty) (ret *rpc.E
 			Name: processName,
 		})
 		if err != nil {
-			// Race condition: try to list the engine whose related process has been deleted
-			// but the engine launcher hasn't been unregistered from Engine Manager. Hence we
-			// will manually set process status for this kind of engine.
 			if strings.Contains(err.Error(), "cannot find process") {
-				ret.Engines[el.LauncherName] = el.RPCResponse(&rpc.ProcessStatus{
-					State: types.ProcessStateStopped,
-				})
+				response = nil
 			} else {
 				return nil, errors.Wrapf(err, "failed to get process info for engine %v", el.LauncherName)
 			}
-		} else {
-			ret.Engines[el.LauncherName] = el.RPCResponse(response.Status)
 		}
+		ret.Engines[el.LauncherName] = el.RPCResponse(response)
 	}
 
 	logrus.Infof("Engine Manager has successfully list all engines")
@@ -252,7 +246,7 @@ func (em *Manager) EngineUpgrade(ctx context.Context, req *rpc.EngineUpgradeRequ
 
 	logrus.Infof("Engine Manager has successfully upgraded engine %v with binary %v", req.Spec.Name, req.Spec.Binary)
 
-	return el.RPCResponse(response.Status), nil
+	return el.RPCResponse(response), nil
 }
 
 func (em *Manager) validateBeforeUpgrade(spec *rpc.EngineSpec) (*Launcher, error) {

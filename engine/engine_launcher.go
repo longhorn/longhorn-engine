@@ -79,11 +79,11 @@ func NewEngineLauncher(spec *rpc.EngineSpec) *Launcher {
 	return el
 }
 
-func (el *Launcher) RPCResponse(processStatus *rpc.ProcessStatus) *rpc.EngineResponse {
+func (el *Launcher) RPCResponse(processResp *rpc.ProcessResponse) *rpc.EngineResponse {
 	el.lock.RLock()
 	defer el.lock.RUnlock()
 
-	return &rpc.EngineResponse{
+	resp := &rpc.EngineResponse{
 		Spec: &rpc.EngineSpec{
 			Name:       el.LauncherName,
 			VolumeName: el.VolumeName,
@@ -96,10 +96,22 @@ func (el *Launcher) RPCResponse(processStatus *rpc.ProcessStatus) *rpc.EngineRes
 			Replicas:   el.currentEngine.Replicas,
 		},
 		Status: &rpc.EngineStatus{
-			ProcessStatus: processStatus,
-			Endpoint:      el.Endpoint,
+			Endpoint: el.Endpoint,
 		},
 	}
+
+	// Race condition: try to get the engine whose related process has been deleted
+	// but the engine launcher hasn't been unregistered from Engine Manager. Hence we
+	// will manually set process status for this kind of engine.
+	if processResp != nil {
+		resp.Status.ProcessStatus = processResp.Status
+	} else {
+		resp.Status.ProcessStatus = &rpc.ProcessStatus{
+			State: types.ProcessStateStopped,
+		}
+	}
+
+	return resp
 }
 
 // During running this function, frontendStartCallback() will be called automatically.
