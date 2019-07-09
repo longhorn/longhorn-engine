@@ -1,113 +1,58 @@
 package util
 
 import (
+	"bytes"
 	"encoding/json"
 	"fmt"
 	"os"
 	"os/exec"
-	"sync"
+	"time"
 
-	"github.com/RoaringBitmap/roaring"
+	"github.com/sirupsen/logrus"
 )
 
 const (
+	DefaulCmdTimeout = time.Minute // one minute by default
+
 	GRPCHealthProbe = "/usr/bin/grpc_health_probe"
 )
 
-type Bitmap struct {
-	base int32
-	size int32
-	data *roaring.Bitmap
-	lock *sync.Mutex
+func Execute(binary string, args ...string) (string, error) {
+	return ExecuteWithTimeout(DefaulCmdTimeout, binary, args...)
 }
 
-// NewBitmap allocate a bitmap range from [start, end], notice the end is included
-func NewBitmap(start, end int32) *Bitmap {
-	size := end - start + 1
-	data := roaring.New()
-	if size > 0 {
-		data.AddRange(0, uint64(size))
-	}
-	return &Bitmap{
-		base: start,
-		size: size,
-		data: data,
-		lock: &sync.Mutex{},
-	}
-}
+func ExecuteWithTimeout(timeout time.Duration, binary string, args ...string) (string, error) {
+	var err error
+	cmd := exec.Command(binary, args...)
+	done := make(chan struct{})
 
-func (b *Bitmap) AllocateRange(count int32) (int32, int32, error) {
-	b.lock.Lock()
-	defer b.lock.Unlock()
+	var output, stderr bytes.Buffer
+	cmd.Stdout = &output
+	cmd.Stderr = &stderr
 
-	if count <= 0 {
-		return 0, 0, nil
-	}
-	i := b.data.Iterator()
-	bStart := int32(0)
-	for bStart <= b.size {
-		last := int32(-1)
-		remains := count
-		for i.HasNext() && remains > 0 {
-			// first element
-			if last < 0 {
-				last = int32(i.Next())
-				bStart = last
-				remains--
-				continue
+	go func() {
+		err = cmd.Run()
+		done <- struct{}{}
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(timeout):
+		if cmd.Process != nil {
+			if err := cmd.Process.Kill(); err != nil {
+				logrus.Warnf("Problem killing process pid=%v: %s", cmd.Process.Pid, err)
 			}
-			next := int32(i.Next())
-			// failed to find the available range
-			if next-last > 1 {
-				break
-			}
-			last = next
-			remains--
+
 		}
-		if remains == 0 {
-			break
-		}
-		if !i.HasNext() {
-			return 0, 0, fmt.Errorf("cannot find an empty port range")
-		}
-	}
-	bEnd := bStart + count - 1
-	b.data.RemoveRange(uint64(bStart), uint64(bEnd)+1)
-	return b.base + bStart, b.base + bEnd, nil
-}
-
-func (b *Bitmap) ReleaseRange(start, end int32) error {
-	b.lock.Lock()
-	defer b.lock.Unlock()
-
-	if start == end && end == 0 {
-		return nil
-	}
-	bStart := start - b.base
-	bEnd := end - b.base
-	if bStart < 0 || bEnd >= b.size {
-		return fmt.Errorf("exceed range: %v-%v (%v-%v)", start, end, bStart, bEnd)
-	}
-	b.data.AddRange(uint64(bStart), uint64(bEnd)+1)
-	return nil
-}
-
-func RemoveFile(file string) error {
-	if _, err := os.Stat(file); os.IsNotExist(err) {
-		// file doesn't exist
-		return nil
+		return "", fmt.Errorf("Timeout executing: %v %v, output %s, stderr, %s, error %v",
+			binary, args, output.String(), stderr.String(), err)
 	}
 
-	cmd := exec.Command("rm", file)
-	if err := cmd.Run(); err != nil {
-		return fmt.Errorf("fail to remove file %v: %v", file, err)
+	if err != nil {
+		return "", fmt.Errorf("Failed to execute: %v %v, output %s, stderr, %s, error %v",
+			binary, args, output.String(), stderr.String(), err)
 	}
-
-	return nil
-}
-
-func GetURL(host string, port int) string {
-	return fmt.Sprintf("%s:%d", host, port)
+	return output.String(), nil
 }
 
 func PrintJSON(obj interface{}) error {
@@ -120,9 +65,25 @@ func PrintJSON(obj interface{}) error {
 	return nil
 }
 
+func GetURL(host string, port int) string {
+	return fmt.Sprintf("%s:%d", host, port)
+}
+
+func RemoveFile(file string) error {
+	if _, err := os.Stat(file); os.IsNotExist(err) {
+		// file doesn't exist
+		return nil
+	}
+
+	if _, err := Execute("rm", file); err != nil {
+		return fmt.Errorf("fail to remove file %v: %v", file, err)
+	}
+
+	return nil
+}
+
 func GRPCServiceReadinessProbe(address string) bool {
-	cmd := exec.Command(GRPCHealthProbe, "-addr", address)
-	if err := cmd.Run(); err != nil {
+	if _, err := Execute(GRPCHealthProbe, "-addr", address); err != nil {
 		return false
 	}
 	return true
