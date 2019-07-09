@@ -14,7 +14,7 @@ import (
 const (
 	DefaulCmdTimeout = time.Minute // one minute by default
 
-	GRPCHealthProbe = "/usr/bin/grpc_health_probe"
+	GRPCHealthProbe = "/usr/local/bin/grpc_health_probe"
 )
 
 func Execute(binary string, args ...string) (string, error) {
