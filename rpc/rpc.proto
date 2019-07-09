@@ -2,7 +2,7 @@ syntax="proto3";
 
 import "google/protobuf/empty.proto";
 
-service LonghornEngineManagerService {
+service EngineManagerService {
 	rpc EngineCreate(EngineCreateRequest) returns (EngineResponse) {}
 	rpc EngineDelete(EngineRequest) returns (EngineResponse) {}
 	rpc EngineGet(EngineRequest) returns (EngineResponse) {}
@@ -61,7 +61,7 @@ message FrontendStartRequest {
 	string frontend = 2;
 }
 
-service LonghornProcessLauncherService {
+service ProcessManagerService {
 	rpc ProcessCreate(ProcessCreateRequest) returns (ProcessResponse) {}
 	rpc ProcessDelete(ProcessDeleteRequest) returns (ProcessResponse) {}
 	rpc ProcessGet(ProcessGetRequest) returns (ProcessResponse) {}
@@ -114,4 +114,12 @@ message LogRequest {
 
 message LogResponse{
 	string line = 2;
+}
+
+service InstanceManagerService {
+	rpc EnvironmentVariableSet(EnvironmentVariableSetRequset) returns (google.protobuf.Empty) {}
+}
+
+message EnvironmentVariableSetRequset {
+	map<string, string> variables = 1;
 }

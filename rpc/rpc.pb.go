@@ -871,6 +871,45 @@ func (m *LogResponse) GetLine() string {
 	return ""
 }
 
+type EnvironmentVariableSetRequset struct {
+	Variables            map[string]string `protobuf:"bytes,1,rep,name=variables,proto3" json:"variables,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
+	XXX_NoUnkeyedLiteral struct{}          `json:"-"`
+	XXX_unrecognized     []byte            `json:"-"`
+	XXX_sizecache        int32             `json:"-"`
+}
+
+func (m *EnvironmentVariableSetRequset) Reset()         { *m = EnvironmentVariableSetRequset{} }
+func (m *EnvironmentVariableSetRequset) String() string { return proto.CompactTextString(m) }
+func (*EnvironmentVariableSetRequset) ProtoMessage()    {}
+func (*EnvironmentVariableSetRequset) Descriptor() ([]byte, []int) {
+	return fileDescriptor_77a6da22d6a3feb1, []int{18}
+}
+
+func (m *EnvironmentVariableSetRequset) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_EnvironmentVariableSetRequset.Unmarshal(m, b)
+}
+func (m *EnvironmentVariableSetRequset) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_EnvironmentVariableSetRequset.Marshal(b, m, deterministic)
+}
+func (m *EnvironmentVariableSetRequset) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_EnvironmentVariableSetRequset.Merge(m, src)
+}
+func (m *EnvironmentVariableSetRequset) XXX_Size() int {
+	return xxx_messageInfo_EnvironmentVariableSetRequset.Size(m)
+}
+func (m *EnvironmentVariableSetRequset) XXX_DiscardUnknown() {
+	xxx_messageInfo_EnvironmentVariableSetRequset.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_EnvironmentVariableSetRequset proto.InternalMessageInfo
+
+func (m *EnvironmentVariableSetRequset) GetVariables() map[string]string {
+	if m != nil {
+		return m.Variables
+	}
+	return nil
+}
+
 func init() {
 	proto.RegisterType((*EngineSpec)(nil), "EngineSpec")
 	proto.RegisterType((*EngineStatus)(nil), "EngineStatus")
@@ -892,71 +931,77 @@ func init() {
 	proto.RegisterMapType((map[string]*ProcessResponse)(nil), "ProcessListResponse.ProcessesEntry")
 	proto.RegisterType((*LogRequest)(nil), "LogRequest")
 	proto.RegisterType((*LogResponse)(nil), "LogResponse")
+	proto.RegisterType((*EnvironmentVariableSetRequset)(nil), "EnvironmentVariableSetRequset")
+	proto.RegisterMapType((map[string]string)(nil), "EnvironmentVariableSetRequset.VariablesEntry")
 }
 
 func init() { proto.RegisterFile("rpc.proto", fileDescriptor_77a6da22d6a3feb1) }
 
 var fileDescriptor_77a6da22d6a3feb1 = []byte{
-	// 934 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x55, 0xdb, 0x6e, 0x1c, 0x45,
-	0x10, 0xdd, 0xab, 0xed, 0xad, 0xf5, 0x6e, 0x4c, 0x7b, 0x1d, 0x0d, 0x13, 0x2e, 0x4b, 0x47, 0x09,
-	0x56, 0x90, 0x3a, 0x60, 0x2e, 0x09, 0x86, 0x07, 0x2c, 0xc7, 0x89, 0x10, 0x4e, 0x84, 0xc6, 0x42,
-	0x42, 0xe2, 0x61, 0x35, 0x9e, 0xed, 0x8c, 0x47, 0x19, 0x77, 0x0f, 0xdd, 0xbd, 0x46, 0x46, 0xfc,
-	0x00, 0x1f, 0xc1, 0x3b, 0x7f, 0xc0, 0x27, 0xf1, 0x07, 0x3c, 0xa3, 0xbe, 0xcd, 0xee, 0xec, 0x8e,
-	0xed, 0xf8, 0xad, 0xeb, 0x54, 0x55, 0x57, 0x4d, 0xcd, 0xa9, 0xd3, 0xd0, 0x13, 0x45, 0x42, 0x0a,
-	0xc1, 0x15, 0x0f, 0xef, 0xa5, 0x9c, 0xa7, 0x39, 0x7d, 0x6c, 0xac, 0xd3, 0xd9, 0xeb, 0xc7, 0xf4,
-	0xbc, 0x50, 0x97, 0xd6, 0x89, 0xff, 0x6b, 0x02, 0x1c, 0xb1, 0x34, 0x63, 0xf4, 0xa4, 0xa0, 0x09,
-	0x42, 0xd0, 0x61, 0xf1, 0x39, 0x0d, 0x9a, 0xe3, 0xe6, 0x6e, 0x2f, 0x32, 0x67, 0xf4, 0x21, 0xf4,
-	0x2f, 0x78, 0x3e, 0x3b, 0xa7, 0x13, 0xe3, 0x6a, 0x19, 0x17, 0x58, 0xe8, 0x95, 0x0e, 0xb8, 0x0b,
-	0x6b, 0xa7, 0x19, 0x8b, 0xc5, 0x65, 0xd0, 0x36, 0x3e, 0x67, 0x69, 0x3c, 0xcf, 0xa4, 0xa2, 0x2c,
-	0xe8, 0x58, 0xdc, 0x5a, 0xe8, 0x1e, 0xf4, 0xec, 0x69, 0x92, 0x15, 0x41, 0xd7, 0xb8, 0x36, 0x2c,
-	0xf0, 0x7d, 0xa1, 0x3b, 0x90, 0xd9, 0xef, 0x34, 0x58, 0x1b, 0x37, 0x77, 0xdb, 0x91, 0x39, 0xa3,
-	0x10, 0x36, 0x5e, 0x0b, 0xce, 0x14, 0x65, 0xd3, 0x60, 0xdd, 0xc6, 0x7b, 0x5b, 0xfb, 0x4e, 0xe3,
-	0xe4, 0x0d, 0x65, 0x53, 0x19, 0x6c, 0x8c, 0xdb, 0xda, 0xe7, 0x6d, 0xed, 0x13, 0xb4, 0xc8, 0xb3,
-	0x24, 0x96, 0x41, 0xcf, 0xfa, 0xbc, 0x8d, 0x63, 0xd8, 0x74, 0xdf, 0xad, 0x62, 0x35, 0x93, 0xe8,
-	0x4b, 0x18, 0x16, 0x82, 0x27, 0x54, 0xca, 0x89, 0x34, 0x88, 0x99, 0x41, 0x7f, 0x6f, 0x48, 0x7e,
-	0xb4, 0xb0, 0x8d, 0x8b, 0x06, 0xc5, 0xa2, 0xa9, 0x4b, 0x50, 0x36, 0x2d, 0x78, 0xc6, 0x94, 0x9b,
-	0x4c, 0x69, 0xe3, 0x9f, 0x61, 0x68, 0x4b, 0x44, 0x54, 0x16, 0x9c, 0x49, 0x3d, 0xca, 0x8e, 0x2c,
-	0x68, 0xe2, 0xae, 0xee, 0x93, 0xf9, 0xe4, 0x23, 0xe3, 0x40, 0x0f, 0x60, 0xcd, 0x55, 0x6f, 0x99,
-	0x90, 0x01, 0x59, 0x6c, 0x32, 0x72, 0x4e, 0xfc, 0x15, 0x6c, 0x5b, 0xfc, 0x50, 0xd0, 0x58, 0xd1,
-	0x88, 0xfe, 0x3a, 0xa3, 0x52, 0xdd, 0x78, 0x3d, 0xbe, 0x0f, 0x03, 0xdf, 0x91, 0xcd, 0xa8, 0xf9,
-	0xdf, 0xf8, 0x09, 0x8c, 0x6c, 0xd0, 0x4f, 0x45, 0x2a, 0xe2, 0xe9, 0xdb, 0xdf, 0xfe, 0x57, 0x13,
-	0x90, 0x05, 0x8f, 0x33, 0xa9, 0xca, 0x8f, 0xde, 0x87, 0x75, 0x6a, 0x50, 0x3d, 0xd2, 0xf6, 0x6e,
-	0x7f, 0x6f, 0x4c, 0x56, 0xa3, 0x1c, 0x24, 0x8f, 0x98, 0x12, 0x97, 0x91, 0x4f, 0x08, 0x7f, 0xf0,
-	0x7f, 0xc9, 0x3a, 0xd0, 0x16, 0xb4, 0xdf, 0xd0, 0x4b, 0xd7, 0xae, 0x3e, 0xa2, 0x07, 0xd0, 0xbd,
-	0x88, 0xf3, 0x19, 0x75, 0x03, 0xbb, 0x43, 0xaa, 0x23, 0x8f, 0xac, 0x77, 0xbf, 0xf5, 0xb4, 0x89,
-	0x9f, 0xc3, 0xe8, 0xb9, 0xa3, 0xcd, 0x89, 0x8a, 0x85, 0xba, 0x66, 0x08, 0x15, 0xca, 0xb5, 0xaa,
-	0x94, 0xc3, 0x7f, 0x36, 0xa1, 0xef, 0x49, 0x71, 0xd5, 0xd2, 0xcc, 0x77, 0xa2, 0x55, 0xd9, 0x09,
-	0x04, 0x9d, 0x58, 0xa4, 0x32, 0x68, 0x1b, 0x3a, 0x9a, 0x33, 0x7a, 0x1f, 0xa0, 0xe0, 0x42, 0x4d,
-	0x12, 0x3e, 0x63, 0xca, 0xec, 0x4a, 0x37, 0xea, 0x69, 0xe4, 0x50, 0x03, 0x7a, 0x5d, 0x8c, 0xdb,
-	0xe4, 0x75, 0x2d, 0x8d, 0x35, 0x70, 0x20, 0x52, 0x89, 0xff, 0x80, 0x41, 0x85, 0x9f, 0x68, 0x04,
-	0x5d, 0x4d, 0x12, 0xdf, 0x8d, 0x35, 0xf4, 0x1d, 0x54, 0x08, 0x2e, 0x26, 0xe7, 0x32, 0x2d, 0x79,
-	0xaa, 0x81, 0x97, 0x32, 0x2d, 0xeb, 0x4b, 0x3d, 0x14, 0xb3, 0xc3, 0xae, 0xbe, 0x99, 0x12, 0x7a,
-	0x17, 0x4c, 0xb9, 0x89, 0x1e, 0x85, 0x6d, 0x6e, 0x5d, 0xdb, 0x47, 0x6c, 0x8a, 0x9f, 0xc2, 0xc8,
-	0x55, 0xaf, 0x12, 0x71, 0x5c, 0xa1, 0xca, 0x26, 0x59, 0x98, 0x96, 0xe3, 0xca, 0xa3, 0x32, 0xf3,
-	0x19, 0xcd, 0xa9, 0xba, 0x96, 0x90, 0x1f, 0xc3, 0x3b, 0x2e, 0xf6, 0x05, 0xbd, 0xee, 0xa7, 0xe1,
-	0x5f, 0xe0, 0x8e, 0x0b, 0x2c, 0xc9, 0x77, 0x63, 0x27, 0xe8, 0xe1, 0xd2, 0xca, 0x2d, 0x2f, 0xbc,
-	0xdf, 0xb9, 0x11, 0x20, 0xe7, 0xb0, 0xbc, 0x35, 0x6d, 0xe0, 0xbf, 0x9b, 0xb0, 0x5d, 0x81, 0x5d,
-	0xdd, 0x03, 0xe8, 0x39, 0xa1, 0x28, 0x69, 0x7f, 0x9f, 0xd4, 0x04, 0x7a, 0xcc, 0x33, 0x7f, 0x9e,
-	0x15, 0xbe, 0x82, 0x61, 0xd5, 0x59, 0xc3, 0xfe, 0x87, 0x55, 0xf6, 0x6f, 0x91, 0xa5, 0xef, 0x5f,
-	0xa4, 0xff, 0x18, 0xe0, 0x98, 0xa7, 0xd7, 0xcd, 0xef, 0x23, 0xe8, 0x9b, 0x08, 0xf7, 0x0d, 0x08,
-	0x3a, 0x79, 0xc6, 0xbc, 0xe2, 0x9b, 0xf3, 0xde, 0xbf, 0x1d, 0x78, 0xef, 0x98, 0xb3, 0xf4, 0x8c,
-	0x0b, 0x66, 0x37, 0xed, 0x65, 0xcc, 0xe2, 0x94, 0x8a, 0x13, 0x2a, 0x2e, 0xb2, 0x84, 0xa2, 0x27,
-	0x7e, 0x63, 0x2d, 0x23, 0xd0, 0x88, 0xd4, 0x28, 0x55, 0xb8, 0xbc, 0xa6, 0xb8, 0x81, 0x3e, 0xf3,
-	0x89, 0x96, 0x10, 0x68, 0x48, 0x2a, 0x52, 0x55, 0x97, 0x42, 0xa0, 0x67, 0xb1, 0x17, 0x54, 0xbd,
-	0x4d, 0xfc, 0x37, 0xfe, 0xad, 0xd3, 0x7f, 0x00, 0xdd, 0x25, 0xf6, 0x61, 0x24, 0xfe, 0x61, 0x24,
-	0x47, 0xfa, 0x61, 0x0c, 0xb7, 0x6b, 0xe4, 0x09, 0x37, 0xd0, 0xd7, 0x5e, 0x3b, 0x9d, 0x2c, 0xa2,
-	0x1d, 0x52, 0x27, 0x93, 0x75, 0x75, 0x1f, 0xf9, 0x3e, 0x8f, 0x79, 0x8a, 0xfa, 0x64, 0xfe, 0x17,
-	0xc2, 0x4d, 0xb2, 0x30, 0x70, 0xdc, 0xf8, 0xb4, 0x89, 0xbe, 0x83, 0x41, 0x45, 0xa4, 0xd0, 0x0e,
-	0xa9, 0x13, 0xad, 0xf0, 0x8a, 0xee, 0x71, 0x03, 0x7d, 0x0b, 0x5b, 0x65, 0xc6, 0xd9, 0x4c, 0x4d,
-	0xf9, 0x6f, 0x6c, 0x65, 0x38, 0x57, 0x67, 0x1f, 0xc0, 0x4e, 0xa5, 0xde, 0x61, 0x9c, 0xe7, 0xfa,
-	0x41, 0xbd, 0xc5, 0x15, 0xcf, 0x20, 0x58, 0x6e, 0xe0, 0xf6, 0xb7, 0xec, 0xfd, 0xd3, 0x82, 0x0f,
-	0x3c, 0xd3, 0xfc, 0xe2, 0xc4, 0x33, 0x96, 0x9c, 0xcd, 0xb9, 0xb6, 0x5f, 0x8a, 0x9f, 0x23, 0xdb,
-	0x0e, 0xa9, 0x93, 0xa3, 0x70, 0x65, 0x2d, 0x70, 0x63, 0x21, 0xd7, 0xf1, 0xad, 0xcc, 0xad, 0x08,
-	0x52, 0x6d, 0xee, 0x17, 0x00, 0x73, 0x41, 0x42, 0x88, 0xac, 0xa8, 0xd3, 0x15, 0x15, 0xfb, 0x0b,
-	0x02, 0x80, 0xb6, 0xc9, 0xaa, 0x9c, 0x84, 0xa3, 0x3a, 0x8d, 0xc0, 0x0d, 0xf4, 0x49, 0x59, 0xf1,
-	0x66, 0x0a, 0x9d, 0xae, 0x99, 0x59, 0x7e, 0xfe, 0x7f, 0x00, 0x00, 0x00, 0xff, 0xff, 0xfe, 0xaa,
-	0x7d, 0xfc, 0x04, 0x0a, 0x00, 0x00,
+	// 998 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x55, 0xdd, 0x8e, 0xdb, 0x44,
+	0x14, 0x8e, 0x93, 0xec, 0x4f, 0x4e, 0x36, 0xe9, 0x32, 0x9b, 0xac, 0x8c, 0xab, 0x42, 0x70, 0xd5,
+	0xb2, 0x2a, 0x62, 0x0a, 0xe1, 0xa7, 0x65, 0xe9, 0x05, 0xab, 0x6d, 0x5a, 0x55, 0xdd, 0x56, 0xc8,
+	0x2b, 0x10, 0x12, 0x17, 0x91, 0x93, 0x4c, 0x8d, 0x55, 0x67, 0x6c, 0x66, 0x26, 0x41, 0x8b, 0x78,
+	0x01, 0x1e, 0x82, 0x7b, 0xc4, 0x05, 0xaf, 0xc4, 0x5b, 0x70, 0x5d, 0xcd, 0x9f, 0x13, 0x27, 0x4e,
+	0xb6, 0xbd, 0x9b, 0xf3, 0x9d, 0x73, 0xe6, 0x9c, 0x39, 0xfe, 0xce, 0x67, 0x68, 0xb0, 0x6c, 0x8c,
+	0x33, 0x96, 0x8a, 0xd4, 0xbb, 0x19, 0xa5, 0x69, 0x94, 0x90, 0xfb, 0xca, 0x1a, 0xcd, 0x5e, 0xdd,
+	0x27, 0xd3, 0x4c, 0x5c, 0x69, 0xa7, 0xff, 0xbf, 0x03, 0x30, 0xa0, 0x51, 0x4c, 0xc9, 0x65, 0x46,
+	0xc6, 0x08, 0x41, 0x9d, 0x86, 0x53, 0xe2, 0x3a, 0x3d, 0xe7, 0xa4, 0x11, 0xa8, 0x33, 0xfa, 0x10,
+	0x9a, 0xf3, 0x34, 0x99, 0x4d, 0xc9, 0x50, 0xb9, 0xaa, 0xca, 0x05, 0x1a, 0x7a, 0x29, 0x03, 0x8e,
+	0x61, 0x77, 0x14, 0xd3, 0x90, 0x5d, 0xb9, 0x35, 0xe5, 0x33, 0x96, 0xc4, 0x93, 0x98, 0x0b, 0x42,
+	0xdd, 0xba, 0xc6, 0xb5, 0x85, 0x6e, 0x42, 0x43, 0x9f, 0x86, 0x71, 0xe6, 0xee, 0x28, 0xd7, 0xbe,
+	0x06, 0x9e, 0x65, 0xb2, 0x03, 0x1e, 0xff, 0x4e, 0xdc, 0xdd, 0x9e, 0x73, 0x52, 0x0b, 0xd4, 0x19,
+	0x79, 0xb0, 0xff, 0x8a, 0xa5, 0x54, 0x10, 0x3a, 0x71, 0xf7, 0x74, 0xbc, 0xb5, 0xa5, 0x6f, 0x14,
+	0x8e, 0x5f, 0x13, 0x3a, 0xe1, 0xee, 0x7e, 0xaf, 0x26, 0x7d, 0xd6, 0x96, 0x3e, 0x46, 0xb2, 0x24,
+	0x1e, 0x87, 0xdc, 0x6d, 0x68, 0x9f, 0xb5, 0xfd, 0x10, 0x0e, 0xcc, 0xbb, 0x45, 0x28, 0x66, 0x1c,
+	0x7d, 0x05, 0xed, 0x8c, 0xa5, 0x63, 0xc2, 0xf9, 0x90, 0x2b, 0x44, 0xcd, 0xa0, 0xd9, 0x6f, 0xe3,
+	0xef, 0x35, 0xac, 0xe3, 0x82, 0x56, 0xb6, 0x6c, 0xca, 0x12, 0x84, 0x4e, 0xb2, 0x34, 0xa6, 0xc2,
+	0x4c, 0x26, 0xb7, 0xfd, 0x9f, 0xa0, 0xad, 0x4b, 0x04, 0x84, 0x67, 0x29, 0xe5, 0x72, 0x94, 0x75,
+	0x9e, 0x91, 0xb1, 0xb9, 0xba, 0x89, 0x17, 0x93, 0x0f, 0x94, 0x03, 0xdd, 0x81, 0x5d, 0x53, 0xbd,
+	0xaa, 0x42, 0x5a, 0x78, 0xb9, 0xc9, 0xc0, 0x38, 0xfd, 0xaf, 0xe1, 0x48, 0xe3, 0xe7, 0x8c, 0x84,
+	0x82, 0x04, 0xe4, 0xd7, 0x19, 0xe1, 0xe2, 0xda, 0xeb, 0xfd, 0xdb, 0xd0, 0xb2, 0x1d, 0xe9, 0x8c,
+	0x92, 0xef, 0xed, 0x3f, 0x80, 0x8e, 0x0e, 0xfa, 0x21, 0x8b, 0x58, 0x38, 0x79, 0xfb, 0xdb, 0xff,
+	0x72, 0x00, 0x69, 0xf0, 0x22, 0xe6, 0x22, 0x7f, 0xf4, 0x29, 0xec, 0x11, 0x85, 0xca, 0x91, 0xd6,
+	0x4e, 0x9a, 0xfd, 0x1e, 0x5e, 0x8f, 0x32, 0x10, 0x1f, 0x50, 0xc1, 0xae, 0x02, 0x9b, 0xe0, 0x3d,
+	0xb7, 0x5f, 0x49, 0x3b, 0xd0, 0x21, 0xd4, 0x5e, 0x93, 0x2b, 0xd3, 0xae, 0x3c, 0xa2, 0x3b, 0xb0,
+	0x33, 0x0f, 0x93, 0x19, 0x31, 0x03, 0xbb, 0x81, 0x8b, 0x23, 0x0f, 0xb4, 0xf7, 0xb4, 0xfa, 0xd0,
+	0xf1, 0x9f, 0x40, 0xe7, 0x89, 0xa1, 0xcd, 0xa5, 0x08, 0x99, 0xd8, 0x32, 0x84, 0x02, 0xe5, 0xaa,
+	0x45, 0xca, 0xf9, 0x7f, 0x3a, 0xd0, 0xb4, 0xa4, 0xd8, 0xb4, 0x34, 0x8b, 0x9d, 0xa8, 0x16, 0x76,
+	0x02, 0x41, 0x3d, 0x64, 0x11, 0x77, 0x6b, 0x8a, 0x8e, 0xea, 0x8c, 0x6e, 0x01, 0x64, 0x29, 0x13,
+	0xc3, 0x71, 0x3a, 0xa3, 0x42, 0xed, 0xca, 0x4e, 0xd0, 0x90, 0xc8, 0xb9, 0x04, 0xe4, 0xba, 0x28,
+	0xb7, 0xca, 0xdb, 0xd1, 0x34, 0x96, 0xc0, 0x19, 0x8b, 0xb8, 0xff, 0x07, 0xb4, 0x0a, 0xfc, 0x44,
+	0x1d, 0xd8, 0x91, 0x24, 0xb1, 0xdd, 0x68, 0x43, 0xde, 0x41, 0x18, 0x4b, 0xd9, 0x70, 0xca, 0xa3,
+	0x9c, 0xa7, 0x12, 0x78, 0xc1, 0xa3, 0xbc, 0x3e, 0x97, 0x43, 0x51, 0x3b, 0x6c, 0xea, 0xab, 0x29,
+	0xa1, 0xf7, 0x41, 0x95, 0x1b, 0xca, 0x51, 0xe8, 0xe6, 0xf6, 0xa4, 0x3d, 0xa0, 0x13, 0xff, 0x21,
+	0x74, 0x4c, 0xf5, 0x22, 0x11, 0x7b, 0x05, 0xaa, 0x1c, 0xe0, 0xa5, 0x69, 0x19, 0xae, 0xdc, 0xcb,
+	0x33, 0x1f, 0x93, 0x84, 0x88, 0xad, 0x84, 0xfc, 0x18, 0xde, 0x33, 0xb1, 0x4f, 0xc9, 0xb6, 0x8f,
+	0xe6, 0xff, 0x0c, 0x37, 0x4c, 0x60, 0x4e, 0xbe, 0x6b, 0x3b, 0x41, 0x77, 0x57, 0x56, 0x6e, 0x75,
+	0xe1, 0xed, 0xce, 0x75, 0x00, 0x19, 0x87, 0xe6, 0xad, 0x6a, 0xc3, 0xff, 0xdb, 0x81, 0xa3, 0x02,
+	0x6c, 0xea, 0x9e, 0x41, 0xc3, 0x08, 0x45, 0x4e, 0xfb, 0xdb, 0xb8, 0x24, 0xd0, 0x62, 0x96, 0xf9,
+	0x8b, 0x2c, 0xef, 0x25, 0xb4, 0x8b, 0xce, 0x12, 0xf6, 0xdf, 0x2d, 0xb2, 0xff, 0x10, 0xaf, 0xbc,
+	0x7f, 0x99, 0xfe, 0x3d, 0x80, 0x8b, 0x34, 0xda, 0x36, 0xbf, 0x8f, 0xa0, 0xa9, 0x22, 0xcc, 0x1b,
+	0x10, 0xd4, 0x93, 0x98, 0x5a, 0xc5, 0x57, 0x67, 0xff, 0x1f, 0x07, 0x6e, 0x0d, 0xe8, 0x3c, 0x66,
+	0x29, 0x9d, 0x12, 0x2a, 0x7e, 0x0c, 0x59, 0x1c, 0x8e, 0x12, 0x72, 0xa9, 0x3f, 0x0c, 0x27, 0x02,
+	0x3d, 0x87, 0xc6, 0xdc, 0xa0, 0xf6, 0xe5, 0x9f, 0xe2, 0xad, 0x29, 0xd8, 0x42, 0x76, 0x06, 0x79,
+	0xbe, 0xf7, 0x08, 0xda, 0x45, 0x67, 0xc9, 0x0c, 0x3a, 0xcb, 0x33, 0x68, 0x2c, 0xbd, 0xb8, 0xff,
+	0x5f, 0xdd, 0x4a, 0xd9, 0x8b, 0x90, 0x86, 0x11, 0x61, 0x97, 0x84, 0xcd, 0xe3, 0x31, 0x41, 0x0f,
+	0xac, 0xac, 0x68, 0xda, 0xa2, 0x0e, 0x2e, 0x91, 0x53, 0x6f, 0x55, 0x4b, 0xfc, 0x0a, 0xfa, 0xdc,
+	0x26, 0x6a, 0xd6, 0xa2, 0x36, 0x2e, 0xe8, 0x69, 0x59, 0x0a, 0x86, 0x86, 0xc6, 0x9e, 0x12, 0xf1,
+	0x36, 0xf1, 0xdf, 0xda, 0x1f, 0xb2, 0xa4, 0x09, 0x3a, 0xc6, 0xfa, 0xef, 0x8d, 0xed, 0xdf, 0x1b,
+	0x0f, 0xe4, 0xdf, 0xdb, 0x3b, 0x2a, 0xd1, 0x50, 0xbf, 0x82, 0xbe, 0xb1, 0x02, 0x6f, 0xb4, 0x1b,
+	0x75, 0x71, 0x99, 0x96, 0x97, 0xd5, 0xbd, 0x67, 0xfb, 0xbc, 0x48, 0x23, 0xd4, 0xc4, 0x0b, 0xaa,
+	0x78, 0x07, 0x78, 0x89, 0x15, 0x7e, 0xe5, 0x33, 0x07, 0x7d, 0x07, 0xad, 0x82, 0x92, 0xa2, 0x2e,
+	0x2e, 0x53, 0x56, 0x6f, 0x43, 0xf7, 0x7e, 0x05, 0x3d, 0x82, 0xc3, 0x3c, 0xe3, 0x97, 0x99, 0x98,
+	0xa4, 0xbf, 0xd1, 0xb5, 0xe1, 0x6c, 0xce, 0x3e, 0x83, 0x6e, 0xa1, 0xde, 0x79, 0x98, 0x24, 0xf2,
+	0xaf, 0xff, 0x0e, 0x57, 0x3c, 0x06, 0x77, 0xb5, 0x81, 0x77, 0xbf, 0xa5, 0xff, 0x6f, 0x15, 0xba,
+	0x66, 0xe5, 0x56, 0x28, 0x76, 0x9a, 0x0b, 0xb3, 0xe1, 0x58, 0x17, 0x97, 0x49, 0xa5, 0xb7, 0xb6,
+	0xb2, 0x7e, 0x65, 0x29, 0xd7, 0xd0, 0x2c, 0xcf, 0x2d, 0x88, 0x65, 0x69, 0xee, 0x97, 0x00, 0x0b,
+	0xb1, 0x44, 0x08, 0xaf, 0x29, 0xe7, 0x86, 0x8a, 0xcd, 0x25, 0x71, 0x42, 0x47, 0x78, 0x5d, 0xea,
+	0xbc, 0x4e, 0x99, 0x7e, 0xf9, 0x15, 0xf4, 0x49, 0x5e, 0xf1, 0x7a, 0xe6, 0xf4, 0x13, 0x38, 0x7e,
+	0x46, 0xb9, 0x08, 0xe9, 0x78, 0x75, 0x27, 0x03, 0x38, 0x2e, 0x57, 0x09, 0xf4, 0xc1, 0x76, 0xf9,
+	0xd8, 0xfc, 0x79, 0x46, 0xbb, 0x0a, 0xf9, 0xe2, 0x4d, 0x00, 0x00, 0x00, 0xff, 0xff, 0x41, 0xbd,
+	0xa1, 0xae, 0x0e, 0x0b, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -967,81 +1012,81 @@ var _ grpc.ClientConn
 // is compatible with the grpc package it is being compiled against.
 const _ = grpc.SupportPackageIsVersion4
 
-// LonghornEngineManagerServiceClient is the client API for LonghornEngineManagerService service.
+// EngineManagerServiceClient is the client API for EngineManagerService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
-type LonghornEngineManagerServiceClient interface {
+type EngineManagerServiceClient interface {
 	EngineCreate(ctx context.Context, in *EngineCreateRequest, opts ...grpc.CallOption) (*EngineResponse, error)
 	EngineDelete(ctx context.Context, in *EngineRequest, opts ...grpc.CallOption) (*EngineResponse, error)
 	EngineGet(ctx context.Context, in *EngineRequest, opts ...grpc.CallOption) (*EngineResponse, error)
 	EngineList(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*EngineListResponse, error)
 	EngineUpgrade(ctx context.Context, in *EngineUpgradeRequest, opts ...grpc.CallOption) (*EngineResponse, error)
-	EngineLog(ctx context.Context, in *LogRequest, opts ...grpc.CallOption) (LonghornEngineManagerService_EngineLogClient, error)
+	EngineLog(ctx context.Context, in *LogRequest, opts ...grpc.CallOption) (EngineManagerService_EngineLogClient, error)
 	FrontendStart(ctx context.Context, in *FrontendStartRequest, opts ...grpc.CallOption) (*empty.Empty, error)
 	FrontendShutdown(ctx context.Context, in *EngineRequest, opts ...grpc.CallOption) (*empty.Empty, error)
 	FrontendStartCallback(ctx context.Context, in *EngineRequest, opts ...grpc.CallOption) (*empty.Empty, error)
 	FrontendShutdownCallback(ctx context.Context, in *EngineRequest, opts ...grpc.CallOption) (*empty.Empty, error)
 }
 
-type longhornEngineManagerServiceClient struct {
+type engineManagerServiceClient struct {
 	cc *grpc.ClientConn
 }
 
-func NewLonghornEngineManagerServiceClient(cc *grpc.ClientConn) LonghornEngineManagerServiceClient {
-	return &longhornEngineManagerServiceClient{cc}
+func NewEngineManagerServiceClient(cc *grpc.ClientConn) EngineManagerServiceClient {
+	return &engineManagerServiceClient{cc}
 }
 
-func (c *longhornEngineManagerServiceClient) EngineCreate(ctx context.Context, in *EngineCreateRequest, opts ...grpc.CallOption) (*EngineResponse, error) {
+func (c *engineManagerServiceClient) EngineCreate(ctx context.Context, in *EngineCreateRequest, opts ...grpc.CallOption) (*EngineResponse, error) {
 	out := new(EngineResponse)
-	err := c.cc.Invoke(ctx, "/LonghornEngineManagerService/EngineCreate", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/EngineManagerService/EngineCreate", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *longhornEngineManagerServiceClient) EngineDelete(ctx context.Context, in *EngineRequest, opts ...grpc.CallOption) (*EngineResponse, error) {
+func (c *engineManagerServiceClient) EngineDelete(ctx context.Context, in *EngineRequest, opts ...grpc.CallOption) (*EngineResponse, error) {
 	out := new(EngineResponse)
-	err := c.cc.Invoke(ctx, "/LonghornEngineManagerService/EngineDelete", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/EngineManagerService/EngineDelete", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *longhornEngineManagerServiceClient) EngineGet(ctx context.Context, in *EngineRequest, opts ...grpc.CallOption) (*EngineResponse, error) {
+func (c *engineManagerServiceClient) EngineGet(ctx context.Context, in *EngineRequest, opts ...grpc.CallOption) (*EngineResponse, error) {
 	out := new(EngineResponse)
-	err := c.cc.Invoke(ctx, "/LonghornEngineManagerService/EngineGet", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/EngineManagerService/EngineGet", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *longhornEngineManagerServiceClient) EngineList(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*EngineListResponse, error) {
+func (c *engineManagerServiceClient) EngineList(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*EngineListResponse, error) {
 	out := new(EngineListResponse)
-	err := c.cc.Invoke(ctx, "/LonghornEngineManagerService/EngineList", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/EngineManagerService/EngineList", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *longhornEngineManagerServiceClient) EngineUpgrade(ctx context.Context, in *EngineUpgradeRequest, opts ...grpc.CallOption) (*EngineResponse, error) {
+func (c *engineManagerServiceClient) EngineUpgrade(ctx context.Context, in *EngineUpgradeRequest, opts ...grpc.CallOption) (*EngineResponse, error) {
 	out := new(EngineResponse)
-	err := c.cc.Invoke(ctx, "/LonghornEngineManagerService/EngineUpgrade", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/EngineManagerService/EngineUpgrade", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *longhornEngineManagerServiceClient) EngineLog(ctx context.Context, in *LogRequest, opts ...grpc.CallOption) (LonghornEngineManagerService_EngineLogClient, error) {
-	stream, err := c.cc.NewStream(ctx, &_LonghornEngineManagerService_serviceDesc.Streams[0], "/LonghornEngineManagerService/EngineLog", opts...)
+func (c *engineManagerServiceClient) EngineLog(ctx context.Context, in *LogRequest, opts ...grpc.CallOption) (EngineManagerService_EngineLogClient, error) {
+	stream, err := c.cc.NewStream(ctx, &_EngineManagerService_serviceDesc.Streams[0], "/EngineManagerService/EngineLog", opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &longhornEngineManagerServiceEngineLogClient{stream}
+	x := &engineManagerServiceEngineLogClient{stream}
 	if err := x.ClientStream.SendMsg(in); err != nil {
 		return nil, err
 	}
@@ -1051,16 +1096,16 @@ func (c *longhornEngineManagerServiceClient) EngineLog(ctx context.Context, in *
 	return x, nil
 }
 
-type LonghornEngineManagerService_EngineLogClient interface {
+type EngineManagerService_EngineLogClient interface {
 	Recv() (*LogResponse, error)
 	grpc.ClientStream
 }
 
-type longhornEngineManagerServiceEngineLogClient struct {
+type engineManagerServiceEngineLogClient struct {
 	grpc.ClientStream
 }
 
-func (x *longhornEngineManagerServiceEngineLogClient) Recv() (*LogResponse, error) {
+func (x *engineManagerServiceEngineLogClient) Recv() (*LogResponse, error) {
 	m := new(LogResponse)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
@@ -1068,390 +1113,390 @@ func (x *longhornEngineManagerServiceEngineLogClient) Recv() (*LogResponse, erro
 	return m, nil
 }
 
-func (c *longhornEngineManagerServiceClient) FrontendStart(ctx context.Context, in *FrontendStartRequest, opts ...grpc.CallOption) (*empty.Empty, error) {
+func (c *engineManagerServiceClient) FrontendStart(ctx context.Context, in *FrontendStartRequest, opts ...grpc.CallOption) (*empty.Empty, error) {
 	out := new(empty.Empty)
-	err := c.cc.Invoke(ctx, "/LonghornEngineManagerService/FrontendStart", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/EngineManagerService/FrontendStart", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *longhornEngineManagerServiceClient) FrontendShutdown(ctx context.Context, in *EngineRequest, opts ...grpc.CallOption) (*empty.Empty, error) {
+func (c *engineManagerServiceClient) FrontendShutdown(ctx context.Context, in *EngineRequest, opts ...grpc.CallOption) (*empty.Empty, error) {
 	out := new(empty.Empty)
-	err := c.cc.Invoke(ctx, "/LonghornEngineManagerService/FrontendShutdown", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/EngineManagerService/FrontendShutdown", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *longhornEngineManagerServiceClient) FrontendStartCallback(ctx context.Context, in *EngineRequest, opts ...grpc.CallOption) (*empty.Empty, error) {
+func (c *engineManagerServiceClient) FrontendStartCallback(ctx context.Context, in *EngineRequest, opts ...grpc.CallOption) (*empty.Empty, error) {
 	out := new(empty.Empty)
-	err := c.cc.Invoke(ctx, "/LonghornEngineManagerService/FrontendStartCallback", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/EngineManagerService/FrontendStartCallback", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *longhornEngineManagerServiceClient) FrontendShutdownCallback(ctx context.Context, in *EngineRequest, opts ...grpc.CallOption) (*empty.Empty, error) {
+func (c *engineManagerServiceClient) FrontendShutdownCallback(ctx context.Context, in *EngineRequest, opts ...grpc.CallOption) (*empty.Empty, error) {
 	out := new(empty.Empty)
-	err := c.cc.Invoke(ctx, "/LonghornEngineManagerService/FrontendShutdownCallback", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/EngineManagerService/FrontendShutdownCallback", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-// LonghornEngineManagerServiceServer is the server API for LonghornEngineManagerService service.
-type LonghornEngineManagerServiceServer interface {
+// EngineManagerServiceServer is the server API for EngineManagerService service.
+type EngineManagerServiceServer interface {
 	EngineCreate(context.Context, *EngineCreateRequest) (*EngineResponse, error)
 	EngineDelete(context.Context, *EngineRequest) (*EngineResponse, error)
 	EngineGet(context.Context, *EngineRequest) (*EngineResponse, error)
 	EngineList(context.Context, *empty.Empty) (*EngineListResponse, error)
 	EngineUpgrade(context.Context, *EngineUpgradeRequest) (*EngineResponse, error)
-	EngineLog(*LogRequest, LonghornEngineManagerService_EngineLogServer) error
+	EngineLog(*LogRequest, EngineManagerService_EngineLogServer) error
 	FrontendStart(context.Context, *FrontendStartRequest) (*empty.Empty, error)
 	FrontendShutdown(context.Context, *EngineRequest) (*empty.Empty, error)
 	FrontendStartCallback(context.Context, *EngineRequest) (*empty.Empty, error)
 	FrontendShutdownCallback(context.Context, *EngineRequest) (*empty.Empty, error)
 }
 
-// UnimplementedLonghornEngineManagerServiceServer can be embedded to have forward compatible implementations.
-type UnimplementedLonghornEngineManagerServiceServer struct {
+// UnimplementedEngineManagerServiceServer can be embedded to have forward compatible implementations.
+type UnimplementedEngineManagerServiceServer struct {
 }
 
-func (*UnimplementedLonghornEngineManagerServiceServer) EngineCreate(ctx context.Context, req *EngineCreateRequest) (*EngineResponse, error) {
+func (*UnimplementedEngineManagerServiceServer) EngineCreate(ctx context.Context, req *EngineCreateRequest) (*EngineResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method EngineCreate not implemented")
 }
-func (*UnimplementedLonghornEngineManagerServiceServer) EngineDelete(ctx context.Context, req *EngineRequest) (*EngineResponse, error) {
+func (*UnimplementedEngineManagerServiceServer) EngineDelete(ctx context.Context, req *EngineRequest) (*EngineResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method EngineDelete not implemented")
 }
-func (*UnimplementedLonghornEngineManagerServiceServer) EngineGet(ctx context.Context, req *EngineRequest) (*EngineResponse, error) {
+func (*UnimplementedEngineManagerServiceServer) EngineGet(ctx context.Context, req *EngineRequest) (*EngineResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method EngineGet not implemented")
 }
-func (*UnimplementedLonghornEngineManagerServiceServer) EngineList(ctx context.Context, req *empty.Empty) (*EngineListResponse, error) {
+func (*UnimplementedEngineManagerServiceServer) EngineList(ctx context.Context, req *empty.Empty) (*EngineListResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method EngineList not implemented")
 }
-func (*UnimplementedLonghornEngineManagerServiceServer) EngineUpgrade(ctx context.Context, req *EngineUpgradeRequest) (*EngineResponse, error) {
+func (*UnimplementedEngineManagerServiceServer) EngineUpgrade(ctx context.Context, req *EngineUpgradeRequest) (*EngineResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method EngineUpgrade not implemented")
 }
-func (*UnimplementedLonghornEngineManagerServiceServer) EngineLog(req *LogRequest, srv LonghornEngineManagerService_EngineLogServer) error {
+func (*UnimplementedEngineManagerServiceServer) EngineLog(req *LogRequest, srv EngineManagerService_EngineLogServer) error {
 	return status.Errorf(codes.Unimplemented, "method EngineLog not implemented")
 }
-func (*UnimplementedLonghornEngineManagerServiceServer) FrontendStart(ctx context.Context, req *FrontendStartRequest) (*empty.Empty, error) {
+func (*UnimplementedEngineManagerServiceServer) FrontendStart(ctx context.Context, req *FrontendStartRequest) (*empty.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method FrontendStart not implemented")
 }
-func (*UnimplementedLonghornEngineManagerServiceServer) FrontendShutdown(ctx context.Context, req *EngineRequest) (*empty.Empty, error) {
+func (*UnimplementedEngineManagerServiceServer) FrontendShutdown(ctx context.Context, req *EngineRequest) (*empty.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method FrontendShutdown not implemented")
 }
-func (*UnimplementedLonghornEngineManagerServiceServer) FrontendStartCallback(ctx context.Context, req *EngineRequest) (*empty.Empty, error) {
+func (*UnimplementedEngineManagerServiceServer) FrontendStartCallback(ctx context.Context, req *EngineRequest) (*empty.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method FrontendStartCallback not implemented")
 }
-func (*UnimplementedLonghornEngineManagerServiceServer) FrontendShutdownCallback(ctx context.Context, req *EngineRequest) (*empty.Empty, error) {
+func (*UnimplementedEngineManagerServiceServer) FrontendShutdownCallback(ctx context.Context, req *EngineRequest) (*empty.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method FrontendShutdownCallback not implemented")
 }
 
-func RegisterLonghornEngineManagerServiceServer(s *grpc.Server, srv LonghornEngineManagerServiceServer) {
-	s.RegisterService(&_LonghornEngineManagerService_serviceDesc, srv)
+func RegisterEngineManagerServiceServer(s *grpc.Server, srv EngineManagerServiceServer) {
+	s.RegisterService(&_EngineManagerService_serviceDesc, srv)
 }
 
-func _LonghornEngineManagerService_EngineCreate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _EngineManagerService_EngineCreate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(EngineCreateRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(LonghornEngineManagerServiceServer).EngineCreate(ctx, in)
+		return srv.(EngineManagerServiceServer).EngineCreate(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/LonghornEngineManagerService/EngineCreate",
+		FullMethod: "/EngineManagerService/EngineCreate",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LonghornEngineManagerServiceServer).EngineCreate(ctx, req.(*EngineCreateRequest))
+		return srv.(EngineManagerServiceServer).EngineCreate(ctx, req.(*EngineCreateRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _LonghornEngineManagerService_EngineDelete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _EngineManagerService_EngineDelete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(EngineRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(LonghornEngineManagerServiceServer).EngineDelete(ctx, in)
+		return srv.(EngineManagerServiceServer).EngineDelete(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/LonghornEngineManagerService/EngineDelete",
+		FullMethod: "/EngineManagerService/EngineDelete",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LonghornEngineManagerServiceServer).EngineDelete(ctx, req.(*EngineRequest))
+		return srv.(EngineManagerServiceServer).EngineDelete(ctx, req.(*EngineRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _LonghornEngineManagerService_EngineGet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _EngineManagerService_EngineGet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(EngineRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(LonghornEngineManagerServiceServer).EngineGet(ctx, in)
+		return srv.(EngineManagerServiceServer).EngineGet(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/LonghornEngineManagerService/EngineGet",
+		FullMethod: "/EngineManagerService/EngineGet",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LonghornEngineManagerServiceServer).EngineGet(ctx, req.(*EngineRequest))
+		return srv.(EngineManagerServiceServer).EngineGet(ctx, req.(*EngineRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _LonghornEngineManagerService_EngineList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _EngineManagerService_EngineList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(empty.Empty)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(LonghornEngineManagerServiceServer).EngineList(ctx, in)
+		return srv.(EngineManagerServiceServer).EngineList(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/LonghornEngineManagerService/EngineList",
+		FullMethod: "/EngineManagerService/EngineList",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LonghornEngineManagerServiceServer).EngineList(ctx, req.(*empty.Empty))
+		return srv.(EngineManagerServiceServer).EngineList(ctx, req.(*empty.Empty))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _LonghornEngineManagerService_EngineUpgrade_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _EngineManagerService_EngineUpgrade_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(EngineUpgradeRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(LonghornEngineManagerServiceServer).EngineUpgrade(ctx, in)
+		return srv.(EngineManagerServiceServer).EngineUpgrade(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/LonghornEngineManagerService/EngineUpgrade",
+		FullMethod: "/EngineManagerService/EngineUpgrade",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LonghornEngineManagerServiceServer).EngineUpgrade(ctx, req.(*EngineUpgradeRequest))
+		return srv.(EngineManagerServiceServer).EngineUpgrade(ctx, req.(*EngineUpgradeRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _LonghornEngineManagerService_EngineLog_Handler(srv interface{}, stream grpc.ServerStream) error {
+func _EngineManagerService_EngineLog_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(LogRequest)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
-	return srv.(LonghornEngineManagerServiceServer).EngineLog(m, &longhornEngineManagerServiceEngineLogServer{stream})
+	return srv.(EngineManagerServiceServer).EngineLog(m, &engineManagerServiceEngineLogServer{stream})
 }
 
-type LonghornEngineManagerService_EngineLogServer interface {
+type EngineManagerService_EngineLogServer interface {
 	Send(*LogResponse) error
 	grpc.ServerStream
 }
 
-type longhornEngineManagerServiceEngineLogServer struct {
+type engineManagerServiceEngineLogServer struct {
 	grpc.ServerStream
 }
 
-func (x *longhornEngineManagerServiceEngineLogServer) Send(m *LogResponse) error {
+func (x *engineManagerServiceEngineLogServer) Send(m *LogResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-func _LonghornEngineManagerService_FrontendStart_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _EngineManagerService_FrontendStart_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(FrontendStartRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(LonghornEngineManagerServiceServer).FrontendStart(ctx, in)
+		return srv.(EngineManagerServiceServer).FrontendStart(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/LonghornEngineManagerService/FrontendStart",
+		FullMethod: "/EngineManagerService/FrontendStart",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LonghornEngineManagerServiceServer).FrontendStart(ctx, req.(*FrontendStartRequest))
+		return srv.(EngineManagerServiceServer).FrontendStart(ctx, req.(*FrontendStartRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _LonghornEngineManagerService_FrontendShutdown_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _EngineManagerService_FrontendShutdown_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(EngineRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(LonghornEngineManagerServiceServer).FrontendShutdown(ctx, in)
+		return srv.(EngineManagerServiceServer).FrontendShutdown(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/LonghornEngineManagerService/FrontendShutdown",
+		FullMethod: "/EngineManagerService/FrontendShutdown",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LonghornEngineManagerServiceServer).FrontendShutdown(ctx, req.(*EngineRequest))
+		return srv.(EngineManagerServiceServer).FrontendShutdown(ctx, req.(*EngineRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _LonghornEngineManagerService_FrontendStartCallback_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _EngineManagerService_FrontendStartCallback_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(EngineRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(LonghornEngineManagerServiceServer).FrontendStartCallback(ctx, in)
+		return srv.(EngineManagerServiceServer).FrontendStartCallback(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/LonghornEngineManagerService/FrontendStartCallback",
+		FullMethod: "/EngineManagerService/FrontendStartCallback",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LonghornEngineManagerServiceServer).FrontendStartCallback(ctx, req.(*EngineRequest))
+		return srv.(EngineManagerServiceServer).FrontendStartCallback(ctx, req.(*EngineRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _LonghornEngineManagerService_FrontendShutdownCallback_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _EngineManagerService_FrontendShutdownCallback_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(EngineRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(LonghornEngineManagerServiceServer).FrontendShutdownCallback(ctx, in)
+		return srv.(EngineManagerServiceServer).FrontendShutdownCallback(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/LonghornEngineManagerService/FrontendShutdownCallback",
+		FullMethod: "/EngineManagerService/FrontendShutdownCallback",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LonghornEngineManagerServiceServer).FrontendShutdownCallback(ctx, req.(*EngineRequest))
+		return srv.(EngineManagerServiceServer).FrontendShutdownCallback(ctx, req.(*EngineRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-var _LonghornEngineManagerService_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "LonghornEngineManagerService",
-	HandlerType: (*LonghornEngineManagerServiceServer)(nil),
+var _EngineManagerService_serviceDesc = grpc.ServiceDesc{
+	ServiceName: "EngineManagerService",
+	HandlerType: (*EngineManagerServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "EngineCreate",
-			Handler:    _LonghornEngineManagerService_EngineCreate_Handler,
+			Handler:    _EngineManagerService_EngineCreate_Handler,
 		},
 		{
 			MethodName: "EngineDelete",
-			Handler:    _LonghornEngineManagerService_EngineDelete_Handler,
+			Handler:    _EngineManagerService_EngineDelete_Handler,
 		},
 		{
 			MethodName: "EngineGet",
-			Handler:    _LonghornEngineManagerService_EngineGet_Handler,
+			Handler:    _EngineManagerService_EngineGet_Handler,
 		},
 		{
 			MethodName: "EngineList",
-			Handler:    _LonghornEngineManagerService_EngineList_Handler,
+			Handler:    _EngineManagerService_EngineList_Handler,
 		},
 		{
 			MethodName: "EngineUpgrade",
-			Handler:    _LonghornEngineManagerService_EngineUpgrade_Handler,
+			Handler:    _EngineManagerService_EngineUpgrade_Handler,
 		},
 		{
 			MethodName: "FrontendStart",
-			Handler:    _LonghornEngineManagerService_FrontendStart_Handler,
+			Handler:    _EngineManagerService_FrontendStart_Handler,
 		},
 		{
 			MethodName: "FrontendShutdown",
-			Handler:    _LonghornEngineManagerService_FrontendShutdown_Handler,
+			Handler:    _EngineManagerService_FrontendShutdown_Handler,
 		},
 		{
 			MethodName: "FrontendStartCallback",
-			Handler:    _LonghornEngineManagerService_FrontendStartCallback_Handler,
+			Handler:    _EngineManagerService_FrontendStartCallback_Handler,
 		},
 		{
 			MethodName: "FrontendShutdownCallback",
-			Handler:    _LonghornEngineManagerService_FrontendShutdownCallback_Handler,
+			Handler:    _EngineManagerService_FrontendShutdownCallback_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "EngineLog",
-			Handler:       _LonghornEngineManagerService_EngineLog_Handler,
+			Handler:       _EngineManagerService_EngineLog_Handler,
 			ServerStreams: true,
 		},
 	},
 	Metadata: "rpc.proto",
 }
 
-// LonghornProcessLauncherServiceClient is the client API for LonghornProcessLauncherService service.
+// ProcessManagerServiceClient is the client API for ProcessManagerService service.
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
-type LonghornProcessLauncherServiceClient interface {
+type ProcessManagerServiceClient interface {
 	ProcessCreate(ctx context.Context, in *ProcessCreateRequest, opts ...grpc.CallOption) (*ProcessResponse, error)
 	ProcessDelete(ctx context.Context, in *ProcessDeleteRequest, opts ...grpc.CallOption) (*ProcessResponse, error)
 	ProcessGet(ctx context.Context, in *ProcessGetRequest, opts ...grpc.CallOption) (*ProcessResponse, error)
 	ProcessList(ctx context.Context, in *ProcessListRequest, opts ...grpc.CallOption) (*ProcessListResponse, error)
-	ProcessLog(ctx context.Context, in *LogRequest, opts ...grpc.CallOption) (LonghornProcessLauncherService_ProcessLogClient, error)
+	ProcessLog(ctx context.Context, in *LogRequest, opts ...grpc.CallOption) (ProcessManagerService_ProcessLogClient, error)
 }
 
-type longhornProcessLauncherServiceClient struct {
+type processManagerServiceClient struct {
 	cc *grpc.ClientConn
 }
 
-func NewLonghornProcessLauncherServiceClient(cc *grpc.ClientConn) LonghornProcessLauncherServiceClient {
-	return &longhornProcessLauncherServiceClient{cc}
+func NewProcessManagerServiceClient(cc *grpc.ClientConn) ProcessManagerServiceClient {
+	return &processManagerServiceClient{cc}
 }
 
-func (c *longhornProcessLauncherServiceClient) ProcessCreate(ctx context.Context, in *ProcessCreateRequest, opts ...grpc.CallOption) (*ProcessResponse, error) {
+func (c *processManagerServiceClient) ProcessCreate(ctx context.Context, in *ProcessCreateRequest, opts ...grpc.CallOption) (*ProcessResponse, error) {
 	out := new(ProcessResponse)
-	err := c.cc.Invoke(ctx, "/LonghornProcessLauncherService/ProcessCreate", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/ProcessManagerService/ProcessCreate", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *longhornProcessLauncherServiceClient) ProcessDelete(ctx context.Context, in *ProcessDeleteRequest, opts ...grpc.CallOption) (*ProcessResponse, error) {
+func (c *processManagerServiceClient) ProcessDelete(ctx context.Context, in *ProcessDeleteRequest, opts ...grpc.CallOption) (*ProcessResponse, error) {
 	out := new(ProcessResponse)
-	err := c.cc.Invoke(ctx, "/LonghornProcessLauncherService/ProcessDelete", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/ProcessManagerService/ProcessDelete", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *longhornProcessLauncherServiceClient) ProcessGet(ctx context.Context, in *ProcessGetRequest, opts ...grpc.CallOption) (*ProcessResponse, error) {
+func (c *processManagerServiceClient) ProcessGet(ctx context.Context, in *ProcessGetRequest, opts ...grpc.CallOption) (*ProcessResponse, error) {
 	out := new(ProcessResponse)
-	err := c.cc.Invoke(ctx, "/LonghornProcessLauncherService/ProcessGet", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/ProcessManagerService/ProcessGet", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *longhornProcessLauncherServiceClient) ProcessList(ctx context.Context, in *ProcessListRequest, opts ...grpc.CallOption) (*ProcessListResponse, error) {
+func (c *processManagerServiceClient) ProcessList(ctx context.Context, in *ProcessListRequest, opts ...grpc.CallOption) (*ProcessListResponse, error) {
 	out := new(ProcessListResponse)
-	err := c.cc.Invoke(ctx, "/LonghornProcessLauncherService/ProcessList", in, out, opts...)
+	err := c.cc.Invoke(ctx, "/ProcessManagerService/ProcessList", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
 	return out, nil
 }
 
-func (c *longhornProcessLauncherServiceClient) ProcessLog(ctx context.Context, in *LogRequest, opts ...grpc.CallOption) (LonghornProcessLauncherService_ProcessLogClient, error) {
-	stream, err := c.cc.NewStream(ctx, &_LonghornProcessLauncherService_serviceDesc.Streams[0], "/LonghornProcessLauncherService/ProcessLog", opts...)
+func (c *processManagerServiceClient) ProcessLog(ctx context.Context, in *LogRequest, opts ...grpc.CallOption) (ProcessManagerService_ProcessLogClient, error) {
+	stream, err := c.cc.NewStream(ctx, &_ProcessManagerService_serviceDesc.Streams[0], "/ProcessManagerService/ProcessLog", opts...)
 	if err != nil {
 		return nil, err
 	}
-	x := &longhornProcessLauncherServiceProcessLogClient{stream}
+	x := &processManagerServiceProcessLogClient{stream}
 	if err := x.ClientStream.SendMsg(in); err != nil {
 		return nil, err
 	}
@@ -1461,16 +1506,16 @@ func (c *longhornProcessLauncherServiceClient) ProcessLog(ctx context.Context, i
 	return x, nil
 }
 
-type LonghornProcessLauncherService_ProcessLogClient interface {
+type ProcessManagerService_ProcessLogClient interface {
 	Recv() (*LogResponse, error)
 	grpc.ClientStream
 }
 
-type longhornProcessLauncherServiceProcessLogClient struct {
+type processManagerServiceProcessLogClient struct {
 	grpc.ClientStream
 }
 
-func (x *longhornProcessLauncherServiceProcessLogClient) Recv() (*LogResponse, error) {
+func (x *processManagerServiceProcessLogClient) Recv() (*LogResponse, error) {
 	m := new(LogResponse)
 	if err := x.ClientStream.RecvMsg(m); err != nil {
 		return nil, err
@@ -1478,159 +1523,231 @@ func (x *longhornProcessLauncherServiceProcessLogClient) Recv() (*LogResponse, e
 	return m, nil
 }
 
-// LonghornProcessLauncherServiceServer is the server API for LonghornProcessLauncherService service.
-type LonghornProcessLauncherServiceServer interface {
+// ProcessManagerServiceServer is the server API for ProcessManagerService service.
+type ProcessManagerServiceServer interface {
 	ProcessCreate(context.Context, *ProcessCreateRequest) (*ProcessResponse, error)
 	ProcessDelete(context.Context, *ProcessDeleteRequest) (*ProcessResponse, error)
 	ProcessGet(context.Context, *ProcessGetRequest) (*ProcessResponse, error)
 	ProcessList(context.Context, *ProcessListRequest) (*ProcessListResponse, error)
-	ProcessLog(*LogRequest, LonghornProcessLauncherService_ProcessLogServer) error
+	ProcessLog(*LogRequest, ProcessManagerService_ProcessLogServer) error
 }
 
-// UnimplementedLonghornProcessLauncherServiceServer can be embedded to have forward compatible implementations.
-type UnimplementedLonghornProcessLauncherServiceServer struct {
+// UnimplementedProcessManagerServiceServer can be embedded to have forward compatible implementations.
+type UnimplementedProcessManagerServiceServer struct {
 }
 
-func (*UnimplementedLonghornProcessLauncherServiceServer) ProcessCreate(ctx context.Context, req *ProcessCreateRequest) (*ProcessResponse, error) {
+func (*UnimplementedProcessManagerServiceServer) ProcessCreate(ctx context.Context, req *ProcessCreateRequest) (*ProcessResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ProcessCreate not implemented")
 }
-func (*UnimplementedLonghornProcessLauncherServiceServer) ProcessDelete(ctx context.Context, req *ProcessDeleteRequest) (*ProcessResponse, error) {
+func (*UnimplementedProcessManagerServiceServer) ProcessDelete(ctx context.Context, req *ProcessDeleteRequest) (*ProcessResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ProcessDelete not implemented")
 }
-func (*UnimplementedLonghornProcessLauncherServiceServer) ProcessGet(ctx context.Context, req *ProcessGetRequest) (*ProcessResponse, error) {
+func (*UnimplementedProcessManagerServiceServer) ProcessGet(ctx context.Context, req *ProcessGetRequest) (*ProcessResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ProcessGet not implemented")
 }
-func (*UnimplementedLonghornProcessLauncherServiceServer) ProcessList(ctx context.Context, req *ProcessListRequest) (*ProcessListResponse, error) {
+func (*UnimplementedProcessManagerServiceServer) ProcessList(ctx context.Context, req *ProcessListRequest) (*ProcessListResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ProcessList not implemented")
 }
-func (*UnimplementedLonghornProcessLauncherServiceServer) ProcessLog(req *LogRequest, srv LonghornProcessLauncherService_ProcessLogServer) error {
+func (*UnimplementedProcessManagerServiceServer) ProcessLog(req *LogRequest, srv ProcessManagerService_ProcessLogServer) error {
 	return status.Errorf(codes.Unimplemented, "method ProcessLog not implemented")
 }
 
-func RegisterLonghornProcessLauncherServiceServer(s *grpc.Server, srv LonghornProcessLauncherServiceServer) {
-	s.RegisterService(&_LonghornProcessLauncherService_serviceDesc, srv)
+func RegisterProcessManagerServiceServer(s *grpc.Server, srv ProcessManagerServiceServer) {
+	s.RegisterService(&_ProcessManagerService_serviceDesc, srv)
 }
 
-func _LonghornProcessLauncherService_ProcessCreate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ProcessManagerService_ProcessCreate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ProcessCreateRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(LonghornProcessLauncherServiceServer).ProcessCreate(ctx, in)
+		return srv.(ProcessManagerServiceServer).ProcessCreate(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/LonghornProcessLauncherService/ProcessCreate",
+		FullMethod: "/ProcessManagerService/ProcessCreate",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LonghornProcessLauncherServiceServer).ProcessCreate(ctx, req.(*ProcessCreateRequest))
+		return srv.(ProcessManagerServiceServer).ProcessCreate(ctx, req.(*ProcessCreateRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _LonghornProcessLauncherService_ProcessDelete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ProcessManagerService_ProcessDelete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ProcessDeleteRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(LonghornProcessLauncherServiceServer).ProcessDelete(ctx, in)
+		return srv.(ProcessManagerServiceServer).ProcessDelete(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/LonghornProcessLauncherService/ProcessDelete",
+		FullMethod: "/ProcessManagerService/ProcessDelete",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LonghornProcessLauncherServiceServer).ProcessDelete(ctx, req.(*ProcessDeleteRequest))
+		return srv.(ProcessManagerServiceServer).ProcessDelete(ctx, req.(*ProcessDeleteRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _LonghornProcessLauncherService_ProcessGet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ProcessManagerService_ProcessGet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ProcessGetRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(LonghornProcessLauncherServiceServer).ProcessGet(ctx, in)
+		return srv.(ProcessManagerServiceServer).ProcessGet(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/LonghornProcessLauncherService/ProcessGet",
+		FullMethod: "/ProcessManagerService/ProcessGet",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LonghornProcessLauncherServiceServer).ProcessGet(ctx, req.(*ProcessGetRequest))
+		return srv.(ProcessManagerServiceServer).ProcessGet(ctx, req.(*ProcessGetRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _LonghornProcessLauncherService_ProcessList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+func _ProcessManagerService_ProcessList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(ProcessListRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(LonghornProcessLauncherServiceServer).ProcessList(ctx, in)
+		return srv.(ProcessManagerServiceServer).ProcessList(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/LonghornProcessLauncherService/ProcessList",
+		FullMethod: "/ProcessManagerService/ProcessList",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(LonghornProcessLauncherServiceServer).ProcessList(ctx, req.(*ProcessListRequest))
+		return srv.(ProcessManagerServiceServer).ProcessList(ctx, req.(*ProcessListRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
 
-func _LonghornProcessLauncherService_ProcessLog_Handler(srv interface{}, stream grpc.ServerStream) error {
+func _ProcessManagerService_ProcessLog_Handler(srv interface{}, stream grpc.ServerStream) error {
 	m := new(LogRequest)
 	if err := stream.RecvMsg(m); err != nil {
 		return err
 	}
-	return srv.(LonghornProcessLauncherServiceServer).ProcessLog(m, &longhornProcessLauncherServiceProcessLogServer{stream})
+	return srv.(ProcessManagerServiceServer).ProcessLog(m, &processManagerServiceProcessLogServer{stream})
 }
 
-type LonghornProcessLauncherService_ProcessLogServer interface {
+type ProcessManagerService_ProcessLogServer interface {
 	Send(*LogResponse) error
 	grpc.ServerStream
 }
 
-type longhornProcessLauncherServiceProcessLogServer struct {
+type processManagerServiceProcessLogServer struct {
 	grpc.ServerStream
 }
 
-func (x *longhornProcessLauncherServiceProcessLogServer) Send(m *LogResponse) error {
+func (x *processManagerServiceProcessLogServer) Send(m *LogResponse) error {
 	return x.ServerStream.SendMsg(m)
 }
 
-var _LonghornProcessLauncherService_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "LonghornProcessLauncherService",
-	HandlerType: (*LonghornProcessLauncherServiceServer)(nil),
+var _ProcessManagerService_serviceDesc = grpc.ServiceDesc{
+	ServiceName: "ProcessManagerService",
+	HandlerType: (*ProcessManagerServiceServer)(nil),
 	Methods: []grpc.MethodDesc{
 		{
 			MethodName: "ProcessCreate",
-			Handler:    _LonghornProcessLauncherService_ProcessCreate_Handler,
+			Handler:    _ProcessManagerService_ProcessCreate_Handler,
 		},
 		{
 			MethodName: "ProcessDelete",
-			Handler:    _LonghornProcessLauncherService_ProcessDelete_Handler,
+			Handler:    _ProcessManagerService_ProcessDelete_Handler,
 		},
 		{
 			MethodName: "ProcessGet",
-			Handler:    _LonghornProcessLauncherService_ProcessGet_Handler,
+			Handler:    _ProcessManagerService_ProcessGet_Handler,
 		},
 		{
 			MethodName: "ProcessList",
-			Handler:    _LonghornProcessLauncherService_ProcessList_Handler,
+			Handler:    _ProcessManagerService_ProcessList_Handler,
 		},
 	},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "ProcessLog",
-			Handler:       _LonghornProcessLauncherService_ProcessLog_Handler,
+			Handler:       _ProcessManagerService_ProcessLog_Handler,
 			ServerStreams: true,
 		},
 	},
+	Metadata: "rpc.proto",
+}
+
+// InstanceManagerServiceClient is the client API for InstanceManagerService service.
+//
+// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
+type InstanceManagerServiceClient interface {
+	EnvironmentVariableSet(ctx context.Context, in *EnvironmentVariableSetRequset, opts ...grpc.CallOption) (*empty.Empty, error)
+}
+
+type instanceManagerServiceClient struct {
+	cc *grpc.ClientConn
+}
+
+func NewInstanceManagerServiceClient(cc *grpc.ClientConn) InstanceManagerServiceClient {
+	return &instanceManagerServiceClient{cc}
+}
+
+func (c *instanceManagerServiceClient) EnvironmentVariableSet(ctx context.Context, in *EnvironmentVariableSetRequset, opts ...grpc.CallOption) (*empty.Empty, error) {
+	out := new(empty.Empty)
+	err := c.cc.Invoke(ctx, "/InstanceManagerService/EnvironmentVariableSet", in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+// InstanceManagerServiceServer is the server API for InstanceManagerService service.
+type InstanceManagerServiceServer interface {
+	EnvironmentVariableSet(context.Context, *EnvironmentVariableSetRequset) (*empty.Empty, error)
+}
+
+// UnimplementedInstanceManagerServiceServer can be embedded to have forward compatible implementations.
+type UnimplementedInstanceManagerServiceServer struct {
+}
+
+func (*UnimplementedInstanceManagerServiceServer) EnvironmentVariableSet(ctx context.Context, req *EnvironmentVariableSetRequset) (*empty.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method EnvironmentVariableSet not implemented")
+}
+
+func RegisterInstanceManagerServiceServer(s *grpc.Server, srv InstanceManagerServiceServer) {
+	s.RegisterService(&_InstanceManagerService_serviceDesc, srv)
+}
+
+func _InstanceManagerService_EnvironmentVariableSet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(EnvironmentVariableSetRequset)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(InstanceManagerServiceServer).EnvironmentVariableSet(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: "/InstanceManagerService/EnvironmentVariableSet",
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(InstanceManagerServiceServer).EnvironmentVariableSet(ctx, req.(*EnvironmentVariableSetRequset))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+var _InstanceManagerService_serviceDesc = grpc.ServiceDesc{
+	ServiceName: "InstanceManagerService",
+	HandlerType: (*InstanceManagerServiceServer)(nil),
+	Methods: []grpc.MethodDesc{
+		{
+			MethodName: "EnvironmentVariableSet",
+			Handler:    _InstanceManagerService_EnvironmentVariableSet_Handler,
+		},
+	},
+	Streams:  []grpc.StreamDesc{},
 	Metadata: "rpc.proto",
 }
