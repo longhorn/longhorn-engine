@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"sync"
+	"time"
 
 	"github.com/sirupsen/logrus"
 
@@ -23,6 +24,37 @@ type DeltaBlockBackupOperations interface {
 	CloseSnapshot(id, volumeID string) error
 }
 */
+
+type RestoreStatus struct {
+	sync.Mutex
+	replicaAddress string
+	SnapshotName   string //This will be deltaFileName in case of Incremental Restore
+	Progress       int
+	Error          error
+	LastUpdatedAt  time.Time
+	BackupURL      string
+
+	//Incremental Restore fields
+	LastRestored     string
+	SnapshotDiskName string
+}
+
+func NewRestore(snapshotName, replicaAddress string) *RestoreStatus {
+	return &RestoreStatus{
+		replicaAddress: replicaAddress,
+		SnapshotName:   snapshotName,
+	}
+}
+
+func (rr *RestoreStatus) UpdateRestoreStatus(snapshot string, rp int, re error) {
+	rr.Lock()
+	defer rr.Unlock()
+
+	rr.SnapshotName = snapshot
+	rr.Progress = rp
+	rr.Error = re
+	rr.LastUpdatedAt = time.Now()
+}
 
 type Backup struct {
 	lock           sync.Mutex
