@@ -14,8 +14,6 @@ service ControllerService {
     rpc VolumeFrontendShutdown(google.protobuf.Empty) returns (Volume);
     rpc VolumePrepareRestore(VolumePrepareRestoreRequest) returns (Volume);
     rpc VolumeFinishRestore(VolumeFinishRestoreRequest) returns (Volume);
-    rpc VolumePreparePurge(google.protobuf.Empty) returns (Volume);
-    rpc VolumeFinishPurge(google.protobuf.Empty) returns (Volume);
 
     rpc ReplicaList(google.protobuf.Empty) returns (ReplicaListReply);
     rpc ReplicaGet(ReplicaAddress) returns (ControllerReplica);
@@ -46,7 +44,6 @@ message Volume {
     string frontendState = 5;
     bool isRestoring = 6;
     string lastRestored = 7;
-    bool isPurging = 8;
 }
 
 message ReplicaAddress {

@@ -40,7 +40,6 @@ type VolumeInfo struct {
 	FrontendState string `json:"frontendState"`
 	IsRestoring   bool   `json:"isRestoring"`
 	LastRestored  string `json:"lastRestored"`
-	IsPurging     bool   `json:"isPurging"`
 }
 
 type ControllerReplicaInfo struct {
