@@ -20,6 +20,13 @@ type DeltaBackupConfig struct {
 	Labels   map[string]string
 }
 
+type DeltaRestoreConfig struct {
+	BackupURL      string
+	DeltaOps       DeltaRestoreOperations
+	LastBackupName string
+	Filename       string
+}
+
 type BlockMapping struct {
 	Offset        int64
 	BlockChecksum string
@@ -32,6 +39,10 @@ type DeltaBlockBackupOperations interface {
 	ReadSnapshot(id, volumeID string, start int64, data []byte) error
 	CloseSnapshot(id, volumeID string) error
 	UpdateBackupStatus(id, volumeID string, backupProgress int, backupURL string, err string) error
+}
+
+type DeltaRestoreOperations interface {
+	UpdateRestoreStatus(snapshot string, restoreProgress int, err error)
 }
 
 const (
@@ -285,7 +296,18 @@ func mergeSnapshotMap(deltaBackup, lastBackup *Backup) *Backup {
 	return backup
 }
 
-func RestoreDeltaBlockBackup(backupURL, volDevName string) error {
+func RestoreDeltaBlockBackup(config *DeltaRestoreConfig) error {
+	if config == nil {
+		return fmt.Errorf("invalid empty config for restore")
+	}
+
+	volDevName := config.Filename
+	backupURL := config.BackupURL
+	deltaOps := config.DeltaOps
+	if deltaOps == nil {
+		return fmt.Errorf("missing DeltaRestoreOperations")
+	}
+
 	bsDriver, err := GetBackupStoreDriver(backupURL)
 	if err != nil {
 		return err
@@ -312,7 +334,6 @@ func RestoreDeltaBlockBackup(backupURL, volDevName string) error {
 	if err != nil {
 		return err
 	}
-	defer volDev.Close()
 
 	stat, err := volDev.Stat()
 	if err != nil {
@@ -333,21 +354,29 @@ func RestoreDeltaBlockBackup(backupURL, volDevName string) error {
 		LogFieldVolumeDev:  volDevName,
 		LogEventBackupURL:  backupURL,
 	}).Debug()
-	blkCounts := len(backup.Blocks)
-	for i, block := range backup.Blocks {
-		log.Debugf("Restore for %v: block %v, %v/%v", volDevName, block.BlockChecksum, i+1, blkCounts)
-		if err := restoreBlockToFile(srcVolumeName, volDev, bsDriver, block); err != nil {
-			return err
-		}
-	}
 
-	// We want to truncate regular files, but not device
-	if stat.Mode()&os.ModeType == 0 {
-		log.Debugf("Truncate %v to size %v", volDevName, vol.Size)
-		if err := volDev.Truncate(vol.Size); err != nil {
-			return err
+	go func() {
+		defer volDev.Close()
+		blkCounts := len(backup.Blocks)
+		var progress int
+		for i, block := range backup.Blocks {
+			log.Debugf("Restore for %v: block %v, %v/%v", volDevName, block.BlockChecksum, i+1, blkCounts)
+			if err := restoreBlockToFile(srcVolumeName, volDev, bsDriver, block); err != nil {
+				deltaOps.UpdateRestoreStatus(volDevName, progress, err)
+			}
+			progress = int((float64(i+1) / float64(blkCounts)) * PROGRESS_PERCENTAGE_BACKUP_SNAPSHOT)
+			deltaOps.UpdateRestoreStatus(volDevName, progress, err)
 		}
-	}
+
+		// We want to truncate regular files, but not device
+		if stat.Mode()&os.ModeType == 0 {
+			log.Debugf("Truncate %v to size %v", volDevName, vol.Size)
+			if err := volDev.Truncate(vol.Size); err != nil {
+				deltaOps.UpdateRestoreStatus(volDevName, progress, err)
+			}
+		}
+		deltaOps.UpdateRestoreStatus(volDevName, PROGRESS_PERCENTAGE_BACKUP_TOTAL, nil)
+	}()
 
 	return nil
 }
@@ -372,7 +401,18 @@ func restoreBlockToFile(volumeName string, volDev *os.File, bsDriver BackupStore
 	return nil
 }
 
-func RestoreDeltaBlockBackupIncrementally(backupURL, volDevName, lastBackupName string) error {
+func RestoreDeltaBlockBackupIncrementally(config *DeltaRestoreConfig) error {
+	if config == nil {
+		return fmt.Errorf("invalid empty config for restore")
+	}
+
+	backupURL := config.BackupURL
+	volDevName := config.Filename
+	lastBackupName := config.LastBackupName
+	deltaOps := config.DeltaOps
+	if deltaOps == nil {
+		return fmt.Errorf("missing DeltaBlockBackupOperations")
+	}
 	bsDriver, err := GetBackupStoreDriver(backupURL)
 	if err != nil {
 		return err
@@ -392,12 +432,12 @@ func RestoreDeltaBlockBackupIncrementally(backupURL, volDevName, lastBackupName 
 	}
 
 	if vol.Size == 0 || vol.Size%DEFAULT_BLOCK_SIZE != 0 {
-		return fmt.Errorf("Read invalid volume size %v", vol.Size)
+		return fmt.Errorf("read invalid volume size %v", vol.Size)
 	}
 
 	// check lastBackupName
 	if !util.ValidateName(lastBackupName) {
-		return fmt.Errorf("Invalid parameter lastBackupName %v", lastBackupName)
+		return fmt.Errorf("invalid parameter lastBackupName %v", lastBackupName)
 	}
 
 	// check volDev
@@ -415,7 +455,6 @@ func RestoreDeltaBlockBackupIncrementally(backupURL, volDevName, lastBackupName 
 		}
 		logrus.Debugf("File %v existed\n", volDevName)
 	}
-	defer volDev.Close()
 
 	stat, err := volDev.Stat()
 	if err != nil {
@@ -440,8 +479,35 @@ func RestoreDeltaBlockBackupIncrementally(backupURL, volDevName, lastBackupName 
 		LogFieldVolumeDev:  volDevName,
 		LogEventBackupURL:  backupURL,
 	}).Debugf("Started incrementally restoring from %v to %v", lastBackup, backup)
+	go func() {
+		defer volDev.Close()
+
+		if err := performIncrementalRestore(srcVolumeName, volDev, lastBackup, backup, bsDriver, config); err != nil {
+			deltaOps.UpdateRestoreStatus(volDevName, 0, err)
+			return
+		}
+		// We want to truncate regular files, but not device
+		if stat.Mode()&os.ModeType == 0 {
+			log.Debugf("Truncate %v to size %v", volDevName, vol.Size)
+			if err := volDev.Truncate(vol.Size); err != nil {
+				deltaOps.UpdateRestoreStatus(volDevName, 0, err)
+				return
+			}
+		}
+		deltaOps.UpdateRestoreStatus(volDevName, PROGRESS_PERCENTAGE_BACKUP_TOTAL, nil)
+	}()
+	return nil
+}
+
+func performIncrementalRestore(srcVolumeName string, volDev *os.File, lastBackup *Backup, backup *Backup,
+	bsDriver BackupStoreDriver, config *DeltaRestoreConfig) error {
+	var progress int
+	volDevName := config.Filename
+	deltaOps := config.DeltaOps
 
 	emptyBlock := make([]byte, DEFAULT_BLOCK_SIZE)
+	total := len(backup.Blocks) + len(lastBackup.Blocks)
+
 	for b, l := 0, 0; b < len(backup.Blocks) || l < len(lastBackup.Blocks); {
 		if b >= len(backup.Blocks) {
 			if err := fillBlockToFile(&emptyBlock, volDev, lastBackup.Blocks[l].Offset); err != nil {
@@ -479,16 +545,9 @@ func RestoreDeltaBlockBackupIncrementally(backupURL, volDevName, lastBackupName 
 			}
 			l++
 		}
+		progress = int((float64(b+l+2) / float64(total)) * PROGRESS_PERCENTAGE_BACKUP_SNAPSHOT)
+		deltaOps.UpdateRestoreStatus(volDevName, progress, nil)
 	}
-
-	// We want to truncate regular files, but not device
-	if stat.Mode()&os.ModeType == 0 {
-		log.Debugf("Truncate %v to size %v", volDevName, vol.Size)
-		if err := volDev.Truncate(vol.Size); err != nil {
-			return err
-		}
-	}
-
 	return nil
 }
 
