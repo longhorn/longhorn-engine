@@ -16,6 +16,7 @@ import (
 
 	"github.com/longhorn/longhorn-engine-launcher/engine"
 	"github.com/longhorn/longhorn-engine-launcher/health"
+	"github.com/longhorn/longhorn-engine-launcher/instance"
 	"github.com/longhorn/longhorn-engine-launcher/process"
 	"github.com/longhorn/longhorn-engine-launcher/rpc"
 	"github.com/longhorn/longhorn-engine-launcher/types"
@@ -65,7 +66,8 @@ func start(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	hc := health.NewHealthCheckServer(em, pl)
+	im := instance.NewInstanceManagerServer()
+	hc := health.NewHealthCheckServer(em, pl, im)
 
 	addShutdown(func() {
 		logrus.Infof("Try to gracefully shut down Instance Manager at %v", listen)
@@ -104,6 +106,7 @@ func start(c *cli.Context) error {
 	rpcService := grpc.NewServer()
 	rpc.RegisterProcessManagerServiceServer(rpcService, pl)
 	rpc.RegisterEngineManagerServiceServer(rpcService, em)
+	rpc.RegisterInstanceManagerServiceServer(rpcService, im)
 	healthpb.RegisterHealthServer(rpcService, hc)
 	reflection.Register(rpcService)
 
