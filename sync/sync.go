@@ -54,10 +54,20 @@ func (t *Task) DeleteSnapshot(snapshot string) error {
 	return nil
 }
 
-func (t *Task) PurgeSnapshots() error {
-	if err := t.client.VolumePreparePurge(); err != nil {
+func (t *Task) PurgeSnapshots() (err error) {
+	err = t.client.VolumePreparePurge()
+	if err != nil {
 		return err
 	}
+	defer func() {
+		if finishErr := t.client.VolumeFinishPurge(); finishErr != nil {
+			if err == nil {
+				err = finishErr
+			} else {
+				err = errors.Wrapf(finishErr, "failed to execute and finish snapshot purge: %v", err)
+			}
+		}
+	}()
 
 	leaves := []string{}
 
@@ -134,10 +144,6 @@ func (t *Task) PurgeSnapshots() error {
 		if err != nil {
 			return err
 		}
-	}
-
-	if err := t.client.VolumeFinishPurge(); err != nil {
-		return err
 	}
 
 	return nil
