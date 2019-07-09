@@ -119,7 +119,7 @@ func (el *Launcher) RPCResponse(processResp *rpc.ProcessResponse) *rpc.EngineRes
 // During running this function, frontendStartCallback() will be called automatically.
 // Hence need to be careful about deadlock
 func (el *Launcher) createEngineProcess(engineManagerListen string,
-	processLauncher rpc.LonghornProcessLauncherServiceServer) error {
+	processManager rpc.ProcessManagerServiceServer) error {
 
 	logrus.Debugf("engine launcher %v: prepare to create engine process %v at %v",
 		el.LauncherName, el.currentEngine.EngineName, el.currentEngine.Listen)
@@ -169,7 +169,7 @@ func (el *Launcher) createEngineProcess(engineManagerListen string,
 	el.lock.Unlock()
 
 	// engine process creation may involve in FrontendStart. be careful about deadlock
-	ret, err := processLauncher.ProcessCreate(nil, req)
+	ret, err := processManager.ProcessCreate(nil, req)
 	if err != nil {
 		return err
 	}
@@ -189,11 +189,11 @@ func (el *Launcher) createEngineProcess(engineManagerListen string,
 
 // During running this function, frontendShutdownCallback() will be called automatically.
 // Hence need to be careful about deadlock
-func (el *Launcher) deleteEngine(processLauncher rpc.LonghornProcessLauncherServiceServer, processName string) (*rpc.ProcessResponse, error) {
+func (el *Launcher) deleteEngine(processManager rpc.ProcessManagerServiceServer, processName string) (*rpc.ProcessResponse, error) {
 	logrus.Debugf("engine launcher %v: prepare to delete engine process %v",
 		el.LauncherName, el.currentEngine.EngineName)
 
-	response, err := processLauncher.ProcessDelete(nil, &rpc.ProcessDeleteRequest{
+	response, err := processManager.ProcessDelete(nil, &rpc.ProcessDeleteRequest{
 		Name: processName,
 	})
 	if err != nil {
@@ -229,7 +229,7 @@ func (el *Launcher) prepareUpgrade(spec *rpc.EngineSpec) error {
 	return nil
 }
 
-func (el *Launcher) rollbackUpgrade(processLauncher rpc.LonghornProcessLauncherServiceServer) error {
+func (el *Launcher) rollbackUpgrade(processManager rpc.ProcessManagerServiceServer) error {
 	el.lock.Lock()
 	launcherName := el.LauncherName
 	processName := el.currentEngine.EngineName
@@ -246,10 +246,10 @@ func (el *Launcher) rollbackUpgrade(processLauncher rpc.LonghornProcessLauncherS
 	}
 
 	if el.backupEngine != nil {
-		el.deleteEngine(processLauncher, processName)
+		el.deleteEngine(processManager, processName)
 
 		// need to wait for new engine process deletion before unset el.backupEngine.
-		isDeleted := el.waitForEngineProcessDeletion(processLauncher, processName)
+		isDeleted := el.waitForEngineProcessDeletion(processManager, processName)
 		if isDeleted {
 			el.lock.Lock()
 			el.backupEngine = nil
@@ -263,7 +263,7 @@ func (el *Launcher) rollbackUpgrade(processLauncher rpc.LonghornProcessLauncherS
 	return nil
 }
 
-func (el *Launcher) finalizeUpgrade(processLauncher rpc.LonghornProcessLauncherServiceServer) {
+func (el *Launcher) finalizeUpgrade(processManager rpc.ProcessManagerServiceServer) {
 	logrus.Debugf("engine launcher %v: finalize upgrade", el.LauncherName)
 
 	el.lock.RLock()
@@ -271,7 +271,7 @@ func (el *Launcher) finalizeUpgrade(processLauncher rpc.LonghornProcessLauncherS
 	processName := el.backupEngine.EngineName
 	el.lock.RUnlock()
 
-	if _, err := el.deleteEngine(processLauncher, processName); err != nil {
+	if _, err := el.deleteEngine(processManager, processName); err != nil {
 		logrus.Warnf("failed to delete backup engine process %v: %v", el.backupEngine.EngineName, err)
 	}
 
@@ -280,7 +280,7 @@ func (el *Launcher) finalizeUpgrade(processLauncher rpc.LonghornProcessLauncherS
 	// But we don't want to shutdown frontend here since it's live upgrade.
 	// Hence frontend shutdown callback will check existence of el.backupEngine to avoid frontend down.
 	// Also need to block process since we cannot start another engine upgrade before completing this func.
-	isDeleted := el.waitForEngineProcessDeletion(processLauncher, processName)
+	isDeleted := el.waitForEngineProcessDeletion(processManager, processName)
 	if isDeleted {
 		el.lock.Lock()
 		el.binaryBackup = ""
@@ -294,9 +294,9 @@ func (el *Launcher) finalizeUpgrade(processLauncher rpc.LonghornProcessLauncherS
 	return
 }
 
-func (el *Launcher) waitForEngineProcessDeletion(processLauncher rpc.LonghornProcessLauncherServiceServer, processName string) bool {
+func (el *Launcher) waitForEngineProcessDeletion(processManager rpc.ProcessManagerServiceServer, processName string) bool {
 	for i := 0; i < types.WaitCount; i++ {
-		if _, err := processLauncher.ProcessGet(nil, &rpc.ProcessGetRequest{
+		if _, err := processManager.ProcessGet(nil, &rpc.ProcessGetRequest{
 			Name: processName,
 		}); err != nil && strings.Contains(err.Error(), "cannot find process") {
 			break
@@ -305,7 +305,7 @@ func (el *Launcher) waitForEngineProcessDeletion(processLauncher rpc.LonghornPro
 		time.Sleep(types.WaitInterval)
 	}
 
-	if _, err := processLauncher.ProcessGet(nil, &rpc.ProcessGetRequest{
+	if _, err := processManager.ProcessGet(nil, &rpc.ProcessGetRequest{
 		Name: processName,
 	}); err != nil && strings.Contains(err.Error(), "cannot find process") {
 		logrus.Infof("engine launcher %v: successfully deleted engine process", el.LauncherName)
@@ -345,10 +345,10 @@ func (el *Launcher) restoreBackupBinary() error {
 	return nil
 }
 
-func (el *Launcher) engineLog(req *rpc.LogRequest, srv rpc.LonghornEngineManagerService_EngineLogServer,
-	processLauncher rpc.LonghornProcessLauncherServiceServer) error {
+func (el *Launcher) engineLog(req *rpc.LogRequest, srv rpc.EngineManagerService_EngineLogServer,
+	processManager rpc.ProcessManagerServiceServer) error {
 
-	if err := processLauncher.ProcessLog(req, srv); err != nil {
+	if err := processManager.ProcessLog(req, srv); err != nil {
 		return err
 	}
 

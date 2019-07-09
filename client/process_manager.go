@@ -11,12 +11,12 @@ import (
 	"github.com/longhorn/longhorn-engine-launcher/types"
 )
 
-type ProcessLauncherClient struct {
+type ProcessManagerClient struct {
 	Address string
 }
 
-func NewProcessLauncherClient(address string) *ProcessLauncherClient {
-	return &ProcessLauncherClient{
+func NewProcessManagerClient(address string) *ProcessManagerClient {
+	return &ProcessManagerClient{
 		Address: address,
 	}
 }
@@ -40,18 +40,18 @@ func RPCToProcessList(obj *rpc.ProcessListResponse) map[string]*api.Process {
 	return ret
 }
 
-func (cli *ProcessLauncherClient) ProcessCreate(name, binary string, portCount int, args, portArgs []string) (*api.Process, error) {
+func (cli *ProcessManagerClient) ProcessCreate(name, binary string, portCount int, args, portArgs []string) (*api.Process, error) {
 	if name == "" || binary == "" {
 		return nil, fmt.Errorf("failed to start process: missing required parameter")
 	}
 
 	conn, err := grpc.Dial(cli.Address, grpc.WithInsecure())
 	if err != nil {
-		return nil, fmt.Errorf("cannot connect process launcher service to %v: %v", cli.Address, err)
+		return nil, fmt.Errorf("cannot connect process manager service to %v: %v", cli.Address, err)
 	}
 	defer conn.Close()
 
-	client := rpc.NewLonghornProcessLauncherServiceClient(conn)
+	client := rpc.NewProcessManagerServiceClient(conn)
 	ctx, cancel := context.WithTimeout(context.Background(), types.GRPCServiceTimeout)
 	defer cancel()
 
@@ -70,18 +70,18 @@ func (cli *ProcessLauncherClient) ProcessCreate(name, binary string, portCount i
 	return RPCToProcess(p), nil
 }
 
-func (cli *ProcessLauncherClient) ProcessDelete(name string) (*api.Process, error) {
+func (cli *ProcessManagerClient) ProcessDelete(name string) (*api.Process, error) {
 	if name == "" {
 		return nil, fmt.Errorf("failed to delete process: missing required parameter name")
 	}
 
 	conn, err := grpc.Dial(cli.Address, grpc.WithInsecure())
 	if err != nil {
-		return nil, fmt.Errorf("cannot connect process launcher service to %v: %v", cli.Address, err)
+		return nil, fmt.Errorf("cannot connect process manager service to %v: %v", cli.Address, err)
 	}
 	defer conn.Close()
 
-	client := rpc.NewLonghornProcessLauncherServiceClient(conn)
+	client := rpc.NewProcessManagerServiceClient(conn)
 	ctx, cancel := context.WithTimeout(context.Background(), types.GRPCServiceTimeout)
 	defer cancel()
 
@@ -94,18 +94,18 @@ func (cli *ProcessLauncherClient) ProcessDelete(name string) (*api.Process, erro
 	return RPCToProcess(p), nil
 }
 
-func (cli *ProcessLauncherClient) ProcessGet(name string) (*api.Process, error) {
+func (cli *ProcessManagerClient) ProcessGet(name string) (*api.Process, error) {
 	if name == "" {
 		return nil, fmt.Errorf("failed to get process: missing required parameter name")
 	}
 
 	conn, err := grpc.Dial(cli.Address, grpc.WithInsecure())
 	if err != nil {
-		return nil, fmt.Errorf("cannot connect process launcher service to %v: %v", cli.Address, err)
+		return nil, fmt.Errorf("cannot connect process manager service to %v: %v", cli.Address, err)
 	}
 	defer conn.Close()
 
-	client := rpc.NewLonghornProcessLauncherServiceClient(conn)
+	client := rpc.NewProcessManagerServiceClient(conn)
 	ctx, cancel := context.WithTimeout(context.Background(), types.GRPCServiceTimeout)
 	defer cancel()
 
@@ -118,14 +118,14 @@ func (cli *ProcessLauncherClient) ProcessGet(name string) (*api.Process, error) 
 	return RPCToProcess(p), nil
 }
 
-func (cli *ProcessLauncherClient) ProcessList() (map[string]*api.Process, error) {
+func (cli *ProcessManagerClient) ProcessList() (map[string]*api.Process, error) {
 	conn, err := grpc.Dial(cli.Address, grpc.WithInsecure())
 	if err != nil {
-		return nil, fmt.Errorf("cannot connect process launcher service to %v: %v", cli.Address, err)
+		return nil, fmt.Errorf("cannot connect process manager service to %v: %v", cli.Address, err)
 	}
 	defer conn.Close()
 
-	client := rpc.NewLonghornProcessLauncherServiceClient(conn)
+	client := rpc.NewProcessManagerServiceClient(conn)
 	ctx, cancel := context.WithTimeout(context.Background(), types.GRPCServiceTimeout)
 	defer cancel()
 
@@ -136,7 +136,7 @@ func (cli *ProcessLauncherClient) ProcessList() (map[string]*api.Process, error)
 	return RPCToProcessList(ps), nil
 }
 
-func (cli *ProcessLauncherClient) ProcessLog(name string) (*api.LogStream, error) {
+func (cli *ProcessManagerClient) ProcessLog(name string) (*api.LogStream, error) {
 	if name == "" {
 		return nil, fmt.Errorf("failed to get process: missing required parameter name")
 	}
@@ -147,7 +147,7 @@ func (cli *ProcessLauncherClient) ProcessLog(name string) (*api.LogStream, error
 	}
 	defer conn.Close()
 
-	client := rpc.NewLonghornProcessLauncherServiceClient(conn)
+	client := rpc.NewProcessManagerServiceClient(conn)
 	ctx, cancel := context.WithTimeout(context.Background(), types.GRPCServiceTimeout)
 	defer cancel()
 

@@ -21,11 +21,11 @@ import (
 )
 
 /* Lock order
-   1. Launcher.lock
+   1. Manager.lock
    2. Process.lock
 */
 
-type Launcher struct {
+type Manager struct {
 	portRangeMin int32
 	portRangeMax int32
 
@@ -71,12 +71,12 @@ type Process struct {
 	logger *util.LonghornWriter
 }
 
-func NewLauncher(portRange string, logsDir string, shutdownCh chan error) (*Launcher, error) {
+func NewManager(portRange string, logsDir string, shutdownCh chan error) (*Manager, error) {
 	start, end, err := ParsePortRange(portRange)
 	if err != nil {
 		return nil, err
 	}
-	l := &Launcher{
+	pm := &Manager{
 		portRangeMin: start,
 		portRangeMax: end,
 
@@ -91,19 +91,19 @@ func NewLauncher(portRange string, logsDir string, shutdownCh chan error) (*Laun
 
 		logsDir: logsDir,
 	}
-	go l.StartMonitoring()
-	return l, nil
+	go pm.StartMonitoring()
+	return pm, nil
 }
 
-func (l *Launcher) StartMonitoring() {
+func (pm *Manager) StartMonitoring() {
 	for {
 		done := false
 		select {
-		case <-l.shutdownCh:
-			logrus.Infof("Launcher is shutting down")
+		case <-pm.shutdownCh:
+			logrus.Infof("Process Manager is shutting down")
 			done = true
 			break
-		case p := <-l.processUpdateCh:
+		case p := <-pm.processUpdateCh:
 			p.lock.RLock()
 			logrus.Infof("Process update: %v: state %v: Error: %v", p.Name, p.State, p.ErrorMsg)
 			p.lock.RUnlock()
@@ -114,20 +114,20 @@ func (l *Launcher) StartMonitoring() {
 	}
 }
 
-func (l *Launcher) Shutdown() {
-	l.lock.Lock()
-	defer l.lock.Unlock()
+func (pm *Manager) Shutdown() {
+	pm.lock.Lock()
+	defer pm.lock.Unlock()
 
-	l.rpcService.Stop()
-	close(l.shutdownCh)
+	pm.rpcService.Stop()
+	close(pm.shutdownCh)
 }
 
-func (l *Launcher) ProcessCreate(ctx context.Context, req *rpc.ProcessCreateRequest) (ret *rpc.ProcessResponse, err error) {
+func (pm *Manager) ProcessCreate(ctx context.Context, req *rpc.ProcessCreateRequest) (ret *rpc.ProcessResponse, err error) {
 	if req.Spec.Name == "" || req.Spec.Binary == "" {
 		return nil, fmt.Errorf("missing required argument")
 	}
 
-	logger, err := util.NewLonghornWriter(req.Spec.Name, l.logsDir)
+	logger, err := util.NewLonghornWriter(req.Spec.Name, pm.logsDir)
 	if err != nil {
 		return nil, err
 	}
@@ -146,7 +146,7 @@ func (l *Launcher) ProcessCreate(ctx context.Context, req *rpc.ProcessCreateRequ
 		logger: logger,
 	}
 
-	if err := l.registerProcess(p); err != nil {
+	if err := pm.registerProcess(p); err != nil {
 		return nil, err
 	}
 
@@ -155,10 +155,10 @@ func (l *Launcher) ProcessCreate(ctx context.Context, req *rpc.ProcessCreateRequ
 	return p.RPCResponse(), nil
 }
 
-func (l *Launcher) ProcessDelete(ctx context.Context, req *rpc.ProcessDeleteRequest) (ret *rpc.ProcessResponse, err error) {
-	logrus.Debugf("launcher: prepare to delete process %v", req.Name)
+func (pm *Manager) ProcessDelete(ctx context.Context, req *rpc.ProcessDeleteRequest) (ret *rpc.ProcessResponse, err error) {
+	logrus.Debugf("Process Manager: prepare to delete process %v", req.Name)
 
-	p := l.findProcess(req.Name)
+	p := pm.findProcess(req.Name)
 	if p == nil {
 		return nil, fmt.Errorf("cannot find process %v", req.Name)
 	}
@@ -172,7 +172,7 @@ func (l *Launcher) ProcessDelete(ctx context.Context, req *rpc.ProcessDeleteRequ
 
 	resp := p.RPCResponse()
 
-	go l.unregisterProcess(p)
+	go pm.unregisterProcess(p)
 
 	if err := p.logger.Close(); err != nil {
 		return nil, err
@@ -181,13 +181,13 @@ func (l *Launcher) ProcessDelete(ctx context.Context, req *rpc.ProcessDeleteRequ
 	return resp, nil
 }
 
-func (l *Launcher) registerProcess(p *Process) error {
+func (pm *Manager) registerProcess(p *Process) error {
 	var err error
 
-	l.lock.Lock()
-	defer l.lock.Unlock()
+	pm.lock.Lock()
+	defer pm.lock.Unlock()
 
-	_, exists := l.processes[p.Name]
+	_, exists := pm.processes[p.Name]
 	if exists {
 		return fmt.Errorf("engine process %v already exists", p.Name)
 	}
@@ -196,7 +196,7 @@ func (l *Launcher) registerProcess(p *Process) error {
 		return fmt.Errorf("too many port args %v for port count %v", p.PortArgs, p.PortCount)
 	}
 
-	p.PortStart, p.PortEnd, err = l.allocatePorts(p.PortCount)
+	p.PortStart, p.PortEnd, err = pm.allocatePorts(p.PortCount)
 	if err != nil {
 		return errors.Wrapf(err, "cannot allocate %v ports for %v", p.PortCount, p.Name)
 	}
@@ -210,54 +210,54 @@ func (l *Launcher) registerProcess(p *Process) error {
 		}
 	}
 
-	p.UpdateCh = l.processUpdateCh
-	l.processes[p.Name] = p
+	p.UpdateCh = pm.processUpdateCh
+	pm.processes[p.Name] = p
 
 	return nil
 }
 
-func (l *Launcher) unregisterProcess(p *Process) {
-	l.lock.RLock()
-	_, exists := l.processes[p.Name]
+func (pm *Manager) unregisterProcess(p *Process) {
+	pm.lock.RLock()
+	_, exists := pm.processes[p.Name]
 	if !exists {
-		l.lock.RUnlock()
+		pm.lock.RUnlock()
 		return
 	}
-	l.lock.RUnlock()
+	pm.lock.RUnlock()
 
 	for i := 0; i < types.WaitCount; i++ {
 		if p.IsStopped() {
 			break
 		}
-		logrus.Debugf("launcher: wait for process %v to shutdown before unregistering process", p.Name)
+		logrus.Debugf("Process Manager: wait for process %v to shutdown before unregistering process", p.Name)
 		time.Sleep(types.WaitInterval)
 	}
 
 	if p.IsStopped() {
-		l.lock.Lock()
-		defer l.lock.Unlock()
-		if err := l.releasePorts(p.PortStart, p.PortEnd); err != nil {
-			logrus.Errorf("launcher: cannot deallocate %v ports (%v-%v) for %v: %v",
+		pm.lock.Lock()
+		defer pm.lock.Unlock()
+		if err := pm.releasePorts(p.PortStart, p.PortEnd); err != nil {
+			logrus.Errorf("Process Manager: cannot deallocate %v ports (%v-%v) for %v: %v",
 				p.PortCount, p.PortStart, p.PortEnd, p.Name, err)
 		}
-		logrus.Infof("launcher: successfully unregistered process %v", p.Name)
-		delete(l.processes, p.Name)
+		logrus.Infof("Process Manager: successfully unregistered process %v", p.Name)
+		delete(pm.processes, p.Name)
 	} else {
-		logrus.Errorf("launcher: failed to unregister process %v since it is state %v rather than stopped", p.Name, p.State)
+		logrus.Errorf("Process Manager: failed to unregister process %v since it is state %v rather than stopped", p.Name, p.State)
 	}
 
 	return
 }
 
-func (l *Launcher) findProcess(name string) *Process {
-	l.lock.RLock()
-	defer l.lock.RUnlock()
+func (pm *Manager) findProcess(name string) *Process {
+	pm.lock.RLock()
+	defer pm.lock.RUnlock()
 
-	return l.processes[name]
+	return pm.processes[name]
 }
 
-func (l *Launcher) ProcessGet(ctx context.Context, req *rpc.ProcessGetRequest) (*rpc.ProcessResponse, error) {
-	p := l.findProcess(req.Name)
+func (pm *Manager) ProcessGet(ctx context.Context, req *rpc.ProcessGetRequest) (*rpc.ProcessResponse, error) {
+	p := pm.findProcess(req.Name)
 	if p == nil {
 		return nil, fmt.Errorf("cannot find process %v", req.Name)
 	}
@@ -265,21 +265,21 @@ func (l *Launcher) ProcessGet(ctx context.Context, req *rpc.ProcessGetRequest) (
 	return p.RPCResponse(), nil
 }
 
-func (l *Launcher) ProcessList(ctx context.Context, req *rpc.ProcessListRequest) (*rpc.ProcessListResponse, error) {
-	l.lock.RLock()
-	defer l.lock.RUnlock()
+func (pm *Manager) ProcessList(ctx context.Context, req *rpc.ProcessListRequest) (*rpc.ProcessListResponse, error) {
+	pm.lock.RLock()
+	defer pm.lock.RUnlock()
 
 	resp := &rpc.ProcessListResponse{
 		Processes: map[string]*rpc.ProcessResponse{},
 	}
-	for _, p := range l.processes {
+	for _, p := range pm.processes {
 		resp.Processes[p.Name] = p.RPCResponse()
 	}
 	return resp, nil
 }
 
-func (l *Launcher) ProcessLog(req *rpc.LogRequest, srv rpc.LonghornProcessLauncherService_ProcessLogServer) error {
-	p := l.findProcess(req.Name)
+func (pm *Manager) ProcessLog(req *rpc.LogRequest, srv rpc.ProcessManagerService_ProcessLogServer) error {
+	p := pm.findProcess(req.Name)
 	if p == nil {
 		return fmt.Errorf("cannot find process %v", req.Name)
 	}
@@ -298,22 +298,22 @@ func (l *Launcher) ProcessLog(req *rpc.LogRequest, srv rpc.LonghornProcessLaunch
 	return nil
 }
 
-func (l *Launcher) allocatePorts(portCount int32) (int32, int32, error) {
+func (pm *Manager) allocatePorts(portCount int32) (int32, int32, error) {
 	if portCount < 0 {
 		return 0, 0, fmt.Errorf("invalid port count %v", portCount)
 	}
-	start, end, err := l.availablePorts.AllocateRange(portCount)
+	start, end, err := pm.availablePorts.AllocateRange(portCount)
 	if err != nil {
 		return 0, 0, errors.Wrapf(err, "fail to allocate %v ports", portCount)
 	}
 	return int32(start), int32(end), nil
 }
 
-func (l *Launcher) releasePorts(start, end int32) error {
+func (pm *Manager) releasePorts(start, end int32) error {
 	if start < 0 || end < 0 {
 		return fmt.Errorf("invalid start/end port %v %v", start, end)
 	}
-	return l.availablePorts.ReleaseRange(start, end)
+	return pm.availablePorts.ReleaseRange(start, end)
 }
 
 func (p *Process) Start() error {
@@ -342,7 +342,7 @@ func (p *Process) Start() error {
 			p.lock.Lock()
 			p.State = StateError
 			p.ErrorMsg = err.Error()
-			logrus.Infof("launcher: process %v error out, error msg: %v", p.Name, p.ErrorMsg)
+			logrus.Infof("Process Manager: process %v error out, error msg: %v", p.Name, p.ErrorMsg)
 			p.lock.Unlock()
 
 			p.UpdateCh <- p
@@ -350,7 +350,7 @@ func (p *Process) Start() error {
 		}
 		p.lock.Lock()
 		p.State = StateStopped
-		logrus.Infof("launcher: process %v stopped", p.Name)
+		logrus.Infof("Process Manager: process %v stopped", p.Name)
 		p.lock.Unlock()
 
 		p.UpdateCh <- p
@@ -374,7 +374,7 @@ func (p *Process) Start() error {
 				p.Stop()
 			}
 		} else {
-			// launcher doesn't know the grpc address. directly set running state
+			// Process Manager doesn't know the grpc address. directly set running state
 			p.lock.Lock()
 			p.State = StateRunning
 			p.lock.Unlock()
@@ -408,7 +408,7 @@ func (p *Process) RPCResponse() *rpc.ProcessResponse {
 
 func (p *Process) Stop() {
 	// We don't neeed lock here since cmd will deal with concurrency
-	logrus.Debugf("launcher: send SIGINT to stop process %v", p.Name)
+	logrus.Debugf("Process Manager: send SIGINT to stop process %v", p.Name)
 	p.cmd.Process.Signal(syscall.SIGINT)
 	for i := 0; i < types.WaitCount; i++ {
 		if p.IsStopped() {
@@ -417,7 +417,7 @@ func (p *Process) Stop() {
 		logrus.Infof("wait for process %v to shutdown", p.Name)
 		time.Sleep(types.WaitInterval)
 	}
-	logrus.Debugf("launcher: cannot graceful stop process %v in %v seconds, will send SIGKILL to force stopping it", p.Name, types.WaitCount)
+	logrus.Debugf("Process Manager: cannot graceful stop process %v in %v seconds, will send SIGKILL to force stopping it", p.Name, types.WaitCount)
 	p.cmd.Process.Signal(syscall.SIGKILL)
 }
 

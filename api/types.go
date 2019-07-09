@@ -34,14 +34,14 @@ type Engine struct {
 	Endpoint      string        `json:"endpoint"`
 }
 
-func NewLogStream(stream rpc.LonghornProcessLauncherService_ProcessLogClient) *LogStream {
+func NewLogStream(stream rpc.ProcessManagerService_ProcessLogClient) *LogStream {
 	return &LogStream{
 		stream: stream,
 	}
 }
 
 type LogStream struct {
-	stream rpc.LonghornProcessLauncherService_ProcessLogClient
+	stream rpc.ProcessManagerService_ProcessLogClient
 }
 
 func (s *LogStream) Recv() (string, error) {

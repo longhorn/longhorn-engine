@@ -51,7 +51,7 @@ func ProcessCreateCmd() cli.Command {
 func createProcess(c *cli.Context) error {
 	url := c.GlobalString("url")
 
-	cli := client.NewProcessLauncherClient(url)
+	cli := client.NewProcessManagerClient(url)
 	process, err := cli.ProcessCreate(c.String("name"), c.String("binary"),
 		c.Int("port-count"), c.Args(), c.StringSlice("port-args"))
 	if err != nil {
@@ -79,7 +79,7 @@ func ProcessDeleteCmd() cli.Command {
 func deleteProcess(c *cli.Context) error {
 	url := c.GlobalString("url")
 
-	cli := client.NewProcessLauncherClient(url)
+	cli := client.NewProcessManagerClient(url)
 	process, err := cli.ProcessDelete(c.String("name"))
 	if err != nil {
 		return fmt.Errorf("failed to delete process: %v", err)
@@ -106,7 +106,7 @@ func ProcessGetCmd() cli.Command {
 func getProcess(c *cli.Context) error {
 	url := c.GlobalString("url")
 
-	cli := client.NewProcessLauncherClient(url)
+	cli := client.NewProcessManagerClient(url)
 	process, err := cli.ProcessGet(c.String("name"))
 	if err != nil {
 		return fmt.Errorf("failed to delete process: %v", err)
@@ -129,7 +129,7 @@ func ProcessListCmd() cli.Command {
 func listProcess(c *cli.Context) error {
 	url := c.GlobalString("url")
 
-	cli := client.NewProcessLauncherClient(url)
+	cli := client.NewProcessManagerClient(url)
 	processes, err := cli.ProcessList()
 	if err != nil {
 		return fmt.Errorf("failed to list processes: %v", err)

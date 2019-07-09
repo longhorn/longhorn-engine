@@ -77,14 +77,14 @@ func (l LonghornFormatter) Format(entry *logrus.Entry) ([]byte, error) {
 	logMsg := &bytes.Buffer{}
 	component, ok := entry.Data[LogComponentField]
 	if !ok {
-		component = "longhorn-engine-launcher"
+		component = "longhorn-instance-manager"
 	}
 	component, ok = component.(string)
 	if !ok {
 		return nil, errors.New("field component must be a string")
 	}
 	logMsg.WriteString("[" + component.(string) + "] ")
-	if component == "longhorn-engine-launcher" {
+	if component == "longhorn-instance-manager" {
 		msg, err := l.TextFormatter.Format(entry)
 		if err != nil {
 			return nil, err

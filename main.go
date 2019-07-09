@@ -57,7 +57,7 @@ func start(c *cli.Context) error {
 	}
 
 	shutdownCh := make(chan error)
-	pl, err := process.NewLauncher(portRange, logsDir, shutdownCh)
+	pl, err := process.NewManager(portRange, logsDir, shutdownCh)
 	if err != nil {
 		return err
 	}
@@ -68,10 +68,10 @@ func start(c *cli.Context) error {
 	hc := health.NewHealthCheckServer(em, pl)
 
 	addShutdown(func() {
-		logrus.Infof("Try to gracefully shut down process manager at %v", listen)
+		logrus.Infof("Try to gracefully shut down Instance Manager at %v", listen)
 		resp, err := pl.ProcessList(nil, &rpc.ProcessListRequest{})
 		if err != nil {
-			logrus.Errorf("Failed to list instance processes before shutdown")
+			logrus.Errorf("Failed to list processes before shutdown")
 			return
 		}
 		for _, p := range resp.Processes {
@@ -87,12 +87,12 @@ func start(c *cli.Context) error {
 				return
 			}
 			if len(resp.Processes) == 0 {
-				logrus.Infof("Process Manager has cleaned up all processes. Graceful shutdown succeeded")
+				logrus.Infof("Instance Manager has cleaned up all processes. Graceful shutdown succeeded")
 				return
 			}
 			time.Sleep(types.WaitInterval)
 		}
-		logrus.Errorf("Failed to cleanup all processes for Process Manager graceful shutdown")
+		logrus.Errorf("Failed to cleanup all processes for Instance Manager graceful shutdown")
 		return
 	})
 
@@ -102,8 +102,8 @@ func start(c *cli.Context) error {
 	}
 
 	rpcService := grpc.NewServer()
-	rpc.RegisterLonghornProcessLauncherServiceServer(rpcService, pl)
-	rpc.RegisterLonghornEngineManagerServiceServer(rpcService, em)
+	rpc.RegisterProcessManagerServiceServer(rpcService, pl)
+	rpc.RegisterEngineManagerServiceServer(rpcService, em)
 	healthpb.RegisterHealthServer(rpcService, hc)
 	reflection.Register(rpcService)
 
@@ -113,7 +113,7 @@ func start(c *cli.Context) error {
 		}
 		close(shutdownCh)
 	}()
-	logrus.Infof("Process Manager listening to %v", listen)
+	logrus.Infof("Instance Manager listening to %v", listen)
 
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)

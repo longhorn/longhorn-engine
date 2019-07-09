@@ -14,10 +14,10 @@ import (
 
 type CheckServer struct {
 	em *engine.Manager
-	pl *process.Launcher
+	pl *process.Manager
 }
 
-func NewHealthCheckServer(em *engine.Manager, pl *process.Launcher) *CheckServer {
+func NewHealthCheckServer(em *engine.Manager, pl *process.Manager) *CheckServer {
 	return &CheckServer{
 		em: em,
 		pl: pl,
@@ -33,7 +33,7 @@ func (hc *CheckServer) Check(context.Context, *healthpb.HealthCheckRequest) (*he
 
 	return &healthpb.HealthCheckResponse{
 		Status: healthpb.HealthCheckResponse_NOT_SERVING,
-	}, fmt.Errorf("Engine Manager or Process Launcher is not running")
+	}, fmt.Errorf("Engine Manager or Process Manager is not running")
 }
 
 func (hc *CheckServer) Watch(req *healthpb.HealthCheckRequest, ws healthpb.Health_WatchServer) error {

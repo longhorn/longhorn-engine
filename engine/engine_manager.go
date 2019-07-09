@@ -18,9 +18,9 @@ import (
 )
 
 type Manager struct {
-	lock            *sync.RWMutex
-	processLauncher rpc.LonghornProcessLauncherServiceServer
-	listen          string
+	lock           *sync.RWMutex
+	processManager rpc.ProcessManagerServiceServer
+	listen         string
 
 	engineLaunchers map[string]*Launcher
 	tIDAllocator    *util.Bitmap
@@ -30,11 +30,11 @@ const (
 	MaxTgtTargetNumber = 4096
 )
 
-func NewEngineManager(l rpc.LonghornProcessLauncherServiceServer, listen string) (*Manager, error) {
+func NewEngineManager(pm rpc.ProcessManagerServiceServer, listen string) (*Manager, error) {
 	return &Manager{
-		lock:            &sync.RWMutex{},
-		processLauncher: l,
-		listen:          listen,
+		lock:           &sync.RWMutex{},
+		processManager: pm,
+		listen:         listen,
 
 		engineLaunchers: map[string]*Launcher{},
 		tIDAllocator:    util.NewBitmap(1, MaxTgtTargetNumber),
@@ -48,13 +48,13 @@ func (em *Manager) EngineCreate(ctx context.Context, req *rpc.EngineCreateReques
 	if err := em.registerEngineLauncher(el); err != nil {
 		return nil, errors.Wrapf(err, "failed to register engine launcher %v", el.LauncherName)
 	}
-	if err := el.createEngineProcess(em.listen, em.processLauncher); err != nil {
+	if err := el.createEngineProcess(em.listen, em.processManager); err != nil {
 		go em.unregisterEngineLauncher(req.Spec.Name)
 		return nil, errors.Wrapf(err, "failed to start engine %v", req.Spec.Name)
 	}
 
 	el.lock.RLock()
-	response, err := em.processLauncher.ProcessGet(nil, &rpc.ProcessGetRequest{
+	response, err := em.processManager.ProcessGet(nil, &rpc.ProcessGetRequest{
 		Name: el.currentEngine.EngineName,
 	})
 	el.lock.RUnlock()
@@ -95,7 +95,7 @@ func (em *Manager) unregisterEngineLauncher(launcherName string) {
 	el.lock.RUnlock()
 
 	for i := 0; i < types.WaitCount; i++ {
-		if _, err := em.processLauncher.ProcessGet(nil, &rpc.ProcessGetRequest{
+		if _, err := em.processManager.ProcessGet(nil, &rpc.ProcessGetRequest{
 			Name: processName,
 		}); err != nil && strings.Contains(err.Error(), "cannot find process") {
 			break
@@ -104,7 +104,7 @@ func (em *Manager) unregisterEngineLauncher(launcherName string) {
 		time.Sleep(types.WaitInterval)
 	}
 
-	if _, err := em.processLauncher.ProcessGet(nil, &rpc.ProcessGetRequest{
+	if _, err := em.processManager.ProcessGet(nil, &rpc.ProcessGetRequest{
 		Name: processName,
 	}); err != nil && strings.Contains(err.Error(), "cannot find process") {
 		em.lock.Lock()
@@ -137,7 +137,7 @@ func (em *Manager) EngineDelete(ctx context.Context, req *rpc.EngineRequest) (re
 
 	var processResp *rpc.ProcessResponse
 	if deletionRequired {
-		processResp, err = el.deleteEngine(em.processLauncher, processName)
+		processResp, err = el.deleteEngine(em.processManager, processName)
 		if err != nil {
 			return nil, err
 		}
@@ -145,7 +145,7 @@ func (em *Manager) EngineDelete(ctx context.Context, req *rpc.EngineRequest) (re
 		go em.unregisterEngineLauncher(req.Name)
 	} else {
 		logrus.Debugf("Engine Manager is already deleting engine %v", req.Name)
-		processResp, err = em.processLauncher.ProcessGet(nil, &rpc.ProcessGetRequest{
+		processResp, err = em.processManager.ProcessGet(nil, &rpc.ProcessGetRequest{
 			Name: processName,
 		})
 		if err != nil {
@@ -176,7 +176,7 @@ func (em *Manager) EngineGet(ctx context.Context, req *rpc.EngineRequest) (ret *
 	}
 
 	el.lock.RLock()
-	response, err := em.processLauncher.ProcessGet(nil, &rpc.ProcessGetRequest{
+	response, err := em.processManager.ProcessGet(nil, &rpc.ProcessGetRequest{
 		Name: el.currentEngine.EngineName,
 	})
 	el.lock.RUnlock()
@@ -204,7 +204,7 @@ func (em *Manager) EngineList(ctx context.Context, req *empty.Empty) (ret *rpc.E
 		el.lock.RLock()
 		processName := el.currentEngine.EngineName
 		el.lock.RUnlock()
-		response, err := em.processLauncher.ProcessGet(nil, &rpc.ProcessGetRequest{
+		response, err := em.processManager.ProcessGet(nil, &rpc.ProcessGetRequest{
 			Name: processName,
 		})
 		if err != nil {
@@ -237,13 +237,13 @@ func (em *Manager) EngineUpgrade(ctx context.Context, req *rpc.EngineUpgradeRequ
 	defer func() {
 		if err != nil {
 			logrus.Errorf("failed to upgrade: %v", err)
-			if err := el.rollbackUpgrade(em.processLauncher); err != nil {
+			if err := el.rollbackUpgrade(em.processManager); err != nil {
 				logrus.Errorf("failed to rollback upgrade: %v", err)
 			}
 		}
 	}()
 
-	if err := el.createEngineProcess(em.listen, em.processLauncher); err != nil {
+	if err := el.createEngineProcess(em.listen, em.processManager); err != nil {
 		return nil, errors.Wrapf(err, "failed to create upgrade engine %v", req.Spec.Name)
 	}
 
@@ -251,10 +251,10 @@ func (em *Manager) EngineUpgrade(ctx context.Context, req *rpc.EngineUpgradeRequ
 		return nil, errors.Wrapf(err, "failed to reload socket connection for new engine %v", req.Spec.Name)
 	}
 
-	el.finalizeUpgrade(em.processLauncher)
+	el.finalizeUpgrade(em.processManager)
 
 	el.lock.RLock()
-	response, err := em.processLauncher.ProcessGet(nil, &rpc.ProcessGetRequest{
+	response, err := em.processManager.ProcessGet(nil, &rpc.ProcessGetRequest{
 		Name: el.currentEngine.EngineName,
 	})
 	el.lock.RUnlock()
@@ -267,7 +267,7 @@ func (em *Manager) EngineUpgrade(ctx context.Context, req *rpc.EngineUpgradeRequ
 	return el.RPCResponse(response), nil
 }
 
-func (em *Manager) EngineLog(req *rpc.LogRequest, srv rpc.LonghornEngineManagerService_EngineLogServer) error {
+func (em *Manager) EngineLog(req *rpc.LogRequest, srv rpc.EngineManagerService_EngineLogServer) error {
 	logrus.Infof("Engine Manager getting logs for engine %v", req.Name)
 
 	em.lock.RLock()
@@ -281,7 +281,7 @@ func (em *Manager) EngineLog(req *rpc.LogRequest, srv rpc.LonghornEngineManagerS
 	el.lock.RLock()
 	err := el.engineLog(&rpc.LogRequest{
 		Name: el.currentEngine.EngineName,
-	}, srv, em.processLauncher)
+	}, srv, em.processManager)
 	el.lock.RUnlock()
 	if err != nil {
 		return err

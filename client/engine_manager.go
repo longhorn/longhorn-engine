@@ -72,7 +72,7 @@ func (cli *EngineManagerClient) EngineCreate(size int64, name, volumeName, binar
 		return nil, fmt.Errorf("cannot connect to EngineManager Service %v: %v", cli.Address, err)
 	}
 	defer conn.Close()
-	client := rpc.NewLonghornEngineManagerServiceClient(conn)
+	client := rpc.NewEngineManagerServiceClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), types.GRPCServiceTimeout)
 	defer cancel()
@@ -107,7 +107,7 @@ func (cli *EngineManagerClient) EngineGet(name string) (*api.Engine, error) {
 		return nil, fmt.Errorf("cannot connect to EngineManager Service %v: %v", cli.Address, err)
 	}
 	defer conn.Close()
-	client := rpc.NewLonghornEngineManagerServiceClient(conn)
+	client := rpc.NewEngineManagerServiceClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), types.GRPCServiceTimeout)
 	defer cancel()
@@ -127,7 +127,7 @@ func (cli *EngineManagerClient) EngineList() (map[string]*api.Engine, error) {
 		return nil, fmt.Errorf("cannot connect to EngineManager Service %v: %v", cli.Address, err)
 	}
 	defer conn.Close()
-	client := rpc.NewLonghornEngineManagerServiceClient(conn)
+	client := rpc.NewEngineManagerServiceClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), types.GRPCServiceTimeout)
 	defer cancel()
@@ -149,7 +149,7 @@ func (cli *EngineManagerClient) EngineUpgrade(size int64, name, binary string, r
 		return nil, fmt.Errorf("cannot connect to EngineManager Service %v: %v", cli.Address, err)
 	}
 	defer conn.Close()
-	client := rpc.NewLonghornEngineManagerServiceClient(conn)
+	client := rpc.NewEngineManagerServiceClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), types.GRPCServiceTimeout)
 	defer cancel()
@@ -184,7 +184,7 @@ func (cli *EngineManagerClient) EngineDelete(name string) (*api.Engine, error) {
 		return nil, fmt.Errorf("cannot connect to EngineManager Service %v: %v", cli.Address, err)
 	}
 	defer conn.Close()
-	client := rpc.NewLonghornEngineManagerServiceClient(conn)
+	client := rpc.NewEngineManagerServiceClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), types.GRPCServiceTimeout)
 	defer cancel()
@@ -208,7 +208,7 @@ func (cli *EngineManagerClient) EngineLog(volumeName string) (*api.LogStream, er
 		return nil, fmt.Errorf("cannot connect to EngineManager Service %v: %v", cli.Address, err)
 	}
 	defer conn.Close()
-	client := rpc.NewLonghornEngineManagerServiceClient(conn)
+	client := rpc.NewEngineManagerServiceClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), types.GRPCServiceTimeout)
 	defer cancel()
@@ -233,7 +233,7 @@ func (cli *EngineManagerClient) FrontendStart(name, frontend string) error {
 		return fmt.Errorf("cannot connect to EngineManager Service %v: %v", cli.Address, err)
 	}
 	defer conn.Close()
-	client := rpc.NewLonghornEngineManagerServiceClient(conn)
+	client := rpc.NewEngineManagerServiceClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), types.GRPCServiceTimeout)
 	defer cancel()
@@ -257,7 +257,7 @@ func (cli *EngineManagerClient) FrontendShutdown(name string) error {
 		return fmt.Errorf("cannot connect to EngineManager Service %v: %v", cli.Address, err)
 	}
 	defer conn.Close()
-	client := rpc.NewLonghornEngineManagerServiceClient(conn)
+	client := rpc.NewEngineManagerServiceClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), types.GRPCServiceTimeout)
 	defer cancel()
@@ -280,7 +280,7 @@ func (cli *EngineManagerClient) FrontendStartCallback(name string) error {
 		return fmt.Errorf("cannot connect to EngineManager Service %v: %v", cli.Address, err)
 	}
 	defer conn.Close()
-	client := rpc.NewLonghornEngineManagerServiceClient(conn)
+	client := rpc.NewEngineManagerServiceClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), types.GRPCServiceTimeout)
 	defer cancel()
@@ -303,7 +303,7 @@ func (cli *EngineManagerClient) FrontendShutdownCallback(name string) error {
 		return fmt.Errorf("cannot connect to EngineManager Service %v: %v", cli.Address, err)
 	}
 	defer conn.Close()
-	client := rpc.NewLonghornEngineManagerServiceClient(conn)
+	client := rpc.NewEngineManagerServiceClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), types.GRPCServiceTimeout)
 	defer cancel()
