@@ -36,7 +36,6 @@ type Controller struct {
 	launcherID   string
 	isRestoring  bool
 	lastRestored string
-	isPurging    bool
 
 	listenAddr string
 	listenPort string
@@ -60,7 +59,6 @@ func NewController(name string, factory types.BackendFactory, frontend types.Fro
 		launcher:      launcher,
 		launcherID:    launcherID,
 		isRestoring:   false,
-		isPurging:     false,
 		metrics:       &types.Metrics{},
 		latestMetrics: &types.Metrics{},
 	}
@@ -580,10 +578,6 @@ func (c *Controller) LastRestored() string {
 	return c.lastRestored
 }
 
-func (c *Controller) IsPurging() bool {
-	return c.isPurging
-}
-
 func (c *Controller) PrepareRestore(lastRestored string) error {
 	c.Lock()
 	defer c.Unlock()
@@ -607,26 +601,6 @@ func (c *Controller) FinishRestore(currentRestored string) error {
 		c.lastRestored = currentRestored
 	}
 	c.isRestoring = false
-	return nil
-}
-
-func (c *Controller) PreparePurge() error {
-	c.Lock()
-	defer c.Unlock()
-	if c.isPurging {
-		return fmt.Errorf("volume %v is already purging snapshots", c.Name)
-	}
-	c.isPurging = true
-	return nil
-}
-
-func (c *Controller) FinishPurge() error {
-	c.Lock()
-	defer c.Unlock()
-	if !c.isPurging {
-		return fmt.Errorf("BUG: volume %v isn't being purged", c.Name)
-	}
-	c.isPurging = false
 	return nil
 }
 

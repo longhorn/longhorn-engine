@@ -229,42 +229,6 @@ func (c *ControllerClient) VolumeFinishRestore(currentRestored string) error {
 	return nil
 }
 
-func (c *ControllerClient) VolumePreparePurge() error {
-	conn, err := grpc.Dial(c.grpcAddress, grpc.WithInsecure())
-	if err != nil {
-		return fmt.Errorf("cannot connect to ControllerService %v: %v", c.grpcAddress, err)
-	}
-	defer conn.Close()
-	controllerServiceClient := contollerpb.NewControllerServiceClient(conn)
-
-	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
-	defer cancel()
-
-	if _, err := controllerServiceClient.VolumePreparePurge(ctx, &empty.Empty{}); err != nil {
-		return fmt.Errorf("failed to prepare purge for volume %v: %v", c.grpcAddress, err)
-	}
-
-	return nil
-}
-
-func (c *ControllerClient) VolumeFinishPurge() error {
-	conn, err := grpc.Dial(c.grpcAddress, grpc.WithInsecure())
-	if err != nil {
-		return fmt.Errorf("cannot connect to ControllerService %v: %v", c.grpcAddress, err)
-	}
-	defer conn.Close()
-	controllerServiceClient := contollerpb.NewControllerServiceClient(conn)
-
-	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
-	defer cancel()
-
-	if _, err := controllerServiceClient.VolumeFinishPurge(ctx, &empty.Empty{}); err != nil {
-		return fmt.Errorf("failed to finish purge for volume %v: %v", c.grpcAddress, err)
-	}
-
-	return nil
-}
-
 func (c *ControllerClient) ReplicaList() ([]*types.ControllerReplicaInfo, error) {
 	conn, err := grpc.Dial(c.grpcAddress, grpc.WithInsecure())
 	if err != nil {
