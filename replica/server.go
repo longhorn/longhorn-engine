@@ -3,15 +3,9 @@ package replica
 import (
 	"fmt"
 	"os"
-	"path/filepath"
-	"strings"
 	"sync"
 
-	"github.com/longhorn/backupstore"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-
-	"github.com/longhorn/longhorn-engine/util"
 )
 
 const (
@@ -308,71 +302,4 @@ func (s *Server) PingResponse() error {
 		return fmt.Errorf("ping failure: replica state %v", state)
 	}
 	return nil
-}
-
-func (s *Server) Restore(url, name string) (err error) {
-	defer func() {
-		err = errors.Wrapf(err, "fail to restore url %v to snapshot %v", url, name)
-	}()
-
-	s.Lock()
-	defer s.Unlock()
-
-	if url == "" || name == "" {
-		return fmt.Errorf("require backup URL and new snapshot name")
-	}
-
-	state, _ := s.Status()
-	if state != Initial {
-		logrus.Warnf("Ignore restore command, volume is not in initial state")
-		return nil
-	}
-
-	snapName := diskPrefix + name
-	if !strings.HasSuffix(snapName, diskSuffix) {
-		snapName = snapName + diskSuffix
-	}
-	// TODO Don't use `s.dir` directly
-	toFile := filepath.Join(s.dir, snapName)
-
-	if _, err := os.Stat(toFile + ".meta"); err == nil {
-		logrus.Warnf("Found existing restored snapshot, skip restoring")
-		return nil
-	}
-
-	backupURL := util.UnescapeURL(url)
-	info, err := backupstore.InspectBackup(backupURL)
-	if err != nil {
-		return err
-	}
-
-	size := info.VolumeSize
-	sectorSize := s.getSectorSize()
-
-	r, err := New(size, sectorSize, s.dir, s.backing)
-	if err != nil {
-		return err
-	}
-
-	if err := backupstore.RestoreDeltaBlockBackup(backupURL, toFile); err != nil {
-		return err
-	}
-
-	newDisk := disk{
-		Parent:      "",
-		Name:        snapName,
-		Removed:     false,
-		UserCreated: false,
-		Created:     util.Now(),
-	}
-
-	if err := r.encodeToFile(newDisk, snapName+metadataSuffix); err != nil {
-		return err
-	}
-
-	r, err = r.Revert(snapName, util.Now())
-	if err != nil {
-		return err
-	}
-	return r.Close()
 }
