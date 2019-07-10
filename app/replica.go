@@ -118,7 +118,7 @@ func startReplica(c *cli.Context) error {
 
 	go func() {
 		rpcServer := rpc.NewDataServer(dataAddress, s)
-		logrus.Infof("Listening on data %s", dataAddress)
+		logrus.Infof("Listening on data server %s", dataAddress)
 		err := rpcServer.ListenAndServe()
 		logrus.Warnf("Replica rest server at %v is down: %v", dataAddress, err)
 		resp <- err
@@ -146,7 +146,7 @@ func startReplica(c *cli.Context) error {
 			cmd.Dir = dir
 			cmd.Stdout = os.Stdout
 			cmd.Stderr = os.Stderr
-			logrus.Infof("Listening on sync agent %s", syncAddress)
+			logrus.Infof("Listening on sync agent server %s", syncAddress)
 			err := cmd.Run()
 			logrus.Warnf("Replica sync agent at %v is down: %v", syncAddress, err)
 			resp <- err
