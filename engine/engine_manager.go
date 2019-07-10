@@ -107,9 +107,31 @@ func (em *Manager) unregisterEngineLauncher(launcherName string) {
 	if _, err := em.processManager.ProcessGet(nil, &rpc.ProcessGetRequest{
 		Name: processName,
 	}); err != nil && strings.Contains(err.Error(), "cannot find process") {
+		// cannot depend on engine process's callback to cleanup frontend. need to double check here
 		em.lock.Lock()
+		defer em.lock.Unlock()
+		el, exists := em.engineLaunchers[launcherName]
+		if !exists {
+			return
+		}
+
+		el.lock.RLock()
+		needCleanup := false
+		if el.scsiDevice != nil {
+			needCleanup = true
+		}
+		el.lock.RUnlock()
+
+		if needCleanup {
+			logrus.Warnf("Engine Manager need to cleanup frontend before unregistering engine launcher %v", launcherName)
+			if err = em.cleanupFrontend(el); err != nil {
+				// cleanup failed. cannot unregister engine launcher.
+				logrus.Errorf("Engine Manager fails to cleanup frontend before unregistering engine launcher %v", launcherName)
+				return
+			}
+		}
 		delete(em.engineLaunchers, launcherName)
-		em.lock.Unlock()
+
 		logrus.Infof("Engine Manager had successfully unregistered engine launcher %v, deletion completed", launcherName)
 	} else {
 		logrus.Errorf("Engine Manager fails to unregister engine launcher %v", launcherName)
@@ -438,17 +460,25 @@ func (em *Manager) FrontendShutdownCallback(ctx context.Context, req *rpc.Engine
 	}
 	el.lock.RUnlock()
 
-	tID, err := el.finishFrontendShutdown()
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to callback for engine %v frontend shutdown", req.Name)
+	if err = em.cleanupFrontend(el); err != nil {
+		return nil, err
 	}
-
-	if err = em.tIDAllocator.ReleaseRange(int32(tID), int32(tID)); err != nil {
-		return nil, errors.Wrapf(err, "failed to release tid for engine %v frontend shutdown", req.Name)
-	}
-	logrus.Debugf("Engine Manager released TID %v for frontend shutdown callback", tID)
 
 	logrus.Infof("Engine Manager finished engine %v frontend shutdown callback", req.Name)
 
 	return &empty.Empty{}, nil
+}
+
+func (em *Manager) cleanupFrontend(el *Launcher) error {
+	tID, err := el.finishFrontendShutdown()
+	if err != nil {
+		return errors.Wrapf(err, "failed to callback for engine %v frontend shutdown", el.LauncherName)
+	}
+
+	if err = em.tIDAllocator.ReleaseRange(int32(tID), int32(tID)); err != nil {
+		return errors.Wrapf(err, "failed to release tid for engine %v frontend shutdown", el.LauncherName)
+	}
+
+	logrus.Debugf("Engine Manager released TID %v for frontend shutdown callback", tID)
+	return nil
 }
