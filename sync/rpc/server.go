@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 
@@ -12,6 +13,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 
+	"github.com/longhorn/backupstore"
 	"github.com/longhorn/longhorn-engine/backup"
 	"github.com/longhorn/longhorn-engine/replica"
 	"github.com/longhorn/longhorn-engine/types"
@@ -84,9 +86,8 @@ func (s *SyncAgentServer) nextPort(processName string) (int, error) {
 
 func (s *SyncAgentServer) IsRestoring() bool {
 	s.Lock()
-	status := s.isRestoring
-	s.Unlock()
-	return status
+	defer s.Unlock()
+	return s.isRestoring
 }
 
 func (s *SyncAgentServer) PrepareRestore(lastRestored string) error {
@@ -108,7 +109,7 @@ func (s *SyncAgentServer) FinishRestore(currentRestored string) error {
 	s.Lock()
 	defer s.Unlock()
 	if !s.isRestoring {
-		return fmt.Errorf("BUG: no volume is currently restoring")
+		return fmt.Errorf("BUG: volume is not restoring")
 	}
 	if currentRestored != "" {
 		s.lastRestored = currentRestored
@@ -319,7 +320,13 @@ func (*SyncAgentServer) BackupRemove(ctx context.Context, req *BackupRemoveReque
 	return &Empty{}, nil
 }
 
-func (*SyncAgentServer) BackupRestore(ctx context.Context, req *BackupRestoreRequest) (*Empty, error) {
+func (s *SyncAgentServer) BackupRestore(ctx context.Context, req *BackupRestoreRequest) (*Empty, error) {
+	if strings.HasSuffix(req.SnapshotFileName, ".snap_tmp") {
+		if err := s.PrepareRestore(""); err != nil {
+			logrus.Errorf("failed to prepare incremental full restore")
+			return nil, err
+		}
+	}
 	cmd := reexec.Command("sbackup", "restore", req.Backup, "--to", req.SnapshotFileName)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Pdeathsig: syscall.SIGKILL,
@@ -336,28 +343,50 @@ func (*SyncAgentServer) BackupRestore(ctx context.Context, req *BackupRestoreReq
 		return nil, err
 	}
 
+	// Incremental full restore
+	if strings.HasSuffix(req.SnapshotFileName, ".snap_tmp") {
+		if backupName, err := backupstore.GetBackupFromBackupURL(util.UnescapeURL(req.Backup)); err != nil {
+			s.Lock()
+			defer s.Unlock()
+			s.isRestoring = false
+
+			logrus.Errorf("failed to get backupName from url: %v", req.Backup)
+			return nil, err
+		} else if err := s.FinishRestore(backupName); err != nil {
+			logrus.Errorf("failed to finish restore in the case of full restore")
+			return nil, err
+		}
+	}
+
 	logrus.Infof("Done running %s %v", "sbackup", cmd.Args)
 	return &Empty{}, nil
 }
 
-func (*SyncAgentServer) BackupRestoreIncrementally(ctx context.Context, req *BackupRestoreIncrementallyRequest) (*Empty, error) {
-	cmd := reexec.Command("sbackup", "restore", req.Backup, "--incrementally", "--to", req.DeltaFileName, "--last-restored", req.LastRestoredBackupName)
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Pdeathsig: syscall.SIGKILL,
-	}
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Start(); err != nil {
+func (s *SyncAgentServer) BackupRestoreIncrementally(ctx context.Context, req *BackupRestoreIncrementallyRequest) (*Empty, error) {
+	if err := s.PrepareRestore(req.LastRestoredBackupName); err != nil {
+		logrus.Errorf("failed to preprare restore: %v", err)
 		return nil, err
 	}
 
-	logrus.Infof("Running %s %v", cmd.Path, cmd.Args)
-	if err := cmd.Wait(); err != nil {
-		logrus.Infof("Error running %s %v: %v", "sbackup", cmd.Args, err)
-		return nil, err
+	logrus.Infof("Running incremental restore %v to %s with lastRestoredBackup %s", req.Backup,
+		req.DeltaFileName, req.LastRestoredBackupName)
+	if err := backup.DoBackupRestoreIncrementally(req.Backup, req.DeltaFileName, req.LastRestoredBackupName); err != nil {
+		if extraErr := s.FinishRestore(""); extraErr != nil {
+			return nil, fmt.Errorf("failed to finish incremental restore: %v:%v", extraErr, err)
+		}
+		return nil, fmt.Errorf("error running incremental restore [%v]", err)
 	}
 
-	logrus.Infof("Done running %s %v", "sbackup", cmd.Args)
+	//Finish Incremental Restore
+	if backupName, err := backupstore.GetBackupFromBackupURL(util.UnescapeURL(req.Backup)); err != nil {
+		s.Lock()
+		defer s.Unlock()
+		s.isRestoring = false
+		return nil, err
+	} else if err := s.FinishRestore(backupName); err != nil {
+		return nil, err
+	}
+	logrus.Infof("Done running incremental restore %v to %v", req.Backup, req.DeltaFileName)
 	return &Empty{}, nil
 }
 
