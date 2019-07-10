@@ -73,14 +73,7 @@ func startReplica(c *cli.Context) error {
 	address := c.String("listen")
 
 	size := c.String("size")
-	restoreURL := c.String("restore-from")
-	restoreName := c.String("restore-name")
-
-	if restoreURL != "" && restoreName != "" {
-		if err := s.Restore(restoreURL, restoreName); err != nil {
-			return err
-		}
-	} else if size != "" {
+	if size != "" {
 		size, err := units.RAMInBytes(size)
 		if err != nil {
 			return err
