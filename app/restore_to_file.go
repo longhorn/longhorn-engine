@@ -5,12 +5,15 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
+	"gopkg.in/cheggaaa/pb.v2"
 
 	"github.com/longhorn/backupstore"
+	"github.com/longhorn/longhorn-engine/replica"
 	"github.com/longhorn/longhorn-engine/util"
 )
 
@@ -21,6 +24,9 @@ const (
 	BackupFilePath        = "backup.img"
 	BackupFileConverted   = "backup.img.converted"
 	BackingFileCopy       = "backing.img.cp"
+
+	ProgressBasedTimeoutInMinutes    = 5
+	PeriodicRefreshIntervalInSeconds = 2
 )
 
 var SupportedImageFormats = []string{
@@ -59,6 +65,54 @@ func RestoreToFileCmd() cli.Command {
 	}
 }
 
+func restore(url string) error {
+	restoreObj := replica.NewRestore(BackupFilePath, "")
+	backupURL := util.UnescapeURL(url)
+	config := &backupstore.DeltaRestoreConfig{
+		BackupURL: backupURL,
+		DeltaOps:  restoreObj,
+		Filename:  BackupFilePath,
+	}
+
+	err := backupstore.RestoreDeltaBlockBackup(config)
+	if err != nil {
+		return err
+	}
+
+	bar := pb.StartNew(100)
+	periodicChecker := time.NewTicker(PeriodicRefreshIntervalInSeconds * time.Second)
+
+	for range periodicChecker.C {
+		restoreObj.Lock()
+		restoreProgress := restoreObj.Progress
+		restoreError := restoreObj.Error
+		lastUpdate := restoreObj.LastUpdatedAt
+		restoreObj.Unlock()
+
+		if restoreProgress == 100 {
+			bar.Set(restoreProgress)
+			bar.Finish()
+			periodicChecker.Stop()
+			return nil
+		}
+		if restoreError != nil {
+			bar.Finish()
+			periodicChecker.Stop()
+			return restoreError
+		}
+		now := time.Now()
+		diff := now.Sub(lastUpdate)
+
+		if diff.Minutes() > ProgressBasedTimeoutInMinutes {
+			bar.Finish()
+			periodicChecker.Stop()
+			return fmt.Errorf("no restore update happened since %v minutes. Returning failure", ProgressBasedTimeoutInMinutes)
+		}
+		bar.Set(restoreProgress)
+	}
+	return nil
+}
+
 func restoreToFile(c *cli.Context) error {
 	outputFormat := c.String("output-format")
 	if !outputFormatSupported(outputFormat) {
@@ -83,7 +137,7 @@ func restoreToFile(c *cli.Context) error {
 	defer CleanupTempFiles(outputFile, BackupFilePath, BackupFileConverted, BackingFileCopy)
 
 	logrus.Infof("Start to restore %s to %s", backupURL, BackupFilePath)
-	if err := backupstore.RestoreDeltaBlockBackup(backupURL, BackupFilePath); err != nil {
+	if err := restore(backupURL); err != nil {
 		return err
 	}
 	logrus.Infof("Done restoring %s to %s", backupURL, BackupFilePath)
