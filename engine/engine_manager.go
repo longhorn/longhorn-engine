@@ -165,7 +165,7 @@ func (em *Manager) EngineDelete(ctx context.Context, req *rpc.EngineRequest) (re
 }
 
 func (em *Manager) EngineGet(ctx context.Context, req *rpc.EngineRequest) (ret *rpc.EngineResponse, err error) {
-	logrus.Infof("Engine Manager starts to get engine %v", req.Name)
+	logrus.Debugf("Engine Manager starts to get engine %v", req.Name)
 
 	em.lock.RLock()
 	defer em.lock.RUnlock()
@@ -185,13 +185,13 @@ func (em *Manager) EngineGet(ctx context.Context, req *rpc.EngineRequest) (ret *
 			req.Name, err)
 	}
 
-	logrus.Infof("Engine Manager has successfully get engine %v", req.Name)
+	logrus.Debugf("Engine Manager has successfully get engine %v", req.Name)
 
 	return el.RPCResponse(response), nil
 }
 
 func (em *Manager) EngineList(ctx context.Context, req *empty.Empty) (ret *rpc.EngineListResponse, err error) {
-	logrus.Infof("Engine Manager starts to list engines")
+	logrus.Debugf("Engine Manager starts to list engines")
 
 	em.lock.RLock()
 	defer em.lock.RUnlock()
@@ -217,7 +217,7 @@ func (em *Manager) EngineList(ctx context.Context, req *empty.Empty) (ret *rpc.E
 		ret.Engines[el.LauncherName] = el.RPCResponse(response)
 	}
 
-	logrus.Infof("Engine Manager has successfully list all engines")
+	logrus.Debugf("Engine Manager has successfully list all engines")
 
 	return ret, nil
 }
@@ -268,7 +268,7 @@ func (em *Manager) EngineUpgrade(ctx context.Context, req *rpc.EngineUpgradeRequ
 }
 
 func (em *Manager) EngineLog(req *rpc.LogRequest, srv rpc.EngineManagerService_EngineLogServer) error {
-	logrus.Infof("Engine Manager getting logs for engine %v", req.Name)
+	logrus.Debugf("Engine Manager getting logs for engine %v", req.Name)
 
 	em.lock.RLock()
 	defer em.lock.RUnlock()
@@ -287,7 +287,7 @@ func (em *Manager) EngineLog(req *rpc.LogRequest, srv rpc.EngineManagerService_E
 		return err
 	}
 
-	logrus.Infof("Engine Manager has successfully retrieved logs for engine %v", req.Name)
+	logrus.Debugf("Engine Manager has successfully retrieved logs for engine %v", req.Name)
 
 	return nil
 }
@@ -408,6 +408,8 @@ func (em *Manager) FrontendStartCallback(ctx context.Context, req *rpc.EngineReq
 	}
 	el.lock.RUnlock()
 
+	logrus.Debugf("Engine Manager allocated TID %v for frontend start callback", tID)
+
 	if err := el.finishFrontendStart(int(tID)); err != nil {
 		return nil, errors.Wrapf(err, "failed to callback for engine %v frontend start", req.Name)
 	}
@@ -444,6 +446,7 @@ func (em *Manager) FrontendShutdownCallback(ctx context.Context, req *rpc.Engine
 	if err = em.tIDAllocator.ReleaseRange(int32(tID), int32(tID)); err != nil {
 		return nil, errors.Wrapf(err, "failed to release tid for engine %v frontend shutdown", req.Name)
 	}
+	logrus.Debugf("Engine Manager released TID %v for frontend shutdown callback", tID)
 
 	logrus.Infof("Engine Manager finished engine %v frontend shutdown callback", req.Name)
 
