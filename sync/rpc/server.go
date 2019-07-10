@@ -29,6 +29,8 @@ type SyncAgentServer struct {
 	startPort       int
 	endPort         int
 	processesByPort map[int]string
+	isRestoring     bool
+	lastRestored    string
 
 	BackupList *BackupList
 }
@@ -78,6 +80,41 @@ func (s *SyncAgentServer) nextPort(processName string) (int, error) {
 	}
 
 	return 0, errors.New("Out of ports")
+}
+
+func (s *SyncAgentServer) IsRestoring() bool {
+	s.Lock()
+	status := s.isRestoring
+	s.Unlock()
+	return status
+}
+
+func (s *SyncAgentServer) PrepareRestore(lastRestored string) error {
+	s.Lock()
+	defer s.Unlock()
+	if s.isRestoring {
+		return fmt.Errorf("cannot initate backup restore as there is one already in progress")
+	}
+
+	if s.lastRestored != "" && lastRestored != "" && s.lastRestored != lastRestored {
+		return fmt.Errorf("flag lastRestored %v in command doesn't match field LastRestored %v in engine",
+			lastRestored, s.lastRestored)
+	}
+	s.isRestoring = true
+	return nil
+}
+
+func (s *SyncAgentServer) FinishRestore(currentRestored string) error {
+	s.Lock()
+	defer s.Unlock()
+	if !s.isRestoring {
+		return fmt.Errorf("BUG: no volume is currently restoring")
+	}
+	if currentRestored != "" {
+		s.lastRestored = currentRestored
+	}
+	s.isRestoring = false
+	return nil
 }
 
 func (*SyncAgentServer) FileRemove(ctx context.Context, req *FileRemoveRequest) (*Empty, error) {
