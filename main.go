@@ -7,6 +7,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
@@ -48,6 +49,58 @@ func StartCmd() cli.Command {
 	}
 }
 
+func cleanup(pm *process.Manager, em *engine.Manager) {
+	logrus.Infof("Try to gracefully shut down Instance Manager")
+	pmResp, err := pm.ProcessList(nil, &rpc.ProcessListRequest{})
+	if err != nil {
+		logrus.Errorf("Failed to list processes before shutdown")
+		return
+	}
+	for _, p := range pmResp.Processes {
+		pm.ProcessDelete(nil, &rpc.ProcessDeleteRequest{
+			Name: p.Spec.Name,
+		})
+	}
+
+	for i := 0; i < types.WaitCount; i++ {
+		pmResp, err := pm.ProcessList(nil, &rpc.ProcessListRequest{})
+		if err != nil {
+			logrus.Errorf("Failed to list instance processes when shutting down")
+			return
+		}
+		if len(pmResp.Processes) == 0 {
+			logrus.Infof("Instance Manager has shutdown all processes.")
+			break
+		}
+		time.Sleep(types.WaitInterval)
+	}
+
+	emResp, err := em.EngineList(nil, &empty.Empty{})
+	if err != nil {
+		logrus.Errorf("Failed to list engine processes before shutdown")
+		return
+	}
+	for _, e := range emResp.Engines {
+		em.EngineDelete(nil, &rpc.EngineRequest{
+			Name: e.Spec.Name,
+		})
+	}
+	for i := 0; i < types.WaitCount; i++ {
+		emResp, err := em.EngineList(nil, &empty.Empty{})
+		if err != nil {
+			logrus.Errorf("Failed to list engine processes when shutting down")
+			return
+		}
+		if len(emResp.Engines) == 0 {
+			logrus.Infof("Instance Manager has shutdown all processes and cleaned up all engine processes. Graceful shutdown succeeded")
+			return
+		}
+		time.Sleep(types.WaitInterval)
+	}
+
+	logrus.Errorf("Failed to cleanup all processes for Instance Manager graceful shutdown")
+}
+
 func start(c *cli.Context) error {
 	listen := c.String("listen")
 	logsDir := c.String("logs-dir")
@@ -58,45 +111,16 @@ func start(c *cli.Context) error {
 	}
 
 	shutdownCh := make(chan error)
-	pl, err := process.NewManager(portRange, logsDir, shutdownCh)
+	pm, err := process.NewManager(portRange, logsDir, shutdownCh)
 	if err != nil {
 		return err
 	}
-	em, err := engine.NewEngineManager(pl, listen)
+	em, err := engine.NewEngineManager(pm, listen)
 	if err != nil {
 		return err
 	}
 	im := instance.NewInstanceManagerServer()
-	hc := health.NewHealthCheckServer(em, pl, im)
-
-	addShutdown(func() {
-		logrus.Infof("Try to gracefully shut down Instance Manager at %v", listen)
-		resp, err := pl.ProcessList(nil, &rpc.ProcessListRequest{})
-		if err != nil {
-			logrus.Errorf("Failed to list processes before shutdown")
-			return
-		}
-		for _, p := range resp.Processes {
-			pl.ProcessDelete(nil, &rpc.ProcessDeleteRequest{
-				Name: p.Spec.Name,
-			})
-		}
-
-		for i := 0; i < types.WaitCount; i++ {
-			resp, err := pl.ProcessList(nil, &rpc.ProcessListRequest{})
-			if err != nil {
-				logrus.Errorf("Failed to list instance processes when shutting down")
-				return
-			}
-			if len(resp.Processes) == 0 {
-				logrus.Infof("Instance Manager has cleaned up all processes. Graceful shutdown succeeded")
-				return
-			}
-			time.Sleep(types.WaitInterval)
-		}
-		logrus.Errorf("Failed to cleanup all processes for Instance Manager graceful shutdown")
-		return
-	})
+	hc := health.NewHealthCheckServer(em, pm, im)
 
 	listenAt, err := net.Listen("tcp", listen)
 	if err != nil {
@@ -104,7 +128,7 @@ func start(c *cli.Context) error {
 	}
 
 	rpcService := grpc.NewServer()
-	rpc.RegisterProcessManagerServiceServer(rpcService, pl)
+	rpc.RegisterProcessManagerServiceServer(rpcService, pm)
 	rpc.RegisterEngineManagerServiceServer(rpcService, em)
 	rpc.RegisterInstanceManagerServiceServer(rpcService, im)
 	healthpb.RegisterHealthServer(rpcService, hc)
@@ -114,6 +138,8 @@ func start(c *cli.Context) error {
 		if err := rpcService.Serve(listenAt); err != nil {
 			logrus.Errorf("Stopping due to %v:", err)
 		}
+		// graceful shutdown before exit
+		cleanup(pm, em)
 		close(shutdownCh)
 	}()
 	logrus.Infof("Instance Manager listening to %v", listen)
@@ -122,7 +148,7 @@ func start(c *cli.Context) error {
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		sig := <-sigs
-		logrus.Infof("Receive %v to exit", sig)
+		logrus.Infof("Instance Manager received %v to exit", sig)
 		rpcService.Stop()
 	}()
 
