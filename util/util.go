@@ -9,7 +9,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
@@ -358,4 +360,8 @@ func ResolveBackingFilepath(fileOrDirpath string) (string, error) {
 
 func GetInitiatorNS() string {
 	return iutil.GetHostNamespacePath(HostProc)
+}
+
+func GetFunctionName(i interface{}) string {
+	return runtime.FuncForPC(reflect.ValueOf(i).Pointer()).Name()
 }

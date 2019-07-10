@@ -85,13 +85,12 @@ func (c *Controller) StartGRPCServer() error {
 			return
 		}
 
-		logrus.Infof(" Listening on gRPC Controller server: %v", grpcAddress)
+		logrus.Infof("Listening on gRPC Controller server: %v", grpcAddress)
 		err = c.GRPCServer.Serve(listener)
 		logrus.Errorf("GRPC server at %v is down: %v", grpcAddress, err)
 		c.lastError = err
 		return
 	}()
-	logrus.Infof("Listening on %s", c.GRPCAddress)
 
 	return nil
 }

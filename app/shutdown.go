@@ -6,6 +6,8 @@ import (
 	"syscall"
 
 	"github.com/sirupsen/logrus"
+
+	"github.com/longhorn/longhorn-engine/util"
 )
 
 var (
@@ -18,6 +20,7 @@ func addShutdown(f func()) {
 	}
 
 	hooks = append(hooks, f)
+	logrus.Debugf("Added shutdown func %v", util.GetFunctionName(f))
 }
 
 func registerShutdown() {
@@ -27,6 +30,7 @@ func registerShutdown() {
 		for s := range c {
 			logrus.Warnf("Received signal %v to shutdown", s)
 			for _, hook := range hooks {
+				logrus.Warnf("Starting to execute registered shutdown func %v", util.GetFunctionName(hook))
 				hook()
 			}
 			os.Exit(1)
