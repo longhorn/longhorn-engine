@@ -29,6 +29,11 @@ def info(url=CONTROLLER):
     return json.loads(subprocess.check_output(cmd))
 
 
+def restore_status(url=CONTROLLER):
+    cmd = [_bin(), '--url', url, '--debug', 'backup', 'restore-status']
+    return json.loads(subprocess.check_output(cmd))
+
+
 def snapshot_create(url=CONTROLLER):
     cmd = [_bin(), '--url', url, '--debug', 'snapshot', 'create']
     return subprocess.check_output(cmd).strip()
