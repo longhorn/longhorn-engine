@@ -91,9 +91,12 @@ func startController(c *cli.Context) error {
 
 	control := controller.NewController(name, dynamic.New(factories), frontend, launcher, launcherID)
 
+	// need to wait for Shutdown() completion
+	control.ShutdownWG.Add(1)
 	addShutdown(func() {
 		logrus.Debugf("Starting to execute shutdown function for the engine controller of volume %v with launcherID %v", name, launcherID)
 		control.Shutdown()
+		control.ShutdownWG.Done()
 	})
 
 	if len(replicas) > 0 {
