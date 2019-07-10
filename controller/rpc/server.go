@@ -84,8 +84,6 @@ func (cs *ControllerServer) getVolume() *controllerpb.Volume {
 		Endpoint:      cs.c.Endpoint(),
 		Frontend:      cs.c.Frontend(),
 		FrontendState: cs.c.FrontendState(),
-		IsRestoring:   cs.c.IsRestoring(),
-		LastRestored:  cs.c.LastRestored(),
 	}
 }
 
@@ -155,22 +153,6 @@ func (cs *ControllerServer) VolumeFrontendStart(ctx context.Context, req *contro
 
 func (cs *ControllerServer) VolumeFrontendShutdown(ctx context.Context, req *empty.Empty) (*controllerpb.Volume, error) {
 	if err := cs.c.ShutdownFrontend(); err != nil {
-		return nil, err
-	}
-
-	return cs.getVolume(), nil
-}
-
-func (cs *ControllerServer) VolumePrepareRestore(ctx context.Context, req *controllerpb.VolumePrepareRestoreRequest) (*controllerpb.Volume, error) {
-	if err := cs.c.PrepareRestore(req.LastRestored); err != nil {
-		return nil, err
-	}
-
-	return cs.getVolume(), nil
-}
-
-func (cs *ControllerServer) VolumeFinishRestore(ctx context.Context, req *controllerpb.VolumeFinishRestoreRequest) (*controllerpb.Volume, error) {
-	if err := cs.c.FinishRestore(req.CurrentRestored); err != nil {
 		return nil, err
 	}
 
