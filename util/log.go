@@ -66,7 +66,7 @@ func SetUpLogger(logsDir string) error {
 	logrus.Infof("Storing process logs at path: %v", logsDir)
 	logrus.SetFormatter(LonghornFormatter{
 		TextFormatter: &logrus.TextFormatter{
-			DisableColors: true,
+			DisableColors: false,
 		},
 		LogsDir: logsDir,
 	})
