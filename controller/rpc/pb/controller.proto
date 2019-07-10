@@ -12,8 +12,6 @@ service ControllerService {
     rpc VolumeRevert(VolumeRevertRequest) returns (Volume);
     rpc VolumeFrontendStart(VolumeFrontendStartRequest) returns (Volume);
     rpc VolumeFrontendShutdown(google.protobuf.Empty) returns (Volume);
-    rpc VolumePrepareRestore(VolumePrepareRestoreRequest) returns (Volume);
-    rpc VolumeFinishRestore(VolumeFinishRestoreRequest) returns (Volume);
 
     rpc ReplicaList(google.protobuf.Empty) returns (ReplicaListReply);
     rpc ReplicaGet(ReplicaAddress) returns (ControllerReplica);

@@ -189,46 +189,6 @@ func (c *ControllerClient) VolumeFrontendShutdown() error {
 	return nil
 }
 
-func (c *ControllerClient) VolumePrepareRestore(lastRestored string) error {
-	conn, err := grpc.Dial(c.grpcAddress, grpc.WithInsecure())
-	if err != nil {
-		return fmt.Errorf("cannot connect to ControllerService %v: %v", c.grpcAddress, err)
-	}
-	defer conn.Close()
-	controllerServiceClient := contollerpb.NewControllerServiceClient(conn)
-
-	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
-	defer cancel()
-
-	if _, err := controllerServiceClient.VolumePrepareRestore(ctx, &contollerpb.VolumePrepareRestoreRequest{
-		LastRestored: lastRestored,
-	}); err != nil {
-		return fmt.Errorf("failed to prepare restoring for volume %v: %v", c.grpcAddress, err)
-	}
-
-	return nil
-}
-
-func (c *ControllerClient) VolumeFinishRestore(currentRestored string) error {
-	conn, err := grpc.Dial(c.grpcAddress, grpc.WithInsecure())
-	if err != nil {
-		return fmt.Errorf("cannot connect to ControllerService %v: %v", c.grpcAddress, err)
-	}
-	defer conn.Close()
-	controllerServiceClient := contollerpb.NewControllerServiceClient(conn)
-
-	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
-	defer cancel()
-
-	if _, err := controllerServiceClient.VolumeFinishRestore(ctx, &contollerpb.VolumeFinishRestoreRequest{
-		CurrentRestored: currentRestored,
-	}); err != nil {
-		return fmt.Errorf("failed to finish restoring for volume %v: %v", c.grpcAddress, err)
-	}
-
-	return nil
-}
-
 func (c *ControllerClient) ReplicaList() ([]*types.ControllerReplicaInfo, error) {
 	conn, err := grpc.Dial(c.grpcAddress, grpc.WithInsecure())
 	if err != nil {
