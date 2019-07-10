@@ -92,6 +92,7 @@ func startController(c *cli.Context) error {
 	control := controller.NewController(name, dynamic.New(factories), frontend, launcher, launcherID)
 
 	addShutdown(func() {
+		logrus.Debugf("Starting to execute shutdown function for the engine controller of volume %v with launcherID %v", name, launcherID)
 		control.Shutdown()
 	})
 
