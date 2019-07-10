@@ -36,7 +36,7 @@ type Controller struct {
 	GRPCAddress string
 	GRPCServer  *grpc.Server
 
-	shutdownWG sync.WaitGroup
+	ShutdownWG sync.WaitGroup
 	lastError  error
 
 	latestMetrics *types.Metrics
@@ -73,9 +73,9 @@ func (c *Controller) StartGRPCServer() error {
 		return fmt.Errorf("cannot find grpc address or port")
 	}
 
-	c.shutdownWG.Add(1)
+	c.ShutdownWG.Add(1)
 	go func() {
-		defer c.shutdownWG.Done()
+		defer c.ShutdownWG.Done()
 
 		grpcAddress := c.GRPCAddress
 		listener, err := net.Listen("tcp", c.GRPCAddress)
@@ -96,7 +96,7 @@ func (c *Controller) StartGRPCServer() error {
 }
 
 func (c *Controller) WaitForShutdown() error {
-	c.shutdownWG.Wait()
+	c.ShutdownWG.Wait()
 	return c.lastError
 }
 
