@@ -26,7 +26,6 @@ var (
 	MaximumVolumeNameSize = 64
 	parsePattern          = regexp.MustCompile(`(.*):(\d+)`)
 	validVolumeName       = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.-]+$`)
-	validLabelValue       = regexp.MustCompile(`^[a-zA-Z0-9_.\-/:]+$`)
 
 	cmdTimeout = time.Minute // one minute by default
 
@@ -193,10 +192,6 @@ func ValidVolumeName(name string) bool {
 	return validVolumeName.MatchString(name)
 }
 
-func ValidLabelValue(name string) bool {
-	return validLabelValue.MatchString(name)
-}
-
 func Volume2ISCSIName(name string) string {
 	return strings.Replace(name, "_", ":", -1)
 }
@@ -217,18 +212,19 @@ func GetFileActualSize(file string) int64 {
 func ParseLabels(labels []string) (map[string]string, error) {
 	result := map[string]string{}
 	for _, label := range labels {
-		kv := strings.Split(label, "=")
+		kv := strings.SplitN(label, "=", 2)
 		if len(kv) != 2 {
-			return nil, fmt.Errorf("Invalid label not in <key>=<value> format %v", label)
+			return nil, fmt.Errorf("invalid label not in <key>=<value> format %v", label)
 		}
 		key := kv[0]
 		value := kv[1]
-		//Well, we should rename that ValidVolumeName
-		if !ValidVolumeName(key) {
-			return nil, fmt.Errorf("Invalid key %v for label %v", key, label)
+		if errList := IsQualifiedName(key); len(errList) > 0 {
+			return nil, fmt.Errorf("invalid key %v for label: %v", key, errList[0])
 		}
-		if !ValidLabelValue(value) {
-			return nil, fmt.Errorf("Invalid value %v for label %v", value, label)
+		// We don't need to validate the Label value since we're allowing for any form of data to be stored, similar
+		// to Kubernetes Annotations. Of course, we should make sure it isn't empty.
+		if value == "" {
+			return nil, fmt.Errorf("invalid empty value for label with key %v", key)
 		}
 		result[key] = value
 	}
