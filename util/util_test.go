@@ -38,8 +38,8 @@ func (s *TestSuite) TestParseLabels(c *C) {
 	c.Assert(len(lm), Equals, 0)
 
 	lm, err = ParseLabels(input3)
-	c.Assert(err, NotNil)
-	c.Assert(len(lm), Equals, 0)
+	c.Assert(err, IsNil)
+	c.Assert(len(lm), Equals, 2)
 
 	lm, err = ParseLabels(input4)
 	c.Assert(err, IsNil)
