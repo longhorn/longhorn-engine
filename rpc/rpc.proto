@@ -115,11 +115,3 @@ message LogRequest {
 message LogResponse{
 	string line = 2;
 }
-
-service InstanceManagerService {
-	rpc EnvironmentVariableSet(EnvironmentVariableSetRequset) returns (google.protobuf.Empty) {}
-}
-
-message EnvironmentVariableSetRequset {
-	map<string, string> variables = 1;
-}

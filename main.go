@@ -17,7 +17,6 @@ import (
 
 	"github.com/longhorn/longhorn-instance-manager/engine"
 	"github.com/longhorn/longhorn-instance-manager/health"
-	"github.com/longhorn/longhorn-instance-manager/instance"
 	"github.com/longhorn/longhorn-instance-manager/process"
 	"github.com/longhorn/longhorn-instance-manager/rpc"
 	"github.com/longhorn/longhorn-instance-manager/types"
@@ -119,8 +118,7 @@ func start(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	im := instance.NewInstanceManagerServer()
-	hc := health.NewHealthCheckServer(em, pm, im)
+	hc := health.NewHealthCheckServer(em, pm)
 
 	listenAt, err := net.Listen("tcp", listen)
 	if err != nil {
@@ -130,7 +128,6 @@ func start(c *cli.Context) error {
 	rpcService := grpc.NewServer()
 	rpc.RegisterProcessManagerServiceServer(rpcService, pm)
 	rpc.RegisterEngineManagerServiceServer(rpcService, em)
-	rpc.RegisterInstanceManagerServiceServer(rpcService, im)
 	healthpb.RegisterHealthServer(rpcService, hc)
 	reflection.Register(rpcService)
 
