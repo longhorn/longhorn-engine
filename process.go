@@ -6,8 +6,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 
-	"github.com/longhorn/longhorn-engine-launcher/client"
-	"github.com/longhorn/longhorn-engine-launcher/util"
+	"github.com/longhorn/longhorn-instance-manager/client"
+	"github.com/longhorn/longhorn-instance-manager/util"
 )
 
 func ProcessCmd() cli.Command {

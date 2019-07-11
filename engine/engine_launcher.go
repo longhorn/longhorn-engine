@@ -15,9 +15,9 @@ import (
 	"github.com/longhorn/go-iscsi-helper/iscsiblk"
 	eutil "github.com/longhorn/longhorn-engine/util"
 
-	"github.com/longhorn/longhorn-engine-launcher/rpc"
-	"github.com/longhorn/longhorn-engine-launcher/types"
-	"github.com/longhorn/longhorn-engine-launcher/util"
+	"github.com/longhorn/longhorn-instance-manager/rpc"
+	"github.com/longhorn/longhorn-instance-manager/types"
+	"github.com/longhorn/longhorn-instance-manager/util"
 )
 
 const (

@@ -10,8 +10,8 @@ import (
 
 	"github.com/longhorn/longhorn-engine/controller/client"
 
-	"github.com/longhorn/longhorn-engine-launcher/rpc"
-	"github.com/longhorn/longhorn-engine-launcher/util"
+	"github.com/longhorn/longhorn-instance-manager/rpc"
+	"github.com/longhorn/longhorn-instance-manager/util"
 )
 
 type Engine struct {

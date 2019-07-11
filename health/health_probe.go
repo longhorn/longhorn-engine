@@ -8,9 +8,9 @@ import (
 	"golang.org/x/net/context"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
-	"github.com/longhorn/longhorn-engine-launcher/engine"
-	"github.com/longhorn/longhorn-engine-launcher/instance"
-	"github.com/longhorn/longhorn-engine-launcher/process"
+	"github.com/longhorn/longhorn-instance-manager/engine"
+	"github.com/longhorn/longhorn-instance-manager/instance"
+	"github.com/longhorn/longhorn-instance-manager/process"
 )
 
 type CheckServer struct {

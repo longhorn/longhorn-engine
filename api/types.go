@@ -1,6 +1,6 @@
 package api
 
-import "github.com/longhorn/longhorn-engine-launcher/rpc"
+import "github.com/longhorn/longhorn-instance-manager/rpc"
 
 type Process struct {
 	Name      string   `json:"name"`

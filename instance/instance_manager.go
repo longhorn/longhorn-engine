@@ -6,8 +6,8 @@ import (
 	"github.com/golang/protobuf/ptypes/empty"
 	"golang.org/x/net/context"
 
-	"github.com/longhorn/longhorn-engine-launcher/rpc"
-	"github.com/longhorn/longhorn-engine-launcher/util"
+	"github.com/longhorn/longhorn-instance-manager/rpc"
+	"github.com/longhorn/longhorn-instance-manager/util"
 )
 
 type Manager struct{}

@@ -12,9 +12,9 @@ import (
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 
-	"github.com/longhorn/longhorn-engine-launcher/rpc"
-	"github.com/longhorn/longhorn-engine-launcher/types"
-	"github.com/longhorn/longhorn-engine-launcher/util"
+	"github.com/longhorn/longhorn-instance-manager/rpc"
+	"github.com/longhorn/longhorn-instance-manager/types"
+	"github.com/longhorn/longhorn-instance-manager/util"
 )
 
 type Manager struct {

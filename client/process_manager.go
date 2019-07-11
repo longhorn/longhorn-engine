@@ -6,9 +6,9 @@ import (
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
-	"github.com/longhorn/longhorn-engine-launcher/api"
-	"github.com/longhorn/longhorn-engine-launcher/rpc"
-	"github.com/longhorn/longhorn-engine-launcher/types"
+	"github.com/longhorn/longhorn-instance-manager/api"
+	"github.com/longhorn/longhorn-instance-manager/rpc"
+	"github.com/longhorn/longhorn-instance-manager/types"
 )
 
 type ProcessManagerClient struct {
