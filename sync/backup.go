@@ -21,6 +21,12 @@ type BackupStatusInfo struct {
 	SnapshotName string `json:"snapshotName"`
 }
 
+type RestoreStatus struct {
+	Replica      string `json:"replica"`
+	IsRestoring  bool   `json:"isRestoring"`
+	LastRestored string `json:"lastRestored"`
+}
+
 func (t *Task) CreateBackup(snapshot, dest string, labels []string, credential map[string]string) (string, error) {
 	var replica *types.ControllerReplicaInfo
 
@@ -291,4 +297,35 @@ func (t *Task) restoreBackupIncrementally(replicaInController *types.ControllerR
 	}
 
 	return nil
+}
+
+func (t *Task) RestoreStatus() ([]*RestoreStatus, error) {
+	var rsList []*RestoreStatus
+
+	replicas, err := t.client.ReplicaList()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, replica := range replicas {
+
+		repClient, err := replicaClient.NewReplicaClient(replica.Address)
+		if err != nil {
+			return nil, err
+		}
+
+		rs, err := repClient.RestoreStatus()
+		if err != nil {
+			logrus.Errorf("Failed restoring backup %s on %s", replica.Address)
+			return nil, err
+		}
+		rsList = append(rsList, &RestoreStatus{
+			Replica:      replica.Address,
+			IsRestoring:  rs.IsRestoring,
+			LastRestored: rs.LastRestored,
+		})
+
+	}
+
+	return rsList, nil
 }

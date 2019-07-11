@@ -90,6 +90,12 @@ func (s *SyncAgentServer) IsRestoring() bool {
 	return s.isRestoring
 }
 
+func (s *SyncAgentServer) GetLastRestored() string {
+	s.Lock()
+	defer s.Unlock()
+	return s.lastRestored
+}
+
 func (s *SyncAgentServer) PrepareRestore(lastRestored string) error {
 	s.Lock()
 	defer s.Unlock()
@@ -388,6 +394,13 @@ func (s *SyncAgentServer) BackupRestoreIncrementally(ctx context.Context, req *B
 	}
 	logrus.Infof("Done running incremental restore %v to %v", req.Backup, req.DeltaFileName)
 	return &Empty{}, nil
+}
+
+func (s *SyncAgentServer) RestoreStatus(ctx context.Context, req *Empty) (*RestoreStatusReply, error) {
+	return &RestoreStatusReply{
+		IsRestoring:  s.IsRestoring(),
+		LastRestored: s.GetLastRestored(),
+	}, nil
 }
 
 // The APIs BackupAdd, BackupGet, Refresh, BackupDelete implement the CRUD interface for the backup object
