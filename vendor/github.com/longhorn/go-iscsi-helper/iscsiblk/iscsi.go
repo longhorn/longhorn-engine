@@ -1,4 +1,4 @@
-package iscsi
+package iscsiblk
 
 import (
 	"fmt"
@@ -6,36 +6,38 @@ import (
 	"strings"
 	"time"
 
-	"github.com/longhorn/go-iscsi-helper/iscsi"
-	iutil "github.com/longhorn/go-iscsi-helper/util"
 	"github.com/sirupsen/logrus"
 	"github.com/yasker/nsfilelock"
 
-	"github.com/longhorn/longhorn-engine/util"
+	"github.com/longhorn/go-iscsi-helper/iscsi"
+	"github.com/longhorn/go-iscsi-helper/util"
 )
 
 var (
 	LockFile    = "/var/run/longhorn-iscsi.lock"
 	LockTimeout = 120 * time.Second
 
-	TargetID    = 1
 	TargetLunID = 1
 
 	RetryCounts   = 5
 	RetryInterval = 3
+
+	HostProc = "/host/proc"
 )
 
 type ScsiDevice struct {
 	Target      string
+	TargetID    int
 	Device      string
 	BackingFile string
 	BSType      string
 	BSOpts      string
 }
 
-func NewScsiDevice(name, backingFile, bsType, bsOpts string) (*ScsiDevice, error) {
+func NewScsiDevice(name, backingFile, bsType, bsOpts string, tID int) (*ScsiDevice, error) {
 	dev := &ScsiDevice{
 		Target:      GetTargetName(name),
+		TargetID:    tID,
 		BackingFile: backingFile,
 		BSType:      bsType,
 		BSOpts:      bsOpts,
@@ -43,8 +45,12 @@ func NewScsiDevice(name, backingFile, bsType, bsOpts string) (*ScsiDevice, error
 	return dev, nil
 }
 
+func Volume2ISCSIName(name string) string {
+	return strings.Replace(name, "_", ":", -1)
+}
+
 func GetTargetName(name string) string {
-	return "iqn.2014-09.com.rancher:" + util.Volume2ISCSIName(name)
+	return "iqn.2014-09.com.rancher:" + Volume2ISCSIName(name)
 }
 
 func SetupTarget(dev *ScsiDevice) error {
@@ -52,26 +58,26 @@ func SetupTarget(dev *ScsiDevice) error {
 	if err := iscsi.StartDaemon(false); err != nil {
 		return err
 	}
-	if err := iscsi.CreateTarget(TargetID, dev.Target); err != nil {
+	if err := iscsi.CreateTarget(dev.TargetID, dev.Target); err != nil {
 		return err
 	}
-	if err := iscsi.AddLun(TargetID, TargetLunID, dev.BackingFile, dev.BSType, dev.BSOpts); err != nil {
+	if err := iscsi.AddLun(dev.TargetID, TargetLunID, dev.BackingFile, dev.BSType, dev.BSOpts); err != nil {
 		return err
 	}
-	if err := iscsi.BindInitiator(TargetID, "ALL"); err != nil {
+	if err := iscsi.BindInitiator(dev.TargetID, "ALL"); err != nil {
 		return err
 	}
 	return nil
 }
 
 func StartScsi(dev *ScsiDevice) error {
-	lock := nsfilelock.NewLockWithTimeout(util.GetInitiatorNS(), LockFile, LockTimeout)
+	lock := nsfilelock.NewLockWithTimeout(util.GetHostNamespacePath(HostProc), LockFile, LockTimeout)
 	if err := lock.Lock(); err != nil {
 		return fmt.Errorf("Fail to lock: %v", err)
 	}
 	defer lock.Unlock()
 
-	ne, err := iutil.NewNamespaceExecutor(util.GetInitiatorNS())
+	ne, err := util.NewNamespaceExecutor(util.GetHostNamespacePath(HostProc))
 	if err != nil {
 		return err
 	}
@@ -80,7 +86,7 @@ func StartScsi(dev *ScsiDevice) error {
 		return err
 	}
 
-	localIP, err := iutil.GetIPToHost()
+	localIP, err := util.GetIPToHost()
 	if err != nil {
 		return err
 	}
@@ -130,8 +136,8 @@ func StartScsi(dev *ScsiDevice) error {
 	return nil
 }
 
-func StopScsi(volumeName string) error {
-	lock := nsfilelock.NewLockWithTimeout(util.GetInitiatorNS(), LockFile, LockTimeout)
+func StopScsi(volumeName string, targetID int) error {
+	lock := nsfilelock.NewLockWithTimeout(util.GetHostNamespacePath(HostProc), LockFile, LockTimeout)
 	if err := lock.Lock(); err != nil {
 		return fmt.Errorf("Fail to lock: %v", err)
 	}
@@ -141,18 +147,18 @@ func StopScsi(volumeName string) error {
 	if err := LogoutTarget(target); err != nil {
 		return fmt.Errorf("Fail to logout target: %v", err)
 	}
-	if err := DeleteTarget(target); err != nil {
+	if err := DeleteTarget(target, targetID); err != nil {
 		return fmt.Errorf("Fail to delete target: %v", err)
 	}
 	return nil
 }
 
 func LogoutTarget(target string) error {
-	ne, err := iutil.NewNamespaceExecutor(util.GetInitiatorNS())
+	ne, err := util.NewNamespaceExecutor(util.GetHostNamespacePath(HostProc))
 	if err != nil {
 		return err
 	}
-	ip, err := iutil.GetIPToHost()
+	ip, err := util.GetIPToHost()
 	if err != nil {
 		return err
 	}
@@ -226,22 +232,19 @@ func LogoutTarget(target string) error {
 	return nil
 }
 
-func DeleteTarget(target string) error {
+func DeleteTarget(target string, targetID int) error {
 	if tid, err := iscsi.GetTargetTid(target); err == nil && tid != -1 {
-		if tid != TargetID {
+		if tid != targetID {
 			logrus.Fatalf("BUG: Invalid TID %v found for %v", tid, target)
 		}
 		logrus.Infof("Shutdown SCSI target %v", target)
-		if err := iscsi.UnbindInitiator(TargetID, "ALL"); err != nil {
+		if err := iscsi.UnbindInitiator(targetID, "ALL"); err != nil {
 			return err
 		}
-		if err := iscsi.DeleteLun(TargetID, TargetLunID); err != nil {
+		if err := iscsi.DeleteLun(targetID, TargetLunID); err != nil {
 			return err
 		}
-		if err := iscsi.DeleteTarget(TargetID); err != nil {
-			return err
-		}
-		if err := iscsi.ShutdownTgtd(); err != nil {
+		if err := iscsi.DeleteTarget(targetID); err != nil {
 			return err
 		}
 	}

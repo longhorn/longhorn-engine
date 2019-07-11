@@ -1,59 +1,44 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
+	"net"
 	"os"
 	"os/signal"
 	"syscall"
 	"time"
 
-	"github.com/docker/go-units"
+	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/grpc/reflection"
 
+	"github.com/longhorn/longhorn-engine-launcher/engine"
+	"github.com/longhorn/longhorn-engine-launcher/health"
+	"github.com/longhorn/longhorn-engine-launcher/instance"
+	"github.com/longhorn/longhorn-engine-launcher/process"
 	"github.com/longhorn/longhorn-engine-launcher/rpc"
-	"github.com/longhorn/longhorn-engine/util"
-)
-
-const (
-	UpgradeTimeout  = 120 * time.Second
-	InfoTimeout     = 10 * time.Second
-	FrontendTimeout = 60 * time.Second
+	"github.com/longhorn/longhorn-engine-launcher/types"
+	"github.com/longhorn/longhorn-engine-launcher/util"
 )
 
 func StartCmd() cli.Command {
 	return cli.Command{
-		Name: "start",
+		Name: "daemon",
 		Flags: []cli.Flag{
 			cli.StringFlag{
-				Name:  "longhorn-binary",
-				Value: "/usr/local/bin/longhorn",
-			},
-			cli.StringFlag{
-				Name:  "launcher-listen",
-				Value: "localhost:9510",
-			},
-			cli.StringFlag{
-				Name: "size",
-			},
-			cli.StringFlag{
 				Name:  "listen",
-				Value: "localhost:9501",
+				Value: "localhost:8500",
 			},
 			cli.StringFlag{
-				Name:  "frontend",
-				Usage: "Supports tgt-blockdev or tgt-iscsi, or leave it empty to disable frontend",
+				Name:  "logs-dir",
+				Value: "./logs",
 			},
-			cli.StringSliceFlag{
-				Name:  "enable-backend",
-				Value: (*cli.StringSlice)(&[]string{"tcp"}),
-			},
-			cli.StringSliceFlag{
-				Name: "replica",
+			cli.StringFlag{
+				Name:  "port-range",
+				Value: "10000-30000",
 			},
 		},
 		Action: func(c *cli.Context) {
@@ -64,292 +49,124 @@ func StartCmd() cli.Command {
 	}
 }
 
-func UpgradeCmd() cli.Command {
-	return cli.Command{
-		Name: "upgrade",
-		Flags: []cli.Flag{
-			cli.StringFlag{
-				Name: "longhorn-binary",
-			},
-			cli.StringSliceFlag{
-				Name: "replica",
-			},
-		},
-		Action: func(c *cli.Context) {
-			if err := upgrade(c); err != nil {
-				logrus.Fatalf("Error running upgrade command: %v.", err)
-			}
-		},
+func cleanup(pm *process.Manager, em *engine.Manager) {
+	logrus.Infof("Try to gracefully shut down Instance Manager")
+	pmResp, err := pm.ProcessList(nil, &rpc.ProcessListRequest{})
+	if err != nil {
+		logrus.Errorf("Failed to list processes before shutdown")
+		return
 	}
-}
+	for _, p := range pmResp.Processes {
+		pm.ProcessDelete(nil, &rpc.ProcessDeleteRequest{
+			Name: p.Spec.Name,
+		})
+	}
 
-func InfoCmd() cli.Command {
-	return cli.Command{
-		Name: "info",
-		Action: func(c *cli.Context) {
-			if err := info(c); err != nil {
-				logrus.Fatalf("Error running endpoint command: %v.", err)
-			}
-		},
+	for i := 0; i < types.WaitCount; i++ {
+		pmResp, err := pm.ProcessList(nil, &rpc.ProcessListRequest{})
+		if err != nil {
+			logrus.Errorf("Failed to list instance processes when shutting down")
+			return
+		}
+		if len(pmResp.Processes) == 0 {
+			logrus.Infof("Instance Manager has shutdown all processes.")
+			break
+		}
+		time.Sleep(types.WaitInterval)
 	}
-}
 
-func FrontendStartCmd() cli.Command {
-	return cli.Command{
-		Name: "frontend-start",
-		Flags: []cli.Flag{
-			cli.StringFlag{
-				Name: "id",
-			},
-		},
-		Action: func(c *cli.Context) {
-			if err := startFrontend(c); err != nil {
-				logrus.Fatalf("Error running frontend-start command: %v.", err)
-			}
-		},
+	emResp, err := em.EngineList(nil, &empty.Empty{})
+	if err != nil {
+		logrus.Errorf("Failed to list engine processes before shutdown")
+		return
 	}
-}
+	for _, e := range emResp.Engines {
+		em.EngineDelete(nil, &rpc.EngineRequest{
+			Name: e.Spec.Name,
+		})
+	}
+	for i := 0; i < types.WaitCount; i++ {
+		emResp, err := em.EngineList(nil, &empty.Empty{})
+		if err != nil {
+			logrus.Errorf("Failed to list engine processes when shutting down")
+			return
+		}
+		if len(emResp.Engines) == 0 {
+			logrus.Infof("Instance Manager has shutdown all processes and cleaned up all engine processes. Graceful shutdown succeeded")
+			return
+		}
+		time.Sleep(types.WaitInterval)
+	}
 
-func FrontendShutdownCmd() cli.Command {
-	return cli.Command{
-		Name: "frontend-shutdown",
-		Flags: []cli.Flag{
-			cli.StringFlag{
-				Name: "id",
-			},
-		},
-		Action: func(c *cli.Context) {
-			if err := shutdownFrontend(c); err != nil {
-				logrus.Fatalf("Error running frontend-start command: %v.", err)
-			}
-		},
-	}
-}
-
-func EngineFrontendStartCmd() cli.Command {
-	return cli.Command{
-		Name:  "engine-frontend-start",
-		Usage: "Set frontend to tgt-blockdev or tgt-iscsi and start engine frontend with it. Only valid if no frontend has been set",
-		Action: func(c *cli.Context) {
-			if err := startEngineFrontend(c); err != nil {
-				logrus.Fatalf("Error running engine-frontend-start command: %v.", err)
-			}
-		},
-	}
-}
-
-func EngineFrontendShutdownCmd() cli.Command {
-	return cli.Command{
-		Name:  "engine-frontend-shutdown",
-		Usage: "Shutdown the engine frontend. Only valid if the frontend has been set.",
-		Action: func(c *cli.Context) {
-			if err := shutdownEngineFrontend(c); err != nil {
-				logrus.Fatalf("Error running engine-frontend-shutdown command: %v.", err)
-			}
-		},
-	}
+	logrus.Errorf("Failed to cleanup all processes for Instance Manager graceful shutdown")
 }
 
 func start(c *cli.Context) error {
-	if c.NArg() == 0 {
-		return errors.New("volume name is required")
-	}
-	name := c.Args()[0]
-
-	launcherListen := c.String("launcher-listen")
-	longhornBinary := c.String("longhorn-binary")
-
 	listen := c.String("listen")
-	backends := c.StringSlice("enable-backend")
-	replicas := c.StringSlice("replica")
-	frontend := c.String("frontend")
+	logsDir := c.String("logs-dir")
+	portRange := c.String("port-range")
 
-	sizeString := c.String("size")
-	if sizeString == "" {
-		return fmt.Errorf("Invalid empty size")
-	}
-	size, err := units.RAMInBytes(sizeString)
-	if err != nil {
+	if err := util.SetUpLogger(logsDir); err != nil {
 		return err
 	}
 
-	l, err := NewLauncher(launcherListen, longhornBinary, frontend, name, size)
+	shutdownCh := make(chan error)
+	pm, err := process.NewManager(portRange, logsDir, shutdownCh)
 	if err != nil {
 		return err
 	}
-	id := util.UUID()
-	controller := NewController(id, longhornBinary, name, listen, l.frontend, backends, replicas)
-	if err := l.StartController(controller); err != nil {
+	em, err := engine.NewEngineManager(pm, listen)
+	if err != nil {
 		return err
 	}
-	if err := l.StartRPCServer(); err != nil {
-		return err
+	im := instance.NewInstanceManagerServer()
+	hc := health.NewHealthCheckServer(em, pm, im)
+
+	listenAt, err := net.Listen("tcp", listen)
+	if err != nil {
+		return errors.Wrap(err, "Failed to listen")
 	}
+
+	rpcService := grpc.NewServer()
+	rpc.RegisterProcessManagerServiceServer(rpcService, pm)
+	rpc.RegisterEngineManagerServiceServer(rpcService, em)
+	rpc.RegisterInstanceManagerServiceServer(rpcService, im)
+	healthpb.RegisterHealthServer(rpcService, hc)
+	reflection.Register(rpcService)
+
+	go func() {
+		if err := rpcService.Serve(listenAt); err != nil {
+			logrus.Errorf("Stopping due to %v:", err)
+		}
+		// graceful shutdown before exit
+		cleanup(pm, em)
+		close(shutdownCh)
+	}()
+	logrus.Infof("Instance Manager listening to %v", listen)
 
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		sig := <-sigs
-		logrus.Infof("Receive %v to exit", sig)
-		l.Shutdown()
+		logrus.Infof("Instance Manager received %v to exit", sig)
+		rpcService.Stop()
 	}()
 
-	return l.WaitForShutdown()
-}
-
-func upgrade(c *cli.Context) error {
-	url := c.GlobalString("url")
-	conn, err := grpc.Dial(url, grpc.WithInsecure())
-	if err != nil {
-		return fmt.Errorf("cannot connect to %v: %v", url, err)
-	}
-	defer conn.Close()
-
-	longhornBinary := c.String("longhorn-binary")
-	replicas := c.StringSlice("replica")
-
-	if longhornBinary == "" || len(replicas) == 0 {
-		return fmt.Errorf("missing required parameters")
-	}
-
-	client := rpc.NewLonghornLauncherServiceClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), UpgradeTimeout)
-	defer cancel()
-
-	if _, err := client.UpgradeEngine(ctx, &rpc.Engine{
-		Binary:   longhornBinary,
-		Replicas: replicas,
-	}); err != nil {
-		return fmt.Errorf("failed to upgrade: %v", err)
-	}
-	return nil
-}
-
-func info(c *cli.Context) error {
-	url := c.GlobalString("url")
-	conn, err := grpc.Dial(url, grpc.WithInsecure())
-	if err != nil {
-		return fmt.Errorf("cannot connect to %v: %v", url, err)
-	}
-	defer conn.Close()
-
-	client := rpc.NewLonghornLauncherServiceClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), InfoTimeout)
-	defer cancel()
-
-	endpoint, err := client.GetInfo(ctx, &rpc.Empty{})
-	if err != nil {
-		return fmt.Errorf("failed to get endpoint: %v", err)
-	}
-
-	output, err := json.MarshalIndent(endpoint, "", "\t")
-	if err != nil {
-		return err
-	}
-
-	fmt.Println(string(output))
-	return nil
-}
-
-func startFrontend(c *cli.Context) error {
-	id := c.String("id")
-	if id == "" {
-		return fmt.Errorf("missing parameter id")
-	}
-
-	url := c.GlobalString("url")
-	conn, err := grpc.Dial(url, grpc.WithInsecure())
-	if err != nil {
-		return fmt.Errorf("cannot connect to %v: %v", url, err)
-	}
-	defer conn.Close()
-
-	client := rpc.NewLonghornLauncherServiceClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), FrontendTimeout)
-	defer cancel()
-
-	if _, err := client.StartFrontend(ctx, &rpc.Identity{
-		ID: id,
-	}); err != nil {
-		return fmt.Errorf("failed to start frontend: %v", err)
-	}
-	return nil
-}
-
-func shutdownFrontend(c *cli.Context) error {
-	id := c.String("id")
-	if id == "" {
-		return fmt.Errorf("missing parameter id")
-	}
-
-	url := c.GlobalString("url")
-	conn, err := grpc.Dial(url, grpc.WithInsecure())
-	if err != nil {
-		return fmt.Errorf("cannot connect to %v: %v", url, err)
-	}
-	defer conn.Close()
-
-	client := rpc.NewLonghornLauncherServiceClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), FrontendTimeout)
-	defer cancel()
-
-	if _, err := client.ShutdownFrontend(ctx, &rpc.Identity{
-		ID: id,
-	}); err != nil {
-		return fmt.Errorf("failed to start frontend: %v", err)
-	}
-	return nil
-}
-
-func startEngineFrontend(c *cli.Context) error {
-	if c.NArg() == 0 {
-		return fmt.Errorf("frontend is required as the first argument")
-	}
-	frontend := c.Args()[0]
-
-	url := c.GlobalString("url")
-	conn, err := grpc.Dial(url, grpc.WithInsecure())
-	if err != nil {
-		return fmt.Errorf("cannot connect to %v: %v", url, err)
-	}
-	defer conn.Close()
-
-	client := rpc.NewLonghornLauncherServiceClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), FrontendTimeout)
-	defer cancel()
-
-	if _, err := client.StartEngineFrontend(ctx, &rpc.Frontend{
-		Frontend: frontend,
-	}); err != nil {
-		return fmt.Errorf("failed to start engine frontend: %v", err)
-	}
-	return nil
-}
-
-func shutdownEngineFrontend(c *cli.Context) error {
-	url := c.GlobalString("url")
-	conn, err := grpc.Dial(url, grpc.WithInsecure())
-	if err != nil {
-		return fmt.Errorf("cannot connect to %v: %v", url, err)
-	}
-	defer conn.Close()
-
-	client := rpc.NewLonghornLauncherServiceClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), FrontendTimeout)
-	defer cancel()
-
-	if _, err := client.ShutdownEngineFrontend(ctx, &rpc.Empty{}); err != nil {
-		return fmt.Errorf("failed to shutdown engine frontend: %v", err)
-	}
-	return nil
+	return <-shutdownCh
 }
 
 func main() {
 	a := cli.NewApp()
+	a.Before = func(c *cli.Context) error {
+		if c.GlobalBool("debug") {
+			logrus.SetLevel(logrus.DebugLevel)
+		}
+		return nil
+	}
 	a.Flags = []cli.Flag{
 		cli.StringFlag{
 			Name:  "url",
-			Value: "localhost:9510",
+			Value: "localhost:8500",
 		},
 		cli.BoolFlag{
 			Name: "debug",
@@ -357,12 +174,8 @@ func main() {
 	}
 	a.Commands = []cli.Command{
 		StartCmd(),
-		UpgradeCmd(),
-		InfoCmd(),
-		FrontendStartCmd(),
-		FrontendShutdownCmd(),
-		EngineFrontendStartCmd(),
-		EngineFrontendShutdownCmd(),
+		EngineCmd(),
+		ProcessCmd(),
 	}
 	if err := a.Run(os.Args); err != nil {
 		logrus.Fatal("Error when executing command: ", err)
