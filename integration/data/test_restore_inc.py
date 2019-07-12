@@ -96,6 +96,7 @@ def restore_inc_test(grpc_controller,  # NOQA
     backup4 = create_backup(backup_target, snap4)
     backup4_name = cmd.backup_inspect(backup4)['Name']
 
+    cmd.sync_agent_server_reset()
     common.cleanup_replica(grpc_replica1)
     common.cleanup_replica(grpc_replica2)
     common.cleanup_controller(grpc_controller)
@@ -241,6 +242,7 @@ def cleanup_no_frontend_volume(grpc_c, grpc_r1, grpc_r2):
     v = grpc_c.volume_get()
     assert v.frontendState == "up"
 
+    cmd.sync_agent_server_reset(CONTROLLER_NO_FRONTEND)
     common.cleanup_replica(grpc_r1)
     common.cleanup_replica(grpc_r2)
     common.cleanup_controller(grpc_c)

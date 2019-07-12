@@ -121,3 +121,8 @@ def restore_inc(backup_url, last_restored, url=CONTROLLER):
     cmd = [_bin(), '--url', url, '--debug', 'backup', 'restore',
            backup_url, '--incrementally', '--last-restored', last_restored]
     return subprocess.check_output(cmd)
+
+
+def sync_agent_server_reset(url=CONTROLLER):
+    cmd = [_bin(), '--url', url, '--debug', 'sync-agent-server-reset']
+    return subprocess.check_output(cmd)
