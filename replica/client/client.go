@@ -537,7 +537,7 @@ func (c *ReplicaClient) Reset() error {
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceLongTimeout)
 	defer cancel()
 
-	if _, err := syncAgentServiceClient.Reset(ctx, &syncagentrpc.Empty{}); err != nil {
+	if _, err := syncAgentServiceClient.Reset(ctx, &empty.Empty{}); err != nil {
 		return fmt.Errorf("failed to cleanup restore info in Sync Agent Server: %v", err)
 	}
 
@@ -555,7 +555,7 @@ func (c *ReplicaClient) RestoreStatus() (*syncagentrpc.RestoreStatusReply, error
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceLongTimeout)
 	defer cancel()
 
-	reply, err := syncAgentServiceClient.RestoreStatus(ctx, &syncagentrpc.Empty{})
+	reply, err := syncAgentServiceClient.RestoreStatus(ctx, &empty.Empty{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get restore status: %v", err)
 	}

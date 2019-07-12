@@ -1,18 +1,20 @@
 syntax="proto3";
 
+import "google/protobuf/empty.proto";
+
 service SyncAgentService {
-    rpc FileRemove(FileRemoveRequest) returns (Empty) {}
-    rpc FileRename(FileRenameRequest) returns (Empty) {}
-    rpc FileCoalesce(FileCoalesceRequest) returns (Empty) {}
-    rpc FileSend(FileSendRequest) returns (Empty) {}
+    rpc FileRemove(FileRemoveRequest) returns (google.protobuf.Empty) {}
+    rpc FileRename(FileRenameRequest) returns (google.protobuf.Empty) {}
+    rpc FileCoalesce(FileCoalesceRequest) returns (google.protobuf.Empty) {}
+    rpc FileSend(FileSendRequest) returns (google.protobuf.Empty) {}
     rpc ReceiverLaunch(ReceiverLaunchRequest) returns (ReceiverLaunchReply) {}
     rpc BackupCreate(BackupCreateRequest) returns (BackupCreateReply) {}
-    rpc BackupRemove(BackupRemoveRequest) returns (Empty) {}
-    rpc BackupRestore(BackupRestoreRequest) returns (Empty) {}
-    rpc BackupRestoreIncrementally(BackupRestoreIncrementallyRequest) returns (Empty) {}
+    rpc BackupRemove(BackupRemoveRequest) returns (google.protobuf.Empty) {}
+    rpc BackupRestore(BackupRestoreRequest) returns (google.protobuf.Empty) {}
+    rpc BackupRestoreIncrementally(BackupRestoreIncrementallyRequest) returns (google.protobuf.Empty) {}
     rpc BackupGetStatus(BackupProgressRequest) returns (BackupProgressReply) {}
-    rpc Reset(Empty) returns (Empty) {}
-    rpc RestoreStatus(Empty) returns (RestoreStatusReply) {}
+    rpc Reset(google.protobuf.Empty) returns (google.protobuf.Empty) {}
+    rpc RestoreStatus(google.protobuf.Empty) returns (RestoreStatusReply) {}
 }
 
 message FileRemoveRequest {
@@ -90,7 +92,4 @@ message RestoreStatusReply {
     int32 progress = 3;
     string error = 4;
     string destFileName = 5;
-}
-
-message Empty {
 }

@@ -136,7 +136,7 @@ func (s *SyncAgentServer) FinishRestore(currentRestored string) error {
 	return nil
 }
 
-func (s *SyncAgentServer) Reset(ctx context.Context, req *Empty) (*Empty, error) {
+func (s *SyncAgentServer) Reset(ctx context.Context, req *empty.Empty) (*empty.Empty, error) {
 	s.Lock()
 	defer s.Unlock()
 	if s.isRestoring {
@@ -148,10 +148,10 @@ func (s *SyncAgentServer) Reset(ctx context.Context, req *Empty) (*Empty, error)
 	s.BackupList = &BackupList{
 		RWMutex: sync.RWMutex{},
 	}
-	return &Empty{}, nil
+	return &empty.Empty{}, nil
 }
 
-func (*SyncAgentServer) FileRemove(ctx context.Context, req *FileRemoveRequest) (*Empty, error) {
+func (*SyncAgentServer) FileRemove(ctx context.Context, req *FileRemoveRequest) (*empty.Empty, error) {
 	logrus.Infof("Running rm %v", req.FileName)
 
 	if err := os.Remove(req.FileName); err != nil {
@@ -160,10 +160,10 @@ func (*SyncAgentServer) FileRemove(ctx context.Context, req *FileRemoveRequest) 
 	}
 
 	logrus.Infof("Done running %s %v", "rm", req.FileName)
-	return &Empty{}, nil
+	return &empty.Empty{}, nil
 }
 
-func (*SyncAgentServer) FileRename(ctx context.Context, req *FileRenameRequest) (*Empty, error) {
+func (*SyncAgentServer) FileRename(ctx context.Context, req *FileRenameRequest) (*empty.Empty, error) {
 	logrus.Infof("Running rename file from %v to %v", req.OldFileName, req.NewFileName)
 
 	if err := os.Rename(req.OldFileName, req.NewFileName); err != nil {
@@ -172,10 +172,10 @@ func (*SyncAgentServer) FileRename(ctx context.Context, req *FileRenameRequest) 
 	}
 
 	logrus.Infof("Done running %s from %v to %v", "rename", req.OldFileName, req.NewFileName)
-	return &Empty{}, nil
+	return &empty.Empty{}, nil
 }
 
-func (*SyncAgentServer) FileCoalesce(ctx context.Context, req *FileCoalesceRequest) (*Empty, error) {
+func (*SyncAgentServer) FileCoalesce(ctx context.Context, req *FileCoalesceRequest) (*empty.Empty, error) {
 	cmd := reexec.Command("sfold", req.FromFileName, req.ToFileName)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Pdeathsig: syscall.SIGKILL,
@@ -192,10 +192,10 @@ func (*SyncAgentServer) FileCoalesce(ctx context.Context, req *FileCoalesceReque
 		return nil, err
 	}
 
-	return &Empty{}, nil
+	return &empty.Empty{}, nil
 }
 
-func (s *SyncAgentServer) FileSend(ctx context.Context, req *FileSendRequest) (*Empty, error) {
+func (s *SyncAgentServer) FileSend(ctx context.Context, req *FileSendRequest) (*empty.Empty, error) {
 	args := []string{"ssync"}
 	if req.Host != "" {
 		args = append(args, "-host", req.Host)
@@ -225,7 +225,7 @@ func (s *SyncAgentServer) FileSend(ctx context.Context, req *FileSendRequest) (*
 	}
 
 	logrus.Infof("Done running %s %v", "ssync", args)
-	return &Empty{}, nil
+	return &empty.Empty{}, nil
 }
 
 func (s *SyncAgentServer) ReceiverLaunch(ctx context.Context, req *ReceiverLaunchRequest) (*ReceiverLaunchReply, error) {
@@ -332,7 +332,7 @@ func (s *SyncAgentServer) BackupGetStatus(ctx context.Context, req *BackupProgre
 	return reply, nil
 }
 
-func (*SyncAgentServer) BackupRemove(ctx context.Context, req *BackupRemoveRequest) (*Empty, error) {
+func (*SyncAgentServer) BackupRemove(ctx context.Context, req *BackupRemoveRequest) (*empty.Empty, error) {
 	cmd := reexec.Command("sbackup", "delete", req.Backup)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Pdeathsig: syscall.SIGKILL,
@@ -350,7 +350,7 @@ func (*SyncAgentServer) BackupRemove(ctx context.Context, req *BackupRemoveReque
 	}
 
 	logrus.Infof("Done running %s %v", "sbackup", cmd.Args)
-	return &Empty{}, nil
+	return &empty.Empty{}, nil
 }
 
 func (s *SyncAgentServer) waitForRestoreComplete() error {
@@ -391,7 +391,7 @@ func (s *SyncAgentServer) waitForRestoreComplete() error {
 	return nil
 }
 
-func (s *SyncAgentServer) BackupRestore(ctx context.Context, req *BackupRestoreRequest) (e *Empty, err error) {
+func (s *SyncAgentServer) BackupRestore(ctx context.Context, req *BackupRestoreRequest) (e *empty.Empty, err error) {
 	backupType, err := util.CheckBackupType(req.Backup)
 	if err != nil {
 		return nil, err
@@ -430,7 +430,7 @@ func (s *SyncAgentServer) BackupRestore(ctx context.Context, req *BackupRestoreR
 
 	go s.completeBackupRestore()
 
-	return &Empty{}, nil
+	return &empty.Empty{}, nil
 }
 
 func (s *SyncAgentServer) completeBackupRestore() (err error) {
@@ -587,7 +587,7 @@ func (s *SyncAgentServer) replicaRevert(name, created string) error {
 }
 
 func (s *SyncAgentServer) BackupRestoreIncrementally(ctx context.Context,
-	req *BackupRestoreIncrementallyRequest) (e *Empty, err error) {
+	req *BackupRestoreIncrementallyRequest) (e *empty.Empty, err error) {
 	backupType, err := util.CheckBackupType(req.Backup)
 	if err != nil {
 		return nil, err
@@ -631,7 +631,7 @@ func (s *SyncAgentServer) BackupRestoreIncrementally(ctx context.Context,
 
 	go s.completeIncrementalBackupRestore()
 
-	return &Empty{}, nil
+	return &empty.Empty{}, nil
 }
 
 func (s *SyncAgentServer) completeIncrementalBackupRestore() (err error) {
@@ -733,7 +733,7 @@ func (s *SyncAgentServer) reloadReplica() error {
 	return nil
 }
 
-func (s *SyncAgentServer) RestoreStatus(ctx context.Context, req *Empty) (*RestoreStatusReply, error) {
+func (s *SyncAgentServer) RestoreStatus(ctx context.Context, req *empty.Empty) (*RestoreStatusReply, error) {
 	rs := &RestoreStatusReply{
 		IsRestoring:  s.IsRestoring(),
 		LastRestored: s.GetLastRestored(),
