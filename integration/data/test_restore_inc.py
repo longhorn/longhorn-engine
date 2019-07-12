@@ -137,8 +137,8 @@ def restore_inc_test(grpc_controller,  # NOQA
 
     assert not path.exists(STANDBY_REPLICA1_PATH + delta_file1)
     assert not path.exists(STANDBY_REPLICA2_PATH + delta_file1)
-    volume_info = cmd.info(CONTROLLER_NO_FRONTEND)
-    assert volume_info['lastRestored'] == backup1_name
+    status = cmd.restore_status(CONTROLLER_NO_FRONTEND)
+    compare_last_restored_with_backup(status, backup1_name)
 
     data2 = \
         data1[0:offset2] + snap2_data + \
@@ -149,8 +149,8 @@ def restore_inc_test(grpc_controller,  # NOQA
     delta_file2 = "volume-delta-" + backup1_name + ".img"
     assert not path.exists(STANDBY_REPLICA1_PATH + delta_file2)
     assert not path.exists(STANDBY_REPLICA2_PATH + delta_file2)
-    volume_info = cmd.info(CONTROLLER_NO_FRONTEND)
-    assert volume_info['lastRestored'] == backup2_name
+    status = cmd.restore_status(CONTROLLER_NO_FRONTEND)
+    compare_last_restored_with_backup(status, backup2_name)
 
     # mock race condition
     with pytest.raises(subprocess.CalledProcessError) as e:
@@ -164,16 +164,17 @@ def restore_inc_test(grpc_controller,  # NOQA
     delta_file3 = "volume-delta-" + backup3_name + ".img"
     assert not path.exists(STANDBY_REPLICA1_PATH + delta_file3)
     assert not path.exists(STANDBY_REPLICA2_PATH + delta_file3)
-    volume_info = cmd.info(CONTROLLER_NO_FRONTEND)
-    assert volume_info['lastRestored'] == backup3_name
+    status = cmd.restore_status(CONTROLLER_NO_FRONTEND)
+    compare_last_restored_with_backup(status, backup3_name)
 
     # mock corner case: invalid last-restored backup
     rm_backups([backup3])
     # actually it is full restoration
     cmd.restore_inc(backup4, backup3_name, CONTROLLER_NO_FRONTEND)
     verify_no_frontend_data(0, snap4_data, grpc_sb_controller)
-    volume_info = cmd.info(CONTROLLER_NO_FRONTEND)
-    assert volume_info['lastRestored'] == backup4_name
+    status = cmd.restore_status(CONTROLLER_NO_FRONTEND)
+    compare_last_restored_with_backup(status, backup4_name)
+
     if "vfs" in backup_target:
         command = ["find", VFS_DIR, "-type", "d", "-name", VOLUME_NAME]
         backup_volume_path = subprocess.check_output(command).strip()
@@ -185,6 +186,11 @@ def restore_inc_test(grpc_controller,  # NOQA
                                grpc_sb_replica1, grpc_sb_replica2)
 
     rm_backups([backup0, backup1, backup2, backup4])
+
+
+def compare_last_restored_with_backup(restore_status, backup):
+    for status in restore_status.values():
+        assert status['lastRestored'] == backup
 
 
 def restore_for_no_frontend_volume(backup, grpc_c):
