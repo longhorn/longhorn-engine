@@ -12,6 +12,7 @@ service SyncAgentService {
     rpc BackupRestoreIncrementally(BackupRestoreIncrementallyRequest) returns (Empty) {}
     rpc BackupGetStatus(BackupProgressRequest) returns (BackupProgressReply) {}
     rpc Reset(Empty) returns (Empty) {}
+    rpc RestoreStatus(Empty) returns (RestoreStatusReply) {}
 }
 
 message FileRemoveRequest {
@@ -78,6 +79,11 @@ message BackupRestoreIncrementallyRequest {
     string backup = 1;
     string deltaFileName = 2;
     string lastRestoredBackupName = 3;
+}
+
+message RestoreStatusReply {
+    bool isRestoring = 1;
+    string lastRestored = 2;
 }
 
 message Empty {
