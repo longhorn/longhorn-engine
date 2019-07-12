@@ -18,6 +18,8 @@ const (
 	frontendName = "tgt"
 
 	DevPath = "/dev/longhorn/"
+
+	DefaultTargetID = 1
 )
 
 type Tgt struct {
@@ -64,7 +66,7 @@ func (t *Tgt) Shutdown() error {
 		if err := util.RemoveDevice(dev); err != nil {
 			return fmt.Errorf("Fail to remove device %s: %v", dev, err)
 		}
-		if err := iscsiblk.StopScsi(t.s.Volume); err != nil {
+		if err := iscsiblk.StopScsi(t.s.Volume, t.scsiDevice.TargetID); err != nil {
 			return fmt.Errorf("Fail to stop SCSI device: %v", err)
 		}
 	}
@@ -97,7 +99,7 @@ func (t *Tgt) getDev() string {
 func (t *Tgt) startScsiDevice() error {
 	if t.scsiDevice == nil {
 		bsOpts := fmt.Sprintf("size=%v", t.s.Size)
-		scsiDev, err := iscsiblk.NewScsiDevice(t.s.Volume, t.s.GetSocketPath(), "longhorn", bsOpts)
+		scsiDev, err := iscsiblk.NewScsiDevice(t.s.Volume, t.s.GetSocketPath(), "longhorn", bsOpts, DefaultTargetID)
 		if err != nil {
 			return err
 		}
