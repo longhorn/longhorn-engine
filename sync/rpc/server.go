@@ -406,6 +406,13 @@ func (s *SyncAgentServer) BackupRestoreIncrementally(ctx context.Context,
 	return &Empty{}, nil
 }
 
+func (s *SyncAgentServer) RestoreStatus(ctx context.Context, req *Empty) (*RestoreStatusReply, error) {
+	return &RestoreStatusReply{
+		IsRestoring:  s.IsRestoring(),
+		LastRestored: s.GetLastRestored(),
+	}, nil
+}
+
 // The APIs BackupAdd, BackupGet, Refresh, BackupDelete implement the CRUD interface for the backup object
 // The slice Backup.backupList is implemented similar to a FIFO queue.
 

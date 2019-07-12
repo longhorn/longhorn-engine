@@ -27,6 +27,7 @@ func BackupCmd() cli.Command {
 			BackupStatusCmd(),
 			BackupRestoreCmd(),
 			RestoreToFileCmd(),
+			RestoreStatusCmd(),
 			cmd.BackupRemoveCmd(),
 			cmd.BackupListCmd(),
 			cmd.BackupInspectCmd(),
@@ -179,6 +180,19 @@ func BackupRestoreCmd() cli.Command {
 	}
 }
 
+func RestoreStatusCmd() cli.Command {
+	return cli.Command{
+		Name:  "restore-status",
+		Usage: "Check if restore operation is currently going on",
+
+		Action: func(c *cli.Context) {
+			if err := restoreStatus(c); err != nil {
+				logrus.Fatalf("Error running restore backup command: %v", err)
+			}
+		},
+	}
+}
+
 func createBackup(c *cli.Context) error {
 	url := c.GlobalString("url")
 	task := sync.NewTask(url)
@@ -285,6 +299,23 @@ func doRestoreBackupIncrementally(c *cli.Context) error {
 	if err = cli.VolumeFinishRestore(backupName); err != nil {
 		return errors.Wrapf(err, "failed to finsish incrementally restoring")
 	}
+
+	return nil
+}
+
+func restoreStatus(c *cli.Context) error {
+	task := sync.NewTask(c.GlobalString("url"))
+
+	rsMap, err := task.RestoreStatus()
+	if err != nil {
+		return err
+	}
+
+	restoreStatus, err := json.Marshal(rsMap)
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(restoreStatus))
 
 	return nil
 }
