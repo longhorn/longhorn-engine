@@ -12,6 +12,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 
+	"github.com/longhorn/backupstore"
 	"github.com/longhorn/longhorn-engine/backup"
 	"github.com/longhorn/longhorn-engine/replica"
 	"github.com/longhorn/longhorn-engine/types"
@@ -29,6 +30,8 @@ type SyncAgentServer struct {
 	startPort       int
 	endPort         int
 	processesByPort map[int]string
+	isRestoring     bool
+	lastRestored    string
 
 	BackupList *BackupList
 }
@@ -78,6 +81,46 @@ func (s *SyncAgentServer) nextPort(processName string) (int, error) {
 	}
 
 	return 0, errors.New("Out of ports")
+}
+
+func (s *SyncAgentServer) IsRestoring() bool {
+	s.Lock()
+	defer s.Unlock()
+	return s.isRestoring
+}
+
+func (s *SyncAgentServer) GetLastRestored() string {
+	s.Lock()
+	defer s.Unlock()
+	return s.lastRestored
+}
+
+func (s *SyncAgentServer) PrepareRestore(lastRestored string) error {
+	s.Lock()
+	defer s.Unlock()
+	if s.isRestoring {
+		return fmt.Errorf("cannot initate backup restore as there is one already in progress")
+	}
+
+	if s.lastRestored != "" && lastRestored != "" && s.lastRestored != lastRestored {
+		return fmt.Errorf("flag lastRestored %v in command doesn't match field LastRestored %v in engine",
+			lastRestored, s.lastRestored)
+	}
+	s.isRestoring = true
+	return nil
+}
+
+func (s *SyncAgentServer) FinishRestore(currentRestored string) error {
+	s.Lock()
+	defer s.Unlock()
+	if !s.isRestoring {
+		return fmt.Errorf("BUG: volume is not restoring")
+	}
+	if currentRestored != "" {
+		s.lastRestored = currentRestored
+	}
+	s.isRestoring = false
+	return nil
 }
 
 func (*SyncAgentServer) FileRemove(ctx context.Context, req *FileRemoveRequest) (*Empty, error) {
@@ -282,7 +325,21 @@ func (*SyncAgentServer) BackupRemove(ctx context.Context, req *BackupRemoveReque
 	return &Empty{}, nil
 }
 
-func (*SyncAgentServer) BackupRestore(ctx context.Context, req *BackupRestoreRequest) (*Empty, error) {
+func (s *SyncAgentServer) BackupRestore(ctx context.Context, req *BackupRestoreRequest) (e *Empty, err error) {
+	if err := s.PrepareRestore(""); err != nil {
+		logrus.Errorf("failed to prepare backup restore: %v", err)
+		return nil, err
+	}
+
+	defer func() {
+		if err != nil {
+			// Reset the isRestoring flag to false
+			if err := s.FinishRestore(""); err != nil {
+				logrus.Errorf("failed to finish backup restore: %v", err)
+				return
+			}
+		}
+	}()
 	cmd := reexec.Command("sbackup", "restore", req.Backup, "--to", req.SnapshotFileName)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Pdeathsig: syscall.SIGKILL,
@@ -299,11 +356,34 @@ func (*SyncAgentServer) BackupRestore(ctx context.Context, req *BackupRestoreReq
 		return nil, err
 	}
 
+	backupName := ""
+	if backupName, err = backupstore.GetBackupFromBackupURL(util.UnescapeURL(req.Backup)); err != nil {
+		return nil, err
+	}
+	if err = s.FinishRestore(backupName); err != nil {
+		return nil, err
+	}
+
 	logrus.Infof("Done running %s %v", "sbackup", cmd.Args)
 	return &Empty{}, nil
 }
 
-func (*SyncAgentServer) BackupRestoreIncrementally(ctx context.Context, req *BackupRestoreIncrementallyRequest) (*Empty, error) {
+func (s *SyncAgentServer) BackupRestoreIncrementally(ctx context.Context,
+	req *BackupRestoreIncrementallyRequest) (e *Empty, err error) {
+	if err := s.PrepareRestore(req.LastRestoredBackupName); err != nil {
+		logrus.Errorf("failed to prepare incremental restore: %v", err)
+		return nil, err
+	}
+
+	defer func() {
+		if err != nil {
+			if err := s.FinishRestore(""); err != nil {
+				logrus.Errorf("failed to finish incremental restore: %v", err)
+				return
+			}
+		}
+	}()
+
 	cmd := reexec.Command("sbackup", "restore", req.Backup, "--incrementally", "--to", req.DeltaFileName, "--last-restored", req.LastRestoredBackupName)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Pdeathsig: syscall.SIGKILL,
@@ -311,6 +391,7 @@ func (*SyncAgentServer) BackupRestoreIncrementally(ctx context.Context, req *Bac
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	if err := cmd.Start(); err != nil {
+		logrus.Errorf("failed to start incremental backup restore: %v", err)
 		return nil, err
 	}
 
@@ -320,6 +401,14 @@ func (*SyncAgentServer) BackupRestoreIncrementally(ctx context.Context, req *Bac
 		return nil, err
 	}
 
+	//Finish Incremental Restore
+	if backupName, err := backupstore.GetBackupFromBackupURL(util.UnescapeURL(req.Backup)); err != nil {
+		logrus.Errorf("failed to fetch backupName from backupURL: %v", err)
+		return nil, err
+	} else if err := s.FinishRestore(backupName); err != nil {
+		logrus.Errorf("failed to finish restore(incremental): %v", err)
+		return nil, err
+	}
 	logrus.Infof("Done running %s %v", "sbackup", cmd.Args)
 	return &Empty{}, nil
 }
