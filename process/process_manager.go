@@ -409,7 +409,15 @@ func (p *Process) RPCResponse() *rpc.ProcessResponse {
 func (p *Process) Stop() {
 	// We don't neeed lock here since cmd will deal with concurrency
 	logrus.Debugf("Process Manager: send SIGINT to stop process %v", p.Name)
-	p.cmd.Process.Signal(syscall.SIGINT)
+	p.lock.RLock()
+	cmdp := p.cmd.Process
+	p.lock.RUnlock()
+
+	if cmdp == nil {
+		logrus.Errorf("Process Manager: no process for cmd of %v", p.Name)
+		return
+	}
+	cmdp.Signal(syscall.SIGINT)
 	for i := 0; i < types.WaitCount; i++ {
 		if p.IsStopped() {
 			return
@@ -418,7 +426,7 @@ func (p *Process) Stop() {
 		time.Sleep(types.WaitInterval)
 	}
 	logrus.Debugf("Process Manager: cannot graceful stop process %v in %v seconds, will send SIGKILL to force stopping it", p.Name, types.WaitCount)
-	p.cmd.Process.Signal(syscall.SIGKILL)
+	cmdp.Signal(syscall.SIGKILL)
 }
 
 func (p *Process) IsStopped() bool {
