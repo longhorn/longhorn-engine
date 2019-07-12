@@ -20,3 +20,6 @@ python -m grpc_tools.protoc -I replica/rpc -I vendor_proto/protobuf/src/ --pytho
 
 # sync agent
 protoc -I sync/rpc -I vendor_proto/protobuf/src/ sync/rpc/rpc.proto --go_out=plugins=grpc:sync/rpc
+
+# instance manager
+python -m grpc_tools.protoc -I vendor/github.com/longhorn/longhorn-instance-manager/rpc -I vendor_proto/protobuf/src/ --python_out=integration/rpc/instance_manager --grpc_python_out=integration/rpc/instance_manager vendor/github.com/longhorn/longhorn-instance-manager/rpc/rpc.proto
