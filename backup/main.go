@@ -28,14 +28,6 @@ var (
 				Name:  "to",
 				Usage: "destination file of restoring, will be created if not exists",
 			},
-			cli.BoolFlag{
-				Name:  "incrementally, I",
-				Usage: "Whether do incremental restore",
-			},
-			cli.StringFlag{
-				Name:  "last-restored",
-				Usage: "last restored backup name, the backup should exist in the backupstore",
-			},
 		},
 		Action: cmdBackupRestore,
 	}
@@ -174,15 +166,10 @@ func DoBackupCreate(volumeName string, snapshotName string, destURL string, labe
 }
 
 func cmdBackupRestore(c *cli.Context) {
-	if c.Bool("incrementally") {
-		if err := doBackupRestoreIncrementally(c); err != nil {
-			panic(err)
-		}
-	} else {
-		if err := doBackupRestore(c); err != nil {
-			panic(err)
-		}
+	if err := doBackupRestore(c); err != nil {
+		panic(err)
 	}
+
 }
 
 func doBackupRestore(c *cli.Context) error {
@@ -210,22 +197,16 @@ func doBackupRestore(c *cli.Context) error {
 	return nil
 }
 
-func doBackupRestoreIncrementally(c *cli.Context) error {
-	if c.NArg() == 0 {
+func DoBackupRestoreIncrementally(url string, deltaFile string, lastRestored string) error {
+	if url == "" {
 		return RequiredMissingError("backup URL")
 	}
-	backupURL := c.Args()[0]
-	if backupURL == "" {
-		return RequiredMissingError("backup URL")
-	}
-	backupURL = util.UnescapeURL(backupURL)
+	backupURL := util.UnescapeURL(url)
 
-	deltaFile := c.String("to")
 	if deltaFile == "" {
-		return RequiredMissingError("to")
+		return RequiredMissingError("delta file")
 	}
 
-	lastRestored := c.String("last-restored")
 	if lastRestored == "" {
 		return RequiredMissingError("last-restored")
 	}

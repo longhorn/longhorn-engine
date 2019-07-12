@@ -384,21 +384,10 @@ func (s *SyncAgentServer) BackupRestoreIncrementally(ctx context.Context,
 		}
 	}()
 
-	cmd := reexec.Command("sbackup", "restore", req.Backup, "--incrementally", "--to", req.DeltaFileName, "--last-restored", req.LastRestoredBackupName)
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Pdeathsig: syscall.SIGKILL,
-	}
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Start(); err != nil {
-		logrus.Errorf("failed to start incremental backup restore: %v", err)
-		return nil, err
-	}
-
-	logrus.Infof("Running %s %v", cmd.Path, cmd.Args)
-	if err := cmd.Wait(); err != nil {
-		logrus.Infof("Error running %s %v: %v", "sbackup", cmd.Args, err)
-		return nil, err
+	logrus.Infof("Running incremental restore %v to %s with lastRestoredBackup %s", req.Backup,
+		req.DeltaFileName, req.LastRestoredBackupName)
+	if err := backup.DoBackupRestoreIncrementally(req.Backup, req.DeltaFileName, req.LastRestoredBackupName); err != nil {
+		return nil, fmt.Errorf("error running incremental restore [%v]", err)
 	}
 
 	//Finish Incremental Restore
@@ -409,7 +398,7 @@ func (s *SyncAgentServer) BackupRestoreIncrementally(ctx context.Context,
 		logrus.Errorf("failed to finish restore(incremental): %v", err)
 		return nil, err
 	}
-	logrus.Infof("Done running %s %v", "sbackup", cmd.Args)
+	logrus.Infof("Done running incremental restore %v to %v", req.Backup, req.DeltaFileName)
 	return &Empty{}, nil
 }
 
