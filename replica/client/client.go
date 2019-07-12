@@ -539,3 +539,22 @@ func (c *ReplicaClient) Reset() error {
 
 	return nil
 }
+
+func (c *ReplicaClient) RestoreStatus() (*syncagentrpc.RestoreStatusReply, error) {
+	conn, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure())
+	if err != nil {
+		return nil, fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
+	}
+	defer conn.Close()
+	syncAgentServiceClient := syncagentrpc.NewSyncAgentServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceLongTimeout)
+	defer cancel()
+
+	reply, err := syncAgentServiceClient.RestoreStatus(ctx, &syncagentrpc.Empty{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get restore status: %v", err)
+	}
+
+	return reply, nil
+}
