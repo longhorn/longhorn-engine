@@ -522,3 +522,20 @@ func (c *ReplicaClient) RestoreBackupIncrementally(backup, deltaFile, lastRestor
 
 	return nil
 }
+func (c *ReplicaClient) Reset() error {
+	conn, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure())
+	if err != nil {
+		return fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
+	}
+	defer conn.Close()
+	syncAgentServiceClient := syncagentrpc.NewSyncAgentServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceLongTimeout)
+	defer cancel()
+
+	if _, err := syncAgentServiceClient.Reset(ctx, &syncagentrpc.Empty{}); err != nil {
+		return fmt.Errorf("failed to cleanup restore info in Sync Agent Server: %v", err)
+	}
+
+	return nil
+}

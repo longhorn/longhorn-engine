@@ -123,6 +123,21 @@ func (s *SyncAgentServer) FinishRestore(currentRestored string) error {
 	return nil
 }
 
+func (s *SyncAgentServer) Reset(ctx context.Context, req *Empty) (*Empty, error) {
+	s.Lock()
+	defer s.Unlock()
+	if s.isRestoring {
+		logrus.Errorf("replica is currently restoring, cannot reset")
+		return nil, fmt.Errorf("replica is currently restoring, cannot reset")
+	}
+	s.lastRestored = ""
+	s.isRestoring = false
+	s.BackupList = &BackupList{
+		RWMutex: sync.RWMutex{},
+	}
+	return &Empty{}, nil
+}
+
 func (*SyncAgentServer) FileRemove(ctx context.Context, req *FileRemoveRequest) (*Empty, error) {
 	logrus.Infof("Running rm %v", req.FileName)
 

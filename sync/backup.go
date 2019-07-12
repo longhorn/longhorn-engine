@@ -292,3 +292,38 @@ func (t *Task) restoreBackupIncrementally(replicaInController *types.ControllerR
 
 	return nil
 }
+
+func (t *Task) Reset() error {
+	replicas, err := t.client.ReplicaList()
+	if err != nil {
+		logrus.Errorf("Failed to get the replica list: %v", err)
+		return err
+	}
+
+	for _, r := range replicas {
+		if ok, err := t.isRebuilding(r); err != nil {
+			logrus.Errorf("can't check if replica's are rebuilding: %v", err)
+			return err
+		} else if ok {
+			logrus.Errorf("Replicas are rebuilding. Can't reset: %v", err)
+			return fmt.Errorf("can not reset Restore info as replica(%s) is rebuilding", r.Address)
+		}
+	}
+
+	for _, replica := range replicas {
+		repClient, err := replicaClient.NewReplicaClient(replica.Address)
+		if err != nil {
+			logrus.Errorf("Failed to get a replica client: %v for %v", err, replica.Address)
+			return err
+		}
+
+		logrus.Infof("Performing sync-agent-server-reset for replica %s", replica.Address)
+
+		if err := repClient.Reset(); err != nil {
+			logrus.Errorf("Failed Resetting restore status for replica %s", replica.Address)
+			return err
+		}
+	}
+
+	return nil
+}

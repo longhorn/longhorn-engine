@@ -12,6 +12,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
+	"github.com/longhorn/longhorn-engine/sync"
 	"github.com/longhorn/longhorn-engine/sync/rpc"
 )
 
@@ -32,6 +33,17 @@ func SyncAgentCmd() cli.Command {
 		Action: func(c *cli.Context) {
 			if err := startSyncAgent(c); err != nil {
 				logrus.Fatalf("Error running sync-agent command: %v", err)
+			}
+		},
+	}
+}
+
+func SyncAgentServerResetCmd() cli.Command {
+	return cli.Command{
+		Name: "sync-agent-server-reset",
+		Action: func(c *cli.Context) {
+			if err := doReset(c); err != nil {
+				logrus.Fatalf("Error running sync-agent-server-reset command: %v", err)
 			}
 		},
 	}
@@ -68,4 +80,15 @@ func startSyncAgent(c *cli.Context) error {
 	logrus.Infof("Listening on sync %s", listenPort)
 
 	return server.Serve(listen)
+}
+
+func doReset(c *cli.Context) error {
+	task := sync.NewTask(c.GlobalString("url"))
+
+	if err := task.Reset(); err != nil {
+		logrus.Errorf("Failed to reset sync agent server")
+		return err
+	}
+	logrus.Infof("Successfully reset sync agent server")
+	return nil
 }
