@@ -340,20 +340,9 @@ func (s *SyncAgentServer) BackupRestore(ctx context.Context, req *BackupRestoreR
 			}
 		}
 	}()
-	cmd := reexec.Command("sbackup", "restore", req.Backup, "--to", req.SnapshotFileName)
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Pdeathsig: syscall.SIGKILL,
-	}
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Start(); err != nil {
-		return nil, err
-	}
 
-	logrus.Infof("Running %s %v", cmd.Path, cmd.Args)
-	if err := cmd.Wait(); err != nil {
-		logrus.Infof("Error running %s %v: %v", "sbackup", cmd.Args, err)
-		return nil, err
+	if err := backup.DoBackupRestore(req.Backup, req.SnapshotFileName); err != nil {
+		return nil, fmt.Errorf("error running backup restore [%v]", err)
 	}
 
 	backupName := ""
@@ -364,7 +353,7 @@ func (s *SyncAgentServer) BackupRestore(ctx context.Context, req *BackupRestoreR
 		return nil, err
 	}
 
-	logrus.Infof("Done running %s %v", "sbackup", cmd.Args)
+	logrus.Infof("Done running restore %v to %v", req.Backup, req.SnapshotFileName)
 	return &Empty{}, nil
 }
 

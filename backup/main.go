@@ -8,7 +8,6 @@ import (
 	"runtime/debug"
 
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli"
 
 	"github.com/longhorn/backupstore"
 
@@ -19,45 +18,7 @@ import (
 var (
 	VERSION = "0.0.0"
 	log     = logrus.WithFields(logrus.Fields{"pkg": "backup"})
-
-	backupRestoreCmd = cli.Command{
-		Name:  "restore",
-		Usage: "restore a backup to file: restore <backup>",
-		Flags: []cli.Flag{
-			cli.StringFlag{
-				Name:  "to",
-				Usage: "destination file of restoring, will be created if not exists",
-			},
-		},
-		Action: cmdBackupRestore,
-	}
 )
-
-func cleanup() {
-	if r := recover(); r != nil {
-		ResponseLogAndError(r)
-		os.Exit(1)
-	}
-}
-
-func Main() {
-	defer cleanup()
-
-	logrus.SetLevel(logrus.DebugLevel)
-	logrus.SetOutput(os.Stderr)
-	dir, err := os.Getwd()
-	if err != nil {
-		log.Fatalf("Cannot get running directory: %s", err)
-	}
-	log.Debugf("Currently running at %v, assume as volume dir", dir)
-
-	app := cli.NewApp()
-	app.Version = VERSION
-	app.Commands = []cli.Command{
-		backupRestoreCmd,
-	}
-	app.Run(os.Args)
-}
 
 type ErrorResponse struct {
 	Error string
@@ -165,27 +126,17 @@ func DoBackupCreate(volumeName string, snapshotName string, destURL string, labe
 	return backupID, replicaBackup, nil
 }
 
-func cmdBackupRestore(c *cli.Context) {
-	if err := doBackupRestore(c); err != nil {
-		panic(err)
-	}
-
-}
-
-func doBackupRestore(c *cli.Context) error {
-	if c.NArg() == 0 {
-		return RequiredMissingError("backup URL")
-	}
-	backupURL := c.Args()[0]
+func DoBackupRestore(backupURL string, toFile string) error {
 	if backupURL == "" {
 		return RequiredMissingError("backup URL")
 	}
 	backupURL = util.UnescapeURL(backupURL)
 
-	toFile := c.String("to")
 	if toFile == "" {
-		return RequiredMissingError("to")
+		return RequiredMissingError("snapshot")
 	}
+
+	log.Debugf("Start restoring from %v into snapshot %v", backupURL, toFile)
 
 	if err := backupstore.RestoreDeltaBlockBackup(backupURL, toFile); err != nil {
 		return err
@@ -194,6 +145,7 @@ func doBackupRestore(c *cli.Context) error {
 	if err := createNewSnapshotMetafile(toFile + ".meta"); err != nil {
 		return err
 	}
+
 	return nil
 }
 
