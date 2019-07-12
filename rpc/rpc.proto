@@ -1,6 +1,6 @@
 syntax="proto3";
 
-import "google/protobuf/empty.proto";
+import "empty.proto";
 
 service EngineManagerService {
 	rpc EngineCreate(EngineCreateRequest) returns (EngineResponse) {}
