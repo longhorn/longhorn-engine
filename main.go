@@ -16,7 +16,6 @@ import (
 	"github.com/longhorn/sparse-tools/cli/ssync"
 
 	"github.com/longhorn/longhorn-engine/app"
-	"github.com/longhorn/longhorn-engine/backup"
 	"github.com/longhorn/longhorn-engine/meta"
 )
 
@@ -31,7 +30,6 @@ func main() {
 	defer cleanup()
 	reexec.Register("ssync", ssync.Main)
 	reexec.Register("sfold", sfold.Main)
-	reexec.Register("sbackup", backup.Main)
 
 	if !reexec.Init() {
 		longhornCli()
