@@ -11,6 +11,7 @@ service SyncAgentService {
     rpc BackupRestore(BackupRestoreRequest) returns (Empty) {}
     rpc BackupRestoreIncrementally(BackupRestoreIncrementallyRequest) returns (Empty) {}
     rpc BackupGetStatus(BackupProgressRequest) returns (BackupProgressReply) {}
+    rpc Reset(Empty) returns (Empty) {}
 }
 
 message FileRemoveRequest {
