@@ -5,6 +5,7 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
 	"github.com/longhorn/backupstore"
@@ -133,15 +134,32 @@ func (t *Task) RestoreBackup(backup string, credential map[string]string) error 
 	// generate new snapshot and metafile as base for new volume
 	snapshotID := util.UUID()
 	snapshotFile := replica.GenerateSnapshotDiskName(snapshotID)
-	for _, replica := range replicas {
-		if err := t.restoreBackup(replica, backup, snapshotFile, credential); err != nil {
+
+	errorMap := sync.Map{}
+	var wg sync.WaitGroup
+	wg.Add(len(replicas))
+
+	for _, r := range replicas {
+		go func(replica *types.ControllerReplicaInfo) {
+			defer wg.Done()
+			err := t.restoreBackup(replica, backup, snapshotFile, credential)
+			if err != nil {
+				errorMap.Store(replica.Address, err)
+			}
+		}(r)
+	}
+
+	wg.Wait()
+	for _, r := range replicas {
+		if v, ok := errorMap.Load(r.Address); ok {
+			err = v.(error)
 			return err
 		}
 	}
 
 	// call to controller to revert to sfile
 	if err := t.client.VolumeRevert(snapshotID); err != nil {
-		return fmt.Errorf("Fail to revert to snapshot %v", snapshotID)
+		return errors.Wrapf(err, "Fail to revert to snapshot %v", snapshotID)
 	}
 	return nil
 }
