@@ -212,6 +212,7 @@ func (pm *Manager) registerProcess(p *Process) error {
 
 	p.UpdateCh = pm.processUpdateCh
 	pm.processes[p.Name] = p
+	p.UpdateCh <- p
 
 	return nil
 }
@@ -364,6 +365,7 @@ func (p *Process) Start() error {
 					p.lock.Lock()
 					p.State = StateRunning
 					p.lock.Unlock()
+					p.UpdateCh <- p
 					return
 				}
 				logrus.Infof("wait for gRPC service of process %v to start", p.Name)
@@ -378,6 +380,7 @@ func (p *Process) Start() error {
 			p.lock.Lock()
 			p.State = StateRunning
 			p.lock.Unlock()
+			p.UpdateCh <- p
 		}
 		return
 	}()
