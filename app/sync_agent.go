@@ -29,6 +29,10 @@ func SyncAgentCmd() cli.Command {
 				Name:  "listen-port-range",
 				Value: "9700-9800",
 			},
+			cli.StringFlag{
+				Name:  "replica",
+				Usage: "specify replica address",
+			},
 		},
 		Action: func(c *cli.Context) {
 			if err := startSyncAgent(c); err != nil {
@@ -52,6 +56,7 @@ func SyncAgentServerResetCmd() cli.Command {
 func startSyncAgent(c *cli.Context) error {
 	listenPort := c.String("listen")
 	portRange := c.String("listen-port-range")
+	replicaAddress := c.String("replica")
 
 	parts := strings.Split(portRange, "-")
 	if len(parts) != 2 {
@@ -74,7 +79,7 @@ func startSyncAgent(c *cli.Context) error {
 	}
 
 	server := grpc.NewServer()
-	rpc.RegisterSyncAgentServiceServer(server, rpc.NewSyncAgentServer(start, end))
+	rpc.RegisterSyncAgentServiceServer(server, rpc.NewSyncAgentServer(start, end, replicaAddress))
 	reflection.Register(server)
 
 	logrus.Infof("Listening on sync %s", listenPort)

@@ -32,6 +32,7 @@ type SyncAgentServer struct {
 	processesByPort map[int]string
 	isRestoring     bool
 	lastRestored    string
+	replicaAddress  string
 
 	BackupList *BackupList
 }
@@ -46,12 +47,13 @@ type BackupInfo struct {
 	backupStatus *replica.Backup
 }
 
-func NewSyncAgentServer(startPort, endPort int) *SyncAgentServer {
+func NewSyncAgentServer(startPort, endPort int, replicaAddress string) *SyncAgentServer {
 	return &SyncAgentServer{
 		currentPort:     startPort,
 		startPort:       startPort,
 		endPort:         endPort,
 		processesByPort: map[int]string{},
+		replicaAddress:  replicaAddress,
 
 		BackupList: &BackupList{
 			RWMutex: sync.RWMutex{},

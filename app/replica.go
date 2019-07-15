@@ -138,7 +138,7 @@ func startReplica(c *cli.Context) error {
 		}
 
 		go func() {
-			cmd := exec.Command(exe, "sync-agent", "--listen", syncAddress)
+			cmd := exec.Command(exe, "sync-agent", "--listen", syncAddress, "--replica", controlAddress)
 			cmd.SysProcAttr = &syscall.SysProcAttr{
 				Pdeathsig: syscall.SIGKILL,
 			}
