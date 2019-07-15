@@ -248,7 +248,12 @@ func doRestoreBackup(c *cli.Context) error {
 		return err
 	}
 
-	if err := task.RestoreBackup(backup, credential); err != nil {
+	backupURL := util.UnescapeURL(backup)
+	if backup, err := backupstore.InspectBackup(backupURL); err != nil || backup == nil {
+		return errors.Wrapf(err, "no backups found with url %v", backupURL)
+	}
+
+	if err := task.RestoreBackup(backupURL, credential); err != nil {
 		return err
 	}
 
