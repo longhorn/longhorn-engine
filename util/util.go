@@ -20,6 +20,8 @@ import (
 	uuid "github.com/satori/go.uuid"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
+
+	"github.com/longhorn/longhorn-engine/types"
 )
 
 var (
@@ -300,6 +302,28 @@ func CheckBackupType(backupTarget string) (string, error) {
 	}
 
 	return u.Scheme, nil
+}
+
+func GetBackupCredential(backupURL string) (map[string]string, error) {
+	credential := map[string]string{}
+	backupType, err := CheckBackupType(backupURL)
+	if err != nil {
+		return nil, err
+	}
+	if backupType == "s3" {
+		accessKey := os.Getenv(types.AWSAccessKey)
+		if accessKey == "" {
+			return nil, fmt.Errorf("missing environment variable AWS_ACCESS_KEY_ID for s3 backup")
+		}
+		secretKey := os.Getenv(types.AWSSecretKey)
+		if secretKey == "" {
+			return nil, fmt.Errorf("missing environment variable AWS_SECRET_ACCESS_KEY for s3 backup")
+		}
+		credential[types.AWSAccessKey] = accessKey
+		credential[types.AWSSecretKey] = secretKey
+		credential[types.AWSEndPoint] = os.Getenv(types.AWSEndPoint)
+	}
+	return credential, nil
 }
 
 func ResolveBackingFilepath(fileOrDirpath string) (string, error) {

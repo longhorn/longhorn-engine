@@ -356,6 +356,23 @@ func (s *SyncAgentServer) BackupRestore(ctx context.Context, req *BackupRestoreR
 		}
 	}()
 
+	backupType, err := util.CheckBackupType(req.Backup)
+	if err != nil {
+		return nil, err
+	}
+	// set aws credential
+	if backupType == "s3" {
+		credential := req.Credential
+		// validate environment variable first, since CronJob has set credential to environment variable.
+		if credential != nil && credential[types.AWSAccessKey] != "" && credential[types.AWSSecretKey] != "" {
+			os.Setenv(types.AWSAccessKey, credential[types.AWSAccessKey])
+			os.Setenv(types.AWSSecretKey, credential[types.AWSSecretKey])
+			os.Setenv(types.AWSEndPoint, credential[types.AWSEndPoint])
+		} else if os.Getenv(types.AWSAccessKey) == "" || os.Getenv(types.AWSSecretKey) == "" {
+			return nil, errors.New("Could not backup to s3 without setting credential secret")
+		}
+	}
+
 	if err := backup.DoBackupRestore(req.Backup, req.SnapshotFileName); err != nil {
 		return nil, fmt.Errorf("error running backup restore [%v]", err)
 	}
@@ -387,6 +404,23 @@ func (s *SyncAgentServer) BackupRestoreIncrementally(ctx context.Context,
 			}
 		}
 	}()
+
+	backupType, err := util.CheckBackupType(req.Backup)
+	if err != nil {
+		return nil, err
+	}
+	// set aws credential
+	if backupType == "s3" {
+		credential := req.Credential
+		// validate environment variable first, since CronJob has set credential to environment variable.
+		if credential != nil && credential[types.AWSAccessKey] != "" && credential[types.AWSSecretKey] != "" {
+			os.Setenv(types.AWSAccessKey, credential[types.AWSAccessKey])
+			os.Setenv(types.AWSSecretKey, credential[types.AWSSecretKey])
+			os.Setenv(types.AWSEndPoint, credential[types.AWSEndPoint])
+		} else if os.Getenv(types.AWSAccessKey) == "" || os.Getenv(types.AWSSecretKey) == "" {
+			return nil, errors.New("Could not backup to s3 without setting credential secret")
+		}
+	}
 
 	logrus.Infof("Running incremental restore %v to %s with lastRestoredBackup %s", req.Backup,
 		req.DeltaFileName, req.LastRestoredBackupName)

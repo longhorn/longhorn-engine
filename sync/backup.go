@@ -116,7 +116,7 @@ func (t *Task) FetchBackupStatus(backupID string, replicaIP string) (*BackupStat
 	return info, nil
 }
 
-func (t *Task) RestoreBackup(backup string) error {
+func (t *Task) RestoreBackup(backup string, credential map[string]string) error {
 	replicas, err := t.client.ReplicaList()
 	if err != nil {
 		return err
@@ -134,7 +134,7 @@ func (t *Task) RestoreBackup(backup string) error {
 	snapshotID := util.UUID()
 	snapshotFile := replica.GenerateSnapshotDiskName(snapshotID)
 	for _, replica := range replicas {
-		if err := t.restoreBackup(replica, backup, snapshotFile); err != nil {
+		if err := t.restoreBackup(replica, backup, snapshotFile, credential); err != nil {
 			return err
 		}
 	}
@@ -146,7 +146,7 @@ func (t *Task) RestoreBackup(backup string) error {
 	return nil
 }
 
-func (t *Task) restoreBackup(replicaInController *types.ControllerReplicaInfo, backup string, snapshotFile string) error {
+func (t *Task) restoreBackup(replicaInController *types.ControllerReplicaInfo, backup string, snapshotFile string, credential map[string]string) error {
 	if replicaInController.Mode != types.RW {
 		return fmt.Errorf("Can only restore backup from replica in mode RW, got %s", replicaInController.Mode)
 	}
@@ -158,14 +158,14 @@ func (t *Task) restoreBackup(replicaInController *types.ControllerReplicaInfo, b
 
 	logrus.Infof("Restoring backup %s on %s", backup, replicaInController.Address)
 
-	if err := repClient.RestoreBackup(backup, snapshotFile); err != nil {
+	if err := repClient.RestoreBackup(backup, snapshotFile, credential); err != nil {
 		logrus.Errorf("Failed restoring backup %s on %s", backup, replicaInController.Address)
 		return err
 	}
 	return nil
 }
 
-func (t *Task) RestoreBackupIncrementally(backup, backupName, lastRestored string) error {
+func (t *Task) RestoreBackupIncrementally(backup, backupName, lastRestored string, credential map[string]string) error {
 	replicas, err := t.client.ReplicaList()
 	if err != nil {
 		return err
@@ -212,7 +212,7 @@ func (t *Task) RestoreBackupIncrementally(backup, backupName, lastRestored strin
 	for _, r := range replicas {
 		go func(replica *types.ControllerReplicaInfo) {
 			defer wg.Done()
-			err := t.restoreBackupIncrementally(replica, snapshotDiskName, backup, lastRestored, isValidLastRestored)
+			err := t.restoreBackupIncrementally(replica, snapshotDiskName, backup, lastRestored, isValidLastRestored, credential)
 			if err != nil {
 				errorMap.Store(replica.Address, err)
 			}
@@ -230,7 +230,7 @@ func (t *Task) RestoreBackupIncrementally(backup, backupName, lastRestored strin
 	return err
 }
 
-func (t *Task) restoreBackupIncrementally(replicaInController *types.ControllerReplicaInfo, snapshotDiskName, backup, lastRestored string, isValidLastRestored bool) error {
+func (t *Task) restoreBackupIncrementally(replicaInController *types.ControllerReplicaInfo, snapshotDiskName, backup, lastRestored string, isValidLastRestored bool, credential map[string]string) error {
 	if replicaInController.Mode != types.RW {
 		return fmt.Errorf("can only incrementally restore backup from replica in mode RW, got mode %s", replicaInController.Mode)
 	}
@@ -248,7 +248,7 @@ func (t *Task) restoreBackupIncrementally(replicaInController *types.ControllerR
 		deltaFileName := replica.GenerateDeltaFileName(lastRestored)
 
 		// incrementally restore to delta file
-		if err := repClient.RestoreBackupIncrementally(backup, deltaFileName, lastRestored); err != nil {
+		if err := repClient.RestoreBackupIncrementally(backup, deltaFileName, lastRestored, credential); err != nil {
 			logrus.Errorf("Failed to incrementally restore backup %s on %s", backup, replicaInController.Address)
 			return err
 		}
@@ -276,7 +276,7 @@ func (t *Task) restoreBackupIncrementally(replicaInController *types.ControllerR
 			repClient.RemoveFile(tmpSnapshotDiskMetaName)
 		}()
 
-		if err = t.restoreBackup(replicaInController, backup, tmpSnapshotDiskName); err != nil {
+		if err = t.restoreBackup(replicaInController, backup, tmpSnapshotDiskName, credential); err != nil {
 			return fmt.Errorf("failed to do full restoration in RestoreBackupIncrementally: %v", err)
 		}
 		logrus.Infof("Replica %v done restoreBackup in RestoreBackupIncrementally", replicaInController.Address)

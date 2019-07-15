@@ -3,7 +3,6 @@ package app
 import (
 	"encoding/json"
 	"fmt"
-	"os"
 	"strings"
 
 	"github.com/pkg/errors"
@@ -14,7 +13,6 @@ import (
 	"github.com/longhorn/backupstore/cmd"
 
 	"github.com/longhorn/longhorn-engine/sync"
-	"github.com/longhorn/longhorn-engine/types"
 	"github.com/longhorn/longhorn-engine/util"
 )
 
@@ -215,23 +213,9 @@ func createBackup(c *cli.Context) error {
 		}
 	}
 
-	credential := map[string]string{}
-	backupType, err := util.CheckBackupType(dest)
+	credential, err := util.GetBackupCredential(dest)
 	if err != nil {
 		return err
-	}
-	if backupType == "s3" {
-		accessKey := os.Getenv(types.AWSAccessKey)
-		if accessKey == "" {
-			return fmt.Errorf("Missing environment variable AWS_ACCESS_KEY_ID for s3 backup")
-		}
-		secretKey := os.Getenv(types.AWSSecretKey)
-		if secretKey == "" {
-			return fmt.Errorf("Missing environment variable AWS_SECRET_ACCESS_KEY for s3 backup")
-		}
-		credential[types.AWSAccessKey] = accessKey
-		credential[types.AWSSecretKey] = secretKey
-		credential[types.AWSEndPoint] = os.Getenv(types.AWSEndPoint)
 	}
 
 	backup, err := task.CreateBackup(snapshot, dest, labels, credential)
@@ -259,7 +243,12 @@ func doRestoreBackup(c *cli.Context) error {
 		return fmt.Errorf("Missing required parameter backup")
 	}
 
-	if err := task.RestoreBackup(backup); err != nil {
+	credential, err := util.GetBackupCredential(backup)
+	if err != nil {
+		return err
+	}
+
+	if err := task.RestoreBackup(backup, credential); err != nil {
 		return err
 	}
 
@@ -279,9 +268,14 @@ func doRestoreBackupIncrementally(c *cli.Context) error {
 		return err
 	}
 
+	credential, err := util.GetBackupCredential(backup)
+	if err != nil {
+		return err
+	}
+
 	lastRestored := c.String("last-restored")
 
-	if err := task.RestoreBackupIncrementally(backup, backupName, lastRestored); err != nil {
+	if err := task.RestoreBackupIncrementally(backup, backupName, lastRestored, credential); err != nil {
 		logrus.Errorf("failed to perform incremental restore: %v", err)
 		return err
 	}
