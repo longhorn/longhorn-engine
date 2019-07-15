@@ -12,10 +12,12 @@ import (
 	"github.com/docker/docker/pkg/reexec"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 
 	"github.com/longhorn/backupstore"
 	"github.com/longhorn/longhorn-engine/backup"
 	"github.com/longhorn/longhorn-engine/replica"
+	replicarpc "github.com/longhorn/longhorn-engine/replica/rpc"
 	"github.com/longhorn/longhorn-engine/types"
 	"github.com/longhorn/longhorn-engine/util"
 )
@@ -25,6 +27,8 @@ const (
 
 	ProgressBasedTimeoutInMinutes    = 5
 	PeriodicRefreshIntervalInSeconds = 2
+
+	GRPCServiceCommonTimeout = 1 * time.Minute
 )
 
 type SyncAgentServer struct {
@@ -467,6 +471,16 @@ func (s *SyncAgentServer) completeBackupRestore() (err error) {
 		return err
 	}
 
+	now := time.Now().UTC().Format(time.RFC3339)
+
+	logrus.Infof("Reverting to snapshot %s on %s at %s", restoreStatus.SnapshotName, s.replicaAddress, now)
+	if err := s.replicaRevert(restoreStatus.SnapshotName, now); err != nil {
+		logrus.Errorf("Error on reverting to %s on %s: %v", restoreStatus.SnapshotName, s.replicaAddress, err)
+		//TODO: Need to set replica mode to error
+		return err
+	}
+	logrus.Infof("Reverting to snapshot %s on %s successful", restoreStatus.SnapshotName, s.replicaAddress)
+
 	backupName := ""
 	if backupName, err = backupstore.GetBackupFromBackupURL(util.UnescapeURL(restoreStatus.BackupURL)); err != nil {
 		return err
@@ -476,6 +490,27 @@ func (s *SyncAgentServer) completeBackupRestore() (err error) {
 	}
 
 	logrus.Infof("Done running restore %v to %v", restoreStatus.BackupURL, restoreStatus.SnapshotName)
+	return nil
+}
+
+func (s *SyncAgentServer) replicaRevert(name, created string) error {
+	conn, err := grpc.Dial(s.replicaAddress, grpc.WithInsecure())
+	if err != nil {
+		return fmt.Errorf("cannot connect to ReplicaService %v: %v", s.replicaAddress, err)
+	}
+	defer conn.Close()
+	replicaServiceClient := replicarpc.NewReplicaServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
+	defer cancel()
+
+	if _, err := replicaServiceClient.ReplicaRevert(ctx, &replicarpc.ReplicaRevertRequest{
+		Name:    name,
+		Created: created,
+	}); err != nil {
+		return fmt.Errorf("failed to revert replica %v: %v", s.replicaAddress, err)
+	}
+
 	return nil
 }
 

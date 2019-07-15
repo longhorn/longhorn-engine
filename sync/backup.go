@@ -118,6 +118,14 @@ func (t *Task) FetchBackupStatus(backupID string, replicaIP string) (*BackupStat
 }
 
 func (t *Task) RestoreBackup(backup string, credential map[string]string) error {
+	volume, err := t.client.VolumeGet()
+	if err != nil {
+		return fmt.Errorf("failed to get volume")
+	}
+	if volume.FrontendState == "up" {
+		return fmt.Errorf("volume frontend enabled, cannot perform restore")
+	}
+
 	replicas, err := t.client.ReplicaList()
 	if err != nil {
 		return err
@@ -157,10 +165,6 @@ func (t *Task) RestoreBackup(backup string, credential map[string]string) error 
 		}
 	}
 
-	// call to controller to revert to sfile
-	if err := t.client.VolumeRevert(snapshotID); err != nil {
-		return errors.Wrapf(err, "Fail to revert to snapshot %v", snapshotID)
-	}
 	return nil
 }
 
