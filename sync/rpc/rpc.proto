@@ -73,12 +73,14 @@ message BackupProgressReply {
 message BackupRestoreRequest {
     string backup = 1;
     string snapshotFileName = 2;
+    map<string, string> credential = 3;
 }
 
 message BackupRestoreIncrementallyRequest {
     string backup = 1;
     string deltaFileName = 2;
     string lastRestoredBackupName = 3;
+    map<string, string> credential = 4;
 }
 
 message RestoreStatusReply {
