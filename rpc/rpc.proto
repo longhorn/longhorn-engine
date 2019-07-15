@@ -9,6 +9,7 @@ service EngineManagerService {
 	rpc EngineList(google.protobuf.Empty) returns (EngineListResponse) {}
 	rpc EngineUpgrade(EngineUpgradeRequest) returns (EngineResponse) {}
 	rpc EngineLog(LogRequest) returns (stream LogResponse) {}
+	rpc EngineWatch(google.protobuf.Empty) returns (stream EngineResponse) {}
 
 	rpc FrontendStart(FrontendStartRequest) returns (google.protobuf.Empty) {}
 	rpc FrontendShutdown(EngineRequest) returns (google.protobuf.Empty) {}
@@ -67,6 +68,7 @@ service ProcessManagerService {
 	rpc ProcessGet(ProcessGetRequest) returns (ProcessResponse) {}
 	rpc ProcessList(ProcessListRequest) returns (ProcessListResponse) {}
 	rpc ProcessLog(LogRequest) returns (stream LogResponse) {}
+	rpc ProcessWatch(google.protobuf.Empty) returns (stream ProcessResponse) {}
 }
 
 message ProcessSpec {
