@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"sync"
 	"syscall"
+	"time"
 
 	"github.com/docker/docker/pkg/reexec"
 	"github.com/sirupsen/logrus"
@@ -21,6 +22,9 @@ import (
 
 const (
 	MaxBackupSize = 5
+
+	ProgressBasedTimeoutInMinutes    = 5
+	PeriodicRefreshIntervalInSeconds = 2
 )
 
 type SyncAgentServer struct {
@@ -34,7 +38,8 @@ type SyncAgentServer struct {
 	lastRestored    string
 	replicaAddress  string
 
-	BackupList *BackupList
+	BackupList  *BackupList
+	RestoreInfo *replica.RestoreStatus
 }
 
 type BackupList struct {
@@ -342,22 +347,45 @@ func (*SyncAgentServer) BackupRemove(ctx context.Context, req *BackupRemoveReque
 	return &Empty{}, nil
 }
 
-func (s *SyncAgentServer) BackupRestore(ctx context.Context, req *BackupRestoreRequest) (e *Empty, err error) {
-	if err := s.PrepareRestore(""); err != nil {
-		logrus.Errorf("failed to prepare backup restore: %v", err)
-		return nil, err
-	}
+func (s *SyncAgentServer) waitForRestoreComplete() error {
+	var (
+		restoreProgress int
+		restoreError    error
+	)
+	periodicChecker := time.NewTicker(PeriodicRefreshIntervalInSeconds * time.Second)
 
-	defer func() {
-		if err != nil {
-			// Reset the isRestoring flag to false
-			if err := s.FinishRestore(""); err != nil {
-				logrus.Errorf("failed to finish backup restore: %v", err)
-				return
-			}
+	for range periodicChecker.C {
+		s.RestoreInfo.Lock()
+		restoreProgress = s.RestoreInfo.Progress
+		restoreError = s.RestoreInfo.Error
+		lastUpdate := s.RestoreInfo.LastUpdatedAt
+		s.RestoreInfo.Unlock()
+
+		if restoreProgress == 100 {
+			logrus.Infof("Restore completed successfully in Server")
+			periodicChecker.Stop()
+			return nil
 		}
-	}()
+		if restoreError != nil {
+			logrus.Errorf("Backup Restore Error Found in Server[%v]", restoreError)
+			periodicChecker.Stop()
+			return restoreError
+		}
+		now := time.Now()
+		diff := now.Sub(lastUpdate)
 
+		if diff.Minutes() > ProgressBasedTimeoutInMinutes {
+			logrus.Errorf("no restore update happened since %v minutes. Returning failure",
+				ProgressBasedTimeoutInMinutes)
+			periodicChecker.Stop()
+			return fmt.Errorf("no restore update happened since %v minutes. Returning failure",
+				ProgressBasedTimeoutInMinutes)
+		}
+	}
+	return nil
+}
+
+func (s *SyncAgentServer) BackupRestore(ctx context.Context, req *BackupRestoreRequest) (e *Empty, err error) {
 	backupType, err := util.CheckBackupType(req.Backup)
 	if err != nil {
 		return nil, err
@@ -374,21 +402,81 @@ func (s *SyncAgentServer) BackupRestore(ctx context.Context, req *BackupRestoreR
 			return nil, errors.New("Could not backup to s3 without setting credential secret")
 		}
 	}
+	if err := s.PrepareRestore(""); err != nil {
+		logrus.Errorf("failed to prepare backup restore: %v", err)
+		return nil, err
+	}
 
-	if err := backup.DoBackupRestore(req.Backup, req.SnapshotFileName); err != nil {
-		return nil, fmt.Errorf("error running backup restore [%v]", err)
+	s.Lock()
+	defer s.Unlock()
+	restoreObj := replica.NewRestore(req.SnapshotFileName, s.replicaAddress)
+	restoreObj.BackupURL = req.Backup
+
+	if err := backup.DoBackupRestore(req.Backup, req.SnapshotFileName, restoreObj); err != nil {
+		// Reset the isRestoring flag to false
+		if extraErr := s.FinishRestore(""); extraErr != nil {
+			return nil, fmt.Errorf("%v: %v", extraErr, err)
+		}
+		return nil, fmt.Errorf("error initiating backup restore [%v]", err)
+	}
+	s.RestoreInfo = restoreObj
+	logrus.Infof("Successfully initiated restore for %v to [%v]", req.Backup, req.SnapshotFileName)
+
+	go s.completeBackupRestore()
+
+	return &Empty{}, nil
+}
+
+func (s *SyncAgentServer) completeBackupRestore() (err error) {
+	defer func() {
+		if err != nil {
+			// Reset the isRestoring flag to false
+			if err := s.FinishRestore(""); err != nil {
+				logrus.Errorf("failed to finish backup restore: %v", err)
+				return
+			}
+		}
+	}()
+
+	if err := s.waitForRestoreComplete(); err != nil {
+		logrus.Errorf("failed to restore: %v", err)
+		return err
+	}
+
+	s.Lock()
+	if s.RestoreInfo == nil {
+		s.Unlock()
+		logrus.Errorf("BUG: Restore completed but object not found")
+		return fmt.Errorf("cannot find restore status")
+	}
+
+	restoreStatus := &replica.RestoreStatus{
+		SnapshotName:     s.RestoreInfo.SnapshotName,
+		Progress:         s.RestoreInfo.Progress,
+		Error:            s.RestoreInfo.Error,
+		LastUpdatedAt:    s.RestoreInfo.LastUpdatedAt,
+		LastRestored:     s.RestoreInfo.LastRestored,
+		SnapshotDiskName: s.RestoreInfo.SnapshotDiskName,
+		BackupURL:        s.RestoreInfo.BackupURL,
+	}
+	s.Unlock()
+
+	//Create the meta file as the file is now available
+	if err := backup.CreateNewSnapshotMetafile(restoreStatus.SnapshotName + ".meta"); err != nil {
+		logrus.Errorf("failed creating meta snapshot file: %v", err)
+		return err
 	}
 
 	backupName := ""
-	if backupName, err = backupstore.GetBackupFromBackupURL(util.UnescapeURL(req.Backup)); err != nil {
-		return nil, err
+	if backupName, err = backupstore.GetBackupFromBackupURL(util.UnescapeURL(restoreStatus.BackupURL)); err != nil {
+		return err
 	}
 	if err = s.FinishRestore(backupName); err != nil {
-		return nil, err
+		return err
 	}
 
-	logrus.Infof("Done running restore %v to %v", req.Backup, req.SnapshotFileName)
-	return &Empty{}, nil
+	logrus.Infof("Done running restore %v to %v", restoreStatus.BackupURL, restoreStatus.SnapshotName)
+	return nil
 }
 
 func (s *SyncAgentServer) BackupRestoreIncrementally(ctx context.Context,

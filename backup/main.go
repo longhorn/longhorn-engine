@@ -126,7 +126,7 @@ func DoBackupCreate(volumeName string, snapshotName string, destURL string, labe
 	return backupID, replicaBackup, nil
 }
 
-func DoBackupRestore(backupURL string, toFile string) error {
+func DoBackupRestore(backupURL string, toFile string, restoreObj *replica.RestoreStatus) error {
 	if backupURL == "" {
 		return RequiredMissingError("backup URL")
 	}
@@ -138,11 +138,13 @@ func DoBackupRestore(backupURL string, toFile string) error {
 
 	log.Debugf("Start restoring from %v into snapshot %v", backupURL, toFile)
 
-	if err := backupstore.RestoreDeltaBlockBackup(backupURL, toFile); err != nil {
-		return err
+	config := &backupstore.DeltaRestoreConfig{
+		BackupURL: backupURL,
+		DeltaOps:  restoreObj,
+		Filename:  toFile,
 	}
 
-	if err := createNewSnapshotMetafile(toFile + ".meta"); err != nil {
+	if err := backupstore.RestoreDeltaBlockBackup(config); err != nil {
 		return err
 	}
 
@@ -179,7 +181,7 @@ func DoBackupRestoreIncrementally(url string, deltaFile string, lastRestored str
 	return nil
 }
 
-func createNewSnapshotMetafile(file string) error {
+func CreateNewSnapshotMetafile(file string) error {
 	f, err := os.Create(file + ".tmp")
 	if err != nil {
 		return err
