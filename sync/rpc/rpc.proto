@@ -87,6 +87,9 @@ message BackupRestoreIncrementallyRequest {
 message RestoreStatusReply {
     bool isRestoring = 1;
     string lastRestored = 2;
+    int32 progress = 3;
+    string error = 4;
+    string destFileName = 5;
 }
 
 message Empty {

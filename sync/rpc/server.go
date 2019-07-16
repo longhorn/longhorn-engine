@@ -734,10 +734,27 @@ func (s *SyncAgentServer) reloadReplica() error {
 }
 
 func (s *SyncAgentServer) RestoreStatus(ctx context.Context, req *Empty) (*RestoreStatusReply, error) {
-	return &RestoreStatusReply{
+	rs := &RestoreStatusReply{
 		IsRestoring:  s.IsRestoring(),
 		LastRestored: s.GetLastRestored(),
-	}, nil
+	}
+
+	if s.RestoreInfo == nil {
+		return rs, nil
+	}
+	s.RestoreInfo.Lock()
+	defer s.RestoreInfo.Unlock()
+	restoreStatus := &replica.RestoreStatus{
+		SnapshotName: s.RestoreInfo.SnapshotName,
+		Progress:     s.RestoreInfo.Progress,
+		Error:        s.RestoreInfo.Error,
+	}
+	rs.Progress = int32(restoreStatus.Progress)
+	rs.DestFileName = restoreStatus.SnapshotName
+	if restoreStatus.Error != nil {
+		rs.Error = restoreStatus.Error.Error()
+	}
+	return rs, nil
 }
 
 // The APIs BackupAdd, BackupGet, Refresh, BackupDelete implement the CRUD interface for the backup object
