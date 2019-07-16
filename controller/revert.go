@@ -36,8 +36,10 @@ func (c *Controller) Revert(name string) error {
 		return err
 	}
 
-	if err := c.shutdownFrontend(); err != nil {
-		return err
+	if c.Frontend() != "" {
+		if err := c.shutdownFrontend(); err != nil {
+			return err
+		}
 	}
 
 	c.Lock()
@@ -60,13 +62,18 @@ func (c *Controller) Revert(name string) error {
 		return fmt.Errorf("Fail to revert to %v on all replicas", name)
 	}
 
-	if err := c.startFrontend(); err != nil {
-		return err
-	}
-	if c.launcher != "" {
-		logrus.Infof("Asking the launcher to start the frontend")
-		if err := c.launcherStartFrontend(); err != nil {
+	if c.Frontend() != "" {
+		if err := c.startFrontend(); err != nil {
 			return err
+		}
+
+		if c.launcher != "" {
+			logrus.Infof("Asking the launcher to start the frontend")
+			if err := c.launcherStartFrontend(); err != nil {
+				if !strings.Contains(err.Error(), "no frontend started since it's not specified") {
+					return err
+				}
+			}
 		}
 	}
 	return nil
