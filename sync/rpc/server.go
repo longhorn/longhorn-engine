@@ -5,11 +5,13 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
 
 	"github.com/docker/docker/pkg/reexec"
+	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -471,6 +473,16 @@ func (s *SyncAgentServer) completeBackupRestore() (err error) {
 		return err
 	}
 
+	//Check if this is incremental fallback to full restore
+	if strings.HasSuffix(restoreStatus.SnapshotName, ".snap_tmp") {
+		if err := s.postIncrementalFullRestoreOperations(restoreStatus); err != nil {
+			logrus.Errorf("failed to complete incremental fallback full restore: %v", err)
+			return err
+		}
+		logrus.Infof("Done running restore %v to %v", restoreStatus.BackupURL, restoreStatus.SnapshotName)
+		return nil
+	}
+
 	now := time.Now().UTC().Format(time.RFC3339)
 
 	logrus.Infof("Reverting to snapshot %s on %s at %s", restoreStatus.SnapshotName, s.replicaAddress, now)
@@ -490,6 +502,66 @@ func (s *SyncAgentServer) completeBackupRestore() (err error) {
 	}
 
 	logrus.Infof("Done running restore %v to %v", restoreStatus.BackupURL, restoreStatus.SnapshotName)
+	return nil
+}
+
+func (s *SyncAgentServer) postIncrementalFullRestoreOperations(restoreStatus *replica.RestoreStatus) error {
+	tmpSnapshotDiskName := restoreStatus.SnapshotName
+	snapshotDiskName, err := replica.GetSnapshotNameFromTempFileName(tmpSnapshotDiskName)
+	if err != nil {
+		logrus.Errorf("failed to get snapshotName from tempFileName: %v", err)
+		return err
+	}
+	snapshotDiskMetaName := replica.GenerateSnapshotDiskMetaName(snapshotDiskName)
+	tmpSnapshotDiskMetaName := replica.GenerateSnapshotDiskMetaName(tmpSnapshotDiskName)
+
+	defer func() {
+		// try to cleanup tmp files
+		if _, err := s.FileRemove(nil, &FileRemoveRequest{
+			FileName: tmpSnapshotDiskName,
+		}); err != nil {
+			logrus.Warnf("Failed to cleanup delta file %s: %v", tmpSnapshotDiskName, err)
+		}
+
+		if _, err := s.FileRemove(nil, &FileRemoveRequest{
+			FileName: tmpSnapshotDiskMetaName,
+		}); err != nil {
+			logrus.Warnf("Failed to cleanup delta file %s: %v", tmpSnapshotDiskMetaName, err)
+		}
+	}()
+
+	// replace old snapshot
+	fileRenameReq := &FileRenameRequest{
+		OldFileName: tmpSnapshotDiskName,
+		NewFileName: snapshotDiskName,
+	}
+	if _, err = s.FileRename(nil, fileRenameReq); err != nil {
+		logrus.Errorf("failed to replace old snapshot %v with the fully restored file %v: %v",
+			snapshotDiskName, tmpSnapshotDiskName, err)
+		return err
+	}
+	fileRenameReq.OldFileName = tmpSnapshotDiskMetaName
+	fileRenameReq.NewFileName = snapshotDiskMetaName
+	if _, err = s.FileRename(nil, fileRenameReq); err != nil {
+		logrus.Errorf("failed to replace old snapshot meta %v with the fully restored meta file %v: %v",
+			snapshotDiskMetaName, tmpSnapshotDiskMetaName, err)
+		return err
+	}
+
+	//Reload the replica as snapshot files got changed
+	if err := s.reloadReplica(); err != nil {
+		logrus.Errorf("failed to reload replica: %v", err)
+		return err
+	}
+
+	//Successfully finished, update the lastRestored
+	backupName := ""
+	if backupName, err = backupstore.GetBackupFromBackupURL(util.UnescapeURL(restoreStatus.BackupURL)); err != nil {
+		return err
+	}
+	if err = s.FinishRestore(backupName); err != nil {
+		return err
+	}
 	return nil
 }
 
@@ -541,6 +613,7 @@ func (s *SyncAgentServer) BackupRestoreIncrementally(ctx context.Context,
 	defer s.Unlock()
 	restoreObj := replica.NewRestore(req.DeltaFileName, s.replicaAddress)
 	restoreObj.LastRestored = req.LastRestoredBackupName
+	restoreObj.SnapshotDiskName = req.SnapshotDiskName
 	restoreObj.BackupURL = req.Backup
 
 	logrus.Infof("Running incremental restore %v to %s with lastRestoredBackup %s", req.Backup,
@@ -593,18 +666,70 @@ func (s *SyncAgentServer) completeIncrementalBackupRestore() (err error) {
 	}
 	s.Unlock()
 
-	//Finish Incremental Restore
-	backupName := ""
-	if backupName, err = backupstore.GetBackupFromBackupURL(util.UnescapeURL(restoreStatus.BackupURL)); err != nil {
-		logrus.Errorf("failed to fetch backupName from backupURL: %v", err)
-		return err
-	}
-	if err := s.FinishRestore(backupName); err != nil {
-		logrus.Errorf("failed to finish restore(incremental): %v", err)
+	if err := s.postIncrementalRestoreOperations(restoreStatus); err != nil {
+		logrus.Errorf("failed to complete incremental restore: %v", err)
 		return err
 	}
 
 	logrus.Infof("Done running incremental restore %v to %v", restoreStatus.BackupURL, restoreStatus.SnapshotName)
+	return nil
+}
+
+func (s *SyncAgentServer) postIncrementalRestoreOperations(restoreStatus *replica.RestoreStatus) error {
+	deltaFileName := restoreStatus.SnapshotName
+
+	logrus.Infof("Cleaning up incremental restore by Coalescing and removing the file")
+	// coalesce delta file to snapshot/disk file
+	coalesceReq := &FileCoalesceRequest{
+		FromFileName: deltaFileName,
+		ToFileName:   restoreStatus.SnapshotDiskName,
+	}
+	if _, err := s.FileCoalesce(nil, coalesceReq); err != nil {
+		logrus.Errorf("Failed to coalesce %s on %s: %v", deltaFileName, restoreStatus.SnapshotDiskName, err)
+		return err
+	}
+
+	// cleanup
+	fileRemoveReq := &FileRemoveRequest{
+		FileName: deltaFileName,
+	}
+	if _, err := s.FileRemove(nil, fileRemoveReq); err != nil {
+		logrus.Warnf("Failed to cleanup delta file %s: %v", deltaFileName, err)
+		return err
+	}
+
+	//Reload the replica as snapshot files got changed
+	if err := s.reloadReplica(); err != nil {
+		logrus.Errorf("failed to reload replica: %v", err)
+		return err
+	}
+
+	backupName, err := backupstore.GetBackupFromBackupURL(restoreStatus.BackupURL)
+	if err != nil {
+		return err
+	}
+	if err := s.FinishRestore(backupName); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *SyncAgentServer) reloadReplica() error {
+	conn, err := grpc.Dial(s.replicaAddress, grpc.WithInsecure())
+	if err != nil {
+		return fmt.Errorf("cannot connect to ReplicaService %v: %v", s.replicaAddress, err)
+	}
+	defer conn.Close()
+	replicaServiceClient := replicarpc.NewReplicaServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
+	defer cancel()
+
+	if _, err := replicaServiceClient.ReplicaReload(ctx, &empty.Empty{}); err != nil {
+		return fmt.Errorf("failed to reload replica %v: %v", s.replicaAddress, err)
+	}
+
 	return nil
 }
 

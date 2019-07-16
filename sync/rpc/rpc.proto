@@ -80,7 +80,8 @@ message BackupRestoreIncrementallyRequest {
     string backup = 1;
     string deltaFileName = 2;
     string lastRestoredBackupName = 3;
-    map<string, string> credential = 4;
+    string snapshotDiskName = 4;
+    map<string, string> credential = 5;
 }
 
 message RestoreStatusReply {
