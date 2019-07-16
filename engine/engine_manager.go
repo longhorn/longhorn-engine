@@ -11,6 +11,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 
 	"github.com/longhorn/longhorn-instance-manager/rpc"
 	"github.com/longhorn/longhorn-instance-manager/types"
@@ -20,6 +21,7 @@ import (
 type Manager struct {
 	lock           *sync.RWMutex
 	processManager rpc.ProcessManagerServiceServer
+	pStreamWrapper *ProcessStreamWrapper
 	rpcWatchers    map[chan<- *rpc.EngineResponse]struct{}
 	listen         string
 
@@ -29,14 +31,51 @@ type Manager struct {
 	tIDAllocator    *util.Bitmap
 }
 
+type ProcessStreamWrapper struct {
+	grpc.ServerStream
+	*sync.RWMutex
+
+	updateChs map[chan<- *rpc.ProcessResponse]struct{}
+}
+
 const (
 	MaxTgtTargetNumber = 4096
 )
+
+func NewProcessStreamWrapper() *ProcessStreamWrapper {
+	return &ProcessStreamWrapper{
+		RWMutex:   &sync.RWMutex{},
+		updateChs: make(map[chan<- *rpc.ProcessResponse]struct{}),
+	}
+}
+
+func (sw ProcessStreamWrapper) Send(response *rpc.ProcessResponse) error {
+	sw.RLock()
+	for ch := range sw.updateChs {
+		ch <- response
+	}
+	sw.RUnlock()
+	return nil
+}
+
+func (sw *ProcessStreamWrapper) AddLauncherStream(updateCh chan<- *rpc.ProcessResponse) {
+	sw.Lock()
+	sw.updateChs[updateCh] = struct{}{}
+	sw.Unlock()
+}
+
+func (sw *ProcessStreamWrapper) RemoveLauncherStream(updateCh chan<- *rpc.ProcessResponse) {
+	sw.Lock()
+	delete(sw.updateChs, updateCh)
+	sw.Unlock()
+	close(updateCh)
+}
 
 func NewEngineManager(pm rpc.ProcessManagerServiceServer, listen string, shutdownCh chan error) (*Manager, error) {
 	em := &Manager{
 		lock:           &sync.RWMutex{},
 		processManager: pm,
+		pStreamWrapper: NewProcessStreamWrapper(),
 		rpcWatchers:    make(map[chan<- *rpc.EngineResponse]struct{}),
 		listen:         listen,
 
@@ -50,6 +89,13 @@ func NewEngineManager(pm rpc.ProcessManagerServiceServer, listen string, shutdow
 }
 
 func (em *Manager) StartMonitoring() {
+	go func() {
+		if err := em.processManager.ProcessWatch(nil, em.pStreamWrapper); err != nil {
+			logrus.Errorf("could not start process monitoring from engine manager: %v", err)
+			return
+		}
+		logrus.Infof("Stopped process update watch from engine manager")
+	}()
 	for {
 		done := false
 		select {
@@ -122,6 +168,7 @@ func (em *Manager) registerEngineLauncher(el *Launcher) error {
 		return fmt.Errorf("engine launcher %v already exists", el.LauncherName)
 	}
 
+	em.pStreamWrapper.AddLauncherStream(el.pUpdateCh)
 	el.UpdateCh = em.elUpdateCh
 	em.engineLaunchers[el.LauncherName] = el
 	el.UpdateCh <- el
@@ -137,6 +184,9 @@ func (em *Manager) unregisterEngineLauncher(launcherName string) {
 	if !exists {
 		return
 	}
+
+	// Stop Process monitoring for the Engine update streaming.
+	em.pStreamWrapper.RemoveLauncherStream(el.pUpdateCh)
 
 	el.lock.RLock()
 	processName := el.currentEngine.EngineName

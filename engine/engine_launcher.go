@@ -38,8 +38,9 @@ const (
 )
 
 type Launcher struct {
-	lock     *sync.RWMutex
-	UpdateCh chan<- *Launcher
+	lock      *sync.RWMutex
+	pUpdateCh chan *rpc.ProcessResponse
+	UpdateCh  chan<- *Launcher
 
 	LauncherName string
 	VolumeName   string
@@ -77,9 +78,23 @@ func NewEngineLauncher(spec *rpc.EngineSpec) *Launcher {
 		currentEngine: NewEngine(spec),
 		backupEngine:  nil,
 
-		lock: &sync.RWMutex{},
+		lock:      &sync.RWMutex{},
+		pUpdateCh: make(chan *rpc.ProcessResponse),
 	}
+	go el.StartMonitoring()
 	return el
+}
+
+func (el *Launcher) StartMonitoring() {
+	for p := range el.pUpdateCh {
+		if p.Spec.Name == el.currentEngine.EngineName {
+			el.UpdateCh <- el
+		}
+	}
+	el.lock.RLock()
+	launcherName := el.LauncherName
+	el.lock.RUnlock()
+	logrus.Debugf("Stopped process monitoring on engine launcher %v", launcherName)
 }
 
 func (el *Launcher) RPCResponse(processResp *rpc.ProcessResponse) *rpc.EngineResponse {
