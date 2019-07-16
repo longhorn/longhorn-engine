@@ -268,7 +268,8 @@ func doRestoreBackupIncrementally(c *cli.Context) error {
 	if backup == "" {
 		return fmt.Errorf("Missing required parameter backup")
 	}
-	backupName, err := backupstore.GetBackupFromBackupURL(backup)
+	backupURL := util.UnescapeURL(backup)
+	backupName, err := backupstore.GetBackupFromBackupURL(backupURL)
 	if err != nil {
 		return err
 	}
@@ -280,7 +281,7 @@ func doRestoreBackupIncrementally(c *cli.Context) error {
 
 	lastRestored := c.String("last-restored")
 
-	if err := task.RestoreBackupIncrementally(backup, backupName, lastRestored, credential); err != nil {
+	if err := task.RestoreBackupIncrementally(backupURL, backupName, lastRestored, credential); err != nil {
 		logrus.Errorf("failed to perform incremental restore: %v", err)
 		return err
 	}

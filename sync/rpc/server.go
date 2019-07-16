@@ -516,20 +516,6 @@ func (s *SyncAgentServer) replicaRevert(name, created string) error {
 
 func (s *SyncAgentServer) BackupRestoreIncrementally(ctx context.Context,
 	req *BackupRestoreIncrementallyRequest) (e *Empty, err error) {
-	if err := s.PrepareRestore(req.LastRestoredBackupName); err != nil {
-		logrus.Errorf("failed to prepare incremental restore: %v", err)
-		return nil, err
-	}
-
-	defer func() {
-		if err != nil {
-			if err := s.FinishRestore(""); err != nil {
-				logrus.Errorf("failed to finish incremental restore: %v", err)
-				return
-			}
-		}
-	}()
-
 	backupType, err := util.CheckBackupType(req.Backup)
 	if err != nil {
 		return nil, err
@@ -546,23 +532,80 @@ func (s *SyncAgentServer) BackupRestoreIncrementally(ctx context.Context,
 			return nil, errors.New("Could not backup to s3 without setting credential secret")
 		}
 	}
+	if err := s.PrepareRestore(req.LastRestoredBackupName); err != nil {
+		logrus.Errorf("failed to prepare incremental restore: %v", err)
+		return nil, err
+	}
+
+	s.Lock()
+	defer s.Unlock()
+	restoreObj := replica.NewRestore(req.DeltaFileName, s.replicaAddress)
+	restoreObj.LastRestored = req.LastRestoredBackupName
+	restoreObj.BackupURL = req.Backup
 
 	logrus.Infof("Running incremental restore %v to %s with lastRestoredBackup %s", req.Backup,
 		req.DeltaFileName, req.LastRestoredBackupName)
-	if err := backup.DoBackupRestoreIncrementally(req.Backup, req.DeltaFileName, req.LastRestoredBackupName); err != nil {
-		return nil, fmt.Errorf("error running incremental restore [%v]", err)
+	if err := backup.DoBackupRestoreIncrementally(req.Backup, req.DeltaFileName, req.LastRestoredBackupName,
+		restoreObj); err != nil {
+		if extraErr := s.FinishRestore(""); extraErr != nil {
+			return nil, fmt.Errorf("%v: %v", extraErr, err)
+		}
+		return nil, fmt.Errorf("error initiating incremental restore [%v]", err)
 	}
 
-	//Finish Incremental Restore
-	if backupName, err := backupstore.GetBackupFromBackupURL(util.UnescapeURL(req.Backup)); err != nil {
-		logrus.Errorf("failed to fetch backupName from backupURL: %v", err)
-		return nil, err
-	} else if err := s.FinishRestore(backupName); err != nil {
-		logrus.Errorf("failed to finish restore(incremental): %v", err)
-		return nil, err
-	}
-	logrus.Infof("Done running incremental restore %v to %v", req.Backup, req.DeltaFileName)
+	s.RestoreInfo = restoreObj
+	logrus.Infof("Successfully initiated incremental restore for %v to %v", req.Backup, req.DeltaFileName)
+
+	go s.completeIncrementalBackupRestore()
+
 	return &Empty{}, nil
+}
+
+func (s *SyncAgentServer) completeIncrementalBackupRestore() (err error) {
+	defer func() {
+		if err != nil {
+			if err := s.FinishRestore(""); err != nil {
+				logrus.Errorf("failed to finish incremental restore: %v", err)
+				return
+			}
+		}
+	}()
+
+	if err := s.waitForRestoreComplete(); err != nil {
+		logrus.Errorf("failed to incremental restore: %v", err)
+		return err
+	}
+	s.Lock()
+	if s.RestoreInfo == nil {
+		s.Unlock()
+		logrus.Errorf("BUG: Restore completed but object not found")
+		return fmt.Errorf("cannot find restore status")
+	}
+
+	restoreStatus := &replica.RestoreStatus{
+		SnapshotName:     s.RestoreInfo.SnapshotName,
+		Progress:         s.RestoreInfo.Progress,
+		Error:            s.RestoreInfo.Error,
+		LastUpdatedAt:    s.RestoreInfo.LastUpdatedAt,
+		LastRestored:     s.RestoreInfo.LastRestored,
+		SnapshotDiskName: s.RestoreInfo.SnapshotDiskName,
+		BackupURL:        s.RestoreInfo.BackupURL,
+	}
+	s.Unlock()
+
+	//Finish Incremental Restore
+	backupName := ""
+	if backupName, err = backupstore.GetBackupFromBackupURL(util.UnescapeURL(restoreStatus.BackupURL)); err != nil {
+		logrus.Errorf("failed to fetch backupName from backupURL: %v", err)
+		return err
+	}
+	if err := s.FinishRestore(backupName); err != nil {
+		logrus.Errorf("failed to finish restore(incremental): %v", err)
+		return err
+	}
+
+	logrus.Infof("Done running incremental restore %v to %v", restoreStatus.BackupURL, restoreStatus.SnapshotName)
+	return nil
 }
 
 func (s *SyncAgentServer) RestoreStatus(ctx context.Context, req *Empty) (*RestoreStatusReply, error) {
