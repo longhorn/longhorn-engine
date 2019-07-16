@@ -1,6 +1,7 @@
 import cmd
 import common
-from common import read_dev, VOLUME_HEAD
+import launcher
+from common import read_dev, VOLUME_HEAD, FRONTEND_TGT_BLOCKDEV
 
 
 def snapshot_tree_build(dev, offset, length, strict=True):
@@ -147,6 +148,8 @@ def snapshot_tree_verify_node(dev, offset, length, snap, data, name):
 
 
 def snapshot_tree_verify_backup_node(dev, offset, length, backup, data, name):
+    launcher.shutdown_engine_frontend()
     cmd.backup_restore(backup[name])
+    launcher.start_engine_frontend(FRONTEND_TGT_BLOCKDEV)
     readed = read_dev(dev, offset, length)
     assert readed == data[name]
