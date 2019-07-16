@@ -213,6 +213,13 @@ func GenerateSnapTempFileName(fileName string) string {
 	return fileName + snapTmpSuffix
 }
 
+func GetSnapshotNameFromTempFileName(tmpFileName string) (string, error) {
+	if !strings.HasSuffix(tmpFileName, snapTmpSuffix) {
+		return "", fmt.Errorf("invalid snapshot tmp filename")
+	}
+	return strings.TrimSuffix(tmpFileName, snapTmpSuffix), nil
+}
+
 func GetSnapshotNameFromDiskName(diskName string) (string, error) {
 	if !strings.HasPrefix(diskName, diskPrefix) || !strings.HasSuffix(diskName, diskSuffix) {
 		return "", fmt.Errorf("invalid snapshot disk name %v", diskName)

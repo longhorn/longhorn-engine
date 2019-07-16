@@ -5,7 +5,6 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
 	"github.com/longhorn/backupstore"
@@ -188,6 +187,14 @@ func (t *Task) restoreBackup(replicaInController *types.ControllerReplicaInfo, b
 }
 
 func (t *Task) RestoreBackupIncrementally(backup, backupName, lastRestored string, credential map[string]string) error {
+	volume, err := t.client.VolumeGet()
+	if err != nil {
+		return fmt.Errorf("failed to get volume")
+	}
+	if volume.FrontendState == "up" {
+		return fmt.Errorf("volume frontend enabled, cannot perform restore")
+	}
+
 	replicas, err := t.client.ReplicaList()
 	if err != nil {
 		return err
@@ -270,52 +277,18 @@ func (t *Task) restoreBackupIncrementally(replicaInController *types.ControllerR
 		deltaFileName := replica.GenerateDeltaFileName(lastRestored)
 
 		// incrementally restore to delta file
-		if err := repClient.RestoreBackupIncrementally(backup, deltaFileName, lastRestored, credential); err != nil {
+		if err := repClient.RestoreBackupIncrementally(backup, deltaFileName, lastRestored, snapshotDiskName, credential); err != nil {
 			logrus.Errorf("Failed to incrementally restore backup %s on %s", backup, replicaInController.Address)
 			return err
 		}
-
-		// coalesce delta file to snapshot/disk file
-		if err = repClient.CoalesceFile(deltaFileName, snapshotDiskName); err != nil {
-			logrus.Errorf("Failed to coalesce %s on %s: %v", deltaFileName, snapshotDiskName, err)
-			return err
-		}
-
-		// cleanup
-		if err = repClient.RemoveFile(deltaFileName); err != nil {
-			logrus.Warnf("Failed to cleanup delta file %s: %v", deltaFileName, err)
-		}
-		logrus.Infof("Successfully cleaned up the delta file: %v", deltaFileName)
 	} else {
 		// cannot restore backup incrementally, do full restoration instead
-		snapshotDiskMetaName := replica.GenerateSnapshotDiskMetaName(snapshotDiskName)
-		tmpSnapshotDiskName := replica.GenerateSnapTempFileName(snapshotDiskName)
-		tmpSnapshotDiskMetaName := replica.GenerateSnapshotDiskMetaName(tmpSnapshotDiskName)
 
-		defer func() {
-			// try to cleanup tmp files
-			repClient.RemoveFile(tmpSnapshotDiskName)
-			repClient.RemoveFile(tmpSnapshotDiskMetaName)
-		}()
+		tmpSnapshotDiskName := replica.GenerateSnapTempFileName(snapshotDiskName)
 
 		if err = t.restoreBackup(replicaInController, backup, tmpSnapshotDiskName, credential); err != nil {
 			return fmt.Errorf("failed to do full restoration in RestoreBackupIncrementally: %v", err)
 		}
-		logrus.Infof("Replica %v done restoreBackup in RestoreBackupIncrementally", replicaInController.Address)
-
-		// replace old snapshot
-		if err = repClient.RenameFile(tmpSnapshotDiskName, snapshotDiskName); err != nil {
-			return fmt.Errorf("failed to replace old snapshot %v with the fully restored file %v: %v", snapshotDiskName, tmpSnapshotDiskName, err)
-		}
-		if err = repClient.RenameFile(tmpSnapshotDiskMetaName, snapshotDiskMetaName); err != nil {
-			return fmt.Errorf("failed to replace old snapshot meta %v with the fully restored meta file %v: %v", snapshotDiskMetaName, tmpSnapshotDiskMetaName, err)
-		}
-	}
-
-	// snapshot files get changed, need reload
-	_, err = repClient.ReloadReplica()
-	if err != nil {
-		logrus.Warnf("Failed to reload replica %v: %v", replicaInController.Address, err)
 	}
 
 	return nil
