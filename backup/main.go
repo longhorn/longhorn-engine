@@ -151,7 +151,8 @@ func DoBackupRestore(backupURL string, toFile string, restoreObj *replica.Restor
 	return nil
 }
 
-func DoBackupRestoreIncrementally(url string, deltaFile string, lastRestored string) error {
+func DoBackupRestoreIncrementally(url string, deltaFile string, lastRestored string,
+	restoreObj *replica.RestoreStatus) error {
 	if url == "" {
 		return RequiredMissingError("backup URL")
 	}
@@ -174,7 +175,14 @@ func DoBackupRestoreIncrementally(url string, deltaFile string, lastRestored str
 		}
 	}
 
-	if err := backupstore.RestoreDeltaBlockBackupIncrementally(backupURL, deltaFile, lastRestored); err != nil {
+	config := &backupstore.DeltaRestoreConfig{
+		BackupURL:      backupURL,
+		DeltaOps:       restoreObj,
+		LastBackupName: lastRestored,
+		Filename:       deltaFile,
+	}
+
+	if err := backupstore.RestoreDeltaBlockBackupIncrementally(config); err != nil {
 		return err
 	}
 
