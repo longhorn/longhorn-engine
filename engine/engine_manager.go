@@ -22,6 +22,7 @@ type Manager struct {
 	processManager rpc.ProcessManagerServiceServer
 	listen         string
 
+	elUpdateCh      chan *Launcher
 	engineLaunchers map[string]*Launcher
 	tIDAllocator    *util.Bitmap
 }
@@ -36,6 +37,7 @@ func NewEngineManager(pm rpc.ProcessManagerServiceServer, listen string) (*Manag
 		processManager: pm,
 		listen:         listen,
 
+		elUpdateCh:      make(chan *Launcher),
 		engineLaunchers: map[string]*Launcher{},
 		tIDAllocator:    util.NewBitmap(1, MaxTgtTargetNumber),
 	}, nil
@@ -76,7 +78,9 @@ func (em *Manager) registerEngineLauncher(el *Launcher) error {
 		return fmt.Errorf("engine launcher %v already exists", el.LauncherName)
 	}
 
+	el.UpdateCh = em.elUpdateCh
 	em.engineLaunchers[el.LauncherName] = el
+	el.UpdateCh <- el
 	return nil
 }
 

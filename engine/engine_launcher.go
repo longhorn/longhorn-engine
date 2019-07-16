@@ -38,7 +38,8 @@ const (
 )
 
 type Launcher struct {
-	lock *sync.RWMutex
+	lock     *sync.RWMutex
+	UpdateCh chan<- *Launcher
 
 	LauncherName string
 	VolumeName   string
@@ -180,6 +181,7 @@ func (el *Launcher) createEngineProcess(engineManagerListen string,
 	}
 
 	el.lock.Unlock()
+	el.UpdateCh <- el
 
 	logrus.Debugf("engine launcher %v: succeed to create engine process %v at %v",
 		el.LauncherName, el.currentEngine.EngineName, el.currentEngine.Listen)
@@ -208,6 +210,7 @@ func (el *Launcher) deleteEngine(processManager rpc.ProcessManagerServiceServer,
 
 func (el *Launcher) prepareUpgrade(spec *rpc.EngineSpec) error {
 	el.lock.Lock()
+	defer func() { el.UpdateCh <- el }()
 	defer el.lock.Unlock()
 
 	logrus.Debugf("engine launcher %v: prepare for upgrade", el.LauncherName)
@@ -331,6 +334,7 @@ func (el *Launcher) backupBinary(newBinary string) error {
 
 func (el *Launcher) restoreBackupBinary() error {
 	el.lock.Lock()
+	defer func() { el.UpdateCh <- el }()
 	defer el.lock.Unlock()
 
 	if el.binaryBackup == "" {
@@ -391,6 +395,7 @@ func (el *Launcher) startFrontend(frontend string) error {
 
 	el.Frontend = frontend
 	el.lock.Unlock()
+	el.UpdateCh <- el
 
 	// the controller will call back to launcher. be careful about deadlock
 	if err := el.currentEngine.startFrontend("socket"); err != nil {
@@ -427,6 +432,7 @@ func (el *Launcher) shutdownFrontend() error {
 	el.lock.Lock()
 	el.Frontend = ""
 	el.lock.Unlock()
+	el.UpdateCh <- el
 
 	logrus.Debugf("engine launcher %v: frontend has been shutdown", el.LauncherName)
 
@@ -437,6 +443,7 @@ func (el *Launcher) finishFrontendStart(tID int) error {
 	logrus.Debugf("engine launcher %v: finishing frontend start", el.LauncherName)
 
 	el.lock.Lock()
+	defer func() { el.UpdateCh <- el }()
 	defer el.lock.Unlock()
 
 	// not going to use it
@@ -491,6 +498,7 @@ func (el *Launcher) finishFrontendShutdown() (int, error) {
 	logrus.Debugf("engine launcher %v: finishing frontend shutdown", el.LauncherName)
 
 	el.lock.Lock()
+	defer func() { el.UpdateCh <- el }()
 	defer el.lock.Unlock()
 
 	if el.scsiDevice == nil {
