@@ -41,6 +41,9 @@ VOLUME_CONFIG_FILE = "volume.cfg"
 VOLUME_TMP_CONFIG_FILE = "volume.cfg.tmp"
 MESSAGE_TYPE_ERROR = "error"
 
+FRONTEND_TGT_BLOCKDEV = "tgt-blockdev"
+LAUNCHER = "localhost:9510"
+
 RETRY_COUNTS = 100
 
 
@@ -102,6 +105,26 @@ def backup_targets():
 @pytest.fixture
 def random_str():
     return 'random-{0}-{1}'.format(random_num(), int(time.time()))
+
+
+def launcher_bin():
+    c = '/usr/local/bin/longhorn-engine-launcher'
+    assert path.exists(c)
+    return c
+
+
+def launcher(url):
+    return [launcher_bin(), "--url", url]
+
+
+def start_engine_frontend(frontend, url=LAUNCHER):
+    cmd = launcher(url) + ['engine-frontend-start', frontend]
+    subprocess.check_output(cmd)
+
+
+def shutdown_engine_frontend(url=LAUNCHER):
+    cmd = launcher(url) + ['engine-frontend-shutdown']
+    subprocess.check_output(cmd)
 
 
 def random_num():
@@ -643,6 +666,35 @@ def get_backup_url(bin, backupID):
     return rValue
 
 
+def restore_backup(bin, backupURL, env, grpc_c):
+    shutdown_engine_frontend()
+    v = grpc_c.volume_get()
+    assert v.frontendState == "down"
+
+    cmd = [bin, 'backup', 'restore', backupURL]
+    subprocess.check_call(cmd, env=env)
+
+    status_cmd = [bin, 'backup', 'restore-status']
+    completed = 0
+    rs = json.loads(subprocess.check_output(status_cmd).strip())
+    for x in range(RETRY_COUNTS):
+        time.sleep(3)
+        completed = 0
+        rs = json.loads(subprocess.check_output(status_cmd).strip())
+        for status in rs.values():
+            if 'progress' in status.keys() and status['progress'] == 100:
+                completed += 1
+                continue
+            if 'restoreError' in status.keys():
+                assert status['restoreError'] == ""
+        if completed == len(rs):
+            return
+    assert completed == len(rs)
+    start_engine_frontend(FRONTEND_TGT_BLOCKDEV)
+    v = grpc_c.volume_get()
+    assert v.frontendState == "up"
+
+
 def backup_core(bin, grpc_controller_client,
                 grpc_replica_client,
                 grpc_replica_client2,
@@ -760,11 +812,8 @@ def backup_core(bin, grpc_controller_client,
     with pytest.raises(subprocess.CalledProcessError):
         subprocess.check_call(cmd, env=env)
 
-    cmd = [bin, 'backup', 'restore', backup1]
-    subprocess.check_call(cmd, env=env)
-
-    cmd = [bin, 'backup', 'restore', backup2]
-    subprocess.check_call(cmd, env=env)
+    restore_backup(bin, backup1, env, grpc_controller_client)
+    restore_backup(bin, backup2, env, grpc_controller_client)
 
     cmd = [bin, 'backup', 'rm', backup1]
     subprocess.check_call(cmd, env=env)
@@ -784,6 +833,9 @@ def backup_core(bin, grpc_controller_client,
     # cannot find the backup
     with pytest.raises(subprocess.CalledProcessError):
         subprocess.check_call(cmd, env=env)
+    start_engine_frontend(FRONTEND_TGT_BLOCKDEV)
+    v = grpc_controller_client.volume_get()
+    assert v.frontendState == "up"
 
 
 def test_snapshot_purge_basic(bin, grpc_controller_client,

@@ -107,7 +107,7 @@ def restore_inc_test(grpc_controller,  # NOQA
     start_no_frontend_volume(grpc_sb_controller,
                              grpc_sb_replica1, grpc_sb_replica2)
 
-    restore_for_no_frontend_volume(backup0, grpc_sb_controller)
+    cmd.backup_restore(backup0, CONTROLLER_NO_FRONTEND)
     verify_no_frontend_data(0, snap0_data, grpc_sb_controller)
 
     # mock restore crash/error
@@ -121,7 +121,7 @@ def restore_inc_test(grpc_controller,  # NOQA
         for blk in blocks:
             command = ["mv", blk, blk+".tmp"]
             subprocess.check_output(command).strip()
-        with pytest.raises(subprocess.CalledProcessError):
+        with pytest.raises(Exception):
             cmd.restore_inc(backup1, backup0_name, CONTROLLER_NO_FRONTEND)
         assert path.exists(STANDBY_REPLICA1_PATH + delta_file1)
         assert path.exists(STANDBY_REPLICA2_PATH + delta_file1)
@@ -191,19 +191,6 @@ def restore_inc_test(grpc_controller,  # NOQA
 def compare_last_restored_with_backup(restore_status, backup):
     for status in restore_status.values():
         assert status['lastRestored'] == backup
-
-
-def restore_for_no_frontend_volume(backup, grpc_c):
-    launcher.start_engine_frontend(FRONTEND_TGT_BLOCKDEV,
-                                   url=LAUNCHER_NO_FRONTEND)
-    v = grpc_c.volume_get()
-    assert v.frontendState == "up"
-
-    cmd.backup_restore(backup, CONTROLLER_NO_FRONTEND)
-
-    launcher.shutdown_engine_frontend(url=LAUNCHER_NO_FRONTEND)
-    v = grpc_c.volume_get()
-    assert v.frontendState == "down"
 
 
 def verify_no_frontend_data(data_offset, data, grpc_c):

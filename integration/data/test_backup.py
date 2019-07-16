@@ -4,18 +4,21 @@ import pytest
 
 import cmd
 import common
+import launcher
 from common import grpc_controller, backup_targets  # NOQA
 from common import grpc_replica1, grpc_replica2  # NOQA
 from common import grpc_backing_replica1, grpc_backing_replica2  # NOQA
 from common import read_dev, read_from_backing_file
 from snapshot_tree import snapshot_tree_build, snapshot_tree_verify_backup_node
+from common import restore_with_no_frontend, \
+    FRONTEND_TGT_BLOCKDEV # NOQA
 
 VOLUME_NAME = 'test-volume_1.0'
 VOLUME_SIZE = str(4 * 1024 * 1024)  # 4M
 BLOCK_SIZE = str(2 * 1024 * 1024)  # 2M
 
 
-def backup_test(dev, backup_target):  # NOQA
+def backup_test(dev, backup_target, grpc_c):  # NOQA
     offset = 0
     length = 128
 
@@ -58,7 +61,7 @@ def backup_test(dev, backup_target):  # NOQA
     assert backup3_info["Size"] == BLOCK_SIZE
     assert snap3 in backup3_info["SnapshotName"]
 
-    cmd.backup_restore(backup3)
+    restore_with_no_frontend(backup3, grpc_c)
     readed = read_dev(dev, offset, length)
     assert readed == snap3_data
     c = common.checksum_dev(dev)
@@ -66,11 +69,11 @@ def backup_test(dev, backup_target):  # NOQA
 
     cmd.backup_rm(backup3)
     with pytest.raises(subprocess.CalledProcessError):
-        cmd.backup_restore(backup3)
+        restore_with_no_frontend(backup3, grpc_c)
     with pytest.raises(subprocess.CalledProcessError):
         cmd.backup_inspect(backup3)
 
-    cmd.backup_restore(backup1)
+    restore_with_no_frontend(backup1, grpc_c)
     readed = read_dev(dev, offset, length)
     assert readed == snap1_data
     c = common.checksum_dev(dev)
@@ -78,11 +81,11 @@ def backup_test(dev, backup_target):  # NOQA
 
     cmd.backup_rm(backup1)
     with pytest.raises(subprocess.CalledProcessError):
-        cmd.backup_restore(backup1)
+        restore_with_no_frontend(backup1, grpc_c)
     with pytest.raises(subprocess.CalledProcessError):
         cmd.backup_inspect(backup1)
 
-    cmd.backup_restore(backup2)
+    restore_with_no_frontend(backup2, grpc_c)
     readed = read_dev(dev, offset, length)
     assert readed == snap2_data
     c = common.checksum_dev(dev)
@@ -90,12 +93,16 @@ def backup_test(dev, backup_target):  # NOQA
 
     cmd.backup_rm(backup2)
     with pytest.raises(subprocess.CalledProcessError):
-        cmd.backup_restore(backup2)
+        restore_with_no_frontend(backup2, grpc_c)
     with pytest.raises(subprocess.CalledProcessError):
         cmd.backup_inspect(backup2)
+    # Engine frontend is down, Start it up
+    launcher.start_engine_frontend(FRONTEND_TGT_BLOCKDEV)
+    v = grpc_c.volume_get()
+    assert v.frontendState == "up"
 
 
-def backup_with_backing_file_test(backing_dev, backup_target):  # NOQA
+def backup_with_backing_file_test(backing_dev, backup_target, grpc_c):  # NOQA
     dev = backing_dev  # NOQA
 
     offset = 0
@@ -116,9 +123,9 @@ def backup_with_backing_file_test(backing_dev, backup_target):  # NOQA
     assert backup0_info["VolumeSize"] == VOLUME_SIZE
     assert snap0 in backup0_info["SnapshotName"]
 
-    backup_test(dev, backup_target)
+    backup_test(dev, backup_target, grpc_c)
 
-    cmd.backup_restore(backup0)
+    restore_with_no_frontend(backup0, grpc_c)
     after = read_dev(dev, offset, length)
     assert before == after
     c = common.checksum_dev(dev)
@@ -126,12 +133,16 @@ def backup_with_backing_file_test(backing_dev, backup_target):  # NOQA
 
     cmd.backup_rm(backup0)
     with pytest.raises(subprocess.CalledProcessError):
-        cmd.backup_restore(backup0)
+        restore_with_no_frontend(backup0, grpc_c)
     with pytest.raises(subprocess.CalledProcessError):
         cmd.backup_inspect(backup0)
+    # Engine frontend is down, Start it up
+    launcher.start_engine_frontend(FRONTEND_TGT_BLOCKDEV)
+    v = grpc_c.volume_get()
+    assert v.frontendState == "up"
 
 
-def backup_hole_with_backing_file_test(backing_dev, backup_target):  # NOQA
+def backup_hole_with_backing_file_test(backing_dev, backup_target, grpc_c):  # NOQA
     dev = backing_dev  # NOQA
 
     offset1 = 512
@@ -164,7 +175,7 @@ def backup_hole_with_backing_file_test(backing_dev, backup_target):  # NOQA
     hole_data_backup2 = read_dev(dev, hole_offset, hole_length)
     backup2 = cmd.backup_create(snap2, backup_target)
 
-    cmd.backup_restore(backup1)
+    restore_with_no_frontend(backup1, grpc_c)
     readed = read_dev(dev, boundary_offset, boundary_length)
     assert readed == boundary_data_backup1
     readed = read_dev(dev, hole_offset, hole_length)
@@ -172,7 +183,7 @@ def backup_hole_with_backing_file_test(backing_dev, backup_target):  # NOQA
     c = common.checksum_dev(dev)
     assert c == snap1_checksum
 
-    cmd.backup_restore(backup2)
+    restore_with_no_frontend(backup2, grpc_c)
     readed = read_dev(dev, boundary_offset, boundary_length)
     assert readed == boundary_data_backup2
     readed = read_dev(dev, hole_offset, hole_length)
@@ -208,7 +219,8 @@ def test_backup(grpc_replica1, grpc_replica2,  # NOQA
     for backup_target in backup_targets:
         dev = common.get_dev(grpc_replica1, grpc_replica2,
                              grpc_controller)
-        backup_test(dev, backup_target)
+        backup_test(dev, backup_target, grpc_controller)
+        cmd.sync_agent_server_reset()
         common.cleanup_replica(grpc_replica1)
         common.cleanup_replica(grpc_replica2)
         common.cleanup_controller(grpc_controller)
@@ -220,6 +232,7 @@ def test_snapshot_tree_backup(grpc_replica1, grpc_replica2,  # NOQA
         dev = common.get_dev(grpc_replica1, grpc_replica2,
                              grpc_controller)
         snapshot_tree_backup_test(dev, backup_target)
+        cmd.sync_agent_server_reset()
         common.cleanup_replica(grpc_replica1)
         common.cleanup_replica(grpc_replica2)
         common.cleanup_controller(grpc_controller)
@@ -231,7 +244,9 @@ def test_backup_with_backing_file(grpc_backing_replica1, grpc_backing_replica2, 
         backing_dev = common.get_backing_dev(grpc_backing_replica1,
                                              grpc_backing_replica2,
                                              grpc_controller)
-        backup_with_backing_file_test(backing_dev, backup_target)
+        backup_with_backing_file_test(backing_dev, backup_target,  # NOQA
+                                      grpc_controller)
+        cmd.sync_agent_server_reset()
         common.cleanup_replica(grpc_backing_replica1)
         common.cleanup_replica(grpc_backing_replica2)
         common.cleanup_controller(grpc_controller)
@@ -243,7 +258,9 @@ def test_backup_hole_with_backing_file(grpc_backing_replica1, grpc_backing_repli
         backing_dev = common.get_backing_dev(grpc_backing_replica1,
                                              grpc_backing_replica2,
                                              grpc_controller)
-        backup_hole_with_backing_file_test(backing_dev, backup_target)
+        backup_hole_with_backing_file_test(backing_dev, backup_target, # NOQA
+                                           grpc_controller) # NOQA
+        cmd.sync_agent_server_reset()
         common.cleanup_replica(grpc_backing_replica1)
         common.cleanup_replica(grpc_backing_replica2)
         common.cleanup_controller(grpc_controller)
