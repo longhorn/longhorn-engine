@@ -32,6 +32,14 @@ func RPCToProcess(obj *rpc.ProcessResponse) *Process {
 	}
 }
 
+func RPCToProcessList(obj *rpc.ProcessListResponse) map[string]*Process {
+	ret := map[string]*Process{}
+	for name, p := range obj.Processes {
+		ret[name] = RPCToProcess(p)
+	}
+	return ret
+}
+
 type ProcessStatus struct {
 	State     string `json:"state"`
 	ErrorMsg  string `json:"errorMsg"`
@@ -82,6 +90,14 @@ func RPCToEngine(obj *rpc.EngineResponse) *Engine {
 
 		Deleted: obj.Deleted,
 	}
+}
+
+func RPCToEngineList(obj *rpc.EngineListResponse) map[string]*Engine {
+	ret := map[string]*Engine{}
+	for name, e := range obj.Engines {
+		ret[name] = RPCToEngine(e)
+	}
+	return ret
 }
 
 type EngineStream struct {

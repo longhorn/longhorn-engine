@@ -23,40 +23,6 @@ func NewEngineManagerClient(address string) *EngineManagerClient {
 	}
 }
 
-func RPCToProcessStatus(obj *rpc.ProcessStatus) api.ProcessStatus {
-	return api.ProcessStatus{
-		State:     obj.State,
-		ErrorMsg:  obj.ErrorMsg,
-		PortStart: obj.PortStart,
-		PortEnd:   obj.PortEnd,
-	}
-}
-
-func RPCToEngine(obj *rpc.EngineResponse) *api.Engine {
-	return &api.Engine{
-		Name:       obj.Spec.Name,
-		VolumeName: obj.Spec.VolumeName,
-		Binary:     obj.Spec.Binary,
-		ListenIP:   obj.Spec.ListenIp,
-		Listen:     obj.Spec.Listen,
-		Size:       obj.Spec.Size,
-		Frontend:   obj.Spec.Frontend,
-		Backends:   obj.Spec.Backends,
-		Replicas:   obj.Spec.Replicas,
-
-		ProcessStatus: RPCToProcessStatus(obj.Status.ProcessStatus),
-		Endpoint:      obj.Status.Endpoint,
-	}
-}
-
-func RPCToEngineList(obj *rpc.EngineListResponse) map[string]*api.Engine {
-	ret := map[string]*api.Engine{}
-	for name, e := range obj.Engines {
-		ret[name] = RPCToEngine(e)
-	}
-	return ret
-}
-
 func (cli *EngineManagerClient) EngineCreate(size int64, name, volumeName, binary, listen, listenIP, frontend string, backends, replicas []string) (*api.Engine, error) {
 	if name == "" || volumeName == "" || binary == "" {
 		return nil, fmt.Errorf("failed to call gRPC EngineCreate: missing required parameter")
@@ -95,7 +61,7 @@ func (cli *EngineManagerClient) EngineCreate(size int64, name, volumeName, binar
 		return nil, fmt.Errorf("failed to call gRPC EngineCreate for volume %v: %v", volumeName, err)
 	}
 
-	return RPCToEngine(e), nil
+	return api.RPCToEngine(e), nil
 }
 
 func (cli *EngineManagerClient) EngineGet(name string) (*api.Engine, error) {
@@ -119,7 +85,7 @@ func (cli *EngineManagerClient) EngineGet(name string) (*api.Engine, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to call gRPC EngineGet for engine %v: %v", name, err)
 	}
-	return RPCToEngine(e), nil
+	return api.RPCToEngine(e), nil
 }
 
 func (cli *EngineManagerClient) EngineList() (map[string]*api.Engine, error) {
@@ -137,7 +103,7 @@ func (cli *EngineManagerClient) EngineList() (map[string]*api.Engine, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to call gRPC EngineList: %v", err)
 	}
-	return RPCToEngineList(es), nil
+	return api.RPCToEngineList(es), nil
 }
 
 func (cli *EngineManagerClient) EngineUpgrade(size int64, name, binary string, replicas []string) (*api.Engine, error) {
@@ -172,7 +138,7 @@ func (cli *EngineManagerClient) EngineUpgrade(size int64, name, binary string, r
 		return nil, fmt.Errorf("failed to call gRPC EngineUpgrade for engine %v: %v", name, err)
 	}
 
-	return RPCToEngine(e), nil
+	return api.RPCToEngine(e), nil
 }
 
 func (cli *EngineManagerClient) EngineDelete(name string) (*api.Engine, error) {
@@ -196,7 +162,7 @@ func (cli *EngineManagerClient) EngineDelete(name string) (*api.Engine, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to call gRPC EngineDelete for engine %v: %v", name, err)
 	}
-	return RPCToEngine(e), nil
+	return api.RPCToEngine(e), nil
 }
 
 func (cli *EngineManagerClient) EngineLog(volumeName string) (*api.LogStream, error) {

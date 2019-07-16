@@ -23,25 +23,6 @@ func NewProcessManagerClient(address string) *ProcessManagerClient {
 	}
 }
 
-func RPCToProcess(obj *rpc.ProcessResponse) *api.Process {
-	return &api.Process{
-		Name:          obj.Spec.Name,
-		Binary:        obj.Spec.Binary,
-		Args:          obj.Spec.Args,
-		PortCount:     obj.Spec.PortCount,
-		PortArgs:      obj.Spec.PortArgs,
-		ProcessStatus: RPCToProcessStatus(obj.Status),
-	}
-}
-
-func RPCToProcessList(obj *rpc.ProcessListResponse) map[string]*api.Process {
-	ret := map[string]*api.Process{}
-	for name, p := range obj.Processes {
-		ret[name] = RPCToProcess(p)
-	}
-	return ret
-}
-
 func (cli *ProcessManagerClient) ProcessCreate(name, binary string, portCount int, args, portArgs []string) (*api.Process, error) {
 	if name == "" || binary == "" {
 		return nil, fmt.Errorf("failed to start process: missing required parameter")
@@ -69,7 +50,7 @@ func (cli *ProcessManagerClient) ProcessCreate(name, binary string, portCount in
 	if err != nil {
 		return nil, fmt.Errorf("failed to start process: %v", err)
 	}
-	return RPCToProcess(p), nil
+	return api.RPCToProcess(p), nil
 }
 
 func (cli *ProcessManagerClient) ProcessDelete(name string) (*api.Process, error) {
@@ -93,7 +74,7 @@ func (cli *ProcessManagerClient) ProcessDelete(name string) (*api.Process, error
 	if err != nil {
 		return nil, fmt.Errorf("failed to delete process %v: %v", name, err)
 	}
-	return RPCToProcess(p), nil
+	return api.RPCToProcess(p), nil
 }
 
 func (cli *ProcessManagerClient) ProcessGet(name string) (*api.Process, error) {
@@ -117,7 +98,7 @@ func (cli *ProcessManagerClient) ProcessGet(name string) (*api.Process, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to get process %v: %v", name, err)
 	}
-	return RPCToProcess(p), nil
+	return api.RPCToProcess(p), nil
 }
 
 func (cli *ProcessManagerClient) ProcessList() (map[string]*api.Process, error) {
@@ -135,7 +116,7 @@ func (cli *ProcessManagerClient) ProcessList() (map[string]*api.Process, error) 
 	if err != nil {
 		return nil, fmt.Errorf("failed to list processes: %v", err)
 	}
-	return RPCToProcessList(ps), nil
+	return api.RPCToProcessList(ps), nil
 }
 
 func (cli *ProcessManagerClient) ProcessLog(name string) (*api.LogStream, error) {
