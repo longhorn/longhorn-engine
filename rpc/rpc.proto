@@ -39,6 +39,7 @@ message EngineStatus {
 message EngineResponse {
 	EngineSpec spec = 1;
 	EngineStatus status = 2;
+	bool deleted = 3;
 }
 
 message EngineCreateRequest {
@@ -101,6 +102,7 @@ message ProcessGetRequest {
 message ProcessResponse {
 	ProcessSpec spec = 1;
 	ProcessStatus status = 2;
+	bool deleted = 3;
 }
 
 message ProcessListRequest{

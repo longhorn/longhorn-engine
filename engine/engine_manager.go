@@ -122,6 +122,10 @@ func (em *Manager) StartMonitoring() {
 			}
 			resp := el.RPCResponse(response)
 			em.lock.RLock()
+			// Modify response to indicate deletion.
+			if _, exists := em.engineLaunchers[el.LauncherName]; !exists {
+				resp.Deleted = true
+			}
 			for stream := range em.rpcWatchers {
 				stream <- resp
 			}
@@ -231,6 +235,7 @@ func (em *Manager) unregisterEngineLauncher(launcherName string) {
 		delete(em.engineLaunchers, launcherName)
 
 		logrus.Infof("Engine Manager had successfully unregistered engine launcher %v, deletion completed", launcherName)
+		el.UpdateCh <- el
 	} else {
 		logrus.Errorf("Engine Manager fails to unregister engine launcher %v", launcherName)
 	}
@@ -278,6 +283,7 @@ func (em *Manager) EngineDelete(ctx context.Context, req *rpc.EngineRequest) (re
 	}
 
 	ret = el.RPCResponse(processResp)
+	ret.Deleted = true
 
 	logrus.Infof("Engine Manager is deleting engine %v", req.Name)
 

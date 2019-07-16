@@ -118,6 +118,10 @@ func (pm *Manager) StartMonitoring() {
 			p.lock.RUnlock()
 			resp := p.RPCResponse()
 			pm.lock.RLock()
+			// Modify response to indicate deletion.
+			if _, exists := pm.processes[p.Name]; !exists {
+				resp.Deleted = true
+			}
 			for stream := range pm.rpcWatchers {
 				stream <- resp
 			}
@@ -186,6 +190,7 @@ func (pm *Manager) ProcessDelete(ctx context.Context, req *rpc.ProcessDeleteRequ
 	p.lock.Unlock()
 
 	resp := p.RPCResponse()
+	resp.Deleted = true
 
 	go pm.unregisterProcess(p)
 
@@ -258,6 +263,7 @@ func (pm *Manager) unregisterProcess(p *Process) {
 		}
 		logrus.Infof("Process Manager: successfully unregistered process %v", p.Name)
 		delete(pm.processes, p.Name)
+		p.UpdateCh <- p
 	} else {
 		logrus.Errorf("Process Manager: failed to unregister process %v since it is state %v rather than stopped", p.Name, p.State)
 	}
