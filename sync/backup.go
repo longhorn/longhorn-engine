@@ -24,6 +24,9 @@ type BackupStatusInfo struct {
 type RestoreStatus struct {
 	IsRestoring  bool   `json:"isRestoring"`
 	LastRestored string `json:"lastRestored"`
+	Progress     int    `json:"progress,omitempty"`
+	RestoreError string `json:"restoreError,omitempty"`
+	Filename     string `json:"filename,omitempty"`
 }
 
 func (t *Task) CreateBackup(snapshot, dest string, labels []string, credential map[string]string) (string, error) {
@@ -352,6 +355,9 @@ func (t *Task) RestoreStatus() (map[string]*RestoreStatus, error) {
 		replicaStatusMap[replica.Address] = &RestoreStatus{
 			IsRestoring:  rs.IsRestoring,
 			LastRestored: rs.LastRestored,
+			Progress:     int(rs.Progress),
+			RestoreError: rs.Error,
+			Filename:     rs.DestFileName,
 		}
 	}
 
