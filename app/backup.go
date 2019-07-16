@@ -31,6 +31,7 @@ func BackupCmd() cli.Command {
 			cmd.BackupRemoveCmd(),
 			cmd.BackupListCmd(),
 			cmd.BackupInspectCmd(),
+			cmd.BackupVolumeRemoveCmd(),
 		},
 	}
 }
