@@ -6,8 +6,8 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/sirupsen/logrus"
 	"github.com/longhorn/backupstore/util"
+	"github.com/sirupsen/logrus"
 
 	. "github.com/longhorn/backupstore/logging"
 )
