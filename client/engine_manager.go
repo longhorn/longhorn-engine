@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/ptypes/empty"
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
@@ -218,6 +219,24 @@ func (cli *EngineManagerClient) EngineLog(volumeName string) (*api.LogStream, er
 	}
 
 	return api.NewLogStream(conn, cancel, stream), nil
+}
+
+func (cli *EngineManagerClient) EngineWatch() (*api.EngineStream, error) {
+	conn, err := grpc.Dial(cli.Address, grpc.WithInsecure())
+	if err != nil {
+		return nil, fmt.Errorf("cannot connect to EngineManager Service %v: %v", cli.Address, err)
+	}
+
+	// Don't cleanup the Client here, we don't know when the user will be done with the Stream. Pass it to the wrapper
+	// and allow the user to take care of it.
+	client := rpc.NewEngineManagerServiceClient(conn)
+	ctx, cancel := context.WithCancel(context.Background())
+	stream, err := client.EngineWatch(ctx, &empty.Empty{})
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to start engine update watch")
+	}
+
+	return api.NewEngineStream(conn, cancel, stream), nil
 }
 
 func (cli *EngineManagerClient) FrontendStart(name, frontend string) error {

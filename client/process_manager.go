@@ -3,6 +3,8 @@ package client
 import (
 	"fmt"
 
+	"github.com/golang/protobuf/ptypes/empty"
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
@@ -155,4 +157,22 @@ func (cli *ProcessManagerClient) ProcessLog(name string) (*api.LogStream, error)
 		return nil, fmt.Errorf("failed to get process log of %v: %v", name, err)
 	}
 	return api.NewLogStream(conn, cancel, stream), nil
+}
+
+func (cli *ProcessManagerClient) ProcessWatch() (*api.ProcessStream, error) {
+	conn, err := grpc.Dial(cli.Address, grpc.WithInsecure())
+	if err != nil {
+		return nil, fmt.Errorf("cannot connect process manager service to %v: %v", cli.Address, err)
+	}
+
+	// Don't cleanup the Client here, we don't know when the user will be done with the Stream. Pass it to the wrapper
+	// and allow the user to take care of it.
+	client := rpc.NewProcessManagerServiceClient(conn)
+	ctx, cancel := context.WithCancel(context.Background())
+	stream, err := client.ProcessWatch(ctx, &empty.Empty{})
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to open process update stream")
+	}
+
+	return api.NewProcessStream(conn, cancel, stream), nil
 }

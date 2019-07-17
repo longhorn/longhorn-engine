@@ -1,6 +1,13 @@
 package api
 
-import "github.com/longhorn/longhorn-instance-manager/rpc"
+import (
+	"context"
+
+	"github.com/pkg/errors"
+	"google.golang.org/grpc"
+
+	"github.com/longhorn/longhorn-instance-manager/rpc"
+)
 
 type Process struct {
 	Name      string   `json:"name"`
@@ -10,6 +17,19 @@ type Process struct {
 	PortArgs  []string `json:"portArgs"`
 
 	ProcessStatus ProcessStatus `json:"processStatus"`
+
+	Deleted bool `json:"deleted"`
+}
+
+func RPCToProcess(obj *rpc.ProcessResponse) *Process {
+	return &Process{
+		Name:          obj.Spec.Name,
+		Binary:        obj.Spec.Binary,
+		Args:          obj.Spec.Args,
+		PortCount:     obj.Spec.PortCount,
+		PortArgs:      obj.Spec.PortArgs,
+		ProcessStatus: RPCToProcessStatus(obj.Status),
+	}
 }
 
 type ProcessStatus struct {
@@ -17,6 +37,15 @@ type ProcessStatus struct {
 	ErrorMsg  string `json:"errorMsg"`
 	PortStart int32  `json:"portStart"`
 	PortEnd   int32  `json:"portEnd"`
+}
+
+func RPCToProcessStatus(obj *rpc.ProcessStatus) ProcessStatus {
+	return ProcessStatus{
+		State:     obj.State,
+		ErrorMsg:  obj.ErrorMsg,
+		PortStart: obj.PortStart,
+		PortEnd:   obj.PortEnd,
+	}
 }
 
 type Engine struct {
@@ -32,6 +61,87 @@ type Engine struct {
 
 	ProcessStatus ProcessStatus `json:"processStatus"`
 	Endpoint      string        `json:"endpoint"`
+
+	Deleted bool `json:"deleted"`
+}
+
+func RPCToEngine(obj *rpc.EngineResponse) *Engine {
+	return &Engine{
+		Name:       obj.Spec.Name,
+		VolumeName: obj.Spec.VolumeName,
+		Binary:     obj.Spec.Binary,
+		ListenIP:   obj.Spec.ListenIp,
+		Listen:     obj.Spec.Listen,
+		Size:       obj.Spec.Size,
+		Frontend:   obj.Spec.Frontend,
+		Backends:   obj.Spec.Backends,
+		Replicas:   obj.Spec.Replicas,
+
+		ProcessStatus: RPCToProcessStatus(obj.Status.ProcessStatus),
+		Endpoint:      obj.Status.Endpoint,
+
+		Deleted: obj.Deleted,
+	}
+}
+
+type EngineStream struct {
+	conn      *grpc.ClientConn
+	ctxCancel context.CancelFunc
+	stream    rpc.EngineManagerService_EngineWatchClient
+}
+
+func NewEngineStream(conn *grpc.ClientConn, ctxCancel context.CancelFunc, stream rpc.EngineManagerService_EngineWatchClient) *EngineStream {
+	return &EngineStream{
+		conn,
+		ctxCancel,
+		stream,
+	}
+}
+
+func (s *EngineStream) Recv() (*Engine, error) {
+	resp, err := s.stream.Recv()
+	if err != nil {
+		return nil, err
+	}
+	return RPCToEngine(resp), nil
+}
+
+func (s *EngineStream) Close() error {
+	s.ctxCancel()
+	if err := s.conn.Close(); err != nil {
+		return errors.Wrapf(err, "error closing engine watcher gRPC connection")
+	}
+	return nil
+}
+
+type ProcessStream struct {
+	conn      *grpc.ClientConn
+	ctxCancel context.CancelFunc
+	stream    rpc.ProcessManagerService_ProcessWatchClient
+}
+
+func NewProcessStream(conn *grpc.ClientConn, ctxCancel context.CancelFunc, stream rpc.ProcessManagerService_ProcessWatchClient) *ProcessStream {
+	return &ProcessStream{
+		conn,
+		ctxCancel,
+		stream,
+	}
+}
+
+func (s *ProcessStream) Close() error {
+	s.ctxCancel()
+	if err := s.conn.Close(); err != nil {
+		return errors.Wrapf(err, "error closing process watcher gRPC connection")
+	}
+	return nil
+}
+
+func (s *ProcessStream) Recv() (*Process, error) {
+	resp, err := s.stream.Recv()
+	if err != nil {
+		return nil, err
+	}
+	return RPCToProcess(resp), nil
 }
 
 func NewLogStream(conn *grpc.ClientConn, ctxCancel context.CancelFunc, stream rpc.ProcessManagerService_ProcessLogClient) *LogStream {
