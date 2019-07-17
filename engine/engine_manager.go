@@ -23,6 +23,7 @@ type Manager struct {
 	listen         string
 
 	elUpdateCh      chan *Launcher
+	shutdownCh      chan error
 	engineLaunchers map[string]*Launcher
 	tIDAllocator    *util.Bitmap
 }
@@ -31,16 +32,34 @@ const (
 	MaxTgtTargetNumber = 4096
 )
 
-func NewEngineManager(pm rpc.ProcessManagerServiceServer, listen string) (*Manager, error) {
-	return &Manager{
+func NewEngineManager(pm rpc.ProcessManagerServiceServer, listen string, shutdownCh chan error) (*Manager, error) {
+	em := &Manager{
 		lock:           &sync.RWMutex{},
 		processManager: pm,
 		listen:         listen,
 
 		elUpdateCh:      make(chan *Launcher),
+		shutdownCh:      shutdownCh,
 		engineLaunchers: map[string]*Launcher{},
 		tIDAllocator:    util.NewBitmap(1, MaxTgtTargetNumber),
-	}, nil
+	}
+	go em.StartMonitoring()
+	return em, nil
+}
+
+func (em *Manager) StartMonitoring() {
+	for {
+		done := false
+		select {
+		case <-em.shutdownCh:
+			logrus.Infof("Engine Manager is shutting down")
+			done = true
+			break
+		}
+		if done {
+			break
+		}
+	}
 }
 
 func (em *Manager) EngineCreate(ctx context.Context, req *rpc.EngineCreateRequest) (ret *rpc.EngineResponse, err error) {

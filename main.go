@@ -114,7 +114,7 @@ func start(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	em, err := engine.NewEngineManager(pm, listen)
+	em, err := engine.NewEngineManager(pm, listen, shutdownCh)
 	if err != nil {
 		return err
 	}
