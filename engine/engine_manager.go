@@ -20,6 +20,7 @@ import (
 type Manager struct {
 	lock           *sync.RWMutex
 	processManager rpc.ProcessManagerServiceServer
+	rpcWatchers    map[chan<- *rpc.EngineResponse]struct{}
 	listen         string
 
 	elUpdateCh      chan *Launcher
@@ -36,6 +37,7 @@ func NewEngineManager(pm rpc.ProcessManagerServiceServer, listen string, shutdow
 	em := &Manager{
 		lock:           &sync.RWMutex{},
 		processManager: pm,
+		rpcWatchers:    make(map[chan<- *rpc.EngineResponse]struct{}),
 		listen:         listen,
 
 		elUpdateCh:      make(chan *Launcher),
@@ -54,7 +56,30 @@ func (em *Manager) StartMonitoring() {
 		case <-em.shutdownCh:
 			logrus.Infof("Engine Manager is shutting down")
 			done = true
+			em.lock.RLock()
+			for stream := range em.rpcWatchers {
+				close(stream)
+			}
+			em.lock.RUnlock()
+			logrus.Infof("Engine Manager has closed all gRPC watchers")
 			break
+		case el := <-em.elUpdateCh:
+			el.lock.RLock()
+			name := el.currentEngine.EngineName
+			el.lock.RUnlock()
+			response, err := em.processManager.ProcessGet(nil, &rpc.ProcessGetRequest{
+				Name: name,
+			})
+			if err != nil {
+				logrus.Errorf("Could not get Process for current Engine of Launcher %v: %v", el.LauncherName,
+					err)
+			}
+			resp := el.RPCResponse(response)
+			em.lock.RLock()
+			for stream := range em.rpcWatchers {
+				stream <- resp
+			}
+			em.lock.RUnlock()
 		}
 		if done {
 			break
@@ -333,6 +358,26 @@ func (em *Manager) EngineLog(req *rpc.LogRequest, srv rpc.EngineManagerService_E
 	}
 
 	logrus.Debugf("Engine Manager has successfully retrieved logs for engine %v", req.Name)
+
+	return nil
+}
+
+func (em *Manager) EngineWatch(req *empty.Empty, srv rpc.EngineManagerService_EngineWatchServer) error {
+	responseChan := make(chan *rpc.EngineResponse)
+	em.lock.Lock()
+	em.rpcWatchers[responseChan] = struct{}{}
+	em.lock.Unlock()
+	defer func() {
+		em.lock.Lock()
+		delete(em.rpcWatchers, responseChan)
+		em.lock.Unlock()
+	}()
+
+	for resp := range responseChan {
+		if err := srv.Send(resp); err != nil {
+			return err
+		}
+	}
 
 	return nil
 }

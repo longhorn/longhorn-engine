@@ -10,6 +10,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
@@ -31,6 +32,7 @@ type Manager struct {
 
 	rpcService    *grpc.Server
 	rpcShutdownCh chan error
+	rpcWatchers   map[chan<- *rpc.ProcessResponse]struct{}
 
 	lock            *sync.RWMutex
 	processes       map[string]*Process
@@ -81,6 +83,7 @@ func NewManager(portRange string, logsDir string, shutdownCh chan error) (*Manag
 		portRangeMax: end,
 
 		rpcShutdownCh: make(chan error),
+		rpcWatchers:   make(map[chan<- *rpc.ProcessResponse]struct{}),
 
 		lock:            &sync.RWMutex{},
 		processes:       map[string]*Process{},
@@ -102,11 +105,23 @@ func (pm *Manager) StartMonitoring() {
 		case <-pm.shutdownCh:
 			logrus.Infof("Process Manager is shutting down")
 			done = true
+			pm.lock.RLock()
+			for stream := range pm.rpcWatchers {
+				close(stream)
+			}
+			pm.lock.RUnlock()
+			logrus.Infof("Process Manager has closed all gRPC watchers")
 			break
 		case p := <-pm.processUpdateCh:
 			p.lock.RLock()
 			logrus.Infof("Process update: %v: state %v: Error: %v", p.Name, p.State, p.ErrorMsg)
 			p.lock.RUnlock()
+			resp := p.RPCResponse()
+			pm.lock.RLock()
+			for stream := range pm.rpcWatchers {
+				stream <- resp
+			}
+			pm.lock.RUnlock()
 		}
 		if done {
 			break
@@ -296,6 +311,26 @@ func (pm *Manager) ProcessLog(req *rpc.LogRequest, srv rpc.ProcessManagerService
 			return err
 		}
 	}
+	return nil
+}
+
+func (pm *Manager) ProcessWatch(req *empty.Empty, srv rpc.ProcessManagerService_ProcessWatchServer) error {
+	responseChan := make(chan *rpc.ProcessResponse)
+	pm.lock.Lock()
+	pm.rpcWatchers[responseChan] = struct{}{}
+	pm.lock.Unlock()
+	defer func() {
+		pm.lock.Lock()
+		delete(pm.rpcWatchers, responseChan)
+		pm.lock.Unlock()
+	}()
+
+	for resp := range responseChan {
+		if err := srv.Send(resp); err != nil {
+			return err
+		}
+	}
+
 	return nil
 }
 
