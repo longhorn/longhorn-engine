@@ -17,19 +17,19 @@ def snapshot_tree_build(dev, offset, length, strict=True):
     snapshot_tree_create_node(dev, offset, length, snap, data, "0b")
     snapshot_tree_create_node(dev, offset, length, snap, data, "0c")
 
-    cmd.snapshot_revert(snap["0b"])
+    common.snapshot_revert_with_frontend(snap["0b"])
 
     snapshot_tree_create_node(dev, offset, length, snap, data, "1a")
     snapshot_tree_create_node(dev, offset, length, snap, data, "1b")
     snapshot_tree_create_node(dev, offset, length, snap, data, "1c")
 
-    cmd.snapshot_revert(snap["0b"])
+    common.snapshot_revert_with_frontend(snap["0b"])
 
     snapshot_tree_create_node(dev, offset, length, snap, data, "2a")
     snapshot_tree_create_node(dev, offset, length, snap, data, "2b")
     snapshot_tree_create_node(dev, offset, length, snap, data, "2c")
 
-    cmd.snapshot_revert(snap["2a"])
+    common.snapshot_revert_with_frontend(snap["2a"])
 
     snapshot_tree_create_node(dev, offset, length, snap, data, "3a")
     snapshot_tree_create_node(dev, offset, length, snap, data, "3b")
@@ -142,7 +142,7 @@ def snapshot_tree_verify_data(dev, offset, length, snap, data):
 
 
 def snapshot_tree_verify_node(dev, offset, length, snap, data, name):
-    cmd.snapshot_revert(snap[name])
+    common.snapshot_revert_with_frontend(snap[name])
     readed = read_dev(dev, offset, length)
     assert readed == data[name]
 

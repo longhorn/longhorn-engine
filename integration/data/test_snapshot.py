@@ -2,6 +2,7 @@ import cmd
 from common import dev, backing_dev  # NOQA
 from common import read_dev, read_from_backing_file, VOLUME_HEAD
 from common import Snapshot, generate_random_data
+from common import snapshot_revert_with_frontend
 from snapshot_tree import snapshot_tree_build, snapshot_tree_verify_node
 
 
@@ -17,12 +18,12 @@ def test_snapshot_revert(dev):  # NOQA
     assert snap2.name in snapList
     assert snap3.name in snapList
 
-    cmd.snapshot_revert(snap2.name)
+    snapshot_revert_with_frontend(snap2.name)
     snap3.refute_data()
     snap2.verify_checksum()
     snap1.verify_data()
 
-    cmd.snapshot_revert(snap1.name)
+    snapshot_revert_with_frontend(snap1.name)
     snap3.refute_data()
     snap2.refute_data()
     snap1.verify_checksum()
@@ -55,7 +56,7 @@ def test_snapshot_rm_basic(dev):  # NOQA
     snap2.verify_data()
     snap1.verify_data()
 
-    cmd.snapshot_revert(snap1.name)
+    snapshot_revert_with_frontend(snap1.name)
     snap3.refute_data()
     snap2.refute_data()
     snap1.verify_checksum()
@@ -81,7 +82,7 @@ def test_snapshot_revert_with_backing_file(backing_dev):  # NOQA
 
     test_snapshot_revert(dev)
 
-    cmd.snapshot_revert(snap0)
+    snapshot_revert_with_frontend(snap0)
     after = read_dev(dev, offset, length)
     assert before == after
 
@@ -163,7 +164,7 @@ def test_snapshot_tree_basic(dev):  # NOQA
 
     snap, data = snapshot_tree_build(dev, offset, length)
 
-    cmd.snapshot_revert(snap["1b"])
+    snapshot_revert_with_frontend(snap["1b"])
     cmd.snapshot_rm(snap["0a"])
     cmd.snapshot_rm(snap["0b"])
     cmd.snapshot_rm(snap["1c"])
