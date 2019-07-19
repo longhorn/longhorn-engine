@@ -389,8 +389,9 @@ def test_revert(grpc_controller_client,
                         'volume-snap-foo1.img']
     assert r1.chain == r2.chain
 
+    shutdown_engine_frontend()
     grpc_controller_client.volume_revert(name='foo1')
-
+    start_engine_frontend(FRONTEND_TGT_BLOCKDEV)
     r1 = grpc_replica_client.replica_get()
     r2 = grpc_replica_client2.replica_get()
     assert r1.chain == ['volume-head-003.img', 'volume-snap-foo1.img']

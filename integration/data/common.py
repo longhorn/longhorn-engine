@@ -16,6 +16,7 @@ import launcher
 from cmd import snapshot_create
 from cmd import RETRY_COUNTS
 from cmd import backup_restore
+from cmd import snapshot_revert
 from utils import read_file, checksum_data, SIZE
 from frontend import restdev, blockdev
 from frontend import PAGE_SIZE, LONGHORN_DEV_DIR, get_socket_path  # NOQA
@@ -149,6 +150,12 @@ def restore_with_no_frontend(backup, grpc_c):
     launcher.start_engine_frontend(FRONTEND_TGT_BLOCKDEV)
     v = grpc_c.volume_get()
     assert v.frontendState == "up"
+
+
+def snapshot_revert_with_frontend(name):
+    launcher.shutdown_engine_frontend()
+    snapshot_revert(name)
+    launcher.start_engine_frontend(FRONTEND_TGT_BLOCKDEV)
 
 
 @pytest.fixture()
