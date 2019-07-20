@@ -360,20 +360,28 @@ func (el *Launcher) startFrontend(frontend string) error {
 
 	el.lock.Lock()
 
-	if el.Frontend == frontend && el.Frontend != "" && el.scsiDevice != nil {
-		logrus.Debugf("Engine frontend %v is already up", el.Frontend)
+	if el.Frontend != "" && el.scsiDevice != nil {
+		if el.Frontend != frontend {
+			el.lock.Unlock()
+			return fmt.Errorf("engine frontend %v is already up and cannot be set to %v", el.Frontend, frontend)
+		}
 		el.lock.Unlock()
+		logrus.Infof("Engine frontend %v is already up", frontend)
 		return nil
 	}
 
 	if el.Frontend != "" && el.scsiDevice == nil {
+		if el.Frontend != frontend {
+			el.lock.Unlock()
+			return fmt.Errorf("engine frontend %v cannot be set to %v and its frontend cannot be started before engine manager shutdown its frontend", el.Frontend, frontend)
+		}
 		el.lock.Unlock()
-		return fmt.Errorf("BUG: frontend of engine launcher %v is set to %v but not scsi device", el.LauncherName, el.Frontend)
+		return fmt.Errorf("engine frontend had been set to %v, but its frontend cannot be started before engine manager shutdown its frontend", frontend)
 	}
 
-	if el.Frontend != "" {
+	if el.Frontend == "" && el.scsiDevice != nil {
 		el.lock.Unlock()
-		return fmt.Errorf("cannot set frontend since it's already set to %v", el.Frontend)
+		return fmt.Errorf("BUG: engine launcher frontend is empty but scsi device hasn't been cleanup in frontend start")
 	}
 
 	if frontend != FrontendTGTBlockDev && frontend != FrontendTGTISCSI {
