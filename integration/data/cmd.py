@@ -85,8 +85,8 @@ def wait_for_restore_completion(url):
         for status in rs.values():
             if 'progress' in status.keys() and status['progress'] == 100:
                 completed += 1
-            if 'restoreError' in status.keys():
-                assert status['restoreError'] == ""
+            if 'error' in status.keys():
+                assert status['error'] == ""
         if completed == len(rs):
             return
     assert completed == len(rs)

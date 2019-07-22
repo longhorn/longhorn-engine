@@ -686,8 +686,8 @@ def restore_backup(bin, backupURL, env, grpc_c):
             if 'progress' in status.keys() and status['progress'] == 100:
                 completed += 1
                 continue
-            if 'restoreError' in status.keys():
-                assert status['restoreError'] == ""
+            if 'error' in status.keys():
+                assert status['error'] == ""
         if completed == len(rs):
             return
     assert completed == len(rs)
