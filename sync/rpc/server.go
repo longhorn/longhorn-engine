@@ -55,7 +55,7 @@ type BackupList struct {
 
 type BackupInfo struct {
 	backupID     string
-	backupStatus *replica.Backup
+	backupStatus *replica.BackupStatus
 }
 
 func NewSyncAgentServer(startPort, endPort int, replicaAddress string) *SyncAgentServer {
@@ -324,9 +324,9 @@ func (s *SyncAgentServer) BackupGetStatus(ctx context.Context, req *BackupProgre
 	}
 
 	reply := &BackupProgressReply{
-		Progress:     int32(replicaObj.BackupProgress),
+		Progress:     int32(replicaObj.Progress),
 		BackupURL:    replicaObj.BackupURL,
-		BackupError:  replicaObj.BackupError,
+		BackupError:  replicaObj.Error,
 		SnapshotName: snapshotName,
 	}
 	return reply, nil
@@ -761,7 +761,7 @@ func (s *SyncAgentServer) RestoreStatus(ctx context.Context, req *Empty) (*Resto
 // The slice Backup.backupList is implemented similar to a FIFO queue.
 
 // BackupAdd creates a new backupList object and appends to the end of the list maintained by backup object
-func (b *BackupList) BackupAdd(backupID string, backup *replica.Backup) error {
+func (b *BackupList) BackupAdd(backupID string, backup *replica.BackupStatus) error {
 	if backupID == "" {
 		return fmt.Errorf("empty backupID")
 	}
@@ -781,7 +781,7 @@ func (b *BackupList) BackupAdd(backupID string, backup *replica.Backup) error {
 }
 
 // BackupGet takes backupID input and will return the backup object corresponding to that backupID or error if not found
-func (b *BackupList) BackupGet(backupID string) (*replica.Backup, error) {
+func (b *BackupList) BackupGet(backupID string) (*replica.BackupStatus, error) {
 	if backupID == "" {
 		return nil, fmt.Errorf("empty backupID")
 	}
@@ -822,7 +822,7 @@ func (b *BackupList) Refresh() error {
 	var index, completed int
 
 	for index = len(b.backups) - 1; index >= 0; index-- {
-		if b.backups[index].backupStatus.BackupProgress == 100 {
+		if b.backups[index].backupStatus.Progress == 100 {
 			if completed == MaxBackupSize {
 				break
 			}
@@ -832,7 +832,7 @@ func (b *BackupList) Refresh() error {
 	if completed == MaxBackupSize {
 		//Remove all the older completed backups in the range backupList[0:index]
 		for ; index >= 0; index-- {
-			if b.backups[index].backupStatus.BackupProgress == 100 {
+			if b.backups[index].backupStatus.Progress == 100 {
 				updatedList, err := b.remove(b.backups, index)
 				if err != nil {
 					return err

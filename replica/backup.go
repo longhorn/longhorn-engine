@@ -56,24 +56,24 @@ func (rr *RestoreStatus) UpdateRestoreStatus(snapshot string, rp int, re error) 
 	rr.LastUpdatedAt = time.Now()
 }
 
-type Backup struct {
-	lock           sync.Mutex
-	backingFile    *BackingFile
-	replica        *Replica
-	volumeID       string
-	SnapshotID     string
-	BackupError    string
-	BackupProgress int
-	BackupURL      string
+type BackupStatus struct {
+	lock        sync.Mutex
+	backingFile *BackingFile
+	replica     *Replica
+	volumeID    string
+	SnapshotID  string
+	Error       string
+	Progress    int
+	BackupURL   string
 }
 
-func NewBackup(backingFile *BackingFile) *Backup {
-	return &Backup{
+func NewBackup(backingFile *BackingFile) *BackupStatus {
+	return &BackupStatus{
 		backingFile: backingFile,
 	}
 }
 
-func (rb *Backup) UpdateBackupStatus(snapID, volumeID string, progress int, url string, errString string) error {
+func (rb *BackupStatus) UpdateBackupStatus(snapID, volumeID string, progress int, url string, errString string) error {
 	id := GenerateSnapshotDiskName(snapID)
 	rb.lock.Lock()
 	defer rb.lock.Unlock()
@@ -82,14 +82,14 @@ func (rb *Backup) UpdateBackupStatus(snapID, volumeID string, progress int, url 
 		return err
 	}
 
-	rb.BackupProgress = progress
+	rb.Progress = progress
 	rb.BackupURL = url
-	rb.BackupError = errString
+	rb.Error = errString
 
 	return nil
 }
 
-func (rb *Backup) HasSnapshot(snapID, volumeID string) bool {
+func (rb *BackupStatus) HasSnapshot(snapID, volumeID string) bool {
 	rb.lock.Lock()
 	defer rb.lock.Unlock()
 	if rb.volumeID != volumeID {
@@ -104,7 +104,7 @@ func (rb *Backup) HasSnapshot(snapID, volumeID string) bool {
 	return true
 }
 
-func (rb *Backup) OpenSnapshot(snapID, volumeID string) error {
+func (rb *BackupStatus) OpenSnapshot(snapID, volumeID string) error {
 	id := GenerateSnapshotDiskName(snapID)
 	rb.lock.Lock()
 	defer rb.lock.Unlock()
@@ -132,14 +132,14 @@ func (rb *Backup) OpenSnapshot(snapID, volumeID string) error {
 	return nil
 }
 
-func (rb *Backup) assertOpen(id, volumeID string) error {
+func (rb *BackupStatus) assertOpen(id, volumeID string) error {
 	if rb.volumeID != volumeID || rb.SnapshotID != id {
 		return fmt.Errorf("Invalid state volume [%s] and snapshot [%s] are open, not volume [%s], snapshot [%s]", rb.volumeID, rb.SnapshotID, volumeID, id)
 	}
 	return nil
 }
 
-func (rb *Backup) ReadSnapshot(snapID, volumeID string, start int64, data []byte) error {
+func (rb *BackupStatus) ReadSnapshot(snapID, volumeID string, start int64, data []byte) error {
 	id := GenerateSnapshotDiskName(snapID)
 	rb.lock.Lock()
 	defer rb.lock.Unlock()
@@ -154,7 +154,7 @@ func (rb *Backup) ReadSnapshot(snapID, volumeID string, start int64, data []byte
 	return err
 }
 
-func (rb *Backup) CloseSnapshot(snapID, volumeID string) error {
+func (rb *BackupStatus) CloseSnapshot(snapID, volumeID string) error {
 	id := GenerateSnapshotDiskName(snapID)
 	rb.lock.Lock()
 	defer rb.lock.Unlock()
@@ -180,7 +180,7 @@ func (rb *Backup) CloseSnapshot(snapID, volumeID string) error {
 	return err
 }
 
-func (rb *Backup) CompareSnapshot(snapID, compareSnapID, volumeID string) (*backupstore.Mappings, error) {
+func (rb *BackupStatus) CompareSnapshot(snapID, compareSnapID, volumeID string) (*backupstore.Mappings, error) {
 	id := GenerateSnapshotDiskName(snapID)
 	compareID := ""
 	if compareSnapID != "" {
@@ -235,7 +235,7 @@ func (rb *Backup) CompareSnapshot(snapID, compareSnapID, volumeID string) (*back
 	return mappings, nil
 }
 
-func (rb *Backup) findIndex(id string) int {
+func (rb *BackupStatus) findIndex(id string) int {
 	if id == "" {
 		if rb.backingFile == nil {
 			return 0
