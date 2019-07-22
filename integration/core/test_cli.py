@@ -660,8 +660,8 @@ def get_backup_url(bin, backupID):
         if backup['progress'] == 100 and 'backupURL' in backup.keys():
             rValue = backup['backupURL']
             break
-        elif 'backupError' in backup.keys():
-            rValue = backup['backupError']
+        elif 'error' in backup.keys():
+            rValue = backup['error']
             break
         time.sleep(1)
     return rValue

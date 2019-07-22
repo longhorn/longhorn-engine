@@ -68,8 +68,8 @@ def backup_status(backupID, url=CONTROLLER):
         if 'backupURL' in backup.keys():
             output = backup['backupURL']
             break
-        elif 'backupError' in backup.keys():
-            output = backup['backupError']
+        elif 'error' in backup.keys():
+            output = backup['error']
             break
         time.sleep(1)
     return output

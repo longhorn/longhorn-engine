@@ -55,7 +55,8 @@ func RequiredMissingError(name string) error {
 	return fmt.Errorf("Cannot find valid required parameter: %v", name)
 }
 
-func DoBackupCreate(volumeName string, snapshotName string, destURL string, labels []string) (string, *replica.Backup, error) {
+func DoBackupCreate(volumeName string, snapshotName string, destURL string,
+	labels []string) (string, *replica.BackupStatus, error) {
 	var (
 		err         error
 		backingFile *replica.BackingFile

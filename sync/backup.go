@@ -17,7 +17,7 @@ import (
 type BackupStatusInfo struct {
 	Progress     int    `json:"progress"`
 	BackupURL    string `json:"backupURL,omitempty"`
-	BackupError  string `json:"backupError,omitempty"`
+	Error        string `json:"error,omitempty"`
 	SnapshotName string `json:"snapshotName"`
 }
 
@@ -112,7 +112,7 @@ func (t *Task) FetchBackupStatus(backupID string, replicaIP string) (*BackupStat
 	info := &BackupStatusInfo{
 		Progress:     progress,
 		BackupURL:    url,
-		BackupError:  backupErr,
+		Error:        backupErr,
 		SnapshotName: snapshot,
 	}
 
