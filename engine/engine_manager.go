@@ -210,9 +210,9 @@ func (em *Manager) unregisterEngineLauncher(launcherName string) {
 		Name: processName,
 	}); err != nil && strings.Contains(err.Error(), "cannot find process") {
 		// cannot depend on engine process's callback to cleanup frontend. need to double check here
-		em.lock.Lock()
-		defer em.lock.Unlock()
+		em.lock.RLock()
 		el, exists := em.engineLaunchers[launcherName]
+		em.lock.RUnlock()
 		if !exists {
 			return
 		}
@@ -232,7 +232,9 @@ func (em *Manager) unregisterEngineLauncher(launcherName string) {
 				return
 			}
 		}
+		em.lock.Lock()
 		delete(em.engineLaunchers, launcherName)
+		em.lock.Unlock()
 
 		logrus.Infof("Engine Manager had successfully unregistered engine launcher %v, deletion completed", launcherName)
 		el.UpdateCh <- el
@@ -534,10 +536,9 @@ func (em *Manager) FrontendShutdown(ctx context.Context, req *rpc.EngineRequest)
 func (em *Manager) FrontendStartCallback(ctx context.Context, req *rpc.EngineRequest) (ret *empty.Empty, err error) {
 	logrus.Infof("Engine Manager starts to process FrontendStartCallback of engine %v", req.Name)
 
-	em.lock.Lock()
-	defer em.lock.Unlock()
-
+	em.lock.RLock()
 	el, exists := em.engineLaunchers[req.Name]
+	em.lock.RUnlock()
 	if !exists {
 		return nil, fmt.Errorf("cannot find engine %v", req.Name)
 	}
@@ -546,7 +547,9 @@ func (em *Manager) FrontendStartCallback(ctx context.Context, req *rpc.EngineReq
 
 	el.lock.RLock()
 	if el.scsiDevice == nil {
+		em.lock.Lock()
 		tID, _, err = em.tIDAllocator.AllocateRange(1)
+		em.lock.Unlock()
 		if err != nil || tID == 0 {
 			el.lock.RUnlock()
 			return nil, fmt.Errorf("cannot get available tid for frontend start")
@@ -568,10 +571,9 @@ func (em *Manager) FrontendStartCallback(ctx context.Context, req *rpc.EngineReq
 func (em *Manager) FrontendShutdownCallback(ctx context.Context, req *rpc.EngineRequest) (ret *empty.Empty, err error) {
 	logrus.Infof("Engine Manager starts to process FrontendShutdownCallback of engine %v", req.Name)
 
-	em.lock.Lock()
-	defer em.lock.Unlock()
-
+	em.lock.RLock()
 	el, exists := em.engineLaunchers[req.Name]
+	em.lock.RUnlock()
 	if !exists {
 		return nil, fmt.Errorf("cannot find engine %v", req.Name)
 	}
@@ -599,6 +601,8 @@ func (em *Manager) cleanupFrontend(el *Launcher) error {
 		return errors.Wrapf(err, "failed to callback for engine %v frontend shutdown", el.LauncherName)
 	}
 
+	em.lock.Lock()
+	defer em.lock.Unlock()
 	if err = em.tIDAllocator.ReleaseRange(int32(tID), int32(tID)); err != nil {
 		return errors.Wrapf(err, "failed to release tid for engine %v frontend shutdown", el.LauncherName)
 	}
