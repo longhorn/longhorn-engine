@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/golang/protobuf/ptypes/empty"
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 
@@ -20,40 +21,6 @@ func NewEngineManagerClient(address string) *EngineManagerClient {
 	return &EngineManagerClient{
 		Address: address,
 	}
-}
-
-func RPCToProcessStatus(obj *rpc.ProcessStatus) api.ProcessStatus {
-	return api.ProcessStatus{
-		State:     obj.State,
-		ErrorMsg:  obj.ErrorMsg,
-		PortStart: obj.PortStart,
-		PortEnd:   obj.PortEnd,
-	}
-}
-
-func RPCToEngine(obj *rpc.EngineResponse) *api.Engine {
-	return &api.Engine{
-		Name:       obj.Spec.Name,
-		VolumeName: obj.Spec.VolumeName,
-		Binary:     obj.Spec.Binary,
-		ListenIP:   obj.Spec.ListenIp,
-		Listen:     obj.Spec.Listen,
-		Size:       obj.Spec.Size,
-		Frontend:   obj.Spec.Frontend,
-		Backends:   obj.Spec.Backends,
-		Replicas:   obj.Spec.Replicas,
-
-		ProcessStatus: RPCToProcessStatus(obj.Status.ProcessStatus),
-		Endpoint:      obj.Status.Endpoint,
-	}
-}
-
-func RPCToEngineList(obj *rpc.EngineListResponse) map[string]*api.Engine {
-	ret := map[string]*api.Engine{}
-	for name, e := range obj.Engines {
-		ret[name] = RPCToEngine(e)
-	}
-	return ret
 }
 
 func (cli *EngineManagerClient) EngineCreate(size int64, name, volumeName, binary, listen, listenIP, frontend string, backends, replicas []string) (*api.Engine, error) {
@@ -94,7 +61,7 @@ func (cli *EngineManagerClient) EngineCreate(size int64, name, volumeName, binar
 		return nil, fmt.Errorf("failed to call gRPC EngineCreate for volume %v: %v", volumeName, err)
 	}
 
-	return RPCToEngine(e), nil
+	return api.RPCToEngine(e), nil
 }
 
 func (cli *EngineManagerClient) EngineGet(name string) (*api.Engine, error) {
@@ -118,7 +85,7 @@ func (cli *EngineManagerClient) EngineGet(name string) (*api.Engine, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to call gRPC EngineGet for engine %v: %v", name, err)
 	}
-	return RPCToEngine(e), nil
+	return api.RPCToEngine(e), nil
 }
 
 func (cli *EngineManagerClient) EngineList() (map[string]*api.Engine, error) {
@@ -136,7 +103,7 @@ func (cli *EngineManagerClient) EngineList() (map[string]*api.Engine, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to call gRPC EngineList: %v", err)
 	}
-	return RPCToEngineList(es), nil
+	return api.RPCToEngineList(es), nil
 }
 
 func (cli *EngineManagerClient) EngineUpgrade(size int64, name, binary string, replicas []string) (*api.Engine, error) {
@@ -171,7 +138,7 @@ func (cli *EngineManagerClient) EngineUpgrade(size int64, name, binary string, r
 		return nil, fmt.Errorf("failed to call gRPC EngineUpgrade for engine %v: %v", name, err)
 	}
 
-	return RPCToEngine(e), nil
+	return api.RPCToEngine(e), nil
 }
 
 func (cli *EngineManagerClient) EngineDelete(name string) (*api.Engine, error) {
@@ -195,7 +162,7 @@ func (cli *EngineManagerClient) EngineDelete(name string) (*api.Engine, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to call gRPC EngineDelete for engine %v: %v", name, err)
 	}
-	return RPCToEngine(e), nil
+	return api.RPCToEngine(e), nil
 }
 
 func (cli *EngineManagerClient) EngineLog(volumeName string) (*api.LogStream, error) {
@@ -207,12 +174,9 @@ func (cli *EngineManagerClient) EngineLog(volumeName string) (*api.LogStream, er
 	if err != nil {
 		return nil, fmt.Errorf("cannot connect to EngineManager Service %v: %v", cli.Address, err)
 	}
-	defer conn.Close()
+
 	client := rpc.NewEngineManagerServiceClient(conn)
-
 	ctx, cancel := context.WithTimeout(context.Background(), types.GRPCServiceTimeout)
-	defer cancel()
-
 	stream, err := client.EngineLog(ctx, &rpc.LogRequest{
 		Name: volumeName,
 	})
@@ -220,7 +184,25 @@ func (cli *EngineManagerClient) EngineLog(volumeName string) (*api.LogStream, er
 		return nil, fmt.Errorf("failed to get engine log of volume %v: %v", volumeName, err)
 	}
 
-	return api.NewLogStream(stream), nil
+	return api.NewLogStream(conn, cancel, stream), nil
+}
+
+func (cli *EngineManagerClient) EngineWatch() (*api.EngineStream, error) {
+	conn, err := grpc.Dial(cli.Address, grpc.WithInsecure())
+	if err != nil {
+		return nil, fmt.Errorf("cannot connect to EngineManager Service %v: %v", cli.Address, err)
+	}
+
+	// Don't cleanup the Client here, we don't know when the user will be done with the Stream. Pass it to the wrapper
+	// and allow the user to take care of it.
+	client := rpc.NewEngineManagerServiceClient(conn)
+	ctx, cancel := context.WithCancel(context.Background())
+	stream, err := client.EngineWatch(ctx, &empty.Empty{})
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to start engine update watch")
+	}
+
+	return api.NewEngineStream(conn, cancel, stream), nil
 }
 
 func (cli *EngineManagerClient) FrontendStart(name, frontend string) error {
