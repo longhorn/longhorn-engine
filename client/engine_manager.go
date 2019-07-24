@@ -207,12 +207,9 @@ func (cli *EngineManagerClient) EngineLog(volumeName string) (*api.LogStream, er
 	if err != nil {
 		return nil, fmt.Errorf("cannot connect to EngineManager Service %v: %v", cli.Address, err)
 	}
-	defer conn.Close()
+
 	client := rpc.NewEngineManagerServiceClient(conn)
-
 	ctx, cancel := context.WithTimeout(context.Background(), types.GRPCServiceTimeout)
-	defer cancel()
-
 	stream, err := client.EngineLog(ctx, &rpc.LogRequest{
 		Name: volumeName,
 	})
@@ -220,7 +217,7 @@ func (cli *EngineManagerClient) EngineLog(volumeName string) (*api.LogStream, er
 		return nil, fmt.Errorf("failed to get engine log of volume %v: %v", volumeName, err)
 	}
 
-	return api.NewLogStream(stream), nil
+	return api.NewLogStream(conn, cancel, stream), nil
 }
 
 func (cli *EngineManagerClient) FrontendStart(name, frontend string) error {

@@ -34,14 +34,26 @@ type Engine struct {
 	Endpoint      string        `json:"endpoint"`
 }
 
-func NewLogStream(stream rpc.ProcessManagerService_ProcessLogClient) *LogStream {
+func NewLogStream(conn *grpc.ClientConn, ctxCancel context.CancelFunc, stream rpc.ProcessManagerService_ProcessLogClient) *LogStream {
 	return &LogStream{
-		stream: stream,
+		conn,
+		ctxCancel,
+		stream,
 	}
 }
 
 type LogStream struct {
-	stream rpc.ProcessManagerService_ProcessLogClient
+	conn      *grpc.ClientConn
+	ctxCancel context.CancelFunc
+	stream    rpc.ProcessManagerService_ProcessLogClient
+}
+
+func (s *LogStream) Close() error {
+	s.ctxCancel()
+	if err := s.conn.Close(); err != nil {
+		return errors.Wrapf(err, "error closing logs gRPC connection")
+	}
+	return nil
 }
 
 func (s *LogStream) Recv() (string, error) {

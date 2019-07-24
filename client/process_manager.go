@@ -145,17 +145,14 @@ func (cli *ProcessManagerClient) ProcessLog(name string) (*api.LogStream, error)
 	if err != nil {
 		return nil, fmt.Errorf("cannot connect process manager service to %v: %v", cli.Address, err)
 	}
-	defer conn.Close()
 
 	client := rpc.NewProcessManagerServiceClient(conn)
 	ctx, cancel := context.WithTimeout(context.Background(), types.GRPCServiceTimeout)
-	defer cancel()
-
 	stream, err := client.ProcessLog(ctx, &rpc.LogRequest{
 		Name: name,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get process log of %v: %v", name, err)
 	}
-	return api.NewLogStream(stream), nil
+	return api.NewLogStream(conn, cancel, stream), nil
 }
