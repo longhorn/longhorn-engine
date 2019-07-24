@@ -657,12 +657,21 @@ def get_backup_url(bin, backupID):
     for x in range(RETRY_COUNTS):
         output = subprocess.check_output(cmd).strip()
         backup = json.loads(output)
-        if backup['progress'] == 100 and 'backupURL' in backup.keys():
+        assert 'state' in backup.keys()
+        if backup['state'] == "complete":
+            assert 'backupURL' in backup.keys()
+            assert backup['backupURL'] != ""
+            assert 'progress' in backup.keys()
+            assert backup['progress'] == 100
             rValue = backup['backupURL']
             break
-        elif 'error' in backup.keys():
+        elif backup['state'] == "error":
+            assert 'error' in backup.keys()
+            assert backup['error'] != ""
             rValue = backup['error']
             break
+        else:
+            assert backup['state'] == "incomplete"
         time.sleep(1)
     return rValue
 
@@ -683,11 +692,16 @@ def restore_backup(bin, backupURL, env, grpc_c):
         completed = 0
         rs = json.loads(subprocess.check_output(status_cmd).strip())
         for status in rs.values():
-            if 'progress' in status.keys() and status['progress'] == 100:
+            assert 'state' in status.keys()
+            if status['state'] == "complete":
+                assert 'progress' in status.keys()
+                assert status['progress'] == 100
                 completed += 1
-                continue
-            if 'error' in status.keys():
+            elif status['state'] == "error":
+                assert 'error' in status.keys()
                 assert status['error'] == ""
+            else:
+                assert status['state'] == "incomplete"
         if completed == len(rs):
             return
     assert completed == len(rs)
