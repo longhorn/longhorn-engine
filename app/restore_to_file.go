@@ -95,10 +95,10 @@ func restore(url string) error {
 			periodicChecker.Stop()
 			return nil
 		}
-		if restoreError != nil {
+		if restoreError != "" {
 			bar.Finish()
 			periodicChecker.Stop()
-			return restoreError
+			return fmt.Errorf("%v", restoreError)
 		}
 		now := time.Now()
 		diff := now.Sub(lastUpdate)
