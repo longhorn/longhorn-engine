@@ -11,8 +11,14 @@ import (
 	"github.com/longhorn/backupstore"
 )
 
+type ProgressState string
+
 const (
 	snapBlockSize = 2 << 20 // 2MiB
+
+	ProgressStateIncomplete = ProgressState("incomplete")
+	ProgressStateComplete   = ProgressState("complete")
+	ProgressStateError      = ProgressState("error")
 )
 
 /*
@@ -30,9 +36,10 @@ type RestoreStatus struct {
 	replicaAddress string
 	SnapshotName   string //This will be deltaFileName in case of Incremental Restore
 	Progress       int
-	Error          error
+	Error          string
 	LastUpdatedAt  time.Time
 	BackupURL      string
+	State          ProgressState
 
 	//Incremental Restore fields
 	LastRestored     string
@@ -43,6 +50,7 @@ func NewRestore(snapshotName, replicaAddress string) *RestoreStatus {
 	return &RestoreStatus{
 		replicaAddress: replicaAddress,
 		SnapshotName:   snapshotName,
+		State:          ProgressStateIncomplete,
 	}
 }
 
@@ -52,7 +60,12 @@ func (rr *RestoreStatus) UpdateRestoreStatus(snapshot string, rp int, re error) 
 
 	rr.SnapshotName = snapshot
 	rr.Progress = rp
-	rr.Error = re
+	if re != nil {
+		rr.Error = re.Error()
+		rr.State = ProgressStateError
+	} else if rr.Progress == 100 {
+		rr.State = ProgressStateComplete
+	}
 	rr.LastUpdatedAt = time.Now()
 }
 
@@ -65,11 +78,13 @@ type BackupStatus struct {
 	Error       string
 	Progress    int
 	BackupURL   string
+	State       ProgressState
 }
 
 func NewBackup(backingFile *BackingFile) *BackupStatus {
 	return &BackupStatus{
 		backingFile: backingFile,
+		State:       ProgressStateIncomplete,
 	}
 }
 
@@ -86,6 +101,11 @@ func (rb *BackupStatus) UpdateBackupStatus(snapID, volumeID string, progress int
 	rb.BackupURL = url
 	rb.Error = errString
 
+	if rb.Progress == 100 {
+		rb.State = ProgressStateComplete
+	} else if rb.Error != "" {
+		rb.State = ProgressStateError
+	}
 	return nil
 }
 
