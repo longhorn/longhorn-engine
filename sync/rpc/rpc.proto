@@ -68,6 +68,7 @@ message BackupProgressReply {
     string backupURL = 2;
     string backupError = 3;
     string snapshotName = 4;
+    string state = 5;
 }
 
 message BackupRestoreRequest {
@@ -90,6 +91,7 @@ message RestoreStatusReply {
     int32 progress = 3;
     string error = 4;
     string destFileName = 5;
+    string state = 6;
 }
 
 message Empty {
