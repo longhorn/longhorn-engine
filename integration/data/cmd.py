@@ -65,12 +65,21 @@ def backup_status(backupID, url=CONTROLLER):
     cmd = [_bin(), '--url', url, 'backup', 'status', backupID]
     for x in range(RETRY_COUNTS):
         backup = json.loads(subprocess.check_output(cmd).strip())
-        if 'backupURL' in backup.keys():
+        assert 'state' in backup.keys()
+        if backup['state'] == "complete":
+            assert 'backupURL' in backup.keys()
+            assert backup['backupURL'] != ""
+            assert 'progress' in backup.keys()
+            assert backup['progress'] == 100
             output = backup['backupURL']
             break
-        elif 'error' in backup.keys():
+        elif backup['state'] == "error":
+            assert 'error' in backup.keys()
+            assert backup['error'] != ""
             output = backup['error']
             break
+        else:
+            assert backup['state'] == "incomplete"
         time.sleep(1)
     return output
 
@@ -83,10 +92,16 @@ def wait_for_restore_completion(url):
         completed = 0
         rs = restore_status(url)
         for status in rs.values():
-            if 'progress' in status.keys() and status['progress'] == 100:
+            assert 'state' in status.keys()
+            if status['state'] == "complete":
+                assert 'progress' in status.keys()
+                assert status['progress'] == 100
                 completed += 1
-            if 'error' in status.keys():
+            elif status['state'] == "error":
+                assert 'error' in status.keys()
                 assert status['error'] == ""
+            else:
+                assert status['state'] == "incomplete"
         if completed == len(rs):
             return
     assert completed == len(rs)
