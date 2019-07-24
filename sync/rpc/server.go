@@ -328,6 +328,7 @@ func (s *SyncAgentServer) BackupGetStatus(ctx context.Context, req *BackupProgre
 		BackupURL:    replicaObj.BackupURL,
 		BackupError:  replicaObj.Error,
 		SnapshotName: snapshotName,
+		State:        string(replicaObj.State),
 	}
 	return reply, nil
 }
@@ -356,7 +357,7 @@ func (*SyncAgentServer) BackupRemove(ctx context.Context, req *BackupRemoveReque
 func (s *SyncAgentServer) waitForRestoreComplete() error {
 	var (
 		restoreProgress int
-		restoreError    error
+		restoreError    string
 	)
 	periodicChecker := time.NewTicker(PeriodicRefreshIntervalInSeconds * time.Second)
 
@@ -372,10 +373,10 @@ func (s *SyncAgentServer) waitForRestoreComplete() error {
 			periodicChecker.Stop()
 			return nil
 		}
-		if restoreError != nil {
+		if restoreError != "" {
 			logrus.Errorf("Backup Restore Error Found in Server[%v]", restoreError)
 			periodicChecker.Stop()
-			return restoreError
+			return fmt.Errorf("%v", restoreError)
 		}
 		now := time.Now()
 		diff := now.Sub(lastUpdate)
@@ -748,12 +749,12 @@ func (s *SyncAgentServer) RestoreStatus(ctx context.Context, req *Empty) (*Resto
 		SnapshotName: s.RestoreInfo.SnapshotName,
 		Progress:     s.RestoreInfo.Progress,
 		Error:        s.RestoreInfo.Error,
+		State:        s.RestoreInfo.State,
 	}
 	rs.Progress = int32(restoreStatus.Progress)
 	rs.DestFileName = restoreStatus.SnapshotName
-	if restoreStatus.Error != nil {
-		rs.Error = restoreStatus.Error.Error()
-	}
+	rs.State = string(restoreStatus.State)
+	rs.Error = restoreStatus.Error
 	return rs, nil
 }
 

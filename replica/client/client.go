@@ -438,10 +438,10 @@ func (c *ReplicaClient) CreateBackup(snapshot, dest, volume string, labels []str
 	return reply.Backup, nil
 }
 
-func (c *ReplicaClient) GetBackupStatus(backupName string) (int, string, string, string, error) {
+func (c *ReplicaClient) GetBackupStatus(backupName string) (*syncagentrpc.BackupProgressReply, error) {
 	conn, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure())
 	if err != nil {
-		return 0, "", "", "", fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
+		return nil, fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
 	}
 	defer conn.Close()
 	syncAgentServiceClient := syncagentrpc.NewSyncAgentServiceClient(conn)
@@ -454,10 +454,10 @@ func (c *ReplicaClient) GetBackupStatus(backupName string) (int, string, string,
 	})
 
 	if err != nil {
-		return 0, "", "", "", err
+		return nil, err
 	}
 
-	return int(reply.Progress), reply.BackupURL, reply.BackupError, reply.SnapshotName, nil
+	return reply, nil
 }
 
 func (c *ReplicaClient) RmBackup(backup string) error {

@@ -19,6 +19,7 @@ type BackupStatusInfo struct {
 	BackupURL    string `json:"backupURL,omitempty"`
 	Error        string `json:"error,omitempty"`
 	SnapshotName string `json:"snapshotName"`
+	State        string `json:"state"`
 }
 
 type RestoreStatus struct {
@@ -27,6 +28,7 @@ type RestoreStatus struct {
 	Progress     int    `json:"progress,omitempty"`
 	Error        string `json:"error,omitempty"`
 	Filename     string `json:"filename,omitempty"`
+	State        string `json:"state"`
 }
 
 func (t *Task) CreateBackup(snapshot, dest string, labels []string, credential map[string]string) (string, error) {
@@ -104,16 +106,17 @@ func (t *Task) FetchBackupStatus(backupID string, replicaIP string) (*BackupStat
 		return nil, err
 	}
 
-	progress, url, backupErr, snapshot, err := repClient.GetBackupStatus(backupID)
+	bs, err := repClient.GetBackupStatus(backupID)
 	if err != nil {
 		return nil, err
 	}
 
 	info := &BackupStatusInfo{
-		Progress:     progress,
-		BackupURL:    url,
-		Error:        backupErr,
-		SnapshotName: snapshot,
+		Progress:     int(bs.Progress),
+		BackupURL:    bs.BackupURL,
+		Error:        bs.BackupError,
+		SnapshotName: bs.SnapshotName,
+		State:        bs.State,
 	}
 
 	return info, nil
@@ -358,6 +361,7 @@ func (t *Task) RestoreStatus() (map[string]*RestoreStatus, error) {
 			Progress:     int(rs.Progress),
 			Error:        rs.Error,
 			Filename:     rs.DestFileName,
+			State:        rs.State,
 		}
 	}
 
