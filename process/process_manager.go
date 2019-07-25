@@ -320,7 +320,7 @@ func (pm *Manager) ProcessLog(req *rpc.LogRequest, srv rpc.ProcessManagerService
 	return nil
 }
 
-func (pm *Manager) ProcessWatch(req *empty.Empty, srv rpc.ProcessManagerService_ProcessWatchServer) error {
+func (pm *Manager) ProcessWatch(req *empty.Empty, srv rpc.ProcessManagerService_ProcessWatchServer) (err error) {
 	responseChan := make(chan *rpc.ProcessResponse)
 	pm.lock.Lock()
 	pm.rpcWatchers[responseChan] = struct{}{}
@@ -329,7 +329,14 @@ func (pm *Manager) ProcessWatch(req *empty.Empty, srv rpc.ProcessManagerService_
 		pm.lock.Lock()
 		delete(pm.rpcWatchers, responseChan)
 		pm.lock.Unlock()
+
+		if err != nil {
+			logrus.Errorf("process manager update watch errored out: %v", err)
+		} else {
+			logrus.Debugf("process manager update watch ended successfully")
+		}
 	}()
+	logrus.Debugf("started new process manager update watch")
 
 	for resp := range responseChan {
 		if err := srv.Send(resp); err != nil {

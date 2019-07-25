@@ -420,7 +420,7 @@ func (em *Manager) EngineLog(req *rpc.LogRequest, srv rpc.EngineManagerService_E
 	return nil
 }
 
-func (em *Manager) EngineWatch(req *empty.Empty, srv rpc.EngineManagerService_EngineWatchServer) error {
+func (em *Manager) EngineWatch(req *empty.Empty, srv rpc.EngineManagerService_EngineWatchServer) (err error) {
 	responseChan := make(chan *rpc.EngineResponse)
 	em.lock.Lock()
 	em.rpcWatchers[responseChan] = struct{}{}
@@ -429,7 +429,14 @@ func (em *Manager) EngineWatch(req *empty.Empty, srv rpc.EngineManagerService_En
 		em.lock.Lock()
 		delete(em.rpcWatchers, responseChan)
 		em.lock.Unlock()
+
+		if err != nil {
+			logrus.Errorf("engine manager update watch errored out: %v", err)
+		} else {
+			logrus.Debugf("engine manager update watch ended successfully")
+		}
 	}()
+	logrus.Debugf("started new engine manager update watch")
 
 	for resp := range responseChan {
 		if err := srv.Send(resp); err != nil {
