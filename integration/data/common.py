@@ -233,6 +233,8 @@ def shutdown_engine_frontend(engine_name,
 def wait_for_restore_completion(url):
     completed = 0
     rs = {}
+    # a workaround for immediate check restoration may not get latest result
+    time.sleep(3)
     for x in range(RETRY_COUNTS):
         completed = 0
         rs = cmd.restore_status(url)
