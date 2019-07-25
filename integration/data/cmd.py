@@ -80,29 +80,6 @@ def backup_status(url, backupID):
     return output
 
 
-def wait_for_restore_completion(url):
-    completed = 0
-    rs = restore_status(url)
-    for x in range(RETRY_COUNTS):
-        time.sleep(3)
-        completed = 0
-        rs = restore_status(url)
-        for status in rs.values():
-            assert 'state' in status.keys()
-            if status['state'] == "complete":
-                assert 'progress' in status.keys()
-                assert status['progress'] == 100
-                completed += 1
-            elif status['state'] == "error":
-                assert 'error' in status.keys()
-                assert status['error'] == ""
-            else:
-                assert status['state'] == "incomplete"
-        if completed == len(rs):
-            return
-    assert completed == len(rs)
-
-
 def backup_create(url, snapshot, dest):
     cmd = [_bin(), '--url', url, '--debug',
            'backup', 'create', snapshot, '--dest', dest]

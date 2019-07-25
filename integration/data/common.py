@@ -21,7 +21,7 @@ from setting import (
     BACKUP_DIR, BACKING_FILE, FRONTEND_TGT_BLOCKDEV,
     FIXED_REPLICA_PATH1, FIXED_REPLICA_PATH2,
     BACKING_FILE_PATH1, BACKING_FILE_PATH2,
-    RETRY_COUNTS, RETRY_COUNTS2, RETRY_INTERVAL2,
+    RETRY_COUNTS, RETRY_COUNTS2, RETRY_INTERVAL, RETRY_INTERVAL2,
     INSTANCE_MANAGER_TYPE_REPLICA, INSTANCE_MANAGER_TYPE_ENGINE,
     PROC_STATE_STARTING, PROC_STATE_RUNNING,
 )
@@ -231,18 +231,24 @@ def shutdown_engine_frontend(engine_name,
 
 def wait_for_restore_completion(url):
     completed = 0
-    rs = cmd.restore_status(url)
+    rs = {}
     for x in range(RETRY_COUNTS):
-        time.sleep(3)
         completed = 0
         rs = cmd.restore_status(url)
         for status in rs.values():
-            if 'progress' in status.keys() and status['progress'] == 100:
+            assert 'state' in status.keys()
+            if status['state'] == "complete":
+                assert 'progress' in status.keys()
+                assert status['progress'] == 100
                 completed += 1
-            if 'restoreError' in status.keys():
-                assert status['restoreError'] == ""
+            elif status['state'] == "error":
+                assert 'error' in status.keys()
+                assert status['error'] == ""
+            else:
+                assert status['state'] == "incomplete"
         if completed == len(rs):
-            return
+            break
+        time.sleep(RETRY_INTERVAL)
     assert completed == len(rs)
 
 
