@@ -253,7 +253,7 @@ def wait_for_restore_completion(url):
     assert completed == len(rs)
 
 
-def restore_with_no_frontend(url, engine_name, backup):
+def restore_with_frontend(url, engine_name, backup):
     shutdown_engine_frontend(engine_name)
     cmd.backup_restore(url, backup)
     wait_for_restore_completion(url)
@@ -280,7 +280,7 @@ def rm_backups(url, engine_name, backups):
     for b in backups:
         cmd.backup_rm(url, b)
         with pytest.raises(subprocess.CalledProcessError):
-            restore_with_no_frontend(url, engine_name, b)
+            restore_with_frontend(url, engine_name, b)
         with pytest.raises(subprocess.CalledProcessError):
             cmd.backup_inspect(url, b)
     # Engine frontend is down, Start it up

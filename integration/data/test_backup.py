@@ -9,7 +9,7 @@ from common import (  # NOQA
     read_from_backing_file,
     random_string, verify_data, checksum_dev,
     create_backup, rm_backups,
-    restore_with_no_frontend,
+    restore_with_frontend,
 )
 from snapshot_tree import (
     snapshot_tree_build, snapshot_tree_verify_backup_node
@@ -52,8 +52,8 @@ def backup_test(dev, address,  # NOQA
     assert backup3_info["VolumeName"] == volume_name
     assert backup3_info["Size"] == BLOCK_SIZE_STR
 
-    restore_with_no_frontend(address, engine_name,
-                             backup3_info["URL"])
+    restore_with_frontend(address, engine_name,
+                          backup3_info["URL"])
 
     readed = read_dev(dev, offset, length)
     assert readed == snap3_data
@@ -62,8 +62,8 @@ def backup_test(dev, address,  # NOQA
 
     rm_backups(address, engine_name, [backup3_info["URL"]])
 
-    restore_with_no_frontend(address, engine_name,
-                             backup1_info["URL"])
+    restore_with_frontend(address, engine_name,
+                          backup1_info["URL"])
     readed = read_dev(dev, offset, length)
     assert readed == snap1_data
     c = checksum_dev(dev)
@@ -71,8 +71,8 @@ def backup_test(dev, address,  # NOQA
 
     rm_backups(address, engine_name, [backup1_info["URL"]])
 
-    restore_with_no_frontend(address, engine_name,
-                             backup2_info["URL"])
+    restore_with_frontend(address, engine_name,
+                          backup2_info["URL"])
     readed = read_dev(dev, offset, length)
     assert readed == snap2_data
     c = checksum_dev(dev)
@@ -108,8 +108,8 @@ def backup_with_backing_file_test(backup_target,  # NOQA
     backup_test(dev, address, VOLUME_BACKING_NAME,
                 ENGINE_BACKING_NAME, backup_target)
 
-    restore_with_no_frontend(address, ENGINE_BACKING_NAME,
-                             backup0_info["URL"])
+    restore_with_frontend(address, ENGINE_BACKING_NAME,
+                          backup0_info["URL"])
     after = read_dev(dev, offset, length)
     assert before == after
     c = checksum_dev(dev)
@@ -158,8 +158,8 @@ def backup_hole_with_backing_file_test(backup_target,  # NOQA
     hole_data_backup2 = read_dev(dev, hole_offset, hole_length)
     backup2_info = create_backup(address, snap2, backup_target)
 
-    restore_with_no_frontend(address, ENGINE_BACKING_NAME,
-                             backup1_info["URL"])
+    restore_with_frontend(address, ENGINE_BACKING_NAME,
+                          backup1_info["URL"])
     readed = read_dev(dev, boundary_offset, boundary_length)
     assert readed == boundary_data_backup1
     readed = read_dev(dev, hole_offset, hole_length)
@@ -167,8 +167,8 @@ def backup_hole_with_backing_file_test(backup_target,  # NOQA
     c = checksum_dev(dev)
     assert c == snap1_checksum
 
-    restore_with_no_frontend(address, ENGINE_BACKING_NAME,
-                             backup2_info["URL"])
+    restore_with_frontend(address, ENGINE_BACKING_NAME,
+                          backup2_info["URL"])
     readed = read_dev(dev, boundary_offset, boundary_length)
     assert readed == boundary_data_backup2
     readed = read_dev(dev, hole_offset, hole_length)

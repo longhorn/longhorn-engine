@@ -2,7 +2,7 @@ import cmd
 from common import (  # NOQA
     read_dev, random_string, verify_data,
     snapshot_revert_with_frontend,
-    restore_with_no_frontend,
+    restore_with_frontend,
 )
 from setting import VOLUME_HEAD
 
@@ -170,6 +170,6 @@ def snapshot_tree_verify_node(dev, address, engine_name,
 
 def snapshot_tree_verify_backup_node(dev, address, engine_name,
                                      offset, length, backup, data, name):
-    restore_with_no_frontend(address, engine_name, backup[name])
+    restore_with_frontend(address, engine_name, backup[name])
     readed = read_dev(dev, offset, length)
     assert readed == data[name]
