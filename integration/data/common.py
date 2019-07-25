@@ -21,7 +21,8 @@ from setting import (
     BACKUP_DIR, BACKING_FILE, FRONTEND_TGT_BLOCKDEV,
     FIXED_REPLICA_PATH1, FIXED_REPLICA_PATH2,
     BACKING_FILE_PATH1, BACKING_FILE_PATH2,
-    RETRY_COUNTS, RETRY_COUNTS2, RETRY_INTERVAL, RETRY_INTERVAL2,
+    RETRY_COUNTS, RETRY_INTERVAL,
+    RETRY_COUNTS_SHORT, RETRY_INTERVAL_SHORT,
     INSTANCE_MANAGER_TYPE_REPLICA, INSTANCE_MANAGER_TYPE_ENGINE,
     PROC_STATE_STARTING, PROC_STATE_RUNNING,
 )
@@ -62,11 +63,11 @@ def cleanup_process(pm_client):
         except grpc.RpcError as e:
             if 'cannot find process' not in e.details():
                 raise e
-    for i in range(RETRY_COUNTS2):
+    for i in range(RETRY_COUNTS_SHORT):
         ps = pm_client.process_list()
         if len(ps) == 0:
             break
-        time.sleep(RETRY_INTERVAL2)
+        time.sleep(RETRY_INTERVAL_SHORT)
 
     ps = pm_client.process_list()
     assert len(ps) == 0
@@ -86,11 +87,11 @@ def cleanup_engine_process(em_client):
         except grpc.RpcError as e:
             if 'cannot find engine' not in e.details():
                 raise e
-    for i in range(RETRY_COUNTS2):
+    for i in range(RETRY_COUNTS_SHORT):
         es = em_client.engine_list()
         if len(es) == 0:
             break
-        time.sleep(RETRY_INTERVAL2)
+        time.sleep(RETRY_INTERVAL_SHORT)
 
     es = em_client.engine_list()
     assert len(es) == 0
@@ -99,7 +100,7 @@ def cleanup_engine_process(em_client):
 
 def wait_for_process_running(client, name, type):
     healthy = False
-    for i in range(RETRY_COUNTS2):
+    for i in range(RETRY_COUNTS_SHORT):
         if type == INSTANCE_MANAGER_TYPE_ENGINE:
             e = client.engine_get(name)
             state = e.status.process_status.state
@@ -114,7 +115,7 @@ def wait_for_process_running(client, name, type):
         elif state != PROC_STATE_STARTING:
             # invalid state
             assert False
-        time.sleep(RETRY_INTERVAL2)
+        time.sleep(RETRY_INTERVAL_SHORT)
     assert healthy
 
 
