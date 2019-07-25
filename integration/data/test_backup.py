@@ -18,6 +18,36 @@ VOLUME_SIZE = str(4 * 1024 * 1024)  # 4M
 BLOCK_SIZE = str(2 * 1024 * 1024)  # 2M
 
 
+def test_backup_volume_deletion(grpc_replica1, grpc_replica2,  # NOQA
+                                grpc_controller, backup_targets):  # NOQA
+    offset = 0
+    length = 128
+
+    for backup_target in backup_targets:
+        dev = common.get_dev(grpc_replica1, grpc_replica2,
+                             grpc_controller)
+        snap_data = common.random_string(length)
+        common.verify_data(dev, offset, snap_data)
+        snap = cmd.snapshot_create()
+
+        backup = cmd.backup_create(snap, backup_target)
+        backup_info = cmd.backup_inspect(backup)
+        assert backup_info["URL"] == backup
+        assert backup_info["VolumeName"] == VOLUME_NAME
+        assert backup_info["VolumeSize"] == VOLUME_SIZE
+        assert backup_info["Size"] == BLOCK_SIZE
+        assert snap in backup_info["SnapshotName"]
+
+        cmd.backup_volume_rm(VOLUME_NAME, backup_target)
+        info = cmd.backup_volume_list(VOLUME_NAME, backup_target)
+        assert "cannot find" in info[VOLUME_NAME]["Messages"]["error"]
+
+        cmd.sync_agent_server_reset()
+        common.cleanup_replica(grpc_replica1)
+        common.cleanup_replica(grpc_replica2)
+        common.cleanup_controller(grpc_controller)
+
+
 def backup_test(dev, backup_target, grpc_c):  # NOQA
     offset = 0
     length = 128

@@ -114,6 +114,18 @@ def backup_inspect(backup, url=CONTROLLER):
     return json.loads(subprocess.check_output(cmd))
 
 
+def backup_volume_rm(name, dest, url=CONTROLLER):
+    cmd = [_bin(), '--url', url, '--debug', 'backup',
+           'rm', '--volume', name, dest]
+    return subprocess.check_call(cmd)
+
+
+def backup_volume_list(name, dest, url=CONTROLLER):
+    cmd = [_bin(), '--url', url, '--debug', 'backup', 'ls',
+           '--volume', name, '--volume-only', dest]
+    return json.loads(subprocess.check_output(cmd))
+
+
 def add_replica(url, engine_url=CONTROLLER):
     cmd = [_bin(), '--url', engine_url, '--debug', 'add', url]
     return subprocess.check_output(cmd).strip()
