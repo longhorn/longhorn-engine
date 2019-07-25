@@ -12,15 +12,10 @@ import (
 	"google.golang.org/grpc"
 
 	iutil "github.com/longhorn/go-iscsi-helper/util"
+	imclient "github.com/longhorn/longhorn-instance-manager/client"
 
 	"github.com/longhorn/longhorn-engine/types"
 	"github.com/longhorn/longhorn-engine/util"
-)
-
-const (
-	RPCTimeout = 60 * time.Second
-
-	LauncherBinary = "longhorn-engine-launcher"
 )
 
 type Controller struct {
@@ -41,7 +36,7 @@ type Controller struct {
 	GRPCAddress string
 	GRPCServer  *grpc.Server
 
-	shutdownWG sync.WaitGroup
+	ShutdownWG sync.WaitGroup
 	lastError  error
 
 	latestMetrics *types.Metrics
@@ -78,9 +73,9 @@ func (c *Controller) StartGRPCServer() error {
 		return fmt.Errorf("cannot find grpc address or port")
 	}
 
-	c.shutdownWG.Add(1)
+	c.ShutdownWG.Add(1)
 	go func() {
-		defer c.shutdownWG.Done()
+		defer c.ShutdownWG.Done()
 
 		grpcAddress := c.GRPCAddress
 		listener, err := net.Listen("tcp", c.GRPCAddress)
@@ -90,19 +85,18 @@ func (c *Controller) StartGRPCServer() error {
 			return
 		}
 
-		logrus.Infof(" Listening on gRPC Controller server: %v", grpcAddress)
+		logrus.Infof("Listening on gRPC Controller server: %v", grpcAddress)
 		err = c.GRPCServer.Serve(listener)
 		logrus.Errorf("GRPC server at %v is down: %v", grpcAddress, err)
 		c.lastError = err
 		return
 	}()
-	logrus.Infof("Listening on %s", c.GRPCAddress)
 
 	return nil
 }
 
 func (c *Controller) WaitForShutdown() error {
-	c.shutdownWG.Wait()
+	c.ShutdownWG.Wait()
 	return c.lastError
 }
 
@@ -290,8 +284,8 @@ func (c *Controller) startFrontend() error {
 			return errors.Wrap(err, "failed to start up frontend")
 		}
 		if c.launcher != "" {
-			if err := c.launcherStartFrontend(); err != nil {
-				logrus.Errorf("Shutting down frontend due to failed to start up launcher: %v", err)
+			if err := c.frontendStartCallback(); err != nil {
+				logrus.Errorf("Shutting down frontend due to failed to callback launcher: %v", err)
 				if err := c.frontend.Shutdown(); err != nil {
 					logrus.Errorf("Failed to shutdown frontend: %v", err)
 				}
@@ -482,7 +476,7 @@ func (c *Controller) shutdownFrontend() error {
 	// shutdown launcher's frontend if applied
 	if c.launcher != "" {
 		logrus.Infof("Asking the launcher to shutdown the frontend")
-		if err := c.launcherShutdownFrontend(); err != nil {
+		if err := c.frontendShutdownCallback(); err != nil {
 			return err
 		}
 	}
@@ -567,33 +561,29 @@ func (c *Controller) FrontendState() string {
 	return ""
 }
 
-func (c *Controller) launcherStartFrontend() error {
+func (c *Controller) frontendStartCallback() error {
 	if c.launcher == "" {
 		return nil
 	}
-	args := []string{
-		"--url", c.launcher,
-		"frontend-start",
-		"--id", c.launcherID,
-	}
-	if _, err := util.Execute(LauncherBinary, args...); err != nil {
+
+	client := imclient.NewEngineManagerClient(c.launcher)
+	if err := client.FrontendStartCallback(c.launcherID); err != nil {
 		return fmt.Errorf("failed to start frontend: %v", err)
 	}
+
 	return nil
 }
 
-func (c *Controller) launcherShutdownFrontend() error {
+func (c *Controller) frontendShutdownCallback() error {
 	if c.launcher == "" {
 		return nil
 	}
-	args := []string{
-		"--url", c.launcher,
-		"frontend-shutdown",
-		"--id", c.launcherID,
-	}
-	if _, err := util.Execute(LauncherBinary, args...); err != nil {
+
+	client := imclient.NewEngineManagerClient(c.launcher)
+	if err := client.FrontendShutdownCallback(c.launcherID); err != nil {
 		return fmt.Errorf("failed to shutdown frontend: %v", err)
 	}
+
 	return nil
 }
 

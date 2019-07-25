@@ -66,7 +66,7 @@ RUN cd /usr/src/libqcow-20181117 && \
 RUN cd /usr/src && \
     git clone https://github.com/rancher/liblonghorn.git && \
     cd liblonghorn && \
-    git checkout 15479ac7b86caf57c81da1c20386c95bd2429859 && \
+    git checkout d30721547cd6c057aa5dfc0e707a02197dd990b9 && \
     make deb && \
     dpkg -i ./pkg/liblonghorn_*.deb
 
@@ -78,13 +78,21 @@ RUN cd /usr/src && \
     ./scripts/build-pkg.sh deb && \
     dpkg -i ./pkg/tgt_*.deb
 
-# Build longhorn-engine-launcher
+# Build cache for tox
+RUN mkdir integration/
+COPY integration/setup.py integration/tox.ini integration/requirements.txt integration/flake8-requirements.txt integration/
+RUN cd integration && tox --notest
+
+# Build longhorn-instance-manager
 RUN cd /go/src/github.com/longhorn && \
-    git clone https://github.com/longhorn/longhorn-instance-manager.git longhorn-engine-launcher && \
-    cd longhorn-engine-launcher && \
-    git checkout 8b2a20159feae45c6a8d766c7213155effdbd65c && \
-    go build -o ./longhorn-engine-launcher && \
-    cp longhorn-engine-launcher /usr/local/bin
+    git clone https://github.com/longhorn/longhorn-instance-manager.git && \
+    cd longhorn-instance-manager && \
+    git checkout 3e573d294759af29c18daae037ba8a2bd0cb85fb && \
+    go build -o ./longhorn-instance-manager && \
+    cp longhorn-instance-manager /usr/local/bin
+
+RUN wget -O /usr/local/bin/grpc_health_probe https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/v0.3.0/grpc_health_probe-linux-amd64 && \
+    chmod +x /usr/local/bin/grpc_health_probe
 
 VOLUME /tmp
 ENV TMPDIR /tmp

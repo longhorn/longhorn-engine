@@ -5,12 +5,12 @@ RUN apt-get update && apt-get install -y kmod curl nfs-common fuse \
         iputils-ping telnet iperf qemu-utils wget
 
 # Install grpc_health_probe
-RUN wget -O /usr/bin/grpc_health_probe https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/v0.3.0/grpc_health_probe-linux-amd64 && \
-    chmod +x /usr/bin/grpc_health_probe
+RUN wget -O /usr/local/bin/grpc_health_probe https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/v0.3.0/grpc_health_probe-linux-amd64 && \
+    chmod +x /usr/local/bin/grpc_health_probe
 
-COPY bin/longhorn bin/longhorn-engine-launcher /usr/local/bin/
+COPY bin/longhorn bin/longhorn-instance-manager /usr/local/bin/
 
-COPY package/launch package/launch-simple-longhorn package/engine-launcher package/launch-simple-file /usr/local/bin/
+COPY package/launch-simple-longhorn package/engine-manager package/launch-simple-file /usr/local/bin/
 
 COPY bin/tgt_*.deb /opt/
 

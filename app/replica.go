@@ -2,6 +2,7 @@ package app
 
 import (
 	"errors"
+	"fmt"
 	"net"
 	"os"
 	"os/exec"
@@ -48,6 +49,10 @@ func ReplicaCmd() cli.Command {
 				Name:  "restore-name",
 				Usage: "specify the snapshot name for restore, must be used with --restore-from",
 			},
+			cli.IntFlag{
+				Name:  "sync-agent-port-count",
+				Value: 10,
+			},
 		},
 		Action: func(c *cli.Context) {
 			if err := startReplica(c); err != nil {
@@ -84,7 +89,7 @@ func startReplica(c *cli.Context) error {
 		}
 	}
 
-	controlAddress, dataAddress, syncAddress, err := util.ParseAddresses(address)
+	controlAddress, dataAddress, syncAddress, syncPort, err := util.ParseAddresses(address)
 	if err != nil {
 		return err
 	}
@@ -113,7 +118,7 @@ func startReplica(c *cli.Context) error {
 
 	go func() {
 		rpcServer := rpc.NewDataServer(dataAddress, s)
-		logrus.Infof("Listening on data %s", dataAddress)
+		logrus.Infof("Listening on data server %s", dataAddress)
 		err := rpcServer.ListenAndServe()
 		logrus.Warnf("Replica rest server at %v is down: %v", dataAddress, err)
 		resp <- err
@@ -131,14 +136,17 @@ func startReplica(c *cli.Context) error {
 		}
 
 		go func() {
-			cmd := exec.Command(exe, "sync-agent", "--listen", syncAddress, "--replica", controlAddress)
+			cmd := exec.Command(exe, "sync-agent", "--listen", syncAddress,
+				"--replica", controlAddress,
+				"--listen-port-range",
+				fmt.Sprintf("%v-%v", syncPort+1, syncPort+c.Int("sync-agent-port-count")))
 			cmd.SysProcAttr = &syscall.SysProcAttr{
 				Pdeathsig: syscall.SIGKILL,
 			}
 			cmd.Dir = dir
 			cmd.Stdout = os.Stdout
 			cmd.Stderr = os.Stderr
-			logrus.Infof("Listening on sync agent %s", syncAddress)
+			logrus.Infof("Listening on sync agent server %s", syncAddress)
 			err := cmd.Run()
 			logrus.Warnf("Replica sync agent at %v is down: %v", syncAddress, err)
 			resp <- err

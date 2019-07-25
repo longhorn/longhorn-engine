@@ -2,21 +2,25 @@ import os
 import pyqcow
 
 import cmd
-import common
-import launcher
-from common import grpc_controller, backup_targets  # NOQA
-from common import grpc_replica1, grpc_replica2  # NOQA
-from common import grpc_backing_replica1, grpc_backing_replica2  # NOQA
-from common import read_dev, read_file, read_from_backing_file
-from common import FRONTEND_TGT_BLOCKDEV
-from utils import file, create_backup, rm_backups, rm_snaps
-from utils import checksum_data, SIZE
+from common import (  # NOQA
+    backup_targets,  # NOQA
+    grpc_controller, grpc_replica1, grpc_replica2,  # NOQA
+    grpc_backing_controller, grpc_backing_replica1, grpc_backing_replica2,  # NOQA
+    cleanup_controller, cleanup_replica,
+    get_dev, get_backing_dev, read_dev, checksum_dev,
+    random_string, verify_data,
+    read_file, read_from_backing_file,
+    create_backup, rm_backups, rm_snaps,
+    snapshot_revert_with_frontend,
+)
+from util import (
+    file, checksum_data,
+)
+from setting import (
+    SIZE, BACKING_FILE_QCOW,
+    ENGINE_NAME, ENGINE_BACKING_NAME,
+)
 
-VOLUME_NAME = 'test-volume_1.0'
-VOLUME_SIZE = str(4 * 1024 * 1024)  # 4M
-BLOCK_SIZE = str(2 * 1024 * 1024)  # 2M
-
-BACKING_FILE_QCOW2 = 'backing_file.qcow2'
 
 OUTPUT_FILE_RAW = 'test-restore_to_file-output.raw'
 OUTPUT_FILE_QCOW2 = 'test-restore_to_file-output.qcow2'
@@ -41,7 +45,7 @@ def read_qcow2_file_without_backing_file(file, offset, length):
 def check_backing(offset=0, length=4*1024):
     backing_data_raw = read_from_backing_file(offset, length)
     backing_data_qcow2 = read_qcow2_file_without_backing_file(
-        file(BACKING_FILE_QCOW2), offset, length)
+        file(BACKING_FILE_QCOW), offset, length)
     assert backing_data_raw == backing_data_qcow2
 
 
@@ -52,19 +56,16 @@ def check_empty_volume(dev, offset=0, length=4*1024):
     assert backing_data == empty_volume_data
 
 
-def shutdown_engine_frontend(grpc_c):
-    launcher.shutdown_engine_frontend()
-    v = grpc_c.volume_get()
-    assert v.frontendState == "down"
+def restore_to_file_with_backing_file_test(backup_target,  # NOQA
+                                           grpc_backing_controller,  # NOQA
+                                           grpc_backing_replica1,  # NOQA
+                                           grpc_backing_replica2):  # NOQA
+    address = grpc_backing_controller.address
 
+    backing_dev = get_backing_dev(grpc_backing_replica1,
+                                  grpc_backing_replica2,
+                                  grpc_backing_controller)
 
-def start_engine_frontend(grpc_c):
-    launcher.start_engine_frontend(FRONTEND_TGT_BLOCKDEV)
-    v = grpc_c.volume_get()
-    assert v.frontendState == "up"
-
-
-def restore_to_file_with_backing_file_test(backing_dev, backup_target, grpc_c):
     length0 = 4 * 1024
     length1 = 256
     length2 = 128
@@ -79,16 +80,16 @@ def restore_to_file_with_backing_file_test(backing_dev, backup_target, grpc_c):
     # data in output image == data in backing
     check_backing()
     check_empty_volume(backing_dev)
-    snap0 = cmd.snapshot_create()
-    backup = create_backup(backup_target, snap0)
+    snap0 = cmd.snapshot_create(address)
+    backup = create_backup(address, snap0, backup_target)["URL"]
 
     volume_data = read_dev(backing_dev, offset0, length0)
     backing_data = read_from_backing_file(offset0, length0)
-    dev_checksum = common.checksum_dev(backing_dev)
+    dev_checksum = checksum_dev(backing_dev)
     assert volume_data != ""
     assert volume_data == backing_data
 
-    cmd.restore_to_file(backup, file(BACKING_FILE_QCOW2),
+    cmd.restore_to_file(address, backup, file(BACKING_FILE_QCOW),
                         output_raw_path, IMAGE_FORMAT_RAW)
     output0_raw = read_file(output_raw_path, offset0, length0)
     output0_checksum = checksum_data(
@@ -98,7 +99,7 @@ def restore_to_file_with_backing_file_test(backing_dev, backup_target, grpc_c):
     os.remove(output_raw_path)
     assert not os.path.exists(output_raw_path)
 
-    cmd.restore_to_file(backup, file(BACKING_FILE_QCOW2),
+    cmd.restore_to_file(address, backup, file(BACKING_FILE_QCOW),
                         output_qcow2_path, IMAGE_FORMAT_QCOW2)
     output0_qcow2 = read_qcow2_file_without_backing_file(
         output_qcow2_path, offset0, length0)
@@ -110,21 +111,21 @@ def restore_to_file_with_backing_file_test(backing_dev, backup_target, grpc_c):
     os.remove(output_qcow2_path)
     assert not os.path.exists(output_qcow2_path)
 
-    rm_backups([backup])
+    rm_backups(address, ENGINE_BACKING_NAME, [backup])
 
     # create 1 snapshot with 256B data.
     # output = snap1(offset0, length1) + backing(offset1, ...)
-    snap1_data = common.random_string(length1)
-    common.verify_data(backing_dev, offset0, snap1_data)
-    snap1 = cmd.snapshot_create()
-    backup = create_backup(backup_target, snap1)
+    snap1_data = random_string(length1)
+    verify_data(backing_dev, offset0, snap1_data)
+    snap1 = cmd.snapshot_create(address)
+    backup = create_backup(address, snap1, backup_target)["URL"]
 
     volume_data = read_dev(backing_dev, offset0, length0)
     backing_data = read_from_backing_file(
         offset1, length0 - offset1)
-    dev_checksum = common.checksum_dev(backing_dev)
+    dev_checksum = checksum_dev(backing_dev)
 
-    cmd.restore_to_file(backup, file(BACKING_FILE_QCOW2),
+    cmd.restore_to_file(address, backup, file(BACKING_FILE_QCOW),
                         output_raw_path, IMAGE_FORMAT_RAW)
     output1_raw_snap1 = read_file(
         output_raw_path, offset0, length1)
@@ -139,7 +140,7 @@ def restore_to_file_with_backing_file_test(backing_dev, backup_target, grpc_c):
     os.remove(output_raw_path)
     assert not os.path.exists(output_raw_path)
 
-    cmd.restore_to_file(backup, file(BACKING_FILE_QCOW2),
+    cmd.restore_to_file(address, backup, file(BACKING_FILE_QCOW),
                         output_qcow2_path, IMAGE_FORMAT_QCOW2)
     output1_qcow2_snap1 = read_qcow2_file_without_backing_file(
         output_qcow2_path, offset0, length1)
@@ -154,31 +155,29 @@ def restore_to_file_with_backing_file_test(backing_dev, backup_target, grpc_c):
     os.remove(output_qcow2_path)
     assert not os.path.exists(output_qcow2_path)
 
-    shutdown_engine_frontend(grpc_c)
-    cmd.snapshot_revert(snap0)
-    start_engine_frontend(grpc_c)
-    rm_snaps([snap1])
-    rm_backups([backup])
+    snapshot_revert_with_frontend(address, ENGINE_BACKING_NAME, snap0)
+    rm_snaps(address, [snap1])
+    rm_backups(address, ENGINE_BACKING_NAME, [backup])
     check_backing()
     check_empty_volume(backing_dev)
 
     # create 2 snapshots with 256B data and 128B data
     # output = snap2(offset0, length1 - length2) +
     #          snap1(offset2, length2) + backing(offset2, ...)
-    snap1_data = common.random_string(length1)
-    common.verify_data(backing_dev, offset0, snap1_data)
-    snap1 = cmd.snapshot_create()
-    snap2_data = common.random_string(length2)
-    common.verify_data(backing_dev, offset0, snap2_data)
-    snap2 = cmd.snapshot_create()
-    backup = create_backup(backup_target, snap2)
+    snap1_data = random_string(length1)
+    verify_data(backing_dev, offset0, snap1_data)
+    snap1 = cmd.snapshot_create(address)
+    snap2_data = random_string(length2)
+    verify_data(backing_dev, offset0, snap2_data)
+    snap2 = cmd.snapshot_create(address)
+    backup = create_backup(address, snap2, backup_target)["URL"]
 
     volume_data = read_dev(backing_dev, offset0, length0)
     backing_data = read_from_backing_file(
         offset1, length0 - offset1)
-    dev_checksum = common.checksum_dev(backing_dev)
+    dev_checksum = checksum_dev(backing_dev)
 
-    cmd.restore_to_file(backup, file(BACKING_FILE_QCOW2),
+    cmd.restore_to_file(address, backup, file(BACKING_FILE_QCOW),
                         output_raw_path, IMAGE_FORMAT_RAW)
     output2_raw_snap2 = read_file(
         output_raw_path, offset0, length2)
@@ -198,7 +197,7 @@ def restore_to_file_with_backing_file_test(backing_dev, backup_target, grpc_c):
     os.remove(output_raw_path)
     assert not os.path.exists(output_raw_path)
 
-    cmd.restore_to_file(backup, file(BACKING_FILE_QCOW2),
+    cmd.restore_to_file(address, backup, file(BACKING_FILE_QCOW),
                         output_qcow2_path, IMAGE_FORMAT_QCOW2)
     output2_qcow2_snap2 = read_qcow2_file_without_backing_file(
         output_qcow2_path, offset0, length2)
@@ -218,16 +217,21 @@ def restore_to_file_with_backing_file_test(backing_dev, backup_target, grpc_c):
     os.remove(output_qcow2_path)
     assert not os.path.exists(output_qcow2_path)
 
-    shutdown_engine_frontend(grpc_c)
-    cmd.snapshot_revert(snap0)
-    start_engine_frontend(grpc_c)
-    rm_snaps([snap1, snap2])
-    rm_backups([backup])
+    snapshot_revert_with_frontend(address, ENGINE_BACKING_NAME, snap0)
+    rm_snaps(address, [snap1, snap2])
+    rm_backups(address, ENGINE_BACKING_NAME, [backup])
     check_backing()
     check_empty_volume(backing_dev)
 
 
-def restore_to_file_without_backing_file_test(dev, backup_target, grpc_c):
+def restore_to_file_without_backing_file_test(backup_target,  # NOQA
+                                              grpc_controller,  # NOQA
+                                              grpc_replica1,  # NOQA
+                                              grpc_replica2):  # NOQA
+    address = grpc_controller.address
+
+    dev = get_dev(grpc_replica1, grpc_replica2, grpc_controller)
+
     length0 = 256
     length1 = 128
     offset0 = 0
@@ -237,23 +241,23 @@ def restore_to_file_without_backing_file_test(dev, backup_target, grpc_c):
     output_qcow2_path = file(OUTPUT_FILE_QCOW2)
 
     # create 1 empty snapshot for converting to init state.
-    snap0 = cmd.snapshot_create()
+    snap0 = cmd.snapshot_create(address)
 
     # create 1 snapshot with 256B data.
     # output = snap2(offset0, length1)
-    snap1_data = common.random_string(length0)
-    common.verify_data(dev, offset0, snap1_data)
-    snap1 = cmd.snapshot_create()
-    backup = create_backup(backup_target, snap1)
+    snap1_data = random_string(length0)
+    verify_data(dev, offset0, snap1_data)
+    snap1 = cmd.snapshot_create(address)
+    backup = create_backup(address, snap1, backup_target)["URL"]
 
-    cmd.restore_to_file(backup, "",
+    cmd.restore_to_file(address, backup, "",
                         output_raw_path, IMAGE_FORMAT_RAW)
     output1_raw = read_file(output_raw_path, offset0, length0)
     assert output1_raw == snap1_data
     os.remove(output_raw_path)
     assert not os.path.exists(output_raw_path)
 
-    cmd.restore_to_file(backup, "",
+    cmd.restore_to_file(address, backup, "",
                         output_qcow2_path, IMAGE_FORMAT_QCOW2)
     output1_qcow2 = read_qcow2_file_without_backing_file(
         output_qcow2_path, offset0, length0)
@@ -261,24 +265,22 @@ def restore_to_file_without_backing_file_test(dev, backup_target, grpc_c):
     os.remove(output_qcow2_path)
     assert not os.path.exists(output_qcow2_path)
 
-    shutdown_engine_frontend(grpc_c)
-    cmd.snapshot_revert(snap0)
-    start_engine_frontend(grpc_c)
-    rm_snaps([snap1])
-    rm_backups([backup])
+    snapshot_revert_with_frontend(address, ENGINE_NAME, snap0)
+    rm_snaps(address, [snap1])
+    rm_backups(address, ENGINE_NAME, [backup])
 
     # create 2 snapshots with 256B data and 128B data
     # output = snap2(offset0, length1 - length2) +
     #          snap1(offset2, length2)
-    snap1_data = common.random_string(length0)
-    common.verify_data(dev, offset0, snap1_data)
-    snap1 = cmd.snapshot_create()
-    snap2_data = common.random_string(length1)
-    common.verify_data(dev, offset0, snap2_data)
-    snap2 = cmd.snapshot_create()
-    backup = create_backup(backup_target, snap2)
+    snap1_data = random_string(length0)
+    verify_data(dev, offset0, snap1_data)
+    snap1 = cmd.snapshot_create(address)
+    snap2_data = random_string(length1)
+    verify_data(dev, offset0, snap2_data)
+    snap2 = cmd.snapshot_create(address)
+    backup = create_backup(address, snap2, backup_target)["URL"]
 
-    cmd.restore_to_file(backup, "",
+    cmd.restore_to_file(address, backup, "",
                         output_raw_path, IMAGE_FORMAT_RAW)
     output2_raw_snap2 = read_file(
         output_raw_path, offset0, length1)
@@ -287,7 +289,7 @@ def restore_to_file_without_backing_file_test(dev, backup_target, grpc_c):
     assert output2_raw_snap2 == snap2_data
     assert output2_raw_snap1 == snap1_data[offset1: length0]
 
-    cmd.restore_to_file(backup, "",
+    cmd.restore_to_file(address, backup, "",
                         output_qcow2_path, IMAGE_FORMAT_QCOW2)
     output2_qcow2_snap2 = read_qcow2_file_without_backing_file(
         output_qcow2_path, offset0, length1)
@@ -298,36 +300,36 @@ def restore_to_file_without_backing_file_test(dev, backup_target, grpc_c):
     os.remove(output_qcow2_path)
     assert not os.path.exists(output_qcow2_path)
 
-    shutdown_engine_frontend(grpc_c)
-    cmd.snapshot_revert(snap0)
-    start_engine_frontend(grpc_c)
-    rm_snaps([snap1, snap2])
-    rm_backups([backup])
+    snapshot_revert_with_frontend(address, ENGINE_NAME, snap0)
+    rm_snaps(address, [snap1, snap2])
+    rm_backups(address, ENGINE_NAME, [backup])
 
 
-def test_restore_to_file_with_backing_file(grpc_backing_replica1,  # NOQA
-                                           grpc_backing_replica2,  # NOQA
-                                           grpc_controller, backup_targets):  # NOQA
+def test_restore_to_file_with_backing_file(backup_targets,  # NOQA
+                                           grpc_backing_controller,  # NOQA
+                                           grpc_backing_replica1,  # NOQA
+                                           grpc_backing_replica2):  # NOQA
     for backup_target in backup_targets:
-        backing_dev = common.get_backing_dev(grpc_backing_replica1,
-                                             grpc_backing_replica2,
-                                             grpc_controller)
-        restore_to_file_with_backing_file_test(backing_dev, backup_target,
-                                               grpc_controller)
-        cmd.sync_agent_server_reset()
-        common.cleanup_replica(grpc_backing_replica1)
-        common.cleanup_replica(grpc_backing_replica2)
-        common.cleanup_controller(grpc_controller)
+        restore_to_file_with_backing_file_test(backup_target,
+                                               grpc_backing_controller,
+                                               grpc_backing_replica1,
+                                               grpc_backing_replica2,)
+        cmd.sync_agent_server_reset(grpc_backing_controller.address)
+        cleanup_replica(grpc_backing_replica1)
+        cleanup_replica(grpc_backing_replica2)
+        cleanup_controller(grpc_backing_controller)
 
 
-def test_restore_to_file_without_backing_file(grpc_replica1, grpc_replica2,  # NOQA
-                                              grpc_controller, backup_targets):  # NOQA
+def test_restore_to_file_without_backing_file(backup_targets,  # NOQA
+                                              grpc_controller,  # NOQA
+                                              grpc_replica1,  # NOQA
+                                              grpc_replica2):  # NOQA
     for backup_target in backup_targets:
-        dev = common.get_dev(grpc_replica1, grpc_replica2,
-                             grpc_controller)
-        restore_to_file_without_backing_file_test(dev, backup_target,
-                                                  grpc_controller) # NOQA
-        cmd.sync_agent_server_reset()
-        common.cleanup_replica(grpc_replica1)
-        common.cleanup_replica(grpc_replica2)
-        common.cleanup_controller(grpc_controller)
+        restore_to_file_without_backing_file_test(backup_target,
+                                                  grpc_controller,
+                                                  grpc_replica1,
+                                                  grpc_replica2)
+        cmd.sync_agent_server_reset(grpc_controller.address)
+        cleanup_replica(grpc_replica1)
+        cleanup_replica(grpc_replica2)
+        cleanup_controller(grpc_controller)

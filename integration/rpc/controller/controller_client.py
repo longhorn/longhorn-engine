@@ -7,6 +7,7 @@ from google.protobuf import empty_pb2
 
 class ControllerClient(object):
     def __init__(self, url):
+        self.address = url
         self.channel = grpc.insecure_channel(url)
         self.stub = controller_pb2_grpc.ControllerServiceStub(self.channel)
 
@@ -65,6 +66,11 @@ class ControllerClient(object):
         except grpc.RpcError as grpc_err:
             if "Socket closed" not in grpc_err.details():
                 raise grpc_err
+
+    def client_upgrade(self, address):
+        self.address = address
+        self.channel = grpc.insecure_channel(address)
+        self.stub = controller_pb2_grpc.ControllerServiceStub(self.channel)
 
 
 class ControllerReplicaInfo(object):

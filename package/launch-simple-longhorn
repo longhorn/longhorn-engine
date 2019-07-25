@@ -28,11 +28,25 @@ then
         frontend="tgt-blockdev"
 fi
 
-launcher="longhorn controller"
-extra_opts=""
+function start() {
+    set +e
+    while true;
+    do
+        /usr/local/bin/grpc_health_probe -addr localhost:8500
+        if [[ $? -eq 0 ]];
+        then
+            echo longhorn instance manager is ready
+            break;
+        fi
+        sleep 1
+    done
+    set -e
 
-[[ $frontend == "tgt-"* ]] && launcher="longhorn-engine-launcher start" && extra_opts="--size $size"
+    longhorn-instance-manager process create --name "$volume-r" --binary /usr/local/bin/longhorn --port-count 15 --port-args "--listen,localhost:" -- replica /volume/ "--size" $size
 
-longhorn replica --size $size --listen 0.0.0.0:9502 /volume/ &
-sleep 1
-exec $launcher --listen 0.0.0.0:9501 --frontend $frontend --replica tcp://0.0.0.0:9502 $extra_opts $volume
+    longhorn-instance-manager engine create --name "$volume-e" --volume-name $volume --binary /usr/local/bin/longhorn --size $size --listen-ip 0.0.0.0 --frontend $frontend --replica tcp://0.0.0.0:10000
+}
+
+start &
+
+exec longhorn-instance-manager daemon
