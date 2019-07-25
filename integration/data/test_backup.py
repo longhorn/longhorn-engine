@@ -20,34 +20,6 @@ from setting import (
 )
 
 
-def test_backup_volume_deletion(grpc_replica1, grpc_replica2,  # NOQA
-                                grpc_controller, backup_targets):  # NOQA
-    offset = 0
-    length = 128
-    address = grpc_controller.address
-
-    for backup_target in backup_targets:
-        dev = get_dev(grpc_replica1, grpc_replica2,
-                      grpc_controller)
-        snap_data = random_string(length)
-        verify_data(dev, offset, snap_data)
-        snap = cmd.snapshot_create(address)
-
-        backup_info = create_backup(address, snap, backup_target)
-        assert backup_info["VolumeName"] == VOLUME_NAME
-        assert backup_info["Size"] == BLOCK_SIZE_STR
-        assert snap in backup_info["SnapshotName"]
-
-        cmd.backup_volume_rm(address, VOLUME_NAME, backup_target)
-        info = cmd.backup_volume_list(address, VOLUME_NAME, backup_target)
-        assert "cannot find" in info[VOLUME_NAME]["Messages"]["error"]
-
-        cmd.sync_agent_server_reset(address)
-        cleanup_replica(grpc_replica1)
-        cleanup_replica(grpc_replica2)
-        cleanup_controller(grpc_controller)
-
-
 def backup_test(dev, address,  # NOQA
                 volume_name, engine_name, backup_target):
     offset = 0
@@ -288,3 +260,31 @@ def test_backup_hole_with_backing_file(grpc_backing_replica1, grpc_backing_repli
         cleanup_replica(grpc_backing_replica1)
         cleanup_replica(grpc_backing_replica2)
         cleanup_controller(grpc_backing_controller)
+
+
+def test_backup_volume_deletion(grpc_replica1, grpc_replica2,  # NOQA
+                                grpc_controller, backup_targets):  # NOQA
+    offset = 0
+    length = 128
+    address = grpc_controller.address
+
+    for backup_target in backup_targets:
+        dev = get_dev(grpc_replica1, grpc_replica2,
+                      grpc_controller)
+        snap_data = random_string(length)
+        verify_data(dev, offset, snap_data)
+        snap = cmd.snapshot_create(address)
+
+        backup_info = create_backup(address, snap, backup_target)
+        assert backup_info["VolumeName"] == VOLUME_NAME
+        assert backup_info["Size"] == BLOCK_SIZE_STR
+        assert snap in backup_info["SnapshotName"]
+
+        cmd.backup_volume_rm(address, VOLUME_NAME, backup_target)
+        info = cmd.backup_volume_list(address, VOLUME_NAME, backup_target)
+        assert "cannot find" in info[VOLUME_NAME]["Messages"]["error"]
+
+        cmd.sync_agent_server_reset(address)
+        cleanup_replica(grpc_replica1)
+        cleanup_replica(grpc_replica2)
+        cleanup_controller(grpc_controller)
