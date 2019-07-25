@@ -750,11 +750,13 @@ func (s *SyncAgentServer) RestoreStatus(ctx context.Context, req *empty.Empty) (
 		Progress:     s.RestoreInfo.Progress,
 		Error:        s.RestoreInfo.Error,
 		State:        s.RestoreInfo.State,
+		BackupURL:    s.RestoreInfo.BackupURL,
 	}
 	rs.Progress = int32(restoreStatus.Progress)
 	rs.DestFileName = restoreStatus.SnapshotName
 	rs.State = string(restoreStatus.State)
 	rs.Error = restoreStatus.Error
+	rs.BackupURL = restoreStatus.BackupURL
 	return rs, nil
 }
 
