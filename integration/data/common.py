@@ -230,16 +230,16 @@ def shutdown_engine_frontend(engine_name,
     assert e.status.endpoint == ""
 
 
-def wait_for_restore_completion(url):
+def wait_for_restore_completion(url, backup_url):
     completed = 0
     rs = {}
-    # a workaround for immediate check restoration may not get latest result
-    time.sleep(3)
     for x in range(RETRY_COUNTS):
         completed = 0
         rs = cmd.restore_status(url)
         for status in rs.values():
             assert 'state' in status.keys()
+            if status['backupURL'] != backup_url:
+                break
             if status['state'] == "complete":
                 assert 'progress' in status.keys()
                 assert status['progress'] == 100
@@ -258,14 +258,14 @@ def wait_for_restore_completion(url):
 def restore_with_frontend(url, engine_name, backup):
     shutdown_engine_frontend(engine_name)
     cmd.backup_restore(url, backup)
-    wait_for_restore_completion(url)
+    wait_for_restore_completion(url, backup)
     start_engine_frontend(engine_name)
     return
 
 
 def restore_incrementally(url, backup_url, last_restored):
     cmd.restore_inc(url, backup_url, last_restored)
-    wait_for_restore_completion(url)
+    wait_for_restore_completion(url, backup_url)
     return
 
 

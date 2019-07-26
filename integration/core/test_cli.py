@@ -17,6 +17,7 @@ from common import (  # NOQA
 
     VOLUME_NAME, SIZE_STR, ENGINE_NAME,
     RETRY_COUNTS2, FRONTEND_TGT_BLOCKDEV,
+    RETRY_INTERVAL
 )
 
 
@@ -652,11 +653,12 @@ def restore_backup(engine_manager_client,  # NOQA
     completed = 0
     rs = json.loads(subprocess.check_output(status_cmd).strip())
     for x in range(RETRY_COUNTS2):
-        time.sleep(3)
         completed = 0
         rs = json.loads(subprocess.check_output(status_cmd).strip())
         for status in rs.values():
             assert 'state' in status.keys()
+            if status['backupURL'] != backup_url:
+                break
             if status['state'] == "complete":
                 assert 'progress' in status.keys()
                 assert status['progress'] == 100
@@ -667,7 +669,8 @@ def restore_backup(engine_manager_client,  # NOQA
             else:
                 assert status['state'] == "incomplete"
         if completed == len(rs):
-            return
+            break
+        time.sleep(RETRY_INTERVAL)
     assert completed == len(rs)
     engine_manager_client.frontend_start(ENGINE_NAME,
                                          FRONTEND_TGT_BLOCKDEV)
