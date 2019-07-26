@@ -333,6 +333,30 @@ func (el *Launcher) waitForEngineProcessDeletion(processManager rpc.ProcessManag
 	return false
 }
 
+func (el *Launcher) waitForEngineProcessRunning(processManager rpc.ProcessManagerServiceServer, processName string) error {
+	for i := 0; i < types.WaitCount; i++ {
+		process, err := processManager.ProcessGet(nil, &rpc.ProcessGetRequest{
+			Name: processName,
+		})
+		if err != nil && !strings.Contains(err.Error(), "cannot find process") {
+			return err
+		}
+		if process != nil && process.Status.State == types.ProcessStateRunning {
+			break
+		}
+		logrus.Infof("engine launcher %v: waiting for engine process %v running", el.LauncherName, processName)
+		time.Sleep(types.WaitInterval)
+	}
+
+	process, err := processManager.ProcessGet(nil, &rpc.ProcessGetRequest{
+		Name: processName,
+	})
+	if err != nil || process == nil || process.Status.State != types.ProcessStateRunning {
+		return fmt.Errorf("engine launcher %v: failed to wait for engine process %v running", el.LauncherName, processName)
+	}
+	return nil
+}
+
 func (el *Launcher) backupBinary(newBinary string) error {
 	if el.binaryBackup != "" {
 		logrus.Warnf("binary backup %v already exists", el.binaryBackup)

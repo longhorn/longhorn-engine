@@ -366,6 +366,10 @@ func (em *Manager) EngineUpgrade(ctx context.Context, req *rpc.EngineUpgradeRequ
 		return nil, errors.Wrapf(err, "failed to prepare to upgrade engine to %v", req.Spec.Name)
 	}
 
+	el.lock.RLock()
+	newEngineProcessName := el.currentEngine.EngineName
+	el.lock.RUnlock()
+
 	defer func() {
 		if err != nil {
 			logrus.Errorf("failed to upgrade: %v", err)
@@ -381,6 +385,10 @@ func (em *Manager) EngineUpgrade(ctx context.Context, req *rpc.EngineUpgradeRequ
 
 	if err = em.checkUpgradedEngineSocket(el); err != nil {
 		return nil, errors.Wrapf(err, "failed to reload socket connection for new engine %v", req.Spec.Name)
+	}
+
+	if err = el.waitForEngineProcessRunning(em.processManager, newEngineProcessName); err != nil {
+		return nil, errors.Wrapf(err, "failed to wait for new engine running")
 	}
 
 	el.finalizeUpgrade(em.processManager)
