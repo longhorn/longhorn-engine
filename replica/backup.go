@@ -63,10 +63,14 @@ func (rr *RestoreStatus) UpdateRestoreStatus(snapshot string, rp int, re error) 
 	if re != nil {
 		rr.Error = re.Error()
 		rr.State = ProgressStateError
-	} else if rr.Progress == 100 {
-		rr.State = ProgressStateComplete
 	}
 	rr.LastUpdatedAt = time.Now()
+}
+
+func (rr *RestoreStatus) FinishRestore() {
+	rr.Lock()
+	defer rr.Unlock()
+	rr.State = ProgressStateComplete
 }
 
 type BackupStatus struct {

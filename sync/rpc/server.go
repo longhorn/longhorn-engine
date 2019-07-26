@@ -133,6 +133,7 @@ func (s *SyncAgentServer) FinishRestore(currentRestored string) error {
 		s.lastRestored = currentRestored
 	}
 	s.isRestoring = false
+	s.RestoreInfo.FinishRestore()
 	return nil
 }
 
