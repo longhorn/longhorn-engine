@@ -32,7 +32,7 @@ type Manager struct {
 
 	rpcService    *grpc.Server
 	rpcShutdownCh chan error
-	rpcWatchers   map[chan<- *rpc.ProcessResponse]struct{}
+	rpcWatchers   map[chan<- *rpc.ProcessResponse]<-chan struct{}
 
 	lock            *sync.RWMutex
 	processes       map[string]*Process
@@ -83,7 +83,7 @@ func NewManager(portRange string, logsDir string, shutdownCh chan error) (*Manag
 		portRangeMax: end,
 
 		rpcShutdownCh: make(chan error),
-		rpcWatchers:   make(map[chan<- *rpc.ProcessResponse]struct{}),
+		rpcWatchers:   make(map[chan<- *rpc.ProcessResponse]<-chan struct{}),
 
 		lock:            &sync.RWMutex{},
 		processes:       map[string]*Process{},
@@ -122,8 +122,12 @@ func (pm *Manager) StartMonitoring() {
 			if _, exists := pm.processes[p.Name]; !exists {
 				resp.Deleted = true
 			}
-			for stream := range pm.rpcWatchers {
-				stream <- resp
+			for stream, stop := range pm.rpcWatchers {
+				select {
+				case <-stop:
+					continue
+				case stream <- resp:
+				}
 			}
 			pm.lock.RUnlock()
 		}
@@ -322,10 +326,12 @@ func (pm *Manager) ProcessLog(req *rpc.LogRequest, srv rpc.ProcessManagerService
 
 func (pm *Manager) ProcessWatch(req *empty.Empty, srv rpc.ProcessManagerService_ProcessWatchServer) (err error) {
 	responseChan := make(chan *rpc.ProcessResponse)
+	stopCh := make(chan struct{})
 	pm.lock.Lock()
-	pm.rpcWatchers[responseChan] = struct{}{}
+	pm.rpcWatchers[responseChan] = stopCh
 	pm.lock.Unlock()
 	defer func() {
+		close(stopCh)
 		pm.lock.Lock()
 		delete(pm.rpcWatchers, responseChan)
 		pm.lock.Unlock()

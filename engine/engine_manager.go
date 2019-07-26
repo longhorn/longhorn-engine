@@ -22,7 +22,7 @@ type Manager struct {
 	lock           *sync.RWMutex
 	processManager rpc.ProcessManagerServiceServer
 	pStreamWrapper *ProcessStreamWrapper
-	rpcWatchers    map[chan<- *rpc.EngineResponse]struct{}
+	rpcWatchers    map[chan<- *rpc.EngineResponse]<-chan struct{}
 	listen         string
 
 	elUpdateCh      chan *Launcher
@@ -76,7 +76,7 @@ func NewEngineManager(pm rpc.ProcessManagerServiceServer, listen string, shutdow
 		lock:           &sync.RWMutex{},
 		processManager: pm,
 		pStreamWrapper: NewProcessStreamWrapper(),
-		rpcWatchers:    make(map[chan<- *rpc.EngineResponse]struct{}),
+		rpcWatchers:    make(map[chan<- *rpc.EngineResponse]<-chan struct{}),
 		listen:         listen,
 
 		elUpdateCh:      make(chan *Launcher),
@@ -126,8 +126,12 @@ func (em *Manager) StartMonitoring() {
 			if _, exists := em.engineLaunchers[el.LauncherName]; !exists {
 				resp.Deleted = true
 			}
-			for stream := range em.rpcWatchers {
-				stream <- resp
+			for stream, stop := range em.rpcWatchers {
+				select {
+				case <-stop:
+					continue
+				case stream <- resp:
+				}
 			}
 			em.lock.RUnlock()
 		}
@@ -422,10 +426,12 @@ func (em *Manager) EngineLog(req *rpc.LogRequest, srv rpc.EngineManagerService_E
 
 func (em *Manager) EngineWatch(req *empty.Empty, srv rpc.EngineManagerService_EngineWatchServer) (err error) {
 	responseChan := make(chan *rpc.EngineResponse)
+	stopCh := make(chan struct{})
 	em.lock.Lock()
-	em.rpcWatchers[responseChan] = struct{}{}
+	em.rpcWatchers[responseChan] = stopCh
 	em.lock.Unlock()
 	defer func() {
+		close(stopCh)
 		em.lock.Lock()
 		delete(em.rpcWatchers, responseChan)
 		em.lock.Unlock()
