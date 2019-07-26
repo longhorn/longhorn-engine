@@ -111,7 +111,7 @@ def restore_inc_test(grpc_engine_manager,  # NOQA
                              grpc_dr_replica1, grpc_dr_replica2)
 
     cmd.backup_restore(dr_address, backup0)
-    wait_for_restore_completion(dr_address)
+    wait_for_restore_completion(dr_address, backup0)
     verify_no_frontend_data(grpc_engine_manager,
                             0, snap0_data, grpc_dr_controller)
 
@@ -132,6 +132,8 @@ def restore_inc_test(grpc_engine_manager,  # NOQA
         for i in range(RETRY_COUNTS):
             rs = cmd.restore_status(dr_address)
             for status in rs.values():
+                if status['backupURL'] != backup1:
+                    break
                 if 'error' in status.keys():
                     if status['error'] != "":
                         assert 'no such file or directory' in \

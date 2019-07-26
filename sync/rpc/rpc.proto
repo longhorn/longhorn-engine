@@ -94,4 +94,5 @@ message RestoreStatusReply {
     string error = 4;
     string destFileName = 5;
     string state = 6;
+    string backupURL = 7;
 }

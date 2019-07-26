@@ -29,6 +29,7 @@ type RestoreStatus struct {
 	Error        string `json:"error,omitempty"`
 	Filename     string `json:"filename,omitempty"`
 	State        string `json:"state"`
+	BackupURL    string `json:"backupURL"`
 }
 
 func (t *Task) CreateBackup(snapshot, dest string, labels []string, credential map[string]string) (string, error) {
@@ -362,6 +363,7 @@ func (t *Task) RestoreStatus() (map[string]*RestoreStatus, error) {
 			Error:        rs.Error,
 			Filename:     rs.DestFileName,
 			State:        rs.State,
+			BackupURL:    rs.BackupURL,
 		}
 	}
 
