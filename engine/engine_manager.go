@@ -477,7 +477,7 @@ func (em *Manager) validateBeforeUpgrade(spec *rpc.EngineSpec) (*Launcher, error
 	el.lock.RLock()
 	defer el.lock.RUnlock()
 
-	if el.Binary == spec.Binary || el.LauncherName != spec.Name {
+	if el.currentEngine.Binary == spec.Binary || el.LauncherName != spec.Name {
 		return nil, fmt.Errorf("cannot upgrade with the same binary or the different engine")
 	}
 

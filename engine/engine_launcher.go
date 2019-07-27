@@ -44,7 +44,6 @@ type Launcher struct {
 
 	LauncherName string
 	VolumeName   string
-	Binary       string
 	ListenIP     string
 	Size         int64
 	Frontend     string
@@ -52,8 +51,7 @@ type Launcher struct {
 
 	Endpoint string
 
-	scsiDevice   *iscsiblk.ScsiDevice
-	binaryBackup string
+	scsiDevice *iscsiblk.ScsiDevice
 
 	currentEngine *Engine
 	pendingEngine *Engine
@@ -65,15 +63,12 @@ func NewEngineLauncher(spec *rpc.EngineSpec) *Launcher {
 	el := &Launcher{
 		LauncherName: spec.Name,
 		VolumeName:   spec.VolumeName,
-		Binary:       spec.Binary,
 		Size:         spec.Size,
 		ListenIP:     spec.ListenIp,
 		Frontend:     spec.Frontend,
 		Backends:     spec.Backends,
 
 		Endpoint: "",
-
-		binaryBackup: "",
 
 		currentEngine: NewEngine(spec),
 		pendingEngine: nil,
@@ -105,7 +100,7 @@ func (el *Launcher) RPCResponse(processResp *rpc.ProcessResponse) *rpc.EngineRes
 		Spec: &rpc.EngineSpec{
 			Name:       el.LauncherName,
 			VolumeName: el.VolumeName,
-			Binary:     el.Binary,
+			Binary:     el.currentEngine.Binary,
 			Listen:     el.currentEngine.Listen,
 			ListenIp:   el.ListenIP,
 			Size:       el.Size,
@@ -176,7 +171,7 @@ func (el *Launcher) createEngineProcess(engineManagerListen string,
 	req := &rpc.ProcessCreateRequest{
 		Spec: &rpc.ProcessSpec{
 			Name:      el.currentEngine.EngineName,
-			Binary:    el.Binary,
+			Binary:    el.currentEngine.Binary,
 			Args:      args,
 			PortArgs:  portArgs,
 			PortCount: int32(portCount),
@@ -230,10 +225,6 @@ func (el *Launcher) prepareUpgrade(spec *rpc.EngineSpec) error {
 
 	logrus.Debugf("engine launcher %v: prepare for upgrade", el.LauncherName)
 
-	if err := el.backupBinary(spec.Binary); err != nil {
-		return errors.Wrap(err, "failed to backup old engine binary")
-	}
-
 	el.pendingEngine = el.currentEngine
 	el.currentEngine = NewEngine(spec)
 	el.currentEngine.Size = el.pendingEngine.Size
@@ -258,10 +249,6 @@ func (el *Launcher) rollbackUpgrade(processManager rpc.ProcessManagerServiceServ
 	el.lock.Unlock()
 
 	logrus.Debugf("engine launcher %v: rolling back upgrade", el.LauncherName)
-
-	if err := el.restoreBackupBinary(); err != nil {
-		return errors.Wrap(err, "failed to restore old controller binary")
-	}
 
 	if el.pendingEngine != nil {
 		el.deleteEngine(processManager, processName)
@@ -301,7 +288,6 @@ func (el *Launcher) finalizeUpgrade(processManager rpc.ProcessManagerServiceServ
 	isDeleted := el.waitForEngineProcessDeletion(processManager, processName)
 	if isDeleted {
 		el.lock.Lock()
-		el.binaryBackup = ""
 		el.pendingEngine = nil
 		el.lock.Unlock()
 		logrus.Infof("engine launcher %v: successfully finalized backup engine", launcherName)
@@ -354,37 +340,6 @@ func (el *Launcher) waitForEngineProcessRunning(processManager rpc.ProcessManage
 	if err != nil || process == nil || process.Status.State != types.ProcessStateRunning {
 		return fmt.Errorf("engine launcher %v: failed to wait for engine process %v running", el.LauncherName, processName)
 	}
-	return nil
-}
-
-func (el *Launcher) backupBinary(newBinary string) error {
-	if el.binaryBackup != "" {
-		logrus.Warnf("binary backup %v already exists", el.binaryBackup)
-		return nil
-	}
-
-	el.binaryBackup = el.Binary
-	el.Binary = newBinary
-
-	logrus.Debugf("backup binary %v and ready to use new binary %v", el.Binary, el.binaryBackup)
-
-	return nil
-}
-
-func (el *Launcher) restoreBackupBinary() error {
-	el.lock.Lock()
-	defer func() { el.UpdateCh <- el }()
-	defer el.lock.Unlock()
-
-	if el.binaryBackup == "" {
-		return fmt.Errorf("cannot restore, binary backup doesn't exist")
-	}
-
-	el.Binary = el.binaryBackup
-	el.binaryBackup = ""
-
-	logrus.Debugf("backup binary restored to %v", el.Binary)
-
 	return nil
 }
 
