@@ -600,7 +600,7 @@ func (em *Manager) FrontendShutdownCallback(ctx context.Context, req *rpc.Engine
 	}
 
 	el.lock.RLock()
-	if el.backupEngine != nil {
+	if el.pendingEngine != nil {
 		el.lock.RUnlock()
 		logrus.Infof("ignores the callback since engine launcher %v is deleting old engine for engine upgrade", req.Name)
 		return &empty.Empty{}, nil

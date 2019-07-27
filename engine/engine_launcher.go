@@ -56,7 +56,7 @@ type Launcher struct {
 	binaryBackup string
 
 	currentEngine *Engine
-	backupEngine  *Engine
+	pendingEngine *Engine
 
 	isDeleting bool
 }
@@ -76,7 +76,7 @@ func NewEngineLauncher(spec *rpc.EngineSpec) *Launcher {
 		binaryBackup: "",
 
 		currentEngine: NewEngine(spec),
-		backupEngine:  nil,
+		pendingEngine: nil,
 
 		lock:      &sync.RWMutex{},
 		pUpdateCh: make(chan *rpc.ProcessResponse),
@@ -234,9 +234,9 @@ func (el *Launcher) prepareUpgrade(spec *rpc.EngineSpec) error {
 		return errors.Wrap(err, "failed to backup old engine binary")
 	}
 
-	el.backupEngine = el.currentEngine
+	el.pendingEngine = el.currentEngine
 	el.currentEngine = NewEngine(spec)
-	el.currentEngine.Size = el.backupEngine.Size
+	el.currentEngine.Size = el.pendingEngine.Size
 
 	if err := util.RemoveFile(el.GetSocketPath()); err != nil {
 		return errors.Wrapf(err, "failed to remove socket %v", el.GetSocketPath())
@@ -253,8 +253,8 @@ func (el *Launcher) rollbackUpgrade(processManager rpc.ProcessManagerServiceServ
 	processName := el.currentEngine.EngineName
 	// swap engine process. current engine should be old engine process
 	newEngine := el.currentEngine
-	el.currentEngine = el.backupEngine
-	el.backupEngine = newEngine
+	el.currentEngine = el.pendingEngine
+	el.pendingEngine = newEngine
 	el.lock.Unlock()
 
 	logrus.Debugf("engine launcher %v: rolling back upgrade", el.LauncherName)
@@ -263,14 +263,14 @@ func (el *Launcher) rollbackUpgrade(processManager rpc.ProcessManagerServiceServ
 		return errors.Wrap(err, "failed to restore old controller binary")
 	}
 
-	if el.backupEngine != nil {
+	if el.pendingEngine != nil {
 		el.deleteEngine(processManager, processName)
 
-		// need to wait for new engine process deletion before unset el.backupEngine.
+		// need to wait for new engine process deletion before unset el.pendingEngine.
 		isDeleted := el.waitForEngineProcessDeletion(processManager, processName)
 		if isDeleted {
 			el.lock.Lock()
-			el.backupEngine = nil
+			el.pendingEngine = nil
 			el.lock.Unlock()
 			logrus.Infof("engine launcher %v: successfully rolled back to backup engine", launcherName)
 		} else {
@@ -286,23 +286,23 @@ func (el *Launcher) finalizeUpgrade(processManager rpc.ProcessManagerServiceServ
 
 	el.lock.RLock()
 	launcherName := el.LauncherName
-	processName := el.backupEngine.EngineName
+	processName := el.pendingEngine.EngineName
 	el.lock.RUnlock()
 
 	if _, err := el.deleteEngine(processManager, processName); err != nil {
-		logrus.Warnf("failed to delete backup engine process %v: %v", el.backupEngine.EngineName, err)
+		logrus.Warnf("failed to delete backup engine process %v: %v", el.pendingEngine.EngineName, err)
 	}
 
-	// Need to wait for backup engine process deletion before unset el.backupEngine.
+	// Need to wait for backup engine process deletion before unset el.pendingEngine.
 	// Typically engine process deletion will cause frontend shutdown callback.
 	// But we don't want to shutdown frontend here since it's live upgrade.
-	// Hence frontend shutdown callback will check existence of el.backupEngine to avoid frontend down.
+	// Hence frontend shutdown callback will check existence of el.pendingEngine to avoid frontend down.
 	// Also need to block process since we cannot start another engine upgrade before completing this func.
 	isDeleted := el.waitForEngineProcessDeletion(processManager, processName)
 	if isDeleted {
 		el.lock.Lock()
 		el.binaryBackup = ""
-		el.backupEngine = nil
+		el.pendingEngine = nil
 		el.lock.Unlock()
 		logrus.Infof("engine launcher %v: successfully finalized backup engine", launcherName)
 	} else {
