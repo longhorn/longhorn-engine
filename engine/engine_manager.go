@@ -362,24 +362,12 @@ func (em *Manager) EngineUpgrade(ctx context.Context, req *rpc.EngineUpgradeRequ
 		return nil, err
 	}
 
-	if err := el.prepareUpgrade(req.Spec); err != nil {
+	newEngineSpec, err := el.prepareUpgrade(req.Spec)
+	if err != nil {
 		return nil, errors.Wrapf(err, "failed to prepare to upgrade engine to %v", req.Spec.Name)
 	}
 
-	el.lock.RLock()
-	newEngineProcessName := el.currentEngine.EngineName
-	el.lock.RUnlock()
-
-	defer func() {
-		if err != nil {
-			logrus.Errorf("failed to upgrade: %v", err)
-			if err := el.rollbackUpgrade(em.processManager); err != nil {
-				logrus.Errorf("failed to rollback upgrade: %v", err)
-			}
-		}
-	}()
-
-	if err := el.createEngineProcess(em.listen, em.processManager); err != nil {
+	if err := el.createEngineProcess(newEngineSpec, em.listen, em.processManager); err != nil {
 		return nil, errors.Wrapf(err, "failed to create upgrade engine %v", req.Spec.Name)
 	}
 
@@ -387,11 +375,13 @@ func (em *Manager) EngineUpgrade(ctx context.Context, req *rpc.EngineUpgradeRequ
 		return nil, errors.Wrapf(err, "failed to reload socket connection for new engine %v", req.Spec.Name)
 	}
 
-	if err = el.waitForEngineProcessRunning(em.processManager, newEngineProcessName); err != nil {
+	if err = el.waitForEngineProcessRunning(em.processManager, newEngineSpec.EngineName); err != nil {
 		return nil, errors.Wrapf(err, "failed to wait for new engine running")
 	}
 
-	el.finalizeUpgrade(em.processManager)
+	if err := el.finalizeUpgrade(em.processManager); err != nil {
+		return nil, errors.Wrapf(err, "failed to finalize engine upgrade")
+	}
 
 	el.lock.RLock()
 	response, err := em.processManager.ProcessGet(nil, &rpc.ProcessGetRequest{
@@ -567,6 +557,10 @@ func (em *Manager) FrontendStartCallback(ctx context.Context, req *rpc.EngineReq
 	tID := int32(0)
 
 	el.lock.RLock()
+	if el.isUpgrading {
+		el.lock.RUnlock()
+		return &empty.Empty{}, nil
+	}
 	if el.scsiDevice == nil {
 		em.lock.Lock()
 		tID, _, err = em.tIDAllocator.AllocateRange(1)
@@ -600,7 +594,7 @@ func (em *Manager) FrontendShutdownCallback(ctx context.Context, req *rpc.Engine
 	}
 
 	el.lock.RLock()
-	if el.pendingEngine != nil {
+	if el.isUpgrading {
 		el.lock.RUnlock()
 		logrus.Infof("ignores the callback since engine launcher %v is deleting old engine for engine upgrade", req.Name)
 		return &empty.Empty{}, nil

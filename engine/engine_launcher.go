@@ -57,6 +57,9 @@ type Launcher struct {
 	pendingEngine *Engine
 
 	isDeleting bool
+	// Set it before creating new engine spec
+	// Unset it after waiting for old engine process deletion
+	isUpgrading bool
 }
 
 func NewEngineLauncher(spec *rpc.EngineSpec) (*Launcher, *Engine) {
@@ -219,84 +222,55 @@ func (el *Launcher) deleteEngine(processManager rpc.ProcessManagerServiceServer,
 	return response, nil
 }
 
-func (el *Launcher) prepareUpgrade(spec *rpc.EngineSpec) error {
+func (el *Launcher) prepareUpgrade(spec *rpc.EngineSpec) (*Engine, error) {
 	el.lock.Lock()
-	defer func() { el.UpdateCh <- el }()
 	defer el.lock.Unlock()
 
 	logrus.Debugf("engine launcher %v: prepare for upgrade", el.LauncherName)
 
-	el.pendingEngine = el.currentEngine
-	el.currentEngine = NewEngine(spec)
-	el.currentEngine.Size = el.pendingEngine.Size
+	el.isUpgrading = true
+	el.pendingEngine = NewEngine(spec)
+	el.pendingEngine.Size = el.currentEngine.Size
 
 	if err := util.RemoveFile(el.GetSocketPath()); err != nil {
-		return errors.Wrapf(err, "failed to remove socket %v", el.GetSocketPath())
+		return nil, errors.Wrapf(err, "failed to remove socket %v", el.GetSocketPath())
 	}
 
 	logrus.Debugf("engine launcher %v: preparation completed", el.LauncherName)
 
-	return nil
+	return el.pendingEngine, nil
 }
 
-func (el *Launcher) rollbackUpgrade(processManager rpc.ProcessManagerServiceServer) error {
-	el.lock.Lock()
-	launcherName := el.LauncherName
-	processName := el.currentEngine.EngineName
-	// swap engine process. current engine should be old engine process
-	newEngine := el.currentEngine
-	el.currentEngine = el.pendingEngine
-	el.pendingEngine = newEngine
-	el.lock.Unlock()
-
-	logrus.Debugf("engine launcher %v: rolling back upgrade", el.LauncherName)
-
-	if el.pendingEngine != nil {
-		el.deleteEngine(processManager, processName)
-
-		// need to wait for new engine process deletion before unset el.pendingEngine.
-		isDeleted := el.waitForEngineProcessDeletion(processManager, processName)
-		if isDeleted {
-			el.lock.Lock()
-			el.pendingEngine = nil
-			el.lock.Unlock()
-			logrus.Infof("engine launcher %v: successfully rolled back to backup engine", launcherName)
-		} else {
-			return fmt.Errorf("engine launcher %v: failed to rollback upgrade since new engine process cannot be deleted", launcherName)
-		}
-	}
-
-	return nil
-}
-
-func (el *Launcher) finalizeUpgrade(processManager rpc.ProcessManagerServiceServer) {
+func (el *Launcher) finalizeUpgrade(processManager rpc.ProcessManagerServiceServer) error {
 	logrus.Debugf("engine launcher %v: finalize upgrade", el.LauncherName)
 
-	el.lock.RLock()
-	launcherName := el.LauncherName
-	processName := el.pendingEngine.EngineName
-	el.lock.RUnlock()
+	defer func() { el.UpdateCh <- el }()
+
+	el.lock.Lock()
+	processName := el.currentEngine.EngineName
+	el.currentEngine = el.pendingEngine
+	el.pendingEngine = nil
+	el.lock.Unlock()
 
 	if _, err := el.deleteEngine(processManager, processName); err != nil {
-		logrus.Warnf("failed to delete backup engine process %v: %v", el.pendingEngine.EngineName, err)
+		logrus.Warnf("failed to delete old engine process %v: %v", processName, err)
 	}
 
-	// Need to wait for backup engine process deletion before unset el.pendingEngine.
-	// Typically engine process deletion will cause frontend shutdown callback.
+	// We need to wait for old engine process deletion before unset el.isUpgrading
+	// Typically engine process deletion will trigger frontend shutdown callback.
 	// But we don't want to shutdown frontend here since it's live upgrade.
-	// Hence frontend shutdown callback will check existence of el.pendingEngine to avoid frontend down.
-	// Also need to block process since we cannot start another engine upgrade before completing this func.
+	// Hence frontend shutdown callback will check el.isUpgrading to skip unexpected frontend down.
+	// And we need to block process here keep el.isUpgrading before frontend shutdown callback complete.
 	isDeleted := el.waitForEngineProcessDeletion(processManager, processName)
-	if isDeleted {
-		el.lock.Lock()
-		el.pendingEngine = nil
-		el.lock.Unlock()
-		logrus.Infof("engine launcher %v: successfully finalized backup engine", launcherName)
-	} else {
-		logrus.Errorf("engine launcher %v: failed to deleted backup engine process", el.LauncherName)
+	if !isDeleted {
+		logrus.Warnf("engine launcher %v: failed to deleted old engine process", el.LauncherName)
 	}
 
-	return
+	el.lock.Lock()
+	el.isUpgrading = false
+	el.lock.Unlock()
+
+	return nil
 }
 
 func (el *Launcher) waitForEngineProcessDeletion(processManager rpc.ProcessManagerServiceServer, processName string) bool {
