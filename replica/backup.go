@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"os"
 	"sync"
-	"time"
 
 	"github.com/sirupsen/logrus"
 
@@ -37,7 +36,6 @@ type RestoreStatus struct {
 	SnapshotName   string //This will be deltaFileName in case of Incremental Restore
 	Progress       int
 	Error          string
-	LastUpdatedAt  time.Time
 	BackupURL      string
 	State          ProgressState
 
@@ -64,7 +62,6 @@ func (rr *RestoreStatus) UpdateRestoreStatus(snapshot string, rp int, re error) 
 		rr.Error = re.Error()
 		rr.State = ProgressStateError
 	}
-	rr.LastUpdatedAt = time.Now()
 }
 
 func (rr *RestoreStatus) FinishRestore() {

@@ -25,7 +25,6 @@ const (
 	BackupFileConverted   = "backup.img.converted"
 	BackingFileCopy       = "backing.img.cp"
 
-	ProgressBasedTimeoutInMinutes    = 5
 	PeriodicRefreshIntervalInSeconds = 2
 )
 
@@ -86,7 +85,6 @@ func restore(url string) error {
 		restoreObj.Lock()
 		restoreProgress := restoreObj.Progress
 		restoreError := restoreObj.Error
-		lastUpdate := restoreObj.LastUpdatedAt
 		restoreObj.Unlock()
 
 		if restoreProgress == 100 {
@@ -99,14 +97,6 @@ func restore(url string) error {
 			bar.Finish()
 			periodicChecker.Stop()
 			return fmt.Errorf("%v", restoreError)
-		}
-		now := time.Now()
-		diff := now.Sub(lastUpdate)
-
-		if diff.Minutes() > ProgressBasedTimeoutInMinutes {
-			bar.Finish()
-			periodicChecker.Stop()
-			return fmt.Errorf("no restore update happened since %v minutes. Returning failure", ProgressBasedTimeoutInMinutes)
 		}
 		bar.Set(restoreProgress)
 	}
