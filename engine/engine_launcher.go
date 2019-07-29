@@ -59,7 +59,7 @@ type Launcher struct {
 	isDeleting bool
 }
 
-func NewEngineLauncher(spec *rpc.EngineSpec) *Launcher {
+func NewEngineLauncher(spec *rpc.EngineSpec) (*Launcher, *Engine) {
 	el := &Launcher{
 		LauncherName: spec.Name,
 		VolumeName:   spec.VolumeName,
@@ -77,7 +77,7 @@ func NewEngineLauncher(spec *rpc.EngineSpec) *Launcher {
 		pUpdateCh: make(chan *rpc.ProcessResponse),
 	}
 	go el.StartMonitoring()
-	return el
+	return el, el.currentEngine
 }
 
 func (el *Launcher) StartMonitoring() {
@@ -129,11 +129,12 @@ func (el *Launcher) RPCResponse(processResp *rpc.ProcessResponse) *rpc.EngineRes
 
 // During running this function, frontendStartCallback() will be called automatically.
 // Hence need to be careful about deadlock
-func (el *Launcher) createEngineProcess(engineManagerListen string,
+// engineSpec should be el.currentEngine or el.pendingEngine
+func (el *Launcher) createEngineProcess(engineSpec *Engine, engineManagerListen string,
 	processManager rpc.ProcessManagerServiceServer) error {
 
 	logrus.Debugf("engine launcher %v: prepare to create engine process %v at %v",
-		el.LauncherName, el.currentEngine.EngineName, el.currentEngine.Listen)
+		el.LauncherName, engineSpec.EngineName, engineSpec.Listen)
 
 	el.lock.Lock()
 
@@ -146,12 +147,12 @@ func (el *Launcher) createEngineProcess(engineManagerListen string,
 	}
 
 	portArgs := []string{}
-	if el.currentEngine.Listen != "" {
-		args = append(args, "--listen", el.currentEngine.Listen)
+	if engineSpec.Listen != "" {
+		args = append(args, "--listen", engineSpec.Listen)
 	} else {
 		if el.ListenIP == "" {
 			el.lock.Unlock()
-			return fmt.Errorf("neither arg listen nor arg listenIP is provided for engine %v", el.currentEngine.EngineName)
+			return fmt.Errorf("neither arg listen nor arg listenIP is provided for engine %v", engineSpec.EngineName)
 		}
 		portArgs = append(portArgs, fmt.Sprintf("--listen,%s:", el.ListenIP))
 		portCount = portCount + 1
@@ -164,14 +165,14 @@ func (el *Launcher) createEngineProcess(engineManagerListen string,
 		args = append(args, "--enable-backend", b)
 	}
 
-	for _, r := range el.currentEngine.Replicas {
+	for _, r := range engineSpec.Replicas {
 		args = append(args, "--replica", r)
 	}
 
 	req := &rpc.ProcessCreateRequest{
 		Spec: &rpc.ProcessSpec{
-			Name:      el.currentEngine.EngineName,
-			Binary:    el.currentEngine.Binary,
+			Name:      engineSpec.EngineName,
+			Binary:    engineSpec.Binary,
 			Args:      args,
 			PortArgs:  portArgs,
 			PortCount: int32(portCount),
@@ -186,15 +187,15 @@ func (el *Launcher) createEngineProcess(engineManagerListen string,
 	}
 
 	el.lock.Lock()
-	if el.currentEngine.Listen == "" {
-		el.currentEngine.Listen = util.GetURL(el.ListenIP, int(ret.Status.PortStart))
+	if engineSpec.Listen == "" {
+		engineSpec.Listen = util.GetURL(el.ListenIP, int(ret.Status.PortStart))
 	}
 
 	el.lock.Unlock()
 	el.UpdateCh <- el
 
 	logrus.Debugf("engine launcher %v: succeed to create engine process %v at %v",
-		el.LauncherName, el.currentEngine.EngineName, el.currentEngine.Listen)
+		el.LauncherName, engineSpec.EngineName, engineSpec.Listen)
 
 	return nil
 }

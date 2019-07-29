@@ -144,11 +144,11 @@ func (em *Manager) StartMonitoring() {
 func (em *Manager) EngineCreate(ctx context.Context, req *rpc.EngineCreateRequest) (ret *rpc.EngineResponse, err error) {
 	logrus.Infof("Engine Manager starts to create engine of volume %v", req.Spec.VolumeName)
 
-	el := NewEngineLauncher(req.Spec)
+	el, newEngine := NewEngineLauncher(req.Spec)
 	if err := em.registerEngineLauncher(el); err != nil {
 		return nil, errors.Wrapf(err, "failed to register engine launcher %v", el.LauncherName)
 	}
-	if err := el.createEngineProcess(em.listen, em.processManager); err != nil {
+	if err := el.createEngineProcess(newEngine, em.listen, em.processManager); err != nil {
 		go em.unregisterEngineLauncher(req.Spec.Name)
 		return nil, errors.Wrapf(err, "failed to start engine %v", req.Spec.Name)
 	}
