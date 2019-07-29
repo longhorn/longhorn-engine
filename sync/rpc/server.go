@@ -27,7 +27,6 @@ import (
 const (
 	MaxBackupSize = 5
 
-	ProgressBasedTimeoutInMinutes    = 5
 	PeriodicRefreshIntervalInSeconds = 2
 
 	GRPCServiceCommonTimeout = 1 * time.Minute
@@ -366,7 +365,6 @@ func (s *SyncAgentServer) waitForRestoreComplete() error {
 		s.RestoreInfo.Lock()
 		restoreProgress = s.RestoreInfo.Progress
 		restoreError = s.RestoreInfo.Error
-		lastUpdate := s.RestoreInfo.LastUpdatedAt
 		s.RestoreInfo.Unlock()
 
 		if restoreProgress == 100 {
@@ -378,16 +376,6 @@ func (s *SyncAgentServer) waitForRestoreComplete() error {
 			logrus.Errorf("Backup Restore Error Found in Server[%v]", restoreError)
 			periodicChecker.Stop()
 			return fmt.Errorf("%v", restoreError)
-		}
-		now := time.Now()
-		diff := now.Sub(lastUpdate)
-
-		if diff.Minutes() > ProgressBasedTimeoutInMinutes {
-			logrus.Errorf("no restore update happened since %v minutes. Returning failure",
-				ProgressBasedTimeoutInMinutes)
-			periodicChecker.Stop()
-			return fmt.Errorf("no restore update happened since %v minutes. Returning failure",
-				ProgressBasedTimeoutInMinutes)
 		}
 	}
 	return nil
@@ -462,7 +450,6 @@ func (s *SyncAgentServer) completeBackupRestore() (err error) {
 		SnapshotName:     s.RestoreInfo.SnapshotName,
 		Progress:         s.RestoreInfo.Progress,
 		Error:            s.RestoreInfo.Error,
-		LastUpdatedAt:    s.RestoreInfo.LastUpdatedAt,
 		LastRestored:     s.RestoreInfo.LastRestored,
 		SnapshotDiskName: s.RestoreInfo.SnapshotDiskName,
 		BackupURL:        s.RestoreInfo.BackupURL,
@@ -661,7 +648,6 @@ func (s *SyncAgentServer) completeIncrementalBackupRestore() (err error) {
 		SnapshotName:     s.RestoreInfo.SnapshotName,
 		Progress:         s.RestoreInfo.Progress,
 		Error:            s.RestoreInfo.Error,
-		LastUpdatedAt:    s.RestoreInfo.LastUpdatedAt,
 		LastRestored:     s.RestoreInfo.LastRestored,
 		SnapshotDiskName: s.RestoreInfo.SnapshotDiskName,
 		BackupURL:        s.RestoreInfo.BackupURL,
