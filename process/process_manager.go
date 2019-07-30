@@ -70,6 +70,8 @@ type Process struct {
 	cmd      *exec.Cmd
 	UpdateCh chan *Process
 
+	ResourceVersion int64
+
 	logger *util.LonghornWriter
 }
 
@@ -162,7 +164,8 @@ func (pm *Manager) ProcessCreate(ctx context.Context, req *rpc.ProcessCreateRequ
 		PortCount: req.Spec.PortCount,
 		PortArgs:  req.Spec.PortArgs,
 
-		State: StateStarting,
+		State:           StateStarting,
+		ResourceVersion: 0,
 
 		lock: &sync.RWMutex{},
 
@@ -187,6 +190,7 @@ func (pm *Manager) ProcessDelete(ctx context.Context, req *rpc.ProcessDeleteRequ
 	}
 
 	p.lock.Lock()
+	p.ResourceVersion++
 	if p.State != StateStopping && p.State != StateStopped && p.State != StateError {
 		p.State = StateStopping
 		go p.Stop()
@@ -384,6 +388,7 @@ func (p *Process) Start() error {
 
 	go func() {
 		p.lock.Lock()
+		p.ResourceVersion++
 		cmd := exec.Command(binary, p.Args...)
 		cmd.SysProcAttr = &syscall.SysProcAttr{
 			Pdeathsig: syscall.SIGKILL,
@@ -395,6 +400,7 @@ func (p *Process) Start() error {
 
 		if err := cmd.Run(); err != nil {
 			p.lock.Lock()
+			p.ResourceVersion++
 			p.State = StateError
 			p.ErrorMsg = err.Error()
 			logrus.Infof("Process Manager: process %v error out, error msg: %v", p.Name, p.ErrorMsg)
@@ -404,6 +410,7 @@ func (p *Process) Start() error {
 			return
 		}
 		p.lock.Lock()
+		p.ResourceVersion++
 		p.State = StateStopped
 		logrus.Infof("Process Manager: process %v stopped", p.Name)
 		p.lock.Unlock()
@@ -417,6 +424,7 @@ func (p *Process) Start() error {
 			for i := 0; i < types.WaitCount; i++ {
 				if util.GRPCServiceReadinessProbe(address) {
 					p.lock.Lock()
+					p.ResourceVersion++
 					p.State = StateRunning
 					p.lock.Unlock()
 					p.UpdateCh <- p
@@ -432,6 +440,7 @@ func (p *Process) Start() error {
 		} else {
 			// Process Manager doesn't know the grpc address. directly set running state
 			p.lock.Lock()
+			p.ResourceVersion++
 			p.State = StateRunning
 			p.lock.Unlock()
 			p.UpdateCh <- p
@@ -455,10 +464,11 @@ func (p *Process) RPCResponse() *rpc.ProcessResponse {
 		},
 
 		Status: &rpc.ProcessStatus{
-			State:     string(p.State),
-			ErrorMsg:  p.ErrorMsg,
-			PortStart: p.PortStart,
-			PortEnd:   p.PortEnd,
+			State:           string(p.State),
+			ErrorMsg:        p.ErrorMsg,
+			PortStart:       p.PortStart,
+			PortEnd:         p.PortEnd,
+			ResourceVersion: p.ResourceVersion,
 		},
 	}
 }
