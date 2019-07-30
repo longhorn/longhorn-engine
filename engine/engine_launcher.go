@@ -35,6 +35,8 @@ const (
 
 	SwitchWaitInterval = time.Second
 	SwitchWaitCount    = 15
+
+	ResourceVersionBufferValue = 100
 )
 
 type Launcher struct {
@@ -50,6 +52,11 @@ type Launcher struct {
 	Backends     []string
 
 	Endpoint string
+
+	// This field reflects engine launcher version only.
+	// The final resource version of engine process should combine
+	// the version of engine launcher and that of related process.
+	ResourceVersion int64
 
 	scsiDevice *iscsiblk.ScsiDevice
 
@@ -72,6 +79,8 @@ func NewEngineLauncher(spec *rpc.EngineSpec) (*Launcher, *Engine) {
 		Backends:     spec.Backends,
 
 		Endpoint: "",
+
+		ResourceVersion: 0,
 
 		currentEngine: NewEngine(spec),
 		pendingEngine: nil,
@@ -112,7 +121,8 @@ func (el *Launcher) RPCResponse(processResp *rpc.ProcessResponse) *rpc.EngineRes
 			Replicas:   el.currentEngine.Replicas,
 		},
 		Status: &rpc.EngineStatus{
-			Endpoint: el.Endpoint,
+			Endpoint:        el.Endpoint,
+			ResourceVersion: el.ResourceVersion,
 		},
 	}
 
@@ -121,6 +131,8 @@ func (el *Launcher) RPCResponse(processResp *rpc.ProcessResponse) *rpc.EngineRes
 	// will manually set process status for this kind of engine.
 	if processResp != nil {
 		resp.Status.ProcessStatus = processResp.Status
+		// the response should reflect the final resource version
+		resp.Status.ResourceVersion += processResp.Status.ResourceVersion
 	} else {
 		resp.Status.ProcessStatus = &rpc.ProcessStatus{
 			State: types.ProcessStateStopped,
@@ -140,6 +152,7 @@ func (el *Launcher) createEngineProcess(engineSpec *Engine, engineManagerListen 
 		el.LauncherName, engineSpec.EngineName, engineSpec.Listen)
 
 	el.lock.Lock()
+	el.ResourceVersion++
 
 	portCount := 0
 
@@ -190,6 +203,7 @@ func (el *Launcher) createEngineProcess(engineSpec *Engine, engineManagerListen 
 	}
 
 	el.lock.Lock()
+	el.ResourceVersion++
 	if engineSpec.Listen == "" {
 		engineSpec.Listen = util.GetURL(el.ListenIP, int(ret.Status.PortStart))
 	}
@@ -226,6 +240,8 @@ func (el *Launcher) prepareUpgrade(spec *rpc.EngineSpec) (*Engine, error) {
 	el.lock.Lock()
 	defer el.lock.Unlock()
 
+	el.ResourceVersion++
+
 	logrus.Debugf("engine launcher %v: prepare for upgrade", el.LauncherName)
 
 	el.isUpgrading = true
@@ -248,8 +264,23 @@ func (el *Launcher) finalizeUpgrade(processManager rpc.ProcessManagerServiceServ
 
 	el.lock.Lock()
 	processName := el.currentEngine.EngineName
+
+	process, err := processManager.ProcessGet(nil, &rpc.ProcessGetRequest{
+		Name: processName,
+	})
+	if err != nil {
+		el.lock.Unlock()
+		return errors.Wrapf(err, "failed to get old engine process before switching to the new engine process")
+	}
+	// Since the sum of process resource version and engine launcher resource version cannot decrease,
+	// we need to coalesce the resource version of old process into that of engine launcher.
+	// Besides, the final resource version of the old engine process can be greater than
+	// `process.Status.ResourceVersion`, we need to add a buffer value to compensate it.
+	el.ResourceVersion = el.ResourceVersion + process.Status.ResourceVersion + ResourceVersionBufferValue
+
 	el.currentEngine = el.pendingEngine
 	el.pendingEngine = nil
+
 	el.lock.Unlock()
 
 	if _, err := el.deleteEngine(processManager, processName); err != nil {
@@ -267,6 +298,7 @@ func (el *Launcher) finalizeUpgrade(processManager rpc.ProcessManagerServiceServ
 	}
 
 	el.lock.Lock()
+	el.ResourceVersion++
 	el.isUpgrading = false
 	el.lock.Unlock()
 
@@ -332,6 +364,7 @@ func (el *Launcher) startFrontend(frontend string) error {
 	logrus.Debugf("engine launcher %v: prepare to start frontend %v", el.LauncherName, frontend)
 
 	el.lock.Lock()
+	el.ResourceVersion++
 
 	if el.Frontend != "" && el.scsiDevice != nil {
 		if el.Frontend != frontend {
@@ -380,6 +413,7 @@ func (el *Launcher) shutdownFrontend() error {
 	logrus.Debugf("engine launcher %v: prepare to shutdown frontend", el.LauncherName)
 
 	el.lock.Lock()
+	el.ResourceVersion++
 	if el.scsiDevice == nil {
 		el.Frontend = ""
 		el.lock.Unlock()
@@ -414,6 +448,8 @@ func (el *Launcher) finishFrontendStart(tID int) error {
 	el.lock.Lock()
 	defer func() { el.UpdateCh <- el }()
 	defer el.lock.Unlock()
+
+	el.ResourceVersion++
 
 	// not going to use it
 	stopCh := make(chan struct{})
@@ -469,6 +505,8 @@ func (el *Launcher) finishFrontendShutdown() (int, error) {
 	el.lock.Lock()
 	defer func() { el.UpdateCh <- el }()
 	defer el.lock.Unlock()
+
+	el.ResourceVersion++
 
 	if el.scsiDevice == nil {
 		return 0, nil
