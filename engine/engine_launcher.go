@@ -104,7 +104,7 @@ func (el *Launcher) StartMonitoring() {
 	logrus.Debugf("Stopped process monitoring on engine launcher %v", launcherName)
 }
 
-func (el *Launcher) RPCResponse(processResp *rpc.ProcessResponse) *rpc.EngineResponse {
+func (el *Launcher) RPCResponse(processManager rpc.ProcessManagerServiceServer, mayBeDeleting bool) (*rpc.EngineResponse, error) {
 	el.lock.RLock()
 	defer el.lock.RUnlock()
 
@@ -126,20 +126,34 @@ func (el *Launcher) RPCResponse(processResp *rpc.ProcessResponse) *rpc.EngineRes
 		},
 	}
 
-	// Race condition: try to get the engine whose related process has been deleted
-	// but the engine launcher hasn't been unregistered from Engine Manager. Hence we
-	// will manually set process status for this kind of engine.
-	if processResp != nil {
-		resp.Status.ProcessStatus = processResp.Status
-		// the response should reflect the final resource version
-		resp.Status.ResourceVersion += processResp.Status.ResourceVersion
-	} else {
-		resp.Status.ProcessStatus = &rpc.ProcessStatus{
-			State: types.ProcessStateStopped,
+	process, err := processManager.ProcessGet(nil, &rpc.ProcessGetRequest{
+		Name: el.currentEngine.EngineName,
+	})
+	if err != nil {
+		// if the engine is in deletion, we may fail to get the related process info
+		// and `process` can be nil
+		if !mayBeDeleting || !strings.Contains(err.Error(), "cannot find process") {
+			return nil, errors.Wrapf(err, "failed to get the related process info for engine %v",
+				el.LauncherName)
 		}
 	}
 
-	return resp
+	// `process` can be nil only when the engine is in deletion.
+	// Race condition: try to get the engine whose related process has been deleted
+	// but the engine launcher hasn't been unregistered from Engine Manager. Hence we
+	// will manually set process status for this kind of engine.
+	if process == nil {
+		resp.Status.ProcessStatus = &rpc.ProcessStatus{
+			State: types.ProcessStateStopped,
+		}
+		resp.Deleted = true
+	} else {
+		resp.Status.ProcessStatus = process.Status
+		// the response should reflect the final resource version
+		resp.Status.ResourceVersion += process.Status.ResourceVersion
+	}
+
+	return resp, nil
 }
 
 // During running this function, frontendStartCallback() will be called automatically.

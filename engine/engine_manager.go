@@ -110,17 +110,12 @@ func (em *Manager) StartMonitoring() {
 			logrus.Infof("Engine Manager has closed all gRPC watchers")
 			break
 		case el := <-em.elUpdateCh:
-			el.lock.RLock()
-			name := el.currentEngine.EngineName
-			el.lock.RUnlock()
-			response, err := em.processManager.ProcessGet(nil, &rpc.ProcessGetRequest{
-				Name: name,
-			})
+			resp, err := el.RPCResponse(em.processManager, true)
 			if err != nil {
-				logrus.Errorf("Could not get Process for current Engine of Launcher %v: %v", el.LauncherName,
-					err)
+				logrus.Error(err)
+				continue
 			}
-			resp := el.RPCResponse(response)
+
 			em.lock.RLock()
 			// Modify response to indicate deletion.
 			if _, exists := em.engineLaunchers[el.LauncherName]; !exists {
@@ -153,18 +148,14 @@ func (em *Manager) EngineCreate(ctx context.Context, req *rpc.EngineCreateReques
 		return nil, errors.Wrapf(err, "failed to start engine %v", req.Spec.Name)
 	}
 
-	el.lock.RLock()
-	response, err := em.processManager.ProcessGet(nil, &rpc.ProcessGetRequest{
-		Name: el.currentEngine.EngineName,
-	})
-	el.lock.RUnlock()
+	resp, err := el.RPCResponse(em.processManager, false)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get process info for engine %v", req.Spec.Name)
+		return nil, err
 	}
 
 	logrus.Infof("Engine Manager has successfully created engine %v", req.Spec.Name)
 
-	return el.RPCResponse(response), nil
+	return resp, nil
 }
 
 func (em *Manager) registerEngineLauncher(el *Launcher) error {
@@ -266,34 +257,24 @@ func (em *Manager) EngineDelete(ctx context.Context, req *rpc.EngineRequest) (re
 	el.isDeleting = true
 	el.lock.Unlock()
 
-	var processResp *rpc.ProcessResponse
 	if deletionRequired {
-		processResp, err = el.deleteEngine(em.processManager, processName)
-		if err != nil {
+		if _, err = el.deleteEngine(em.processManager, processName); err != nil {
 			return nil, err
 		}
 
 		go em.unregisterEngineLauncher(req.Name)
 	} else {
 		logrus.Debugf("Engine Manager is already deleting engine %v", req.Name)
-		processResp, err = em.processManager.ProcessGet(nil, &rpc.ProcessGetRequest{
-			Name: processName,
-		})
-		if err != nil {
-			if strings.Contains(err.Error(), "cannot find process") {
-				processResp = nil
-			} else {
-				return nil, err
-			}
-		}
 	}
 
-	ret = el.RPCResponse(processResp)
-	ret.Deleted = true
+	resp, err := el.RPCResponse(em.processManager, true)
+	if err != nil {
+		return nil, err
+	}
 
 	logrus.Infof("Engine Manager is deleting engine %v", req.Name)
 
-	return ret, nil
+	return resp, nil
 }
 
 func (em *Manager) EngineGet(ctx context.Context, req *rpc.EngineRequest) (ret *rpc.EngineResponse, err error) {
@@ -307,19 +288,14 @@ func (em *Manager) EngineGet(ctx context.Context, req *rpc.EngineRequest) (ret *
 		return nil, fmt.Errorf("cannot find engine %v", req.Name)
 	}
 
-	el.lock.RLock()
-	response, err := em.processManager.ProcessGet(nil, &rpc.ProcessGetRequest{
-		Name: el.currentEngine.EngineName,
-	})
-	el.lock.RUnlock()
+	resp, err := el.RPCResponse(em.processManager, false)
 	if err != nil {
-		return nil, errors.Wrapf(err, "cannot find engine %v since failed to get related process info: %v",
-			req.Name, err)
+		return nil, err
 	}
 
 	logrus.Debugf("Engine Manager has successfully get engine %v", req.Name)
 
-	return el.RPCResponse(response), nil
+	return resp, nil
 }
 
 func (em *Manager) EngineList(ctx context.Context, req *empty.Empty) (ret *rpc.EngineListResponse, err error) {
@@ -333,20 +309,11 @@ func (em *Manager) EngineList(ctx context.Context, req *empty.Empty) (ret *rpc.E
 	}
 
 	for _, el := range em.engineLaunchers {
-		el.lock.RLock()
-		processName := el.currentEngine.EngineName
-		el.lock.RUnlock()
-		response, err := em.processManager.ProcessGet(nil, &rpc.ProcessGetRequest{
-			Name: processName,
-		})
+		resp, err := el.RPCResponse(em.processManager, true)
 		if err != nil {
-			if strings.Contains(err.Error(), "cannot find process") {
-				response = nil
-			} else {
-				return nil, errors.Wrapf(err, "failed to get process info for engine %v", el.LauncherName)
-			}
+			return nil, err
 		}
-		ret.Engines[el.LauncherName] = el.RPCResponse(response)
+		ret.Engines[el.LauncherName] = resp
 	}
 
 	logrus.Debugf("Engine Manager has successfully list all engines")
@@ -383,18 +350,14 @@ func (em *Manager) EngineUpgrade(ctx context.Context, req *rpc.EngineUpgradeRequ
 		return nil, errors.Wrapf(err, "failed to finalize engine upgrade")
 	}
 
-	el.lock.RLock()
-	response, err := em.processManager.ProcessGet(nil, &rpc.ProcessGetRequest{
-		Name: el.currentEngine.EngineName,
-	})
-	el.lock.RUnlock()
+	resp, err := el.RPCResponse(em.processManager, false)
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to get process info for upgraded engine %v", req.Spec.Name)
+		return nil, err
 	}
 
 	logrus.Infof("Engine Manager has successfully upgraded engine %v with binary %v", req.Spec.Name, req.Spec.Binary)
 
-	return el.RPCResponse(response), nil
+	return resp, nil
 }
 
 func (em *Manager) EngineLog(req *rpc.LogRequest, srv rpc.EngineManagerService_EngineLogServer) error {
