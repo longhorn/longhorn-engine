@@ -264,13 +264,13 @@ func (pm *Manager) unregisterProcess(p *Process) {
 
 	if p.IsStopped() {
 		pm.lock.Lock()
-		defer pm.lock.Unlock()
 		if err := pm.releasePorts(p.PortStart, p.PortEnd); err != nil {
 			logrus.Errorf("Process Manager: cannot deallocate %v ports (%v-%v) for %v: %v",
 				p.PortCount, p.PortStart, p.PortEnd, p.Name, err)
 		}
 		logrus.Infof("Process Manager: successfully unregistered process %v", p.Name)
 		delete(pm.processes, p.Name)
+		pm.lock.Unlock()
 		p.UpdateCh <- p
 	} else {
 		logrus.Errorf("Process Manager: failed to unregister process %v since it is state %v rather than stopped", p.Name, p.State)
