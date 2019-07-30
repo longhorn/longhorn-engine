@@ -34,6 +34,7 @@ message EngineSpec {
 message EngineStatus {
 	ProcessStatus process_status = 1;
 	string endpoint = 2;
+	int64 resource_version = 3;
 }
 
 message EngineResponse {
@@ -85,6 +86,7 @@ message ProcessStatus {
 	string error_msg = 2;
 	int32 port_start = 3;
 	int32 port_end = 4;
+	int64 resource_version = 5;
 }
 
 message ProcessCreateRequest {
