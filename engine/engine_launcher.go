@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	uuid "github.com/satori/go.uuid"
 	"github.com/sirupsen/logrus"
 
 	"github.com/longhorn/go-iscsi-helper/iscsiblk"
@@ -44,6 +45,7 @@ type Launcher struct {
 	pUpdateCh chan *rpc.ProcessResponse
 	UpdateCh  chan<- *Launcher
 
+	UUID         string
 	LauncherName string
 	VolumeName   string
 	ListenIP     string
@@ -71,6 +73,7 @@ type Launcher struct {
 
 func NewEngineLauncher(spec *rpc.EngineSpec) (*Launcher, *Engine) {
 	el := &Launcher{
+		UUID:         uuid.NewV4().String(),
 		LauncherName: spec.Name,
 		VolumeName:   spec.VolumeName,
 		Size:         spec.Size,
@@ -110,6 +113,7 @@ func (el *Launcher) RPCResponse(processManager rpc.ProcessManagerServiceServer, 
 
 	resp := &rpc.EngineResponse{
 		Spec: &rpc.EngineSpec{
+			Uuid:       el.UUID,
 			Name:       el.LauncherName,
 			VolumeName: el.VolumeName,
 			Binary:     el.currentEngine.Binary,
