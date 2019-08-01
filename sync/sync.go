@@ -24,6 +24,13 @@ type Task struct {
 	client *client.ControllerClient
 }
 
+type SnapshotPurgeStatus struct {
+	Error     string `json:"error"`
+	IsPurging bool   `json:"isPurging"`
+	Progress  int    `json:"progress"`
+	State     string `json:"state"`
+}
+
 func NewTask(controller string) *Task {
 	return &Task{
 		client: client.NewControllerClient(controller),
@@ -99,6 +106,35 @@ func (t *Task) PurgeSnapshots() error {
 	}
 
 	return nil
+}
+
+func (t *Task) PurgeSnapshotStatus() (map[string]*SnapshotPurgeStatus, error) {
+	replicaStatusMap := make(map[string]*SnapshotPurgeStatus)
+
+	replicas, err := t.client.ReplicaList()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, r := range replicas {
+		repClient, err := replicaClient.NewReplicaClient(r.Address)
+		if err != nil {
+			return nil, err
+		}
+
+		status, err := repClient.SnapshotPurgeStatus()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get snapshot purge status of %v: %v", r.Address, err)
+		}
+		replicaStatusMap[r.Address] = &SnapshotPurgeStatus{
+			Error:     status.Error,
+			IsPurging: status.IsPurging,
+			Progress:  int(status.Progress),
+			State:     status.State,
+		}
+	}
+
+	return replicaStatusMap, nil
 }
 
 func getNameAndIndex(chain []string, snapshot string) (string, int) {
