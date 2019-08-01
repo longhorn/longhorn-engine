@@ -12,6 +12,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
+	uuid "github.com/satori/go.uuid"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -55,6 +56,7 @@ const (
 )
 
 type Process struct {
+	UUID      string
 	Name      string
 	Binary    string
 	Args      []string
@@ -158,6 +160,7 @@ func (pm *Manager) ProcessCreate(ctx context.Context, req *rpc.ProcessCreateRequ
 	}
 
 	p := &Process{
+		UUID:      uuid.NewV4().String(),
 		Name:      req.Spec.Name,
 		Binary:    req.Spec.Binary,
 		Args:      req.Spec.Args,
@@ -456,6 +459,7 @@ func (p *Process) RPCResponse() *rpc.ProcessResponse {
 	defer p.lock.RUnlock()
 	return &rpc.ProcessResponse{
 		Spec: &rpc.ProcessSpec{
+			Uuid:      p.UUID,
 			Name:      p.Name,
 			Binary:    p.Binary,
 			Args:      p.Args,
