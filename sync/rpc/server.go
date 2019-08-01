@@ -30,6 +30,8 @@ const (
 	PeriodicRefreshIntervalInSeconds = 2
 
 	GRPCServiceCommonTimeout = 1 * time.Minute
+
+	VolumeHeadName = "volume-head"
 )
 
 type SyncAgentServer struct {
@@ -55,6 +57,25 @@ type BackupList struct {
 type BackupInfo struct {
 	backupID     string
 	backupStatus *replica.BackupStatus
+}
+
+func GetDiskInfo(info *replicarpc.DiskInfo) *types.DiskInfo {
+	diskInfo := &types.DiskInfo{
+		Name:        info.Name,
+		Parent:      info.Parent,
+		Children:    info.Children,
+		Removed:     info.Removed,
+		UserCreated: info.UserCreated,
+		Created:     info.Created,
+		Size:        info.Size,
+		Labels:      info.Labels,
+	}
+
+	if diskInfo.Labels == nil {
+		diskInfo.Labels = map[string]string{}
+	}
+
+	return diskInfo
 }
 
 func NewSyncAgentServer(startPort, endPort int, replicaAddress string) *SyncAgentServer {
@@ -745,6 +766,249 @@ func (s *SyncAgentServer) RestoreStatus(ctx context.Context, req *empty.Empty) (
 	rs.Error = restoreStatus.Error
 	rs.BackupURL = restoreStatus.BackupURL
 	return rs, nil
+}
+
+func (s *SyncAgentServer) SnapshotPurge(ctx context.Context, req *empty.Empty) (*empty.Empty, error) {
+	var leaves []string
+
+	snapshotsInfo, err := s.getSnapshotsInfo()
+	if err != nil {
+		return nil, err
+	}
+
+	for snapshot, info := range snapshotsInfo {
+		if len(info.Children) == 0 {
+			leaves = append(leaves, snapshot)
+		}
+		if info.Name == VolumeHeadName {
+			continue
+		}
+		// Mark system generated snapshots as removed
+		if !info.UserCreated && !info.Removed {
+			if err = s.markSnapshotAsRemoved(snapshot); err != nil {
+				return nil, err
+			}
+		}
+	}
+
+	snapshotsInfo, err = s.getSnapshotsInfo()
+	if err != nil {
+		return nil, err
+	}
+
+	// We're tracing up from each leaf to the root
+	for _, leaf := range leaves {
+		// Somehow the leaf was removed during the process
+		if _, ok := snapshotsInfo[leaf]; !ok {
+			continue
+		}
+		snapshot := leaf
+		for snapshot != "" {
+			// Snapshot already removed? Skip to the next leaf
+			info, ok := snapshotsInfo[snapshot]
+			if !ok {
+				break
+			}
+			if info.Removed {
+				if info.Name == VolumeHeadName {
+					return nil, fmt.Errorf("BUG: Volume head was marked as removed")
+				}
+
+				if err := s.processRemoveSnapshot(snapshot); err != nil {
+					return nil, err
+				}
+			}
+			snapshot = info.Parent
+		}
+		// Update snapshotInfo in case some nodes have been removed
+		snapshotsInfo, err = s.getSnapshotsInfo()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	return &empty.Empty{}, nil
+}
+
+func (s *SyncAgentServer) getSnapshotsInfo() (map[string]types.DiskInfo, error) {
+	conn, err := grpc.Dial(s.replicaAddress, grpc.WithInsecure())
+	if err != nil {
+		return nil, fmt.Errorf("cannot connect to ReplicaService %v: %v", s.replicaAddress, err)
+	}
+	defer conn.Close()
+
+	replicaServiceClient := replicarpc.NewReplicaServiceClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
+	defer cancel()
+
+	r, err := replicaServiceClient.ReplicaGet(ctx, &empty.Empty{})
+	if err != nil {
+		return nil, err
+	}
+
+	disks := make(map[string]types.DiskInfo)
+	for name, disk := range r.Disks {
+		if name == r.BackingFile {
+			continue
+		}
+		disks[name] = *GetDiskInfo(disk)
+	}
+
+	newDisks := make(map[string]types.DiskInfo)
+	for name, disk := range disks {
+		snapshot := ""
+
+		if !replica.IsHeadDisk(name) {
+			snapshot, err = replica.GetSnapshotNameFromDiskName(name)
+			if err != nil {
+				return nil, err
+			}
+		} else {
+			snapshot = VolumeHeadName
+		}
+		children := map[string]bool{}
+		for childDisk := range disk.Children {
+			child := ""
+			if !replica.IsHeadDisk(childDisk) {
+				child, err = replica.GetSnapshotNameFromDiskName(childDisk)
+				if err != nil {
+					return nil, err
+				}
+			} else {
+				child = VolumeHeadName
+			}
+			children[child] = true
+		}
+		parent := ""
+		if disk.Parent != "" {
+			parent, err = replica.GetSnapshotNameFromDiskName(disk.Parent)
+			if err != nil {
+				return nil, err
+			}
+		}
+		info := types.DiskInfo{
+			Name:        snapshot,
+			Parent:      parent,
+			Removed:     disk.Removed,
+			UserCreated: disk.UserCreated,
+			Children:    children,
+			Created:     disk.Created,
+			Size:        disk.Size,
+			Labels:      disk.Labels,
+		}
+		newDisks[snapshot] = info
+	}
+
+	return newDisks, nil
+}
+
+func (s *SyncAgentServer) markSnapshotAsRemoved(snapshot string) error {
+	conn, err := grpc.Dial(s.replicaAddress, grpc.WithInsecure())
+	if err != nil {
+		return fmt.Errorf("cannot connect to ReplicaService %v: %v", s.replicaAddress, err)
+	}
+	defer conn.Close()
+
+	replicaServiceClient := replicarpc.NewReplicaServiceClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
+	defer cancel()
+
+	if _, err := replicaServiceClient.DiskMarkAsRemoved(ctx, &replicarpc.DiskMarkAsRemovedRequest{
+		Name: snapshot,
+	}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *SyncAgentServer) processRemoveSnapshot(snapshot string) error {
+	conn, err := grpc.Dial(s.replicaAddress, grpc.WithInsecure())
+	if err != nil {
+		return fmt.Errorf("cannot connect to ReplicaService %v: %v", s.replicaAddress, err)
+	}
+	defer conn.Close()
+
+	replicaServiceClient := replicarpc.NewReplicaServiceClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
+	defer cancel()
+
+	ops, err := replicaServiceClient.DiskPrepareRemove(ctx, &replicarpc.DiskPrepareRemoveRequest{
+		Name: snapshot,
+	})
+	if err != nil {
+		return err
+	}
+
+	for _, op := range ops.Operations {
+		switch op.Action {
+		case replica.OpCoalesce:
+			logrus.Infof("Coalescing %v to %v", op.Target, op.Source)
+			coalesceReq := &FileCoalesceRequest{
+				FromFileName: op.Target,
+				ToFileName:   op.Source,
+			}
+			if _, err := s.FileCoalesce(nil, coalesceReq); err != nil {
+				logrus.Errorf("failed to coalesce %s on %s: %v", op.Target, op.Source, err)
+				return err
+			}
+		case replica.OpRemove:
+			logrus.Infof("Removing", op.Source)
+			if err := s.rmDisk(op.Source); err != nil {
+				return err
+			}
+		case replica.OpReplace:
+			logrus.Infof("Replace %v with %v", op.Target, op.Source)
+			if err = s.replaceDisk(op.Source, op.Target); err != nil {
+				logrus.Errorf("Failed to replace %v with %v", op.Target, op.Source)
+				return err
+			}
+		}
+	}
+
+	return nil
+}
+
+func (s *SyncAgentServer) replaceDisk(source, target string) error {
+	conn, err := grpc.Dial(s.replicaAddress, grpc.WithInsecure())
+	if err != nil {
+		return fmt.Errorf("cannot connect to ReplicaService %v: %v", s.replicaAddress, err)
+	}
+	defer conn.Close()
+
+	replicaServiceClient := replicarpc.NewReplicaServiceClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
+	defer cancel()
+
+	if _, err := replicaServiceClient.DiskReplace(ctx, &replicarpc.DiskReplaceRequest{
+		Source: source,
+		Target: target,
+	}); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *SyncAgentServer) rmDisk(disk string) error {
+	conn, err := grpc.Dial(s.replicaAddress, grpc.WithInsecure())
+	if err != nil {
+		return fmt.Errorf("cannot connect to ReplicaService %v: %v", s.replicaAddress, err)
+	}
+	defer conn.Close()
+
+	replicaServiceClient := replicarpc.NewReplicaServiceClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
+	defer cancel()
+
+	if _, err := replicaServiceClient.DiskRemove(ctx, &replicarpc.DiskRemoveRequest{
+		Force: false,
+		Name:  disk,
+	}); err != nil {
+		return err
+	}
+
+	return nil
 }
 
 // The APIs BackupAdd, BackupGet, Refresh, BackupDelete implement the CRUD interface for the backup object
