@@ -3,6 +3,7 @@ package sync
 import (
 	"fmt"
 	"strings"
+	"sync"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -55,10 +56,6 @@ func (t *Task) DeleteSnapshot(snapshot string) error {
 }
 
 func (t *Task) PurgeSnapshots() error {
-	var err error
-
-	leaves := []string{}
-
 	replicas, err := t.client.ReplicaList()
 	if err != nil {
 		return err
@@ -68,91 +65,40 @@ func (t *Task) PurgeSnapshots() error {
 		if ok, err := t.isRebuilding(r); err != nil {
 			return err
 		} else if ok {
-			return fmt.Errorf("Can not purge snapshots because %s is rebuilding", r.Address)
+			return fmt.Errorf("cannot purge snapshots because %s is rebuilding", r.Address)
 		}
 	}
 
-	snapshotsInfo, err := GetSnapshotsInfo(replicas)
-	if err != nil {
-		return err
-	}
-	for snapshot, info := range snapshotsInfo {
-		if len(info.Children) == 0 {
-			leaves = append(leaves, snapshot)
-		}
-		if info.Name == VolumeHeadName {
-			continue
-		}
-		// Mark system generated snapshots as removed
-		if !info.UserCreated && !info.Removed {
-			for _, replica := range replicas {
-				if err = t.markSnapshotAsRemoved(replica, snapshot); err != nil {
-					return err
-				}
+	errorMap := sync.Map{}
+	var wg sync.WaitGroup
+	wg.Add(len(replicas))
+
+	for _, r := range replicas {
+		go func(rep *types.ControllerReplicaInfo) {
+			defer wg.Done()
+
+			repClient, err := replicaClient.NewReplicaClient(rep.Address)
+			if err != nil {
+				errorMap.Store(rep.Address, err)
+				return
 			}
-		}
+
+			if err := repClient.SnapshotPurge(); err != nil {
+				errorMap.Store(rep.Address, err)
+				return
+			}
+		}(r)
 	}
 
-	snapshotsInfo, err = GetSnapshotsInfo(replicas)
-	if err != nil {
-		return err
-	}
-	// We're tracing up from each leaf to the root
-	for _, leaf := range leaves {
-		// Somehow the leaf was removed during the process
-		if _, ok := snapshotsInfo[leaf]; !ok {
-			continue
-		}
-		snapshot := leaf
-		for snapshot != "" {
-			// Snapshot already removed? Skip to the next leaf
-			info, ok := snapshotsInfo[snapshot]
-			if !ok {
-				break
-			}
-			if info.Removed {
-				if info.Name == VolumeHeadName {
-					return fmt.Errorf("BUG: Volume head was marked as removed")
-				}
-
-				for _, replica := range replicas {
-					ops, err := t.prepareRemoveSnapshot(replica, snapshot)
-					if err != nil {
-						return err
-					}
-					if err := t.processRemoveSnapshot(replica, snapshot, ops); err != nil {
-						return err
-					}
-				}
-			}
-			snapshot = info.Parent
-		}
-		// Update snapshotInfo in case some nodes have been removed
-		snapshotsInfo, err = GetSnapshotsInfo(replicas)
-		if err != nil {
-			return err
+	wg.Wait()
+	for _, r := range replicas {
+		if v, ok := errorMap.Load(r.Address); ok {
+			err = v.(error)
+			logrus.Errorf("replica %v failed to start snapshot purge: %v", r.Address, err)
 		}
 	}
 
 	return nil
-}
-
-func (t *Task) rmDisk(replicaInController *types.ControllerReplicaInfo, disk string, force bool) error {
-	repClient, err := replicaClient.NewReplicaClient(replicaInController.Address)
-	if err != nil {
-		return err
-	}
-
-	return repClient.RemoveDisk(disk, force)
-}
-
-func (t *Task) replaceDisk(replicaInController *types.ControllerReplicaInfo, target, source string) error {
-	repClient, err := replicaClient.NewReplicaClient(replicaInController.Address)
-	if err != nil {
-		return err
-	}
-
-	return repClient.ReplaceDisk(target, source)
 }
 
 func getNameAndIndex(chain []string, snapshot string) (string, int) {
@@ -197,24 +143,6 @@ func (t *Task) isDirty(replicaInController *types.ControllerReplicaInfo) (bool, 
 	return replica.Dirty, nil
 }
 
-func (t *Task) prepareRemoveSnapshot(replicaInController *types.ControllerReplicaInfo, snapshot string) ([]*types.PrepareRemoveAction, error) {
-	if replicaInController.Mode != types.RW {
-		return nil, fmt.Errorf("Can only removed snapshot from replica in mode RW, got %s", replicaInController.Mode)
-	}
-
-	repClient, err := replicaClient.NewReplicaClient(replicaInController.Address)
-	if err != nil {
-		return nil, err
-	}
-
-	operations, err := repClient.PrepareRemoveDisk(snapshot)
-	if err != nil {
-		return nil, err
-	}
-
-	return operations, nil
-}
-
 func (t *Task) markSnapshotAsRemoved(replicaInController *types.ControllerReplicaInfo, snapshot string) error {
 	if replicaInController.Mode != types.RW {
 		return fmt.Errorf("Can only mark snapshot as removed from replica in mode RW, got %s", replicaInController.Mode)
@@ -227,45 +155,6 @@ func (t *Task) markSnapshotAsRemoved(replicaInController *types.ControllerReplic
 
 	if err := repClient.MarkDiskAsRemoved(snapshot); err != nil {
 		return err
-	}
-
-	return nil
-}
-
-func (t *Task) processRemoveSnapshot(replicaInController *types.ControllerReplicaInfo, snapshot string, ops []*types.PrepareRemoveAction) error {
-	if len(ops) == 0 {
-		return nil
-	}
-
-	if replicaInController.Mode != types.RW {
-		return fmt.Errorf("Can only removed snapshot from replica in mode RW, got %s", replicaInController.Mode)
-	}
-
-	repClient, err := replicaClient.NewReplicaClient(replicaInController.Address)
-	if err != nil {
-		return err
-	}
-
-	for _, op := range ops {
-		switch op.Action {
-		case replica.OpRemove:
-			logrus.Infof("Removing %s on %s", op.Source, replicaInController.Address)
-			if err := t.rmDisk(replicaInController, op.Source, false); err != nil {
-				return err
-			}
-		case replica.OpCoalesce:
-			logrus.Infof("Coalescing %v to %v on %v", op.Target, op.Source, replicaInController.Address)
-			if err = repClient.CoalesceFile(op.Target, op.Source); err != nil {
-				logrus.Errorf("Failed to coalesce %s on %s: %v", snapshot, replicaInController.Address, err)
-				return err
-			}
-		case replica.OpReplace:
-			logrus.Infof("Replace %v with %v on %v", op.Target, op.Source, replicaInController.Address)
-			if err = t.replaceDisk(replicaInController, op.Target, op.Source); err != nil {
-				logrus.Errorf("Failed to replace %v with %v on %v", op.Target, op.Source, replicaInController.Address)
-				return err
-			}
-		}
 	}
 
 	return nil
