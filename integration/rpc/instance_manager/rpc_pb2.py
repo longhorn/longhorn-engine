@@ -21,7 +21,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='',
   syntax='proto3',
   serialized_options=None,
-  serialized_pb=_b('\n\trpc.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xa6\x01\n\nEngineSpec\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x13\n\x0bvolume_name\x18\x02 \x01(\t\x12\x0e\n\x06\x62inary\x18\x03 \x01(\t\x12\x0e\n\x06listen\x18\x04 \x01(\t\x12\x11\n\tlisten_ip\x18\x05 \x01(\t\x12\x0c\n\x04size\x18\x06 \x01(\x03\x12\x10\n\x08\x66rontend\x18\x07 \x01(\t\x12\x10\n\x08\x62\x61\x63kends\x18\x08 \x03(\t\x12\x10\n\x08replicas\x18\t \x03(\t\"H\n\x0c\x45ngineStatus\x12&\n\x0eprocess_status\x18\x01 \x01(\x0b\x32\x0e.ProcessStatus\x12\x10\n\x08\x65ndpoint\x18\x02 \x01(\t\"J\n\x0e\x45ngineResponse\x12\x19\n\x04spec\x18\x01 \x01(\x0b\x32\x0b.EngineSpec\x12\x1d\n\x06status\x18\x02 \x01(\x0b\x32\r.EngineStatus\"0\n\x13\x45ngineCreateRequest\x12\x19\n\x04spec\x18\x01 \x01(\x0b\x32\x0b.EngineSpec\"\x1d\n\rEngineRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\"1\n\x14\x45ngineUpgradeRequest\x12\x19\n\x04spec\x18\x01 \x01(\x0b\x32\x0b.EngineSpec\"\x88\x01\n\x12\x45ngineListResponse\x12\x31\n\x07\x65ngines\x18\x01 \x03(\x0b\x32 .EngineListResponse.EnginesEntry\x1a?\n\x0c\x45nginesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x1e\n\x05value\x18\x02 \x01(\x0b\x32\x0f.EngineResponse:\x02\x38\x01\"6\n\x14\x46rontendStartRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x10\n\x08\x66rontend\x18\x02 \x01(\t\"`\n\x0bProcessSpec\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0e\n\x06\x62inary\x18\x02 \x01(\t\x12\x0c\n\x04\x61rgs\x18\x03 \x03(\t\x12\x12\n\nport_count\x18\x04 \x01(\x05\x12\x11\n\tport_args\x18\x05 \x03(\t\"W\n\rProcessStatus\x12\r\n\x05state\x18\x01 \x01(\t\x12\x11\n\terror_msg\x18\x02 \x01(\t\x12\x12\n\nport_start\x18\x03 \x01(\x05\x12\x10\n\x08port_end\x18\x04 \x01(\x05\"2\n\x14ProcessCreateRequest\x12\x1a\n\x04spec\x18\x01 \x01(\x0b\x32\x0c.ProcessSpec\"$\n\x14ProcessDeleteRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\"!\n\x11ProcessGetRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\"M\n\x0fProcessResponse\x12\x1a\n\x04spec\x18\x01 \x01(\x0b\x32\x0c.ProcessSpec\x12\x1e\n\x06status\x18\x02 \x01(\x0b\x32\x0e.ProcessStatus\"\x14\n\x12ProcessListRequest\"\x91\x01\n\x13ProcessListResponse\x12\x36\n\tprocesses\x18\x01 \x03(\x0b\x32#.ProcessListResponse.ProcessesEntry\x1a\x42\n\x0eProcessesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x1f\n\x05value\x18\x02 \x01(\x0b\x32\x10.ProcessResponse:\x02\x38\x01\"\x1a\n\nLogRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\"\x1b\n\x0bLogResponse\x12\x0c\n\x04line\x18\x02 \x01(\t2\xdf\x04\n\x14\x45ngineManagerService\x12\x37\n\x0c\x45ngineCreate\x12\x14.EngineCreateRequest\x1a\x0f.EngineResponse\"\x00\x12\x31\n\x0c\x45ngineDelete\x12\x0e.EngineRequest\x1a\x0f.EngineResponse\"\x00\x12.\n\tEngineGet\x12\x0e.EngineRequest\x1a\x0f.EngineResponse\"\x00\x12;\n\nEngineList\x12\x16.google.protobuf.Empty\x1a\x13.EngineListResponse\"\x00\x12\x39\n\rEngineUpgrade\x12\x15.EngineUpgradeRequest\x1a\x0f.EngineResponse\"\x00\x12*\n\tEngineLog\x12\x0b.LogRequest\x1a\x0c.LogResponse\"\x00\x30\x01\x12@\n\rFrontendStart\x12\x15.FrontendStartRequest\x1a\x16.google.protobuf.Empty\"\x00\x12<\n\x10\x46rontendShutdown\x12\x0e.EngineRequest\x1a\x16.google.protobuf.Empty\"\x00\x12\x41\n\x15\x46rontendStartCallback\x12\x0e.EngineRequest\x1a\x16.google.protobuf.Empty\"\x00\x12\x44\n\x18\x46rontendShutdownCallback\x12\x0e.EngineRequest\x1a\x16.google.protobuf.Empty\"\x00\x32\xae\x02\n\x15ProcessManagerService\x12:\n\rProcessCreate\x12\x15.ProcessCreateRequest\x1a\x10.ProcessResponse\"\x00\x12:\n\rProcessDelete\x12\x15.ProcessDeleteRequest\x1a\x10.ProcessResponse\"\x00\x12\x34\n\nProcessGet\x12\x12.ProcessGetRequest\x1a\x10.ProcessResponse\"\x00\x12:\n\x0bProcessList\x12\x13.ProcessListRequest\x1a\x14.ProcessListResponse\"\x00\x12+\n\nProcessLog\x12\x0b.LogRequest\x1a\x0c.LogResponse\"\x00\x30\x01\x62\x06proto3')
+  serialized_pb=_b('\n\trpc.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xb4\x01\n\nEngineSpec\x12\x0c\n\x04uuid\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x13\n\x0bvolume_name\x18\x03 \x01(\t\x12\x0e\n\x06\x62inary\x18\x04 \x01(\t\x12\x0e\n\x06listen\x18\x05 \x01(\t\x12\x11\n\tlisten_ip\x18\x06 \x01(\t\x12\x0c\n\x04size\x18\x07 \x01(\x03\x12\x10\n\x08\x66rontend\x18\x08 \x01(\t\x12\x10\n\x08\x62\x61\x63kends\x18\t \x03(\t\x12\x10\n\x08replicas\x18\n \x03(\t\"b\n\x0c\x45ngineStatus\x12&\n\x0eprocess_status\x18\x01 \x01(\x0b\x32\x0e.ProcessStatus\x12\x10\n\x08\x65ndpoint\x18\x02 \x01(\t\x12\x18\n\x10resource_version\x18\x03 \x01(\x03\"[\n\x0e\x45ngineResponse\x12\x19\n\x04spec\x18\x01 \x01(\x0b\x32\x0b.EngineSpec\x12\x1d\n\x06status\x18\x02 \x01(\x0b\x32\r.EngineStatus\x12\x0f\n\x07\x64\x65leted\x18\x03 \x01(\x08\"0\n\x13\x45ngineCreateRequest\x12\x19\n\x04spec\x18\x01 \x01(\x0b\x32\x0b.EngineSpec\"\x1d\n\rEngineRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\"1\n\x14\x45ngineUpgradeRequest\x12\x19\n\x04spec\x18\x01 \x01(\x0b\x32\x0b.EngineSpec\"\x88\x01\n\x12\x45ngineListResponse\x12\x31\n\x07\x65ngines\x18\x01 \x03(\x0b\x32 .EngineListResponse.EnginesEntry\x1a?\n\x0c\x45nginesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x1e\n\x05value\x18\x02 \x01(\x0b\x32\x0f.EngineResponse:\x02\x38\x01\"6\n\x14\x46rontendStartRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x10\n\x08\x66rontend\x18\x02 \x01(\t\"n\n\x0bProcessSpec\x12\x0c\n\x04uuid\x18\x01 \x01(\t\x12\x0c\n\x04name\x18\x02 \x01(\t\x12\x0e\n\x06\x62inary\x18\x03 \x01(\t\x12\x0c\n\x04\x61rgs\x18\x04 \x03(\t\x12\x12\n\nport_count\x18\x05 \x01(\x05\x12\x11\n\tport_args\x18\x06 \x03(\t\"q\n\rProcessStatus\x12\r\n\x05state\x18\x01 \x01(\t\x12\x11\n\terror_msg\x18\x02 \x01(\t\x12\x12\n\nport_start\x18\x03 \x01(\x05\x12\x10\n\x08port_end\x18\x04 \x01(\x05\x12\x18\n\x10resource_version\x18\x05 \x01(\x03\"2\n\x14ProcessCreateRequest\x12\x1a\n\x04spec\x18\x01 \x01(\x0b\x32\x0c.ProcessSpec\"$\n\x14ProcessDeleteRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\"!\n\x11ProcessGetRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\"^\n\x0fProcessResponse\x12\x1a\n\x04spec\x18\x01 \x01(\x0b\x32\x0c.ProcessSpec\x12\x1e\n\x06status\x18\x02 \x01(\x0b\x32\x0e.ProcessStatus\x12\x0f\n\x07\x64\x65leted\x18\x03 \x01(\x08\"\x14\n\x12ProcessListRequest\"\x91\x01\n\x13ProcessListResponse\x12\x36\n\tprocesses\x18\x01 \x03(\x0b\x32#.ProcessListResponse.ProcessesEntry\x1a\x42\n\x0eProcessesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x1f\n\x05value\x18\x02 \x01(\x0b\x32\x10.ProcessResponse:\x02\x38\x01\"\x1a\n\nLogRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\"\x1b\n\x0bLogResponse\x12\x0c\n\x04line\x18\x02 \x01(\t2\x9b\x05\n\x14\x45ngineManagerService\x12\x37\n\x0c\x45ngineCreate\x12\x14.EngineCreateRequest\x1a\x0f.EngineResponse\"\x00\x12\x31\n\x0c\x45ngineDelete\x12\x0e.EngineRequest\x1a\x0f.EngineResponse\"\x00\x12.\n\tEngineGet\x12\x0e.EngineRequest\x1a\x0f.EngineResponse\"\x00\x12;\n\nEngineList\x12\x16.google.protobuf.Empty\x1a\x13.EngineListResponse\"\x00\x12\x39\n\rEngineUpgrade\x12\x15.EngineUpgradeRequest\x1a\x0f.EngineResponse\"\x00\x12*\n\tEngineLog\x12\x0b.LogRequest\x1a\x0c.LogResponse\"\x00\x30\x01\x12:\n\x0b\x45ngineWatch\x12\x16.google.protobuf.Empty\x1a\x0f.EngineResponse\"\x00\x30\x01\x12@\n\rFrontendStart\x12\x15.FrontendStartRequest\x1a\x16.google.protobuf.Empty\"\x00\x12<\n\x10\x46rontendShutdown\x12\x0e.EngineRequest\x1a\x16.google.protobuf.Empty\"\x00\x12\x41\n\x15\x46rontendStartCallback\x12\x0e.EngineRequest\x1a\x16.google.protobuf.Empty\"\x00\x12\x44\n\x18\x46rontendShutdownCallback\x12\x0e.EngineRequest\x1a\x16.google.protobuf.Empty\"\x00\x32\xec\x02\n\x15ProcessManagerService\x12:\n\rProcessCreate\x12\x15.ProcessCreateRequest\x1a\x10.ProcessResponse\"\x00\x12:\n\rProcessDelete\x12\x15.ProcessDeleteRequest\x1a\x10.ProcessResponse\"\x00\x12\x34\n\nProcessGet\x12\x12.ProcessGetRequest\x1a\x10.ProcessResponse\"\x00\x12:\n\x0bProcessList\x12\x13.ProcessListRequest\x1a\x14.ProcessListResponse\"\x00\x12+\n\nProcessLog\x12\x0b.LogRequest\x1a\x0c.LogResponse\"\x00\x30\x01\x12<\n\x0cProcessWatch\x12\x16.google.protobuf.Empty\x1a\x10.ProcessResponse\"\x00\x30\x01\x62\x06proto3')
   ,
   dependencies=[google_dot_protobuf_dot_empty__pb2.DESCRIPTOR,])
 
@@ -36,64 +36,71 @@ _ENGINESPEC = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='name', full_name='EngineSpec.name', index=0,
+      name='uuid', full_name='EngineSpec.uuid', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='volume_name', full_name='EngineSpec.volume_name', index=1,
+      name='name', full_name='EngineSpec.name', index=1,
       number=2, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='binary', full_name='EngineSpec.binary', index=2,
+      name='volume_name', full_name='EngineSpec.volume_name', index=2,
       number=3, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='listen', full_name='EngineSpec.listen', index=3,
+      name='binary', full_name='EngineSpec.binary', index=3,
       number=4, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='listen_ip', full_name='EngineSpec.listen_ip', index=4,
+      name='listen', full_name='EngineSpec.listen', index=4,
       number=5, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='size', full_name='EngineSpec.size', index=5,
-      number=6, type=3, cpp_type=2, label=1,
-      has_default_value=False, default_value=0,
-      message_type=None, enum_type=None, containing_type=None,
-      is_extension=False, extension_scope=None,
-      serialized_options=None, file=DESCRIPTOR),
-    _descriptor.FieldDescriptor(
-      name='frontend', full_name='EngineSpec.frontend', index=6,
-      number=7, type=9, cpp_type=9, label=1,
+      name='listen_ip', full_name='EngineSpec.listen_ip', index=5,
+      number=6, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='backends', full_name='EngineSpec.backends', index=7,
-      number=8, type=9, cpp_type=9, label=3,
+      name='size', full_name='EngineSpec.size', index=6,
+      number=7, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='frontend', full_name='EngineSpec.frontend', index=7,
+      number=8, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='backends', full_name='EngineSpec.backends', index=8,
+      number=9, type=9, cpp_type=9, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='replicas', full_name='EngineSpec.replicas', index=8,
-      number=9, type=9, cpp_type=9, label=3,
+      name='replicas', full_name='EngineSpec.replicas', index=9,
+      number=10, type=9, cpp_type=9, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -111,7 +118,7 @@ _ENGINESPEC = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=43,
-  serialized_end=209,
+  serialized_end=223,
 )
 
 
@@ -136,6 +143,13 @@ _ENGINESTATUS = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='resource_version', full_name='EngineStatus.resource_version', index=2,
+      number=3, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -148,8 +162,8 @@ _ENGINESTATUS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=211,
-  serialized_end=283,
+  serialized_start=225,
+  serialized_end=323,
 )
 
 
@@ -174,6 +188,13 @@ _ENGINERESPONSE = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='deleted', full_name='EngineResponse.deleted', index=2,
+      number=3, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -186,8 +207,8 @@ _ENGINERESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=285,
-  serialized_end=359,
+  serialized_start=325,
+  serialized_end=416,
 )
 
 
@@ -217,8 +238,8 @@ _ENGINECREATEREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=361,
-  serialized_end=409,
+  serialized_start=418,
+  serialized_end=466,
 )
 
 
@@ -248,8 +269,8 @@ _ENGINEREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=411,
-  serialized_end=440,
+  serialized_start=468,
+  serialized_end=497,
 )
 
 
@@ -279,8 +300,8 @@ _ENGINEUPGRADEREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=442,
-  serialized_end=491,
+  serialized_start=499,
+  serialized_end=548,
 )
 
 
@@ -317,8 +338,8 @@ _ENGINELISTRESPONSE_ENGINESENTRY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=567,
-  serialized_end=630,
+  serialized_start=624,
+  serialized_end=687,
 )
 
 _ENGINELISTRESPONSE = _descriptor.Descriptor(
@@ -347,8 +368,8 @@ _ENGINELISTRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=494,
-  serialized_end=630,
+  serialized_start=551,
+  serialized_end=687,
 )
 
 
@@ -385,8 +406,8 @@ _FRONTENDSTARTREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=632,
-  serialized_end=686,
+  serialized_start=689,
+  serialized_end=743,
 )
 
 
@@ -398,36 +419,43 @@ _PROCESSSPEC = _descriptor.Descriptor(
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='name', full_name='ProcessSpec.name', index=0,
+      name='uuid', full_name='ProcessSpec.uuid', index=0,
       number=1, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='binary', full_name='ProcessSpec.binary', index=1,
+      name='name', full_name='ProcessSpec.name', index=1,
       number=2, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='args', full_name='ProcessSpec.args', index=2,
-      number=3, type=9, cpp_type=9, label=3,
+      name='binary', full_name='ProcessSpec.binary', index=2,
+      number=3, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='args', full_name='ProcessSpec.args', index=3,
+      number=4, type=9, cpp_type=9, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='port_count', full_name='ProcessSpec.port_count', index=3,
-      number=4, type=5, cpp_type=1, label=1,
+      name='port_count', full_name='ProcessSpec.port_count', index=4,
+      number=5, type=5, cpp_type=1, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='port_args', full_name='ProcessSpec.port_args', index=4,
-      number=5, type=9, cpp_type=9, label=3,
+      name='port_args', full_name='ProcessSpec.port_args', index=5,
+      number=6, type=9, cpp_type=9, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
@@ -444,8 +472,8 @@ _PROCESSSPEC = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=688,
-  serialized_end=784,
+  serialized_start=745,
+  serialized_end=855,
 )
 
 
@@ -484,6 +512,13 @@ _PROCESSSTATUS = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='resource_version', full_name='ProcessStatus.resource_version', index=4,
+      number=5, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -496,8 +531,8 @@ _PROCESSSTATUS = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=786,
-  serialized_end=873,
+  serialized_start=857,
+  serialized_end=970,
 )
 
 
@@ -527,8 +562,8 @@ _PROCESSCREATEREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=875,
-  serialized_end=925,
+  serialized_start=972,
+  serialized_end=1022,
 )
 
 
@@ -558,8 +593,8 @@ _PROCESSDELETEREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=927,
-  serialized_end=963,
+  serialized_start=1024,
+  serialized_end=1060,
 )
 
 
@@ -589,8 +624,8 @@ _PROCESSGETREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=965,
-  serialized_end=998,
+  serialized_start=1062,
+  serialized_end=1095,
 )
 
 
@@ -615,6 +650,13 @@ _PROCESSRESPONSE = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='deleted', full_name='ProcessResponse.deleted', index=2,
+      number=3, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -627,8 +669,8 @@ _PROCESSRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1000,
-  serialized_end=1077,
+  serialized_start=1097,
+  serialized_end=1191,
 )
 
 
@@ -651,8 +693,8 @@ _PROCESSLISTREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1079,
-  serialized_end=1099,
+  serialized_start=1193,
+  serialized_end=1213,
 )
 
 
@@ -689,8 +731,8 @@ _PROCESSLISTRESPONSE_PROCESSESENTRY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1181,
-  serialized_end=1247,
+  serialized_start=1295,
+  serialized_end=1361,
 )
 
 _PROCESSLISTRESPONSE = _descriptor.Descriptor(
@@ -719,8 +761,8 @@ _PROCESSLISTRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1102,
-  serialized_end=1247,
+  serialized_start=1216,
+  serialized_end=1361,
 )
 
 
@@ -750,8 +792,8 @@ _LOGREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1249,
-  serialized_end=1275,
+  serialized_start=1363,
+  serialized_end=1389,
 )
 
 
@@ -781,8 +823,8 @@ _LOGRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1277,
-  serialized_end=1304,
+  serialized_start=1391,
+  serialized_end=1418,
 )
 
 _ENGINESTATUS.fields_by_name['process_status'].message_type = _PROCESSSTATUS
@@ -971,8 +1013,8 @@ _ENGINEMANAGERSERVICE = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=0,
   serialized_options=None,
-  serialized_start=1307,
-  serialized_end=1914,
+  serialized_start=1421,
+  serialized_end=2088,
   methods=[
   _descriptor.MethodDescriptor(
     name='EngineCreate',
@@ -1029,9 +1071,18 @@ _ENGINEMANAGERSERVICE = _descriptor.ServiceDescriptor(
     serialized_options=None,
   ),
   _descriptor.MethodDescriptor(
+    name='EngineWatch',
+    full_name='EngineManagerService.EngineWatch',
+    index=6,
+    containing_service=None,
+    input_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
+    output_type=_ENGINERESPONSE,
+    serialized_options=None,
+  ),
+  _descriptor.MethodDescriptor(
     name='FrontendStart',
     full_name='EngineManagerService.FrontendStart',
-    index=6,
+    index=7,
     containing_service=None,
     input_type=_FRONTENDSTARTREQUEST,
     output_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
@@ -1040,7 +1091,7 @@ _ENGINEMANAGERSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='FrontendShutdown',
     full_name='EngineManagerService.FrontendShutdown',
-    index=7,
+    index=8,
     containing_service=None,
     input_type=_ENGINEREQUEST,
     output_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
@@ -1049,7 +1100,7 @@ _ENGINEMANAGERSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='FrontendStartCallback',
     full_name='EngineManagerService.FrontendStartCallback',
-    index=8,
+    index=9,
     containing_service=None,
     input_type=_ENGINEREQUEST,
     output_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
@@ -1058,7 +1109,7 @@ _ENGINEMANAGERSERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='FrontendShutdownCallback',
     full_name='EngineManagerService.FrontendShutdownCallback',
-    index=9,
+    index=10,
     containing_service=None,
     input_type=_ENGINEREQUEST,
     output_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
@@ -1076,8 +1127,8 @@ _PROCESSMANAGERSERVICE = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=1,
   serialized_options=None,
-  serialized_start=1917,
-  serialized_end=2219,
+  serialized_start=2091,
+  serialized_end=2455,
   methods=[
   _descriptor.MethodDescriptor(
     name='ProcessCreate',
@@ -1122,6 +1173,15 @@ _PROCESSMANAGERSERVICE = _descriptor.ServiceDescriptor(
     containing_service=None,
     input_type=_LOGREQUEST,
     output_type=_LOGRESPONSE,
+    serialized_options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='ProcessWatch',
+    full_name='ProcessManagerService.ProcessWatch',
+    index=5,
+    containing_service=None,
+    input_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
+    output_type=_PROCESSRESPONSE,
     serialized_options=None,
   ),
 ])
