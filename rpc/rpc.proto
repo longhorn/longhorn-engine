@@ -20,15 +20,16 @@ service EngineManagerService {
 }
 
 message EngineSpec {
-	string name = 1;
-	string volume_name = 2;
-	string binary = 3;
-	string listen = 4;
-	string listen_ip = 5;
-	int64 size = 6;
-	string frontend = 7;
-	repeated string backends = 8;
-	repeated string replicas = 9;
+	string uuid = 1;
+	string name = 2;
+	string volume_name = 3;
+	string binary = 4;
+	string listen = 5;
+	string listen_ip = 6;
+	int64 size = 7;
+	string frontend = 8;
+	repeated string backends = 9;
+	repeated string replicas = 10;
 }
 
 message EngineStatus {
@@ -74,11 +75,12 @@ service ProcessManagerService {
 }
 
 message ProcessSpec {
-	string name = 1;
-	string binary = 2;
-	repeated string args = 3;
-	int32 port_count = 4;
-	repeated string port_args = 5;
+	string uuid = 1;
+	string name = 2;
+	string binary = 3;
+	repeated string args = 4;
+	int32 port_count = 5;
+	repeated string port_args = 6;
 }
 
 message ProcessStatus {
