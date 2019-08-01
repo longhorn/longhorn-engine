@@ -10,6 +10,7 @@ import (
 )
 
 type Process struct {
+	UUID      string   `json:"uuid"`
 	Name      string   `json:"name"`
 	Binary    string   `json:"binary"`
 	Args      []string `json:"args"`
@@ -23,6 +24,7 @@ type Process struct {
 
 func RPCToProcess(obj *rpc.ProcessResponse) *Process {
 	return &Process{
+		UUID:          obj.Spec.Uuid,
 		Name:          obj.Spec.Name,
 		Binary:        obj.Spec.Binary,
 		Args:          obj.Spec.Args,
@@ -61,6 +63,7 @@ func RPCToProcessStatus(obj *rpc.ProcessStatus) ProcessStatus {
 }
 
 type Engine struct {
+	UUID       string   `json:"uuid"`
 	Name       string   `json:"name"`
 	VolumeName string   `json:"volumeName"`
 	Binary     string   `json:"binary"`
@@ -80,6 +83,7 @@ type Engine struct {
 
 func RPCToEngine(obj *rpc.EngineResponse) *Engine {
 	return &Engine{
+		UUID:       obj.Spec.Uuid,
 		Name:       obj.Spec.Name,
 		VolumeName: obj.Spec.VolumeName,
 		Binary:     obj.Spec.Binary,
