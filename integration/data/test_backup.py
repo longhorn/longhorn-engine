@@ -1,4 +1,5 @@
 import cmd
+import pytest
 from common import (  # NOQA
     backup_targets,  # NOQA
     grpc_controller, grpc_backing_controller,  # NOQA
@@ -280,6 +281,56 @@ def test_backup_volume_deletion(grpc_replica1, grpc_replica2,  # NOQA
         assert backup_info["Size"] == BLOCK_SIZE_STR
         assert snap in backup_info["SnapshotName"]
 
+        cmd.backup_volume_rm(address, VOLUME_NAME, backup_target)
+        info = cmd.backup_volume_list(address, VOLUME_NAME, backup_target)
+        assert "cannot find" in info[VOLUME_NAME]["Messages"]["error"]
+
+        cmd.sync_agent_server_reset(address)
+        cleanup_replica(grpc_replica1)
+        cleanup_replica(grpc_replica2)
+        cleanup_controller(grpc_controller)
+
+
+def test_empty_backup_volume(grpc_replica1, grpc_replica2,  # NOQA
+                             grpc_controller, backup_targets):  # NOQA
+    offset = 0
+    length = 128
+    address = grpc_controller.address
+
+    for backup_target in backup_targets:
+        dev = get_dev(grpc_replica1, grpc_replica2,
+                      grpc_controller)
+        snap_data1 = random_string(length)
+        verify_data(dev, offset, snap_data1)
+        snap1 = cmd.snapshot_create(address)
+
+        backup_info1 = create_backup(address, snap1, backup_target)
+        assert backup_info1["VolumeName"] == VOLUME_NAME
+        assert backup_info1["Size"] == BLOCK_SIZE_STR
+
+        cmd.backup_rm(address, backup_info1["URL"])
+        info1 = cmd.backup_volume_list_backup(address, VOLUME_NAME, backup_target)
+
+        assert info1[VOLUME_NAME]["Name"] == VOLUME_NAME
+        assert len(info1[VOLUME_NAME]["Backups"]) == 0
+        with pytest.raises(KeyError) as e:
+            error = info1[VOLUME_NAME]["Messages"]["error"]  # NOQA
+            assert "error" in str(e.value)
+
+        snap2_data = random_string(length)
+        verify_data(dev, offset, snap2_data)
+        snap2 = cmd.snapshot_create(address)
+
+        # test if we can recreate backup for this empty volume
+        backup_info2 = create_backup(address, snap2, backup_target)
+        assert backup_info2["VolumeName"] == VOLUME_NAME
+        assert backup_info2["Size"] == BLOCK_SIZE_STR
+        cmd.backup_rm(address, backup_info2["URL"])
+        info2 = cmd.backup_volume_list_backup(address, VOLUME_NAME, backup_target)
+        assert info2[VOLUME_NAME]["Name"] == VOLUME_NAME
+        assert len(info2[VOLUME_NAME]["Backups"]) == 0
+
+        # test if the empty volume is still deletable
         cmd.backup_volume_rm(address, VOLUME_NAME, backup_target)
         info = cmd.backup_volume_list(address, VOLUME_NAME, backup_target)
         assert "cannot find" in info[VOLUME_NAME]["Messages"]["error"]
