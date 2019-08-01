@@ -80,7 +80,7 @@ func NewEngineLauncher(spec *rpc.EngineSpec) (*Launcher, *Engine) {
 
 		Endpoint: "",
 
-		ResourceVersion: 0,
+		ResourceVersion: 1,
 
 		currentEngine: NewEngine(spec),
 		pendingEngine: nil,

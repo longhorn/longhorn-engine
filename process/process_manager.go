@@ -165,7 +165,7 @@ func (pm *Manager) ProcessCreate(ctx context.Context, req *rpc.ProcessCreateRequ
 		PortArgs:  req.Spec.PortArgs,
 
 		State:           StateStarting,
-		ResourceVersion: 0,
+		ResourceVersion: 1,
 
 		lock: &sync.RWMutex{},
 
