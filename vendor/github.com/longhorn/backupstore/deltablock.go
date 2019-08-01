@@ -83,7 +83,9 @@ func CreateDeltaBlockBackup(config *DeltaBackupConfig) (string, error) {
 	if err != nil {
 		return "", err
 	}
-
+	if volume.Deleting == true {
+		return "", fmt.Errorf("volume %v is being deleted, can't create a new backup", volume.Name)
+	}
 	lastBackupName := volume.LastBackupName
 
 	if err := deltaOps.OpenSnapshot(snapshot.Name, volume.Name); err != nil {
@@ -585,21 +587,22 @@ func DeleteDeltaBlockBackup(backupURL string) error {
 		return fmt.Errorf("Cannot find volume %v in backupstore", volumeName, err)
 	}
 
-	backup, err := loadBackup(backupName, volumeName, bsDriver)
+	deletingBackup, err := loadBackup(backupName, volumeName, bsDriver)
 	if err != nil {
 		return err
 	}
+	deletingBackup.Deleting = true
+	if err := saveBackup(deletingBackup, bsDriver); err != nil {
+		return err
+	}
+
 	discardBlockSet := make(map[string]bool)
-	for _, blk := range backup.Blocks {
+	for _, blk := range deletingBackup.Blocks {
 		discardBlockSet[blk.BlockChecksum] = true
 	}
 	discardBlockCounts := len(discardBlockSet)
 
-	if err := removeBackup(backup, bsDriver); err != nil {
-		return err
-	}
-
-	if backup.Name == v.LastBackupName {
+	if deletingBackup.Name == v.LastBackupName {
 		v.LastBackupName = ""
 		v.LastBackupAt = ""
 		if err := saveVolume(v, bsDriver); err != nil {
@@ -611,19 +614,15 @@ func DeleteDeltaBlockBackup(backupURL string) error {
 	if err != nil {
 		return err
 	}
-	if len(backupNames) == 0 {
-		log.Debugf("No snapshot existed for the volume %v, removing volume", volumeName)
-		if err := removeVolume(volumeName, bsDriver); err != nil {
-			log.Warningf("Failed to remove volume %v due to: %v", volumeName, err.Error())
-		}
-		return nil
-	}
 
 	log.Debug("GC started")
 	for _, backupName := range backupNames {
 		backup, err := loadBackup(backupName, volumeName, bsDriver)
 		if err != nil {
 			return err
+		}
+		if backup.Name == deletingBackup.Name {
+			continue
 		}
 		for _, blk := range backup.Blocks {
 			if _, exists := discardBlockSet[blk.BlockChecksum]; exists {
@@ -647,6 +646,11 @@ func DeleteDeltaBlockBackup(backupURL string) error {
 	if err := bsDriver.Remove(blkFileList...); err != nil {
 		return err
 	}
+
+	if err := removeBackup(deletingBackup, bsDriver); err != nil {
+		return err
+	}
+
 	log.Debug("Removed unused blocks for volume ", volumeName)
 
 	log.Debug("GC completed")

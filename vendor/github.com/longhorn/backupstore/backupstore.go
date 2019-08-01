@@ -14,6 +14,7 @@ type Volume struct {
 	LastBackupName string
 	LastBackupAt   string
 	BlockCount     int64 `json:",string"`
+	Deleting       bool
 }
 
 type Snapshot struct {
@@ -32,6 +33,7 @@ type Backup struct {
 
 	Blocks     []BlockMapping `json:",omitempty"`
 	SingleFile BackupFile     `json:",omitempty"`
+	Deleting   bool
 }
 
 var (
@@ -73,6 +75,14 @@ func removeVolume(volumeName string, driver BackupStoreDriver) error {
 		return fmt.Errorf("Volume %v doesn't exist in backupstore", volumeName)
 	}
 
+	volume, err := loadVolume(volumeName, driver)
+	if err != nil {
+		return err
+	}
+	volume.Deleting = true
+	if err := saveVolume(volume, driver); err != nil {
+		return err
+	}
 	volumeDir := getVolumePath(volumeName)
 	volumeBlocksDirectory := getBlockPath(volumeName)
 	volumeBackupsDirectory := getBackupPath(volumeName)
