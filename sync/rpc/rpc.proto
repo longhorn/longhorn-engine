@@ -15,6 +15,7 @@ service SyncAgentService {
     rpc BackupGetStatus(BackupProgressRequest) returns (BackupStatusReply) {}
     rpc Reset(google.protobuf.Empty) returns (google.protobuf.Empty) {}
     rpc RestoreStatus(google.protobuf.Empty) returns (RestoreStatusReply) {}
+    rpc SnapshotPurge(google.protobuf.Empty) returns (google.protobuf.Empty) {}
 }
 
 message FileRemoveRequest {
