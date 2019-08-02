@@ -12,7 +12,6 @@ import (
 
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
-	uuid "github.com/satori/go.uuid"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -160,7 +159,7 @@ func (pm *Manager) ProcessCreate(ctx context.Context, req *rpc.ProcessCreateRequ
 	}
 
 	p := &Process{
-		UUID:      uuid.NewV4().String(),
+		UUID:      req.Spec.Uuid,
 		Name:      req.Spec.Name,
 		Binary:    req.Spec.Binary,
 		Args:      req.Spec.Args,

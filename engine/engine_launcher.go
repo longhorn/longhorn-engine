@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
-	uuid "github.com/satori/go.uuid"
 	"github.com/sirupsen/logrus"
 
 	"github.com/longhorn/go-iscsi-helper/iscsiblk"
@@ -73,7 +72,7 @@ type Launcher struct {
 
 func NewEngineLauncher(spec *rpc.EngineSpec) (*Launcher, *Engine) {
 	el := &Launcher{
-		UUID:         uuid.NewV4().String(),
+		UUID:         spec.Uuid,
 		LauncherName: spec.Name,
 		VolumeName:   spec.VolumeName,
 		Size:         spec.Size,
