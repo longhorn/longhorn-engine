@@ -42,9 +42,9 @@ function start() {
     done
     set -e
 
-    longhorn-instance-manager process create --name "$volume-r" --binary /usr/local/bin/longhorn --port-count 15 --port-args "--listen,localhost:" -- replica /volume/ "--size" $size
+    longhorn-instance-manager process create --uuid "$volume-r-uuid" --name "$volume-r" --binary /usr/local/bin/longhorn --port-count 15 --port-args "--listen,localhost:" -- replica /volume/ "--size" $size
 
-    longhorn-instance-manager engine create --name "$volume-e" --volume-name $volume --binary /usr/local/bin/longhorn --size $size --listen-ip 0.0.0.0 --frontend $frontend --replica tcp://0.0.0.0:10000
+    longhorn-instance-manager engine create --uuid "$volume-e-uuid" --name "$volume-e" --volume-name $volume --binary /usr/local/bin/longhorn --size $size --listen-ip 0.0.0.0 --frontend $frontend --replica tcp://0.0.0.0:10000
 }
 
 start &
