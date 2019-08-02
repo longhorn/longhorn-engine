@@ -101,12 +101,6 @@ def backup_inspect(url, backup):
     return json.loads(subprocess.check_output(cmd))
 
 
-def backup_volume_list_backup(url, name, dest):
-    cmd = [_bin(), '--url', url, '--debug', 'backup', 'ls',
-           '--volume', name, dest]
-    return json.loads(subprocess.check_output(cmd))
-
-
 def backup_volume_rm(url, name, dest):
     cmd = [_bin(), '--url', url, '--debug', 'backup',
            'rm', '--volume', name, dest]
