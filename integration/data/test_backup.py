@@ -309,9 +309,7 @@ def test_empty_backup_volume(grpc_replica1, grpc_replica2,  # NOQA
         assert backup_info1["Size"] == BLOCK_SIZE_STR
 
         cmd.backup_rm(address, backup_info1["URL"])
-        info1 = cmd.backup_volume_list_backup(address,
-                                              VOLUME_NAME,
-                                              backup_target)
+        info1 = cmd.backup_volume_list_backup(address, VOLUME_NAME, backup_target)
 
         assert info1[VOLUME_NAME]["Name"] == VOLUME_NAME
         assert len(info1[VOLUME_NAME]["Backups"]) == 0
@@ -328,9 +326,7 @@ def test_empty_backup_volume(grpc_replica1, grpc_replica2,  # NOQA
         assert backup_info2["VolumeName"] == VOLUME_NAME
         assert backup_info2["Size"] == BLOCK_SIZE_STR
         cmd.backup_rm(address, backup_info2["URL"])
-        info2 = cmd.backup_volume_list_backup(address,
-                                              VOLUME_NAME,
-                                              backup_target)
+        info2 = cmd.backup_volume_list_backup(address, VOLUME_NAME, backup_target)
         assert info2[VOLUME_NAME]["Name"] == VOLUME_NAME
         assert len(info2[VOLUME_NAME]["Backups"]) == 0
 
