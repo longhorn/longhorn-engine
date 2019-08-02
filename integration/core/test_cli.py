@@ -780,12 +780,12 @@ def backup_core(bin, engine_manager_client,  # NOQA
     cmd = [bin, '--url', grpc_controller_client.address,
            'backup', 'ls', '--volume-only', backup_target]
     data = subprocess.check_output(cmd, env=env)
-    volume_info_dict = json.loads(data)
+    volume_info = json.loads(data)
 
-    assert volume_info_dict
-    assert volume_info_dict.get(VOLUME_NAME, None)
-    assert volume_info_dict[VOLUME_NAME].get("Messages", None)
-    assert MESSAGE_TYPE_ERROR in volume_info_dict[VOLUME_NAME]["Messages"]
+    assert volume_info
+    assert volume_info[VOLUME_NAME] is not None
+    assert volume_info[VOLUME_NAME]["Messages"] is not None
+    assert MESSAGE_TYPE_ERROR in volume_info[VOLUME_NAME]["Messages"]
 
     os.rename(volume_tmp_cfg_path, volume_cfg_path)
     assert path.exists(volume_cfg_path)
@@ -793,12 +793,12 @@ def backup_core(bin, engine_manager_client,  # NOQA
     cmd = [bin, '--url', grpc_controller_client.address,
            'backup', 'ls', '--volume-only', backup_target]
     data = subprocess.check_output(cmd, env=env)
-    volume_info_dict = json.loads(data)
+    volume_info = json.loads(data)
 
-    assert volume_info_dict
-    assert volume_info_dict.get(VOLUME_NAME, None)
-    assert volume_info_dict[VOLUME_NAME].get("Messages", None) is not None
-    assert MESSAGE_TYPE_ERROR not in volume_info_dict[VOLUME_NAME]["Messages"]
+    assert volume_info
+    assert volume_info[VOLUME_NAME] is not None
+    assert volume_info[VOLUME_NAME]["Messages"] is not None
+    assert MESSAGE_TYPE_ERROR not in volume_info[VOLUME_NAME]["Messages"]
 
     cmd = [bin, '--url', grpc_controller_client.address,
            'backup', 'inspect',
