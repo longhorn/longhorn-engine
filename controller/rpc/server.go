@@ -1,9 +1,6 @@
 package rpc
 
 import (
-	"fmt"
-	"strconv"
-	"strings"
 	"time"
 
 	"github.com/golang/protobuf/ptypes/empty"
@@ -216,33 +213,6 @@ func (cs *ControllerServer) ReplicaVerifyRebuild(ctx context.Context, req *contr
 func (cs *ControllerServer) JournalList(ctx context.Context, req *controllerpb.JournalListRequest) (*empty.Empty, error) {
 	//ListJournal flushes operation journal (replica read/write, ping, etc.) accumulated since previous flush
 	journal.PrintLimited(int(req.Limit))
-	return &empty.Empty{}, nil
-}
-
-func (cs *ControllerServer) PortUpdate(ctx context.Context, req *controllerpb.PortUpdateRequest) (*empty.Empty, error) {
-	oldServer := cs.c.GRPCServer
-	oldAddr := cs.c.GRPCAddress
-	addrs := strings.Split(oldAddr, ":")
-	newAddr := addrs[0] + ":" + strconv.Itoa(int(req.Port))
-
-	logrus.Infof("About to change to listen to %v", newAddr)
-
-	cs.c.Lock()
-	cs.c.GRPCAddress = newAddr
-	cs.c.GRPCServer = GetControllerGRPCServer(cs.c)
-	if cs.c.GRPCServer == nil {
-		cs.c.Unlock()
-		return nil, fmt.Errorf("Failed to start a new gRPC server %v", newAddr)
-	}
-	cs.c.StartGRPCServer()
-	cs.c.Unlock()
-
-	// this will immediate shutdown all the existing connections.
-	// the pending requests would error out.
-	// we won't use GracefulStop() since there is no timeout setting.
-	oldServer.Stop()
-
-	// unreachable since the grpc server stopped.
 	return &empty.Empty{}, nil
 }
 
