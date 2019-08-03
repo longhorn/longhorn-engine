@@ -27,8 +27,6 @@ service ControllerService {
 
     rpc JournalList(JournalListRequest) returns (google.protobuf.Empty);
 
-    rpc PortUpdate(PortUpdateRequest) returns (google.protobuf.Empty);
-
     rpc VersionDetailGet(google.protobuf.Empty) returns(VersionDetailGetReply);
 
     rpc MetricGet(google.protobuf.Empty) returns(stream MetricGetReply);
@@ -99,10 +97,6 @@ message ReplicaPrepareRebuildReply {
 
 message JournalListRequest {
     int64 limit = 1;
-}
-
-message PortUpdateRequest {
-    int32 port = 1;
 }
 
 message VersionOutput {

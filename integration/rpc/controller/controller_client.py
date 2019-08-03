@@ -60,13 +60,6 @@ class ControllerClient(object):
     def metric_get(self):
         return self.stub.MetricGet(empty_pb2.Empty())
 
-    def port_update(self, port):
-        try:
-            self.stub.PortUpdate(controller_pb2.PortUpdateRequest(port=port))
-        except grpc.RpcError as grpc_err:
-            if "Socket closed" not in grpc_err.details():
-                raise grpc_err
-
     def client_upgrade(self, address):
         self.address = address
         self.channel = grpc.insecure_channel(address)

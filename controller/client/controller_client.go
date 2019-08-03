@@ -2,7 +2,6 @@ package client
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/golang/protobuf/ptypes/empty"
@@ -352,28 +351,6 @@ func (c *ControllerClient) JournalList(limit int) error {
 		Limit: int64(limit),
 	}); err != nil {
 		return fmt.Errorf("failed to list journal for volume %v: %v", c.grpcAddress, err)
-	}
-
-	return nil
-}
-
-func (c *ControllerClient) PortUpdate(port int) error {
-	conn, err := grpc.Dial(c.grpcAddress, grpc.WithInsecure())
-	if err != nil {
-		return fmt.Errorf("cannot connect to ControllerService %v: %v", c.grpcAddress, err)
-	}
-	defer conn.Close()
-	controllerServiceClient := contollerpb.NewControllerServiceClient(conn)
-
-	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
-	defer cancel()
-
-	if _, err := controllerServiceClient.PortUpdate(ctx, &contollerpb.PortUpdateRequest{
-		Port: int32(port),
-	}); err != nil {
-		if !strings.Contains(err.Error(), "transport is closing") {
-			return fmt.Errorf("failed to update port to %v for volume %v: %v", port, c.grpcAddress, err)
-		}
 	}
 
 	return nil
