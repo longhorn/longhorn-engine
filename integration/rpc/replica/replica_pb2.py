@@ -785,127 +785,127 @@ DESCRIPTOR.message_types_by_name['Replica'] = _REPLICA
 DESCRIPTOR.message_types_by_name['PrepareRemoveAction'] = _PREPAREREMOVEACTION
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
-ReplicaCreateRequest = _reflection.GeneratedProtocolMessageType('ReplicaCreateRequest', (_message.Message,), dict(
-  DESCRIPTOR = _REPLICACREATEREQUEST,
-  __module__ = 'replica_pb2'
+ReplicaCreateRequest = _reflection.GeneratedProtocolMessageType('ReplicaCreateRequest', (_message.Message,), {
+  'DESCRIPTOR' : _REPLICACREATEREQUEST,
+  '__module__' : 'replica_pb2'
   # @@protoc_insertion_point(class_scope:rpc.ReplicaCreateRequest)
-  ))
+  })
 _sym_db.RegisterMessage(ReplicaCreateRequest)
 
-ReplicaRevertRequest = _reflection.GeneratedProtocolMessageType('ReplicaRevertRequest', (_message.Message,), dict(
-  DESCRIPTOR = _REPLICAREVERTREQUEST,
-  __module__ = 'replica_pb2'
+ReplicaRevertRequest = _reflection.GeneratedProtocolMessageType('ReplicaRevertRequest', (_message.Message,), {
+  'DESCRIPTOR' : _REPLICAREVERTREQUEST,
+  '__module__' : 'replica_pb2'
   # @@protoc_insertion_point(class_scope:rpc.ReplicaRevertRequest)
-  ))
+  })
 _sym_db.RegisterMessage(ReplicaRevertRequest)
 
-ReplicaSnapshotRequest = _reflection.GeneratedProtocolMessageType('ReplicaSnapshotRequest', (_message.Message,), dict(
+ReplicaSnapshotRequest = _reflection.GeneratedProtocolMessageType('ReplicaSnapshotRequest', (_message.Message,), {
 
-  LabelsEntry = _reflection.GeneratedProtocolMessageType('LabelsEntry', (_message.Message,), dict(
-    DESCRIPTOR = _REPLICASNAPSHOTREQUEST_LABELSENTRY,
-    __module__ = 'replica_pb2'
+  'LabelsEntry' : _reflection.GeneratedProtocolMessageType('LabelsEntry', (_message.Message,), {
+    'DESCRIPTOR' : _REPLICASNAPSHOTREQUEST_LABELSENTRY,
+    '__module__' : 'replica_pb2'
     # @@protoc_insertion_point(class_scope:rpc.ReplicaSnapshotRequest.LabelsEntry)
-    ))
+    })
   ,
-  DESCRIPTOR = _REPLICASNAPSHOTREQUEST,
-  __module__ = 'replica_pb2'
+  'DESCRIPTOR' : _REPLICASNAPSHOTREQUEST,
+  '__module__' : 'replica_pb2'
   # @@protoc_insertion_point(class_scope:rpc.ReplicaSnapshotRequest)
-  ))
+  })
 _sym_db.RegisterMessage(ReplicaSnapshotRequest)
 _sym_db.RegisterMessage(ReplicaSnapshotRequest.LabelsEntry)
 
-DiskRemoveRequest = _reflection.GeneratedProtocolMessageType('DiskRemoveRequest', (_message.Message,), dict(
-  DESCRIPTOR = _DISKREMOVEREQUEST,
-  __module__ = 'replica_pb2'
+DiskRemoveRequest = _reflection.GeneratedProtocolMessageType('DiskRemoveRequest', (_message.Message,), {
+  'DESCRIPTOR' : _DISKREMOVEREQUEST,
+  '__module__' : 'replica_pb2'
   # @@protoc_insertion_point(class_scope:rpc.DiskRemoveRequest)
-  ))
+  })
 _sym_db.RegisterMessage(DiskRemoveRequest)
 
-DiskReplaceRequest = _reflection.GeneratedProtocolMessageType('DiskReplaceRequest', (_message.Message,), dict(
-  DESCRIPTOR = _DISKREPLACEREQUEST,
-  __module__ = 'replica_pb2'
+DiskReplaceRequest = _reflection.GeneratedProtocolMessageType('DiskReplaceRequest', (_message.Message,), {
+  'DESCRIPTOR' : _DISKREPLACEREQUEST,
+  '__module__' : 'replica_pb2'
   # @@protoc_insertion_point(class_scope:rpc.DiskReplaceRequest)
-  ))
+  })
 _sym_db.RegisterMessage(DiskReplaceRequest)
 
-DiskPrepareRemoveRequest = _reflection.GeneratedProtocolMessageType('DiskPrepareRemoveRequest', (_message.Message,), dict(
-  DESCRIPTOR = _DISKPREPAREREMOVEREQUEST,
-  __module__ = 'replica_pb2'
+DiskPrepareRemoveRequest = _reflection.GeneratedProtocolMessageType('DiskPrepareRemoveRequest', (_message.Message,), {
+  'DESCRIPTOR' : _DISKPREPAREREMOVEREQUEST,
+  '__module__' : 'replica_pb2'
   # @@protoc_insertion_point(class_scope:rpc.DiskPrepareRemoveRequest)
-  ))
+  })
 _sym_db.RegisterMessage(DiskPrepareRemoveRequest)
 
-DiskPrepareRemoveReply = _reflection.GeneratedProtocolMessageType('DiskPrepareRemoveReply', (_message.Message,), dict(
-  DESCRIPTOR = _DISKPREPAREREMOVEREPLY,
-  __module__ = 'replica_pb2'
+DiskPrepareRemoveReply = _reflection.GeneratedProtocolMessageType('DiskPrepareRemoveReply', (_message.Message,), {
+  'DESCRIPTOR' : _DISKPREPAREREMOVEREPLY,
+  '__module__' : 'replica_pb2'
   # @@protoc_insertion_point(class_scope:rpc.DiskPrepareRemoveReply)
-  ))
+  })
 _sym_db.RegisterMessage(DiskPrepareRemoveReply)
 
-DiskMarkAsRemovedRequest = _reflection.GeneratedProtocolMessageType('DiskMarkAsRemovedRequest', (_message.Message,), dict(
-  DESCRIPTOR = _DISKMARKASREMOVEDREQUEST,
-  __module__ = 'replica_pb2'
+DiskMarkAsRemovedRequest = _reflection.GeneratedProtocolMessageType('DiskMarkAsRemovedRequest', (_message.Message,), {
+  'DESCRIPTOR' : _DISKMARKASREMOVEDREQUEST,
+  '__module__' : 'replica_pb2'
   # @@protoc_insertion_point(class_scope:rpc.DiskMarkAsRemovedRequest)
-  ))
+  })
 _sym_db.RegisterMessage(DiskMarkAsRemovedRequest)
 
-RebuildingSetRequest = _reflection.GeneratedProtocolMessageType('RebuildingSetRequest', (_message.Message,), dict(
-  DESCRIPTOR = _REBUILDINGSETREQUEST,
-  __module__ = 'replica_pb2'
+RebuildingSetRequest = _reflection.GeneratedProtocolMessageType('RebuildingSetRequest', (_message.Message,), {
+  'DESCRIPTOR' : _REBUILDINGSETREQUEST,
+  '__module__' : 'replica_pb2'
   # @@protoc_insertion_point(class_scope:rpc.RebuildingSetRequest)
-  ))
+  })
 _sym_db.RegisterMessage(RebuildingSetRequest)
 
-RevisionCounterSetRequest = _reflection.GeneratedProtocolMessageType('RevisionCounterSetRequest', (_message.Message,), dict(
-  DESCRIPTOR = _REVISIONCOUNTERSETREQUEST,
-  __module__ = 'replica_pb2'
+RevisionCounterSetRequest = _reflection.GeneratedProtocolMessageType('RevisionCounterSetRequest', (_message.Message,), {
+  'DESCRIPTOR' : _REVISIONCOUNTERSETREQUEST,
+  '__module__' : 'replica_pb2'
   # @@protoc_insertion_point(class_scope:rpc.RevisionCounterSetRequest)
-  ))
+  })
 _sym_db.RegisterMessage(RevisionCounterSetRequest)
 
-DiskInfo = _reflection.GeneratedProtocolMessageType('DiskInfo', (_message.Message,), dict(
+DiskInfo = _reflection.GeneratedProtocolMessageType('DiskInfo', (_message.Message,), {
 
-  ChildrenEntry = _reflection.GeneratedProtocolMessageType('ChildrenEntry', (_message.Message,), dict(
-    DESCRIPTOR = _DISKINFO_CHILDRENENTRY,
-    __module__ = 'replica_pb2'
+  'ChildrenEntry' : _reflection.GeneratedProtocolMessageType('ChildrenEntry', (_message.Message,), {
+    'DESCRIPTOR' : _DISKINFO_CHILDRENENTRY,
+    '__module__' : 'replica_pb2'
     # @@protoc_insertion_point(class_scope:rpc.DiskInfo.ChildrenEntry)
-    ))
+    })
   ,
 
-  LabelsEntry = _reflection.GeneratedProtocolMessageType('LabelsEntry', (_message.Message,), dict(
-    DESCRIPTOR = _DISKINFO_LABELSENTRY,
-    __module__ = 'replica_pb2'
+  'LabelsEntry' : _reflection.GeneratedProtocolMessageType('LabelsEntry', (_message.Message,), {
+    'DESCRIPTOR' : _DISKINFO_LABELSENTRY,
+    '__module__' : 'replica_pb2'
     # @@protoc_insertion_point(class_scope:rpc.DiskInfo.LabelsEntry)
-    ))
+    })
   ,
-  DESCRIPTOR = _DISKINFO,
-  __module__ = 'replica_pb2'
+  'DESCRIPTOR' : _DISKINFO,
+  '__module__' : 'replica_pb2'
   # @@protoc_insertion_point(class_scope:rpc.DiskInfo)
-  ))
+  })
 _sym_db.RegisterMessage(DiskInfo)
 _sym_db.RegisterMessage(DiskInfo.ChildrenEntry)
 _sym_db.RegisterMessage(DiskInfo.LabelsEntry)
 
-Replica = _reflection.GeneratedProtocolMessageType('Replica', (_message.Message,), dict(
+Replica = _reflection.GeneratedProtocolMessageType('Replica', (_message.Message,), {
 
-  DisksEntry = _reflection.GeneratedProtocolMessageType('DisksEntry', (_message.Message,), dict(
-    DESCRIPTOR = _REPLICA_DISKSENTRY,
-    __module__ = 'replica_pb2'
+  'DisksEntry' : _reflection.GeneratedProtocolMessageType('DisksEntry', (_message.Message,), {
+    'DESCRIPTOR' : _REPLICA_DISKSENTRY,
+    '__module__' : 'replica_pb2'
     # @@protoc_insertion_point(class_scope:rpc.Replica.DisksEntry)
-    ))
+    })
   ,
-  DESCRIPTOR = _REPLICA,
-  __module__ = 'replica_pb2'
+  'DESCRIPTOR' : _REPLICA,
+  '__module__' : 'replica_pb2'
   # @@protoc_insertion_point(class_scope:rpc.Replica)
-  ))
+  })
 _sym_db.RegisterMessage(Replica)
 _sym_db.RegisterMessage(Replica.DisksEntry)
 
-PrepareRemoveAction = _reflection.GeneratedProtocolMessageType('PrepareRemoveAction', (_message.Message,), dict(
-  DESCRIPTOR = _PREPAREREMOVEACTION,
-  __module__ = 'replica_pb2'
+PrepareRemoveAction = _reflection.GeneratedProtocolMessageType('PrepareRemoveAction', (_message.Message,), {
+  'DESCRIPTOR' : _PREPAREREMOVEACTION,
+  '__module__' : 'replica_pb2'
   # @@protoc_insertion_point(class_scope:rpc.PrepareRemoveAction)
-  ))
+  })
 _sym_db.RegisterMessage(PrepareRemoveAction)
 
 

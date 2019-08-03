@@ -45,6 +45,11 @@ class EngineManagerServiceStub(object):
         request_serializer=rpc__pb2.LogRequest.SerializeToString,
         response_deserializer=rpc__pb2.LogResponse.FromString,
         )
+    self.EngineWatch = channel.unary_stream(
+        '/EngineManagerService/EngineWatch',
+        request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+        response_deserializer=rpc__pb2.EngineResponse.FromString,
+        )
     self.FrontendStart = channel.unary_unary(
         '/EngineManagerService/FrontendStart',
         request_serializer=rpc__pb2.FrontendStartRequest.SerializeToString,
@@ -113,6 +118,13 @@ class EngineManagerServiceServicer(object):
     context.set_details('Method not implemented!')
     raise NotImplementedError('Method not implemented!')
 
+  def EngineWatch(self, request, context):
+    # missing associated documentation comment in .proto file
+    pass
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
   def FrontendStart(self, request, context):
     # missing associated documentation comment in .proto file
     pass
@@ -173,6 +185,11 @@ def add_EngineManagerServiceServicer_to_server(servicer, server):
           servicer.EngineLog,
           request_deserializer=rpc__pb2.LogRequest.FromString,
           response_serializer=rpc__pb2.LogResponse.SerializeToString,
+      ),
+      'EngineWatch': grpc.unary_stream_rpc_method_handler(
+          servicer.EngineWatch,
+          request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+          response_serializer=rpc__pb2.EngineResponse.SerializeToString,
       ),
       'FrontendStart': grpc.unary_unary_rpc_method_handler(
           servicer.FrontendStart,
@@ -235,6 +252,11 @@ class ProcessManagerServiceStub(object):
         request_serializer=rpc__pb2.LogRequest.SerializeToString,
         response_deserializer=rpc__pb2.LogResponse.FromString,
         )
+    self.ProcessWatch = channel.unary_stream(
+        '/ProcessManagerService/ProcessWatch',
+        request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+        response_deserializer=rpc__pb2.ProcessResponse.FromString,
+        )
 
 
 class ProcessManagerServiceServicer(object):
@@ -276,6 +298,13 @@ class ProcessManagerServiceServicer(object):
     context.set_details('Method not implemented!')
     raise NotImplementedError('Method not implemented!')
 
+  def ProcessWatch(self, request, context):
+    # missing associated documentation comment in .proto file
+    pass
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
 
 def add_ProcessManagerServiceServicer_to_server(servicer, server):
   rpc_method_handlers = {
@@ -303,6 +332,11 @@ def add_ProcessManagerServiceServicer_to_server(servicer, server):
           servicer.ProcessLog,
           request_deserializer=rpc__pb2.LogRequest.FromString,
           response_serializer=rpc__pb2.LogResponse.SerializeToString,
+      ),
+      'ProcessWatch': grpc.unary_stream_rpc_method_handler(
+          servicer.ProcessWatch,
+          request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+          response_serializer=rpc__pb2.ProcessResponse.SerializeToString,
       ),
   }
   generic_handler = grpc.method_handlers_generic_handler(
