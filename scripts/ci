@@ -3,6 +3,7 @@ set -e
 
 cd $(dirname $0)
 
+./prebuild
 ./build
 ./test
 ./validate
