@@ -33,7 +33,7 @@ func StartCmd() cli.Command {
 			},
 			cli.StringFlag{
 				Name:  "logs-dir",
-				Value: "./logs",
+				Value: "/var/log/instances",
 			},
 			cli.StringFlag{
 				Name:  "port-range",
