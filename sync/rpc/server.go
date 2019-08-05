@@ -41,6 +41,7 @@ type SyncAgentServer struct {
 	startPort       int
 	endPort         int
 	processesByPort map[int]string
+	isPurging       bool
 	isRestoring     bool
 	lastRestored    string
 	replicaAddress  string
@@ -769,6 +770,16 @@ func (s *SyncAgentServer) RestoreStatus(ctx context.Context, req *empty.Empty) (
 }
 
 func (s *SyncAgentServer) SnapshotPurge(ctx context.Context, req *empty.Empty) (*empty.Empty, error) {
+	if err := s.PreparePurge(); err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		if err := s.FinishPurge(); err != nil {
+			logrus.Errorf("could not mark finish purge: %v", err)
+		}
+	}()
+
 	var leaves []string
 
 	snapshotsInfo, err := s.getSnapshotsInfo()
@@ -828,6 +839,37 @@ func (s *SyncAgentServer) SnapshotPurge(ctx context.Context, req *empty.Empty) (
 	}
 
 	return &empty.Empty{}, nil
+}
+
+func (s *SyncAgentServer) PreparePurge() error {
+	s.Lock()
+	defer s.Unlock()
+
+	if s.isPurging {
+		return fmt.Errorf("replica is already purging snapshots")
+	}
+
+	s.isPurging = true
+	return nil
+}
+
+func (s *SyncAgentServer) FinishPurge() error {
+	s.Lock()
+	defer s.Unlock()
+
+	if !s.isPurging {
+		return fmt.Errorf("BUG: replica is not purging snapshots")
+	}
+
+	s.isPurging = false
+	return nil
+}
+
+func (s *SyncAgentServer) IsPurging() bool {
+	s.Lock()
+	defer s.Unlock()
+
+	return s.isPurging
 }
 
 func (s *SyncAgentServer) getSnapshotsInfo() (map[string]types.DiskInfo, error) {
