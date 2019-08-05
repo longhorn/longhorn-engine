@@ -97,11 +97,11 @@ func NewManager(portRange string, logsDir string, shutdownCh chan error) (*Manag
 
 		logsDir: logsDir,
 	}
-	go pm.StartMonitoring()
+	go pm.startMonitoring()
 	return pm, nil
 }
 
-func (pm *Manager) StartMonitoring() {
+func (pm *Manager) startMonitoring() {
 	for {
 		done := false
 		select {
