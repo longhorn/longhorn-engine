@@ -145,7 +145,7 @@ func (pm *Manager) ProcessCreate(ctx context.Context, req *rpc.ProcessCreateRequ
 	if err := pm.registerProcess(p); err != nil {
 		return nil, err
 	}
-
+	p.UpdateCh <- p
 	p.Start()
 
 	return p.RPCResponse(), nil
@@ -204,7 +204,6 @@ func (pm *Manager) registerProcess(p *Process) error {
 
 	p.UpdateCh = pm.processUpdateCh
 	pm.processes[p.Name] = p
-	p.UpdateCh <- p
 
 	return nil
 }

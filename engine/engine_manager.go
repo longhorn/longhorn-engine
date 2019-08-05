@@ -143,6 +143,7 @@ func (em *Manager) EngineCreate(ctx context.Context, req *rpc.EngineCreateReques
 	if err := em.registerEngineLauncher(el); err != nil {
 		return nil, errors.Wrapf(err, "failed to register engine launcher %v", el.LauncherName)
 	}
+	el.UpdateCh <- el
 	if err := el.createEngineProcess(newEngine, em.listen, em.processManager); err != nil {
 		go em.unregisterEngineLauncher(req.Spec.Name)
 		return nil, errors.Wrapf(err, "failed to start engine %v", req.Spec.Name)
@@ -170,7 +171,6 @@ func (em *Manager) registerEngineLauncher(el *Launcher) error {
 	em.pStreamWrapper.AddLauncherStream(el.pUpdateCh)
 	el.UpdateCh = em.elUpdateCh
 	em.engineLaunchers[el.LauncherName] = el
-	el.UpdateCh <- el
 	return nil
 }
 

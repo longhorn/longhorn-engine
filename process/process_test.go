@@ -52,7 +52,7 @@ func (s *TestSuite) TearDownSuite(c *C) {
 }
 
 func (s *TestSuite) TestCRUD(c *C) {
-	count := 1
+	count := 100
 	wg := &sync.WaitGroup{}
 	pw := &ProcessWatcher{}
 	ctx := context.TODO()
