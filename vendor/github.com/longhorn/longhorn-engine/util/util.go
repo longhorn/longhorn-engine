@@ -9,7 +9,9 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"regexp"
+	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
@@ -20,13 +22,14 @@ import (
 	uuid "github.com/satori/go.uuid"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
+
+	"github.com/longhorn/longhorn-engine/types"
 )
 
 var (
 	MaximumVolumeNameSize = 64
 	parsePattern          = regexp.MustCompile(`(.*):(\d+)`)
 	validVolumeName       = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.-]+$`)
-	validLabelValue       = regexp.MustCompile(`^[a-zA-Z0-9_.\-/:]+$`)
 
 	cmdTimeout = time.Minute // one minute by default
 
@@ -37,10 +40,10 @@ const (
 	BlockSizeLinux = 512
 )
 
-func ParseAddresses(name string) (string, string, string, error) {
+func ParseAddresses(name string) (string, string, string, int, error) {
 	matches := parsePattern.FindStringSubmatch(name)
 	if matches == nil {
-		return "", "", "", fmt.Errorf("Invalid address %s does not match pattern: %v", name, parsePattern)
+		return "", "", "", 0, fmt.Errorf("Invalid address %s does not match pattern: %v", name, parsePattern)
 	}
 
 	host := matches[1]
@@ -48,7 +51,8 @@ func ParseAddresses(name string) (string, string, string, error) {
 
 	return fmt.Sprintf("%s:%d", host, port),
 		fmt.Sprintf("%s:%d", host, port+1),
-		fmt.Sprintf("%s:%d", host, port+2), nil
+		fmt.Sprintf("%s:%d", host, port+2),
+		port + 2, nil
 }
 
 func GetGRPCAddress(address string) string {
@@ -193,10 +197,6 @@ func ValidVolumeName(name string) bool {
 	return validVolumeName.MatchString(name)
 }
 
-func ValidLabelValue(name string) bool {
-	return validLabelValue.MatchString(name)
-}
-
 func Volume2ISCSIName(name string) string {
 	return strings.Replace(name, "_", ":", -1)
 }
@@ -217,18 +217,19 @@ func GetFileActualSize(file string) int64 {
 func ParseLabels(labels []string) (map[string]string, error) {
 	result := map[string]string{}
 	for _, label := range labels {
-		kv := strings.Split(label, "=")
+		kv := strings.SplitN(label, "=", 2)
 		if len(kv) != 2 {
-			return nil, fmt.Errorf("Invalid label not in <key>=<value> format %v", label)
+			return nil, fmt.Errorf("invalid label not in <key>=<value> format %v", label)
 		}
 		key := kv[0]
 		value := kv[1]
-		//Well, we should rename that ValidVolumeName
-		if !ValidVolumeName(key) {
-			return nil, fmt.Errorf("Invalid key %v for label %v", key, label)
+		if errList := IsQualifiedName(key); len(errList) > 0 {
+			return nil, fmt.Errorf("invalid key %v for label: %v", key, errList[0])
 		}
-		if !ValidLabelValue(value) {
-			return nil, fmt.Errorf("Invalid value %v for label %v", value, label)
+		// We don't need to validate the Label value since we're allowing for any form of data to be stored, similar
+		// to Kubernetes Annotations. Of course, we should make sure it isn't empty.
+		if value == "" {
+			return nil, fmt.Errorf("invalid empty value for label with key %v", key)
 		}
 		result[key] = value
 	}
@@ -306,6 +307,28 @@ func CheckBackupType(backupTarget string) (string, error) {
 	return u.Scheme, nil
 }
 
+func GetBackupCredential(backupURL string) (map[string]string, error) {
+	credential := map[string]string{}
+	backupType, err := CheckBackupType(backupURL)
+	if err != nil {
+		return nil, err
+	}
+	if backupType == "s3" {
+		accessKey := os.Getenv(types.AWSAccessKey)
+		if accessKey == "" {
+			return nil, fmt.Errorf("missing environment variable AWS_ACCESS_KEY_ID for s3 backup")
+		}
+		secretKey := os.Getenv(types.AWSSecretKey)
+		if secretKey == "" {
+			return nil, fmt.Errorf("missing environment variable AWS_SECRET_ACCESS_KEY for s3 backup")
+		}
+		credential[types.AWSAccessKey] = accessKey
+		credential[types.AWSSecretKey] = secretKey
+		credential[types.AWSEndPoint] = os.Getenv(types.AWSEndPoint)
+	}
+	return credential, nil
+}
+
 func ResolveBackingFilepath(fileOrDirpath string) (string, error) {
 	fileOrDir, err := os.Open(fileOrDirpath)
 	if err != nil {
@@ -337,4 +360,8 @@ func ResolveBackingFilepath(fileOrDirpath string) (string, error) {
 
 func GetInitiatorNS() string {
 	return iutil.GetHostNamespacePath(HostProc)
+}
+
+func GetFunctionName(i interface{}) string {
+	return runtime.FuncForPC(reflect.ValueOf(i).Pointer()).Name()
 }

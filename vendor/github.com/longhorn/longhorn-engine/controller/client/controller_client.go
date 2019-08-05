@@ -2,7 +2,6 @@ package client
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/golang/protobuf/ptypes/empty"
@@ -189,46 +188,6 @@ func (c *ControllerClient) VolumeFrontendShutdown() error {
 	return nil
 }
 
-func (c *ControllerClient) VolumePrepareRestore(lastRestored string) error {
-	conn, err := grpc.Dial(c.grpcAddress, grpc.WithInsecure())
-	if err != nil {
-		return fmt.Errorf("cannot connect to ControllerService %v: %v", c.grpcAddress, err)
-	}
-	defer conn.Close()
-	controllerServiceClient := contollerpb.NewControllerServiceClient(conn)
-
-	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
-	defer cancel()
-
-	if _, err := controllerServiceClient.VolumePrepareRestore(ctx, &contollerpb.VolumePrepareRestoreRequest{
-		LastRestored: lastRestored,
-	}); err != nil {
-		return fmt.Errorf("failed to prepare restoring for volume %v: %v", c.grpcAddress, err)
-	}
-
-	return nil
-}
-
-func (c *ControllerClient) VolumeFinishRestore(currentRestored string) error {
-	conn, err := grpc.Dial(c.grpcAddress, grpc.WithInsecure())
-	if err != nil {
-		return fmt.Errorf("cannot connect to ControllerService %v: %v", c.grpcAddress, err)
-	}
-	defer conn.Close()
-	controllerServiceClient := contollerpb.NewControllerServiceClient(conn)
-
-	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
-	defer cancel()
-
-	if _, err := controllerServiceClient.VolumeFinishRestore(ctx, &contollerpb.VolumeFinishRestoreRequest{
-		CurrentRestored: currentRestored,
-	}); err != nil {
-		return fmt.Errorf("failed to finish restoring for volume %v: %v", c.grpcAddress, err)
-	}
-
-	return nil
-}
-
 func (c *ControllerClient) ReplicaList() ([]*types.ControllerReplicaInfo, error) {
 	conn, err := grpc.Dial(c.grpcAddress, grpc.WithInsecure())
 	if err != nil {
@@ -397,28 +356,6 @@ func (c *ControllerClient) JournalList(limit int) error {
 	return nil
 }
 
-func (c *ControllerClient) PortUpdate(port int) error {
-	conn, err := grpc.Dial(c.grpcAddress, grpc.WithInsecure())
-	if err != nil {
-		return fmt.Errorf("cannot connect to ControllerService %v: %v", c.grpcAddress, err)
-	}
-	defer conn.Close()
-	controllerServiceClient := contollerpb.NewControllerServiceClient(conn)
-
-	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
-	defer cancel()
-
-	if _, err := controllerServiceClient.PortUpdate(ctx, &contollerpb.PortUpdateRequest{
-		Port: int32(port),
-	}); err != nil {
-		if !strings.Contains(err.Error(), "transport is closing") {
-			return fmt.Errorf("failed to update port to %v for volume %v: %v", port, c.grpcAddress, err)
-		}
-	}
-
-	return nil
-}
-
 func (c *ControllerClient) VersionDetailGet() (*meta.VersionOutput, error) {
 	conn, err := grpc.Dial(c.grpcAddress, grpc.WithInsecure())
 	if err != nil {
@@ -469,6 +406,66 @@ func (c *ControllerClient) Check() error {
 
 	if reply.Status != healthpb.HealthCheckResponse_SERVING {
 		return fmt.Errorf("gRPC controller server is not serving")
+	}
+
+	return nil
+}
+
+func (c *ControllerClient) BackupReplicaMappingCreate(backupID string, replicaAddress string) error {
+	conn, err := grpc.Dial(c.grpcAddress, grpc.WithInsecure())
+	if err != nil {
+		return fmt.Errorf("cannot connect to ControllerService %v: %v", c.grpcAddress, err)
+	}
+	defer conn.Close()
+	controllerServiceClient := contollerpb.NewControllerServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
+	defer cancel()
+
+	if _, err := controllerServiceClient.BackupReplicaMappingCreate(ctx, &contollerpb.BackupReplicaMapping{
+		Backup:         backupID,
+		ReplicaAddress: replicaAddress,
+	}); err != nil {
+		return fmt.Errorf("failed to store replica %v for backup %v: %v", replicaAddress, backupID, err)
+	}
+
+	return nil
+}
+
+func (c *ControllerClient) BackupReplicaMappingGet() (map[string]string, error) {
+	conn, err := grpc.Dial(c.grpcAddress, grpc.WithInsecure())
+	if err != nil {
+		return nil, fmt.Errorf("cannot connect to ControllerService %v: %v", c.grpcAddress, err)
+	}
+	defer conn.Close()
+	controllerServiceClient := contollerpb.NewControllerServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
+	defer cancel()
+
+	br, err := controllerServiceClient.BackupReplicaMappingGet(ctx, &empty.Empty{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get backup replica mapping: %v", err)
+	}
+
+	return br.BackupReplicaMap, nil
+}
+
+func (c *ControllerClient) BackupReplicaMappingDelete(backupID string) error {
+	conn, err := grpc.Dial(c.grpcAddress, grpc.WithInsecure())
+	if err != nil {
+		return fmt.Errorf("cannot connect to ControllerService %v: %v", c.grpcAddress, err)
+	}
+	defer conn.Close()
+	controllerServiceClient := contollerpb.NewControllerServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
+	defer cancel()
+
+	if _, err := controllerServiceClient.BackupReplicaMappingDelete(ctx, &contollerpb.BackupReplicaMappingDeleteRequest{
+		Backup: backupID,
+	}); err != nil {
+		return fmt.Errorf("failed to delete backup %v: %v", backupID, err)
 	}
 
 	return nil

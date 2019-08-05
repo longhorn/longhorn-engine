@@ -12,8 +12,6 @@ service ControllerService {
     rpc VolumeRevert(VolumeRevertRequest) returns (Volume);
     rpc VolumeFrontendStart(VolumeFrontendStartRequest) returns (Volume);
     rpc VolumeFrontendShutdown(google.protobuf.Empty) returns (Volume);
-    rpc VolumePrepareRestore(VolumePrepareRestoreRequest) returns (Volume);
-    rpc VolumeFinishRestore(VolumeFinishRestoreRequest) returns (Volume);
 
     rpc ReplicaList(google.protobuf.Empty) returns (ReplicaListReply);
     rpc ReplicaGet(ReplicaAddress) returns (ControllerReplica);
@@ -23,9 +21,11 @@ service ControllerService {
     rpc ReplicaPrepareRebuild(ReplicaAddress) returns (ReplicaPrepareRebuildReply);
     rpc ReplicaVerifyRebuild(ReplicaAddress) returns (ControllerReplica);
 
-    rpc JournalList(JournalListRequest) returns (google.protobuf.Empty);
+    rpc BackupReplicaMappingCreate(BackupReplicaMapping) returns (google.protobuf.Empty);
+    rpc BackupReplicaMappingGet(google.protobuf.Empty) returns (BackupReplicaMap);
+    rpc BackupReplicaMappingDelete(BackupReplicaMappingDeleteRequest) returns (google.protobuf.Empty);
 
-    rpc PortUpdate(PortUpdateRequest) returns (google.protobuf.Empty);
+    rpc JournalList(JournalListRequest) returns (google.protobuf.Empty);
 
     rpc VersionDetailGet(google.protobuf.Empty) returns(VersionDetailGetReply);
 
@@ -99,10 +99,6 @@ message JournalListRequest {
     int64 limit = 1;
 }
 
-message PortUpdateRequest {
-    int32 port = 1;
-}
-
 message VersionOutput {
     string version = 1;
     string gitCommit = 2;
@@ -130,4 +126,17 @@ message Metric {
 
 message MetricGetReply {
     Metric metric = 1;
+}
+
+message BackupReplicaMapping {
+    string backup = 1;
+    string replicaAddress = 2;
+}
+
+message BackupReplicaMap {
+    map <string,string> backupReplicaMap = 1;
+}
+
+message BackupReplicaMappingDeleteRequest {
+    string backup = 1;
 }
