@@ -29,6 +29,13 @@ func generateUUID() string {
 	return uuid.NewV4().String()
 }
 
+type ProcessWatcher struct{}
+
+func (pw *ProcessWatcher) Send(resp *rpc.ProcessResponse) error {
+	//Do nothing for now, just act as the receiving end
+	return nil
+}
+
 func (s *TestSuite) SetUpSuite(c *C) {
 	var err error
 
@@ -47,14 +54,17 @@ func (s *TestSuite) TearDownSuite(c *C) {
 func (s *TestSuite) TestCRUD(c *C) {
 	count := 1
 	wg := &sync.WaitGroup{}
+	pw := &ProcessWatcher{}
+	ctx := context.TODO()
 	for i := 0; i < count; i++ {
 		wg.Add(1)
 		go func(i int) {
 			defer wg.Done()
-			ctx := context.TODO()
 			name := "test_crud_process-" + strconv.Itoa(i)
 			binary := "any"
 			uuid := generateUUID()
+			go s.pm.doProcessWatch(pw)
+
 			createReq := &rpc.ProcessCreateRequest{
 				Spec: &rpc.ProcessSpec{
 					Uuid:      uuid,
@@ -65,7 +75,6 @@ func (s *TestSuite) TestCRUD(c *C) {
 					PortArgs:  nil,
 				},
 			}
-
 			_, err := s.pm.ProcessCreate(ctx, createReq)
 			c.Assert(err, IsNil)
 
@@ -85,7 +94,6 @@ func (s *TestSuite) TestCRUD(c *C) {
 			deleteReq := &rpc.ProcessDeleteRequest{
 				Name: name,
 			}
-
 			deleteResp, err := s.pm.ProcessDelete(ctx, deleteReq)
 			c.Assert(err, IsNil)
 			c.Assert(deleteResp.Deleted, Equals, true)
