@@ -291,15 +291,7 @@ func (pm *Manager) ProcessLog(req *rpc.LogRequest, srv rpc.ProcessManagerService
 	return nil
 }
 
-func (pm *Manager) ProcessWatch(req *empty.Empty, srv rpc.ProcessManagerService_ProcessWatchServer) error {
-	return pm.doProcessWatch(srv)
-}
-
-type SenderProcessWatch interface {
-	Send(*rpc.ProcessResponse) error
-}
-
-func (pm *Manager) doProcessWatch(srv SenderProcessWatch) (err error) {
+func (pm *Manager) ProcessWatch(req *empty.Empty, srv rpc.ProcessManagerService_ProcessWatchServer) (err error) {
 	responseChan := make(chan *rpc.ProcessResponse)
 	stopCh := make(chan struct{})
 	pm.lock.Lock()

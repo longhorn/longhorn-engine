@@ -9,7 +9,7 @@ import (
 
 	"github.com/satori/go.uuid"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 
 	"github.com/longhorn/longhorn-instance-manager/rpc"
 	"github.com/longhorn/longhorn-instance-manager/types"
@@ -36,7 +36,9 @@ func generateUUID() string {
 	return uuid.NewV4().String()
 }
 
-type ProcessWatcher struct{}
+type ProcessWatcher struct {
+	grpc.ServerStream
+}
 
 func (pw *ProcessWatcher) Send(resp *rpc.ProcessResponse) error {
 	//Do nothing for now, just act as the receiving end
@@ -63,7 +65,6 @@ func (s *TestSuite) TestCRUD(c *C) {
 	count := 100
 	wg := &sync.WaitGroup{}
 	pw := &ProcessWatcher{}
-	ctx := context.TODO()
 	for i := 0; i < count; i++ {
 		wg.Add(1)
 		go func(i int) {
@@ -71,7 +72,7 @@ func (s *TestSuite) TestCRUD(c *C) {
 			name := "test_crud_process-" + strconv.Itoa(i)
 			binary := "any"
 			uuid := generateUUID()
-			go s.pm.doProcessWatch(pw)
+			go s.pm.ProcessWatch(nil, pw)
 
 			createReq := &rpc.ProcessCreateRequest{
 				Spec: &rpc.ProcessSpec{
@@ -83,13 +84,13 @@ func (s *TestSuite) TestCRUD(c *C) {
 					PortArgs:  nil,
 				},
 			}
-			createResp, err := s.pm.ProcessCreate(ctx, createReq)
+			createResp, err := s.pm.ProcessCreate(nil, createReq)
 			c.Assert(err, IsNil)
 			c.Assert(createResp.Status.State, Not(Equals), types.ProcessStateStopping)
 			c.Assert(createResp.Status.State, Not(Equals), types.ProcessStateStopped)
 			c.Assert(createResp.Status.State, Not(Equals), types.ProcessStateError)
 
-			getResp, err := s.pm.ProcessGet(ctx, &rpc.ProcessGetRequest{
+			getResp, err := s.pm.ProcessGet(nil, &rpc.ProcessGetRequest{
 				Name: name,
 			})
 			c.Assert(err, IsNil)
@@ -99,7 +100,7 @@ func (s *TestSuite) TestCRUD(c *C) {
 			c.Assert(getResp.Status.State, Not(Equals), types.ProcessStateStopped)
 			c.Assert(getResp.Status.State, Not(Equals), types.ProcessStateError)
 
-			listResp, err := s.pm.ProcessList(ctx, &rpc.ProcessListRequest{})
+			listResp, err := s.pm.ProcessList(nil, &rpc.ProcessListRequest{})
 			c.Assert(err, IsNil)
 			c.Assert(listResp.Processes[name], NotNil)
 			c.Assert(listResp.Processes[name].Spec.Uuid, Equals, uuid)
@@ -109,7 +110,7 @@ func (s *TestSuite) TestCRUD(c *C) {
 			c.Assert(listResp.Processes[name].Status.State, Not(Equals), types.ProcessStateError)
 
 			for j := 0; j < RetryCount; j++ {
-				getResp, err := s.pm.ProcessGet(ctx, &rpc.ProcessGetRequest{
+				getResp, err := s.pm.ProcessGet(nil, &rpc.ProcessGetRequest{
 					Name: name,
 				})
 				c.Assert(err, IsNil)
@@ -122,7 +123,7 @@ func (s *TestSuite) TestCRUD(c *C) {
 			deleteReq := &rpc.ProcessDeleteRequest{
 				Name: name,
 			}
-			deleteResp, err := s.pm.ProcessDelete(ctx, deleteReq)
+			deleteResp, err := s.pm.ProcessDelete(nil, deleteReq)
 			c.Assert(err, IsNil)
 			c.Assert(deleteResp.Deleted, Equals, true)
 			c.Assert(deleteResp.Status.State, Not(Equals), types.ProcessStateStarting)
