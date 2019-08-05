@@ -113,7 +113,11 @@ func (p *Process) Start() error {
 func (p *Process) RPCResponse() *rpc.ProcessResponse {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
-	logrus.Debugf("Process update: %v: state %v: Error: %v", p.Name, p.State, p.ErrorMsg)
+	if p.ErrorMsg == "" {
+		logrus.Debugf("Process update: %v: state %v", p.Name, p.State)
+	} else {
+		logrus.Debugf("Process update: %v: state %v: Error: %v", p.Name, p.State, p.ErrorMsg)
+	}
 	return &rpc.ProcessResponse{
 		Spec: &rpc.ProcessSpec{
 			Uuid:      p.UUID,
@@ -153,23 +157,25 @@ func (p *Process) Stop() {
 	cmd := p.cmd
 	p.lock.RUnlock()
 
-	if cmd == nil || !cmd.Started() {
-		logrus.Errorf("Process Manager: cmd of %v hasn't started, no need to stop", p.Name)
-		return
-	}
-
-	// no need for lock
-	logrus.Debugf("Process Manager: trying to stop process %v", p.Name)
-	cmd.Stop()
-	for i := 0; i < types.WaitCount; i++ {
-		if p.IsStopped() {
+	go func() {
+		if cmd == nil || !cmd.Started() {
+			logrus.Errorf("Process Manager: cmd of %v hasn't started, no need to stop", p.Name)
 			return
 		}
-		logrus.Infof("wait for process %v to shutdown", p.Name)
-		time.Sleep(types.WaitInterval)
-	}
-	logrus.Debugf("Process Manager: cannot graceful stop process %v in %v seconds, will kill the process", p.Name, types.WaitCount)
-	cmd.Kill()
+
+		// no need for lock
+		logrus.Debugf("Process Manager: trying to stop process %v", p.Name)
+		cmd.Stop()
+		for i := 0; i < types.WaitCount; i++ {
+			if p.IsStopped() {
+				return
+			}
+			logrus.Infof("wait for process %v to shutdown", p.Name)
+			time.Sleep(types.WaitInterval)
+		}
+		logrus.Debugf("Process Manager: cannot graceful stop process %v in %v seconds, will kill the process", p.Name, types.WaitCount)
+		cmd.Kill()
+	}()
 }
 
 func (p *Process) IsStopped() bool {

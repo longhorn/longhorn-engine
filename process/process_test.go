@@ -5,14 +5,21 @@ import (
 	"strconv"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/satori/go.uuid"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 
 	"github.com/longhorn/longhorn-instance-manager/rpc"
 	"github.com/longhorn/longhorn-instance-manager/types"
 
 	. "gopkg.in/check.v1"
+)
+
+const (
+	RetryCount    = 50
+	RetryInterval = 100 * time.Millisecond
 )
 
 func Test(t *testing.T) { TestingT(t) }
@@ -39,6 +46,7 @@ func (pw *ProcessWatcher) Send(resp *rpc.ProcessResponse) error {
 func (s *TestSuite) SetUpSuite(c *C) {
 	var err error
 
+	logrus.SetLevel(logrus.DebugLevel)
 	s.shutdownCh = make(chan error)
 
 	s.logDir = os.TempDir()
@@ -75,8 +83,11 @@ func (s *TestSuite) TestCRUD(c *C) {
 					PortArgs:  nil,
 				},
 			}
-			_, err := s.pm.ProcessCreate(ctx, createReq)
+			createResp, err := s.pm.ProcessCreate(ctx, createReq)
 			c.Assert(err, IsNil)
+			c.Assert(createResp.Status.State, Not(Equals), types.ProcessStateStopping)
+			c.Assert(createResp.Status.State, Not(Equals), types.ProcessStateStopped)
+			c.Assert(createResp.Status.State, Not(Equals), types.ProcessStateError)
 
 			getResp, err := s.pm.ProcessGet(ctx, &rpc.ProcessGetRequest{
 				Name: name,
@@ -84,12 +95,29 @@ func (s *TestSuite) TestCRUD(c *C) {
 			c.Assert(err, IsNil)
 			c.Assert(getResp.Spec.Uuid, Equals, uuid)
 			c.Assert(getResp.Spec.Name, Equals, name)
+			c.Assert(getResp.Status.State, Not(Equals), types.ProcessStateStopping)
+			c.Assert(getResp.Status.State, Not(Equals), types.ProcessStateStopped)
+			c.Assert(getResp.Status.State, Not(Equals), types.ProcessStateError)
 
 			listResp, err := s.pm.ProcessList(ctx, &rpc.ProcessListRequest{})
 			c.Assert(err, IsNil)
 			c.Assert(listResp.Processes[name], NotNil)
 			c.Assert(listResp.Processes[name].Spec.Uuid, Equals, uuid)
 			c.Assert(listResp.Processes[name].Spec.Name, Equals, name)
+			c.Assert(listResp.Processes[name].Status.State, Not(Equals), types.ProcessStateStopping)
+			c.Assert(listResp.Processes[name].Status.State, Not(Equals), types.ProcessStateStopped)
+			c.Assert(listResp.Processes[name].Status.State, Not(Equals), types.ProcessStateError)
+
+			for j := 0; j < RetryCount; j++ {
+				getResp, err := s.pm.ProcessGet(ctx, &rpc.ProcessGetRequest{
+					Name: name,
+				})
+				c.Assert(err, IsNil)
+				if getResp.Status.State == types.ProcessStateRunning {
+					break
+				}
+				time.Sleep(RetryInterval)
+			}
 
 			deleteReq := &rpc.ProcessDeleteRequest{
 				Name: name,
@@ -97,6 +125,9 @@ func (s *TestSuite) TestCRUD(c *C) {
 			deleteResp, err := s.pm.ProcessDelete(ctx, deleteReq)
 			c.Assert(err, IsNil)
 			c.Assert(deleteResp.Deleted, Equals, true)
+			c.Assert(deleteResp.Status.State, Not(Equals), types.ProcessStateStarting)
+			c.Assert(deleteResp.Status.State, Not(Equals), types.ProcessStateRunning)
+			c.Assert(deleteResp.Status.State, Not(Equals), types.ProcessStateError)
 		}(i)
 	}
 	wg.Wait()
