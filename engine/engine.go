@@ -1,17 +1,11 @@
 package engine
 
 import (
-	"strings"
-	"time"
-
-	"github.com/pkg/errors"
 	uuid "github.com/satori/go.uuid"
-	"github.com/sirupsen/logrus"
 
 	"github.com/longhorn/longhorn-engine/controller/client"
 
 	"github.com/longhorn/longhorn-instance-manager/rpc"
-	"github.com/longhorn/longhorn-instance-manager/util"
 )
 
 type Engine struct {
@@ -55,30 +49,4 @@ func (e *Engine) shutdownFrontend() error {
 	}
 
 	return nil
-}
-
-func (e *Engine) updatePort(newPort int) (string, error) {
-	controllerCli := client.NewControllerClient(e.Listen)
-	if err := controllerCli.PortUpdate(newPort); err != nil {
-		return "", err
-	}
-
-	addrParts := strings.Split(e.Listen, ":")
-	newListen := util.GetURL(addrParts[0], newPort)
-
-	controllerCli = client.NewControllerClient(newListen)
-	for i := 0; i < SwitchWaitCount; i++ {
-		if err := controllerCli.Check(); err == nil {
-			break
-		}
-		logrus.Infof("wait for engine controller to switch to %v", newListen)
-		time.Sleep(SwitchWaitInterval)
-	}
-	if err := controllerCli.Check(); err != nil {
-		return "", errors.Wrapf(err, "test connection to %v failed", newListen)
-	}
-
-	e.Listen = newListen
-
-	return newListen, nil
 }
