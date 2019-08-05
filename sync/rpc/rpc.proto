@@ -16,6 +16,7 @@ service SyncAgentService {
     rpc Reset(google.protobuf.Empty) returns (google.protobuf.Empty) {}
     rpc RestoreStatus(google.protobuf.Empty) returns (RestoreStatusReply) {}
     rpc SnapshotPurge(google.protobuf.Empty) returns (google.protobuf.Empty) {}
+    rpc SnapshotPurgeStatus(google.protobuf.Empty) returns (SnapshotPurgeStatusReply) {}
 }
 
 message FileRemoveRequest {
@@ -96,4 +97,11 @@ message RestoreStatusReply {
     string destFileName = 5;
     string state = 6;
     string backupURL = 7;
+}
+
+message SnapshotPurgeStatusReply {
+    bool isPurging = 1;
+    string error = 2;
+    int32 progress = 3;
+    string state = 4;
 }
