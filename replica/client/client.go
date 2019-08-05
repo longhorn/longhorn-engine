@@ -580,3 +580,22 @@ func (c *ReplicaClient) SnapshotPurge() error {
 
 	return nil
 }
+
+func (c *ReplicaClient) SnapshotPurgeStatus() (*syncagentrpc.SnapshotPurgeStatusReply, error) {
+	conn, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure())
+	if err != nil {
+		return nil, fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
+	}
+	defer conn.Close()
+
+	syncAgentServiceClient := syncagentrpc.NewSyncAgentServiceClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
+	defer cancel()
+
+	status, err := syncAgentServiceClient.SnapshotPurgeStatus(ctx, &empty.Empty{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get snapshot purge status: %v", err)
+	}
+
+	return status, nil
+}
