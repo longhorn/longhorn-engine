@@ -2,12 +2,9 @@ package process
 
 import (
 	"fmt"
-	"os/exec"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"github.com/golang/protobuf/ptypes/empty"
@@ -42,38 +39,8 @@ type Manager struct {
 	availablePorts *util.Bitmap
 
 	logsDir string
-}
 
-type State string
-
-const (
-	StateStarting = State(types.ProcessStateStarting)
-	StateRunning  = State(types.ProcessStateRunning)
-	StateStopping = State(types.ProcessStateStopping)
-	StateStopped  = State(types.ProcessStateStopped)
-	StateError    = State(types.ProcessStateError)
-)
-
-type Process struct {
-	UUID      string
-	Name      string
-	Binary    string
-	Args      []string
-	PortCount int32
-	PortArgs  []string
-
-	State     State
-	ErrorMsg  string
-	PortStart int32
-	PortEnd   int32
-
-	lock     *sync.RWMutex
-	cmd      *exec.Cmd
-	UpdateCh chan *Process
-
-	ResourceVersion int64
-
-	logger *util.LonghornWriter
+	Executor types.Executor
 }
 
 func NewManager(portRange string, logsDir string, shutdownCh chan error) (*Manager, error) {
@@ -96,6 +63,8 @@ func NewManager(portRange string, logsDir string, shutdownCh chan error) (*Manag
 		shutdownCh: shutdownCh,
 
 		logsDir: logsDir,
+
+		Executor: &types.BinaryExecutor{},
 	}
 	go pm.startMonitoring()
 	return pm, nil
@@ -172,6 +141,8 @@ func (pm *Manager) ProcessCreate(ctx context.Context, req *rpc.ProcessCreateRequ
 		lock: &sync.RWMutex{},
 
 		logger: logger,
+
+		executor: pm.Executor,
 	}
 
 	if err := pm.registerProcess(p); err != nil {
@@ -375,134 +346,6 @@ func (pm *Manager) releasePorts(start, end int32) error {
 		return fmt.Errorf("invalid start/end port %v %v", start, end)
 	}
 	return pm.availablePorts.ReleaseRange(start, end)
-}
-
-func (p *Process) Start() error {
-	binary, err := exec.LookPath(p.Binary)
-	if err != nil {
-		return err
-	}
-
-	binary, err = filepath.Abs(binary)
-	if err != nil {
-		return err
-	}
-
-	go func() {
-		p.lock.Lock()
-		p.ResourceVersion++
-		cmd := exec.Command(binary, p.Args...)
-		cmd.SysProcAttr = &syscall.SysProcAttr{
-			Pdeathsig: syscall.SIGKILL,
-		}
-		cmd.Stdout = p.logger
-		cmd.Stderr = p.logger
-		p.cmd = cmd
-		p.lock.Unlock()
-
-		if err := cmd.Run(); err != nil {
-			p.lock.Lock()
-			p.ResourceVersion++
-			p.State = StateError
-			p.ErrorMsg = err.Error()
-			logrus.Infof("Process Manager: process %v error out, error msg: %v", p.Name, p.ErrorMsg)
-			p.lock.Unlock()
-
-			p.UpdateCh <- p
-			return
-		}
-		p.lock.Lock()
-		p.ResourceVersion++
-		p.State = StateStopped
-		logrus.Infof("Process Manager: process %v stopped", p.Name)
-		p.lock.Unlock()
-
-		p.UpdateCh <- p
-	}()
-
-	go func() {
-		if p.PortStart != 0 {
-			address := util.GetURL("localhost", int(p.PortStart))
-			for i := 0; i < types.WaitCount; i++ {
-				if util.GRPCServiceReadinessProbe(address) {
-					p.lock.Lock()
-					p.ResourceVersion++
-					p.State = StateRunning
-					p.lock.Unlock()
-					p.UpdateCh <- p
-					return
-				}
-				logrus.Infof("wait for gRPC service of process %v to start", p.Name)
-				time.Sleep(types.WaitInterval)
-			}
-			// fail to start the process, then try to stop it.
-			if !p.IsStopped() {
-				p.Stop()
-			}
-		} else {
-			// Process Manager doesn't know the grpc address. directly set running state
-			p.lock.Lock()
-			p.ResourceVersion++
-			p.State = StateRunning
-			p.lock.Unlock()
-			p.UpdateCh <- p
-		}
-		return
-	}()
-
-	return nil
-}
-
-func (p *Process) RPCResponse() *rpc.ProcessResponse {
-	p.lock.RLock()
-	defer p.lock.RUnlock()
-	return &rpc.ProcessResponse{
-		Spec: &rpc.ProcessSpec{
-			Uuid:      p.UUID,
-			Name:      p.Name,
-			Binary:    p.Binary,
-			Args:      p.Args,
-			PortCount: p.PortCount,
-			PortArgs:  p.PortArgs,
-		},
-
-		Status: &rpc.ProcessStatus{
-			State:           string(p.State),
-			ErrorMsg:        p.ErrorMsg,
-			PortStart:       p.PortStart,
-			PortEnd:         p.PortEnd,
-			ResourceVersion: p.ResourceVersion,
-		},
-	}
-}
-
-func (p *Process) Stop() {
-	// We don't neeed lock here since cmd will deal with concurrency
-	logrus.Debugf("Process Manager: send SIGINT to stop process %v", p.Name)
-	p.lock.RLock()
-	cmdp := p.cmd.Process
-	p.lock.RUnlock()
-
-	if cmdp == nil {
-		logrus.Errorf("Process Manager: no process for cmd of %v", p.Name)
-		return
-	}
-	cmdp.Signal(syscall.SIGINT)
-	for i := 0; i < types.WaitCount; i++ {
-		if p.IsStopped() {
-			return
-		}
-		logrus.Infof("wait for process %v to shutdown", p.Name)
-		time.Sleep(types.WaitInterval)
-	}
-	logrus.Debugf("Process Manager: cannot graceful stop process %v in %v seconds, will send SIGKILL to force stopping it", p.Name, types.WaitCount)
-	cmdp.Signal(syscall.SIGKILL)
-}
-
-func (p *Process) IsStopped() bool {
-	p.lock.RLock()
-	defer p.lock.RUnlock()
-	return p.State == StateStopped || p.State == StateError
 }
 
 func ParsePortRange(portRange string) (int32, int32, error) {
