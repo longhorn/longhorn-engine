@@ -113,6 +113,7 @@ func (p *Process) Start() error {
 func (p *Process) RPCResponse() *rpc.ProcessResponse {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
+	logrus.Debugf("Process update: %v: state %v: Error: %v", p.Name, p.State, p.ErrorMsg)
 	return &rpc.ProcessResponse{
 		Spec: &rpc.ProcessSpec{
 			Uuid:      p.UUID,
@@ -134,6 +135,20 @@ func (p *Process) RPCResponse() *rpc.ProcessResponse {
 }
 
 func (p *Process) Stop() {
+	needStop := false
+	p.lock.Lock()
+	if p.State != StateStopping && p.State != StateStopped && p.State != StateError {
+		p.State = StateStopping
+		p.ResourceVersion++
+		needStop = true
+	}
+	p.lock.Unlock()
+
+	if !needStop {
+		return
+	}
+	p.UpdateCh <- p
+
 	p.lock.RLock()
 	cmd := p.cmd
 	p.lock.RUnlock()

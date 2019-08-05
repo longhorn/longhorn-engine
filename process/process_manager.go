@@ -85,9 +85,6 @@ func (pm *Manager) startMonitoring() {
 			logrus.Infof("Process Manager has closed all gRPC watchers")
 			break
 		case p := <-pm.processUpdateCh:
-			p.lock.RLock()
-			logrus.Infof("Process update: %v: state %v: Error: %v", p.Name, p.State, p.ErrorMsg)
-			p.lock.RUnlock()
 			resp := p.RPCResponse()
 			pm.lock.RLock()
 			// Modify response to indicate deletion.
@@ -162,13 +159,7 @@ func (pm *Manager) ProcessDelete(ctx context.Context, req *rpc.ProcessDeleteRequ
 		return nil, fmt.Errorf("cannot find process %v", req.Name)
 	}
 
-	p.lock.Lock()
-	p.ResourceVersion++
-	if p.State != StateStopping && p.State != StateStopped && p.State != StateError {
-		p.State = StateStopping
-		go p.Stop()
-	}
-	p.lock.Unlock()
+	p.Stop()
 
 	resp := p.RPCResponse()
 	resp.Deleted = true
