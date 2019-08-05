@@ -230,6 +230,25 @@ def shutdown_engine_frontend(engine_name,
     assert e.status.endpoint == ""
 
 
+def wait_for_purge_completion(url):
+    completed = 0
+    purge_status = {}
+    for x in range(RETRY_COUNTS):
+        completed = 0
+        purge_status = cmd.snapshot_purge_status(url)
+        for status in purge_status.values():
+            assert 'isPurging' in status.keys()
+            if not status['isPurging']:
+                assert status['progress'] == 100
+                completed += 1
+            assert 'error' in status.keys()
+            assert status['error'] == ''
+        if completed == len(purge_status):
+            break
+        time.sleep(RETRY_INTERVAL)
+    assert completed == len(purge_status)
+
+
 def wait_for_restore_completion(url, backup_url):
     completed = 0
     rs = {}
@@ -293,6 +312,7 @@ def rm_snaps(url, snaps):
     for s in snaps:
         cmd.snapshot_rm(url, s)
         cmd.snapshot_purge(url)
+        wait_for_purge_completion(url)
     snap_info_list = cmd.snapshot_info(url)
     for s in snaps:
         assert s not in snap_info_list

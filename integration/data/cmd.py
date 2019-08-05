@@ -56,6 +56,12 @@ def snapshot_purge(url):
     return subprocess.check_call(cmd)
 
 
+def snapshot_purge_status(url):
+    cmd = [_bin(), '--url', url, '--debug', 'snapshot', 'purge-status']
+    output = subprocess.check_output(cmd)
+    return json.loads(output)
+
+
 def backup_status(url, backupID):
     output = ""
     cmd = [_bin(), '--url', url, 'backup', 'status', backupID]

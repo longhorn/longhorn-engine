@@ -4,7 +4,7 @@ from common import (  # NOQA
     grpc_backing_controller, grpc_backing_replica1, grpc_backing_replica2,  # NOQA
     get_dev, get_backing_dev, read_dev,
     generate_random_data, read_from_backing_file,
-    Snapshot, snapshot_revert_with_frontend,
+    Snapshot, snapshot_revert_with_frontend, wait_for_purge_completion
 )
 from setting import (
     VOLUME_HEAD, ENGINE_NAME, ENGINE_BACKING_NAME,
@@ -70,6 +70,7 @@ def test_snapshot_rm_basic(grpc_controller,  # NOQA
 
     cmd.snapshot_rm(address, snap2.name)
     cmd.snapshot_purge(address)
+    wait_for_purge_completion(address)
 
     info = cmd.snapshot_info(address)
     assert len(info) == 3
@@ -133,6 +134,7 @@ def test_snapshot_rm_rolling(grpc_controller,  # NOQA
     cmd.snapshot_rm(address, snap1.name)
     # cannot do anything because it's the parent of volume head
     cmd.snapshot_purge(address)
+    wait_for_purge_completion(address)
 
     snap2 = Snapshot(dev, generate_random_data(existings),
                      address)
@@ -147,6 +149,7 @@ def test_snapshot_rm_rolling(grpc_controller,  # NOQA
     cmd.snapshot_rm(address, snap2.name)
     # this should trigger the deletion of snap1
     cmd.snapshot_purge(address)
+    wait_for_purge_completion(address)
 
     snap2.verify_checksum()
     snap1.verify_data()
@@ -180,6 +183,7 @@ def test_snapshot_rm_rolling(grpc_controller,  # NOQA
     # this should trigger the deletion of snap2 - snap4
     # and snap5 marked as removed
     cmd.snapshot_purge(address)
+    wait_for_purge_completion(address)
 
     info = cmd.snapshot_info(address)
     assert len(info) == 2
@@ -220,6 +224,7 @@ def test_snapshot_tree_basic(grpc_controller,  # NOQA
     cmd.snapshot_rm(address, snap["3b"])
     cmd.snapshot_rm(address, snap["3c"])
     cmd.snapshot_purge(address)
+    wait_for_purge_completion(address)
 
     # the result should looks like this
     # snap["0b"](r) -> snap["0c"]
