@@ -874,6 +874,18 @@ func (s *SyncAgentServer) SnapshotPurge(ctx context.Context, req *empty.Empty) (
 	return &empty.Empty{}, nil
 }
 
+func (s *SyncAgentServer) SnapshotPurgeStatus(ctx context.Context, req *empty.Empty) (*SnapshotPurgeStatusReply, error) {
+	s.PurgeStatus.RLock()
+	defer s.PurgeStatus.RUnlock()
+
+	return &SnapshotPurgeStatusReply{
+		Error:     s.PurgeStatus.Error,
+		IsPurging: s.IsPurging(),
+		Progress:  int32(s.PurgeStatus.Progress),
+		State:     string(s.PurgeStatus.State),
+	}, nil
+}
+
 func (s *SyncAgentServer) PreparePurge() error {
 	s.Lock()
 	defer s.Unlock()
