@@ -635,7 +635,7 @@ def get_backup_url(bin, url, backupID):
             rValue = backup['error']
             break
         else:
-            assert backup['state'] == "incomplete"
+            assert backup['state'] == "in_progress"
         time.sleep(1)
     return rValue
 
@@ -667,7 +667,7 @@ def restore_backup(engine_manager_client,  # NOQA
                 assert 'error' in status.keys()
                 assert status['error'] == ""
             else:
-                assert status['state'] == "incomplete"
+                assert status['state'] == "in_progress"
         if completed == len(rs):
             break
         time.sleep(RETRY_INTERVAL)

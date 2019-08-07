@@ -75,7 +75,7 @@ def backup_status(url, backupID):
             output = backup['error']
             break
         else:
-            assert backup['state'] == "incomplete"
+            assert backup['state'] == "in_progress"
         time.sleep(RETRY_INTERVAL)
     return output
 

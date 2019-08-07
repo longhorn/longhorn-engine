@@ -248,7 +248,7 @@ def wait_for_restore_completion(url, backup_url):
                 assert 'error' in status.keys()
                 assert status['error'] == ""
             else:
-                assert status['state'] == "incomplete"
+                assert status['state'] == "in_progress"
         if completed == len(rs):
             break
         time.sleep(RETRY_INTERVAL)
