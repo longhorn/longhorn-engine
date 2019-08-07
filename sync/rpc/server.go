@@ -48,6 +48,7 @@ type SyncAgentServer struct {
 
 	BackupList  *BackupList
 	RestoreInfo *replica.RestoreStatus
+	PurgeStatus *PurgeStatus
 }
 
 type BackupList struct {
@@ -58,6 +59,13 @@ type BackupList struct {
 type BackupInfo struct {
 	backupID     string
 	backupStatus *replica.BackupStatus
+}
+
+type PurgeStatus struct {
+	sync.RWMutex
+	Error    string
+	Progress int
+	State    types.ProcessState
 }
 
 func GetDiskInfo(info *replicarpc.DiskInfo) *types.DiskInfo {
@@ -88,6 +96,9 @@ func NewSyncAgentServer(startPort, endPort int, replicaAddress string) *SyncAgen
 		replicaAddress:  replicaAddress,
 
 		BackupList: &BackupList{
+			RWMutex: sync.RWMutex{},
+		},
+		PurgeStatus: &PurgeStatus{
 			RWMutex: sync.RWMutex{},
 		},
 	}
@@ -778,9 +789,14 @@ func (s *SyncAgentServer) SnapshotPurge(ctx context.Context, req *empty.Empty) (
 		var err error
 
 		defer func() {
+			s.PurgeStatus.Lock()
 			if err != nil {
-				logrus.Errorf("error occurred during snapshot purge: %v", err)
+				s.PurgeStatus.Error = err.Error()
+				s.PurgeStatus.State = types.ProcessStateError
+			} else {
+				s.PurgeStatus.State = types.ProcessStateComplete
 			}
+			s.PurgeStatus.Unlock()
 
 			if err := s.FinishPurge(); err != nil {
 				logrus.Errorf("could not mark finish purge: %v", err)
@@ -789,7 +805,7 @@ func (s *SyncAgentServer) SnapshotPurge(ctx context.Context, req *empty.Empty) (
 
 		var leaves []string
 
-		snapshotsInfo, err := s.getSnapshotsInfo()
+		snapshotsInfo, _, err := s.getSnapshotsInfo()
 		if err != nil {
 			return
 		}
@@ -809,12 +825,13 @@ func (s *SyncAgentServer) SnapshotPurge(ctx context.Context, req *empty.Empty) (
 			}
 		}
 
-		snapshotsInfo, err = s.getSnapshotsInfo()
+		snapshotsInfo, markedRemoved, err := s.getSnapshotsInfo()
 		if err != nil {
 			return
 		}
 
 		// We're tracing up from each leaf to the root
+		var removed int
 		for _, leaf := range leaves {
 			// Somehow the leaf was removed during the process
 			if _, ok := snapshotsInfo[leaf]; !ok {
@@ -836,15 +853,22 @@ func (s *SyncAgentServer) SnapshotPurge(ctx context.Context, req *empty.Empty) (
 					if err = s.processRemoveSnapshot(snapshot); err != nil {
 						return
 					}
+					removed++
 				}
 				snapshot = info.Parent
 			}
 			// Update snapshotInfo in case some nodes have been removed
-			snapshotsInfo, err = s.getSnapshotsInfo()
+			snapshotsInfo, _, err = s.getSnapshotsInfo()
 			if err != nil {
 				return
 			}
+			s.PurgeStatus.Lock()
+			s.PurgeStatus.Progress = int(float32(removed) / float32(markedRemoved) * 100)
+			s.PurgeStatus.Unlock()
 		}
+		s.PurgeStatus.Lock()
+		s.PurgeStatus.Progress = 100
+		s.PurgeStatus.Unlock()
 	}()
 
 	return &empty.Empty{}, nil
@@ -859,6 +883,13 @@ func (s *SyncAgentServer) PreparePurge() error {
 	}
 
 	s.isPurging = true
+
+	s.PurgeStatus.Lock()
+	s.PurgeStatus.Error = ""
+	s.PurgeStatus.Progress = 0
+	s.PurgeStatus.State = types.ProcessStateInProgress
+	s.PurgeStatus.Unlock()
+
 	return nil
 }
 
@@ -881,10 +912,10 @@ func (s *SyncAgentServer) IsPurging() bool {
 	return s.isPurging
 }
 
-func (s *SyncAgentServer) getSnapshotsInfo() (map[string]types.DiskInfo, error) {
+func (s *SyncAgentServer) getSnapshotsInfo() (map[string]types.DiskInfo, int, error) {
 	conn, err := grpc.Dial(s.replicaAddress, grpc.WithInsecure())
 	if err != nil {
-		return nil, fmt.Errorf("cannot connect to ReplicaService %v: %v", s.replicaAddress, err)
+		return nil, 0, fmt.Errorf("cannot connect to ReplicaService %v: %v", s.replicaAddress, err)
 	}
 	defer conn.Close()
 
@@ -894,7 +925,7 @@ func (s *SyncAgentServer) getSnapshotsInfo() (map[string]types.DiskInfo, error) 
 
 	r, err := replicaServiceClient.ReplicaGet(ctx, &empty.Empty{})
 	if err != nil {
-		return nil, err
+		return nil, 0, err
 	}
 
 	disks := make(map[string]types.DiskInfo)
@@ -906,13 +937,14 @@ func (s *SyncAgentServer) getSnapshotsInfo() (map[string]types.DiskInfo, error) 
 	}
 
 	newDisks := make(map[string]types.DiskInfo)
+	removedCount := 0
 	for name, disk := range disks {
 		snapshot := ""
 
 		if !replica.IsHeadDisk(name) {
 			snapshot, err = replica.GetSnapshotNameFromDiskName(name)
 			if err != nil {
-				return nil, err
+				return nil, 0, err
 			}
 		} else {
 			snapshot = VolumeHeadName
@@ -923,7 +955,7 @@ func (s *SyncAgentServer) getSnapshotsInfo() (map[string]types.DiskInfo, error) 
 			if !replica.IsHeadDisk(childDisk) {
 				child, err = replica.GetSnapshotNameFromDiskName(childDisk)
 				if err != nil {
-					return nil, err
+					return nil, 0, err
 				}
 			} else {
 				child = VolumeHeadName
@@ -934,9 +966,14 @@ func (s *SyncAgentServer) getSnapshotsInfo() (map[string]types.DiskInfo, error) 
 		if disk.Parent != "" {
 			parent, err = replica.GetSnapshotNameFromDiskName(disk.Parent)
 			if err != nil {
-				return nil, err
+				return nil, 0, err
 			}
 		}
+
+		if disk.Removed {
+			removedCount++
+		}
+
 		info := types.DiskInfo{
 			Name:        snapshot,
 			Parent:      parent,
@@ -950,7 +987,7 @@ func (s *SyncAgentServer) getSnapshotsInfo() (map[string]types.DiskInfo, error) 
 		newDisks[snapshot] = info
 	}
 
-	return newDisks, nil
+	return newDisks, removedCount, nil
 }
 
 func (s *SyncAgentServer) markSnapshotAsRemoved(snapshot string) error {
