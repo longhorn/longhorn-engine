@@ -12,7 +12,7 @@ service SyncAgentService {
     rpc BackupRemove(BackupRemoveRequest) returns (google.protobuf.Empty) {}
     rpc BackupRestore(BackupRestoreRequest) returns (google.protobuf.Empty) {}
     rpc BackupRestoreIncrementally(BackupRestoreIncrementallyRequest) returns (google.protobuf.Empty) {}
-    rpc BackupGetStatus(BackupProgressRequest) returns (BackupProgressReply) {}
+    rpc BackupGetStatus(BackupProgressRequest) returns (BackupStatusReply) {}
     rpc Reset(google.protobuf.Empty) returns (google.protobuf.Empty) {}
     rpc RestoreStatus(google.protobuf.Empty) returns (RestoreStatusReply) {}
 }
@@ -65,10 +65,10 @@ message BackupProgressRequest {
     string backup = 1;
 }
 
-message BackupProgressReply {
+message BackupStatusReply {
     int32 progress = 1;
     string backupURL = 2;
-    string backupError = 3;
+    string error = 3;
     string snapshotName = 4;
     string state = 5;
 }

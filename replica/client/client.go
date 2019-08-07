@@ -438,7 +438,7 @@ func (c *ReplicaClient) CreateBackup(snapshot, dest, volume string, labels []str
 	return reply.Backup, nil
 }
 
-func (c *ReplicaClient) GetBackupStatus(backupName string) (*syncagentrpc.BackupProgressReply, error) {
+func (c *ReplicaClient) GetBackupStatus(backupName string) (*syncagentrpc.BackupStatusReply, error) {
 	conn, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure())
 	if err != nil {
 		return nil, fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
