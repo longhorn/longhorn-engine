@@ -447,7 +447,7 @@ func (em *Manager) FrontendStartCallback(ctx context.Context, req *rpc.EngineReq
 
 	if !el.IsSCSIDeviceEnabled() {
 		tID, _, err = em.tIDAllocator.AllocateRange(1)
-		if err != nil || tID == 0 {
+		if err != nil {
 			return nil, fmt.Errorf("cannot get available tid for frontend start")
 		}
 	}

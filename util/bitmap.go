@@ -34,7 +34,7 @@ func (b *Bitmap) AllocateRange(count int32) (int32, int32, error) {
 	defer b.lock.Unlock()
 
 	if count <= 0 {
-		return 0, 0, nil
+		return 0, 0, fmt.Errorf("invalid request for non-positive counts: %v", count)
 	}
 	i := b.data.Iterator()
 	bStart := int32(0)
