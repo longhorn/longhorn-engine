@@ -630,3 +630,68 @@ func (el *Launcher) createDev() error {
 
 	return nil
 }
+
+func (el *Launcher) GetCurrentEngineName() string {
+	el.lock.RLock()
+	defer el.lock.RUnlock()
+	return el.currentEngine.EngineName
+}
+
+func (el *Launcher) IsSCSIDeviceEnabled() bool {
+	el.lock.RLock()
+	defer el.lock.RUnlock()
+	return el.scsiDevice != nil
+}
+
+func (el *Launcher) ValidateNameAndBinary(name, binary string) error {
+	el.lock.RLock()
+	defer el.lock.RUnlock()
+
+	if el.currentEngine.Binary == binary || el.LauncherName != name {
+		return fmt.Errorf("cannot upgrade with the same binary or the different engine")
+	}
+	return nil
+}
+
+func (el *Launcher) checkUpgradedEngineSocket() (err error) {
+	el.lock.RLock()
+	defer el.lock.RUnlock()
+
+	stopCh := make(chan struct{})
+	socketError := el.WaitForSocket(stopCh)
+	select {
+	case err = <-socketError:
+		if err != nil {
+			logrus.Errorf("error waiting for the socket %v", err)
+			err = errors.Wrapf(err, "error waiting for the socket")
+		}
+		break
+	}
+	close(stopCh)
+	close(socketError)
+
+	if err != nil {
+		return err
+	}
+
+	if err = el.ReloadSocketConnection(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (el *Launcher) IsUpgrading() bool {
+	el.lock.RLock()
+	defer el.lock.RUnlock()
+	return el.isUpgrading
+}
+
+func (el *Launcher) SetAndCheckIsDeleting() bool {
+	el.lock.Lock()
+	defer el.lock.Unlock()
+
+	old := el.isDeleting
+	el.isDeleting = true
+	return old
+}

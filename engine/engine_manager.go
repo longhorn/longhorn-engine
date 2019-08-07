@@ -17,6 +17,11 @@ import (
 	"github.com/longhorn/longhorn-instance-manager/util"
 )
 
+/* Lock order
+   1. Manager.lock
+   2. Launcher.lock
+*/
+
 type Manager struct {
 	lock           *sync.RWMutex
 	processManager rpc.ProcessManagerServiceServer
@@ -150,9 +155,7 @@ func (em *Manager) unregisterEngineLauncher(launcherName string) {
 	// Stop Process monitoring for the Engine update streaming.
 	em.pStreamWrapper.RemoveLauncherStream(el.pUpdateCh)
 
-	el.lock.RLock()
-	processName := el.currentEngine.EngineName
-	el.lock.RUnlock()
+	processName := el.GetCurrentEngineName()
 
 	for i := 0; i < types.WaitCount; i++ {
 		if _, err := em.processManager.ProcessGet(nil, &rpc.ProcessGetRequest{
@@ -175,14 +178,7 @@ func (em *Manager) unregisterEngineLauncher(launcherName string) {
 			return
 		}
 
-		el.lock.RLock()
-		needCleanup := false
-		if el.scsiDevice != nil {
-			needCleanup = true
-		}
-		el.lock.RUnlock()
-
-		if needCleanup {
+		if el.IsSCSIDeviceEnabled() {
 			logrus.Warnf("Engine Manager need to cleanup frontend before unregistering engine launcher %v", launcherName)
 			if err = em.cleanupFrontend(el); err != nil {
 				// cleanup failed. cannot unregister engine launcher.
@@ -214,14 +210,9 @@ func (em *Manager) EngineDelete(ctx context.Context, req *rpc.EngineRequest) (re
 	}
 	em.lock.Unlock()
 
-	el.lock.Lock()
-	processName := el.currentEngine.EngineName
-	deletionRequired := !el.isDeleting
-	el.isDeleting = true
-	el.lock.Unlock()
-
-	if deletionRequired {
-		if _, err = el.deleteEngine(em.processManager, processName); err != nil {
+	deleting := el.SetAndCheckIsDeleting()
+	if !deleting {
+		if _, err = el.deleteEngine(em.processManager, el.GetCurrentEngineName()); err != nil {
 			return nil, err
 		}
 
@@ -301,7 +292,7 @@ func (em *Manager) EngineUpgrade(ctx context.Context, req *rpc.EngineUpgradeRequ
 		return nil, errors.Wrapf(err, "failed to create upgrade engine %v", req.Spec.Name)
 	}
 
-	if err = em.checkUpgradedEngineSocket(el); err != nil {
+	if err = el.checkUpgradedEngineSocket(); err != nil {
 		return nil, errors.Wrapf(err, "failed to reload socket connection for new engine %v", req.Spec.Name)
 	}
 
@@ -327,18 +318,16 @@ func (em *Manager) EngineLog(req *rpc.LogRequest, srv rpc.EngineManagerService_E
 	logrus.Debugf("Engine Manager getting logs for engine %v", req.Name)
 
 	em.lock.RLock()
-	defer em.lock.RUnlock()
-
 	el, exists := em.engineLaunchers[req.Name]
+	em.lock.RUnlock()
+
 	if !exists {
 		return fmt.Errorf("cannot find engine %v", req.Name)
 	}
 
-	el.lock.RLock()
 	err := el.engineLog(&rpc.LogRequest{
-		Name: el.currentEngine.EngineName,
+		Name: el.GetCurrentEngineName(),
 	}, srv, em.processManager)
-	el.lock.RUnlock()
 	if err != nil {
 		return err
 	}
@@ -390,42 +379,11 @@ func (em *Manager) validateBeforeUpgrade(spec *rpc.EngineSpec) (*Launcher, error
 		return nil, fmt.Errorf("cannot find engine %v", spec.Name)
 	}
 
-	el.lock.RLock()
-	defer el.lock.RUnlock()
-
-	if el.currentEngine.Binary == spec.Binary || el.LauncherName != spec.Name {
-		return nil, fmt.Errorf("cannot upgrade with the same binary or the different engine")
+	if err := el.ValidateNameAndBinary(spec.Name, spec.Binary); err != nil {
+		return nil, err
 	}
 
 	return el, nil
-}
-
-func (em *Manager) checkUpgradedEngineSocket(el *Launcher) (err error) {
-	el.lock.RLock()
-	defer el.lock.RUnlock()
-
-	stopCh := make(chan struct{})
-	socketError := el.WaitForSocket(stopCh)
-	select {
-	case err = <-socketError:
-		if err != nil {
-			logrus.Errorf("error waiting for the socket %v", err)
-			err = errors.Wrapf(err, "error waiting for the socket")
-		}
-		break
-	}
-	close(stopCh)
-	close(socketError)
-
-	if err != nil {
-		return err
-	}
-
-	if err = el.ReloadSocketConnection(); err != nil {
-		return err
-	}
-
-	return nil
 }
 
 func (em *Manager) FrontendStart(ctx context.Context, req *rpc.FrontendStartRequest) (ret *empty.Empty, err error) {
@@ -482,21 +440,17 @@ func (em *Manager) FrontendStartCallback(ctx context.Context, req *rpc.EngineReq
 
 	tID := int32(0)
 
-	el.lock.RLock()
-	if el.isUpgrading {
-		el.lock.RUnlock()
+	if el.IsUpgrading() {
+		logrus.Infof("ignores the FrontendStartCallback since engine launcher %v is starting a new engine for engine upgrade", req.Name)
 		return &empty.Empty{}, nil
 	}
-	if el.scsiDevice == nil {
-		em.lock.Lock()
+
+	if !el.IsSCSIDeviceEnabled() {
 		tID, _, err = em.tIDAllocator.AllocateRange(1)
-		em.lock.Unlock()
 		if err != nil || tID == 0 {
-			el.lock.RUnlock()
 			return nil, fmt.Errorf("cannot get available tid for frontend start")
 		}
 	}
-	el.lock.RUnlock()
 
 	logrus.Debugf("Engine Manager allocated TID %v for frontend start callback", tID)
 
@@ -519,13 +473,10 @@ func (em *Manager) FrontendShutdownCallback(ctx context.Context, req *rpc.Engine
 		return nil, fmt.Errorf("cannot find engine %v", req.Name)
 	}
 
-	el.lock.RLock()
-	if el.isUpgrading {
-		el.lock.RUnlock()
-		logrus.Infof("ignores the callback since engine launcher %v is deleting old engine for engine upgrade", req.Name)
+	if el.IsUpgrading() {
+		logrus.Infof("Ignores the FrontendShutdownCallback since engine launcher %v is deleting old engine for engine upgrade", req.Name)
 		return &empty.Empty{}, nil
 	}
-	el.lock.RUnlock()
 
 	if err = em.cleanupFrontend(el); err != nil {
 		return nil, err
@@ -542,8 +493,6 @@ func (em *Manager) cleanupFrontend(el *Launcher) error {
 		return errors.Wrapf(err, "failed to callback for engine %v frontend shutdown", el.LauncherName)
 	}
 
-	em.lock.Lock()
-	defer em.lock.Unlock()
 	if err = em.tIDAllocator.ReleaseRange(int32(tID), int32(tID)); err != nil {
 		return errors.Wrapf(err, "failed to release tid for engine %v frontend shutdown", el.LauncherName)
 	}
