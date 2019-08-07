@@ -155,24 +155,18 @@ func (em *Manager) unregisterEngineLauncher(launcherName string) {
 	el.lock.RUnlock()
 
 	for i := 0; i < types.WaitCount; i++ {
-		el.lock.RLock()
-		_, err := em.processManager.ProcessGet(nil, &rpc.ProcessGetRequest{
+		if _, err := em.processManager.ProcessGet(nil, &rpc.ProcessGetRequest{
 			Name: processName,
-		})
-		el.lock.RUnlock()
-		if err != nil && strings.Contains(err.Error(), "cannot find process") {
+		}); err != nil && strings.Contains(err.Error(), "cannot find process") {
 			break
 		}
 		logrus.Infof("Engine Manager is waiting for engine %v to shutdown before unregistering the engine launcher", processName)
 		time.Sleep(types.WaitInterval)
 	}
 
-	el.lock.RLock()
-	_, err := em.processManager.ProcessGet(nil, &rpc.ProcessGetRequest{
+	if _, err := em.processManager.ProcessGet(nil, &rpc.ProcessGetRequest{
 		Name: processName,
-	})
-	el.lock.RUnlock()
-	if err != nil && strings.Contains(err.Error(), "cannot find process") {
+	}); err != nil && strings.Contains(err.Error(), "cannot find process") {
 		// cannot depend on engine process's callback to cleanup frontend. need to double check here
 		em.lock.RLock()
 		el, exists := em.engineLaunchers[launcherName]
