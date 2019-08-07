@@ -308,7 +308,7 @@ func (s *SyncAgentServer) BackupCreate(ctx context.Context, req *BackupCreateReq
 	return reply, nil
 }
 
-func (s *SyncAgentServer) BackupGetStatus(ctx context.Context, req *BackupProgressRequest) (*BackupProgressReply, error) {
+func (s *SyncAgentServer) BackupGetStatus(ctx context.Context, req *BackupProgressRequest) (*BackupStatusReply, error) {
 	if req.Backup == "" {
 		return nil, fmt.Errorf("bad request: empty backup name")
 	}
@@ -323,10 +323,10 @@ func (s *SyncAgentServer) BackupGetStatus(ctx context.Context, req *BackupProgre
 		return nil, fmt.Errorf("couldn't get snapshot name: %v", err)
 	}
 
-	reply := &BackupProgressReply{
+	reply := &BackupStatusReply{
 		Progress:     int32(replicaObj.Progress),
 		BackupURL:    replicaObj.BackupURL,
-		BackupError:  replicaObj.Error,
+		Error:        replicaObj.Error,
 		SnapshotName: snapshotName,
 		State:        string(replicaObj.State),
 	}

@@ -115,7 +115,7 @@ func (t *Task) FetchBackupStatus(backupID string, replicaIP string) (*BackupStat
 	info := &BackupStatusInfo{
 		Progress:     int(bs.Progress),
 		BackupURL:    bs.BackupURL,
-		Error:        bs.BackupError,
+		Error:        bs.Error,
 		SnapshotName: bs.SnapshotName,
 		State:        bs.State,
 	}

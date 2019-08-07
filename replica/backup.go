@@ -15,7 +15,7 @@ type ProgressState string
 const (
 	snapBlockSize = 2 << 20 // 2MiB
 
-	ProgressStateIncomplete = ProgressState("incomplete")
+	ProgressStateInProgress = ProgressState("in_progress")
 	ProgressStateComplete   = ProgressState("complete")
 	ProgressStateError      = ProgressState("error")
 )
@@ -48,7 +48,7 @@ func NewRestore(snapshotName, replicaAddress string) *RestoreStatus {
 	return &RestoreStatus{
 		replicaAddress: replicaAddress,
 		SnapshotName:   snapshotName,
-		State:          ProgressStateIncomplete,
+		State:          ProgressStateInProgress,
 	}
 }
 
@@ -85,7 +85,7 @@ type BackupStatus struct {
 func NewBackup(backingFile *BackingFile) *BackupStatus {
 	return &BackupStatus{
 		backingFile: backingFile,
-		State:       ProgressStateIncomplete,
+		State:       ProgressStateInProgress,
 	}
 }
 
