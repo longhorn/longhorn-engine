@@ -1,6 +1,9 @@
 package types
 
-import "io"
+import (
+	"io"
+	"strings"
+)
 
 const (
 	WO  = Mode("WO")
@@ -102,4 +105,8 @@ type Metrics struct {
 type RWMetrics struct {
 	Read  uint64
 	Write uint64
+}
+
+func IsAlreadyPurgingError(err error) bool {
+	return strings.Contains(err.Error(), "already purging")
 }

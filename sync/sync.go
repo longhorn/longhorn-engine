@@ -74,6 +74,12 @@ func (t *Task) PurgeSnapshots() error {
 		} else if ok {
 			return fmt.Errorf("cannot purge snapshots because %s is rebuilding", r.Address)
 		}
+
+		if ok, err := t.isPurging(r); err != nil {
+			return err
+		} else if ok {
+			return fmt.Errorf("cannot purge snapshots because %s is already purging snapshots", r.Address)
+		}
 	}
 
 	errorMap := sync.Map{}
@@ -163,6 +169,20 @@ func (t *Task) isRebuilding(replicaInController *types.ControllerReplicaInfo) (b
 	}
 
 	return replica.Rebuilding, nil
+}
+
+func (t *Task) isPurging(replicaInController *types.ControllerReplicaInfo) (bool, error) {
+	repClient, err := replicaClient.NewReplicaClient(replicaInController.Address)
+	if err != nil {
+		return false, err
+	}
+
+	status, err := repClient.SnapshotPurgeStatus()
+	if err != nil {
+		return false, err
+	}
+
+	return status.IsPurging, nil
 }
 
 func (t *Task) isDirty(replicaInController *types.ControllerReplicaInfo) (bool, error) {
