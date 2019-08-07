@@ -7,6 +7,10 @@ const (
 	RW  = Mode("RW")
 	ERR = Mode("ERR")
 
+	ProcessStateComplete   = ProcessState("complete")
+	ProcessStateError      = ProcessState("error")
+	ProcessStateInProgress = ProcessState("in_progress")
+
 	StateUp   = State("up")
 	StateDown = State("down")
 
@@ -60,6 +64,8 @@ type Server interface {
 }
 
 type Mode string
+
+type ProcessState string
 
 type State string
 
