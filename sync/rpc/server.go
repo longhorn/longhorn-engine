@@ -225,15 +225,6 @@ func (*SyncAgentServer) FileRename(ctx context.Context, req *FileRenameRequest) 
 	return &empty.Empty{}, nil
 }
 
-func (*SyncAgentServer) FileCoalesce(ctx context.Context, req *FileCoalesceRequest) (*empty.Empty, error) {
-	ops := NewPurgeStatus()
-	if err := sparse.FoldFile(req.FromFileName, req.ToFileName, ops); err != nil {
-		return nil, err
-	}
-
-	return &empty.Empty{}, nil
-}
-
 func (s *SyncAgentServer) FileSend(ctx context.Context, req *FileSendRequest) (*empty.Empty, error) {
 	args := []string{"ssync"}
 	if req.Host != "" {
