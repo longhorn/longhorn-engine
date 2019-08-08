@@ -349,27 +349,6 @@ func (c *ReplicaClient) RenameFile(oldFileName, newFileName string) error {
 	return nil
 }
 
-func (c *ReplicaClient) CoalesceFile(from, to string) error {
-	conn, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure())
-	if err != nil {
-		return fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
-	}
-	defer conn.Close()
-	syncAgentServiceClient := syncagentrpc.NewSyncAgentServiceClient(conn)
-
-	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceLongTimeout)
-	defer cancel()
-
-	if _, err := syncAgentServiceClient.FileCoalesce(ctx, &syncagentrpc.FileCoalesceRequest{
-		FromFileName: from,
-		ToFileName:   to,
-	}); err != nil {
-		return fmt.Errorf("failed to coalesce file %v to file %v: %v", from, to, err)
-	}
-
-	return nil
-}
-
 func (c *ReplicaClient) SendFile(from, host string, port int32) error {
 	conn, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure())
 	if err != nil {

@@ -5,7 +5,6 @@ import "google/protobuf/empty.proto";
 service SyncAgentService {
     rpc FileRemove(FileRemoveRequest) returns (google.protobuf.Empty) {}
     rpc FileRename(FileRenameRequest) returns (google.protobuf.Empty) {}
-    rpc FileCoalesce(FileCoalesceRequest) returns (google.protobuf.Empty) {}
     rpc FileSend(FileSendRequest) returns (google.protobuf.Empty) {}
     rpc ReceiverLaunch(ReceiverLaunchRequest) returns (ReceiverLaunchReply) {}
     rpc BackupCreate(BackupCreateRequest) returns (BackupCreateReply) {}
@@ -40,11 +39,6 @@ message FileSendRequest {
     string fromFileName = 1;
     string host = 2;
     int32 port =3;
-}
-
-message FileCoalesceRequest {
-    string fromFileName = 1;
-    string toFileName = 2;
 }
 
 message BackupCreateRequest {
