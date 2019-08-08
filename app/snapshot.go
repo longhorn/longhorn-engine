@@ -79,6 +79,12 @@ func SnapshotRmCmd() cli.Command {
 func SnapshotPurgeCmd() cli.Command {
 	return cli.Command{
 		Name: "purge",
+		Flags: []cli.Flag{
+			cli.BoolFlag{
+				Name:  "skip-if-in-progress",
+				Usage: "set to mute errors if replica is already purging",
+			},
+		},
 		Action: func(c *cli.Context) {
 			if err := purgeSnapshot(c); err != nil {
 				logrus.Fatalf("Error running purge snapshot command: %v", err)
@@ -182,9 +188,10 @@ func rmSnapshot(c *cli.Context) error {
 
 func purgeSnapshot(c *cli.Context) error {
 	url := c.GlobalString("url")
+	skip := c.Bool("skip-if-in-progress")
 	task := sync.NewTask(url)
 
-	if err := task.PurgeSnapshots(); err != nil {
+	if err := task.PurgeSnapshots(skip); err != nil {
 		return fmt.Errorf("Failed to purge snapshots: %v", err)
 	}
 

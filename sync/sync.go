@@ -62,7 +62,7 @@ func (t *Task) DeleteSnapshot(snapshot string) error {
 	return nil
 }
 
-func (t *Task) PurgeSnapshots() error {
+func (t *Task) PurgeSnapshots(skip bool) error {
 	replicas, err := t.client.ReplicaList()
 	if err != nil {
 		return err
@@ -78,6 +78,9 @@ func (t *Task) PurgeSnapshots() error {
 		if ok, err := t.isPurging(r); err != nil {
 			return err
 		} else if ok {
+			if skip {
+				return nil
+			}
 			return fmt.Errorf("cannot purge snapshots because %s is already purging snapshots", r.Address)
 		}
 	}
@@ -107,6 +110,9 @@ func (t *Task) PurgeSnapshots() error {
 	for _, r := range replicas {
 		if v, ok := errorMap.Load(r.Address); ok {
 			err = v.(error)
+			if skip && types.IsAlreadyPurgingError(err) {
+				continue
+			}
 			logrus.Errorf("replica %v failed to start snapshot purge: %v", r.Address, err)
 		}
 	}
