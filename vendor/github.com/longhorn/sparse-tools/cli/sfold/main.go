@@ -3,26 +3,16 @@ package sfold
 import (
 	"flag"
 	"fmt"
-	log "github.com/sirupsen/logrus"
 	"os"
-	"time"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/longhorn/sparse-tools/sparse"
 )
 
-const (
-	FoldFileUpdateInterval = 1 * time.Second
-)
+type FoldFileStub struct{}
 
-type FoldFileCLI struct {
-	err  error
-	done bool
-}
-
-func (f *FoldFileCLI) UpdateFoldFileProgress(progress int, done bool, err error) {
-	f.done = done
-	f.err = err
-}
+func (f *FoldFileStub) UpdateFoldFileProgress(progress int, done bool, err error) {}
 
 func Main() {
 	defaultNonVerboseLogLevel := log.DebugLevel // set if -verbose is false
@@ -59,26 +49,10 @@ Examples:
 		log.SetLevel(defaultNonVerboseLogLevel)
 	}
 
-	ops := &FoldFileCLI{}
+	ops := &FoldFileStub{}
 	err := sparse.FoldFile(srcPath, dstPath, ops)
 	if err != nil {
-		log.Errorf("error starting to fold file: %s to: %s, err:%v", srcPath, dstPath, err)
-		os.Exit(1)
-	}
-
-	doneChan := make(chan struct{})
-	go func() {
-		for {
-			if ops.done {
-				break
-			}
-			time.Sleep(FoldFileUpdateInterval)
-		}
-		close(doneChan)
-	}()
-	<-doneChan
-	if ops.err != nil {
-		log.Errorf("failed to fold file: %s to: %s, err: %v", srcPath, dstPath, ops.err)
+		log.Errorf("failed to fold file: %s to: %s, err: %v", srcPath, dstPath, err)
 		os.Exit(1)
 	}
 }
