@@ -145,10 +145,8 @@ func (em *Manager) registerEngineLauncher(el *Launcher) error {
 func (em *Manager) unregisterEngineLauncher(launcherName string) {
 	logrus.Debugf("Engine Manager starts to unregistered engine launcher %v", launcherName)
 
-	em.lock.RLock()
-	el, exists := em.engineLaunchers[launcherName]
-	em.lock.RUnlock()
-	if !exists {
+	el := em.getLauncher(launcherName)
+	if el == nil {
 		return
 	}
 
@@ -171,10 +169,8 @@ func (em *Manager) unregisterEngineLauncher(launcherName string) {
 		Name: processName,
 	}); err != nil && strings.Contains(err.Error(), "cannot find process") {
 		// cannot depend on engine process's callback to cleanup frontend. need to double check here
-		em.lock.RLock()
-		el, exists := em.engineLaunchers[launcherName]
-		em.lock.RUnlock()
-		if !exists {
+		el := em.getLauncher(launcherName)
+		if el == nil {
 			return
 		}
 
@@ -202,13 +198,10 @@ func (em *Manager) unregisterEngineLauncher(launcherName string) {
 func (em *Manager) EngineDelete(ctx context.Context, req *rpc.EngineRequest) (ret *rpc.EngineResponse, err error) {
 	logrus.Infof("Engine Manager starts to deleted engine %v", req.Name)
 
-	em.lock.Lock()
-	el, exists := em.engineLaunchers[req.Name]
-	if !exists {
-		em.lock.Unlock()
+	el := em.getLauncher(req.Name)
+	if el == nil {
 		return nil, fmt.Errorf("cannot find engine %v", req.Name)
 	}
-	em.lock.Unlock()
 
 	deleting := el.SetAndCheckIsDeleting()
 	if !deleting {
@@ -234,11 +227,8 @@ func (em *Manager) EngineDelete(ctx context.Context, req *rpc.EngineRequest) (re
 func (em *Manager) EngineGet(ctx context.Context, req *rpc.EngineRequest) (ret *rpc.EngineResponse, err error) {
 	logrus.Debugf("Engine Manager starts to get engine %v", req.Name)
 
-	em.lock.RLock()
-	defer em.lock.RUnlock()
-
-	el, exists := em.engineLaunchers[req.Name]
-	if !exists {
+	el := em.getLauncher(req.Name)
+	if el == nil {
 		return nil, fmt.Errorf("cannot find engine %v", req.Name)
 	}
 
@@ -317,18 +307,14 @@ func (em *Manager) EngineUpgrade(ctx context.Context, req *rpc.EngineUpgradeRequ
 func (em *Manager) EngineLog(req *rpc.LogRequest, srv rpc.EngineManagerService_EngineLogServer) error {
 	logrus.Debugf("Engine Manager getting logs for engine %v", req.Name)
 
-	em.lock.RLock()
-	el, exists := em.engineLaunchers[req.Name]
-	em.lock.RUnlock()
-
-	if !exists {
+	el := em.getLauncher(req.Name)
+	if el == nil {
 		return fmt.Errorf("cannot find engine %v", req.Name)
 	}
 
-	err := el.engineLog(&rpc.LogRequest{
+	if err := el.engineLog(&rpc.LogRequest{
 		Name: el.GetCurrentEngineName(),
-	}, srv, em.processManager)
-	if err != nil {
+	}, srv, em.processManager); err != nil {
 		return err
 	}
 
@@ -371,11 +357,8 @@ func (em *Manager) validateBeforeUpgrade(spec *rpc.EngineSpec) (*Launcher, error
 		return nil, errors.Wrap(err, "cannot find the binary to be upgraded")
 	}
 
-	em.lock.RLock()
-	defer em.lock.RUnlock()
-
-	el, exists := em.engineLaunchers[spec.Name]
-	if !exists {
+	el := em.getLauncher(spec.Name)
+	if el == nil {
 		return nil, fmt.Errorf("cannot find engine %v", spec.Name)
 	}
 
@@ -389,13 +372,10 @@ func (em *Manager) validateBeforeUpgrade(spec *rpc.EngineSpec) (*Launcher, error
 func (em *Manager) FrontendStart(ctx context.Context, req *rpc.FrontendStartRequest) (ret *empty.Empty, err error) {
 	logrus.Infof("Engine Manager starts to start frontend %v for engine %v", req.Frontend, req.Name)
 
-	em.lock.Lock()
-	el, exists := em.engineLaunchers[req.Name]
-	if !exists {
-		em.lock.Unlock()
+	el := em.getLauncher(req.Name)
+	if el == nil {
 		return nil, fmt.Errorf("cannot find engine %v", req.Name)
 	}
-	em.lock.Unlock()
 
 	// the controller will call back to engine manager later. be careful about deadlock
 	if err := el.startFrontend(req.Frontend); err != nil {
@@ -410,13 +390,10 @@ func (em *Manager) FrontendStart(ctx context.Context, req *rpc.FrontendStartRequ
 func (em *Manager) FrontendShutdown(ctx context.Context, req *rpc.EngineRequest) (ret *empty.Empty, err error) {
 	logrus.Infof("Engine Manager starts to shutdown frontend for engine %v", req.Name)
 
-	em.lock.Lock()
-	el, exists := em.engineLaunchers[req.Name]
-	if !exists {
-		em.lock.Unlock()
+	el := em.getLauncher(req.Name)
+	if el == nil {
 		return nil, fmt.Errorf("cannot find engine %v", req.Name)
 	}
-	em.lock.Unlock()
 
 	// the controller will call back to engine manager later. be careful about deadlock
 	if err := el.shutdownFrontend(); err != nil {
@@ -431,10 +408,8 @@ func (em *Manager) FrontendShutdown(ctx context.Context, req *rpc.EngineRequest)
 func (em *Manager) FrontendStartCallback(ctx context.Context, req *rpc.EngineRequest) (ret *empty.Empty, err error) {
 	logrus.Infof("Engine Manager starts to process FrontendStartCallback of engine %v", req.Name)
 
-	em.lock.RLock()
-	el, exists := em.engineLaunchers[req.Name]
-	em.lock.RUnlock()
-	if !exists {
+	el := em.getLauncher(req.Name)
+	if el == nil {
 		return nil, fmt.Errorf("cannot find engine %v", req.Name)
 	}
 
@@ -466,10 +441,8 @@ func (em *Manager) FrontendStartCallback(ctx context.Context, req *rpc.EngineReq
 func (em *Manager) FrontendShutdownCallback(ctx context.Context, req *rpc.EngineRequest) (ret *empty.Empty, err error) {
 	logrus.Infof("Engine Manager starts to process FrontendShutdownCallback of engine %v", req.Name)
 
-	em.lock.RLock()
-	el, exists := em.engineLaunchers[req.Name]
-	em.lock.RUnlock()
-	if !exists {
+	el := em.getLauncher(req.Name)
+	if el == nil {
 		return nil, fmt.Errorf("cannot find engine %v", req.Name)
 	}
 
@@ -499,4 +472,10 @@ func (em *Manager) cleanupFrontend(el *Launcher) error {
 
 	logrus.Debugf("Engine Manager released TID %v for frontend shutdown callback", tID)
 	return nil
+}
+
+func (em *Manager) getLauncher(name string) *Launcher {
+	em.lock.RLock()
+	defer em.lock.RUnlock()
+	return em.engineLaunchers[name]
 }
