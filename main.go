@@ -12,7 +12,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 
-	"github.com/longhorn/sparse-tools/cli/sfold"
 	"github.com/longhorn/sparse-tools/cli/ssync"
 
 	"github.com/longhorn/longhorn-engine/app"
@@ -29,7 +28,6 @@ var (
 func main() {
 	defer cleanup()
 	reexec.Register("ssync", ssync.Main)
-	reexec.Register("sfold", sfold.Main)
 
 	if !reexec.Init() {
 		longhornCli()

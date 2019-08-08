@@ -22,6 +22,7 @@ import (
 	replicarpc "github.com/longhorn/longhorn-engine/replica/rpc"
 	"github.com/longhorn/longhorn-engine/types"
 	"github.com/longhorn/longhorn-engine/util"
+	"github.com/longhorn/sparse-tools/sparse"
 )
 
 const (
@@ -66,6 +67,22 @@ type PurgeStatus struct {
 	Error    string
 	Progress int
 	State    types.ProcessState
+
+	processed int
+	total     int
+}
+
+func NewPurgeStatus() *PurgeStatus {
+	return &PurgeStatus{
+		// avoid possible division by zero
+		total: 1,
+	}
+}
+
+func (ps *PurgeStatus) UpdateFoldFileProgress(progress int, done bool, err error) {
+	ps.Lock()
+	ps.Progress = int((float32(ps.processed)/float32(ps.total) + float32(progress)/(float32(ps.total)*100)) * 100)
+	ps.Unlock()
 }
 
 func GetDiskInfo(info *replicarpc.DiskInfo) *types.DiskInfo {
@@ -209,19 +226,8 @@ func (*SyncAgentServer) FileRename(ctx context.Context, req *FileRenameRequest) 
 }
 
 func (*SyncAgentServer) FileCoalesce(ctx context.Context, req *FileCoalesceRequest) (*empty.Empty, error) {
-	cmd := reexec.Command("sfold", req.FromFileName, req.ToFileName)
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Pdeathsig: syscall.SIGKILL,
-	}
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Start(); err != nil {
-		return nil, err
-	}
-
-	logrus.Infof("Running %s %v", cmd.Path, cmd.Args)
-	if err := cmd.Wait(); err != nil {
-		logrus.Infof("Error running %s %v: %v", "sfold", cmd.Args, err)
+	ops := NewPurgeStatus()
+	if err := sparse.FoldFile(req.FromFileName, req.ToFileName, ops); err != nil {
 		return nil, err
 	}
 
@@ -701,11 +707,8 @@ func (s *SyncAgentServer) postIncrementalRestoreOperations(restoreStatus *replic
 
 	logrus.Infof("Cleaning up incremental restore by Coalescing and removing the file")
 	// coalesce delta file to snapshot/disk file
-	coalesceReq := &FileCoalesceRequest{
-		FromFileName: deltaFileName,
-		ToFileName:   restoreStatus.SnapshotDiskName,
-	}
-	if _, err := s.FileCoalesce(nil, coalesceReq); err != nil {
+	ops := NewPurgeStatus()
+	if err := sparse.FoldFile(deltaFileName, restoreStatus.SnapshotDiskName, ops); err != nil {
 		logrus.Errorf("Failed to coalesce %s on %s: %v", deltaFileName, restoreStatus.SnapshotDiskName, err)
 		return err
 	}
@@ -830,6 +833,10 @@ func (s *SyncAgentServer) SnapshotPurge(ctx context.Context, req *empty.Empty) (
 			return
 		}
 
+		s.PurgeStatus.Lock()
+		s.PurgeStatus.total = markedRemoved
+		s.PurgeStatus.Unlock()
+
 		// We're tracing up from each leaf to the root
 		var removed int
 		for _, leaf := range leaves {
@@ -854,6 +861,9 @@ func (s *SyncAgentServer) SnapshotPurge(ctx context.Context, req *empty.Empty) (
 						return
 					}
 					removed++
+					s.PurgeStatus.Lock()
+					s.PurgeStatus.processed = removed
+					s.PurgeStatus.Unlock()
 				}
 				snapshot = info.Parent
 			}
@@ -1044,11 +1054,7 @@ func (s *SyncAgentServer) processRemoveSnapshot(snapshot string) error {
 		switch op.Action {
 		case replica.OpCoalesce:
 			logrus.Infof("Coalescing %v to %v", op.Target, op.Source)
-			coalesceReq := &FileCoalesceRequest{
-				FromFileName: op.Target,
-				ToFileName:   op.Source,
-			}
-			if _, err := s.FileCoalesce(nil, coalesceReq); err != nil {
+			if err := sparse.FoldFile(op.Target, op.Source, s.PurgeStatus); err != nil {
 				logrus.Errorf("failed to coalesce %s on %s: %v", op.Target, op.Source, err)
 				return err
 			}
