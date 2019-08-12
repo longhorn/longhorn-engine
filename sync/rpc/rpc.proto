@@ -16,6 +16,7 @@ service SyncAgentService {
     rpc RestoreStatus(google.protobuf.Empty) returns (RestoreStatusReply) {}
     rpc SnapshotPurge(google.protobuf.Empty) returns (google.protobuf.Empty) {}
     rpc SnapshotPurgeStatus(google.protobuf.Empty) returns (SnapshotPurgeStatusReply) {}
+    rpc FileSync(FileSyncRequest) returns (google.protobuf.Empty) {}
 }
 
 message FileRemoveRequest {
@@ -100,3 +101,10 @@ message SnapshotPurgeStatusReply {
     int32 progress = 3;
     string state = 4;
 }
+
+message FileSyncRequest {
+    string fromServer = 1;
+    string toServer = 2;
+    repeated string disks = 3;
+}
+
