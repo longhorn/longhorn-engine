@@ -26,11 +26,11 @@ import (
 type Manager struct {
 	lock           *sync.RWMutex
 	processManager rpc.ProcessManagerServiceServer
-	pStreamWrapper *ProcessStreamWrapper
 	listen         string
 
-	broadcaster *broadcaster.Broadcaster
-	broadcastCh chan interface{}
+	broadcaster     *broadcaster.Broadcaster
+	broadcastCh     chan interface{}
+	processUpdateCh <-chan interface{}
 
 	elUpdateCh      chan *Launcher
 	shutdownCh      chan error
@@ -42,15 +42,15 @@ const (
 	MaxTgtTargetNumber = 4096
 )
 
-func NewEngineManager(pm rpc.ProcessManagerServiceServer, listen string, shutdownCh chan error) (*Manager, error) {
+func NewEngineManager(pm rpc.ProcessManagerServiceServer, processUpdateCh <-chan interface{}, listen string, shutdownCh chan error) (*Manager, error) {
 	em := &Manager{
 		lock:           &sync.RWMutex{},
 		processManager: pm,
-		pStreamWrapper: NewProcessStreamWrapper(),
 		listen:         listen,
 
-		broadcaster: &broadcaster.Broadcaster{},
-		broadcastCh: make(chan interface{}),
+		broadcaster:     &broadcaster.Broadcaster{},
+		broadcastCh:     make(chan interface{}),
+		processUpdateCh: processUpdateCh,
 
 		elUpdateCh:      make(chan *Launcher),
 		shutdownCh:      shutdownCh,
@@ -68,13 +68,6 @@ func NewEngineManager(pm rpc.ProcessManagerServiceServer, listen string, shutdow
 }
 
 func (em *Manager) StartMonitoring() {
-	go func() {
-		if err := em.processManager.ProcessWatch(nil, em.pStreamWrapper); err != nil {
-			logrus.Errorf("could not start process monitoring from engine manager: %v", err)
-			return
-		}
-		logrus.Infof("Stopped process update watch from engine manager")
-	}()
 	done := false
 	for {
 		select {
@@ -107,7 +100,7 @@ func (em *Manager) StartMonitoring() {
 func (em *Manager) EngineCreate(ctx context.Context, req *rpc.EngineCreateRequest) (ret *rpc.EngineResponse, err error) {
 	logrus.Infof("Engine Manager starts to create engine of volume %v", req.Spec.VolumeName)
 
-	el, newEngine := NewEngineLauncher(req.Spec)
+	el, newEngine := NewEngineLauncher(req.Spec, em.processUpdateCh)
 	if err := em.registerEngineLauncher(el); err != nil {
 		return nil, errors.Wrapf(err, "failed to register engine launcher %v", el.GetLauncherName())
 	}
@@ -136,7 +129,6 @@ func (em *Manager) registerEngineLauncher(el *Launcher) error {
 		return fmt.Errorf("engine launcher %v already exists", el.GetLauncherName())
 	}
 
-	em.pStreamWrapper.AddLauncherStream(el.pUpdateCh)
 	el.SetUpdateCh(em.elUpdateCh)
 	em.engineLaunchers[el.GetLauncherName()] = el
 	return nil
@@ -149,9 +141,6 @@ func (em *Manager) unregisterEngineLauncher(launcherName string) {
 	if el == nil {
 		return
 	}
-
-	// Stop Process monitoring for the Engine update streaming.
-	em.pStreamWrapper.RemoveLauncherStream(el.pUpdateCh)
 
 	processName := el.GetCurrentEngineName()
 

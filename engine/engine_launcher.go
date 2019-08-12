@@ -40,9 +40,8 @@ const (
 )
 
 type Launcher struct {
-	lock      *sync.RWMutex
-	pUpdateCh chan *rpc.ProcessResponse
-	UpdateCh  chan<- *Launcher
+	lock     *sync.RWMutex
+	UpdateCh chan<- *Launcher
 
 	UUID         string
 	LauncherName string
@@ -70,7 +69,7 @@ type Launcher struct {
 	isUpgrading bool
 }
 
-func NewEngineLauncher(spec *rpc.EngineSpec) (*Launcher, *Engine) {
+func NewEngineLauncher(spec *rpc.EngineSpec, processUpdateCh <-chan interface{}) (*Launcher, *Engine) {
 	el := &Launcher{
 		UUID:         spec.Uuid,
 		LauncherName: spec.Name,
@@ -87,15 +86,18 @@ func NewEngineLauncher(spec *rpc.EngineSpec) (*Launcher, *Engine) {
 		currentEngine: NewEngine(spec),
 		pendingEngine: nil,
 
-		lock:      &sync.RWMutex{},
-		pUpdateCh: make(chan *rpc.ProcessResponse),
+		lock: &sync.RWMutex{},
 	}
-	go el.StartMonitoring()
+	go el.StartMonitoring(processUpdateCh)
 	return el, el.currentEngine
 }
 
-func (el *Launcher) StartMonitoring() {
-	for p := range el.pUpdateCh {
+func (el *Launcher) StartMonitoring(processUpdateCh <-chan interface{}) {
+	for resp := range processUpdateCh {
+		p, ok := resp.(*rpc.ProcessResponse)
+		if !ok {
+			logrus.Errorf("BUG: engine launcher: cannot get ProcessResponse from channel")
+		}
 		if p.Spec.Name == el.currentEngine.EngineName {
 			el.UpdateCh <- el
 		}

@@ -287,8 +287,12 @@ func (pm *Manager) broadcastConnector() (chan interface{}, error) {
 	return pm.broadcastCh, nil
 }
 
+func (pm *Manager) Subscribe() (<-chan interface{}, error) {
+	return pm.broadcaster.Subscribe(context.TODO(), pm.broadcastConnector)
+}
+
 func (pm *Manager) ProcessWatch(req *empty.Empty, srv rpc.ProcessManagerService_ProcessWatchServer) (err error) {
-	responseChan, err := pm.broadcaster.Subscribe(context.TODO(), pm.broadcastConnector)
+	responseChan, err := pm.Subscribe()
 	if err != nil {
 		return err
 	}
