@@ -91,7 +91,7 @@ func (em *Manager) StartMonitoring() {
 
 			em.lock.RLock()
 			// Modify response to indicate deletion.
-			if _, exists := em.engineLaunchers[el.LauncherName]; !exists {
+			if _, exists := em.engineLaunchers[el.GetLauncherName()]; !exists {
 				resp.Deleted = true
 			}
 			em.lock.RUnlock()
@@ -109,9 +109,9 @@ func (em *Manager) EngineCreate(ctx context.Context, req *rpc.EngineCreateReques
 
 	el, newEngine := NewEngineLauncher(req.Spec)
 	if err := em.registerEngineLauncher(el); err != nil {
-		return nil, errors.Wrapf(err, "failed to register engine launcher %v", el.LauncherName)
+		return nil, errors.Wrapf(err, "failed to register engine launcher %v", el.GetLauncherName())
 	}
-	el.UpdateCh <- el
+	el.Update()
 	if err := el.createEngineProcess(newEngine, em.listen, em.processManager); err != nil {
 		go em.unregisterEngineLauncher(req.Spec.Name)
 		return nil, errors.Wrapf(err, "failed to start engine %v", req.Spec.Name)
@@ -131,14 +131,14 @@ func (em *Manager) registerEngineLauncher(el *Launcher) error {
 	em.lock.Lock()
 	defer em.lock.Unlock()
 
-	_, exists := em.engineLaunchers[el.LauncherName]
+	_, exists := em.engineLaunchers[el.GetLauncherName()]
 	if exists {
-		return fmt.Errorf("engine launcher %v already exists", el.LauncherName)
+		return fmt.Errorf("engine launcher %v already exists", el.GetLauncherName())
 	}
 
 	em.pStreamWrapper.AddLauncherStream(el.pUpdateCh)
-	el.UpdateCh = em.elUpdateCh
-	em.engineLaunchers[el.LauncherName] = el
+	el.SetUpdateCh(em.elUpdateCh)
+	em.engineLaunchers[el.GetLauncherName()] = el
 	return nil
 }
 
@@ -187,7 +187,7 @@ func (em *Manager) unregisterEngineLauncher(launcherName string) {
 		em.lock.Unlock()
 
 		logrus.Infof("Engine Manager had successfully unregistered engine launcher %v, deletion completed", launcherName)
-		el.UpdateCh <- el
+		el.Update()
 	} else {
 		logrus.Errorf("Engine Manager fails to unregister engine launcher %v", launcherName)
 	}
@@ -257,7 +257,7 @@ func (em *Manager) EngineList(ctx context.Context, req *empty.Empty) (ret *rpc.E
 		if err != nil {
 			return nil, err
 		}
-		ret.Engines[el.LauncherName] = resp
+		ret.Engines[el.GetLauncherName()] = resp
 	}
 
 	logrus.Debugf("Engine Manager has successfully list all engines")
@@ -466,11 +466,11 @@ func (em *Manager) FrontendShutdownCallback(ctx context.Context, req *rpc.Engine
 func (em *Manager) cleanupFrontend(el *Launcher) error {
 	tID, err := el.finishFrontendShutdown()
 	if err != nil {
-		return errors.Wrapf(err, "failed to callback for engine %v frontend shutdown", el.LauncherName)
+		return errors.Wrapf(err, "failed to callback for engine %v frontend shutdown", el.GetLauncherName())
 	}
 
 	if err = em.tIDAllocator.ReleaseRange(int32(tID), int32(tID)); err != nil {
-		return errors.Wrapf(err, "failed to release tid for engine %v frontend shutdown", el.LauncherName)
+		return errors.Wrapf(err, "failed to release tid for engine %v frontend shutdown", el.GetLauncherName())
 	}
 
 	logrus.Debugf("Engine Manager released TID %v for frontend shutdown callback", tID)

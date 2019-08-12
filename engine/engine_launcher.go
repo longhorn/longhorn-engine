@@ -100,10 +100,7 @@ func (el *Launcher) StartMonitoring() {
 			el.UpdateCh <- el
 		}
 	}
-	el.lock.RLock()
-	launcherName := el.LauncherName
-	el.lock.RUnlock()
-	logrus.Debugf("Stopped process monitoring on engine launcher %v", launcherName)
+	logrus.Debugf("Stopped process monitoring on engine launcher %v", el.GetLauncherName())
 }
 
 func (el *Launcher) RPCResponse(processManager rpc.ProcessManagerServiceServer, mayBeDeleting bool) (*rpc.EngineResponse, error) {
@@ -694,4 +691,18 @@ func (el *Launcher) SetAndCheckIsDeleting() bool {
 	old := el.isDeleting
 	el.isDeleting = true
 	return old
+}
+
+func (el *Launcher) GetLauncherName() string {
+	el.lock.RLock()
+	defer el.lock.RUnlock()
+	return el.LauncherName
+}
+
+func (el *Launcher) Update() {
+	el.UpdateCh <- el
+}
+
+func (el *Launcher) SetUpdateCh(ch chan *Launcher) {
+	el.UpdateCh = ch
 }
