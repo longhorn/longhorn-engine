@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes/empty"
+	"github.com/ibuildthecloud/kine/pkg/broadcaster"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
@@ -26,8 +27,10 @@ type Manager struct {
 	lock           *sync.RWMutex
 	processManager rpc.ProcessManagerServiceServer
 	pStreamWrapper *ProcessStreamWrapper
-	rpcWatchers    map[chan<- *rpc.EngineResponse]<-chan struct{}
 	listen         string
+
+	broadcaster *broadcaster.Broadcaster
+	broadcastCh chan interface{}
 
 	elUpdateCh      chan *Launcher
 	shutdownCh      chan error
@@ -44,13 +47,21 @@ func NewEngineManager(pm rpc.ProcessManagerServiceServer, listen string, shutdow
 		lock:           &sync.RWMutex{},
 		processManager: pm,
 		pStreamWrapper: NewProcessStreamWrapper(),
-		rpcWatchers:    make(map[chan<- *rpc.EngineResponse]<-chan struct{}),
 		listen:         listen,
+
+		broadcaster: &broadcaster.Broadcaster{},
+		broadcastCh: make(chan interface{}),
 
 		elUpdateCh:      make(chan *Launcher),
 		shutdownCh:      shutdownCh,
 		engineLaunchers: map[string]*Launcher{},
 		tIDAllocator:    util.NewBitmap(1, MaxTgtTargetNumber),
+	}
+	// help to kickstart the broadcaster
+	c, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if _, err := em.broadcaster.Subscribe(c, em.broadcastConnector); err != nil {
+		return nil, err
 	}
 	go em.StartMonitoring()
 	return em, nil
@@ -64,18 +75,12 @@ func (em *Manager) StartMonitoring() {
 		}
 		logrus.Infof("Stopped process update watch from engine manager")
 	}()
+	done := false
 	for {
-		done := false
 		select {
 		case <-em.shutdownCh:
 			logrus.Infof("Engine Manager is shutting down")
 			done = true
-			em.lock.RLock()
-			for stream := range em.rpcWatchers {
-				close(stream)
-			}
-			em.lock.RUnlock()
-			logrus.Infof("Engine Manager has closed all gRPC watchers")
 			break
 		case el := <-em.elUpdateCh:
 			resp, err := el.RPCResponse(em.processManager, true)
@@ -89,14 +94,9 @@ func (em *Manager) StartMonitoring() {
 			if _, exists := em.engineLaunchers[el.LauncherName]; !exists {
 				resp.Deleted = true
 			}
-			for stream, stop := range em.rpcWatchers {
-				select {
-				case <-stop:
-					continue
-				case stream <- resp:
-				}
-			}
 			em.lock.RUnlock()
+
+			em.broadcastCh <- interface{}(resp)
 		}
 		if done {
 			break
@@ -323,18 +323,17 @@ func (em *Manager) EngineLog(req *rpc.LogRequest, srv rpc.EngineManagerService_E
 	return nil
 }
 
-func (em *Manager) EngineWatch(req *empty.Empty, srv rpc.EngineManagerService_EngineWatchServer) (err error) {
-	responseChan := make(chan *rpc.EngineResponse)
-	stopCh := make(chan struct{})
-	em.lock.Lock()
-	em.rpcWatchers[responseChan] = stopCh
-	em.lock.Unlock()
-	defer func() {
-		close(stopCh)
-		em.lock.Lock()
-		delete(em.rpcWatchers, responseChan)
-		em.lock.Unlock()
+func (em *Manager) broadcastConnector() (chan interface{}, error) {
+	return em.broadcastCh, nil
+}
 
+func (em *Manager) EngineWatch(req *empty.Empty, srv rpc.EngineManagerService_EngineWatchServer) (err error) {
+	responseChan, err := em.broadcaster.Subscribe(context.TODO(), em.broadcastConnector)
+	if err != nil {
+		return err
+	}
+
+	defer func() {
 		if err != nil {
 			logrus.Errorf("engine manager update watch errored out: %v", err)
 		} else {
@@ -344,7 +343,11 @@ func (em *Manager) EngineWatch(req *empty.Empty, srv rpc.EngineManagerService_En
 	logrus.Debugf("started new engine manager update watch")
 
 	for resp := range responseChan {
-		if err := srv.Send(resp); err != nil {
+		r, ok := resp.(*rpc.EngineResponse)
+		if !ok {
+			return fmt.Errorf("BUG: cannot get ProcessResponse from channel")
+		}
+		if err := srv.Send(r); err != nil {
 			return err
 		}
 	}
