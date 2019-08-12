@@ -3,9 +3,7 @@ package engine
 import (
 	"fmt"
 	"os"
-	"strings"
 	"sync"
-	"time"
 
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/ibuildthecloud/kine/pkg/broadcaster"
@@ -14,7 +12,6 @@ import (
 	"golang.org/x/net/context"
 
 	"github.com/longhorn/longhorn-instance-manager/rpc"
-	"github.com/longhorn/longhorn-instance-manager/types"
 	"github.com/longhorn/longhorn-instance-manager/util"
 )
 
@@ -146,19 +143,7 @@ func (em *Manager) unregisterEngineLauncher(launcherName string) {
 
 	processName := el.GetCurrentEngineName()
 
-	for i := 0; i < types.WaitCount; i++ {
-		if _, err := em.pm.ProcessGet(nil, &rpc.ProcessGetRequest{
-			Name: processName,
-		}); err != nil && strings.Contains(err.Error(), "cannot find process") {
-			break
-		}
-		logrus.Infof("Engine Manager is waiting for engine %v to shutdown before unregistering the engine launcher", processName)
-		time.Sleep(types.WaitInterval)
-	}
-
-	if _, err := em.pm.ProcessGet(nil, &rpc.ProcessGetRequest{
-		Name: processName,
-	}); err != nil && strings.Contains(err.Error(), "cannot find process") {
+	if el.waitForEngineProcessDeletion(processName) {
 		// cannot depend on engine process's callback to cleanup frontend. need to double check here
 		el := em.getLauncher(launcherName)
 		if el == nil {
@@ -167,7 +152,7 @@ func (em *Manager) unregisterEngineLauncher(launcherName string) {
 
 		if el.IsSCSIDeviceEnabled() {
 			logrus.Warnf("Engine Manager need to cleanup frontend before unregistering engine launcher %v", launcherName)
-			if err = em.cleanupFrontend(el); err != nil {
+			if err := em.cleanupFrontend(el); err != nil {
 				// cleanup failed. cannot unregister engine launcher.
 				logrus.Errorf("Engine Manager fails to cleanup frontend before unregistering engine launcher %v", launcherName)
 				return
