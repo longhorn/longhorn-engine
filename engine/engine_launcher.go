@@ -67,9 +67,11 @@ type Launcher struct {
 	// Set it before creating new engine spec
 	// Unset it after waiting for old engine process deletion
 	isUpgrading bool
+
+	pm rpc.ProcessManagerServiceServer
 }
 
-func NewEngineLauncher(spec *rpc.EngineSpec, processUpdateCh <-chan interface{}) (*Launcher, *Engine) {
+func NewEngineLauncher(spec *rpc.EngineSpec, processUpdateCh <-chan interface{}, processManager rpc.ProcessManagerServiceServer) (*Launcher, *Engine) {
 	el := &Launcher{
 		UUID:         spec.Uuid,
 		LauncherName: spec.Name,
@@ -87,6 +89,8 @@ func NewEngineLauncher(spec *rpc.EngineSpec, processUpdateCh <-chan interface{})
 		pendingEngine: nil,
 
 		lock: &sync.RWMutex{},
+
+		pm: processManager,
 	}
 	go el.StartMonitoring(processUpdateCh)
 	return el, el.currentEngine
@@ -105,7 +109,7 @@ func (el *Launcher) StartMonitoring(processUpdateCh <-chan interface{}) {
 	logrus.Debugf("Stopped process monitoring on engine launcher %v", el.GetLauncherName())
 }
 
-func (el *Launcher) RPCResponse(processManager rpc.ProcessManagerServiceServer, mayBeDeleting bool) (*rpc.EngineResponse, error) {
+func (el *Launcher) RPCResponse(mayBeDeleting bool) (*rpc.EngineResponse, error) {
 	el.lock.RLock()
 	defer el.lock.RUnlock()
 
@@ -128,7 +132,7 @@ func (el *Launcher) RPCResponse(processManager rpc.ProcessManagerServiceServer, 
 		},
 	}
 
-	process, err := processManager.ProcessGet(nil, &rpc.ProcessGetRequest{
+	process, err := el.pm.ProcessGet(nil, &rpc.ProcessGetRequest{
 		Name: el.currentEngine.EngineName,
 	})
 	if err != nil {
@@ -161,9 +165,7 @@ func (el *Launcher) RPCResponse(processManager rpc.ProcessManagerServiceServer, 
 // During running this function, frontendStartCallback() will be called automatically.
 // Hence need to be careful about deadlock
 // engineSpec should be el.currentEngine or el.pendingEngine
-func (el *Launcher) createEngineProcess(engineSpec *Engine, engineManagerListen string,
-	processManager rpc.ProcessManagerServiceServer) error {
-
+func (el *Launcher) createEngineProcess(engineSpec *Engine, engineManagerListen string) error {
 	logrus.Debugf("engine launcher %v: prepare to create engine process %v at %v",
 		el.LauncherName, engineSpec.EngineName, engineSpec.Listen)
 
@@ -213,7 +215,7 @@ func (el *Launcher) createEngineProcess(engineSpec *Engine, engineManagerListen 
 	el.lock.Unlock()
 
 	// engine process creation may involve in FrontendStart. be careful about deadlock
-	ret, err := processManager.ProcessCreate(nil, req)
+	ret, err := el.pm.ProcessCreate(nil, req)
 	if err != nil {
 		return err
 	}
@@ -235,11 +237,11 @@ func (el *Launcher) createEngineProcess(engineSpec *Engine, engineManagerListen 
 
 // During running this function, frontendShutdownCallback() will be called automatically.
 // Hence need to be careful about deadlock
-func (el *Launcher) deleteEngine(processManager rpc.ProcessManagerServiceServer, processName string) (*rpc.ProcessResponse, error) {
+func (el *Launcher) deleteEngine(processName string) (*rpc.ProcessResponse, error) {
 	logrus.Debugf("engine launcher %v: prepare to delete engine process %v",
 		el.LauncherName, el.currentEngine.EngineName)
 
-	response, err := processManager.ProcessDelete(nil, &rpc.ProcessDeleteRequest{
+	response, err := el.pm.ProcessDelete(nil, &rpc.ProcessDeleteRequest{
 		Name: processName,
 	})
 	if err != nil {
@@ -273,7 +275,7 @@ func (el *Launcher) prepareUpgrade(spec *rpc.EngineSpec) (*Engine, error) {
 	return el.pendingEngine, nil
 }
 
-func (el *Launcher) finalizeUpgrade(processManager rpc.ProcessManagerServiceServer) error {
+func (el *Launcher) finalizeUpgrade() error {
 	logrus.Debugf("engine launcher %v: finalize upgrade", el.LauncherName)
 
 	defer func() { el.UpdateCh <- el }()
@@ -281,7 +283,7 @@ func (el *Launcher) finalizeUpgrade(processManager rpc.ProcessManagerServiceServ
 	el.lock.Lock()
 	processName := el.currentEngine.EngineName
 
-	process, err := processManager.ProcessGet(nil, &rpc.ProcessGetRequest{
+	process, err := el.pm.ProcessGet(nil, &rpc.ProcessGetRequest{
 		Name: processName,
 	})
 	if err != nil {
@@ -299,7 +301,7 @@ func (el *Launcher) finalizeUpgrade(processManager rpc.ProcessManagerServiceServ
 
 	el.lock.Unlock()
 
-	if _, err := el.deleteEngine(processManager, processName); err != nil {
+	if _, err := el.deleteEngine(processName); err != nil {
 		logrus.Warnf("failed to delete old engine process %v: %v", processName, err)
 	}
 
@@ -308,7 +310,7 @@ func (el *Launcher) finalizeUpgrade(processManager rpc.ProcessManagerServiceServ
 	// But we don't want to shutdown frontend here since it's live upgrade.
 	// Hence frontend shutdown callback will check el.isUpgrading to skip unexpected frontend down.
 	// And we need to block process here keep el.isUpgrading before frontend shutdown callback complete.
-	isDeleted := el.waitForEngineProcessDeletion(processManager, processName)
+	isDeleted := el.waitForEngineProcessDeletion(processName)
 	if !isDeleted {
 		logrus.Warnf("engine launcher %v: failed to deleted old engine process", el.LauncherName)
 	}
@@ -321,9 +323,9 @@ func (el *Launcher) finalizeUpgrade(processManager rpc.ProcessManagerServiceServ
 	return nil
 }
 
-func (el *Launcher) waitForEngineProcessDeletion(processManager rpc.ProcessManagerServiceServer, processName string) bool {
+func (el *Launcher) waitForEngineProcessDeletion(processName string) bool {
 	for i := 0; i < types.WaitCount; i++ {
-		if _, err := processManager.ProcessGet(nil, &rpc.ProcessGetRequest{
+		if _, err := el.pm.ProcessGet(nil, &rpc.ProcessGetRequest{
 			Name: processName,
 		}); err != nil && strings.Contains(err.Error(), "cannot find process") {
 			break
@@ -332,7 +334,7 @@ func (el *Launcher) waitForEngineProcessDeletion(processManager rpc.ProcessManag
 		time.Sleep(types.WaitInterval)
 	}
 
-	if _, err := processManager.ProcessGet(nil, &rpc.ProcessGetRequest{
+	if _, err := el.pm.ProcessGet(nil, &rpc.ProcessGetRequest{
 		Name: processName,
 	}); err != nil && strings.Contains(err.Error(), "cannot find process") {
 		logrus.Infof("engine launcher %v: successfully deleted engine process", el.LauncherName)
@@ -342,9 +344,9 @@ func (el *Launcher) waitForEngineProcessDeletion(processManager rpc.ProcessManag
 	return false
 }
 
-func (el *Launcher) waitForEngineProcessRunning(processManager rpc.ProcessManagerServiceServer, processName string) error {
+func (el *Launcher) waitForEngineProcessRunning(processName string) error {
 	for i := 0; i < types.WaitCount; i++ {
-		process, err := processManager.ProcessGet(nil, &rpc.ProcessGetRequest{
+		process, err := el.pm.ProcessGet(nil, &rpc.ProcessGetRequest{
 			Name: processName,
 		})
 		if err != nil && !strings.Contains(err.Error(), "cannot find process") {
@@ -357,7 +359,7 @@ func (el *Launcher) waitForEngineProcessRunning(processManager rpc.ProcessManage
 		time.Sleep(types.WaitInterval)
 	}
 
-	process, err := processManager.ProcessGet(nil, &rpc.ProcessGetRequest{
+	process, err := el.pm.ProcessGet(nil, &rpc.ProcessGetRequest{
 		Name: processName,
 	})
 	if err != nil || process == nil || process.Status.State != types.ProcessStateRunning {
@@ -366,10 +368,8 @@ func (el *Launcher) waitForEngineProcessRunning(processManager rpc.ProcessManage
 	return nil
 }
 
-func (el *Launcher) engineLog(req *rpc.LogRequest, srv rpc.EngineManagerService_EngineLogServer,
-	processManager rpc.ProcessManagerServiceServer) error {
-
-	if err := processManager.ProcessLog(req, srv); err != nil {
+func (el *Launcher) engineLog(req *rpc.LogRequest, srv rpc.EngineManagerService_EngineLogServer) error {
+	if err := el.pm.ProcessLog(req, srv); err != nil {
 		return err
 	}
 

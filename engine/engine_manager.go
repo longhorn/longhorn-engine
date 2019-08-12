@@ -24,9 +24,10 @@ import (
 */
 
 type Manager struct {
-	lock           *sync.RWMutex
-	processManager rpc.ProcessManagerServiceServer
-	listen         string
+	pm rpc.ProcessManagerServiceServer
+
+	lock   *sync.RWMutex
+	listen string
 
 	broadcaster     *broadcaster.Broadcaster
 	broadcastCh     chan interface{}
@@ -44,9 +45,10 @@ const (
 
 func NewEngineManager(pm rpc.ProcessManagerServiceServer, processUpdateCh <-chan interface{}, listen string, shutdownCh chan error) (*Manager, error) {
 	em := &Manager{
-		lock:           &sync.RWMutex{},
-		processManager: pm,
-		listen:         listen,
+		pm: pm,
+
+		lock:   &sync.RWMutex{},
+		listen: listen,
 
 		broadcaster:     &broadcaster.Broadcaster{},
 		broadcastCh:     make(chan interface{}),
@@ -76,7 +78,7 @@ func (em *Manager) StartMonitoring() {
 			done = true
 			break
 		case el := <-em.elUpdateCh:
-			resp, err := el.RPCResponse(em.processManager, true)
+			resp, err := el.RPCResponse(true)
 			if err != nil {
 				logrus.Error(err)
 				continue
@@ -100,17 +102,17 @@ func (em *Manager) StartMonitoring() {
 func (em *Manager) EngineCreate(ctx context.Context, req *rpc.EngineCreateRequest) (ret *rpc.EngineResponse, err error) {
 	logrus.Infof("Engine Manager starts to create engine of volume %v", req.Spec.VolumeName)
 
-	el, newEngine := NewEngineLauncher(req.Spec, em.processUpdateCh)
+	el, newEngine := NewEngineLauncher(req.Spec, em.processUpdateCh, em.pm)
 	if err := em.registerEngineLauncher(el); err != nil {
 		return nil, errors.Wrapf(err, "failed to register engine launcher %v", el.GetLauncherName())
 	}
 	el.Update()
-	if err := el.createEngineProcess(newEngine, em.listen, em.processManager); err != nil {
+	if err := el.createEngineProcess(newEngine, em.listen); err != nil {
 		go em.unregisterEngineLauncher(req.Spec.Name)
 		return nil, errors.Wrapf(err, "failed to start engine %v", req.Spec.Name)
 	}
 
-	resp, err := el.RPCResponse(em.processManager, false)
+	resp, err := el.RPCResponse(false)
 	if err != nil {
 		return nil, err
 	}
@@ -145,7 +147,7 @@ func (em *Manager) unregisterEngineLauncher(launcherName string) {
 	processName := el.GetCurrentEngineName()
 
 	for i := 0; i < types.WaitCount; i++ {
-		if _, err := em.processManager.ProcessGet(nil, &rpc.ProcessGetRequest{
+		if _, err := em.pm.ProcessGet(nil, &rpc.ProcessGetRequest{
 			Name: processName,
 		}); err != nil && strings.Contains(err.Error(), "cannot find process") {
 			break
@@ -154,7 +156,7 @@ func (em *Manager) unregisterEngineLauncher(launcherName string) {
 		time.Sleep(types.WaitInterval)
 	}
 
-	if _, err := em.processManager.ProcessGet(nil, &rpc.ProcessGetRequest{
+	if _, err := em.pm.ProcessGet(nil, &rpc.ProcessGetRequest{
 		Name: processName,
 	}); err != nil && strings.Contains(err.Error(), "cannot find process") {
 		// cannot depend on engine process's callback to cleanup frontend. need to double check here
@@ -194,7 +196,7 @@ func (em *Manager) EngineDelete(ctx context.Context, req *rpc.EngineRequest) (re
 
 	deleting := el.SetAndCheckIsDeleting()
 	if !deleting {
-		if _, err = el.deleteEngine(em.processManager, el.GetCurrentEngineName()); err != nil {
+		if _, err = el.deleteEngine(el.GetCurrentEngineName()); err != nil {
 			return nil, err
 		}
 
@@ -203,7 +205,7 @@ func (em *Manager) EngineDelete(ctx context.Context, req *rpc.EngineRequest) (re
 		logrus.Debugf("Engine Manager is already deleting engine %v", req.Name)
 	}
 
-	resp, err := el.RPCResponse(em.processManager, true)
+	resp, err := el.RPCResponse(true)
 	if err != nil {
 		return nil, err
 	}
@@ -221,7 +223,7 @@ func (em *Manager) EngineGet(ctx context.Context, req *rpc.EngineRequest) (ret *
 		return nil, fmt.Errorf("cannot find engine %v", req.Name)
 	}
 
-	resp, err := el.RPCResponse(em.processManager, false)
+	resp, err := el.RPCResponse(false)
 	if err != nil {
 		return nil, err
 	}
@@ -242,7 +244,7 @@ func (em *Manager) EngineList(ctx context.Context, req *empty.Empty) (ret *rpc.E
 	}
 
 	for _, el := range em.engineLaunchers {
-		resp, err := el.RPCResponse(em.processManager, true)
+		resp, err := el.RPCResponse(true)
 		if err != nil {
 			return nil, err
 		}
@@ -267,7 +269,7 @@ func (em *Manager) EngineUpgrade(ctx context.Context, req *rpc.EngineUpgradeRequ
 		return nil, errors.Wrapf(err, "failed to prepare to upgrade engine to %v", req.Spec.Name)
 	}
 
-	if err := el.createEngineProcess(newEngineSpec, em.listen, em.processManager); err != nil {
+	if err := el.createEngineProcess(newEngineSpec, em.listen); err != nil {
 		return nil, errors.Wrapf(err, "failed to create upgrade engine %v", req.Spec.Name)
 	}
 
@@ -275,15 +277,15 @@ func (em *Manager) EngineUpgrade(ctx context.Context, req *rpc.EngineUpgradeRequ
 		return nil, errors.Wrapf(err, "failed to reload socket connection for new engine %v", req.Spec.Name)
 	}
 
-	if err = el.waitForEngineProcessRunning(em.processManager, newEngineSpec.EngineName); err != nil {
+	if err = el.waitForEngineProcessRunning(newEngineSpec.EngineName); err != nil {
 		return nil, errors.Wrapf(err, "failed to wait for new engine running")
 	}
 
-	if err := el.finalizeUpgrade(em.processManager); err != nil {
+	if err := el.finalizeUpgrade(); err != nil {
 		return nil, errors.Wrapf(err, "failed to finalize engine upgrade")
 	}
 
-	resp, err := el.RPCResponse(em.processManager, false)
+	resp, err := el.RPCResponse(false)
 	if err != nil {
 		return nil, err
 	}
@@ -303,7 +305,7 @@ func (em *Manager) EngineLog(req *rpc.LogRequest, srv rpc.EngineManagerService_E
 
 	if err := el.engineLog(&rpc.LogRequest{
 		Name: el.GetCurrentEngineName(),
-	}, srv, em.processManager); err != nil {
+	}, srv); err != nil {
 		return err
 	}
 
