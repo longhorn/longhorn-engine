@@ -8,10 +8,10 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes/empty"
+	"github.com/ibuildthecloud/kine/pkg/broadcaster"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
-	"google.golang.org/grpc"
 
 	"github.com/longhorn/longhorn-instance-manager/rpc"
 	"github.com/longhorn/longhorn-instance-manager/types"
@@ -27,9 +27,8 @@ type Manager struct {
 	portRangeMin int32
 	portRangeMax int32
 
-	rpcService    *grpc.Server
-	rpcShutdownCh chan error
-	rpcWatchers   map[chan<- *rpc.ProcessResponse]<-chan struct{}
+	broadcaster *broadcaster.Broadcaster
+	broadcastCh chan interface{}
 
 	lock            *sync.RWMutex
 	processes       map[string]*Process
@@ -52,8 +51,8 @@ func NewManager(portRange string, logsDir string, shutdownCh chan error) (*Manag
 		portRangeMin: start,
 		portRangeMax: end,
 
-		rpcShutdownCh: make(chan error),
-		rpcWatchers:   make(map[chan<- *rpc.ProcessResponse]<-chan struct{}),
+		broadcaster: &broadcaster.Broadcaster{},
+		broadcastCh: make(chan interface{}),
 
 		lock:            &sync.RWMutex{},
 		processes:       map[string]*Process{},
@@ -66,23 +65,23 @@ func NewManager(portRange string, logsDir string, shutdownCh chan error) (*Manag
 
 		Executor: &types.BinaryExecutor{},
 	}
+	// help to kickstart the broadcaster
+	c, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	if _, err := pm.broadcaster.Subscribe(c, pm.broadcastConnector); err != nil {
+		return nil, err
+	}
 	go pm.startMonitoring()
 	return pm, nil
 }
 
 func (pm *Manager) startMonitoring() {
+	done := false
 	for {
-		done := false
 		select {
 		case <-pm.shutdownCh:
 			logrus.Infof("Process Manager is shutting down")
 			done = true
-			pm.lock.RLock()
-			for stream := range pm.rpcWatchers {
-				close(stream)
-			}
-			pm.lock.RUnlock()
-			logrus.Infof("Process Manager has closed all gRPC watchers")
 			break
 		case p := <-pm.processUpdateCh:
 			resp := p.RPCResponse()
@@ -91,14 +90,8 @@ func (pm *Manager) startMonitoring() {
 			if _, exists := pm.processes[p.Name]; !exists {
 				resp.Deleted = true
 			}
-			for stream, stop := range pm.rpcWatchers {
-				select {
-				case <-stop:
-					continue
-				case stream <- resp:
-				}
-			}
 			pm.lock.RUnlock()
+			pm.broadcastCh <- interface{}(resp)
 		}
 		if done {
 			break
@@ -110,7 +103,6 @@ func (pm *Manager) Shutdown() {
 	pm.lock.Lock()
 	defer pm.lock.Unlock()
 
-	pm.rpcService.Stop()
 	close(pm.shutdownCh)
 }
 
@@ -291,18 +283,17 @@ func (pm *Manager) ProcessLog(req *rpc.LogRequest, srv rpc.ProcessManagerService
 	return nil
 }
 
-func (pm *Manager) ProcessWatch(req *empty.Empty, srv rpc.ProcessManagerService_ProcessWatchServer) (err error) {
-	responseChan := make(chan *rpc.ProcessResponse)
-	stopCh := make(chan struct{})
-	pm.lock.Lock()
-	pm.rpcWatchers[responseChan] = stopCh
-	pm.lock.Unlock()
-	defer func() {
-		close(stopCh)
-		pm.lock.Lock()
-		delete(pm.rpcWatchers, responseChan)
-		pm.lock.Unlock()
+func (pm *Manager) broadcastConnector() (chan interface{}, error) {
+	return pm.broadcastCh, nil
+}
 
+func (pm *Manager) ProcessWatch(req *empty.Empty, srv rpc.ProcessManagerService_ProcessWatchServer) (err error) {
+	responseChan, err := pm.broadcaster.Subscribe(context.TODO(), pm.broadcastConnector)
+	if err != nil {
+		return err
+	}
+
+	defer func() {
 		if err != nil {
 			logrus.Errorf("process manager update watch errored out: %v", err)
 		} else {
@@ -312,7 +303,11 @@ func (pm *Manager) ProcessWatch(req *empty.Empty, srv rpc.ProcessManagerService_
 	logrus.Debugf("started new process manager update watch")
 
 	for resp := range responseChan {
-		if err := srv.Send(resp); err != nil {
+		r, ok := resp.(*rpc.ProcessResponse)
+		if !ok {
+			return fmt.Errorf("BUG: cannot get ProcessResponse from channel")
+		}
+		if err := srv.Send(r); err != nil {
 			return err
 		}
 	}
