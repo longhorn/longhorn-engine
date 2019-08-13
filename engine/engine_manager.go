@@ -242,6 +242,10 @@ func (em *Manager) EngineList(ctx context.Context, req *empty.Empty) (ret *rpc.E
 }
 
 func (em *Manager) EngineUpgrade(ctx context.Context, req *rpc.EngineUpgradeRequest) (ret *rpc.EngineResponse, err error) {
+	defer func() {
+		err = errors.Wrapf(err, "failed to upgrade engine for %v(%v) ", req.Spec.Name, req.Spec.VolumeName)
+	}()
+
 	logrus.Infof("Engine Manager starts to upgrade engine %v for volume %v", req.Spec.Name, req.Spec.VolumeName)
 
 	el, err := em.validateBeforeUpgrade(req.Spec)
@@ -249,25 +253,8 @@ func (em *Manager) EngineUpgrade(ctx context.Context, req *rpc.EngineUpgradeRequ
 		return nil, err
 	}
 
-	newEngineSpec, err := el.prepareUpgrade(req.Spec)
-	if err != nil {
-		return nil, errors.Wrapf(err, "failed to prepare to upgrade engine to %v", req.Spec.Name)
-	}
-
-	if err := el.createEngineProcess(newEngineSpec, em.listen); err != nil {
-		return nil, errors.Wrapf(err, "failed to create upgrade engine %v", req.Spec.Name)
-	}
-
-	if err = el.checkUpgradedEngineSocket(); err != nil {
-		return nil, errors.Wrapf(err, "failed to reload socket connection for new engine %v", req.Spec.Name)
-	}
-
-	if err = el.waitForEngineProcessRunning(newEngineSpec.EngineName); err != nil {
-		return nil, errors.Wrapf(err, "failed to wait for new engine running")
-	}
-
-	if err := el.finalizeUpgrade(); err != nil {
-		return nil, errors.Wrapf(err, "failed to finalize engine upgrade")
+	if err := el.Upgrade(req.Spec, em.listen); err != nil {
+		return nil, err
 	}
 
 	resp, err := el.RPCResponse(false)
@@ -339,10 +326,6 @@ func (em *Manager) validateBeforeUpgrade(spec *rpc.EngineSpec) (*Launcher, error
 	el := em.getLauncher(spec.Name)
 	if el == nil {
 		return nil, fmt.Errorf("cannot find engine %v", spec.Name)
-	}
-
-	if err := el.ValidateNameAndBinary(spec.Name, spec.Binary); err != nil {
-		return nil, err
 	}
 
 	return el, nil

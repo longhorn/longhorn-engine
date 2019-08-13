@@ -254,9 +254,37 @@ func (el *Launcher) deleteEngine(processName string) (*rpc.ProcessResponse, erro
 	return response, nil
 }
 
+func (el *Launcher) Upgrade(spec *rpc.EngineSpec, emListen string) error {
+	newEngineSpec, err := el.prepareUpgrade(spec)
+	if err != nil {
+		return errors.Wrapf(err, "failed to prepare to upgrade engine to %v", spec.Name)
+	}
+
+	if err := el.createEngineProcess(newEngineSpec, emListen); err != nil {
+		return errors.Wrapf(err, "failed to create upgrade engine %v", spec.Name)
+	}
+
+	if err = el.checkUpgradedEngineSocket(); err != nil {
+		return errors.Wrapf(err, "failed to reload socket connection for new engine %v", spec.Name)
+	}
+
+	if err = el.waitForEngineProcessRunning(newEngineSpec.EngineName); err != nil {
+		return errors.Wrapf(err, "failed to wait for new engine running")
+	}
+
+	if err := el.finalizeUpgrade(); err != nil {
+		return errors.Wrapf(err, "failed to finalize engine upgrade")
+	}
+	return nil
+}
+
 func (el *Launcher) prepareUpgrade(spec *rpc.EngineSpec) (*Engine, error) {
 	el.lock.Lock()
 	defer el.lock.Unlock()
+
+	if el.currentEngine.Binary == spec.Binary || el.LauncherName != spec.Name {
+		return nil, fmt.Errorf("cannot upgrade with the same binary or the different engine")
+	}
 
 	el.ResourceVersion++
 
@@ -640,16 +668,6 @@ func (el *Launcher) IsSCSIDeviceEnabled() bool {
 	el.lock.RLock()
 	defer el.lock.RUnlock()
 	return el.scsiDevice != nil
-}
-
-func (el *Launcher) ValidateNameAndBinary(name, binary string) error {
-	el.lock.RLock()
-	defer el.lock.RUnlock()
-
-	if el.currentEngine.Binary == binary || el.LauncherName != name {
-		return fmt.Errorf("cannot upgrade with the same binary or the different engine")
-	}
-	return nil
 }
 
 func (el *Launcher) checkUpgradedEngineSocket() (err error) {
