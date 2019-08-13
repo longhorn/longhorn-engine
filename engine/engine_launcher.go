@@ -45,6 +45,7 @@ type Launcher struct {
 
 	UUID         string
 	LauncherName string
+	LauncherAddr string
 	VolumeName   string
 	ListenIP     string
 	Size         int64
@@ -71,10 +72,11 @@ type Launcher struct {
 	pm rpc.ProcessManagerServiceServer
 }
 
-func NewEngineLauncher(spec *rpc.EngineSpec, processUpdateCh <-chan interface{}, processManager rpc.ProcessManagerServiceServer) (*Launcher, *Engine) {
+func NewEngineLauncher(spec *rpc.EngineSpec, launcherAddr string, processUpdateCh <-chan interface{}, processManager rpc.ProcessManagerServiceServer) (*Launcher, *Engine) {
 	el := &Launcher{
 		UUID:         spec.Uuid,
 		LauncherName: spec.Name,
+		LauncherAddr: launcherAddr,
 		VolumeName:   spec.VolumeName,
 		Size:         spec.Size,
 		ListenIP:     spec.ListenIp,
@@ -165,7 +167,7 @@ func (el *Launcher) RPCResponse(mayBeDeleting bool) (*rpc.EngineResponse, error)
 // During running this function, frontendStartCallback() will be called automatically.
 // Hence need to be careful about deadlock
 // engineSpec should be el.currentEngine or el.pendingEngine
-func (el *Launcher) createEngineProcess(engineSpec *Engine, engineManagerListen string) error {
+func (el *Launcher) createEngineProcess(engineSpec *Engine) error {
 	logrus.Debugf("engine launcher %v: prepare to create engine process %v at %v",
 		el.LauncherName, engineSpec.EngineName, engineSpec.Listen)
 
@@ -176,7 +178,7 @@ func (el *Launcher) createEngineProcess(engineSpec *Engine, engineManagerListen 
 
 	args := []string{
 		"controller", el.VolumeName,
-		"--launcher", engineManagerListen,
+		"--launcher", el.LauncherAddr,
 		"--launcher-id", el.LauncherName,
 	}
 
@@ -254,13 +256,13 @@ func (el *Launcher) deleteEngine(processName string) (*rpc.ProcessResponse, erro
 	return response, nil
 }
 
-func (el *Launcher) Upgrade(spec *rpc.EngineSpec, emListen string) error {
+func (el *Launcher) Upgrade(spec *rpc.EngineSpec) error {
 	newEngineSpec, err := el.prepareUpgrade(spec)
 	if err != nil {
 		return errors.Wrapf(err, "failed to prepare to upgrade engine to %v", spec.Name)
 	}
 
-	if err := el.createEngineProcess(newEngineSpec, emListen); err != nil {
+	if err := el.createEngineProcess(newEngineSpec); err != nil {
 		return errors.Wrapf(err, "failed to create upgrade engine %v", spec.Name)
 	}
 
