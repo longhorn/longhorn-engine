@@ -41,6 +41,7 @@ const (
 type Launcher struct {
 	lock     *sync.RWMutex
 	updateCh chan<- *Launcher
+	doneCh   chan struct{}
 
 	UUID         string
 	LauncherName string
@@ -63,6 +64,7 @@ type Launcher struct {
 	currentEngine *Engine
 	pendingEngine *Engine
 
+	isStopping bool
 	// Set it before creating new engine spec
 	// Unset it after waiting for old engine process deletion
 	isUpgrading bool
@@ -93,6 +95,7 @@ func NewEngineLauncher(spec *rpc.EngineSpec, launcherAddr string,
 
 		lock:     &sync.RWMutex{},
 		updateCh: engineUpdateCh,
+		doneCh:   make(chan struct{}),
 
 		pm: processManager,
 	}
@@ -101,13 +104,23 @@ func NewEngineLauncher(spec *rpc.EngineSpec, launcherAddr string,
 }
 
 func (el *Launcher) StartMonitoring(processUpdateCh <-chan interface{}) {
-	for resp := range processUpdateCh {
-		p, ok := resp.(*rpc.ProcessResponse)
-		if !ok {
-			logrus.Errorf("BUG: engine launcher: cannot get ProcessResponse from channel")
+	done := false
+	for {
+		select {
+		case resp := <-processUpdateCh:
+			p, ok := resp.(*rpc.ProcessResponse)
+			if !ok {
+				logrus.Errorf("BUG: engine launcher: cannot get ProcessResponse from channel")
+			}
+			if p.Spec.Name == el.currentEngine.EngineName {
+				el.updateCh <- el
+			}
+		case <-el.doneCh:
+			done = true
+			break
 		}
-		if p.Spec.Name == el.currentEngine.EngineName {
-			el.updateCh <- el
+		if done {
+			break
 		}
 	}
 	logrus.Debugf("Stopped process monitoring on engine launcher %v", el.GetLauncherName())
@@ -168,6 +181,12 @@ func (el *Launcher) Stop() error {
 	if _, err := el.currentEngine.Stop(); err != nil {
 		return err
 	}
+	el.lock.Lock()
+	if !el.isStopping {
+		close(el.doneCh)
+	}
+	el.isStopping = true
+	el.lock.Unlock()
 
 	el.updateCh <- el
 

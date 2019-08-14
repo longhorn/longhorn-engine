@@ -138,12 +138,6 @@ func (em *Manager) unregisterEngineLauncher(launcherName string) {
 		logrus.Errorf("Engine Manager fails to unregister engine launcher %v: %v", launcherName, err)
 	}
 
-	// cannot depend on engine process's callback to cleanup frontend. need to double check here
-	el = em.getLauncher(launcherName)
-	if el == nil {
-		return
-	}
-
 	if el.IsSCSIDeviceEnabled() {
 		logrus.Warnf("Engine Manager need to cleanup frontend before unregistering engine launcher %v", launcherName)
 		if err := em.cleanupFrontend(el); err != nil {
@@ -194,8 +188,6 @@ func (em *Manager) EngineDelete(ctx context.Context, req *rpc.EngineRequest) (re
 // EngineGet will get the engine named by the request
 // If the specified engine doesn't exist, the deletion will return with ProcessStateNotFound set in the response
 func (em *Manager) EngineGet(ctx context.Context, req *rpc.EngineRequest) (ret *rpc.EngineResponse, err error) {
-	logrus.Debugf("Engine Manager starts to get engine %v", req.Name)
-
 	el := em.getLauncher(req.Name)
 	if el == nil {
 		return &rpc.EngineResponse{
@@ -210,14 +202,10 @@ func (em *Manager) EngineGet(ctx context.Context, req *rpc.EngineRequest) (ret *
 		}, nil
 	}
 
-	logrus.Debugf("Engine Manager has successfully get engine %v", req.Name)
-
 	return el.RPCResponse(), nil
 }
 
 func (em *Manager) EngineList(ctx context.Context, req *empty.Empty) (ret *rpc.EngineListResponse, err error) {
-	logrus.Debugf("Engine Manager starts to list engines")
-
 	em.lock.RLock()
 	defer em.lock.RUnlock()
 
@@ -228,8 +216,6 @@ func (em *Manager) EngineList(ctx context.Context, req *empty.Empty) (ret *rpc.E
 	for _, el := range em.engineLaunchers {
 		ret.Engines[el.GetLauncherName()] = el.RPCResponse()
 	}
-
-	logrus.Debugf("Engine Manager has successfully list all engines")
 
 	return ret, nil
 }
