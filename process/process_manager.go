@@ -106,6 +106,8 @@ func (pm *Manager) Shutdown() {
 	close(pm.shutdownCh)
 }
 
+// ProcessCreate will create a process according to the request.
+// If the specified process name exists already, the creation will fail.
 func (pm *Manager) ProcessCreate(ctx context.Context, req *rpc.ProcessCreateRequest) (ret *rpc.ProcessResponse, err error) {
 	if req.Spec.Name == "" || req.Spec.Binary == "" {
 		return nil, fmt.Errorf("missing required argument")
@@ -143,6 +145,8 @@ func (pm *Manager) ProcessCreate(ctx context.Context, req *rpc.ProcessCreateRequ
 	return p.RPCResponse(), nil
 }
 
+// ProcessDelete will delete the process named by the request.
+// If the process doesn't exist, the deletion will return with ProcessStateNotFound set in the response
 func (pm *Manager) ProcessDelete(ctx context.Context, req *rpc.ProcessDeleteRequest) (ret *rpc.ProcessResponse, err error) {
 	logrus.Debugf("Process Manager: prepare to delete process %v", req.Name)
 
@@ -153,7 +157,7 @@ func (pm *Manager) ProcessDelete(ctx context.Context, req *rpc.ProcessDeleteRequ
 				Name: req.Name,
 			},
 			Status: &rpc.ProcessStatus{
-				State: string(StateNotFound),
+				State: types.ProcessStateNotFound,
 			},
 		}, nil
 	}
@@ -164,10 +168,6 @@ func (pm *Manager) ProcessDelete(ctx context.Context, req *rpc.ProcessDeleteRequ
 	resp.Deleted = true
 
 	go pm.unregisterProcess(p)
-
-	if err := p.logger.Close(); err != nil {
-		return nil, err
-	}
 
 	return resp, nil
 }
@@ -248,6 +248,8 @@ func (pm *Manager) findProcess(name string) *Process {
 	return pm.processes[name]
 }
 
+// ProcessGet will get a process named by the request.
+// If the process doesn't exist, the call will return with ProcessStateNotFound set in the response
 func (pm *Manager) ProcessGet(ctx context.Context, req *rpc.ProcessGetRequest) (*rpc.ProcessResponse, error) {
 	p := pm.findProcess(req.Name)
 	if p == nil {
@@ -256,7 +258,7 @@ func (pm *Manager) ProcessGet(ctx context.Context, req *rpc.ProcessGetRequest) (
 				Name: req.Name,
 			},
 			Status: &rpc.ProcessStatus{
-				State: string(StateNotFound),
+				State: types.ProcessStateNotFound,
 			},
 		}, nil
 	}

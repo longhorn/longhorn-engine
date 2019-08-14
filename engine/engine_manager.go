@@ -92,6 +92,8 @@ func (em *Manager) StartMonitoring() {
 	}
 }
 
+// EngineCreate will create an engine according to the request
+// If the specified engine name exists already, the creation will fail.
 func (em *Manager) EngineCreate(ctx context.Context, req *rpc.EngineCreateRequest) (ret *rpc.EngineResponse, err error) {
 	logrus.Infof("Engine Manager starts to create engine of volume %v", req.Spec.VolumeName)
 
@@ -100,7 +102,7 @@ func (em *Manager) EngineCreate(ctx context.Context, req *rpc.EngineCreateReques
 		return nil, errors.Wrapf(err, "failed to register engine launcher %v", el.GetLauncherName())
 	}
 	if err := el.Start(); err != nil {
-		em.unregisterEngineLauncher(req.Spec.Name)
+		go em.unregisterEngineLauncher(req.Spec.Name)
 		return nil, errors.Wrapf(err, "failed to start engine %v", req.Spec.Name)
 	}
 
@@ -159,36 +161,53 @@ func (em *Manager) unregisterEngineLauncher(launcherName string) {
 	return
 }
 
+// EngineDelete will delete the engine named by the request
+// If the specified engine doesn't exist, the deletion will return with ProcessStateNotFound set in the response
 func (em *Manager) EngineDelete(ctx context.Context, req *rpc.EngineRequest) (ret *rpc.EngineResponse, err error) {
 	logrus.Infof("Engine Manager starts to deleted engine %v", req.Name)
 
 	el := em.getLauncher(req.Name)
 	if el == nil {
-		return nil, fmt.Errorf("cannot find engine %v", req.Name)
+		return &rpc.EngineResponse{
+			Spec: &rpc.EngineSpec{
+				Name: req.Name,
+			},
+			Status: &rpc.EngineStatus{
+				ProcessStatus: &rpc.ProcessStatus{
+					State: types.ProcessStateNotFound,
+				},
+			},
+		}, nil
 	}
 
-	deleting := el.SetAndCheckIsDeleting()
-	if !deleting {
-		if err := el.Stop(); err != nil {
-			return nil, err
-		}
-
-		em.unregisterEngineLauncher(req.Name)
-	} else {
-		logrus.Debugf("Engine Manager is already deleting engine %v", req.Name)
+	if err := el.Stop(); err != nil {
+		return nil, err
 	}
+
+	go em.unregisterEngineLauncher(req.Name)
 
 	logrus.Infof("Engine Manager is deleting engine %v", req.Name)
 
 	return el.RPCResponse(), nil
 }
 
+// EngineGet will get the engine named by the request
+// If the specified engine doesn't exist, the deletion will return with ProcessStateNotFound set in the response
 func (em *Manager) EngineGet(ctx context.Context, req *rpc.EngineRequest) (ret *rpc.EngineResponse, err error) {
 	logrus.Debugf("Engine Manager starts to get engine %v", req.Name)
 
 	el := em.getLauncher(req.Name)
 	if el == nil {
-		return nil, fmt.Errorf("cannot find engine %v", req.Name)
+		return &rpc.EngineResponse{
+			Spec: &rpc.EngineSpec{
+				Name: req.Name,
+			},
+			Status: &rpc.EngineStatus{
+				ProcessStatus: &rpc.ProcessStatus{
+					State: types.ProcessStateNotFound,
+				},
+			},
+		}, nil
 	}
 
 	logrus.Debugf("Engine Manager has successfully get engine %v", req.Name)
@@ -215,6 +234,8 @@ func (em *Manager) EngineList(ctx context.Context, req *empty.Empty) (ret *rpc.E
 	return ret, nil
 }
 
+// EngineUpgrade will upgrade the engine according to the request
+// If the specified engine doesn't exist, the upgrade will return error
 func (em *Manager) EngineUpgrade(ctx context.Context, req *rpc.EngineUpgradeRequest) (ret *rpc.EngineResponse, err error) {
 	defer func() {
 		err = errors.Wrapf(err, "failed to upgrade engine for %v(%v) ", req.Spec.Name, req.Spec.VolumeName)

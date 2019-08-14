@@ -63,7 +63,6 @@ type Launcher struct {
 	currentEngine *Engine
 	pendingEngine *Engine
 
-	isDeleting bool
 	// Set it before creating new engine spec
 	// Unset it after waiting for old engine process deletion
 	isUpgrading bool
@@ -567,15 +566,6 @@ func (el *Launcher) IsUpgrading() bool {
 	el.lock.RLock()
 	defer el.lock.RUnlock()
 	return el.isUpgrading
-}
-
-func (el *Launcher) SetAndCheckIsDeleting() bool {
-	el.lock.Lock()
-	defer el.lock.Unlock()
-
-	old := el.isDeleting
-	el.isDeleting = true
-	return old
 }
 
 func (el *Launcher) GetLauncherName() string {

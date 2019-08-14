@@ -159,6 +159,12 @@ func (p *Process) Stop() {
 	p.lock.RUnlock()
 
 	go func() {
+		defer func() {
+			if err := p.logger.Close(); err != nil {
+				logrus.Warnf("Process Manager: failed to close process %v 's logger: %v", p.Name, err)
+			}
+		}()
+
 		if cmd == nil || !cmd.Started() {
 			logrus.Errorf("Process Manager: cmd of %v hasn't started, no need to stop", p.Name)
 			return
