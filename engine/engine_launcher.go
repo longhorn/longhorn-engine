@@ -40,7 +40,7 @@ const (
 
 type Launcher struct {
 	lock     *sync.RWMutex
-	UpdateCh chan<- *Launcher
+	updateCh chan<- *Launcher
 
 	UUID         string
 	LauncherName string
@@ -71,7 +71,10 @@ type Launcher struct {
 	pm rpc.ProcessManagerServiceServer
 }
 
-func NewEngineLauncher(spec *rpc.EngineSpec, launcherAddr string, processUpdateCh <-chan interface{}, processManager rpc.ProcessManagerServiceServer) *Launcher {
+func NewEngineLauncher(spec *rpc.EngineSpec, launcherAddr string,
+	processUpdateCh <-chan interface{}, engineUpdateCh chan *Launcher,
+	processManager rpc.ProcessManagerServiceServer) *Launcher {
+
 	el := &Launcher{
 		UUID:         spec.Uuid,
 		LauncherName: spec.Name,
@@ -89,7 +92,8 @@ func NewEngineLauncher(spec *rpc.EngineSpec, launcherAddr string, processUpdateC
 		currentEngine: NewEngine(spec, launcherAddr, processManager),
 		pendingEngine: nil,
 
-		lock: &sync.RWMutex{},
+		lock:     &sync.RWMutex{},
+		updateCh: engineUpdateCh,
 
 		pm: processManager,
 	}
@@ -104,7 +108,7 @@ func (el *Launcher) StartMonitoring(processUpdateCh <-chan interface{}) {
 			logrus.Errorf("BUG: engine launcher: cannot get ProcessResponse from channel")
 		}
 		if p.Spec.Name == el.currentEngine.EngineName {
-			el.UpdateCh <- el
+			el.updateCh <- el
 		}
 	}
 	logrus.Debugf("Stopped process monitoring on engine launcher %v", el.GetLauncherName())
@@ -149,7 +153,7 @@ func (el *Launcher) Start() error {
 		return err
 	}
 
-	el.UpdateCh <- el
+	el.updateCh <- el
 
 	logrus.Debugf("engine launcher %v: succeed to start engine %v at %v",
 		el.LauncherName, el.currentEngine.EngineName, el.currentEngine.Listen)
@@ -166,7 +170,7 @@ func (el *Launcher) Stop() error {
 		return err
 	}
 
-	el.UpdateCh <- el
+	el.updateCh <- el
 
 	logrus.Debugf("engine launcher %v: succeed to stop engine %v at %v",
 		el.LauncherName, el.currentEngine.EngineName, el.currentEngine.Listen)
@@ -232,7 +236,7 @@ func (el *Launcher) prepareUpgrade(spec *rpc.EngineSpec) error {
 func (el *Launcher) finalizeUpgrade() error {
 	logrus.Debugf("engine launcher %v: finalize upgrade", el.LauncherName)
 
-	defer func() { el.UpdateCh <- el }()
+	defer func() { el.updateCh <- el }()
 
 	el.lock.Lock()
 
@@ -308,7 +312,7 @@ func (el *Launcher) startFrontend(frontend string) error {
 
 	el.Frontend = frontend
 	el.lock.Unlock()
-	el.UpdateCh <- el
+	el.updateCh <- el
 
 	// the controller will call back to launcher. be careful about deadlock
 	if err := el.currentEngine.startFrontend("socket"); err != nil {
@@ -346,7 +350,7 @@ func (el *Launcher) shutdownFrontend() error {
 	el.lock.Lock()
 	el.Frontend = ""
 	el.lock.Unlock()
-	el.UpdateCh <- el
+	el.updateCh <- el
 
 	logrus.Debugf("engine launcher %v: frontend has been shutdown", el.LauncherName)
 
@@ -357,7 +361,7 @@ func (el *Launcher) finishFrontendStart(tID int) error {
 	logrus.Debugf("engine launcher %v: finishing frontend start", el.LauncherName)
 
 	el.lock.Lock()
-	defer func() { el.UpdateCh <- el }()
+	defer func() { el.updateCh <- el }()
 	defer el.lock.Unlock()
 
 	el.ResourceVersion++
@@ -414,7 +418,7 @@ func (el *Launcher) finishFrontendShutdown() (int, error) {
 	logrus.Debugf("engine launcher %v: finishing frontend shutdown", el.LauncherName)
 
 	el.lock.Lock()
-	defer func() { el.UpdateCh <- el }()
+	defer func() { el.updateCh <- el }()
 	defer el.lock.Unlock()
 
 	el.ResourceVersion++
@@ -581,9 +585,5 @@ func (el *Launcher) GetLauncherName() string {
 }
 
 func (el *Launcher) Update() {
-	el.UpdateCh <- el
-}
-
-func (el *Launcher) SetUpdateCh(ch chan *Launcher) {
-	el.UpdateCh = ch
+	el.updateCh <- el
 }
