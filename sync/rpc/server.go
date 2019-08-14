@@ -44,12 +44,14 @@ type SyncAgentServer struct {
 	processesByPort map[int]string
 	isPurging       bool
 	isRestoring     bool
+	isRebuilding    bool
 	lastRestored    string
 	replicaAddress  string
 
 	BackupList  *BackupList
 	RestoreInfo *replica.RestoreStatus
 	PurgeStatus *PurgeStatus
+	RebuildInfo *RebuildStatus
 }
 
 type BackupList struct {
@@ -76,6 +78,21 @@ func NewPurgeStatus() *PurgeStatus {
 	return &PurgeStatus{
 		// avoid possible division by zero
 		total: 1,
+	}
+}
+
+type RebuildStatus struct {
+	sync.RWMutex
+	Error string
+	State types.ProcessState
+
+	processed int
+	total     int
+}
+
+func NewRebuildStatus() *RebuildStatus {
+	return &RebuildStatus{
+		RWMutex: sync.RWMutex{},
 	}
 }
 
@@ -1251,7 +1268,14 @@ func (s *SyncAgentServer) syncFilesFromHealthyReplica(fromServer, toServer strin
 		if err := s.syncFile(fromServer, toServer, disk+".meta"); err != nil {
 			return err
 		}
+
+		s.RebuildInfo.Lock()
+		s.RebuildInfo.processed++
+		s.RebuildInfo.Unlock()
 	}
+
+	s.finishRebuild()
+
 	return nil
 }
 
@@ -1307,4 +1331,27 @@ func (s *SyncAgentServer) syncFile(fromServer, toServer string, fromFileName str
 	}
 
 	return err
+}
+
+func (s *SyncAgentServer) RebuildStatus(ctx context.Context, req *empty.Empty) (*RebuildStatusReply, error) {
+	if s.RebuildInfo == nil {
+		return &RebuildStatusReply{
+			IsRebuilding: false,
+			Error:        "",
+			Progress:     0,
+			State:        "",
+		}, nil
+	}
+
+	s.RebuildInfo.RLock()
+	defer s.RebuildInfo.RUnlock()
+
+	progress := int((float32(s.RebuildInfo.processed) / float32(s.RebuildInfo.total)) * 100)
+
+	return &RebuildStatusReply{
+		IsRebuilding: s.isRebuilding,
+		Error:        s.RebuildInfo.Error,
+		Progress:     int32(progress),
+		State:        string(s.RebuildInfo.State),
+	}, nil
 }

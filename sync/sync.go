@@ -31,6 +31,13 @@ type SnapshotPurgeStatus struct {
 	State     string `json:"state"`
 }
 
+type RebuildStatus struct {
+	Error        string `json:"error"`
+	IsRebuilding bool   `json:"isRebuilding"`
+	Progress     int    `json:"progress"`
+	State        string `json:"state"`
+}
+
 func NewTask(controller string) *Task {
 	return &Task{
 		client: client.NewControllerClient(controller),
@@ -519,4 +526,34 @@ func (t *Task) StartWithReplicas(replicas []string) error {
 	}
 
 	return t.client.VolumeStart(replicas...)
+}
+
+func (t *Task) RebuildStatus() (map[string]*RebuildStatus, error) {
+	rebuildStatusMap := make(map[string]*RebuildStatus)
+
+	replicas, err := t.client.ReplicaList()
+	if err != nil {
+		return nil, err
+	}
+
+	for _, r := range replicas {
+		repClient, err := replicaClient.NewReplicaClient(r.Address)
+		if err != nil {
+			return nil, err
+		}
+
+		rs, err := repClient.RebuildStatus()
+		if err != nil {
+			logrus.Errorf("Failed to get rebuild status for replica %s: %s", r.Address, err.Error())
+			return nil, err
+		}
+		rebuildStatusMap[r.Address] = &RebuildStatus{
+			Error:        rs.Error,
+			IsRebuilding: rs.IsRebuilding,
+			Progress:     int(rs.Progress),
+			State:        rs.State,
+		}
+	}
+
+	return rebuildStatusMap, nil
 }

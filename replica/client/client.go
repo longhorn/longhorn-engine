@@ -600,3 +600,22 @@ func (c *ReplicaClient) SnapshotPurgeStatus() (*syncagentrpc.SnapshotPurgeStatus
 
 	return status, nil
 }
+
+func (c *ReplicaClient) RebuildStatus() (*syncagentrpc.RebuildStatusReply, error) {
+	conn, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure())
+	if err != nil {
+		return nil, fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
+	}
+	defer conn.Close()
+
+	syncAgentServiceClient := syncagentrpc.NewSyncAgentServiceClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
+	defer cancel()
+
+	status, err := syncAgentServiceClient.RebuildStatus(ctx, &empty.Empty{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get replica rebuild status: %v", err)
+	}
+
+	return status, nil
+}

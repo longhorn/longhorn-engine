@@ -1,7 +1,9 @@
 package app
 
 import (
+	"encoding/json"
 	"errors"
+	"fmt"
 
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
@@ -53,4 +55,31 @@ func startWithReplicas(c *cli.Context) error {
 	url := c.GlobalString("url")
 	task := sync.NewTask(url)
 	return task.StartWithReplicas(replicas)
+}
+
+func RebuildStatusCmd() cli.Command {
+	return cli.Command{
+		Name: "replica-rebuild-status",
+		Action: func(c *cli.Context) {
+			if err := rebuildStatus(c); err != nil {
+				logrus.Fatalf("Error running replica rebuild status: %v", err)
+			}
+		},
+	}
+}
+
+func rebuildStatus(c *cli.Context) error {
+	task := sync.NewTask(c.GlobalString("url"))
+	rsMap, err := task.RebuildStatus()
+	if err != nil {
+		return err
+	}
+
+	rebuildStatus, err := json.Marshal(rsMap)
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(rebuildStatus))
+
+	return nil
 }
