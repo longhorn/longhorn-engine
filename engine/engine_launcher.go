@@ -71,7 +71,7 @@ type Launcher struct {
 	pm rpc.ProcessManagerServiceServer
 }
 
-func NewEngineLauncher(spec *rpc.EngineSpec, launcherAddr string, processUpdateCh <-chan interface{}, processManager rpc.ProcessManagerServiceServer) (*Launcher, *Engine) {
+func NewEngineLauncher(spec *rpc.EngineSpec, launcherAddr string, processUpdateCh <-chan interface{}, processManager rpc.ProcessManagerServiceServer) *Launcher {
 	el := &Launcher{
 		UUID:         spec.Uuid,
 		LauncherName: spec.Name,
@@ -86,7 +86,7 @@ func NewEngineLauncher(spec *rpc.EngineSpec, launcherAddr string, processUpdateC
 
 		ResourceVersion: 1,
 
-		currentEngine: NewEngine(spec, processManager),
+		currentEngine: NewEngine(spec, launcherAddr, processManager),
 		pendingEngine: nil,
 
 		lock: &sync.RWMutex{},
@@ -94,7 +94,7 @@ func NewEngineLauncher(spec *rpc.EngineSpec, launcherAddr string, processUpdateC
 		pm: processManager,
 	}
 	go el.StartMonitoring(processUpdateCh)
-	return el, el.currentEngine
+	return el
 }
 
 func (el *Launcher) StartMonitoring(processUpdateCh <-chan interface{}) {
@@ -140,110 +140,54 @@ func (el *Launcher) RPCResponse() *rpc.EngineResponse {
 	return resp
 }
 
-// During running this function, frontendStartCallback() will be called automatically.
-// Hence need to be careful about deadlock
-// engineSpec should be el.currentEngine or el.pendingEngine
-func (el *Launcher) createEngineProcess(engineSpec *Engine) error {
-	logrus.Debugf("engine launcher %v: prepare to create engine process %v at %v",
-		el.LauncherName, engineSpec.EngineName, engineSpec.Listen)
+// Start will result in frontendStartCallback() being called automatically.
+func (el *Launcher) Start() error {
+	logrus.Debugf("engine launcher %v: prepare to start engine %v at %v",
+		el.LauncherName, el.currentEngine.EngineName, el.currentEngine.Listen)
 
-	el.lock.Lock()
-	el.ResourceVersion++
-
-	portCount := 0
-
-	args := []string{
-		"controller", el.VolumeName,
-		"--launcher", el.LauncherAddr,
-		"--launcher-id", el.LauncherName,
-	}
-
-	portArgs := []string{}
-	if engineSpec.Listen != "" {
-		args = append(args, "--listen", engineSpec.Listen)
-	} else {
-		if el.ListenIP == "" {
-			el.lock.Unlock()
-			return fmt.Errorf("neither arg listen nor arg listenIP is provided for engine %v", engineSpec.EngineName)
-		}
-		portArgs = append(portArgs, fmt.Sprintf("--listen,%s:", el.ListenIP))
-		portCount = portCount + 1
-	}
-
-	if el.Frontend != "" {
-		args = append(args, "--frontend", "socket")
-	}
-	for _, b := range el.Backends {
-		args = append(args, "--enable-backend", b)
-	}
-
-	for _, r := range engineSpec.Replicas {
-		args = append(args, "--replica", r)
-	}
-
-	req := &rpc.ProcessCreateRequest{
-		Spec: &rpc.ProcessSpec{
-			Name:      engineSpec.EngineName,
-			Binary:    engineSpec.Binary,
-			Args:      args,
-			PortArgs:  portArgs,
-			PortCount: int32(portCount),
-		},
-	}
-	el.lock.Unlock()
-
-	// engine process creation may involve in FrontendStart. be careful about deadlock
-	ret, err := el.pm.ProcessCreate(nil, req)
-	if err != nil {
+	if err := el.currentEngine.Start(); err != nil {
 		return err
 	}
 
-	el.lock.Lock()
-	el.ResourceVersion++
-	if engineSpec.Listen == "" {
-		engineSpec.Listen = util.GetURL(el.ListenIP, int(ret.Status.PortStart))
-	}
-
-	el.lock.Unlock()
 	el.UpdateCh <- el
 
-	logrus.Debugf("engine launcher %v: succeed to create engine process %v at %v",
-		el.LauncherName, engineSpec.EngineName, engineSpec.Listen)
+	logrus.Debugf("engine launcher %v: succeed to start engine %v at %v",
+		el.LauncherName, el.currentEngine.EngineName, el.currentEngine.Listen)
 
 	return nil
 }
 
-// During running this function, frontendShutdownCallback() will be called automatically.
-// Hence need to be careful about deadlock
-func (el *Launcher) deleteEngine(processName string) (*rpc.ProcessResponse, error) {
-	logrus.Debugf("engine launcher %v: prepare to delete engine process %v",
+// Stop will result in frontendShutdownCallback() being called automatically.
+func (el *Launcher) Stop() error {
+	logrus.Debugf("engine launcher %v: prepare to stop engine %v",
 		el.LauncherName, el.currentEngine.EngineName)
 
-	response, err := el.pm.ProcessDelete(nil, &rpc.ProcessDeleteRequest{
-		Name: processName,
-	})
-	if err != nil {
-		return nil, err
+	if _, err := el.currentEngine.Stop(); err != nil {
+		return err
 	}
 
-	return response, nil
+	el.UpdateCh <- el
+
+	logrus.Debugf("engine launcher %v: succeed to stop engine %v at %v",
+		el.LauncherName, el.currentEngine.EngineName, el.currentEngine.Listen)
+	return nil
+
 }
 
 func (el *Launcher) Upgrade(spec *rpc.EngineSpec) error {
-	newEngineSpec, err := el.prepareUpgrade(spec)
-	if err != nil {
+	if err := el.prepareUpgrade(spec); err != nil {
 		return errors.Wrapf(err, "failed to prepare to upgrade engine to %v", spec.Name)
 	}
 
-	if err := el.createEngineProcess(newEngineSpec); err != nil {
+	if err := el.pendingEngine.Start(); err != nil {
 		return errors.Wrapf(err, "failed to create upgrade engine %v", spec.Name)
 	}
 
-	if err = el.checkUpgradedEngineSocket(); err != nil {
+	if err := el.checkUpgradedEngineSocket(); err != nil {
 		return errors.Wrapf(err, "failed to reload socket connection for new engine %v", spec.Name)
 	}
 
-	if err = el.waitForEngineProcessRunning(newEngineSpec.EngineName); err != nil {
+	if err := el.pendingEngine.WaitForState(types.ProcessStateRunning); err != nil {
 		return errors.Wrapf(err, "failed to wait for new engine running")
 	}
 
@@ -253,12 +197,12 @@ func (el *Launcher) Upgrade(spec *rpc.EngineSpec) error {
 	return nil
 }
 
-func (el *Launcher) prepareUpgrade(spec *rpc.EngineSpec) (*Engine, error) {
+func (el *Launcher) prepareUpgrade(spec *rpc.EngineSpec) error {
 	el.lock.Lock()
 	defer el.lock.Unlock()
 
 	if el.currentEngine.Binary == spec.Binary || el.LauncherName != spec.Name {
-		return nil, fmt.Errorf("cannot upgrade with the same binary or the different engine")
+		return fmt.Errorf("cannot upgrade with the same binary or the different engine")
 	}
 
 	el.ResourceVersion++
@@ -266,16 +210,23 @@ func (el *Launcher) prepareUpgrade(spec *rpc.EngineSpec) (*Engine, error) {
 	logrus.Debugf("engine launcher %v: prepare for upgrade", el.LauncherName)
 
 	el.isUpgrading = true
-	el.pendingEngine = NewEngine(spec, el.pm)
+
+	el.pendingEngine = NewEngine(spec, el.LauncherAddr, el.pm)
+	// refill missing fields from spec
 	el.pendingEngine.Size = el.currentEngine.Size
+	el.pendingEngine.VolumeName = el.VolumeName
+	el.pendingEngine.LauncherName = el.LauncherName
+	el.pendingEngine.ListenIP = el.ListenIP
+	el.pendingEngine.Frontend = el.Frontend
+	el.pendingEngine.Backends = el.Backends
 
 	if err := util.RemoveFile(el.GetSocketPath()); err != nil {
-		return nil, errors.Wrapf(err, "failed to remove socket %v", el.GetSocketPath())
+		return errors.Wrapf(err, "failed to remove socket %v", el.GetSocketPath())
 	}
 
 	logrus.Debugf("engine launcher %v: preparation completed", el.LauncherName)
 
-	return el.pendingEngine, nil
+	return nil
 }
 
 func (el *Launcher) finalizeUpgrade() error {
@@ -284,28 +235,15 @@ func (el *Launcher) finalizeUpgrade() error {
 	defer func() { el.UpdateCh <- el }()
 
 	el.lock.Lock()
-	processName := el.currentEngine.EngineName
 
-	process, err := el.pm.ProcessGet(nil, &rpc.ProcessGetRequest{
-		Name: processName,
-	})
-	if err != nil {
-		el.lock.Unlock()
-		return errors.Wrapf(err, "failed to get old engine process before switching to the new engine process")
-	}
-	// Since the sum of process resource version and engine launcher resource version cannot decrease,
-	// we need to coalesce the resource version of old process into that of engine launcher.
-	// Besides, the final resource version of the old engine process can be greater than
-	// `process.Status.ResourceVersion`, we need to add a buffer value to compensate it.
-	el.ResourceVersion = el.ResourceVersion + process.Status.ResourceVersion + ResourceVersionBufferValue
-
+	oldEngine := el.currentEngine
 	el.currentEngine = el.pendingEngine
 	el.pendingEngine = nil
 
 	el.lock.Unlock()
 
-	if _, err := el.deleteEngine(processName); err != nil {
-		logrus.Warnf("failed to delete old engine process %v: %v", processName, err)
+	if _, err := oldEngine.Stop(); err != nil {
+		logrus.Warnf("failed to delete old engine process %v: %v", oldEngine.EngineName, err)
 	}
 
 	// We need to wait for old engine process deletion before unset el.isUpgrading
@@ -313,9 +251,8 @@ func (el *Launcher) finalizeUpgrade() error {
 	// But we don't want to shutdown frontend here since it's live upgrade.
 	// Hence frontend shutdown callback will check el.isUpgrading to skip unexpected frontend down.
 	// And we need to block process here keep el.isUpgrading before frontend shutdown callback complete.
-	isDeleted := el.waitForEngineProcessDeletion(processName)
-	if !isDeleted {
-		logrus.Warnf("engine launcher %v: failed to deleted old engine process", el.LauncherName)
+	if err := oldEngine.WaitForState(types.ProcessStateNotFound); err != nil {
+		logrus.Warnf("engine launcher %v: failed to deleted old engine %v: %v", el.LauncherName, oldEngine.EngineName, err)
 	}
 
 	el.lock.Lock()
@@ -326,61 +263,8 @@ func (el *Launcher) finalizeUpgrade() error {
 	return nil
 }
 
-func (el *Launcher) waitForEngineProcessDeletion(processName string) bool {
-	for i := 0; i < types.WaitCount; i++ {
-		resp, err := el.pm.ProcessGet(nil, &rpc.ProcessGetRequest{
-			Name: processName,
-		})
-		if err != nil {
-			logrus.Errorf("engine launcher %v: failed to wait for engine process deletion: %v", el.LauncherName, processName)
-			break
-		}
-		if resp.Status.State == types.ProcessStateNotFound {
-			break
-		}
-		logrus.Infof("engine launcher %v: waiting for engine process %v to shutdown before unregistering the engine launcher", el.LauncherName, processName)
-		time.Sleep(types.WaitInterval)
-	}
-
-	resp, err := el.pm.ProcessGet(nil, &rpc.ProcessGetRequest{
-		Name: processName,
-	})
-	if err != nil {
-		logrus.Errorf("engine launcher %v: failed to deleted engine process: %v", el.LauncherName, err)
-	}
-	if resp.Status.State != types.ProcessStateNotFound {
-		logrus.Errorf("engine launcher %v: failed to deleted engine process: engine state %v", el.LauncherName, resp.Status.State)
-		return false
-	}
-	logrus.Infof("engine launcher %v: successfully deleted engine process", el.LauncherName)
-	return true
-}
-
-func (el *Launcher) waitForEngineProcessRunning(processName string) error {
-	for i := 0; i < types.WaitCount; i++ {
-		process, err := el.pm.ProcessGet(nil, &rpc.ProcessGetRequest{
-			Name: processName,
-		})
-		if err != nil {
-			return err
-		}
-		if process != nil && process.Status.State == types.ProcessStateRunning {
-			break
-		}
-		logrus.Infof("engine launcher %v: waiting for engine process %v running", el.LauncherName, processName)
-		time.Sleep(types.WaitInterval)
-	}
-
-	process, err := el.pm.ProcessGet(nil, &rpc.ProcessGetRequest{
-		Name: processName,
-	})
-	if err != nil {
-		return errors.Wrapf(err, "engine launcher %v: failed to wait for engine process %v running", el.LauncherName, processName)
-	}
-	if process == nil || process.Status.State != types.ProcessStateRunning {
-		return fmt.Errorf("engine launcher %v: failed to wait for engine process %v running", el.LauncherName, processName)
-	}
-	return nil
+func (el *Launcher) WaitForState(state string) error {
+	return el.currentEngine.WaitForState(state)
 }
 
 func (el *Launcher) engineLog(req *rpc.LogRequest, srv rpc.EngineManagerService_EngineLogServer) error {
