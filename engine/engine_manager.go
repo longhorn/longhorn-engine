@@ -100,7 +100,7 @@ func (em *Manager) EngineCreate(ctx context.Context, req *rpc.EngineCreateReques
 	}
 	el.Update()
 	if err := el.createEngineProcess(newEngine); err != nil {
-		go em.unregisterEngineLauncher(req.Spec.Name)
+		em.unregisterEngineLauncher(req.Spec.Name)
 		return nil, errors.Wrapf(err, "failed to start engine %v", req.Spec.Name)
 	}
 
@@ -175,7 +175,7 @@ func (em *Manager) EngineDelete(ctx context.Context, req *rpc.EngineRequest) (re
 			return nil, err
 		}
 
-		go em.unregisterEngineLauncher(req.Name)
+		em.unregisterEngineLauncher(req.Name)
 	} else {
 		logrus.Debugf("Engine Manager is already deleting engine %v", req.Name)
 	}
