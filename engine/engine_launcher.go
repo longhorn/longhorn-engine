@@ -111,7 +111,7 @@ func (el *Launcher) StartMonitoring(processUpdateCh <-chan interface{}) {
 	logrus.Debugf("Stopped process monitoring on engine launcher %v", el.GetLauncherName())
 }
 
-func (el *Launcher) RPCResponse(mayBeDeleting bool) (*rpc.EngineResponse, error) {
+func (el *Launcher) RPCResponse() *rpc.EngineResponse {
 	el.lock.RLock()
 	defer el.lock.RUnlock()
 
@@ -138,30 +138,20 @@ func (el *Launcher) RPCResponse(mayBeDeleting bool) (*rpc.EngineResponse, error)
 		Name: el.currentEngine.EngineName,
 	})
 	if err != nil {
-		// if the engine is in deletion, we may fail to get the related process info
-		// and `process` can be nil
-		if !mayBeDeleting || !strings.Contains(err.Error(), "cannot find process") {
-			return nil, errors.Wrapf(err, "failed to get the related process info for engine %v",
-				el.LauncherName)
+		if !strings.Contains(err.Error(), "cannot find process") {
+			logrus.Warnf("failed to get the related process info for engine %v: %v",
+				el.LauncherName, err)
 		}
-	}
-
-	// `process` can be nil only when the engine is in deletion.
-	// Race condition: try to get the engine whose related process has been deleted
-	// but the engine launcher hasn't been unregistered from Engine Manager. Hence we
-	// will manually set process status for this kind of engine.
-	if process == nil {
 		resp.Status.ProcessStatus = &rpc.ProcessStatus{
 			State: types.ProcessStateStopped,
 		}
-		resp.Deleted = true
 	} else {
 		resp.Status.ProcessStatus = process.Status
 		// the response should reflect the final resource version
 		resp.Status.ResourceVersion += process.Status.ResourceVersion
 	}
 
-	return resp, nil
+	return resp
 }
 
 // During running this function, frontendStartCallback() will be called automatically.
