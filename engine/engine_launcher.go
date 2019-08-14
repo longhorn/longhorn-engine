@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strings"
 	"sync"
 	"time"
 
@@ -224,9 +223,6 @@ func (el *Launcher) deleteEngine(processName string) (*rpc.ProcessResponse, erro
 		Name: processName,
 	})
 	if err != nil {
-		if strings.Contains(err.Error(), "cannot find process") {
-			return nil, nil
-		}
 		return nil, err
 	}
 
@@ -332,23 +328,32 @@ func (el *Launcher) finalizeUpgrade() error {
 
 func (el *Launcher) waitForEngineProcessDeletion(processName string) bool {
 	for i := 0; i < types.WaitCount; i++ {
-		if _, err := el.pm.ProcessGet(nil, &rpc.ProcessGetRequest{
+		resp, err := el.pm.ProcessGet(nil, &rpc.ProcessGetRequest{
 			Name: processName,
-		}); err != nil && strings.Contains(err.Error(), "cannot find process") {
+		})
+		if err != nil {
+			logrus.Errorf("engine launcher %v: failed to wait for engine process deletion: %v", el.LauncherName, processName)
+			break
+		}
+		if resp.Status.State == types.ProcessStateNotFound {
 			break
 		}
 		logrus.Infof("engine launcher %v: waiting for engine process %v to shutdown before unregistering the engine launcher", el.LauncherName, processName)
 		time.Sleep(types.WaitInterval)
 	}
 
-	if _, err := el.pm.ProcessGet(nil, &rpc.ProcessGetRequest{
+	resp, err := el.pm.ProcessGet(nil, &rpc.ProcessGetRequest{
 		Name: processName,
-	}); err != nil && strings.Contains(err.Error(), "cannot find process") {
-		logrus.Infof("engine launcher %v: successfully deleted engine process", el.LauncherName)
-		return true
+	})
+	if err != nil {
+		logrus.Errorf("engine launcher %v: failed to deleted engine process: %v", el.LauncherName, err)
 	}
-	logrus.Errorf("engine launcher %v: failed to deleted engine process", el.LauncherName)
-	return false
+	if resp.Status.State != types.ProcessStateNotFound {
+		logrus.Errorf("engine launcher %v: failed to deleted engine process: engine state %v", el.LauncherName, resp.Status.State)
+		return false
+	}
+	logrus.Infof("engine launcher %v: successfully deleted engine process", el.LauncherName)
+	return true
 }
 
 func (el *Launcher) waitForEngineProcessRunning(processName string) error {
@@ -356,7 +361,7 @@ func (el *Launcher) waitForEngineProcessRunning(processName string) error {
 		process, err := el.pm.ProcessGet(nil, &rpc.ProcessGetRequest{
 			Name: processName,
 		})
-		if err != nil && !strings.Contains(err.Error(), "cannot find process") {
+		if err != nil {
 			return err
 		}
 		if process != nil && process.Status.State == types.ProcessStateRunning {
@@ -369,7 +374,10 @@ func (el *Launcher) waitForEngineProcessRunning(processName string) error {
 	process, err := el.pm.ProcessGet(nil, &rpc.ProcessGetRequest{
 		Name: processName,
 	})
-	if err != nil || process == nil || process.Status.State != types.ProcessStateRunning {
+	if err != nil {
+		return errors.Wrapf(err, "engine launcher %v: failed to wait for engine process %v running", el.LauncherName, processName)
+	}
+	if process == nil || process.Status.State != types.ProcessStateRunning {
 		return fmt.Errorf("engine launcher %v: failed to wait for engine process %v running", el.LauncherName, processName)
 	}
 	return nil

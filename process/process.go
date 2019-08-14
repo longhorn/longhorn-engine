@@ -19,6 +19,7 @@ const (
 	StateStopping = State(types.ProcessStateStopping)
 	StateStopped  = State(types.ProcessStateStopped)
 	StateError    = State(types.ProcessStateError)
+	StateNotFound = State(types.ProcessStateNotFound)
 )
 
 type Process struct {

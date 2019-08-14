@@ -2,7 +2,6 @@ package engine
 
 import (
 	"context"
-	"strings"
 
 	"github.com/sirupsen/logrus"
 
@@ -66,12 +65,11 @@ func (e *Engine) ProcessStatus() *rpc.ProcessStatus {
 		Name: e.EngineName,
 	})
 	if err != nil {
-		if !strings.Contains(err.Error(), "cannot find process") {
-			logrus.Warnf("failed to get the related process info for engine %v: %v",
-				e.EngineName, err)
-		}
+		logrus.Warnf("failed to get the related process info for engine %v: %v",
+			e.EngineName, err)
 		return &rpc.ProcessStatus{
-			State: types.ProcessStateStopped,
+			State:    types.ProcessStateNotFound,
+			ErrorMsg: err.Error(),
 		}
 	}
 	return process.Status

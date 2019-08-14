@@ -148,7 +148,14 @@ func (pm *Manager) ProcessDelete(ctx context.Context, req *rpc.ProcessDeleteRequ
 
 	p := pm.findProcess(req.Name)
 	if p == nil {
-		return nil, fmt.Errorf("cannot find process %v", req.Name)
+		return &rpc.ProcessResponse{
+			Spec: &rpc.ProcessSpec{
+				Name: req.Name,
+			},
+			Status: &rpc.ProcessStatus{
+				State: string(StateNotFound),
+			},
+		}, nil
 	}
 
 	p.Stop()
@@ -244,7 +251,14 @@ func (pm *Manager) findProcess(name string) *Process {
 func (pm *Manager) ProcessGet(ctx context.Context, req *rpc.ProcessGetRequest) (*rpc.ProcessResponse, error) {
 	p := pm.findProcess(req.Name)
 	if p == nil {
-		return nil, fmt.Errorf("cannot find process %v", req.Name)
+		return &rpc.ProcessResponse{
+			Spec: &rpc.ProcessSpec{
+				Name: req.Name,
+			},
+			Status: &rpc.ProcessStatus{
+				State: string(StateNotFound),
+			},
+		}, nil
 	}
 
 	return p.RPCResponse(), nil
