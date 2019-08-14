@@ -156,7 +156,7 @@ func (e *Engine) Stop() (*rpc.ProcessResponse, error) {
 	})
 }
 
-func (e Engine) WaitForState(state string) error {
+func (e *Engine) WaitForState(state string) error {
 	done := false
 	for i := 0; i < types.WaitCount; i++ {
 		resp, err := e.pm.ProcessGet(nil, &rpc.ProcessGetRequest{
@@ -177,4 +177,10 @@ func (e Engine) WaitForState(state string) error {
 		return fmt.Errorf("engine %v: failed to wait for the state %v", e.EngineName, state)
 	}
 	return nil
+}
+
+func (e *Engine) Log(srv rpc.EngineManagerService_EngineLogServer) error {
+	return e.pm.ProcessLog(&rpc.LogRequest{
+		Name: e.EngineName,
+	}, srv)
 }

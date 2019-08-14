@@ -244,9 +244,7 @@ func (em *Manager) EngineLog(req *rpc.LogRequest, srv rpc.EngineManagerService_E
 		return fmt.Errorf("cannot find engine %v", req.Name)
 	}
 
-	if err := el.engineLog(&rpc.LogRequest{
-		Name: el.GetCurrentEngineName(),
-	}, srv); err != nil {
+	if err := el.Log(srv); err != nil {
 		return err
 	}
 

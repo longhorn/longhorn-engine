@@ -267,12 +267,8 @@ func (el *Launcher) WaitForState(state string) error {
 	return el.currentEngine.WaitForState(state)
 }
 
-func (el *Launcher) engineLog(req *rpc.LogRequest, srv rpc.EngineManagerService_EngineLogServer) error {
-	if err := el.pm.ProcessLog(req, srv); err != nil {
-		return err
-	}
-
-	return nil
+func (el *Launcher) Log(srv rpc.EngineManagerService_EngineLogServer) error {
+	return el.currentEngine.Log(srv)
 }
 
 func (el *Launcher) startFrontend(frontend string) error {
@@ -527,12 +523,6 @@ func (el *Launcher) createDev() error {
 	logrus.Debugf("engine launcher %v: Device %s is ready", el.LauncherName, dev)
 
 	return nil
-}
-
-func (el *Launcher) GetCurrentEngineName() string {
-	el.lock.RLock()
-	defer el.lock.RUnlock()
-	return el.currentEngine.EngineName
 }
 
 func (el *Launcher) IsSCSIDeviceEnabled() bool {
