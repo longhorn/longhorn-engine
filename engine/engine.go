@@ -1,11 +1,17 @@
 package engine
 
 import (
+	"context"
+	"strings"
+
+	"github.com/sirupsen/logrus"
+
 	uuid "github.com/satori/go.uuid"
 
 	"github.com/longhorn/longhorn-engine/controller/client"
 
 	"github.com/longhorn/longhorn-instance-manager/rpc"
+	"github.com/longhorn/longhorn-instance-manager/types"
 )
 
 type Engine struct {
@@ -14,19 +20,23 @@ type Engine struct {
 	Binary     string
 	Listen     string
 	Replicas   []string
+
+	pm rpc.ProcessManagerServiceServer
 }
 
 func GenerateEngineName(name string) string {
 	return name + "-" + uuid.NewV4().String()[:8]
 }
 
-func NewEngine(spec *rpc.EngineSpec) *Engine {
+func NewEngine(spec *rpc.EngineSpec, pm rpc.ProcessManagerServiceServer) *Engine {
 	e := &Engine{
 		EngineName: GenerateEngineName(spec.Name),
 		Size:       spec.Size,
 		Binary:     spec.Binary,
 		Listen:     spec.Listen,
 		Replicas:   spec.Replicas,
+
+		pm: pm,
 	}
 	return e
 }
@@ -49,4 +59,20 @@ func (e *Engine) shutdownFrontend() error {
 	}
 
 	return nil
+}
+
+func (e *Engine) ProcessStatus() *rpc.ProcessStatus {
+	process, err := e.pm.ProcessGet(context.TODO(), &rpc.ProcessGetRequest{
+		Name: e.EngineName,
+	})
+	if err != nil {
+		if !strings.Contains(err.Error(), "cannot find process") {
+			logrus.Warnf("failed to get the related process info for engine %v: %v",
+				e.EngineName, err)
+		}
+		return &rpc.ProcessStatus{
+			State: types.ProcessStateStopped,
+		}
+	}
+	return process.Status
 }

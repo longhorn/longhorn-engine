@@ -87,7 +87,7 @@ func NewEngineLauncher(spec *rpc.EngineSpec, launcherAddr string, processUpdateC
 
 		ResourceVersion: 1,
 
-		currentEngine: NewEngine(spec),
+		currentEngine: NewEngine(spec, processManager),
 		pendingEngine: nil,
 
 		lock: &sync.RWMutex{},
@@ -134,22 +134,9 @@ func (el *Launcher) RPCResponse() *rpc.EngineResponse {
 		},
 	}
 
-	process, err := el.pm.ProcessGet(nil, &rpc.ProcessGetRequest{
-		Name: el.currentEngine.EngineName,
-	})
-	if err != nil {
-		if !strings.Contains(err.Error(), "cannot find process") {
-			logrus.Warnf("failed to get the related process info for engine %v: %v",
-				el.LauncherName, err)
-		}
-		resp.Status.ProcessStatus = &rpc.ProcessStatus{
-			State: types.ProcessStateStopped,
-		}
-	} else {
-		resp.Status.ProcessStatus = process.Status
-		// the response should reflect the final resource version
-		resp.Status.ResourceVersion += process.Status.ResourceVersion
-	}
+	processStatus := el.currentEngine.ProcessStatus()
+	resp.Status.ProcessStatus = processStatus
+	resp.Status.ResourceVersion += processStatus.ResourceVersion
 
 	return resp
 }
@@ -283,7 +270,7 @@ func (el *Launcher) prepareUpgrade(spec *rpc.EngineSpec) (*Engine, error) {
 	logrus.Debugf("engine launcher %v: prepare for upgrade", el.LauncherName)
 
 	el.isUpgrading = true
-	el.pendingEngine = NewEngine(spec)
+	el.pendingEngine = NewEngine(spec, el.pm)
 	el.pendingEngine.Size = el.currentEngine.Size
 
 	if err := util.RemoveFile(el.GetSocketPath()); err != nil {
