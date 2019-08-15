@@ -314,7 +314,7 @@ func (em *Manager) FrontendStart(ctx context.Context, req *rpc.FrontendStartRequ
 	}
 
 	// the controller will call back to engine manager later. be careful about deadlock
-	if err := el.startFrontend(req.Frontend); err != nil {
+	if err := el.FrontendStart(req.Frontend); err != nil {
 		return nil, err
 	}
 
@@ -332,7 +332,7 @@ func (em *Manager) FrontendShutdown(ctx context.Context, req *rpc.EngineRequest)
 	}
 
 	// the controller will call back to engine manager later. be careful about deadlock
-	if err := el.shutdownFrontend(); err != nil {
+	if err := el.FrontendShutdown(); err != nil {
 		return nil, err
 	}
 
@@ -365,7 +365,7 @@ func (em *Manager) FrontendStartCallback(ctx context.Context, req *rpc.EngineReq
 
 	logrus.Debugf("Engine Manager allocated TID %v for frontend start callback", tID)
 
-	if err := el.finishFrontendStart(int(tID)); err != nil {
+	if err := el.FrontendStartCallback(int(tID)); err != nil {
 		return nil, errors.Wrapf(err, "failed to callback for engine %v frontend start", req.Name)
 	}
 
@@ -397,7 +397,7 @@ func (em *Manager) FrontendShutdownCallback(ctx context.Context, req *rpc.Engine
 }
 
 func (em *Manager) cleanupFrontend(el *Launcher) error {
-	tID, err := el.finishFrontendShutdown()
+	tID, err := el.FrontendShutdownCallback()
 	if err != nil {
 		return errors.Wrapf(err, "failed to callback for engine %v frontend shutdown", el.GetLauncherName())
 	}

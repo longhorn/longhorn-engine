@@ -293,7 +293,7 @@ func (el *Launcher) Log(srv rpc.EngineManagerService_EngineLogServer) error {
 	return el.currentEngine.Log(srv)
 }
 
-func (el *Launcher) startFrontend(frontend string) error {
+func (el *Launcher) FrontendStart(frontend string) error {
 	logrus.Debugf("engine launcher %v: prepare to start frontend %v", el.LauncherName, frontend)
 
 	el.lock.Lock()
@@ -342,7 +342,7 @@ func (el *Launcher) startFrontend(frontend string) error {
 	return nil
 }
 
-func (el *Launcher) shutdownFrontend() error {
+func (el *Launcher) FrontendShutdown() error {
 	logrus.Debugf("engine launcher %v: prepare to shutdown frontend", el.LauncherName)
 
 	el.lock.Lock()
@@ -375,7 +375,7 @@ func (el *Launcher) shutdownFrontend() error {
 	return nil
 }
 
-func (el *Launcher) finishFrontendStart(tID int) error {
+func (el *Launcher) FrontendStartCallback(tID int) error {
 	logrus.Debugf("engine launcher %v: finishing frontend start", el.LauncherName)
 
 	el.lock.Lock()
@@ -432,7 +432,7 @@ func (el *Launcher) finishFrontendStart(tID int) error {
 	return nil
 }
 
-func (el *Launcher) finishFrontendShutdown() (int, error) {
+func (el *Launcher) FrontendShutdownCallback() (int, error) {
 	logrus.Debugf("engine launcher %v: finishing frontend shutdown", el.LauncherName)
 
 	el.lock.Lock()
