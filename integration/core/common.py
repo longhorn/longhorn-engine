@@ -225,3 +225,17 @@ def random_str():
 
 def random_num():
     return random.randint(0, 1000000)
+
+
+def create_backend_file():
+    name = random_str()
+    fo = open(name, "w+")
+    fo.truncate(SIZE)
+    fo.close()
+    return os.path.abspath(name)
+
+
+def cleanup_backend_file(paths):
+    for path in paths:
+        if os.path.exists(path):
+            os.remove(path)
