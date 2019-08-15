@@ -3,36 +3,18 @@ package engine
 import (
 	"fmt"
 	"os"
-	"os/exec"
-	"path/filepath"
 	"sync"
-	"time"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
-	"github.com/longhorn/go-iscsi-helper/iscsiblk"
-	eutil "github.com/longhorn/longhorn-engine/util"
-
+	"github.com/longhorn/go-iscsi-helper/longhorndev"
 	"github.com/longhorn/longhorn-instance-manager/rpc"
-	"github.com/longhorn/longhorn-instance-manager/util"
 )
 
 const (
 	engineLauncherSuffix = "-launcher"
 	engineLauncherName   = "%s" + engineLauncherSuffix
-
-	FrontendTGTBlockDev = "tgt-blockdev"
-	FrontendTGTISCSI    = "tgt-iscsi"
-
-	SocketDirectory = "/var/run"
-	DevPath         = "/dev/longhorn/"
-
-	WaitInterval = time.Second
-	WaitCount    = 60
-
-	SwitchWaitInterval = time.Second
-	SwitchWaitCount    = 15
 )
 
 type Launcher struct {
@@ -49,9 +31,7 @@ type Launcher struct {
 	Frontend     string
 	Backends     []string
 
-	Endpoint string
-
-	scsiDevice *iscsiblk.ScsiDevice
+	dev *longhorndev.LonghornDevice
 
 	currentEngine *Engine
 	pendingEngine *Engine
@@ -66,7 +46,8 @@ type Launcher struct {
 
 func NewEngineLauncher(spec *rpc.EngineSpec, launcherAddr string,
 	processUpdateCh <-chan interface{}, engineUpdateCh chan *Launcher,
-	processManager rpc.ProcessManagerServiceServer) *Launcher {
+	processManager rpc.ProcessManagerServiceServer) (*Launcher, error) {
+	var err error
 
 	el := &Launcher{
 		LauncherName: spec.Name,
@@ -77,8 +58,6 @@ func NewEngineLauncher(spec *rpc.EngineSpec, launcherAddr string,
 		Frontend:     spec.Frontend,
 		Backends:     spec.Backends,
 
-		Endpoint: "",
-
 		currentEngine: NewEngine(spec, launcherAddr, processManager),
 		pendingEngine: nil,
 
@@ -88,8 +67,13 @@ func NewEngineLauncher(spec *rpc.EngineSpec, launcherAddr string,
 
 		pm: processManager,
 	}
+	el.dev, err = longhorndev.NewLonghornDevice(el.VolumeName, el.Size, el.Frontend)
+	if err != nil {
+		return nil, err
+	}
+
 	go el.StartMonitoring(processUpdateCh)
-	return el
+	return el, nil
 }
 
 func (el *Launcher) StartMonitoring(processUpdateCh <-chan interface{}) {
@@ -132,7 +116,7 @@ func (el *Launcher) RPCResponse() *rpc.EngineResponse {
 			Replicas:   el.currentEngine.Replicas,
 		},
 		Status: &rpc.EngineStatus{
-			Endpoint: el.Endpoint,
+			Endpoint: el.dev.GetEndpoint(),
 		},
 	}
 
@@ -191,10 +175,6 @@ func (el *Launcher) Upgrade(spec *rpc.EngineSpec) error {
 		return errors.Wrapf(err, "failed to create upgrade engine %v", spec.Name)
 	}
 
-	if err := el.checkUpgradedEngineSocket(); err != nil {
-		return errors.Wrapf(err, "failed to reload socket connection for new engine %v", spec.Name)
-	}
-
 	if err := el.pendingEngine.WaitForRunning(); err != nil {
 		return errors.Wrapf(err, "failed to wait for new engine running")
 	}
@@ -230,8 +210,8 @@ func (el *Launcher) prepareUpgrade(spec *rpc.EngineSpec) error {
 	el.pendingEngine.Frontend = el.Frontend
 	el.pendingEngine.Backends = el.Backends
 
-	if err := util.RemoveFile(el.GetSocketPath()); err != nil {
-		return errors.Wrapf(err, "failed to remove socket %v", el.GetSocketPath())
+	if err := el.dev.PrepareUpgrade(); err != nil {
+		return err
 	}
 
 	logrus.Debugf("engine launcher %v: preparation completed", el.LauncherName)
@@ -242,7 +222,9 @@ func (el *Launcher) prepareUpgrade(spec *rpc.EngineSpec) error {
 func (el *Launcher) finalizeUpgrade() error {
 	logrus.Debugf("engine launcher %v: finalize upgrade", el.LauncherName)
 
-	defer func() { el.updateCh <- el }()
+	if err := el.dev.FinishUpgrade(); err != nil {
+		return err
+	}
 
 	el.lock.Lock()
 
@@ -269,6 +251,7 @@ func (el *Launcher) finalizeUpgrade() error {
 	el.isUpgrading = false
 	el.lock.Unlock()
 
+	el.updateCh <- el
 	return nil
 }
 
@@ -284,39 +267,10 @@ func (el *Launcher) Log(srv rpc.EngineManagerService_EngineLogServer) error {
 	return el.currentEngine.Log(srv)
 }
 
-func (el *Launcher) setFrontend(frontend string) error {
-	el.lock.Lock()
-	defer el.lock.Unlock()
-
-	if frontend != FrontendTGTBlockDev && frontend != FrontendTGTISCSI {
-		return fmt.Errorf("invalid frontend %v", frontend)
-	}
-
-	if el.Frontend != "" {
-		if el.Frontend != frontend {
-			return fmt.Errorf("engine frontend %v is already up and cannot be set to %v", el.Frontend, frontend)
-		}
-		if el.scsiDevice != nil {
-			logrus.Infof("Engine frontend %v is already up", frontend)
-			return nil
-		}
-		// el.scsiDevice == nil
-		return fmt.Errorf("engine frontend had been set to %v, but its frontend cannot be started before engine manager shutdown its frontend", frontend)
-	}
-
-	if el.scsiDevice != nil {
-		return fmt.Errorf("BUG: engine launcher frontend is empty but scsi device hasn't been cleanup in frontend start")
-	}
-
-	el.Frontend = frontend
-
-	return nil
-}
-
 func (el *Launcher) FrontendStart(frontend string) error {
 	logrus.Debugf("engine launcher %v: prepare to start frontend %v", el.LauncherName, frontend)
 
-	if err := el.setFrontend(frontend); err != nil {
+	if err := el.dev.SetFrontend(frontend); err != nil {
 		return err
 	}
 	el.updateCh <- el
@@ -335,7 +289,7 @@ func (el *Launcher) unsetFrontendCheck() error {
 	el.lock.Lock()
 	defer el.lock.Unlock()
 
-	if el.scsiDevice == nil {
+	if !el.dev.Enabled() {
 		el.Frontend = ""
 		logrus.Debugf("Engine frontend is already down")
 		return nil
@@ -378,52 +332,11 @@ func (el *Launcher) FrontendShutdown() error {
 func (el *Launcher) FrontendStartCallback(tID int) error {
 	logrus.Debugf("engine launcher %v: finishing frontend start", el.LauncherName)
 
-	el.lock.Lock()
-	defer func() { el.updateCh <- el }()
-	defer el.lock.Unlock()
-
-	// not going to use it
-	stopCh := make(chan struct{})
-	if err := <-el.WaitForSocket(stopCh); err != nil {
+	if err := el.dev.Start(tID); err != nil {
 		return err
 	}
 
-	if el.scsiDevice != nil {
-		return nil
-	}
-
-	bsOpts := fmt.Sprintf("size=%v", el.Size)
-	scsiDev, err := iscsiblk.NewScsiDevice(el.VolumeName, el.GetSocketPath(), "longhorn", bsOpts, tID)
-	if err != nil {
-		return err
-	}
-	el.scsiDevice = scsiDev
-
-	switch el.Frontend {
-	case FrontendTGTBlockDev:
-		if err := iscsiblk.StartScsi(el.scsiDevice); err != nil {
-			return err
-		}
-		if err := el.createDev(); err != nil {
-			return err
-		}
-
-		el.Endpoint = el.getDev()
-
-		logrus.Infof("engine launcher %v: SCSI device %s created", el.LauncherName, el.scsiDevice.Device)
-		break
-	case FrontendTGTISCSI:
-		if err := iscsiblk.SetupTarget(el.scsiDevice); err != nil {
-			return err
-		}
-
-		el.Endpoint = el.scsiDevice.Target
-
-		logrus.Infof("engine launcher %v: iSCSI target %s created", el.LauncherName, el.scsiDevice.Target)
-		break
-	default:
-		return fmt.Errorf("unknown frontend %v", el.Frontend)
-	}
+	el.updateCh <- el
 
 	logrus.Debugf("engine launcher %v: frontend start succeed", el.LauncherName)
 
@@ -433,148 +346,20 @@ func (el *Launcher) FrontendStartCallback(tID int) error {
 func (el *Launcher) FrontendShutdownCallback() (int, error) {
 	logrus.Debugf("engine launcher %v: finishing frontend shutdown", el.LauncherName)
 
-	el.lock.Lock()
-	defer func() { el.updateCh <- el }()
-	defer el.lock.Unlock()
-
-	if el.scsiDevice == nil {
-		return 0, nil
+	tID, err := el.dev.Shutdown()
+	if err != nil {
+		return 0, err
 	}
 
-	switch el.Frontend {
-	case FrontendTGTBlockDev:
-		dev := el.getDev()
-		if err := eutil.RemoveDevice(dev); err != nil {
-			return 0, fmt.Errorf("engine launcher %v: fail to remove device %s: %v", el.LauncherName, dev, err)
-		}
-		if err := iscsiblk.StopScsi(el.VolumeName, el.scsiDevice.TargetID); err != nil {
-			return 0, fmt.Errorf("engine launcher %v: fail to stop SCSI device: %v", el.LauncherName, err)
-		}
-		logrus.Infof("engine launcher %v: SCSI device %v shutdown", el.LauncherName, dev)
-		break
-	case FrontendTGTISCSI:
-		if err := iscsiblk.DeleteTarget(el.scsiDevice.Target, el.scsiDevice.TargetID); err != nil {
-			return 0, fmt.Errorf("engine launcher %v: fail to delete target %v", el.LauncherName, el.scsiDevice.Target)
-		}
-		logrus.Infof("engine launcher %v: SCSI target %v ", el.LauncherName, el.scsiDevice.Target)
-		break
-	case "":
-		logrus.Infof("engine launcher %v: skip shutdown frontend since it's not enabled", el.LauncherName)
-		break
-	default:
-		return 0, fmt.Errorf("engine launcher %v: unknown frontend %v", el.LauncherName, el.Frontend)
-	}
-
-	tID := el.scsiDevice.TargetID
-	el.scsiDevice = nil
-	el.Endpoint = ""
+	el.updateCh <- el
 
 	logrus.Debugf("engine launcher %v: frontend shutdown succeed", el.LauncherName)
 
 	return tID, nil
 }
 
-func (el *Launcher) GetSocketPath() string {
-	if el.VolumeName == "" {
-		panic("Invalid volume name")
-	}
-	return filepath.Join(SocketDirectory, "longhorn-"+el.VolumeName+".sock")
-}
-
-func (el *Launcher) WaitForSocket(stopCh chan struct{}) chan error {
-	errCh := make(chan error)
-	go func(errCh chan error, stopCh chan struct{}) {
-		socket := el.GetSocketPath()
-		timeout := time.After(time.Duration(WaitCount) * WaitInterval)
-		tick := time.Tick(WaitInterval)
-		for {
-			select {
-			case <-timeout:
-				errCh <- fmt.Errorf("engine launcher %v: wait for socket %v timed out", el.LauncherName, socket)
-			case <-tick:
-				if _, err := os.Stat(socket); err == nil {
-					errCh <- nil
-					return
-				}
-				logrus.Infof("engine launcher %v: wait for socket %v to show up", el.LauncherName, socket)
-			case <-stopCh:
-				logrus.Infof("engine launcher %v: stop wait for socket routine", el.LauncherName)
-				return
-			}
-		}
-	}(errCh, stopCh)
-
-	return errCh
-}
-
-func (el *Launcher) ReloadSocketConnection() error {
-	cmd := exec.Command("sg_raw", el.getDev(), "a6", "00", "00", "00", "00", "00")
-	if err := cmd.Run(); err != nil {
-		return errors.Wrapf(err, "failed to reload socket connection")
-	}
-	return nil
-}
-
-func (el *Launcher) getDev() string {
-	return filepath.Join(DevPath, el.VolumeName)
-}
-
-func (el *Launcher) createDev() error {
-	if _, err := os.Stat(DevPath); os.IsNotExist(err) {
-		if err := os.MkdirAll(DevPath, 0755); err != nil {
-			logrus.Fatalf("engine launcher %v: Cannot create directory %v", el.LauncherName, DevPath)
-		}
-	}
-
-	dev := el.getDev()
-	if _, err := os.Stat(dev); err == nil {
-		logrus.Warnf("Device %s already exists, clean it up", dev)
-		if err := eutil.RemoveDevice(dev); err != nil {
-			return errors.Wrapf(err, "cannot cleanup block device file %v", dev)
-		}
-	}
-
-	if err := eutil.DuplicateDevice(el.scsiDevice.Device, dev); err != nil {
-		return err
-	}
-
-	logrus.Debugf("engine launcher %v: Device %s is ready", el.LauncherName, dev)
-
-	return nil
-}
-
 func (el *Launcher) IsSCSIDeviceEnabled() bool {
-	el.lock.RLock()
-	defer el.lock.RUnlock()
-	return el.scsiDevice != nil
-}
-
-func (el *Launcher) checkUpgradedEngineSocket() (err error) {
-	el.lock.RLock()
-	defer el.lock.RUnlock()
-
-	stopCh := make(chan struct{})
-	socketError := el.WaitForSocket(stopCh)
-	select {
-	case err = <-socketError:
-		if err != nil {
-			logrus.Errorf("error waiting for the socket %v", err)
-			err = errors.Wrapf(err, "error waiting for the socket")
-		}
-		break
-	}
-	close(stopCh)
-	close(socketError)
-
-	if err != nil {
-		return err
-	}
-
-	if err = el.ReloadSocketConnection(); err != nil {
-		return err
-	}
-
-	return nil
+	return el.dev.Enabled()
 }
 
 func (el *Launcher) IsUpgrading() bool {
