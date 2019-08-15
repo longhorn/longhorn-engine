@@ -345,32 +345,44 @@ func (el *Launcher) FrontendStart(frontend string) error {
 	return nil
 }
 
-func (el *Launcher) FrontendShutdown() error {
-	logrus.Debugf("engine launcher %v: prepare to shutdown frontend", el.LauncherName)
-
+func (el *Launcher) unsetFrontendCheck() error {
 	el.lock.Lock()
-	el.ResourceVersion++
+	defer el.lock.Unlock()
+
 	if el.scsiDevice == nil {
 		el.Frontend = ""
-		el.lock.Unlock()
+		el.ResourceVersion++
 		logrus.Debugf("Engine frontend is already down")
 		return nil
 	}
 
 	if el.Frontend == "" {
-		el.lock.Unlock()
 		return fmt.Errorf("BUG: engine launcher frontend is empty but scsi device hasn't been cleanup in frontend shutdown")
 	}
-	el.lock.Unlock()
+	return nil
+}
+
+func (el *Launcher) unsetFrontend() {
+	el.lock.Lock()
+	defer el.lock.Unlock()
+
+	el.Frontend = ""
+}
+
+func (el *Launcher) FrontendShutdown() error {
+	logrus.Debugf("engine launcher %v: prepare to shutdown frontend", el.LauncherName)
+
+	if err := el.unsetFrontendCheck(); err != nil {
+		return err
+	}
 
 	// the controller will call back to launcher. be careful about deadlock
 	if err := el.currentEngine.shutdownFrontend(); err != nil {
 		return err
 	}
 
-	el.lock.Lock()
-	el.Frontend = ""
-	el.lock.Unlock()
+	el.unsetFrontend()
+
 	el.updateCh <- el
 
 	logrus.Debugf("engine launcher %v: frontend has been shutdown", el.LauncherName)
