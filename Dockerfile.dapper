@@ -111,7 +111,7 @@ RUN cd integration && tox --notest
 RUN cd /go/src/github.com/longhorn && \
     git clone https://github.com/longhorn/longhorn-instance-manager.git && \
     cd longhorn-instance-manager && \
-    git checkout f75555b3010b4faa42914c43c1651e53ac168356 && \
+    git checkout a53f9b5f48e91fd5f016067c9b68ed7b36dc3ac9 && \
     go build -o ./longhorn-instance-manager && \
     cp longhorn-instance-manager /usr/local/bin
 
