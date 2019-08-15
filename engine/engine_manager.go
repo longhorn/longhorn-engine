@@ -2,7 +2,6 @@ package engine
 
 import (
 	"fmt"
-	"os"
 	"sync"
 
 	"github.com/golang/protobuf/ptypes/empty"
@@ -229,9 +228,9 @@ func (em *Manager) EngineUpgrade(ctx context.Context, req *rpc.EngineUpgradeRequ
 
 	logrus.Infof("Engine Manager starts to upgrade engine %v for volume %v", req.Spec.Name, req.Spec.VolumeName)
 
-	el, err := em.validateBeforeUpgrade(req.Spec)
-	if err != nil {
-		return nil, err
+	el := em.getLauncher(req.Spec.Name)
+	if el == nil {
+		return nil, fmt.Errorf("cannot find engine %v", req.Spec.Name)
 	}
 
 	if err := el.Upgrade(req.Spec); err != nil {
@@ -290,19 +289,6 @@ func (em *Manager) EngineWatch(req *empty.Empty, srv rpc.EngineManagerService_En
 	}
 
 	return nil
-}
-
-func (em *Manager) validateBeforeUpgrade(spec *rpc.EngineSpec) (*Launcher, error) {
-	if _, err := os.Stat(spec.Binary); os.IsNotExist(err) {
-		return nil, errors.Wrap(err, "cannot find the binary to be upgraded")
-	}
-
-	el := em.getLauncher(spec.Name)
-	if el == nil {
-		return nil, fmt.Errorf("cannot find engine %v", spec.Name)
-	}
-
-	return el, nil
 }
 
 func (em *Manager) FrontendStart(ctx context.Context, req *rpc.FrontendStartRequest) (ret *empty.Empty, err error) {

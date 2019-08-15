@@ -220,6 +220,10 @@ func (el *Launcher) Upgrade(spec *rpc.EngineSpec) error {
 }
 
 func (el *Launcher) prepareUpgrade(spec *rpc.EngineSpec) error {
+	if _, err := os.Stat(spec.Binary); os.IsNotExist(err) {
+		return errors.Wrapf(err, "cannot find the binary %v to be upgraded", spec.Binary)
+	}
+
 	el.lock.Lock()
 	defer el.lock.Unlock()
 
