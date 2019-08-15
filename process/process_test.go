@@ -71,12 +71,10 @@ func (s *TestSuite) TestCRUD(c *C) {
 			defer wg.Done()
 			name := "test_crud_process-" + strconv.Itoa(i)
 			binary := "any"
-			uuid := generateUUID()
 			go s.pm.ProcessWatch(nil, pw)
 
 			createReq := &rpc.ProcessCreateRequest{
 				Spec: &rpc.ProcessSpec{
-					Uuid:      uuid,
 					Name:      name,
 					Binary:    binary,
 					Args:      []string{},
@@ -94,7 +92,6 @@ func (s *TestSuite) TestCRUD(c *C) {
 				Name: name,
 			})
 			c.Assert(err, IsNil)
-			c.Assert(getResp.Spec.Uuid, Equals, uuid)
 			c.Assert(getResp.Spec.Name, Equals, name)
 			c.Assert(getResp.Status.State, Not(Equals), types.ProcessStateStopping)
 			c.Assert(getResp.Status.State, Not(Equals), types.ProcessStateStopped)
@@ -103,7 +100,6 @@ func (s *TestSuite) TestCRUD(c *C) {
 			listResp, err := s.pm.ProcessList(nil, &rpc.ProcessListRequest{})
 			c.Assert(err, IsNil)
 			c.Assert(listResp.Processes[name], NotNil)
-			c.Assert(listResp.Processes[name].Spec.Uuid, Equals, uuid)
 			c.Assert(listResp.Processes[name].Spec.Name, Equals, name)
 			c.Assert(listResp.Processes[name].Status.State, Not(Equals), types.ProcessStateStopping)
 			c.Assert(listResp.Processes[name].Status.State, Not(Equals), types.ProcessStateStopped)

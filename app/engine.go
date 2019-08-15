@@ -33,9 +33,6 @@ func EngineCreateCmd() cli.Command {
 		Name: "create",
 		Flags: []cli.Flag{
 			cli.StringFlag{
-				Name: "uuid",
-			},
-			cli.StringFlag{
 				Name: "name",
 			},
 			cli.StringFlag{
@@ -74,7 +71,6 @@ func EngineCreateCmd() cli.Command {
 }
 
 func createEngine(c *cli.Context) error {
-	uuid := c.String("uuid")
 	name := c.String("name")
 	volumeName := c.String("volume-name")
 	binary := c.String("binary")
@@ -95,7 +91,7 @@ func createEngine(c *cli.Context) error {
 
 	url := c.GlobalString("url")
 	cli := client.NewEngineManagerClient(url)
-	engine, err := cli.EngineCreate(int64(size), uuid, name, volumeName, binary, listen, listenIP, frontend, backends, replicas)
+	engine, err := cli.EngineCreate(int64(size), name, volumeName, binary, listen, listenIP, frontend, backends, replicas)
 	if err != nil {
 		return err
 	}

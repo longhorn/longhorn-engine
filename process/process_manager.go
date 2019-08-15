@@ -121,15 +121,13 @@ func (pm *Manager) ProcessCreate(ctx context.Context, req *rpc.ProcessCreateRequ
 	}
 
 	p := &Process{
-		UUID:      req.Spec.Uuid,
 		Name:      req.Spec.Name,
 		Binary:    req.Spec.Binary,
 		Args:      req.Spec.Args,
 		PortCount: req.Spec.PortCount,
 		PortArgs:  req.Spec.PortArgs,
 
-		State:           StateStarting,
-		ResourceVersion: 1,
+		State: StateStarting,
 
 		lock: &sync.RWMutex{},
 

@@ -27,9 +27,6 @@ func ProcessCreateCmd() cli.Command {
 		Name: "create",
 		Flags: []cli.Flag{
 			cli.StringFlag{
-				Name: "uuid",
-			},
-			cli.StringFlag{
 				Name: "name",
 			},
 			cli.StringFlag{
@@ -55,7 +52,7 @@ func createProcess(c *cli.Context) error {
 	url := c.GlobalString("url")
 
 	cli := client.NewProcessManagerClient(url)
-	process, err := cli.ProcessCreate(c.String("uuid"), c.String("name"), c.String("binary"),
+	process, err := cli.ProcessCreate(c.String("name"), c.String("binary"),
 		c.Int("port-count"), c.Args(), c.StringSlice("port-args"))
 	if err != nil {
 		return fmt.Errorf("failed to create process: %v", err)

@@ -33,8 +33,6 @@ const (
 
 	SwitchWaitInterval = time.Second
 	SwitchWaitCount    = 15
-
-	ResourceVersionBufferValue = 100
 )
 
 type Launcher struct {
@@ -52,11 +50,6 @@ type Launcher struct {
 	Backends     []string
 
 	Endpoint string
-
-	// This field reflects engine launcher version only.
-	// The final resource version of engine process should combine
-	// the version of engine launcher and that of related process.
-	ResourceVersion int64
 
 	scsiDevice *iscsiblk.ScsiDevice
 
@@ -76,7 +69,6 @@ func NewEngineLauncher(spec *rpc.EngineSpec, launcherAddr string,
 	processManager rpc.ProcessManagerServiceServer) *Launcher {
 
 	el := &Launcher{
-		UUID:         spec.Uuid,
 		LauncherName: spec.Name,
 		LauncherAddr: launcherAddr,
 		VolumeName:   spec.VolumeName,
@@ -86,8 +78,6 @@ func NewEngineLauncher(spec *rpc.EngineSpec, launcherAddr string,
 		Backends:     spec.Backends,
 
 		Endpoint: "",
-
-		ResourceVersion: 1,
 
 		currentEngine: NewEngine(spec, launcherAddr, processManager),
 		pendingEngine: nil,
@@ -131,7 +121,6 @@ func (el *Launcher) RPCResponse() *rpc.EngineResponse {
 
 	resp := &rpc.EngineResponse{
 		Spec: &rpc.EngineSpec{
-			Uuid:       el.UUID,
 			Name:       el.LauncherName,
 			VolumeName: el.VolumeName,
 			Binary:     el.currentEngine.Binary,
@@ -143,14 +132,12 @@ func (el *Launcher) RPCResponse() *rpc.EngineResponse {
 			Replicas:   el.currentEngine.Replicas,
 		},
 		Status: &rpc.EngineStatus{
-			Endpoint:        el.Endpoint,
-			ResourceVersion: el.ResourceVersion,
+			Endpoint: el.Endpoint,
 		},
 	}
 
 	processStatus := el.currentEngine.ProcessStatus()
 	resp.Status.ProcessStatus = processStatus
-	resp.Status.ResourceVersion += processStatus.ResourceVersion
 
 	return resp
 }
@@ -230,8 +217,6 @@ func (el *Launcher) prepareUpgrade(spec *rpc.EngineSpec) error {
 		return fmt.Errorf("cannot upgrade with the same binary or the different engine")
 	}
 
-	el.ResourceVersion++
-
 	logrus.Debugf("engine launcher %v: prepare for upgrade", el.LauncherName)
 
 	el.isUpgrading = true
@@ -281,7 +266,6 @@ func (el *Launcher) finalizeUpgrade() error {
 	}
 
 	el.lock.Lock()
-	el.ResourceVersion++
 	el.isUpgrading = false
 	el.lock.Unlock()
 
@@ -325,7 +309,6 @@ func (el *Launcher) setFrontend(frontend string) error {
 	}
 
 	el.Frontend = frontend
-	el.ResourceVersion++
 
 	return nil
 }
@@ -354,7 +337,6 @@ func (el *Launcher) unsetFrontendCheck() error {
 
 	if el.scsiDevice == nil {
 		el.Frontend = ""
-		el.ResourceVersion++
 		logrus.Debugf("Engine frontend is already down")
 		return nil
 	}
@@ -399,8 +381,6 @@ func (el *Launcher) FrontendStartCallback(tID int) error {
 	el.lock.Lock()
 	defer func() { el.updateCh <- el }()
 	defer el.lock.Unlock()
-
-	el.ResourceVersion++
 
 	// not going to use it
 	stopCh := make(chan struct{})
@@ -456,8 +436,6 @@ func (el *Launcher) FrontendShutdownCallback() (int, error) {
 	el.lock.Lock()
 	defer func() { el.updateCh <- el }()
 	defer el.lock.Unlock()
-
-	el.ResourceVersion++
 
 	if el.scsiDevice == nil {
 		return 0, nil

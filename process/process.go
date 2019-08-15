@@ -22,7 +22,6 @@ const (
 )
 
 type Process struct {
-	UUID      string
 	Name      string
 	Binary    string
 	Args      []string
@@ -38,8 +37,6 @@ type Process struct {
 	cmd      types.Command
 	UpdateCh chan *Process
 
-	ResourceVersion int64
-
 	logger *util.LonghornWriter
 
 	executor types.Executor
@@ -47,7 +44,6 @@ type Process struct {
 
 func (p *Process) Start() error {
 	p.lock.Lock()
-	p.ResourceVersion++
 	cmd, err := p.executor.NewCommand(p.Binary, p.Args...)
 	if err != nil {
 		return err
@@ -59,7 +55,6 @@ func (p *Process) Start() error {
 	go func() {
 		if err := cmd.Run(); err != nil {
 			p.lock.Lock()
-			p.ResourceVersion++
 			p.State = StateError
 			p.ErrorMsg = err.Error()
 			logrus.Infof("Process Manager: process %v error out, error msg: %v", p.Name, p.ErrorMsg)
@@ -69,7 +64,6 @@ func (p *Process) Start() error {
 			return
 		}
 		p.lock.Lock()
-		p.ResourceVersion++
 		p.State = StateStopped
 		logrus.Infof("Process Manager: process %v stopped", p.Name)
 		p.lock.Unlock()
@@ -83,7 +77,6 @@ func (p *Process) Start() error {
 			for i := 0; i < types.WaitCount; i++ {
 				if util.GRPCServiceReadinessProbe(address) {
 					p.lock.Lock()
-					p.ResourceVersion++
 					p.State = StateRunning
 					p.lock.Unlock()
 					p.UpdateCh <- p
@@ -99,7 +92,6 @@ func (p *Process) Start() error {
 		} else {
 			// Process Manager doesn't know the grpc address. directly set running state
 			p.lock.Lock()
-			p.ResourceVersion++
 			p.State = StateRunning
 			p.lock.Unlock()
 			p.UpdateCh <- p
@@ -120,7 +112,6 @@ func (p *Process) RPCResponse() *rpc.ProcessResponse {
 	}
 	return &rpc.ProcessResponse{
 		Spec: &rpc.ProcessSpec{
-			Uuid:      p.UUID,
 			Name:      p.Name,
 			Binary:    p.Binary,
 			Args:      p.Args,
@@ -129,11 +120,10 @@ func (p *Process) RPCResponse() *rpc.ProcessResponse {
 		},
 
 		Status: &rpc.ProcessStatus{
-			State:           string(p.State),
-			ErrorMsg:        p.ErrorMsg,
-			PortStart:       p.PortStart,
-			PortEnd:         p.PortEnd,
-			ResourceVersion: p.ResourceVersion,
+			State:     string(p.State),
+			ErrorMsg:  p.ErrorMsg,
+			PortStart: p.PortStart,
+			PortEnd:   p.PortEnd,
 		},
 	}
 }
@@ -143,7 +133,6 @@ func (p *Process) Stop() {
 	p.lock.Lock()
 	if p.State != StateStopping && p.State != StateStopped && p.State != StateError {
 		p.State = StateStopping
-		p.ResourceVersion++
 		needStop = true
 	}
 	p.lock.Unlock()

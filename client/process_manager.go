@@ -23,8 +23,8 @@ func NewProcessManagerClient(address string) *ProcessManagerClient {
 	}
 }
 
-func (cli *ProcessManagerClient) ProcessCreate(uuid, name, binary string, portCount int, args, portArgs []string) (*api.Process, error) {
-	if uuid == "" || name == "" || binary == "" {
+func (cli *ProcessManagerClient) ProcessCreate(name, binary string, portCount int, args, portArgs []string) (*api.Process, error) {
+	if name == "" || binary == "" {
 		return nil, fmt.Errorf("failed to start process: missing required parameter")
 	}
 
@@ -40,7 +40,6 @@ func (cli *ProcessManagerClient) ProcessCreate(uuid, name, binary string, portCo
 
 	p, err := client.ProcessCreate(ctx, &rpc.ProcessCreateRequest{
 		Spec: &rpc.ProcessSpec{
-			Uuid:      uuid,
 			Name:      name,
 			Binary:    binary,
 			Args:      args,
