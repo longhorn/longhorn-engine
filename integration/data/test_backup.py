@@ -219,9 +219,9 @@ def test_backup(grpc_replica1, grpc_replica2,  # NOQA
         backup_test(dev, grpc_controller.address,
                     VOLUME_NAME, ENGINE_NAME, backup_target)
         cmd.sync_agent_server_reset(grpc_controller.address)
+        cleanup_controller(grpc_controller)
         cleanup_replica(grpc_replica1)
         cleanup_replica(grpc_replica2)
-        cleanup_controller(grpc_controller)
 
 
 def test_snapshot_tree_backup(grpc_replica1, grpc_replica2,  # NOQA
@@ -231,9 +231,9 @@ def test_snapshot_tree_backup(grpc_replica1, grpc_replica2,  # NOQA
                                   grpc_controller,
                                   grpc_replica1, grpc_replica2)
         cmd.sync_agent_server_reset(grpc_controller.address)
+        cleanup_controller(grpc_controller)
         cleanup_replica(grpc_replica1)
         cleanup_replica(grpc_replica2)
-        cleanup_controller(grpc_controller)
 
 
 def test_backup_with_backing_file(grpc_backing_replica1, grpc_backing_replica2,  # NOQA
@@ -244,9 +244,9 @@ def test_backup_with_backing_file(grpc_backing_replica1, grpc_backing_replica2, 
                                       grpc_backing_replica1,
                                       grpc_backing_replica2)
         cmd.sync_agent_server_reset(grpc_backing_controller.address)
+        cleanup_controller(grpc_backing_controller)
         cleanup_replica(grpc_backing_replica1)
         cleanup_replica(grpc_backing_replica2)
-        cleanup_controller(grpc_backing_controller)
 
 
 def test_backup_hole_with_backing_file(grpc_backing_replica1, grpc_backing_replica2,  # NOQA
@@ -257,9 +257,9 @@ def test_backup_hole_with_backing_file(grpc_backing_replica1, grpc_backing_repli
                                            grpc_backing_replica1,
                                            grpc_backing_replica2)
         cmd.sync_agent_server_reset(grpc_backing_controller.address)
+        cleanup_controller(grpc_backing_controller)
         cleanup_replica(grpc_backing_replica1)
         cleanup_replica(grpc_backing_replica2)
-        cleanup_controller(grpc_backing_controller)
 
 
 def test_backup_volume_deletion(grpc_replica1, grpc_replica2,  # NOQA
@@ -285,6 +285,6 @@ def test_backup_volume_deletion(grpc_replica1, grpc_replica2,  # NOQA
         assert "cannot find" in info[VOLUME_NAME]["Messages"]["error"]
 
         cmd.sync_agent_server_reset(address)
+        cleanup_controller(grpc_controller)
         cleanup_replica(grpc_replica1)
         cleanup_replica(grpc_replica2)
-        cleanup_controller(grpc_controller)
