@@ -28,7 +28,6 @@ type Launcher struct {
 	VolumeName   string
 	ListenIP     string
 	Size         int64
-	Frontend     string
 	Backends     []string
 
 	dev *longhorndev.LonghornDevice
@@ -55,7 +54,6 @@ func NewEngineLauncher(spec *rpc.EngineSpec, launcherAddr string,
 		VolumeName:   spec.VolumeName,
 		Size:         spec.Size,
 		ListenIP:     spec.ListenIp,
-		Frontend:     spec.Frontend,
 		Backends:     spec.Backends,
 
 		currentEngine: NewEngine(spec, launcherAddr, processManager),
@@ -67,7 +65,7 @@ func NewEngineLauncher(spec *rpc.EngineSpec, launcherAddr string,
 
 		pm: processManager,
 	}
-	el.dev, err = longhorndev.NewLonghornDevice(el.VolumeName, el.Size, el.Frontend)
+	el.dev, err = longhorndev.NewLonghornDevice(el.VolumeName, el.Size, spec.Frontend)
 	if err != nil {
 		return nil, err
 	}
@@ -111,7 +109,7 @@ func (el *Launcher) RPCResponse() *rpc.EngineResponse {
 			Listen:     el.currentEngine.Listen,
 			ListenIp:   el.ListenIP,
 			Size:       el.Size,
-			Frontend:   el.Frontend,
+			Frontend:   el.dev.GetFrontend(),
 			Backends:   el.Backends,
 			Replicas:   el.currentEngine.Replicas,
 		},
@@ -207,7 +205,7 @@ func (el *Launcher) prepareUpgrade(spec *rpc.EngineSpec) error {
 	el.pendingEngine.VolumeName = el.VolumeName
 	el.pendingEngine.LauncherName = el.LauncherName
 	el.pendingEngine.ListenIP = el.ListenIP
-	el.pendingEngine.Frontend = el.Frontend
+	el.pendingEngine.Frontend = el.dev.GetFrontend()
 	el.pendingEngine.Backends = el.Backends
 
 	if err := el.dev.PrepareUpgrade(); err != nil {
@@ -285,33 +283,10 @@ func (el *Launcher) FrontendStart(frontend string) error {
 	return nil
 }
 
-func (el *Launcher) unsetFrontendCheck() error {
-	el.lock.Lock()
-	defer el.lock.Unlock()
-
-	if !el.dev.Enabled() {
-		el.Frontend = ""
-		logrus.Debugf("Engine frontend is already down")
-		return nil
-	}
-
-	if el.Frontend == "" {
-		return fmt.Errorf("BUG: engine launcher frontend is empty but scsi device hasn't been cleanup in frontend shutdown")
-	}
-	return nil
-}
-
-func (el *Launcher) unsetFrontend() {
-	el.lock.Lock()
-	defer el.lock.Unlock()
-
-	el.Frontend = ""
-}
-
 func (el *Launcher) FrontendShutdown() error {
 	logrus.Debugf("engine launcher %v: prepare to shutdown frontend", el.LauncherName)
 
-	if err := el.unsetFrontendCheck(); err != nil {
+	if err := el.dev.UnsetFrontendCheck(); err != nil {
 		return err
 	}
 
@@ -320,7 +295,7 @@ func (el *Launcher) FrontendShutdown() error {
 		return err
 	}
 
-	el.unsetFrontend()
+	el.dev.UnsetFrontend()
 
 	el.updateCh <- el
 

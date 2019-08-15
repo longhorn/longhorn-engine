@@ -249,7 +249,7 @@ func (d *LonghornDevice) ReloadSocketConnection() error {
 }
 
 func (d *LonghornDevice) SetFrontend(frontend string) error {
-	if frontend != FrontendTGTBlockDev && frontend != FrontendTGTISCSI {
+	if frontend != FrontendTGTBlockDev && frontend != FrontendTGTISCSI && frontend != "" {
 		return fmt.Errorf("invalid frontend %v", frontend)
 	}
 
@@ -276,6 +276,29 @@ func (d *LonghornDevice) SetFrontend(frontend string) error {
 	return nil
 }
 
+func (d *LonghornDevice) UnsetFrontendCheck() error {
+	d.Lock()
+	defer d.Unlock()
+
+	if d.scsiDevice == nil {
+		d.frontend = ""
+		logrus.Debugf("Engine frontend is already down")
+		return nil
+	}
+
+	if d.frontend == "" {
+		return fmt.Errorf("BUG: engine launcher frontend is empty but scsi device hasn't been cleanup in frontend shutdown")
+	}
+	return nil
+}
+
+func (d *LonghornDevice) UnsetFrontend() {
+	d.Lock()
+	defer d.Unlock()
+
+	d.frontend = ""
+}
+
 func (d *LonghornDevice) Enabled() bool {
 	d.RLock()
 	defer d.RUnlock()
@@ -286,4 +309,10 @@ func (d *LonghornDevice) GetEndpoint() string {
 	d.RLock()
 	defer d.RUnlock()
 	return d.endpoint
+}
+
+func (d *LonghornDevice) GetFrontend() string {
+	d.RLock()
+	defer d.RUnlock()
+	return d.frontend
 }
