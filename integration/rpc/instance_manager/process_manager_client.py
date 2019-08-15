@@ -17,7 +17,7 @@ class ProcessManagerClient(object):
 
         return self.stub.ProcessCreate(rpc_pb2.ProcessCreateRequest(
             spec=rpc_pb2.ProcessSpec(
-                uuid="", name=name, binary=binary,
+                name=name, binary=binary,
                 args=args, port_count=port_count, port_args=port_args,
             )
         ))
