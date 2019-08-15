@@ -297,43 +297,45 @@ func (el *Launcher) Log(srv rpc.EngineManagerService_EngineLogServer) error {
 	return el.currentEngine.Log(srv)
 }
 
-func (el *Launcher) FrontendStart(frontend string) error {
-	logrus.Debugf("engine launcher %v: prepare to start frontend %v", el.LauncherName, frontend)
-
+func (el *Launcher) setFrontend(frontend string) error {
 	el.lock.Lock()
-	el.ResourceVersion++
+	defer el.lock.Unlock()
 
 	if el.Frontend != "" && el.scsiDevice != nil {
 		if el.Frontend != frontend {
-			el.lock.Unlock()
 			return fmt.Errorf("engine frontend %v is already up and cannot be set to %v", el.Frontend, frontend)
 		}
-		el.lock.Unlock()
 		logrus.Infof("Engine frontend %v is already up", frontend)
 		return nil
 	}
 
 	if el.Frontend != "" && el.scsiDevice == nil {
 		if el.Frontend != frontend {
-			el.lock.Unlock()
 			return fmt.Errorf("engine frontend %v cannot be set to %v and its frontend cannot be started before engine manager shutdown its frontend", el.Frontend, frontend)
 		}
-		el.lock.Unlock()
 		return fmt.Errorf("engine frontend had been set to %v, but its frontend cannot be started before engine manager shutdown its frontend", frontend)
 	}
 
 	if el.Frontend == "" && el.scsiDevice != nil {
-		el.lock.Unlock()
 		return fmt.Errorf("BUG: engine launcher frontend is empty but scsi device hasn't been cleanup in frontend start")
 	}
 
 	if frontend != FrontendTGTBlockDev && frontend != FrontendTGTISCSI {
-		el.lock.Unlock()
 		return fmt.Errorf("invalid frontend %v", frontend)
 	}
 
 	el.Frontend = frontend
-	el.lock.Unlock()
+	el.ResourceVersion++
+
+	return nil
+}
+
+func (el *Launcher) FrontendStart(frontend string) error {
+	logrus.Debugf("engine launcher %v: prepare to start frontend %v", el.LauncherName, frontend)
+
+	if err := el.setFrontend(frontend); err != nil {
+		return err
+	}
 	el.updateCh <- el
 
 	// the controller will call back to launcher. be careful about deadlock
