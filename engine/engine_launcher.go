@@ -301,27 +301,24 @@ func (el *Launcher) setFrontend(frontend string) error {
 	el.lock.Lock()
 	defer el.lock.Unlock()
 
-	if el.Frontend != "" && el.scsiDevice != nil {
+	if frontend != FrontendTGTBlockDev && frontend != FrontendTGTISCSI {
+		return fmt.Errorf("invalid frontend %v", frontend)
+	}
+
+	if el.Frontend != "" {
 		if el.Frontend != frontend {
 			return fmt.Errorf("engine frontend %v is already up and cannot be set to %v", el.Frontend, frontend)
 		}
-		logrus.Infof("Engine frontend %v is already up", frontend)
-		return nil
-	}
-
-	if el.Frontend != "" && el.scsiDevice == nil {
-		if el.Frontend != frontend {
-			return fmt.Errorf("engine frontend %v cannot be set to %v and its frontend cannot be started before engine manager shutdown its frontend", el.Frontend, frontend)
+		if el.scsiDevice != nil {
+			logrus.Infof("Engine frontend %v is already up", frontend)
+			return nil
 		}
+		// el.scsiDevice == nil
 		return fmt.Errorf("engine frontend had been set to %v, but its frontend cannot be started before engine manager shutdown its frontend", frontend)
 	}
 
-	if el.Frontend == "" && el.scsiDevice != nil {
+	if el.scsiDevice != nil {
 		return fmt.Errorf("BUG: engine launcher frontend is empty but scsi device hasn't been cleanup in frontend start")
-	}
-
-	if frontend != FrontendTGTBlockDev && frontend != FrontendTGTISCSI {
-		return fmt.Errorf("invalid frontend %v", frontend)
 	}
 
 	el.Frontend = frontend
