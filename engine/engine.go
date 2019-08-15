@@ -5,9 +5,10 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/sirupsen/logrus"
-
 	uuid "github.com/satori/go.uuid"
+	"github.com/sirupsen/logrus"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/longhorn/longhorn-engine/controller/client"
 
@@ -85,7 +86,6 @@ func (e *Engine) ProcessStatus() *rpc.ProcessStatus {
 		logrus.Warnf("failed to get the related process info for engine %v: %v",
 			e.EngineName, err)
 		return &rpc.ProcessStatus{
-			State:    types.ProcessStateNotFound,
 			ErrorMsg: err.Error(),
 		}
 	}
@@ -156,27 +156,41 @@ func (e *Engine) Stop() (*rpc.ProcessResponse, error) {
 	})
 }
 
-func (e *Engine) WaitForState(state string) error {
-	done := false
+func (e *Engine) WaitForRunning() error {
+	return e.waitForState(types.ProcessStateRunning, false)
+}
+
+func (e *Engine) WaitForDeletion() error {
+	return e.waitForState("", true)
+}
+
+func (e *Engine) waitForState(state string, waitForDeletion bool) (err error) {
+	defer func() {
+		if err != nil {
+			logrus.Errorf("engine %v: error when wait for state %v: %v", e.EngineName, state, err)
+		}
+	}()
 	for i := 0; i < types.WaitCount; i++ {
 		resp, err := e.pm.ProcessGet(nil, &rpc.ProcessGetRequest{
 			Name: e.EngineName,
 		})
 		if err != nil {
-			logrus.Errorf("engine %v: error when wait for state %v: %v", e.EngineName, state, err)
+			errStatus, ok := status.FromError(err)
+			if !ok {
+				return err
+			}
+			if waitForDeletion && errStatus.Code() == codes.NotFound {
+				return nil
+			}
 			return err
 		}
 		if resp.Status.State == state {
-			done = true
-			break
+			return nil
 		}
 		logrus.Infof("engine %v: waiting for state %v", e.EngineName, state)
 		time.Sleep(types.WaitInterval)
 	}
-	if !done {
-		return fmt.Errorf("engine %v: failed to wait for the state %v", e.EngineName, state)
-	}
-	return nil
+	return fmt.Errorf("engine %v: failed to wait for the state %v", e.EngineName, state)
 }
 
 func (e *Engine) Log(srv rpc.EngineManagerService_EngineLogServer) error {

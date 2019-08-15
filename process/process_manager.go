@@ -12,6 +12,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/longhorn/longhorn-instance-manager/rpc"
 	"github.com/longhorn/longhorn-instance-manager/types"
@@ -110,7 +112,7 @@ func (pm *Manager) Shutdown() {
 // If the specified process name exists already, the creation will fail.
 func (pm *Manager) ProcessCreate(ctx context.Context, req *rpc.ProcessCreateRequest) (ret *rpc.ProcessResponse, err error) {
 	if req.Spec.Name == "" || req.Spec.Binary == "" {
-		return nil, fmt.Errorf("missing required argument")
+		return nil, status.Errorf(codes.InvalidArgument, "missing required argument")
 	}
 
 	logger, err := util.NewLonghornWriter(req.Spec.Name, pm.logsDir)
@@ -146,20 +148,13 @@ func (pm *Manager) ProcessCreate(ctx context.Context, req *rpc.ProcessCreateRequ
 }
 
 // ProcessDelete will delete the process named by the request.
-// If the process doesn't exist, the deletion will return with ProcessStateNotFound set in the response
+// If the process doesn't exist, the deletion will return with ErrorNotFound
 func (pm *Manager) ProcessDelete(ctx context.Context, req *rpc.ProcessDeleteRequest) (ret *rpc.ProcessResponse, err error) {
 	logrus.Debugf("Process Manager: prepare to delete process %v", req.Name)
 
 	p := pm.findProcess(req.Name)
 	if p == nil {
-		return &rpc.ProcessResponse{
-			Spec: &rpc.ProcessSpec{
-				Name: req.Name,
-			},
-			Status: &rpc.ProcessStatus{
-				State: types.ProcessStateNotFound,
-			},
-		}, nil
+		return nil, status.Errorf(codes.NotFound, "cannot find process %v", req.Name)
 	}
 
 	p.Stop()
@@ -180,7 +175,7 @@ func (pm *Manager) registerProcess(p *Process) error {
 
 	_, exists := pm.processes[p.Name]
 	if exists {
-		return fmt.Errorf("engine process %v already exists", p.Name)
+		return status.Errorf(codes.AlreadyExists, "engine process %v already exists", p.Name)
 	}
 
 	if len(p.PortArgs) > int(p.PortCount) {
@@ -249,18 +244,11 @@ func (pm *Manager) findProcess(name string) *Process {
 }
 
 // ProcessGet will get a process named by the request.
-// If the process doesn't exist, the call will return with ProcessStateNotFound set in the response
+// If the process doesn't exist, the call will return with ErrorNotFound
 func (pm *Manager) ProcessGet(ctx context.Context, req *rpc.ProcessGetRequest) (*rpc.ProcessResponse, error) {
 	p := pm.findProcess(req.Name)
 	if p == nil {
-		return &rpc.ProcessResponse{
-			Spec: &rpc.ProcessSpec{
-				Name: req.Name,
-			},
-			Status: &rpc.ProcessStatus{
-				State: types.ProcessStateNotFound,
-			},
-		}, nil
+		return nil, status.Errorf(codes.NotFound, "cannot find process %v", req.Name)
 	}
 
 	return p.RPCResponse(), nil
@@ -282,7 +270,7 @@ func (pm *Manager) ProcessList(ctx context.Context, req *rpc.ProcessListRequest)
 func (pm *Manager) ProcessLog(req *rpc.LogRequest, srv rpc.ProcessManagerService_ProcessLogServer) error {
 	p := pm.findProcess(req.Name)
 	if p == nil {
-		return fmt.Errorf("cannot find process %v", req.Name)
+		return status.Errorf(codes.NotFound, "cannot find process %v", req.Name)
 	}
 	doneChan := make(chan struct{})
 	logChan, err := p.logger.StreamLog(doneChan)

@@ -9,9 +9,10 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/longhorn/longhorn-instance-manager/rpc"
-	"github.com/longhorn/longhorn-instance-manager/types"
 	"github.com/longhorn/longhorn-instance-manager/util"
 )
 
@@ -133,7 +134,7 @@ func (em *Manager) unregisterEngineLauncher(launcherName string) {
 		return
 	}
 
-	if err := el.WaitForState(types.ProcessStateNotFound); err != nil {
+	if err := el.WaitForDeletion(); err != nil {
 		logrus.Errorf("Engine Manager fails to unregister engine launcher %v: %v", launcherName, err)
 	}
 
@@ -155,22 +156,13 @@ func (em *Manager) unregisterEngineLauncher(launcherName string) {
 }
 
 // EngineDelete will delete the engine named by the request
-// If the specified engine doesn't exist, the deletion will return with ProcessStateNotFound set in the response
+// If the specified engine doesn't exist, the deletion will return with ErrorNotFound
 func (em *Manager) EngineDelete(ctx context.Context, req *rpc.EngineRequest) (ret *rpc.EngineResponse, err error) {
 	logrus.Infof("Engine Manager starts to deleted engine %v", req.Name)
 
 	el := em.getLauncher(req.Name)
 	if el == nil {
-		return &rpc.EngineResponse{
-			Spec: &rpc.EngineSpec{
-				Name: req.Name,
-			},
-			Status: &rpc.EngineStatus{
-				ProcessStatus: &rpc.ProcessStatus{
-					State: types.ProcessStateNotFound,
-				},
-			},
-		}, nil
+		return nil, status.Errorf(codes.NotFound, "cannot find engine %v", req.Name)
 	}
 
 	if err := el.Stop(); err != nil {
@@ -185,20 +177,11 @@ func (em *Manager) EngineDelete(ctx context.Context, req *rpc.EngineRequest) (re
 }
 
 // EngineGet will get the engine named by the request
-// If the specified engine doesn't exist, the deletion will return with ProcessStateNotFound set in the response
+// If the specified engine doesn't exist, the deletion will return with ErrorNotFound
 func (em *Manager) EngineGet(ctx context.Context, req *rpc.EngineRequest) (ret *rpc.EngineResponse, err error) {
 	el := em.getLauncher(req.Name)
 	if el == nil {
-		return &rpc.EngineResponse{
-			Spec: &rpc.EngineSpec{
-				Name: req.Name,
-			},
-			Status: &rpc.EngineStatus{
-				ProcessStatus: &rpc.ProcessStatus{
-					State: types.ProcessStateNotFound,
-				},
-			},
-		}, nil
+		return nil, status.Errorf(codes.NotFound, "cannot find engine %v", req.Name)
 	}
 
 	return el.RPCResponse(), nil
@@ -230,7 +213,7 @@ func (em *Manager) EngineUpgrade(ctx context.Context, req *rpc.EngineUpgradeRequ
 
 	el := em.getLauncher(req.Spec.Name)
 	if el == nil {
-		return nil, fmt.Errorf("cannot find engine %v", req.Spec.Name)
+		return nil, status.Errorf(codes.NotFound, "cannot find engine %v", req.Spec.Name)
 	}
 
 	if err := el.Upgrade(req.Spec); err != nil {
@@ -247,7 +230,7 @@ func (em *Manager) EngineLog(req *rpc.LogRequest, srv rpc.EngineManagerService_E
 
 	el := em.getLauncher(req.Name)
 	if el == nil {
-		return fmt.Errorf("cannot find engine %v", req.Name)
+		return status.Errorf(codes.NotFound, "cannot find engine %v", req.Name)
 	}
 
 	if err := el.Log(srv); err != nil {
@@ -296,7 +279,7 @@ func (em *Manager) FrontendStart(ctx context.Context, req *rpc.FrontendStartRequ
 
 	el := em.getLauncher(req.Name)
 	if el == nil {
-		return nil, fmt.Errorf("cannot find engine %v", req.Name)
+		return nil, status.Errorf(codes.NotFound, "cannot find engine %v", req.Name)
 	}
 
 	// the controller will call back to engine manager later. be careful about deadlock
@@ -314,7 +297,7 @@ func (em *Manager) FrontendShutdown(ctx context.Context, req *rpc.EngineRequest)
 
 	el := em.getLauncher(req.Name)
 	if el == nil {
-		return nil, fmt.Errorf("cannot find engine %v", req.Name)
+		return nil, status.Errorf(codes.NotFound, "cannot find engine %v", req.Name)
 	}
 
 	// the controller will call back to engine manager later. be careful about deadlock
@@ -332,7 +315,7 @@ func (em *Manager) FrontendStartCallback(ctx context.Context, req *rpc.EngineReq
 
 	el := em.getLauncher(req.Name)
 	if el == nil {
-		return nil, fmt.Errorf("cannot find engine %v", req.Name)
+		return nil, status.Errorf(codes.NotFound, "cannot find engine %v", req.Name)
 	}
 
 	tID := int32(0)
@@ -365,7 +348,7 @@ func (em *Manager) FrontendShutdownCallback(ctx context.Context, req *rpc.Engine
 
 	el := em.getLauncher(req.Name)
 	if el == nil {
-		return nil, fmt.Errorf("cannot find engine %v", req.Name)
+		return nil, status.Errorf(codes.NotFound, "cannot find engine %v", req.Name)
 	}
 
 	if el.IsUpgrading() {

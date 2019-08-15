@@ -12,7 +12,6 @@ const (
 	ProcessStateStopped  = "stopped"
 	ProcessStateStopping = "stopping"
 	ProcessStateError    = "error"
-	ProcessStateNotFound = "not_found"
 )
 
 var (

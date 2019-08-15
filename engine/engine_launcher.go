@@ -15,7 +15,6 @@ import (
 	eutil "github.com/longhorn/longhorn-engine/util"
 
 	"github.com/longhorn/longhorn-instance-manager/rpc"
-	"github.com/longhorn/longhorn-instance-manager/types"
 	"github.com/longhorn/longhorn-instance-manager/util"
 )
 
@@ -209,7 +208,7 @@ func (el *Launcher) Upgrade(spec *rpc.EngineSpec) error {
 		return errors.Wrapf(err, "failed to reload socket connection for new engine %v", spec.Name)
 	}
 
-	if err := el.pendingEngine.WaitForState(types.ProcessStateRunning); err != nil {
+	if err := el.pendingEngine.WaitForRunning(); err != nil {
 		return errors.Wrapf(err, "failed to wait for new engine running")
 	}
 
@@ -277,7 +276,7 @@ func (el *Launcher) finalizeUpgrade() error {
 	// But we don't want to shutdown frontend here since it's live upgrade.
 	// Hence frontend shutdown callback will check el.isUpgrading to skip unexpected frontend down.
 	// And we need to block process here keep el.isUpgrading before frontend shutdown callback complete.
-	if err := oldEngine.WaitForState(types.ProcessStateNotFound); err != nil {
+	if err := oldEngine.WaitForDeletion(); err != nil {
 		logrus.Warnf("engine launcher %v: failed to deleted old engine %v: %v", el.LauncherName, oldEngine.EngineName, err)
 	}
 
@@ -289,8 +288,12 @@ func (el *Launcher) finalizeUpgrade() error {
 	return nil
 }
 
-func (el *Launcher) WaitForState(state string) error {
-	return el.currentEngine.WaitForState(state)
+func (el *Launcher) WaitForRunning() error {
+	return el.currentEngine.WaitForRunning()
+}
+
+func (el *Launcher) WaitForDeletion() error {
+	return el.currentEngine.WaitForDeletion()
 }
 
 func (el *Launcher) Log(srv rpc.EngineManagerService_EngineLogServer) error {
