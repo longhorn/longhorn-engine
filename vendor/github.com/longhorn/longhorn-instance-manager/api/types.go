@@ -10,7 +10,6 @@ import (
 )
 
 type Process struct {
-	UUID      string   `json:"uuid"`
 	Name      string   `json:"name"`
 	Binary    string   `json:"binary"`
 	Args      []string `json:"args"`
@@ -24,7 +23,6 @@ type Process struct {
 
 func RPCToProcess(obj *rpc.ProcessResponse) *Process {
 	return &Process{
-		UUID:          obj.Spec.Uuid,
 		Name:          obj.Spec.Name,
 		Binary:        obj.Spec.Binary,
 		Args:          obj.Spec.Args,
@@ -47,8 +45,6 @@ type ProcessStatus struct {
 	ErrorMsg  string `json:"errorMsg"`
 	PortStart int32  `json:"portStart"`
 	PortEnd   int32  `json:"portEnd"`
-
-	ResourceVersion int64 `json:"resourceVersion"`
 }
 
 func RPCToProcessStatus(obj *rpc.ProcessStatus) ProcessStatus {
@@ -57,13 +53,10 @@ func RPCToProcessStatus(obj *rpc.ProcessStatus) ProcessStatus {
 		ErrorMsg:  obj.ErrorMsg,
 		PortStart: obj.PortStart,
 		PortEnd:   obj.PortEnd,
-
-		ResourceVersion: obj.ResourceVersion,
 	}
 }
 
 type Engine struct {
-	UUID       string   `json:"uuid"`
 	Name       string   `json:"name"`
 	VolumeName string   `json:"volumeName"`
 	Binary     string   `json:"binary"`
@@ -77,13 +70,11 @@ type Engine struct {
 	ProcessStatus ProcessStatus `json:"processStatus"`
 	Endpoint      string        `json:"endpoint"`
 
-	ResourceVersion int64 `json:"resourceVersion"`
-	Deleted         bool  `json:"deleted"`
+	Deleted bool `json:"deleted"`
 }
 
 func RPCToEngine(obj *rpc.EngineResponse) *Engine {
 	return &Engine{
-		UUID:       obj.Spec.Uuid,
 		Name:       obj.Spec.Name,
 		VolumeName: obj.Spec.VolumeName,
 		Binary:     obj.Spec.Binary,
@@ -97,8 +88,7 @@ func RPCToEngine(obj *rpc.EngineResponse) *Engine {
 		ProcessStatus: RPCToProcessStatus(obj.Status.ProcessStatus),
 		Endpoint:      obj.Status.Endpoint,
 
-		ResourceVersion: obj.Status.ResourceVersion,
-		Deleted:         obj.Deleted,
+		Deleted: obj.Deleted,
 	}
 }
 

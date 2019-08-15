@@ -23,8 +23,8 @@ func NewEngineManagerClient(address string) *EngineManagerClient {
 	}
 }
 
-func (cli *EngineManagerClient) EngineCreate(size int64, uuid, name, volumeName, binary, listen, listenIP, frontend string, backends, replicas []string) (*api.Engine, error) {
-	if uuid == "" || name == "" || volumeName == "" || binary == "" {
+func (cli *EngineManagerClient) EngineCreate(size int64, name, volumeName, binary, listen, listenIP, frontend string, backends, replicas []string) (*api.Engine, error) {
+	if name == "" || volumeName == "" || binary == "" {
 		return nil, fmt.Errorf("failed to call gRPC EngineCreate: missing required parameter")
 	}
 	if listen == "" && listenIP == "" {
@@ -46,7 +46,6 @@ func (cli *EngineManagerClient) EngineCreate(size int64, uuid, name, volumeName,
 
 	e, err := client.EngineCreate(ctx, &rpc.EngineCreateRequest{
 		Spec: &rpc.EngineSpec{
-			Uuid:       uuid,
 			Name:       name,
 			VolumeName: volumeName,
 			Size:       size,

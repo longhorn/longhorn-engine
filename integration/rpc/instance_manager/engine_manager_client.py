@@ -21,7 +21,7 @@ class EngineManagerClient(object):
 
         return self.stub.EngineCreate(rpc_pb2.EngineCreateRequest(
             spec=rpc_pb2.EngineSpec(
-                uuid="", name=name, volume_name=volume_name, binary=binary,
+                name=name, volume_name=volume_name, binary=binary,
                 listen=listen, listen_ip=listen_ip, size=size,
                 frontend=frontend, backends=backends, replicas=replicas,
             )))
@@ -42,7 +42,7 @@ class EngineManagerClient(object):
 
         return self.stub.EngineUpgrade(rpc_pb2.EngineUpgradeRequest(
             spec=rpc_pb2.EngineSpec(
-                uuid="", name=name, volume_name="", binary=binary,
+                name=name, volume_name="", binary=binary,
                 listen="", listen_ip="", size=size,
                 frontend="", backends="", replicas=replicas,
             )))
