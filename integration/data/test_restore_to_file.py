@@ -315,9 +315,9 @@ def test_restore_to_file_with_backing_file(backup_targets,  # NOQA
                                                grpc_backing_replica1,
                                                grpc_backing_replica2,)
         cmd.sync_agent_server_reset(grpc_backing_controller.address)
+        cleanup_controller(grpc_backing_controller)
         cleanup_replica(grpc_backing_replica1)
         cleanup_replica(grpc_backing_replica2)
-        cleanup_controller(grpc_backing_controller)
 
 
 def test_restore_to_file_without_backing_file(backup_targets,  # NOQA
@@ -330,6 +330,6 @@ def test_restore_to_file_without_backing_file(backup_targets,  # NOQA
                                                   grpc_replica1,
                                                   grpc_replica2)
         cmd.sync_agent_server_reset(grpc_controller.address)
+        cleanup_controller(grpc_controller)
         cleanup_replica(grpc_replica1)
         cleanup_replica(grpc_replica2)
-        cleanup_controller(grpc_controller)

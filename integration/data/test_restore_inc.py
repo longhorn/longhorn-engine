@@ -227,9 +227,9 @@ def restore_inc_test(grpc_engine_manager,  # NOQA
     rm_backups(address, ENGINE_NAME, [backup0, backup1, backup2, backup4])
 
     cmd.sync_agent_server_reset(address)
+    cleanup_controller(grpc_controller)
     cleanup_replica(grpc_replica1)
     cleanup_replica(grpc_replica2)
-    cleanup_controller(grpc_controller)
 
 
 def compare_last_restored_with_backup(restore_status, backup):
@@ -289,9 +289,9 @@ def cleanup_no_frontend_volume(grpc_em, grpc_c, grpc_r1, grpc_r2):
     ep = grpc_em.engine_get(ENGINE_NO_FRONTEND_NAME)
     assert ep.spec.frontend == ""
 
+    cleanup_controller(grpc_c)
     cleanup_replica(grpc_r1)
     cleanup_replica(grpc_r2)
-    cleanup_controller(grpc_c)
 
     cleanup_replica_dir(FIXED_REPLICA_PATH1)
     cleanup_replica_dir(FIXED_REPLICA_PATH2)
