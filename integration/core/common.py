@@ -3,6 +3,7 @@ import os
 import grpc
 import tempfile
 import time
+import random
 
 import pytest
 
@@ -216,3 +217,11 @@ def cleanup_replica(grpc_client):
     r = grpc_client.replica_reload()
     assert r.state == 'initial'
     return grpc_client
+
+
+def random_str():
+    return 'random-{0}-{1}'.format(random_num(), int(time.time()))
+
+
+def random_num():
+    return random.randint(0, 1000000)

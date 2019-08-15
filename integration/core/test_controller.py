@@ -1,11 +1,11 @@
 import time
-import random
 import sys
 import os
 import grpc
 import pytest
 
 from common import grpc_controller_client as grpc_client  # NOQA
+from common import random_str
 
 # include directory intergration/rpc for module import
 sys.path.append(
@@ -14,15 +14,6 @@ sys.path.append(
     )
 )
 from controller.controller_client import ControllerClient  # NOQA
-
-
-@pytest.fixture
-def random_str():
-    return 'random-{0}-{1}'.format(random_num(), int(time.time()))
-
-
-def random_num():
-    return random.randint(0, 1000000)
 
 
 def test_replica_list(grpc_client):  # NOQA
