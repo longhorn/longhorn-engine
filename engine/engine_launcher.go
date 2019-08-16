@@ -30,7 +30,7 @@ type Launcher struct {
 	Size         int64
 	Backends     []string
 
-	dev *longhorndev.LonghornDevice
+	dev longhorndev.DeviceService
 
 	currentEngine *Engine
 	pendingEngine *Engine
@@ -45,7 +45,8 @@ type Launcher struct {
 
 func NewEngineLauncher(spec *rpc.EngineSpec, launcherAddr string,
 	processUpdateCh <-chan interface{}, engineUpdateCh chan *Launcher,
-	processManager rpc.ProcessManagerServiceServer) (*Launcher, error) {
+	processManager rpc.ProcessManagerServiceServer,
+	dc longhorndev.DeviceCreator) (*Launcher, error) {
 	var err error
 
 	el := &Launcher{
@@ -65,7 +66,7 @@ func NewEngineLauncher(spec *rpc.EngineSpec, launcherAddr string,
 
 		pm: processManager,
 	}
-	el.dev, err = longhorndev.NewLonghornDevice(el.VolumeName, el.Size, spec.Frontend)
+	el.dev, err = dc.NewDevice(el.VolumeName, el.Size, spec.Frontend)
 	if err != nil {
 		return nil, err
 	}

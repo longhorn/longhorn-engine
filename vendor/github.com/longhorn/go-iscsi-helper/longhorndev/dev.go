@@ -39,7 +39,27 @@ type LonghornDevice struct {
 	scsiDevice *iscsiblk.ScsiDevice
 }
 
-func NewLonghornDevice(name string, size int64, frontend string) (*LonghornDevice, error) {
+type DeviceService interface {
+	GetFrontend() string
+	SetFrontend(frontend string) error
+	UnsetFrontendCheck() error
+	UnsetFrontend()
+	GetEndpoint() string
+	Enabled() bool
+
+	Start(tID int) error
+	Shutdown() (int, error)
+	PrepareUpgrade() error
+	FinishUpgrade() error
+}
+
+type DeviceCreator interface {
+	NewDevice(name string, size int64, frontend string) (DeviceService, error)
+}
+
+type LonghornDeviceCreator struct{}
+
+func (ldc *LonghornDeviceCreator) NewDevice(name string, size int64, frontend string) (DeviceService, error) {
 	if name == "" || size == 0 {
 		return nil, fmt.Errorf("invalid parameter for creating Longhorn device")
 	}
@@ -52,7 +72,6 @@ func NewLonghornDevice(name string, size int64, frontend string) (*LonghornDevic
 		return nil, err
 	}
 	return dev, nil
-
 }
 
 func (d *LonghornDevice) Start(tID int) error {

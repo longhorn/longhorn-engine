@@ -12,6 +12,8 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
+	"github.com/longhorn/go-iscsi-helper/longhorndev"
+
 	"github.com/longhorn/longhorn-instance-manager/rpc"
 	"github.com/longhorn/longhorn-instance-manager/util"
 )
@@ -35,6 +37,8 @@ type Manager struct {
 	shutdownCh      chan error
 	engineLaunchers map[string]*Launcher
 	tIDAllocator    *util.Bitmap
+
+	dc longhorndev.DeviceCreator
 }
 
 const (
@@ -56,6 +60,8 @@ func NewEngineManager(pm rpc.ProcessManagerServiceServer, processUpdateCh <-chan
 		shutdownCh:      shutdownCh,
 		engineLaunchers: map[string]*Launcher{},
 		tIDAllocator:    util.NewBitmap(1, MaxTgtTargetNumber),
+
+		dc: &longhorndev.LonghornDeviceCreator{},
 	}
 	// help to kickstart the broadcaster
 	c, cancel := context.WithCancel(context.Background())
@@ -97,7 +103,7 @@ func (em *Manager) StartMonitoring() {
 func (em *Manager) EngineCreate(ctx context.Context, req *rpc.EngineCreateRequest) (ret *rpc.EngineResponse, err error) {
 	logrus.Infof("Engine Manager starts to create engine of volume %v", req.Spec.VolumeName)
 
-	el, err := NewEngineLauncher(req.Spec, em.listen, em.processUpdateCh, em.elUpdateCh, em.pm)
+	el, err := NewEngineLauncher(req.Spec, em.listen, em.processUpdateCh, em.elUpdateCh, em.pm, em.dc)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to create engine launcher for request %+v", req)
 	}
