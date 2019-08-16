@@ -3,6 +3,7 @@ package engine
 import (
 	"context"
 	"fmt"
+	"sync"
 	"time"
 
 	uuid "github.com/satori/go.uuid"
@@ -21,7 +22,6 @@ type Engine struct {
 	EngineName string
 	Size       int64
 	Binary     string
-	Listen     string
 	Replicas   []string
 
 	VolumeName   string
@@ -30,6 +30,9 @@ type Engine struct {
 	ListenIP     string
 	Frontend     string
 	Backends     []string
+
+	StatusLock *sync.RWMutex
+	Listen     string
 
 	pm rpc.ProcessManagerServiceServer
 }
@@ -43,7 +46,6 @@ func NewEngine(spec *rpc.EngineSpec, launcherAddr string, pm rpc.ProcessManagerS
 		EngineName: GenerateEngineName(spec.Name),
 		Size:       spec.Size,
 		Binary:     spec.Binary,
-		Listen:     spec.Listen,
 		Replicas:   spec.Replicas,
 
 		VolumeName:   spec.VolumeName,
@@ -52,6 +54,9 @@ func NewEngine(spec *rpc.EngineSpec, launcherAddr string, pm rpc.ProcessManagerS
 		ListenIP:     spec.ListenIp,
 		Frontend:     spec.Frontend,
 		Backends:     spec.Backends,
+
+		StatusLock: &sync.RWMutex{},
+		Listen:     spec.Listen,
 
 		pm: pm,
 	}
@@ -105,8 +110,9 @@ func (e *Engine) Start() error {
 
 	portArgs := []string{}
 
-	if e.Listen != "" {
-		args = append(args, "--listen", e.Listen)
+	listen := e.GetListen()
+	if listen != "" {
+		args = append(args, "--listen", listen)
 	} else {
 		if e.ListenIP == "" {
 			return fmt.Errorf("neither arg listen nor arg listenIP is provided for engine %v", e.EngineName)
@@ -141,13 +147,26 @@ func (e *Engine) Start() error {
 		return err
 	}
 
-	if e.Listen == "" {
-		e.Listen = util.GetURL(e.ListenIP, int(ret.Status.PortStart))
+	if listen == "" {
+		listen = util.GetURL(e.ListenIP, int(ret.Status.PortStart))
+		e.SetListen(listen)
 	}
 
-	logrus.Debugf("engine %v: succeed to create engine process at %v", e.EngineName, e.Listen)
+	logrus.Debugf("engine %v: succeed to create engine process at %v", e.EngineName, listen)
 
 	return nil
+}
+
+func (e *Engine) GetListen() string {
+	e.StatusLock.RLock()
+	defer e.StatusLock.RUnlock()
+	return e.Listen
+}
+
+func (e *Engine) SetListen(listen string) {
+	e.StatusLock.Lock()
+	defer e.StatusLock.Unlock()
+	e.Listen = listen
 }
 
 func (e *Engine) Stop() (*rpc.ProcessResponse, error) {

@@ -107,7 +107,7 @@ func (el *Launcher) RPCResponse() *rpc.EngineResponse {
 			Name:       el.LauncherName,
 			VolumeName: el.VolumeName,
 			Binary:     el.currentEngine.Binary,
-			Listen:     el.currentEngine.Listen,
+			Listen:     el.currentEngine.GetListen(),
 			ListenIp:   el.ListenIP,
 			Size:       el.Size,
 			Frontend:   el.dev.GetFrontend(),
@@ -128,7 +128,7 @@ func (el *Launcher) RPCResponse() *rpc.EngineResponse {
 // Start will result in frontendStartCallback() being called automatically.
 func (el *Launcher) Start() error {
 	logrus.Debugf("engine launcher %v: prepare to start engine %v at %v",
-		el.LauncherName, el.currentEngine.EngineName, el.currentEngine.Listen)
+		el.LauncherName, el.currentEngine.EngineName, el.currentEngine.GetListen())
 
 	if err := el.currentEngine.Start(); err != nil {
 		return err
@@ -137,7 +137,7 @@ func (el *Launcher) Start() error {
 	el.updateCh <- el
 
 	logrus.Debugf("engine launcher %v: succeed to start engine %v at %v",
-		el.LauncherName, el.currentEngine.EngineName, el.currentEngine.Listen)
+		el.LauncherName, el.currentEngine.EngineName, el.currentEngine.GetListen())
 
 	return nil
 }
@@ -160,7 +160,7 @@ func (el *Launcher) Stop() error {
 	el.updateCh <- el
 
 	logrus.Debugf("engine launcher %v: succeed to stop engine %v at %v",
-		el.LauncherName, el.currentEngine.EngineName, el.currentEngine.Listen)
+		el.LauncherName, el.currentEngine.EngineName, el.currentEngine.GetListen())
 	return nil
 
 }
