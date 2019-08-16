@@ -54,7 +54,7 @@ func (s *TestSuite) SetUpSuite(c *C) {
 	s.logDir = os.TempDir()
 	s.pm, err = NewManager("10000-30000", s.logDir, s.shutdownCh)
 	c.Assert(err, IsNil)
-	s.pm.Executor = &types.TestExecutor{}
+	s.pm.Executor = &TestExecutor{}
 	s.pm.HealthChecker = &MockHealthChecker{}
 }
 

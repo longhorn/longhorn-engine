@@ -34,12 +34,12 @@ type Process struct {
 	PortEnd   int32
 
 	lock     *sync.RWMutex
-	cmd      types.Command
+	cmd      Command
 	UpdateCh chan *Process
 
 	logger *util.LonghornWriter
 
-	executor      types.Executor
+	executor      Executor
 	healthChecker HealthChecker
 }
 

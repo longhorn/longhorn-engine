@@ -41,7 +41,7 @@ type Manager struct {
 
 	logsDir string
 
-	Executor      types.Executor
+	Executor      Executor
 	HealthChecker HealthChecker
 }
 
@@ -66,7 +66,7 @@ func NewManager(portRange string, logsDir string, shutdownCh chan error) (*Manag
 
 		logsDir: logsDir,
 
-		Executor:      &types.BinaryExecutor{},
+		Executor:      &BinaryExecutor{},
 		HealthChecker: &GRPCHealthChecker{},
 	}
 	// help to kickstart the broadcaster
