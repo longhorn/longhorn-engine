@@ -10,15 +10,20 @@ type MockDeviceCreator struct{}
 
 func (mdc *MockDeviceCreator) NewDevice(name string, size int64, frontend string) (longhorndev.DeviceService, error) {
 	return &MockDeviceService{
-		RWMutex: &sync.RWMutex{},
+		RWMutex:  &sync.RWMutex{},
+		name:     name,
+		frontend: frontend,
+		size:     size,
 	}, nil
 }
 
 type MockDeviceService struct {
 	*sync.RWMutex
+	name     string
 	frontend string
 	endpoint string
 	enabled  bool
+	size     int64
 	tID      int
 }
 

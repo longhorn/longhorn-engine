@@ -78,6 +78,7 @@ func (s *TestSuite) TestEngineManager(c *C) {
 			name := "test_crud_engine-" + strconv.Itoa(i)
 			volumeName := name + "-volume"
 			binary := "any"
+			size := int64(1024)
 			go s.em.EngineWatch(nil, ew)
 
 			createReq := &rpc.EngineCreateRequest{
@@ -86,7 +87,7 @@ func (s *TestSuite) TestEngineManager(c *C) {
 					VolumeName: volumeName,
 					Binary:     binary,
 					ListenIp:   "0.0.0.0",
-					Size:       1024,
+					Size:       size,
 					Frontend:   "tgt-blockdev",
 					Backends:   []string{"tcp"},
 					Replicas:   []string{"replica1", "replica2"},
@@ -94,6 +95,8 @@ func (s *TestSuite) TestEngineManager(c *C) {
 			}
 			createResp, err := s.em.EngineCreate(nil, createReq)
 			c.Assert(err, IsNil)
+			c.Assert(createResp.Spec.Frontend, Equals, "tgt-blockdev")
+			c.Assert(createResp.Spec.Size, Equals, size)
 			c.Assert(createResp.Status.ProcessStatus.State, Not(Equals), types.ProcessStateStopping)
 			c.Assert(createResp.Status.ProcessStatus.State, Not(Equals), types.ProcessStateStopped)
 			c.Assert(createResp.Status.ProcessStatus.State, Not(Equals), types.ProcessStateError)
@@ -104,6 +107,8 @@ func (s *TestSuite) TestEngineManager(c *C) {
 			c.Assert(err, IsNil)
 			c.Assert(getResp.Spec.Name, Equals, name)
 			c.Assert(getResp.Spec.VolumeName, Equals, volumeName)
+			c.Assert(getResp.Spec.Frontend, Equals, "tgt-blockdev")
+			c.Assert(getResp.Spec.Size, Equals, size)
 			c.Assert(getResp.Status.ProcessStatus.State, Not(Equals), types.ProcessStateStopping)
 			c.Assert(getResp.Status.ProcessStatus.State, Not(Equals), types.ProcessStateStopped)
 			c.Assert(getResp.Status.ProcessStatus.State, Not(Equals), types.ProcessStateError)
@@ -130,6 +135,32 @@ func (s *TestSuite) TestEngineManager(c *C) {
 				time.Sleep(RetryInterval)
 			}
 			c.Assert(running, Equals, true)
+
+			_, err = s.em.FrontendStartCallback(nil, &rpc.EngineRequest{
+				Name: name,
+			})
+			c.Assert(err, IsNil)
+
+			getResp, err = s.em.EngineGet(nil, &rpc.EngineRequest{
+				Name: name,
+			})
+			c.Assert(getResp.Spec.Name, Equals, name)
+			c.Assert(getResp.Spec.VolumeName, Equals, volumeName)
+			c.Assert(getResp.Spec.Frontend, Equals, "tgt-blockdev")
+			c.Assert(getResp.Status.ProcessStatus.State, Equals, types.ProcessStateRunning)
+
+			_, err = s.em.FrontendShutdownCallback(nil, &rpc.EngineRequest{
+				Name: name,
+			})
+			c.Assert(err, IsNil)
+
+			getResp, err = s.em.EngineGet(nil, &rpc.EngineRequest{
+				Name: name,
+			})
+			c.Assert(getResp.Spec.Name, Equals, name)
+			c.Assert(getResp.Spec.VolumeName, Equals, volumeName)
+			c.Assert(getResp.Spec.Frontend, Equals, "tgt-blockdev")
+			c.Assert(getResp.Status.ProcessStatus.State, Equals, types.ProcessStateRunning)
 
 			deleteReq := &rpc.EngineRequest{
 				Name: name,
