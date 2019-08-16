@@ -11,8 +11,6 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/longhorn/longhorn-engine/controller/client"
-
 	"github.com/longhorn/longhorn-instance-manager/rpc"
 	"github.com/longhorn/longhorn-instance-manager/types"
 	"github.com/longhorn/longhorn-instance-manager/util"
@@ -35,13 +33,17 @@ type Engine struct {
 	Listen     string
 
 	pm rpc.ProcessManagerServiceServer
+	ec VolumeClientService
 }
 
 func GenerateEngineName(name string) string {
 	return name + "-" + uuid.NewV4().String()[:8]
 }
 
-func NewEngine(spec *rpc.EngineSpec, launcherAddr string, pm rpc.ProcessManagerServiceServer) *Engine {
+func NewEngine(spec *rpc.EngineSpec, launcherAddr string,
+	pm rpc.ProcessManagerServiceServer,
+	ec VolumeClientService) *Engine {
+
 	e := &Engine{
 		EngineName: GenerateEngineName(spec.Name),
 		Size:       spec.Size,
@@ -59,28 +61,17 @@ func NewEngine(spec *rpc.EngineSpec, launcherAddr string, pm rpc.ProcessManagerS
 		Listen:     spec.Listen,
 
 		pm: pm,
+		ec: ec,
 	}
 	return e
 }
 
 func (e *Engine) startFrontend(frontend string) error {
-	controllerCli := client.NewControllerClient(e.Listen)
-
-	if err := controllerCli.VolumeFrontendStart(frontend); err != nil {
-		return err
-	}
-
-	return nil
+	return e.ec.VolumeFrontendStart(e.GetListen(), e.LauncherName, frontend)
 }
 
 func (e *Engine) shutdownFrontend() error {
-	controllerCli := client.NewControllerClient(e.Listen)
-
-	if err := controllerCli.VolumeFrontendShutdown(); err != nil {
-		return err
-	}
-
-	return nil
+	return e.ec.VolumeFrontendShutdown(e.GetListen(), e.LauncherName)
 }
 
 func (e *Engine) ProcessStatus() *rpc.ProcessStatus {

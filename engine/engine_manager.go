@@ -39,6 +39,7 @@ type Manager struct {
 	tIDAllocator    *util.Bitmap
 
 	dc longhorndev.DeviceCreator
+	ec VolumeClientService
 }
 
 const (
@@ -62,6 +63,7 @@ func NewEngineManager(pm rpc.ProcessManagerServiceServer, processUpdateCh <-chan
 		tIDAllocator:    util.NewBitmap(1, MaxTgtTargetNumber),
 
 		dc: &longhorndev.LonghornDeviceCreator{},
+		ec: &VolumeClient{},
 	}
 	// help to kickstart the broadcaster
 	c, cancel := context.WithCancel(context.Background())
@@ -103,7 +105,8 @@ func (em *Manager) StartMonitoring() {
 func (em *Manager) EngineCreate(ctx context.Context, req *rpc.EngineCreateRequest) (ret *rpc.EngineResponse, err error) {
 	logrus.Infof("Engine Manager starts to create engine of volume %v", req.Spec.VolumeName)
 
-	el, err := NewEngineLauncher(req.Spec, em.listen, em.processUpdateCh, em.elUpdateCh, em.pm, em.dc)
+	el, err := NewEngineLauncher(req.Spec, em.listen, em.processUpdateCh, em.elUpdateCh, em.pm,
+		em.dc, em.ec)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to create engine launcher for request %+v", req)
 	}

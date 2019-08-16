@@ -61,6 +61,9 @@ func (s *TestSuite) SetUpSuite(c *C) {
 	c.Assert(err, IsNil)
 
 	s.em.dc = &MockDeviceCreator{}
+	s.em.ec = &MockVolumeClient{
+		em: s.em,
+	}
 }
 
 func (s *TestSuite) TearDownSuite(c *C) {
@@ -101,17 +104,23 @@ func (s *TestSuite) TestEngineManager(c *C) {
 			c.Assert(createResp.Status.ProcessStatus.State, Not(Equals), types.ProcessStateStopped)
 			c.Assert(createResp.Status.ProcessStatus.State, Not(Equals), types.ProcessStateError)
 
-			getResp, err := s.em.EngineGet(nil, &rpc.EngineRequest{
-				Name: name,
-			})
-			c.Assert(err, IsNil)
-			c.Assert(getResp.Spec.Name, Equals, name)
-			c.Assert(getResp.Spec.VolumeName, Equals, volumeName)
-			c.Assert(getResp.Spec.Frontend, Equals, "tgt-blockdev")
-			c.Assert(getResp.Spec.Size, Equals, size)
-			c.Assert(getResp.Status.ProcessStatus.State, Not(Equals), types.ProcessStateStopping)
-			c.Assert(getResp.Status.ProcessStatus.State, Not(Equals), types.ProcessStateStopped)
-			c.Assert(getResp.Status.ProcessStatus.State, Not(Equals), types.ProcessStateError)
+			running := false
+			for j := 0; j < RetryCount; j++ {
+				getResp, err := s.em.EngineGet(nil, &rpc.EngineRequest{
+					Name: name,
+				})
+				c.Assert(err, IsNil)
+				c.Assert(getResp.Spec.Name, Equals, name)
+				c.Assert(getResp.Spec.VolumeName, Equals, volumeName)
+				c.Assert(getResp.Spec.Frontend, Equals, "tgt-blockdev")
+				c.Assert(getResp.Spec.Size, Equals, size)
+				if getResp.Status.ProcessStatus.State == types.ProcessStateRunning {
+					running = true
+					break
+				}
+				time.Sleep(RetryInterval)
+			}
+			c.Assert(running, Equals, true)
 
 			listResp, err := s.em.EngineList(nil, nil)
 			c.Assert(err, IsNil)
@@ -122,26 +131,12 @@ func (s *TestSuite) TestEngineManager(c *C) {
 			c.Assert(listResp.Engines[name].Status.ProcessStatus.State, Not(Equals), types.ProcessStateStopped)
 			c.Assert(listResp.Engines[name].Status.ProcessStatus.State, Not(Equals), types.ProcessStateError)
 
-			running := false
-			for j := 0; j < RetryCount; j++ {
-				getResp, err := s.em.EngineGet(nil, &rpc.EngineRequest{
-					Name: name,
-				})
-				c.Assert(err, IsNil)
-				if getResp.Status.ProcessStatus.State == types.ProcessStateRunning {
-					running = true
-					break
-				}
-				time.Sleep(RetryInterval)
-			}
-			c.Assert(running, Equals, true)
-
 			_, err = s.em.FrontendStartCallback(nil, &rpc.EngineRequest{
 				Name: name,
 			})
 			c.Assert(err, IsNil)
 
-			getResp, err = s.em.EngineGet(nil, &rpc.EngineRequest{
+			getResp, err := s.em.EngineGet(nil, &rpc.EngineRequest{
 				Name: name,
 			})
 			c.Assert(getResp.Spec.Name, Equals, name)
@@ -162,6 +157,32 @@ func (s *TestSuite) TestEngineManager(c *C) {
 			c.Assert(getResp.Spec.Frontend, Equals, "tgt-blockdev")
 			c.Assert(getResp.Status.ProcessStatus.State, Equals, types.ProcessStateRunning)
 
+			_, err = s.em.FrontendShutdown(nil, &rpc.EngineRequest{
+				Name: name,
+			})
+			c.Assert(err, IsNil)
+
+			getResp, err = s.em.EngineGet(nil, &rpc.EngineRequest{
+				Name: name,
+			})
+			c.Assert(getResp.Spec.Name, Equals, name)
+			c.Assert(getResp.Spec.VolumeName, Equals, volumeName)
+			c.Assert(getResp.Spec.Frontend, Equals, "")
+			c.Assert(getResp.Status.ProcessStatus.State, Equals, types.ProcessStateRunning)
+
+			_, err = s.em.FrontendStart(nil, &rpc.FrontendStartRequest{
+				Name:     name,
+				Frontend: "tgt-iscsi",
+			})
+			c.Assert(err, IsNil)
+
+			getResp, err = s.em.EngineGet(nil, &rpc.EngineRequest{
+				Name: name,
+			})
+			c.Assert(getResp.Spec.Name, Equals, name)
+			c.Assert(getResp.Spec.VolumeName, Equals, volumeName)
+			c.Assert(getResp.Spec.Frontend, Equals, "tgt-iscsi")
+			c.Assert(getResp.Status.ProcessStatus.State, Equals, types.ProcessStateRunning)
 			deleteReq := &rpc.EngineRequest{
 				Name: name,
 			}

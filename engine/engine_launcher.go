@@ -41,12 +41,15 @@ type Launcher struct {
 	isUpgrading bool
 
 	pm rpc.ProcessManagerServiceServer
+
+	ec VolumeClientService
 }
 
 func NewEngineLauncher(spec *rpc.EngineSpec, launcherAddr string,
 	processUpdateCh <-chan interface{}, engineUpdateCh chan *Launcher,
 	processManager rpc.ProcessManagerServiceServer,
-	dc longhorndev.DeviceCreator) (*Launcher, error) {
+	dc longhorndev.DeviceCreator,
+	ec VolumeClientService) (*Launcher, error) {
 	var err error
 
 	el := &Launcher{
@@ -57,7 +60,7 @@ func NewEngineLauncher(spec *rpc.EngineSpec, launcherAddr string,
 		ListenIP:     spec.ListenIp,
 		Backends:     spec.Backends,
 
-		currentEngine: NewEngine(spec, launcherAddr, processManager),
+		currentEngine: NewEngine(spec, launcherAddr, processManager, ec),
 		pendingEngine: nil,
 
 		lock:     &sync.RWMutex{},
@@ -65,6 +68,8 @@ func NewEngineLauncher(spec *rpc.EngineSpec, launcherAddr string,
 		doneCh:   make(chan struct{}),
 
 		pm: processManager,
+
+		ec: ec,
 	}
 	el.dev, err = dc.NewDevice(el.VolumeName, el.Size, spec.Frontend)
 	if err != nil {
@@ -200,7 +205,7 @@ func (el *Launcher) prepareUpgrade(spec *rpc.EngineSpec) error {
 
 	el.isUpgrading = true
 
-	el.pendingEngine = NewEngine(spec, el.LauncherAddr, el.pm)
+	el.pendingEngine = NewEngine(spec, el.LauncherAddr, el.pm, el.ec)
 	// refill missing fields from spec
 	el.pendingEngine.Size = el.currentEngine.Size
 	el.pendingEngine.VolumeName = el.VolumeName
