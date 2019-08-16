@@ -89,7 +89,11 @@ func (el *Launcher) StartMonitoring(processUpdateCh <-chan interface{}) {
 			if !ok {
 				logrus.Errorf("BUG: engine launcher: cannot get ProcessResponse from channel")
 			}
-			if p.Spec.Name == el.currentEngine.EngineName {
+			el.lock.RLock()
+			engineName := el.currentEngine.EngineName
+			el.lock.RUnlock()
+
+			if p.Spec.Name == engineName {
 				el.updateCh <- el
 			}
 		case <-el.doneCh:

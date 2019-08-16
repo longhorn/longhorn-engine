@@ -81,7 +81,11 @@ func (s *TestSuite) TestEngineManager(c *C) {
 			name := "test_crud_engine-" + strconv.Itoa(i)
 			volumeName := name + "-volume"
 			binary := "any"
+			// bypass the os.Stat() check
+			upgradedBinary := "/bin/bash"
 			size := int64(1024)
+			replicas := []string{"replica1-" + name, "replica2-" + name}
+			upgradedReplicas := []string{"upgraded_replica1-" + name, "upgraded_replica2-" + name}
 			go s.em.EngineWatch(nil, ew)
 
 			createReq := &rpc.EngineCreateRequest{
@@ -93,13 +97,15 @@ func (s *TestSuite) TestEngineManager(c *C) {
 					Size:       size,
 					Frontend:   "tgt-blockdev",
 					Backends:   []string{"tcp"},
-					Replicas:   []string{"replica1", "replica2"},
+					Replicas:   replicas,
 				},
 			}
 			createResp, err := s.em.EngineCreate(nil, createReq)
 			c.Assert(err, IsNil)
 			c.Assert(createResp.Spec.Frontend, Equals, "tgt-blockdev")
 			c.Assert(createResp.Spec.Size, Equals, size)
+			c.Assert(createResp.Spec.Binary, Equals, binary)
+			c.Assert(createResp.Spec.Replicas, DeepEquals, replicas)
 			c.Assert(createResp.Status.ProcessStatus.State, Not(Equals), types.ProcessStateStopping)
 			c.Assert(createResp.Status.ProcessStatus.State, Not(Equals), types.ProcessStateStopped)
 			c.Assert(createResp.Status.ProcessStatus.State, Not(Equals), types.ProcessStateError)
@@ -112,8 +118,10 @@ func (s *TestSuite) TestEngineManager(c *C) {
 				c.Assert(err, IsNil)
 				c.Assert(getResp.Spec.Name, Equals, name)
 				c.Assert(getResp.Spec.VolumeName, Equals, volumeName)
-				c.Assert(getResp.Spec.Frontend, Equals, "tgt-blockdev")
 				c.Assert(getResp.Spec.Size, Equals, size)
+				c.Assert(getResp.Spec.Frontend, Equals, "tgt-blockdev")
+				c.Assert(getResp.Spec.Binary, Equals, binary)
+				c.Assert(getResp.Spec.Replicas, DeepEquals, replicas)
 				if getResp.Status.ProcessStatus.State == types.ProcessStateRunning {
 					running = true
 					break
@@ -127,6 +135,9 @@ func (s *TestSuite) TestEngineManager(c *C) {
 			c.Assert(listResp.Engines[name], NotNil)
 			c.Assert(listResp.Engines[name].Spec.Name, Equals, name)
 			c.Assert(listResp.Engines[name].Spec.VolumeName, Equals, volumeName)
+			c.Assert(listResp.Engines[name].Spec.Size, Equals, size)
+			c.Assert(listResp.Engines[name].Spec.Binary, Equals, binary)
+			c.Assert(listResp.Engines[name].Spec.Replicas, DeepEquals, replicas)
 			c.Assert(listResp.Engines[name].Status.ProcessStatus.State, Not(Equals), types.ProcessStateStopping)
 			c.Assert(listResp.Engines[name].Status.ProcessStatus.State, Not(Equals), types.ProcessStateStopped)
 			c.Assert(listResp.Engines[name].Status.ProcessStatus.State, Not(Equals), types.ProcessStateError)
@@ -141,7 +152,10 @@ func (s *TestSuite) TestEngineManager(c *C) {
 			})
 			c.Assert(getResp.Spec.Name, Equals, name)
 			c.Assert(getResp.Spec.VolumeName, Equals, volumeName)
+			c.Assert(getResp.Spec.Size, Equals, size)
 			c.Assert(getResp.Spec.Frontend, Equals, "tgt-blockdev")
+			c.Assert(getResp.Spec.Binary, Equals, binary)
+			c.Assert(getResp.Spec.Replicas, DeepEquals, replicas)
 			c.Assert(getResp.Status.ProcessStatus.State, Equals, types.ProcessStateRunning)
 
 			_, err = s.em.FrontendShutdownCallback(nil, &rpc.EngineRequest{
@@ -154,7 +168,10 @@ func (s *TestSuite) TestEngineManager(c *C) {
 			})
 			c.Assert(getResp.Spec.Name, Equals, name)
 			c.Assert(getResp.Spec.VolumeName, Equals, volumeName)
+			c.Assert(getResp.Spec.Size, Equals, size)
 			c.Assert(getResp.Spec.Frontend, Equals, "tgt-blockdev")
+			c.Assert(getResp.Spec.Binary, Equals, binary)
+			c.Assert(getResp.Spec.Replicas, DeepEquals, replicas)
 			c.Assert(getResp.Status.ProcessStatus.State, Equals, types.ProcessStateRunning)
 
 			_, err = s.em.FrontendShutdown(nil, &rpc.EngineRequest{
@@ -167,7 +184,10 @@ func (s *TestSuite) TestEngineManager(c *C) {
 			})
 			c.Assert(getResp.Spec.Name, Equals, name)
 			c.Assert(getResp.Spec.VolumeName, Equals, volumeName)
+			c.Assert(getResp.Spec.Size, Equals, size)
 			c.Assert(getResp.Spec.Frontend, Equals, "")
+			c.Assert(getResp.Spec.Binary, Equals, binary)
+			c.Assert(getResp.Spec.Replicas, DeepEquals, replicas)
 			c.Assert(getResp.Status.ProcessStatus.State, Equals, types.ProcessStateRunning)
 
 			_, err = s.em.FrontendStart(nil, &rpc.FrontendStartRequest{
@@ -181,8 +201,40 @@ func (s *TestSuite) TestEngineManager(c *C) {
 			})
 			c.Assert(getResp.Spec.Name, Equals, name)
 			c.Assert(getResp.Spec.VolumeName, Equals, volumeName)
+			c.Assert(getResp.Spec.Size, Equals, size)
 			c.Assert(getResp.Spec.Frontend, Equals, "tgt-iscsi")
+			c.Assert(getResp.Spec.Binary, Equals, binary)
+			c.Assert(getResp.Spec.Replicas, DeepEquals, replicas)
 			c.Assert(getResp.Status.ProcessStatus.State, Equals, types.ProcessStateRunning)
+
+			upgradeResp, err := s.em.EngineUpgrade(nil, &rpc.EngineUpgradeRequest{
+				Spec: &rpc.EngineSpec{
+					Name:     name,
+					Binary:   upgradedBinary,
+					Size:     size,
+					Replicas: upgradedReplicas,
+				},
+			})
+			c.Assert(err, IsNil)
+			c.Assert(upgradeResp.Spec.Name, Equals, name)
+			c.Assert(upgradeResp.Spec.VolumeName, Equals, volumeName)
+			c.Assert(upgradeResp.Spec.Size, Equals, size)
+			c.Assert(upgradeResp.Spec.Frontend, Equals, "tgt-iscsi")
+			c.Assert(upgradeResp.Spec.Binary, Equals, upgradedBinary)
+			c.Assert(upgradeResp.Spec.Replicas, DeepEquals, upgradedReplicas)
+			c.Assert(upgradeResp.Status.ProcessStatus.State, Equals, types.ProcessStateRunning)
+
+			getResp, err = s.em.EngineGet(nil, &rpc.EngineRequest{
+				Name: name,
+			})
+			c.Assert(getResp.Spec.Name, Equals, name)
+			c.Assert(getResp.Spec.VolumeName, Equals, volumeName)
+			c.Assert(getResp.Spec.Size, Equals, size)
+			c.Assert(getResp.Spec.Frontend, Equals, "tgt-iscsi")
+			c.Assert(getResp.Spec.Binary, Equals, upgradedBinary)
+			c.Assert(getResp.Spec.Replicas, DeepEquals, upgradedReplicas)
+			c.Assert(getResp.Status.ProcessStatus.State, Equals, types.ProcessStateRunning)
+
 			deleteReq := &rpc.EngineRequest{
 				Name: name,
 			}
