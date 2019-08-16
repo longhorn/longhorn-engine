@@ -4,10 +4,14 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
+
+	"github.com/sirupsen/logrus"
+	"golang.org/x/sys/unix"
 )
 
 const (
@@ -126,4 +130,70 @@ func Execute(binary string, args []string) (string, error) {
 		return "", fmt.Errorf("Failed to execute: %v %v, output %v, error %v", binary, args, string(output), err)
 	}
 	return string(output), nil
+}
+
+func RemoveFile(file string) error {
+	if _, err := os.Stat(file); os.IsNotExist(err) {
+		// file doesn't exist
+		return nil
+	}
+
+	if err := remove(file); err != nil {
+		return fmt.Errorf("fail to remove file %v: %v", file, err)
+	}
+
+	return nil
+}
+
+func RemoveDevice(dev string) error {
+	if _, err := os.Stat(dev); err == nil {
+		if err := remove(dev); err != nil {
+			return fmt.Errorf("Failed to removing device %s, %v", dev, err)
+		}
+	}
+	return nil
+}
+
+func DuplicateDevice(src, dest string) error {
+	stat := unix.Stat_t{}
+	if err := unix.Stat(src, &stat); err != nil {
+		return fmt.Errorf("Cannot duplicate device because cannot find %s: %v", src, err)
+	}
+	major := int(stat.Rdev / 256)
+	minor := int(stat.Rdev % 256)
+	if err := mknod(dest, major, minor); err != nil {
+		return fmt.Errorf("Cannot duplicate device %s to %s", src, dest)
+	}
+	if err := os.Chmod(dest, 0660); err != nil {
+		return fmt.Errorf("Couldn't change permission of the device %s: %s", dest, err)
+	}
+	return nil
+}
+
+func mknod(device string, major, minor int) error {
+	var fileMode os.FileMode = 0660
+	fileMode |= unix.S_IFBLK
+	dev := int((major << 8) | (minor & 0xff) | ((minor & 0xfff00) << 12))
+
+	logrus.Infof("Creating device %s %d:%d", device, major, minor)
+	return unix.Mknod(device, uint32(fileMode), dev)
+}
+
+func removeAsync(path string, done chan<- error) {
+	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
+		logrus.Errorf("Unable to remove: %v", path)
+		done <- err
+	}
+	done <- nil
+}
+
+func remove(path string) error {
+	done := make(chan error)
+	go removeAsync(path, done)
+	select {
+	case err := <-done:
+		return err
+	case <-time.After(30 * time.Second):
+		return fmt.Errorf("timeout trying to delete %s", path)
+	}
 }
