@@ -6,7 +6,7 @@ from common import (  # NOQA
     open_replica, cleanup_replica, cleanup_controller,
     get_blockdev, prepare_backup_dir, get_backend_replica_url,
     random_string, verify_read, verify_data, verify_async,
-    verify_replica_state,
+    verify_replica_state, wait_for_purge_completion
 
 )
 from snapshot_tree import (
@@ -110,6 +110,8 @@ def test_ha_single_replica_rebuild(grpc_controller,  # NOQA
     assert info[sysnap]["removed"] is False
 
     cmd.snapshot_purge(address)
+    wait_for_purge_completion(address)
+
     info = cmd.snapshot_info(address)
     assert len(info) == 2
     assert info[newsnap] is not None
@@ -353,6 +355,8 @@ def test_ha_single_backing_replica_rebuild(grpc_backing_controller,  # NOQA
     assert info[sysnap]["removed"] is False
 
     cmd.snapshot_purge(address)
+    wait_for_purge_completion(address)
+
     info = cmd.snapshot_info(address)
     assert len(info) == 2
     assert info[newsnap] is not None
