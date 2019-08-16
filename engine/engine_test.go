@@ -68,7 +68,7 @@ func (s *TestSuite) TearDownSuite(c *C) {
 }
 
 func (s *TestSuite) TestEngineManager(c *C) {
-	count := 1
+	count := 100
 	wg := &sync.WaitGroup{}
 	ew := &EngineWatcher{}
 	for i := 0; i < count; i++ {

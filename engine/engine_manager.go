@@ -110,6 +110,8 @@ func (em *Manager) EngineCreate(ctx context.Context, req *rpc.EngineCreateReques
 	if err := em.registerEngineLauncher(el); err != nil {
 		return nil, errors.Wrapf(err, "failed to register engine launcher %v", el.GetLauncherName())
 	}
+	// Must be done without holding the lock
+	el.Update()
 	if err := el.Start(); err != nil {
 		go em.unregisterEngineLauncher(req.Spec.Name)
 		return nil, errors.Wrapf(err, "failed to start engine %v", req.Spec.Name)
@@ -130,7 +132,6 @@ func (em *Manager) registerEngineLauncher(el *Launcher) error {
 	}
 
 	em.engineLaunchers[el.GetLauncherName()] = el
-	el.Update()
 
 	return nil
 }
