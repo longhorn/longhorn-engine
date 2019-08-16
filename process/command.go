@@ -83,13 +83,13 @@ func (bc *BinaryCommand) Kill() {
 	}
 }
 
-type TestExecutor struct{}
+type MockExecutor struct{}
 
-func (te *TestExecutor) NewCommand(name string, arg ...string) (Command, error) {
-	return NewTestCommand(name, arg...)
+func (me *MockExecutor) NewCommand(name string, arg ...string) (Command, error) {
+	return NewMockCommand(name, arg...)
 }
 
-type TestCommand struct {
+type MockCommand struct {
 	*sync.RWMutex
 
 	Binary string
@@ -101,8 +101,8 @@ type TestCommand struct {
 	stopped bool
 }
 
-func NewTestCommand(name string, arg ...string) (*TestCommand, error) {
-	return &TestCommand{
+func NewMockCommand(name string, arg ...string) (*MockCommand, error) {
+	return &MockCommand{
 		RWMutex: &sync.RWMutex{},
 
 		Binary: name,
@@ -115,30 +115,30 @@ func NewTestCommand(name string, arg ...string) (*TestCommand, error) {
 	}, nil
 }
 
-func (tc *TestCommand) Run() error {
-	tc.Lock()
-	tc.started = true
-	tc.Unlock()
+func (mc *MockCommand) Run() error {
+	mc.Lock()
+	mc.started = true
+	mc.Unlock()
 
-	return <-tc.stopCh
+	return <-mc.stopCh
 }
 
-func (tc *TestCommand) SetOutput(writer io.Writer) {
+func (mc *MockCommand) SetOutput(writer io.Writer) {
 }
 
-func (tc *TestCommand) Started() bool {
-	tc.RLock()
-	defer tc.RUnlock()
-	return tc.started
+func (mc *MockCommand) Started() bool {
+	mc.RLock()
+	defer mc.RUnlock()
+	return mc.started
 }
 
-func (tc *TestCommand) Stop() {
-	tc.Lock()
-	tc.stopped = true
-	tc.Unlock()
+func (mc *MockCommand) Stop() {
+	mc.Lock()
+	mc.stopped = true
+	mc.Unlock()
 
-	tc.stopCh <- nil
+	mc.stopCh <- nil
 }
 
-func (tc *TestCommand) Kill() {
+func (mc *MockCommand) Kill() {
 }
