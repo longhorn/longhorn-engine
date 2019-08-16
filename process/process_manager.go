@@ -41,7 +41,8 @@ type Manager struct {
 
 	logsDir string
 
-	Executor types.Executor
+	Executor      types.Executor
+	HealthChecker HealthChecker
 }
 
 func NewManager(portRange string, logsDir string, shutdownCh chan error) (*Manager, error) {
@@ -65,7 +66,8 @@ func NewManager(portRange string, logsDir string, shutdownCh chan error) (*Manag
 
 		logsDir: logsDir,
 
-		Executor: &types.BinaryExecutor{},
+		Executor:      &types.BinaryExecutor{},
+		HealthChecker: &GRPCHealthChecker{},
 	}
 	// help to kickstart the broadcaster
 	c, cancel := context.WithCancel(context.Background())
@@ -133,7 +135,8 @@ func (pm *Manager) ProcessCreate(ctx context.Context, req *rpc.ProcessCreateRequ
 
 		logger: logger,
 
-		executor: pm.Executor,
+		executor:      pm.Executor,
+		healthChecker: pm.HealthChecker,
 	}
 
 	if err := pm.registerProcess(p); err != nil {

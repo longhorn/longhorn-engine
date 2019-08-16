@@ -39,7 +39,8 @@ type Process struct {
 
 	logger *util.LonghornWriter
 
-	executor types.Executor
+	executor      types.Executor
+	healthChecker HealthChecker
 }
 
 func (p *Process) Start() error {
@@ -74,16 +75,12 @@ func (p *Process) Start() error {
 	go func() {
 		if p.PortStart != 0 {
 			address := util.GetURL("localhost", int(p.PortStart))
-			for i := 0; i < types.WaitCount; i++ {
-				if util.GRPCServiceReadinessProbe(address) {
-					p.lock.Lock()
-					p.State = StateRunning
-					p.lock.Unlock()
-					p.UpdateCh <- p
-					return
-				}
-				logrus.Infof("wait for gRPC service of process %v to start", p.Name)
-				time.Sleep(types.WaitInterval)
+			if p.healthChecker.WaitForRunning(address, p.Name) {
+				p.lock.Lock()
+				p.State = StateRunning
+				p.lock.Unlock()
+				p.UpdateCh <- p
+				return
 			}
 			// fail to start the process, then try to stop it.
 			if !p.IsStopped() {

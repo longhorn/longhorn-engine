@@ -55,6 +55,7 @@ func (s *TestSuite) SetUpSuite(c *C) {
 	s.pm, err = NewManager("10000-30000", s.logDir, s.shutdownCh)
 	c.Assert(err, IsNil)
 	s.pm.Executor = &types.TestExecutor{}
+	s.pm.HealthChecker = &MockHealthChecker{}
 }
 
 func (s *TestSuite) TearDownSuite(c *C) {
@@ -78,7 +79,7 @@ func (s *TestSuite) TestCRUD(c *C) {
 					Name:      name,
 					Binary:    binary,
 					Args:      []string{},
-					PortCount: 0,
+					PortCount: 1,
 					PortArgs:  nil,
 				},
 			}
@@ -105,16 +106,19 @@ func (s *TestSuite) TestCRUD(c *C) {
 			c.Assert(listResp.Processes[name].Status.State, Not(Equals), types.ProcessStateStopped)
 			c.Assert(listResp.Processes[name].Status.State, Not(Equals), types.ProcessStateError)
 
+			running := false
 			for j := 0; j < RetryCount; j++ {
 				getResp, err := s.pm.ProcessGet(nil, &rpc.ProcessGetRequest{
 					Name: name,
 				})
 				c.Assert(err, IsNil)
 				if getResp.Status.State == types.ProcessStateRunning {
+					running = true
 					break
 				}
 				time.Sleep(RetryInterval)
 			}
+			c.Assert(running, Equals, true)
 
 			deleteReq := &rpc.ProcessDeleteRequest{
 				Name: name,
