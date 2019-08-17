@@ -34,6 +34,23 @@ steps:
     event:
     - push
 
+- name: publish-staging-image
+  image: plugins/docker
+  settings:
+    custom_dns: 1.1.1.1
+    dockerfile: package/Dockerfile
+    password:
+      from_secret: docker_password
+    repo: longhornio/longhorn-engine
+    tag: staging
+    username:
+      from_secret: docker_username
+  when:
+    branch:
+    - staging
+    event:
+    - push
+
 volumes:
 - name: socket
   host:
