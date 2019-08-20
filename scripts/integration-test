@@ -23,6 +23,9 @@ set -e
 #	exit -1
 #fi
 
+uuid=$(uuidgen)
+export TESTPREFIX=test-${uuid:0:8}-
+
 backing_dir1='/tmp/replica_backing_dir_1/'
 backing_dir2='/tmp/replica_backing_dir_2/'
 fixed_dir1='/tmp/replica_fixed_dir_1/'
