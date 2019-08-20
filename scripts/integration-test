@@ -26,6 +26,19 @@ set -e
 uuid=$(uuidgen)
 export TESTPREFIX=test-${uuid:0:8}-
 
+iscsiBinary="nsenter --net=/host/proc/1/ns/net --mount=/host/proc/1/ns/mnt iscsiadm"
+
+function cleanupISCSI() {
+    for record in `${iscsiBinary} -m node`
+    do
+        if [[ "${record}" =~ .*${TESTPREFIX}.* ]]
+        then
+            target=$(echo ${record} | sed "s/.* //")
+            ${iscsiBinary} -m node -T ${target} --logout
+        fi
+    done
+}
+
 backing_dir1='/tmp/replica_backing_dir_1/'
 backing_dir2='/tmp/replica_backing_dir_2/'
 fixed_dir1='/tmp/replica_fixed_dir_1/'
@@ -69,7 +82,7 @@ pid_im=$!
 # make sure everything is running before continue integration test
 ps $pid_im
 
-trap "kill $pid_im" EXIT
+trap "cleanupISCSI && kill $pid_im" EXIT
 
 # start minio server to test s3 backup and set credential keys
 export MINIO_ACCESS_KEY=test-access-key
