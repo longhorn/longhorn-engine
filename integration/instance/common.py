@@ -34,6 +34,11 @@ PROC_STATE_STOPPING = "stopping"
 PROC_STATE_STOPPED = "stopped"
 PROC_STATE_ERROR = "error"
 
+TEST_PREFIX = dict(os.environ)["TESTPREFIX"]
+VOLUME_NAME_BASE = TEST_PREFIX + "instance-volume-"
+ENGINE_NAME_BASE = TEST_PREFIX + "instance-engine-"
+REPLICA_NAME_BASE = TEST_PREFIX + "instance-replica-"
+
 
 @pytest.fixture()
 def em_client(request, address=INSTANCE_MANAGER):
