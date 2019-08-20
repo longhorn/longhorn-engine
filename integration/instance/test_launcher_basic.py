@@ -10,6 +10,7 @@ from common import (  # NOQA
     SIZE, UPGRADE_LONGHORN_BINARY,
     INSTANCE_MANAGER_TYPE_ENGINE, PROC_STATE_RUNNING,
     PROC_STATE_STOPPING, PROC_STATE_STOPPED,
+    VOLUME_NAME_BASE, ENGINE_NAME_BASE, REPLICA_NAME_BASE,
 )
 
 
@@ -17,11 +18,9 @@ def test_start_stop_replicas(pm_client):  # NOQA
     rs = pm_client.process_list()
     assert len(rs) == 0
 
-    name_base = "replica"
-
     for i in range(10):
         tmp_dir = tempfile.mkdtemp()
-        name = name_base + str(i)
+        name = REPLICA_NAME_BASE + str(i)
         r = create_replica_process(pm_client, name=name, dir=tmp_dir)
 
         assert r.spec.name == name
@@ -41,7 +40,7 @@ def test_start_stop_replicas(pm_client):  # NOQA
         rs = pm_client.process_list()
         assert len(rs) == (10-i)
 
-        name = name_base + str(i)
+        name = REPLICA_NAME_BASE + str(i)
         r = pm_client.process_delete(name=name)
         assert r.spec.name == name
         assert r.status.state in (PROC_STATE_STOPPING,
@@ -61,10 +60,9 @@ def test_one_volume(pm_client, em_client):  # NOQA
 
     replica_args = []
 
-    name_base = "replica"
     for i in range(3):
         tmp_dir = tempfile.mkdtemp()
-        name = name_base + str(i)
+        name = REPLICA_NAME_BASE + str(i)
         r = create_replica_process(pm_client, name=name, dir=tmp_dir)
 
         assert r.spec.name == name
@@ -82,8 +80,8 @@ def test_one_volume(pm_client, em_client):  # NOQA
 
         replica_args.append("tcp://localhost:"+str(r.status.port_start))
 
-    engine_name = "testengine"
-    volume_name = "testvol"
+    engine_name = ENGINE_NAME_BASE + "0"
+    volume_name = VOLUME_NAME_BASE + "0"
     e = create_engine_process(em_client, name=engine_name,
                               volume_name=volume_name,
                               replicas=replica_args)
@@ -114,7 +112,7 @@ def test_one_volume(pm_client, em_client):  # NOQA
     assert len(ps) == 3
 
     for i in range(3):
-        name = name_base + str(i)
+        name = REPLICA_NAME_BASE + str(i)
         r = pm_client.process_delete(name=name)
         assert r.spec.name == name
         assert r.status.state in (PROC_STATE_STOPPING,
@@ -130,15 +128,12 @@ def test_multiple_volumes(pm_client, em_client):  # NOQA
     rs = pm_client.process_list()
     assert len(rs) == 0
 
-    replica_name_base = "testreplica"
-    engine_name_base = "testengine"
-    volume_name_base = "testvol"
     cnt = 5
 
     for i in range(cnt):
         replica_args = []
         tmp_dir = tempfile.mkdtemp()
-        replica_name = replica_name_base + str(i)
+        replica_name = REPLICA_NAME_BASE + str(i)
         r = create_replica_process(pm_client, name=replica_name, dir=tmp_dir)
 
         assert r.spec.name == replica_name
@@ -157,8 +152,8 @@ def test_multiple_volumes(pm_client, em_client):  # NOQA
 
         replica_args.append("tcp://localhost:"+str(r.status.port_start))
 
-        engine_name = engine_name_base + str(i)
-        volume_name = volume_name_base + str(i)
+        engine_name = ENGINE_NAME_BASE + str(i)
+        volume_name = VOLUME_NAME_BASE + str(i)
         e = create_engine_process(em_client, name=engine_name,
                                   volume_name=volume_name,
                                   replicas=replica_args)
@@ -177,8 +172,8 @@ def test_multiple_volumes(pm_client, em_client):  # NOQA
         assert len(ps) == 2*(i+1)
 
     for i in range(cnt):
-        engine_name = engine_name_base + str(i)
-        volume_name = volume_name_base + str(i)
+        engine_name = ENGINE_NAME_BASE + str(i)
+        volume_name = VOLUME_NAME_BASE + str(i)
         delete_engine_process(em_client, engine_name)
         wait_for_engine_deletion(em_client, engine_name)
         wait_for_dev_deletion(volume_name)
@@ -192,16 +187,13 @@ def test_engine_upgrade(pm_client, em_client):  # NOQA
     rs = pm_client.process_list()
     assert len(rs) == 0
 
-    replica_name_base = "testreplica"
-    engine_name_base = "testengine"
-    volume_name_base = "testvol"
     dir_base = "/tmp/replica"
     cnt = 3
 
     for i in range(cnt):
         replica_args = []
         dir = dir_base + str(i)
-        replica_name = replica_name_base + str(i)
+        replica_name = REPLICA_NAME_BASE + str(i)
         r = create_replica_process(pm_client, name=replica_name, dir=dir)
 
         assert r.spec.name == replica_name
@@ -220,8 +212,8 @@ def test_engine_upgrade(pm_client, em_client):  # NOQA
 
         replica_args.append("tcp://localhost:"+str(r.status.port_start))
 
-        engine_name = engine_name_base + str(i)
-        volume_name = volume_name_base + str(i)
+        engine_name = ENGINE_NAME_BASE + str(i)
+        volume_name = VOLUME_NAME_BASE + str(i)
         e = create_engine_process(em_client, name=engine_name,
                                   volume_name=volume_name,
                                   replicas=replica_args)
@@ -240,10 +232,10 @@ def test_engine_upgrade(pm_client, em_client):  # NOQA
         assert len(ps) == 2*(i+1)
 
     dir = dir_base + "0"
-    engine_name = engine_name_base + "0"
-    replica_name = replica_name_base + "0"
-    volume_name = volume_name_base + "0"
-    replica_name_upgrade = replica_name_base + "0-upgrade"
+    engine_name = ENGINE_NAME_BASE + "0"
+    replica_name = REPLICA_NAME_BASE + "0"
+    volume_name = VOLUME_NAME_BASE + "0"
+    replica_name_upgrade = REPLICA_NAME_BASE + "0-upgrade"
     r = create_replica_process(pm_client, name=replica_name_upgrade,
                                binary=UPGRADE_LONGHORN_BINARY, dir=dir)
     assert r.spec.name == replica_name_upgrade

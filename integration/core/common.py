@@ -34,10 +34,12 @@ RETRY_COUNTS2 = 100
 SIZE = 4 * 1024 * 1024
 SIZE_STR = str(SIZE)
 
-VOLUME_NAME = "core-test-vol"
-ENGINE_NAME = "core-test-vol-engine"
-REPLICA_NAME = "core-test-vol-replica"
-REPLICA_2_NAME = "core-test-vol-replica_2"
+TEST_PREFIX = dict(os.environ)["TESTPREFIX"]
+
+VOLUME_NAME = TEST_PREFIX + "core-volume"
+ENGINE_NAME = TEST_PREFIX + "core-engine"
+REPLICA_NAME = TEST_PREFIX + "core-replica-1"
+REPLICA_2_NAME = TEST_PREFIX + "core-replica-2"
 
 PROC_STATE_STARTING = "starting"
 PROC_STATE_RUNNING = "running"

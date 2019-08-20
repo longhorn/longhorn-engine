@@ -1,3 +1,5 @@
+import os
+
 INSTANCE_MANAGER = "localhost:8500"
 
 INSTANCE_MANAGER_TYPE_ENGINE = "engine"
@@ -22,16 +24,19 @@ BACKING_FILE_PATH2 = '/tmp/replica_backing_dir_2/' + BACKING_FILE_QCOW
 
 VFS_DIR = "/data/backupbucket/"
 
-VOLUME_NAME = 'test-volume'
-VOLUME_BACKING_NAME = 'test-volume-backing'
-VOLUME_NO_FRONTEND_NAME = 'test-volume-no-frontend'
+TEST_PREFIX = dict(os.environ)["TESTPREFIX"]
+
+VOLUME_NAME = TEST_PREFIX + 'data-volume'
+VOLUME_BACKING_NAME = TEST_PREFIX + 'data-volume-backing'
+VOLUME_NO_FRONTEND_NAME = TEST_PREFIX + 'data-volume-no-frontend'
+
+ENGINE_NAME = TEST_PREFIX + 'data-engine'
+ENGINE_BACKING_NAME = TEST_PREFIX + 'data-engine-backing'
+ENGINE_NO_FRONTEND_NAME = TEST_PREFIX + 'data-engine-no-frontend'
+
+REPLICA_NAME = TEST_PREFIX + 'data-replica'
+
 VOLUME_HEAD = 'volume-head'
-
-ENGINE_NAME = 'test-engine'
-ENGINE_BACKING_NAME = 'test-engine-backing'
-ENGINE_NO_FRONTEND_NAME = 'test-engine-no-frontend'
-
-REPLICA_NAME = 'test-replica'
 
 FRONTEND_TGT_BLOCKDEV = "tgt-blockdev"
 
