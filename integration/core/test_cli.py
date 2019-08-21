@@ -121,6 +121,39 @@ def test_replica_add_start(bin, grpc_controller_client,  # NOQA
     assert volume.replicaCount == 1
 
 
+def wait_and_fetch_rebuild_status(bin, url):
+    cmd = [bin, '--url', url, 'replica-rebuild-status']
+    completed = 0
+    rebuild_status = {}
+    for x in range(RETRY_COUNTS2):
+        completed = 0
+        rebuild_status = json.loads(subprocess.check_output(cmd).strip())
+        for rebuild in rebuild_status.values():
+            assert 'state' in rebuild.keys()
+            assert 'isRebuilding' in rebuild.keys()
+            assert 'error' in rebuild.keys()
+            assert 'progress' in rebuild.keys()
+
+            if rebuild['state'] == "complete":
+                assert rebuild['progress'] == 100
+                assert not rebuild['isRebuilding']
+                completed += 1
+            elif rebuild['state'] == "":
+                assert not rebuild['isRebuilding']
+                completed += 1
+            elif rebuild['state'] == "in_progress":
+                assert rebuild['state'] == "in_progress"
+                assert rebuild['isRebuilding']
+            else:
+                assert rebuild['state'] == "error"
+                assert rebuild['error'] == ""
+                assert not rebuild['isRebuilding']
+        if completed == len(rebuild_status):
+            break
+        time.sleep(RETRY_INTERVAL)
+    return completed == len(rebuild_status)
+
+
 def test_replica_add_rebuild(bin, grpc_controller_client,  # NOQA
                              grpc_replica_client,  # NOQA
                              grpc_replica_client2):  # NOQA
@@ -153,6 +186,7 @@ def test_replica_add_rebuild(bin, grpc_controller_client,  # NOQA
            'add-replica',
            grpc_replica_client.url]
     subprocess.check_call(cmd)
+    wait_and_fetch_rebuild_status(bin, grpc_controller_client.address)
 
     volume = grpc_controller_client.volume_get()
     assert volume.replicaCount == 1
@@ -161,6 +195,7 @@ def test_replica_add_rebuild(bin, grpc_controller_client,  # NOQA
            'add-replica',
            grpc_replica_client2.url]
     subprocess.check_call(cmd)
+    wait_and_fetch_rebuild_status(bin, grpc_controller_client.address)
 
     volume = grpc_controller_client.volume_get()
     assert volume.replicaCount == 2
