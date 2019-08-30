@@ -14,6 +14,11 @@ import (
 	"github.com/longhorn/longhorn-engine/util"
 )
 
+type BackupCreateInfo struct {
+	BackupID      string `json:"backupID"`
+	IsIncremental bool   `json:"isIncremental"`
+}
+
 type BackupStatusInfo struct {
 	Progress     int    `json:"progress"`
 	BackupURL    string `json:"backupURL,omitempty"`
@@ -32,21 +37,21 @@ type RestoreStatus struct {
 	BackupURL    string `json:"backupURL"`
 }
 
-func (t *Task) CreateBackup(snapshot, dest string, labels []string, credential map[string]string) (string, error) {
+func (t *Task) CreateBackup(snapshot, dest string, labels []string, credential map[string]string) (*BackupCreateInfo, error) {
 	var replica *types.ControllerReplicaInfo
 
 	if snapshot == VolumeHeadName {
-		return "", fmt.Errorf("Can not backup the head disk in the chain")
+		return nil, fmt.Errorf("can not backup the head disk in the chain")
 	}
 
 	volume, err := t.client.VolumeGet()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	replicas, err := t.client.ReplicaList()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	for _, r := range replicas {
@@ -57,47 +62,53 @@ func (t *Task) CreateBackup(snapshot, dest string, labels []string, credential m
 	}
 
 	if replica == nil {
-		return "", fmt.Errorf("Cannot find a suitable replica for backup")
+		return nil, fmt.Errorf("cannot find a suitable replica for backup")
 	}
 
 	backup, err := t.createBackup(replica, snapshot, dest, volume.Name, labels, credential)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	return backup, nil
 }
 
-func (t *Task) createBackup(replicaInController *types.ControllerReplicaInfo, snapshot, dest, volumeName string, labels []string, credential map[string]string) (string, error) {
+func (t *Task) createBackup(replicaInController *types.ControllerReplicaInfo, snapshot, dest, volumeName string, labels []string,
+	credential map[string]string) (*BackupCreateInfo, error) {
 	if replicaInController.Mode != types.RW {
-		return "", fmt.Errorf("Can only create backup from replica in mode RW, got %s", replicaInController.Mode)
+		return nil, fmt.Errorf("can only create backup from replica in mode RW, got %s", replicaInController.Mode)
 	}
 
 	repClient, err := replicaClient.NewReplicaClient(replicaInController.Address)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	rep, err := repClient.GetReplica()
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	diskName := replica.GenerateSnapshotDiskName(snapshot)
 	if _, ok := rep.Disks[diskName]; !ok {
-		return "", fmt.Errorf("Snapshot disk %s not found on replica %s", diskName, replicaInController.Address)
+		return nil, fmt.Errorf("snapshot disk %s not found on replica %s", diskName, replicaInController.Address)
 	}
 
 	logrus.Infof("Backing up %s on %s, to %s", snapshot, replicaInController.Address, dest)
 
-	backupID, err := repClient.CreateBackup(snapshot, dest, volumeName, labels, credential)
+	reply, err := repClient.CreateBackup(snapshot, dest, volumeName, labels, credential)
 	if err != nil {
-		return "", err
+		return nil, err
+	}
+
+	info := &BackupCreateInfo{
+		BackupID:      reply.Backup,
+		IsIncremental: reply.IsIncremental,
 	}
 	//Store the backupID - Replica IP mapping in controller
-	if err := t.client.BackupReplicaMappingCreate(backupID, replicaInController.Address); err != nil {
-		return "", err
+	if err := t.client.BackupReplicaMappingCreate(info.BackupID, replicaInController.Address); err != nil {
+		return nil, err
 	}
-	return backupID, nil
+	return info, nil
 }
 
 func (t *Task) FetchBackupStatus(backupID string, replicaIP string) (*BackupStatusInfo, error) {

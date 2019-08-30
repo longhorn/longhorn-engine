@@ -71,15 +71,16 @@ func (rr *RestoreStatus) FinishRestore() {
 }
 
 type BackupStatus struct {
-	lock        sync.Mutex
-	backingFile *BackingFile
-	replica     *Replica
-	volumeID    string
-	SnapshotID  string
-	Error       string
-	Progress    int
-	BackupURL   string
-	State       ProgressState
+	lock          sync.Mutex
+	backingFile   *BackingFile
+	replica       *Replica
+	volumeID      string
+	SnapshotID    string
+	Error         string
+	Progress      int
+	BackupURL     string
+	State         ProgressState
+	IsIncremental bool
 }
 
 func NewBackup(backingFile *BackingFile) *BackupStatus {

@@ -119,11 +119,11 @@ func DoBackupCreate(volumeName string, snapshotName string, destURL string,
 		Labels:   labelMap,
 	}
 
-	backupID, err := backupstore.CreateDeltaBlockBackup(config)
+	backupID, isIncremental, err := backupstore.CreateDeltaBlockBackup(config)
 	if err != nil {
 		return "", nil, err
 	}
-
+	replicaBackup.IsIncremental = isIncremental
 	return backupID, replicaBackup, nil
 }
 

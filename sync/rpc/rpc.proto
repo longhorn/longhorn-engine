@@ -51,6 +51,7 @@ message BackupCreateRequest {
 
 message BackupCreateReply {
     string backup = 1;
+    bool isIncremental = 2;
 }
 
 message BackupRemoveRequest {
