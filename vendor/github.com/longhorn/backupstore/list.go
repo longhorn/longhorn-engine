@@ -27,6 +27,7 @@ type BackupInfo struct {
 	Created         string
 	Size            int64 `json:",string"`
 	Labels          map[string]string
+	IsIncremental   bool
 
 	VolumeName    string `json:",omitempty"`
 	VolumeSize    int64  `json:",string,omitempty"`
@@ -122,6 +123,7 @@ func fillBackupInfo(backup *Backup, destURL string) *BackupInfo {
 		Created:         backup.CreatedTime,
 		Size:            backup.Size,
 		Labels:          backup.Labels,
+		IsIncremental:   backup.IsIncremental,
 	}
 }
 

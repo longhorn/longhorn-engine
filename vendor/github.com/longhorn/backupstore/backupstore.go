@@ -29,6 +29,7 @@ type Backup struct {
 	CreatedTime       string
 	Size              int64 `json:",string"`
 	Labels            map[string]string
+	IsIncremental     bool
 
 	Blocks     []BlockMapping `json:",omitempty"`
 	SingleFile BackupFile     `json:",omitempty"`
