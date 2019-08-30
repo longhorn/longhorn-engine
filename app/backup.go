@@ -222,7 +222,11 @@ func createBackup(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	fmt.Println(backup)
+	backupCreateInfo, err := json.Marshal(backup)
+	if err != nil {
+		return err
+	}
+	fmt.Println(string(backupCreateInfo))
 
 	return nil
 }

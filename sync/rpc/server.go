@@ -327,7 +327,8 @@ func (s *SyncAgentServer) BackupCreate(ctx context.Context, req *BackupCreateReq
 	}
 
 	reply := &BackupCreateReply{
-		Backup: backupID,
+		Backup:        backupID,
+		IsIncremental: replicaObj.IsIncremental,
 	}
 
 	if err := s.BackupList.BackupAdd(backupID, replicaObj); err != nil {
