@@ -288,3 +288,77 @@ def test_backup_volume_deletion(grpc_replica1, grpc_replica2,  # NOQA
         cleanup_controller(grpc_controller)
         cleanup_replica(grpc_replica1)
         cleanup_replica(grpc_replica2)
+
+
+def test_backup_type(grpc_replica1, grpc_replica2,      # NOQA
+                     grpc_controller, backup_targets):  # NOQA
+    for backup_target in backup_targets:
+        address = grpc_controller.address
+        block_size = 2 * 1024 * 1024
+
+        dev = get_dev(grpc_replica1, grpc_replica2, grpc_controller)
+
+        zero_string = b'\x00'.decode('utf-8')
+
+        # backup0: 256 random data in 1st block
+        length0 = 256
+        snap0_data = random_string(length0)
+        verify_data(dev, 0, snap0_data)
+        verify_data(dev, block_size, snap0_data)
+        snap0 = cmd.snapshot_create(address)
+        backup0 = create_backup(address, snap0, backup_target)
+        backup0_url = backup0["URL"]
+        assert backup0['IsIncremental'] is False
+
+        # backup1: 32 random data + 32 zero data + 192 random data in 1st block
+        length1 = 32
+        offset1 = 32
+        snap1_data = zero_string * length1
+        verify_data(dev, offset1, snap1_data)
+        snap1 = cmd.snapshot_create(address)
+        backup1 = create_backup(address, snap1, backup_target)
+        backup1_url = backup1["URL"]
+        assert backup1['IsIncremental'] is True
+
+        # backup2: 32 random data + 256 random data in 1st block,
+        #          256 random data in 2nd block
+        length2 = 256
+        offset2 = 32
+        snap2_data = random_string(length2)
+        verify_data(dev, offset2, snap2_data)
+        verify_data(dev, block_size, snap2_data)
+        snap2 = cmd.snapshot_create(address)
+        backup2 = create_backup(address, snap2, backup_target)
+        backup2_url = backup2["URL"]
+        assert backup2['IsIncremental'] is True
+
+        rm_backups(address, ENGINE_NAME, [backup2_url])
+
+        # backup3: 64 zero data + 192 random data in 1st block
+        length3 = 64
+        offset3 = 0
+        verify_data(dev, offset3, zero_string * length3)
+        verify_data(dev, length2, zero_string * offset2)
+        verify_data(dev, block_size, zero_string * length2)
+        snap3 = cmd.snapshot_create(address)
+        backup3 = create_backup(address, snap3, backup_target)
+        backup3_url = backup3["URL"]
+        assert backup3['IsIncremental'] is False
+
+        # backup4: 256 random data in 1st block
+        length4 = 256
+        offset4 = 0
+        snap4_data = random_string(length4)
+        verify_data(dev, offset4, snap4_data)
+        snap4 = cmd.snapshot_create(address)
+        backup4 = create_backup(address, snap4, backup_target)
+        backup4_url = backup4["URL"]
+        assert backup4['IsIncremental'] is True
+
+        rm_backups(address, ENGINE_NAME, [backup0_url, backup1_url,
+                                          backup3_url, backup4_url])
+
+        cmd.sync_agent_server_reset(address)
+        cleanup_replica(grpc_replica1)
+        cleanup_replica(grpc_replica2)
+        cleanup_controller(grpc_controller)

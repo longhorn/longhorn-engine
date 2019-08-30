@@ -89,7 +89,10 @@ def backup_status(url, backupID):
 def backup_create(url, snapshot, dest):
     cmd = [_bin(), '--url', url, '--debug',
            'backup', 'create', snapshot, '--dest', dest]
-    return backup_status(url, subprocess.check_output(cmd).strip())
+    backup = json.loads(subprocess.check_output(cmd).strip())
+    assert "backupID" in backup.keys()
+    assert "isIncremental" in backup.keys()
+    return backup_status(url, backup["backupID"])
 
 
 def backup_rm(url, backup):
