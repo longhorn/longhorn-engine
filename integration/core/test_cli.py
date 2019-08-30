@@ -708,9 +708,12 @@ def backup_core(bin, engine_manager_client,  # NOQA
            '--dest', backup_target,
            '--label', 'name=backup1',
            '--label', 'type=' + backup_type]
-    backupID = subprocess.check_output(cmd, env=env).strip()
+    backup = json.loads(subprocess.check_output(cmd, env=env).strip())
+    assert "backupID" in backup.keys()
+    assert "isIncremental" in backup.keys()
+    assert backup["isIncremental"] is False
     backup1 = get_backup_url(bin, grpc_controller_client.address,
-                             backupID)
+                             backup["backupID"])
 
     cmd = [bin, '--url', grpc_controller_client.address,
            'snapshot', 'create']
@@ -722,9 +725,12 @@ def backup_core(bin, engine_manager_client,  # NOQA
     cmd = [bin, '--url', grpc_controller_client.address,
            'backup', 'create', snapshot2,
            '--dest', backup_target]
-    backupID = subprocess.check_output(cmd, env=env).strip()
+    backup = json.loads(subprocess.check_output(cmd, env=env).strip())
+    assert "backupID" in backup.keys()
+    assert "isIncremental" in backup.keys()
+    assert backup["isIncremental"] is True
     backup2 = get_backup_url(bin, grpc_controller_client.address,
-                             backupID)
+                             backup["backupID"])
 
     cmd = [bin, '--url', grpc_controller_client.address,
            'backup', 'inspect', backup1]
