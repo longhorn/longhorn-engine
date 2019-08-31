@@ -254,7 +254,7 @@ func (s *SyncAgentServer) FileSend(ctx context.Context, req *FileSendRequest) (*
 		return nil, err
 	}
 
-	logrus.Infof("Done running %s %v", "ssync", args)
+	logrus.Infof("File Sent: Done running %s %v", "ssync", args)
 	return &empty.Empty{}, nil
 }
 
@@ -296,7 +296,7 @@ func (s *SyncAgentServer) ReceiverLaunch(ctx context.Context, req *ReceiverLaunc
 			return
 		}
 
-		logrus.Infof("Done running %s %v", "ssync", args)
+		logrus.Infof("Launched Receiver: Done running %s %v", "ssync", args)
 	}()
 
 	return &ReceiverLaunchReply{Port: int32(port)}, nil
@@ -1214,4 +1214,97 @@ func (b *BackupList) BackupDelete(backupID string) error {
 		}
 	}
 	return fmt.Errorf("backup not found %v", backupID)
+}
+
+func (s *SyncAgentServer) FileSync(ctx context.Context, req *FileSyncRequest) (*empty.Empty, error) {
+	if len(req.Disks) == 0 {
+		return nil, fmt.Errorf("BUG: invalid input - total disks to be synced should be positive")
+	}
+
+	if err := s.syncFilesFromHealthyReplica(req.FromServer, req.ToServer, req.Disks); err != nil {
+		logrus.Errorf("failed to sync files from healthy replica")
+		return nil, err
+	}
+
+	return &empty.Empty{}, nil
+}
+
+func (s *SyncAgentServer) syncFilesFromHealthyReplica(fromServer, toServer string, disks []string) (err error) {
+	defer func() {
+		if err != nil {
+			s.RebuildInfo.Lock()
+			defer s.RebuildInfo.Unlock()
+			s.isRebuilding = false
+			s.RebuildInfo.State = types.ProcessStateError
+			s.RebuildInfo.Error = err.Error()
+		}
+	}()
+	total := len(disks)
+	s.RebuildInfo = NewRebuildStatus()
+	s.prepareRebuild(total)
+
+	for _, disk := range disks {
+		if err := s.syncFile(fromServer, toServer, disk); err != nil {
+			return err
+		}
+
+		if err := s.syncFile(fromServer, toServer, disk+".meta"); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (s *SyncAgentServer) prepareRebuild(total int) {
+	s.RebuildInfo.Lock()
+	defer s.RebuildInfo.Unlock()
+
+	s.isRebuilding = true
+	s.RebuildInfo.total = total
+	s.RebuildInfo.State = types.ProcessStateInProgress
+}
+
+func (s *SyncAgentServer) finishRebuild() {
+	s.RebuildInfo.Lock()
+	defer s.RebuildInfo.Unlock()
+
+	s.isRebuilding = false
+	s.RebuildInfo.State = types.ProcessStateComplete
+}
+
+func (s *SyncAgentServer) syncFile(fromServer, toServer string, fromFileName string) error {
+	toFileName := fromFileName
+
+	reply, err := s.ReceiverLaunch(nil, &ReceiverLaunchRequest{
+		ToFileName: toFileName,
+	})
+	if err != nil {
+		logrus.Errorf("failed to launch receiver at %v", toServer)
+		return err
+	}
+
+	myPort := reply.Port
+
+	conn, err := grpc.Dial(fromServer, grpc.WithInsecure())
+	if err != nil {
+		return fmt.Errorf("cannot connect to SyncAgentService %v: %v", fromServer, err)
+	}
+	defer conn.Close()
+	syncAgentFromClient := NewSyncAgentServiceClient(conn)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	logrus.Infof("Synchronizing %s to %s@%s:%d", fromFileName, toFileName, toServer, myPort)
+	if _, err := syncAgentFromClient.FileSend(ctx, &FileSendRequest{
+		FromFileName: fromFileName,
+		Host:         toServer,
+		Port:         int32(myPort),
+	}); err != nil {
+		logrus.Errorf("Failed synchronizing %s to %s@%s:%d: %v", fromFileName, toFileName, toServer, myPort, err)
+	} else {
+		logrus.Infof("Done synchronizing %s to %s@%s:%d", fromFileName, toFileName, toServer, myPort)
+	}
+
+	return err
 }

@@ -392,6 +392,28 @@ func (c *ReplicaClient) LaunchReceiver(toFilePath string) (string, int32, error)
 	return c.host, reply.Port, nil
 }
 
+func (c *ReplicaClient) FileSync(fromServer *ReplicaClient, disks []string) error {
+	conn, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure())
+	if err != nil {
+		return fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
+	}
+	defer conn.Close()
+	syncAgentServiceClient := syncagentrpc.NewSyncAgentServiceClient(conn)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	if _, err := syncAgentServiceClient.FileSync(ctx, &syncagentrpc.FileSyncRequest{
+		FromServer: fromServer.syncAgentServiceURL,
+		ToServer:   c.host,
+		Disks:      disks,
+	}); err != nil {
+		return fmt.Errorf("failed to initiate file sync from %v to %v: %v", fromServer, c.host, err)
+	}
+
+	return nil
+}
+
 func (c *ReplicaClient) CreateBackup(snapshot, dest, volume string, labels []string, credential map[string]string) (*syncagentrpc.BackupCreateReply, error) {
 	conn, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure())
 	if err != nil {
