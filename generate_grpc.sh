@@ -1,13 +1,13 @@
 #!/bin/bash
 
+set -e
+
 # check and download dependency for gRPC code generate
 if [ ! -e ./vendor_proto/protobuf/src/google/protobuf ]; then
-    rm -rf ./vendor_proto/protobuf/ &&
-    git clone https://github.com/protocolbuffers/protobuf.git ./vendor_proto/protobuf/ &&
-    cd ./vendor_proto/protobuf/ &&
-    git checkout tags/v3.9.0 &&
-    find . ! -regex './src/google/protobuf.*' -delete &&
-    cd ../../
+    rm -rf ./vendor_proto/protobuf/src/google/protobuf
+    DIR="./vendor_proto/protobuf/src/google/protobuf"
+    mkdir -p $DIR
+    wget https://raw.githubusercontent.com/protocolbuffers/protobuf/v3.9.0/src/google/protobuf/empty.proto -P $DIR
 fi
 
 # controller
