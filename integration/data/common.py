@@ -158,10 +158,6 @@ def get_replica_address(r):
     return "localhost:" + str(r.status.port_start)
 
 
-def get_backend_replica_url(address):
-    return "tcp://" + address
-
-
 @pytest.fixture()
 def grpc_engine_manager(request):
     return engine_manager_client(request)
@@ -572,8 +568,8 @@ def get_dev(grpc_replica1, grpc_replica2, grpc_controller):
     replicas = grpc_controller.replica_list()
     assert len(replicas) == 0
 
-    r1_url = get_backend_replica_url(grpc_replica1.address)
-    r2_url = get_backend_replica_url(grpc_replica2.address)
+    r1_url = grpc_replica1.url
+    r2_url = grpc_replica2.url
     v = grpc_controller.volume_start(replicas=[r1_url, r2_url])
     assert v.replicaCount == 2
     d = get_blockdev(v.name)
@@ -590,8 +586,8 @@ def get_backing_dev(grpc_backing_replica1, grpc_backing_replica2,
     replicas = grpc_backing_controller.replica_list()
     assert len(replicas) == 0
 
-    r1_url = get_backend_replica_url(grpc_backing_replica1.address)
-    r2_url = get_backend_replica_url(grpc_backing_replica2.address)
+    r1_url = grpc_backing_replica1.url
+    r2_url = grpc_backing_replica2.url
     v = grpc_backing_controller.volume_start(
         replicas=[r1_url, r2_url])
     assert v.name == VOLUME_BACKING_NAME

@@ -9,7 +9,7 @@ from common import (  # NOQA
     dev, get_dev, read_dev, write_dev,  # NOQA
     grpc_engine_manager,  # NOQA
     grpc_controller, grpc_replica1, grpc_replica2,  # NOQA
-    random_string, verify_data, get_backend_replica_url,
+    random_string, verify_data,
     open_replica,
 )
 from frontend import get_socket_path
@@ -78,8 +78,8 @@ def test_frontend_show(grpc_engine_manager, grpc_controller,  # NOQA
     replicas = grpc_controller.replica_list()
     assert len(replicas) == 0
 
-    r1_url = get_backend_replica_url(grpc_replica1.address)
-    r2_url = get_backend_replica_url(grpc_replica2.address)
+    r1_url = grpc_replica1.url
+    r2_url = grpc_replica2.url
     v = grpc_controller.volume_start(replicas=[r1_url, r2_url])
 
     ft = v.frontend
@@ -109,8 +109,8 @@ def test_cleanup_leftover_blockdev(grpc_controller,  # NOQA
     assert not path.exists(blockdev)
     open(blockdev, 'a').close()
 
-    r1_url = get_backend_replica_url(grpc_replica1.address)
-    r2_url = get_backend_replica_url(grpc_replica2.address)
+    r1_url = grpc_replica1.url
+    r2_url = grpc_replica2.url
     grpc_controller.volume_start(replicas=[r1_url, r2_url])
 
     info = cmd.info_get(grpc_controller.address)

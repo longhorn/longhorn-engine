@@ -4,7 +4,7 @@ from common import (  # NOQA
     grpc_backing_controller,  # NOQA
     grpc_backing_replica1, grpc_backing_replica2,  # NOQA
     open_replica, cleanup_replica, cleanup_controller,
-    get_blockdev, prepare_backup_dir, get_backend_replica_url,
+    get_blockdev, prepare_backup_dir,
     random_string, verify_read, verify_data, verify_async,
     verify_replica_state, wait_for_purge_completion
 
@@ -26,8 +26,8 @@ def test_ha_single_replica_failure(grpc_controller,  # NOQA
     replicas = grpc_controller.replica_list()
     assert len(replicas) == 0
 
-    r1_url = get_backend_replica_url(grpc_replica1.address)
-    r2_url = get_backend_replica_url(grpc_replica2.address)
+    r1_url = grpc_replica1.url
+    r2_url = grpc_replica2.url
     v = grpc_controller.volume_start(replicas=[r1_url, r2_url])
     assert v.replicaCount == 2
 
@@ -61,8 +61,8 @@ def test_ha_single_replica_rebuild(grpc_controller,  # NOQA
     replicas = grpc_controller.replica_list()
     assert len(replicas) == 0
 
-    r1_url = get_backend_replica_url(grpc_replica1.address)
-    r2_url = get_backend_replica_url(grpc_replica2.address)
+    r1_url = grpc_replica1.url
+    r2_url = grpc_replica2.url
     v = grpc_controller.volume_start(replicas=[r1_url, r2_url])
     assert v.replicaCount == 2
 
@@ -126,8 +126,8 @@ def test_ha_double_replica_rebuild(grpc_controller,  # NOQA
     replicas = grpc_controller.replica_list()
     assert len(replicas) == 0
 
-    r1_url = get_backend_replica_url(grpc_replica1.address)
-    r2_url = get_backend_replica_url(grpc_replica2.address)
+    r1_url = grpc_replica1.url
+    r2_url = grpc_replica2.url
     v = grpc_controller.volume_start(replicas=[r1_url, r2_url])
     assert v.name == VOLUME_NAME
     assert v.replicaCount == 2
@@ -170,8 +170,8 @@ def test_ha_double_replica_rebuild(grpc_controller,  # NOQA
     assert len(replicas) == 0
 
     # NOTE the order is reversed here
-    r1_url = get_backend_replica_url(grpc_replica1.address)
-    r2_url = get_backend_replica_url(grpc_replica2.address)
+    r1_url = grpc_replica1.url
+    r2_url = grpc_replica2.url
     v = grpc_controller.volume_start(replicas=[r2_url, r1_url])
     assert v.replicaCount == 2
 
@@ -214,8 +214,8 @@ def test_ha_revision_counter_consistency(grpc_controller,  # NOQA
     replicas = grpc_controller.replica_list()
     assert len(replicas) == 0
 
-    r1_url = get_backend_replica_url(grpc_replica1.address)
-    r2_url = get_backend_replica_url(grpc_replica2.address)
+    r1_url = grpc_replica1.url
+    r2_url = grpc_replica2.url
     v = grpc_controller.volume_start(replicas=[r1_url, r2_url])
     assert v.name == VOLUME_NAME
     assert v.replicaCount == 2
@@ -249,8 +249,8 @@ def test_snapshot_tree_rebuild(grpc_controller,  # NOQA
     replicas = grpc_controller.replica_list()
     assert len(replicas) == 0
 
-    r1_url = get_backend_replica_url(grpc_replica1.address)
-    r2_url = get_backend_replica_url(grpc_replica2.address)
+    r1_url = grpc_replica1.url
+    r2_url = grpc_replica2.url
     v = grpc_controller.volume_start(replicas=[r1_url, r2_url])
     assert v.name == VOLUME_NAME
     assert v.replicaCount == 2
@@ -304,8 +304,8 @@ def test_ha_single_backing_replica_rebuild(grpc_backing_controller,  # NOQA
     replicas = grpc_backing_controller.replica_list()
     assert len(replicas) == 0
 
-    r1_url = get_backend_replica_url(grpc_backing_replica1.address)
-    r2_url = get_backend_replica_url(grpc_backing_replica2.address)
+    r1_url = grpc_backing_replica1.url
+    r2_url = grpc_backing_replica2.url
     v = grpc_backing_controller.volume_start(
         replicas=[r1_url, r2_url])
     assert v.replicaCount == 2
@@ -373,7 +373,7 @@ def test_ha_remove_extra_disks(grpc_controller,  # NOQA
     replicas = grpc_controller.replica_list()
     assert len(replicas) == 0
 
-    r1_url = get_backend_replica_url(grpc_replica1.address)
+    r1_url = grpc_replica1.url
     v = grpc_controller.volume_start(replicas=[r1_url])
     assert v.name == VOLUME_NAME
     assert v.replicaCount == 1
@@ -397,7 +397,7 @@ def test_ha_remove_extra_disks(grpc_controller,  # NOQA
     replicas = grpc_controller.replica_list()
     assert len(replicas) == 0
 
-    r2_url = get_backend_replica_url(grpc_replica2.address)
+    r2_url = grpc_replica2.url
     v = grpc_controller.volume_start(replicas=[r2_url])
     assert v.name == VOLUME_NAME
     assert v.replicaCount == 1

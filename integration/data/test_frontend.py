@@ -1,7 +1,7 @@
 from common import (  # NOQA
     grpc_controller_no_frontend,  # NOQA
     grpc_replica1, grpc_replica2,  # NOQA
-    open_replica, get_backend_replica_url,
+    open_replica,
     get_blockdev, random_string, verify_read, verify_data,
     start_engine_frontend, shutdown_engine_frontend,
 )
@@ -19,8 +19,8 @@ def test_frontend_switch(grpc_controller_no_frontend,  # NOQA
     replicas = grpc_controller_no_frontend.replica_list()
     assert len(replicas) == 0
 
-    r1_url = get_backend_replica_url(grpc_replica1.address)
-    r2_url = get_backend_replica_url(grpc_replica2.address)
+    r1_url = grpc_replica1.url
+    r2_url = grpc_replica2.url
     v = grpc_controller_no_frontend.volume_start(
         replicas=[r1_url, r2_url])
     assert v.name == VOLUME_NO_FRONTEND_NAME
