@@ -15,6 +15,6 @@ const (
 )
 
 var (
-	WaitInterval = time.Second
-	WaitCount    = 60
+	WaitInterval = 100 * time.Millisecond
+	WaitCount    = 600
 )
