@@ -6,7 +6,7 @@ from common import (  # NOQA
     grpc_fixed_dir_replica1, grpc_fixed_dir_replica2,  # NOQA
     grpc_extra_replica1, grpc_extra_replica2,  # NOQA
     get_dev, read_dev, write_dev,
-    random_string, verify_data, get_backend_replica_url,
+    random_string, verify_data,
     wait_for_process_running,
     open_replica, cleanup_replica,
 )
@@ -32,10 +32,10 @@ def test_upgrade(grpc_engine_manager,  # NOQA
     verify_data(dev, offset, data)
 
     # both set pointed to the same volume underlying
-    r1_url = get_backend_replica_url(grpc_fixed_dir_replica1.address)
-    r2_url = get_backend_replica_url(grpc_fixed_dir_replica2.address)
-    upgrade_r1_url = get_backend_replica_url(grpc_extra_replica1.address)
-    upgrade_r2_url = get_backend_replica_url(grpc_extra_replica2.address)
+    r1_url = grpc_fixed_dir_replica1.url
+    r2_url = grpc_fixed_dir_replica2.url
+    upgrade_r1_url = grpc_extra_replica1.url
+    upgrade_r2_url = grpc_extra_replica2.url
 
     v = grpc_controller.volume_start(replicas=[r1_url, r2_url])
     assert v.replicaCount == 2

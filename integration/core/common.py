@@ -160,10 +160,6 @@ def get_replica_address(r):
     return "localhost:" + str(r.status.port_start)
 
 
-def get_backend_replica_url(address):
-    return "tcp://"+address
-
-
 @pytest.fixture
 def grpc_controller_client(request):
     em_client = engine_manager_client(request)

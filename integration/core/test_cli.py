@@ -12,7 +12,6 @@ from urlparse import urlparse
 from common import (  # NOQA
     engine_manager_client, grpc_controller_client,  # NOQA
     grpc_replica_client, grpc_replica_client2,  # NOQA
-    get_backend_replica_url,
     cleanup_replica, cleanup_controller,
 
     VOLUME_NAME, SIZE_STR, ENGINE_NAME,
@@ -115,7 +114,7 @@ def test_replica_add_start(bin, grpc_controller_client,  # NOQA
 
     cmd = [bin, '--debug', '--url', grpc_controller_client.address,
            'add-replica',
-           get_backend_replica_url(grpc_replica_client.address)]
+           grpc_replica_client.url]
     subprocess.check_call(cmd)
 
     volume = grpc_controller_client.volume_get()
@@ -152,7 +151,7 @@ def test_replica_add_rebuild(bin, grpc_controller_client,  # NOQA
     grpc_replica_client.replica_close()
     cmd = [bin, '--debug', '--url', grpc_controller_client.address,
            'add-replica',
-           get_backend_replica_url(grpc_replica_client.address)]
+           grpc_replica_client.url]
     subprocess.check_call(cmd)
 
     volume = grpc_controller_client.volume_get()
@@ -160,7 +159,7 @@ def test_replica_add_rebuild(bin, grpc_controller_client,  # NOQA
 
     cmd = [bin, '--debug', '--url', grpc_controller_client.address,
            'add-replica',
-           get_backend_replica_url(grpc_replica_client2.address)]
+           grpc_replica_client2.url]
     subprocess.check_call(cmd)
 
     volume = grpc_controller_client.volume_get()
@@ -236,7 +235,7 @@ def test_replica_add_after_rebuild_failed(bin, grpc_controller_client,  # NOQA
 
     cmd = [bin, '--debug', '--url', grpc_controller_client.address,
            'add-replica',
-           get_backend_replica_url(grpc_replica_client.address)]
+           grpc_replica_client.url]
     subprocess.check_call(cmd)
 
     volume = grpc_controller_client.volume_get()
@@ -248,7 +247,7 @@ def test_replica_add_after_rebuild_failed(bin, grpc_controller_client,  # NOQA
 
     cmd = [bin, '--debug', '--url', grpc_controller_client.address,
            'add-replica',
-           get_backend_replica_url(grpc_replica_client2.address)]
+           grpc_replica_client2.url]
     subprocess.check_call(cmd)
 
     volume = grpc_controller_client.volume_get()
@@ -267,8 +266,8 @@ def test_replica_failure_detection(grpc_controller_client,  # NOQA
     open_replica(grpc_replica_client)
     open_replica(grpc_replica_client2)
 
-    r1_url = get_backend_replica_url(grpc_replica_client.address)
-    r2_url = get_backend_replica_url(grpc_replica_client2.address)
+    r1_url = grpc_replica_client.url
+    r2_url = grpc_replica_client2.url
     v = grpc_controller_client.volume_start(replicas=[
         r1_url,
         r2_url,
@@ -301,8 +300,8 @@ def test_revert(engine_manager_client,  # NOQA
     open_replica(grpc_replica_client)
     open_replica(grpc_replica_client2)
 
-    r1_url = get_backend_replica_url(grpc_replica_client.address)
-    r2_url = get_backend_replica_url(grpc_replica_client2.address)
+    r1_url = grpc_replica_client.url
+    r2_url = grpc_replica_client2.url
     v = grpc_controller_client.volume_start(replicas=[
         r1_url,
         r2_url,
@@ -337,8 +336,8 @@ def test_snapshot(bin, grpc_controller_client,  # NOQA
     open_replica(grpc_replica_client)
     open_replica(grpc_replica_client2)
 
-    r1_url = get_backend_replica_url(grpc_replica_client.address)
-    r2_url = get_backend_replica_url(grpc_replica_client2.address)
+    r1_url = grpc_replica_client.url
+    r2_url = grpc_replica_client2.url
     v = grpc_controller_client.volume_start(replicas=[
         r1_url,
         r2_url,
@@ -366,8 +365,8 @@ def test_snapshot_ls(bin, grpc_controller_client,  # NOQA
     open_replica(grpc_replica_client)
     open_replica(grpc_replica_client2)
 
-    r1_url = get_backend_replica_url(grpc_replica_client.address)
-    r2_url = get_backend_replica_url(grpc_replica_client2.address)
+    r1_url = grpc_replica_client.url
+    r2_url = grpc_replica_client2.url
     v = grpc_controller_client.volume_start(replicas=[
         r1_url,
         r2_url,
@@ -395,8 +394,8 @@ def test_snapshot_info(bin, grpc_controller_client,  # NOQA
     open_replica(grpc_replica_client)
     open_replica(grpc_replica_client2)
 
-    r1_url = get_backend_replica_url(grpc_replica_client.address)
-    r2_url = get_backend_replica_url(grpc_replica_client2.address)
+    r1_url = grpc_replica_client.url
+    r2_url = grpc_replica_client2.url
     v = grpc_controller_client.volume_start(replicas=[
         r1_url,
         r2_url,
@@ -454,8 +453,8 @@ def test_snapshot_create(bin, grpc_controller_client,  # NOQA
     open_replica(grpc_replica_client)
     open_replica(grpc_replica_client2)
 
-    r1_url = get_backend_replica_url(grpc_replica_client.address)
-    r2_url = get_backend_replica_url(grpc_replica_client2.address)
+    r1_url = grpc_replica_client.url
+    r2_url = grpc_replica_client2.url
     v = grpc_controller_client.volume_start(replicas=[
         r1_url,
         r2_url,
@@ -506,8 +505,8 @@ def test_snapshot_rm(bin, grpc_controller_client,  # NOQA
     open_replica(grpc_replica_client)
     open_replica(grpc_replica_client2)
 
-    r1_url = get_backend_replica_url(grpc_replica_client.address)
-    r2_url = get_backend_replica_url(grpc_replica_client2.address)
+    r1_url = grpc_replica_client.url
+    r2_url = grpc_replica_client2.url
     v = grpc_controller_client.volume_start(replicas=[
         r1_url,
         r2_url,
@@ -540,8 +539,8 @@ def test_snapshot_rm_empty(bin, grpc_controller_client,  # NOQA
     open_replica(grpc_replica_client)
     open_replica(grpc_replica_client2)
 
-    r1_url = get_backend_replica_url(grpc_replica_client.address)
-    r2_url = get_backend_replica_url(grpc_replica_client2.address)
+    r1_url = grpc_replica_client.url
+    r2_url = grpc_replica_client2.url
     v = grpc_controller_client.volume_start(replicas=[
         r1_url,
         r2_url,
@@ -583,8 +582,8 @@ def test_snapshot_last(bin, grpc_controller_client,  # NOQA
     open_replica(grpc_replica_client)
     open_replica(grpc_replica_client2)
 
-    r1_url = get_backend_replica_url(grpc_replica_client.address)
-    r2_url = get_backend_replica_url(grpc_replica_client2.address)
+    r1_url = grpc_replica_client.url
+    r2_url = grpc_replica_client2.url
     v = grpc_controller_client.volume_start(replicas=[
         r1_url,
     ])
@@ -686,8 +685,8 @@ def backup_core(bin, engine_manager_client,  # NOQA
     open_replica(grpc_replica_client)
     open_replica(grpc_replica_client2)
 
-    r1_url = get_backend_replica_url(grpc_replica_client.address)
-    r2_url = get_backend_replica_url(grpc_replica_client2.address)
+    r1_url = grpc_replica_client.url
+    r2_url = grpc_replica_client2.url
     v = grpc_controller_client.volume_start(replicas=[
         r1_url,
         r2_url,
@@ -855,8 +854,8 @@ def test_snapshot_purge_basic(bin, grpc_controller_client,  # NOQA
     open_replica(grpc_replica_client)
     open_replica(grpc_replica_client2)
 
-    r1_url = get_backend_replica_url(grpc_replica_client.address)
-    r2_url = get_backend_replica_url(grpc_replica_client2.address)
+    r1_url = grpc_replica_client.url
+    r2_url = grpc_replica_client2.url
     v = grpc_controller_client.volume_start(replicas=[
         r1_url,
         r2_url,
@@ -915,8 +914,8 @@ def test_snapshot_purge_head_parent(bin, grpc_controller_client,  # NOQA
     open_replica(grpc_replica_client)
     open_replica(grpc_replica_client2)
 
-    r1_url = get_backend_replica_url(grpc_replica_client.address)
-    r2_url = get_backend_replica_url(grpc_replica_client2.address)
+    r1_url = grpc_replica_client.url
+    r2_url = grpc_replica_client2.url
     v = grpc_controller_client.volume_start(replicas=[
         r1_url,
         r2_url,

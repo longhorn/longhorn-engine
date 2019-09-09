@@ -12,7 +12,7 @@ from common import (  # NOQA
     grpc_fixed_dir_replica1, grpc_fixed_dir_replica2,  # NOQA
     open_replica, cleanup_controller, cleanup_replica,
     get_dev, get_blockdev, verify_read, verify_data,
-    random_string, get_backend_replica_url,
+    random_string,
     cleanup_replica_dir,
     create_backup, rm_backups,
     restore_incrementally, wait_for_restore_completion,
@@ -263,8 +263,8 @@ def start_no_frontend_volume(grpc_em, grpc_c, grpc_r1, grpc_r2):
     dr_replicas = grpc_c.replica_list()
     assert len(dr_replicas) == 0
 
-    r1_url = get_backend_replica_url(grpc_r1.address)
-    r2_url = get_backend_replica_url(grpc_r2.address)
+    r1_url = grpc_r1.url
+    r2_url = grpc_r2.url
     v = grpc_c.volume_start(replicas=[r1_url, r2_url])
     assert v.replicaCount == 2
 
