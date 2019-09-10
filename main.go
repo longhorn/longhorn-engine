@@ -105,6 +105,7 @@ func longhornCli() {
 		app.ReplicaCmd(),
 		app.SyncAgentCmd(),
 		app.SyncAgentServerResetCmd(),
+		app.StartWithReplicasCmd(),
 		app.AddReplicaCmd(),
 		app.LsReplicaCmd(),
 		app.RmReplicaCmd(),

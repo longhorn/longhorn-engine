@@ -31,3 +31,26 @@ func addReplica(c *cli.Context) error {
 	task := sync.NewTask(url)
 	return task.AddReplica(replica)
 }
+
+func StartWithReplicasCmd() cli.Command {
+	return cli.Command{
+		Name:      "start-with-replicas",
+		ShortName: "start",
+		Action: func(c *cli.Context) {
+			if err := startWithReplicas(c); err != nil {
+				logrus.Fatalf("Error running start-with-replica command: %v", err)
+			}
+		},
+	}
+}
+
+func startWithReplicas(c *cli.Context) error {
+	if c.NArg() == 0 {
+		return errors.New("replica address is required")
+	}
+	replicas := c.Args()
+
+	url := c.GlobalString("url")
+	task := sync.NewTask(url)
+	return task.StartWithReplicas(replicas)
+}
