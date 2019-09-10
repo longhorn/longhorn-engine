@@ -505,3 +505,16 @@ func GetSnapshotsInfo(replicas []*types.ControllerReplicaInfo) (outputDisks map[
 	}
 	return outputDisks, nil
 }
+
+func (t *Task) StartWithReplicas(replicas []string) error {
+	volume, err := t.client.VolumeGet()
+	if err != nil {
+		return err
+	}
+
+	if volume.ReplicaCount != 0 {
+		return fmt.Errorf("cannot add multiple replicas if volume is already up")
+	}
+
+	return t.client.VolumeStart(replicas...)
+}
