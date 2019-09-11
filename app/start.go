@@ -50,6 +50,29 @@ func StartCmd() cli.Command {
 
 func cleanup(pm *process.Manager, em *engine.Manager) {
 	logrus.Infof("Try to gracefully shut down Instance Manager")
+	emResp, err := em.EngineList(nil, &empty.Empty{})
+	if err != nil {
+		logrus.Errorf("Failed to list engine processes before shutdown")
+		return
+	}
+	for _, e := range emResp.Engines {
+		em.EngineDelete(nil, &rpc.EngineRequest{
+			Name: e.Spec.Name,
+		})
+	}
+	for i := 0; i < types.WaitCount; i++ {
+		emResp, err := em.EngineList(nil, &empty.Empty{})
+		if err != nil {
+			logrus.Errorf("Failed to list engine processes when shutting down")
+			return
+		}
+		if len(emResp.Engines) == 0 {
+			logrus.Infof("Instance Manager has shutdown all processes and cleaned up all engine processes. Graceful shutdown succeeded")
+			return
+		}
+		time.Sleep(types.WaitInterval)
+	}
+
 	pmResp, err := pm.ProcessList(nil, &rpc.ProcessListRequest{})
 	if err != nil {
 		logrus.Errorf("Failed to list processes before shutdown")
@@ -70,29 +93,6 @@ func cleanup(pm *process.Manager, em *engine.Manager) {
 		if len(pmResp.Processes) == 0 {
 			logrus.Infof("Instance Manager has shutdown all processes.")
 			break
-		}
-		time.Sleep(types.WaitInterval)
-	}
-
-	emResp, err := em.EngineList(nil, &empty.Empty{})
-	if err != nil {
-		logrus.Errorf("Failed to list engine processes before shutdown")
-		return
-	}
-	for _, e := range emResp.Engines {
-		em.EngineDelete(nil, &rpc.EngineRequest{
-			Name: e.Spec.Name,
-		})
-	}
-	for i := 0; i < types.WaitCount; i++ {
-		emResp, err := em.EngineList(nil, &empty.Empty{})
-		if err != nil {
-			logrus.Errorf("Failed to list engine processes when shutting down")
-			return
-		}
-		if len(emResp.Engines) == 0 {
-			logrus.Infof("Instance Manager has shutdown all processes and cleaned up all engine processes. Graceful shutdown succeeded")
-			return
 		}
 		time.Sleep(types.WaitInterval)
 	}

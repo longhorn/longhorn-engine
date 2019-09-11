@@ -171,7 +171,7 @@ func (em *Manager) unregisterEngineLauncher(launcherName string) {
 // EngineDelete will delete the engine named by the request
 // If the specified engine doesn't exist, the deletion will return with ErrorNotFound
 func (em *Manager) EngineDelete(ctx context.Context, req *rpc.EngineRequest) (ret *rpc.EngineResponse, err error) {
-	logrus.Infof("Engine Manager starts to deleted engine %v", req.Name)
+	logrus.Infof("Engine Manager starts to delete engine %v", req.Name)
 
 	el := em.getLauncher(req.Name)
 	if el == nil {
