@@ -19,6 +19,7 @@ import (
 )
 
 /* Lock order
+   0. elUpdateCh <-
    1. Manager.lock
    2. Launcher.lock
 */
@@ -33,10 +34,11 @@ type Manager struct {
 	broadcastCh     chan interface{}
 	processUpdateCh <-chan interface{}
 
-	elUpdateCh      chan *Launcher
-	shutdownCh      chan error
-	engineLaunchers map[string]*Launcher
-	tIDAllocator    *util.Bitmap
+	elUpdateCh         chan *Launcher
+	shutdownCh         chan error
+	engineLaunchers    map[string]*Launcher
+	processLauncherMap *sync.Map
+	tIDAllocator       *util.Bitmap
 
 	dc longhorndev.DeviceCreator
 	ec VolumeClientService
@@ -57,10 +59,11 @@ func NewEngineManager(pm rpc.ProcessManagerServiceServer, processUpdateCh <-chan
 		broadcastCh:     make(chan interface{}),
 		processUpdateCh: processUpdateCh,
 
-		elUpdateCh:      make(chan *Launcher),
-		shutdownCh:      shutdownCh,
-		engineLaunchers: map[string]*Launcher{},
-		tIDAllocator:    util.NewBitmap(1, MaxTgtTargetNumber),
+		elUpdateCh:         make(chan *Launcher),
+		shutdownCh:         shutdownCh,
+		engineLaunchers:    map[string]*Launcher{},
+		processLauncherMap: &sync.Map{},
+		tIDAllocator:       util.NewBitmap(1, MaxTgtTargetNumber),
 
 		dc: &longhorndev.LonghornDeviceCreator{},
 		ec: &VolumeClient{},
@@ -83,16 +86,21 @@ func (em *Manager) StartMonitoring() {
 			logrus.Infof("Engine Manager is shutting down")
 			done = true
 			break
-		case el := <-em.elUpdateCh:
-			resp := el.RPCResponse()
-			em.lock.RLock()
-			// Modify response to indicate deletion.
-			if _, exists := em.engineLaunchers[el.GetLauncherName()]; !exists {
-				resp.Deleted = true
+		case resp := <-em.processUpdateCh:
+			p, ok := resp.(*rpc.ProcessResponse)
+			if !ok {
+				logrus.Errorf("BUG: engine launcher: cannot get ProcessResponse from channel")
 			}
-			em.lock.RUnlock()
+			if p == nil {
+				break
+			}
 
-			em.broadcastCh <- interface{}(resp)
+			launcher := em.getLauncherForProcess(p.Spec.Name)
+			if launcher != nil {
+				em.boardcastLauncherChange(launcher)
+			}
+		case el := <-em.elUpdateCh:
+			em.boardcastLauncherChange(el)
 		}
 		if done {
 			break
@@ -100,13 +108,25 @@ func (em *Manager) StartMonitoring() {
 	}
 }
 
+func (em *Manager) boardcastLauncherChange(el *Launcher) {
+	resp := el.RPCResponse()
+	em.lock.RLock()
+	// Modify response to indicate deletion.
+	if _, exists := em.engineLaunchers[el.GetLauncherName()]; !exists {
+		resp.Deleted = true
+	}
+	em.lock.RUnlock()
+
+	em.broadcastCh <- interface{}(resp)
+	//logrus.Errorf("engine resp %+v sent", resp)
+}
+
 // EngineCreate will create an engine according to the request
 // If the specified engine name exists already, the creation will fail.
 func (em *Manager) EngineCreate(ctx context.Context, req *rpc.EngineCreateRequest) (ret *rpc.EngineResponse, err error) {
 	logrus.Infof("Engine Manager starts to create engine of volume %v", req.Spec.VolumeName)
 
-	el, err := NewEngineLauncher(req.Spec, em.listen, em.processUpdateCh, em.elUpdateCh, em.pm,
-		em.dc, em.ec)
+	el, err := NewEngineLauncher(req.Spec, em.listen, em.elUpdateCh, em.pm, em.dc, em.ec)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to create engine launcher for request %+v", req)
 	}
@@ -135,6 +155,7 @@ func (em *Manager) registerEngineLauncher(el *Launcher) error {
 	}
 
 	em.engineLaunchers[el.GetLauncherName()] = el
+	em.processLauncherMap.Store(el.GetEngineName(), el)
 
 	return nil
 }
@@ -146,6 +167,7 @@ func (em *Manager) unregisterEngineLauncher(launcherName string) {
 	if el == nil {
 		return
 	}
+	currentEngineName := el.GetEngineName()
 
 	if err := el.WaitForDeletion(); err != nil {
 		logrus.Errorf("Engine Manager fails to unregister engine launcher %v: %v", launcherName, err)
@@ -162,6 +184,7 @@ func (em *Manager) unregisterEngineLauncher(launcherName string) {
 	em.lock.Lock()
 	delete(em.engineLaunchers, launcherName)
 	em.lock.Unlock()
+	em.processLauncherMap.Delete(currentEngineName)
 
 	logrus.Infof("Engine Manager had successfully unregistered engine launcher %v, deletion completed", launcherName)
 	el.Update()
@@ -229,9 +252,18 @@ func (em *Manager) EngineUpgrade(ctx context.Context, req *rpc.EngineUpgradeRequ
 		return nil, status.Errorf(codes.NotFound, "cannot find engine %v", req.Spec.Name)
 	}
 
-	if err := el.Upgrade(req.Spec); err != nil {
+	currentEngineName := el.GetEngineName()
+	pendingEngineName, err := el.PrepareUpgrade(req.Spec)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to prepare to upgrade engine to %v", req.Spec.Name)
+	}
+	em.processLauncherMap.Store(pendingEngineName, el)
+
+	if err := el.Upgrade(); err != nil {
+		em.processLauncherMap.Delete(pendingEngineName)
 		return nil, err
 	}
+	em.processLauncherMap.Delete(currentEngineName)
 
 	logrus.Infof("Engine Manager has successfully upgraded engine %v with binary %v", req.Spec.Name, req.Spec.Binary)
 
@@ -396,4 +428,16 @@ func (em *Manager) getLauncher(name string) *Launcher {
 	em.lock.RLock()
 	defer em.lock.RUnlock()
 	return em.engineLaunchers[name]
+}
+
+func (em *Manager) getLauncherForProcess(processName string) *Launcher {
+	launcher, ok := em.processLauncherMap.Load(processName)
+	if ok {
+		el, ok := launcher.(*Launcher)
+		if !ok {
+			logrus.Errorf("BUG: cannot type assert launcher %+v in getLauncherForProcess", launcher)
+		}
+		return el
+	}
+	return nil
 }

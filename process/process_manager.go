@@ -176,7 +176,7 @@ func (pm *Manager) registerProcess(p *Process) error {
 
 	_, exists := pm.processes[p.Name]
 	if exists {
-		return status.Errorf(codes.AlreadyExists, "engine process %v already exists", p.Name)
+		return status.Errorf(codes.AlreadyExists, "process %v already exists", p.Name)
 	}
 
 	if len(p.PortArgs) > int(p.PortCount) {

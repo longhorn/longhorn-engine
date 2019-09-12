@@ -46,7 +46,7 @@ type Launcher struct {
 }
 
 func NewEngineLauncher(spec *rpc.EngineSpec, launcherAddr string,
-	processUpdateCh <-chan interface{}, engineUpdateCh chan *Launcher,
+	engineUpdateCh chan *Launcher,
 	processManager rpc.ProcessManagerServiceServer,
 	dc longhorndev.DeviceCreator,
 	ec VolumeClientService) (*Launcher, error) {
@@ -75,36 +75,7 @@ func NewEngineLauncher(spec *rpc.EngineSpec, launcherAddr string,
 	if err != nil {
 		return nil, err
 	}
-
-	go el.StartMonitoring(processUpdateCh)
 	return el, nil
-}
-
-func (el *Launcher) StartMonitoring(processUpdateCh <-chan interface{}) {
-	done := false
-	for {
-		select {
-		case resp := <-processUpdateCh:
-			p, ok := resp.(*rpc.ProcessResponse)
-			if !ok {
-				logrus.Errorf("BUG: engine launcher: cannot get ProcessResponse from channel")
-			}
-			el.lock.RLock()
-			engineName := el.currentEngine.EngineName
-			el.lock.RUnlock()
-
-			if p.Spec.Name == engineName {
-				el.updateCh <- el
-			}
-		case <-el.doneCh:
-			done = true
-			break
-		}
-		if done {
-			break
-		}
-	}
-	logrus.Debugf("Stopped process monitoring on engine launcher %v", el.GetLauncherName())
 }
 
 func (el *Launcher) RPCResponse() *rpc.EngineResponse {
@@ -174,13 +145,12 @@ func (el *Launcher) Stop() error {
 
 }
 
-func (el *Launcher) Upgrade(spec *rpc.EngineSpec) error {
-	if err := el.prepareUpgrade(spec); err != nil {
-		return errors.Wrapf(err, "failed to prepare to upgrade engine to %v", spec.Name)
+func (el *Launcher) Upgrade() error {
+	if el.pendingEngine == nil {
+		return fmt.Errorf("pending engine is missing, no PrepareUpgrade was done")
 	}
-
 	if err := el.pendingEngine.Start(); err != nil {
-		return errors.Wrapf(err, "failed to create upgrade engine %v", spec.Name)
+		return errors.Wrapf(err, "failed to create upgrade engine %v", el.pendingEngine.EngineName)
 	}
 
 	if err := el.pendingEngine.WaitForRunning(); err != nil {
@@ -193,16 +163,16 @@ func (el *Launcher) Upgrade(spec *rpc.EngineSpec) error {
 	return nil
 }
 
-func (el *Launcher) prepareUpgrade(spec *rpc.EngineSpec) error {
+func (el *Launcher) PrepareUpgrade(spec *rpc.EngineSpec) (string, error) {
 	if _, err := os.Stat(spec.Binary); os.IsNotExist(err) {
-		return errors.Wrapf(err, "cannot find the binary %v to be upgraded", spec.Binary)
+		return "", errors.Wrapf(err, "cannot find the binary %v to be upgraded", spec.Binary)
 	}
 
 	el.lock.Lock()
 	defer el.lock.Unlock()
 
 	if el.currentEngine.Binary == spec.Binary || el.LauncherName != spec.Name {
-		return fmt.Errorf("cannot upgrade with the same binary or the different engine")
+		return "", fmt.Errorf("cannot upgrade with the same binary or the different engine")
 	}
 
 	logrus.Debugf("engine launcher %v: prepare for upgrade", el.LauncherName)
@@ -219,12 +189,12 @@ func (el *Launcher) prepareUpgrade(spec *rpc.EngineSpec) error {
 	el.pendingEngine.Backends = el.Backends
 
 	if err := el.dev.PrepareUpgrade(); err != nil {
-		return err
+		return "", err
 	}
 
 	logrus.Debugf("engine launcher %v: preparation completed", el.LauncherName)
 
-	return nil
+	return el.pendingEngine.EngineName, nil
 }
 
 func (el *Launcher) finalizeUpgrade() error {
@@ -361,4 +331,10 @@ func (el *Launcher) GetLauncherName() string {
 
 func (el *Launcher) Update() {
 	el.updateCh <- el
+}
+
+func (el *Launcher) GetEngineName() string {
+	el.lock.RLock()
+	defer el.lock.RUnlock()
+	return el.currentEngine.EngineName
 }
