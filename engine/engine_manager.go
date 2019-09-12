@@ -19,7 +19,7 @@ import (
 )
 
 /* Lock order
-   0. elUpdateCh <-
+   0. elUpdateCh <- (includes launcher.Update())
    1. Manager.lock
    2. Launcher.lock
 */
@@ -118,14 +118,12 @@ func (em *Manager) boardcastLauncherChange(el *Launcher) {
 	em.lock.RUnlock()
 
 	em.broadcastCh <- interface{}(resp)
-	//logrus.Errorf("engine resp %+v sent", resp)
 }
 
 // EngineCreate will create an engine according to the request
 // If the specified engine name exists already, the creation will fail.
 func (em *Manager) EngineCreate(ctx context.Context, req *rpc.EngineCreateRequest) (ret *rpc.EngineResponse, err error) {
-	logrus.Infof("Engine Manager starts to create engine of volume %v", req.Spec.VolumeName)
-
+	logrus.Infof("Engine Manager: prepare to create engine %v of volume %v", req.Spec.Name, req.Spec.VolumeName)
 	el, err := NewEngineLauncher(req.Spec, em.listen, em.elUpdateCh, em.pm, em.dc, em.ec)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to create engine launcher for request %+v", req)
@@ -133,14 +131,14 @@ func (em *Manager) EngineCreate(ctx context.Context, req *rpc.EngineCreateReques
 	if err := em.registerEngineLauncher(el); err != nil {
 		return nil, errors.Wrapf(err, "failed to register engine launcher %v", el.GetLauncherName())
 	}
-	// Must be done without holding the lock
+
 	el.Update()
 	if err := el.Start(); err != nil {
 		go em.unregisterEngineLauncher(req.Spec.Name)
 		return nil, errors.Wrapf(err, "failed to start engine %v", req.Spec.Name)
 	}
 
-	logrus.Infof("Engine Manager has successfully created engine %v", req.Spec.Name)
+	logrus.Infof("Engine Manager: created engine %v", req.Spec.Name)
 
 	return el.RPCResponse(), nil
 }
@@ -194,7 +192,7 @@ func (em *Manager) unregisterEngineLauncher(launcherName string) {
 // EngineDelete will delete the engine named by the request
 // If the specified engine doesn't exist, the deletion will return with ErrorNotFound
 func (em *Manager) EngineDelete(ctx context.Context, req *rpc.EngineRequest) (ret *rpc.EngineResponse, err error) {
-	logrus.Infof("Engine Manager starts to delete engine %v", req.Name)
+	logrus.Infof("Engine Manager: prepare to delete engine %v", req.Name)
 
 	el := em.getLauncher(req.Name)
 	if el == nil {
@@ -207,7 +205,7 @@ func (em *Manager) EngineDelete(ctx context.Context, req *rpc.EngineRequest) (re
 
 	go em.unregisterEngineLauncher(req.Name)
 
-	logrus.Infof("Engine Manager is deleting engine %v", req.Name)
+	logrus.Infof("Engine Manager: deleted engine %v", req.Name)
 
 	return el.RPCResponse(), nil
 }
@@ -245,7 +243,7 @@ func (em *Manager) EngineUpgrade(ctx context.Context, req *rpc.EngineUpgradeRequ
 		err = errors.Wrapf(err, "failed to upgrade engine for %v(%v) ", req.Spec.Name, req.Spec.VolumeName)
 	}()
 
-	logrus.Infof("Engine Manager starts to upgrade engine %v for volume %v", req.Spec.Name, req.Spec.VolumeName)
+	logrus.Infof("Engine Manager: prepare to upgrade engine %v for volume %v", req.Spec.Name, req.Spec.VolumeName)
 
 	el := em.getLauncher(req.Spec.Name)
 	if el == nil {
@@ -265,13 +263,13 @@ func (em *Manager) EngineUpgrade(ctx context.Context, req *rpc.EngineUpgradeRequ
 	}
 	em.processLauncherMap.Delete(currentEngineName)
 
-	logrus.Infof("Engine Manager has successfully upgraded engine %v with binary %v", req.Spec.Name, req.Spec.Binary)
+	logrus.Infof("Engine Manager: upgraded engine %v with binary %v", req.Spec.Name, req.Spec.Binary)
 
 	return el.RPCResponse(), nil
 }
 
 func (em *Manager) EngineLog(req *rpc.LogRequest, srv rpc.EngineManagerService_EngineLogServer) error {
-	logrus.Debugf("Engine Manager getting logs for engine %v", req.Name)
+	logrus.Debugf("Engine Manager: start getting logs for engine %v", req.Name)
 
 	el := em.getLauncher(req.Name)
 	if el == nil {
@@ -282,7 +280,7 @@ func (em *Manager) EngineLog(req *rpc.LogRequest, srv rpc.EngineManagerService_E
 		return err
 	}
 
-	logrus.Debugf("Engine Manager has successfully retrieved logs for engine %v", req.Name)
+	logrus.Debugf("Engine Manager: got logs for engine %v", req.Name)
 
 	return nil
 }

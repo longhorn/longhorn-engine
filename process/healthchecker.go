@@ -22,6 +22,7 @@ func (c *GRPCHealthChecker) IsRunning(address string) bool {
 func (c *GRPCHealthChecker) WaitForRunning(address, name string) bool {
 	for i := 0; i < types.WaitCount; i++ {
 		if c.IsRunning(address) {
+			logrus.Infof("Process %v has started", name)
 			return true
 		}
 		logrus.Infof("wait for gRPC service of process %v to start", name)

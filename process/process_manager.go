@@ -117,6 +117,7 @@ func (pm *Manager) ProcessCreate(ctx context.Context, req *rpc.ProcessCreateRequ
 		return nil, status.Errorf(codes.InvalidArgument, "missing required argument")
 	}
 
+	logrus.Infof("Process Manager: prepare to create process %v", req.Spec.Name)
 	logger, err := util.NewLonghornWriter(req.Spec.Name, pm.logsDir)
 	if err != nil {
 		return nil, err
@@ -142,9 +143,11 @@ func (pm *Manager) ProcessCreate(ctx context.Context, req *rpc.ProcessCreateRequ
 	if err := pm.registerProcess(p); err != nil {
 		return nil, err
 	}
+
 	p.UpdateCh <- p
 	p.Start()
 
+	logrus.Infof("Process Manager: created process %v", req.Spec.Name)
 	return p.RPCResponse(), nil
 }
 
@@ -165,6 +168,7 @@ func (pm *Manager) ProcessDelete(ctx context.Context, req *rpc.ProcessDeleteRequ
 
 	go pm.unregisterProcess(p)
 
+	logrus.Debugf("Process Manager: deleted process %v", req.Name)
 	return resp, nil
 }
 
@@ -269,6 +273,7 @@ func (pm *Manager) ProcessList(ctx context.Context, req *rpc.ProcessListRequest)
 }
 
 func (pm *Manager) ProcessLog(req *rpc.LogRequest, srv rpc.ProcessManagerService_ProcessLogServer) error {
+	logrus.Debugf("Process Manager: start getting logs for process %v", req.Name)
 	p := pm.findProcess(req.Name)
 	if p == nil {
 		return status.Errorf(codes.NotFound, "cannot find process %v", req.Name)
@@ -285,6 +290,7 @@ func (pm *Manager) ProcessLog(req *rpc.LogRequest, srv rpc.ProcessManagerService
 			return err
 		}
 	}
+	logrus.Debugf("Process Manager: got logs for process %v", req.Name)
 	return nil
 }
 
