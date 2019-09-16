@@ -120,7 +120,9 @@ func (t *Task) FetchBackupStatus(backupID string, replicaIP string) (*BackupStat
 
 	bs, err := repClient.GetBackupStatus(backupID)
 	if err != nil {
-		return nil, err
+		return &BackupStatusInfo{
+			Error: fmt.Sprintf("Failed to get backup status on %s for %v: %v", replicaIP, backupID, err),
+		}, nil
 	}
 
 	info := &BackupStatusInfo{
@@ -366,8 +368,10 @@ func (t *Task) RestoreStatus() (map[string]*RestoreStatus, error) {
 
 		rs, err := repClient.RestoreStatus()
 		if err != nil {
-			logrus.Errorf("Failed to get restoring status on %s", replica.Address)
-			return nil, err
+			replicaStatusMap[replica.Address] = &RestoreStatus{
+				Error: fmt.Sprintf("Failed to get restoring status on %s: %v", replica.Address, err),
+			}
+			continue
 		}
 		replicaStatusMap[replica.Address] = &RestoreStatus{
 			IsRestoring:  rs.IsRestoring,

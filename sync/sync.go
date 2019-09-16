@@ -139,7 +139,10 @@ func (t *Task) PurgeSnapshotStatus() (map[string]*SnapshotPurgeStatus, error) {
 
 		status, err := repClient.SnapshotPurgeStatus()
 		if err != nil {
-			return nil, fmt.Errorf("failed to get snapshot purge status of %v: %v", r.Address, err)
+			replicaStatusMap[r.Address] = &SnapshotPurgeStatus{
+				Error: fmt.Sprintf("failed to get snapshot purge status of %v: %v", r.Address, err),
+			}
+			continue
 		}
 		replicaStatusMap[r.Address] = &SnapshotPurgeStatus{
 			Error:     status.Error,
