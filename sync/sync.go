@@ -129,6 +129,9 @@ func (t *Task) PurgeSnapshotStatus() (map[string]*SnapshotPurgeStatus, error) {
 	}
 
 	for _, r := range replicas {
+		if r.Mode == types.ERR {
+			continue
+		}
 		repClient, err := replicaClient.NewReplicaClient(r.Address)
 		if err != nil {
 			return nil, err
