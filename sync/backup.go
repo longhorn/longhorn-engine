@@ -356,7 +356,9 @@ func (t *Task) RestoreStatus() (map[string]*RestoreStatus, error) {
 	}
 
 	for _, replica := range replicas {
-
+		if replica.Mode == types.ERR {
+			continue
+		}
 		repClient, err := replicaClient.NewReplicaClient(replica.Address)
 		if err != nil {
 			return nil, err
@@ -364,7 +366,7 @@ func (t *Task) RestoreStatus() (map[string]*RestoreStatus, error) {
 
 		rs, err := repClient.RestoreStatus()
 		if err != nil {
-			logrus.Errorf("Failed restoring backup %s on %s", replica.Address)
+			logrus.Errorf("Failed to get restoring status on %s", replica.Address)
 			return nil, err
 		}
 		replicaStatusMap[replica.Address] = &RestoreStatus{
