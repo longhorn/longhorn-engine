@@ -102,9 +102,7 @@ func (p *Process) Start() error {
 func (p *Process) RPCResponse() *rpc.ProcessResponse {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
-	if p.ErrorMsg == "" {
-		logrus.Debugf("Process update: %v: state %v", p.Name, p.State)
-	} else {
+	if p.ErrorMsg != "" {
 		logrus.Debugf("Process update: %v: state %v: Error: %v", p.Name, p.State, p.ErrorMsg)
 	}
 	return &rpc.ProcessResponse{
