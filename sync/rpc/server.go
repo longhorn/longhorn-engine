@@ -25,6 +25,12 @@ import (
 	"github.com/longhorn/sparse-tools/sparse"
 )
 
+/*
+ * Lock sequence
+ * 1. SyncAgentServer
+ * 2. BackupList, RestoreInfo or PurgeStatus (cannot be hold at the same time)
+ */
+
 const (
 	MaxBackupSize = 5
 
@@ -877,12 +883,13 @@ func (s *SyncAgentServer) SnapshotPurge(ctx context.Context, req *empty.Empty) (
 }
 
 func (s *SyncAgentServer) SnapshotPurgeStatus(ctx context.Context, req *empty.Empty) (*SnapshotPurgeStatusReply, error) {
+	isPurging := s.IsPurging()
+
 	s.PurgeStatus.RLock()
 	defer s.PurgeStatus.RUnlock()
-
 	return &SnapshotPurgeStatusReply{
+		IsPurging: isPurging,
 		Error:     s.PurgeStatus.Error,
-		IsPurging: s.IsPurging(),
 		Progress:  int32(s.PurgeStatus.Progress),
 		State:     string(s.PurgeStatus.State),
 	}, nil
