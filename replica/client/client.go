@@ -379,7 +379,7 @@ func (c *ReplicaClient) LaunchReceiver(toFilePath string) (string, int32, error)
 	defer conn.Close()
 	syncAgentServiceClient := syncagentrpc.NewSyncAgentServiceClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceLongTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
 	defer cancel()
 
 	reply, err := syncAgentServiceClient.ReceiverLaunch(ctx, &syncagentrpc.ReceiverLaunchRequest{
@@ -400,7 +400,7 @@ func (c *ReplicaClient) CreateBackup(snapshot, dest, volume string, labels []str
 	defer conn.Close()
 	syncAgentServiceClient := syncagentrpc.NewSyncAgentServiceClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceLongTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
 	defer cancel()
 
 	reply, err := syncAgentServiceClient.BackupCreate(ctx, &syncagentrpc.BackupCreateRequest{
@@ -467,7 +467,7 @@ func (c *ReplicaClient) RestoreBackup(backup, snapshotFile string, credential ma
 	defer conn.Close()
 	syncAgentServiceClient := syncagentrpc.NewSyncAgentServiceClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceLongTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
 	defer cancel()
 
 	if _, err := syncAgentServiceClient.BackupRestore(ctx, &syncagentrpc.BackupRestoreRequest{
@@ -490,7 +490,7 @@ func (c *ReplicaClient) RestoreBackupIncrementally(backup, deltaFile, lastRestor
 	defer conn.Close()
 	syncAgentServiceClient := syncagentrpc.NewSyncAgentServiceClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceLongTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
 	defer cancel()
 
 	if _, err := syncAgentServiceClient.BackupRestoreIncrementally(ctx, &syncagentrpc.BackupRestoreIncrementallyRequest{
@@ -513,7 +513,7 @@ func (c *ReplicaClient) Reset() error {
 	defer conn.Close()
 	syncAgentServiceClient := syncagentrpc.NewSyncAgentServiceClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceLongTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
 	defer cancel()
 
 	if _, err := syncAgentServiceClient.Reset(ctx, &empty.Empty{}); err != nil {
@@ -531,7 +531,7 @@ func (c *ReplicaClient) RestoreStatus() (*syncagentrpc.RestoreStatusReply, error
 	defer conn.Close()
 	syncAgentServiceClient := syncagentrpc.NewSyncAgentServiceClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceLongTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
 	defer cancel()
 
 	reply, err := syncAgentServiceClient.RestoreStatus(ctx, &empty.Empty{})
