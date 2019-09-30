@@ -41,7 +41,9 @@ type Controller struct {
 
 	latestMetrics *types.Metrics
 	metrics       *types.Metrics
-	backupList    map[string]string
+
+	backupList      map[string]string
+	backupListMutex *sync.RWMutex
 }
 
 func NewController(name string, factory types.BackendFactory, frontend types.Frontend, launcher, launcherID string) *Controller {
@@ -53,6 +55,9 @@ func NewController(name string, factory types.BackendFactory, frontend types.Fro
 		launcherID:    launcherID,
 		metrics:       &types.Metrics{},
 		latestMetrics: &types.Metrics{},
+
+		backupList:      map[string]string{},
+		backupListMutex: &sync.RWMutex{},
 	}
 	c.reset()
 	c.metricsStart()
@@ -615,24 +620,25 @@ func (c *Controller) GetLatestMetics() *types.Metrics {
 }
 
 func (c *Controller) BackupReplicaMappingCreate(id string, replicaAddress string) error {
-	c.Lock()
-	defer c.Unlock()
-	if c.backupList == nil {
-		c.backupList = make(map[string]string)
-	}
+	c.backupListMutex.Lock()
+	defer c.backupListMutex.Unlock()
 	c.backupList[id] = replicaAddress
 	return nil
 }
 
 func (c *Controller) BackupReplicaMappingGet() map[string]string {
-	c.Lock()
-	defer c.Unlock()
-	return c.backupList
+	c.backupListMutex.RLock()
+	defer c.backupListMutex.RUnlock()
+	ret := map[string]string{}
+	for k, v := range c.backupList {
+		ret[k] = v
+	}
+	return ret
 }
 
 func (c *Controller) BackupReplicaMappingDelete(id string) error {
-	c.Lock()
-	defer c.Unlock()
+	c.backupListMutex.Lock()
+	defer c.backupListMutex.Unlock()
 	if _, present := c.backupList[id]; present == false {
 		return fmt.Errorf("backupID not found: %v", id)
 	}
