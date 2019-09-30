@@ -48,7 +48,7 @@ function start() {
     done
     set -e
 
-    longhorn-instance-manager engine create --uuid "$volume-e-uuid" --name "$volume-e" --volume-name $volume --binary /usr/local/bin/longhorn --size $size --listen-ip 0.0.0.0 --frontend $frontend --enable-backend file --replica file://$img
+    longhorn-instance-manager engine create --name "$volume-e" --volume-name $volume --binary /usr/local/bin/longhorn --size $size --listen-ip 0.0.0.0 --frontend $frontend --enable-backend file --replica file://$img
 }
 
 start &
