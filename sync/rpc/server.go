@@ -181,6 +181,10 @@ func (s *SyncAgentServer) PrepareRestore(lastRestored string) error {
 func (s *SyncAgentServer) FinishRestore(currentRestored string) error {
 	s.Lock()
 	defer s.Unlock()
+	return s.finishRestoreNoLock(currentRestored)
+}
+
+func (s *SyncAgentServer) finishRestoreNoLock(currentRestored string) error {
 	if !s.isRestoring {
 		return fmt.Errorf("BUG: volume is not restoring")
 	}
@@ -447,7 +451,7 @@ func (s *SyncAgentServer) BackupRestore(ctx context.Context, req *BackupRestoreR
 
 	if err := backup.DoBackupRestore(req.Backup, req.SnapshotFileName, restoreObj); err != nil {
 		// Reset the isRestoring flag to false
-		if extraErr := s.FinishRestore(""); extraErr != nil {
+		if extraErr := s.finishRestoreNoLock(""); extraErr != nil {
 			return nil, fmt.Errorf("%v: %v", extraErr, err)
 		}
 		return nil, fmt.Errorf("error initiating backup restore [%v]", err)
@@ -646,7 +650,7 @@ func (s *SyncAgentServer) BackupRestoreIncrementally(ctx context.Context,
 		req.DeltaFileName, req.LastRestoredBackupName)
 	if err := backup.DoBackupRestoreIncrementally(req.Backup, req.DeltaFileName, req.LastRestoredBackupName,
 		restoreObj); err != nil {
-		if extraErr := s.FinishRestore(""); extraErr != nil {
+		if extraErr := s.finishRestoreNoLock(""); extraErr != nil {
 			return nil, fmt.Errorf("%v: %v", extraErr, err)
 		}
 		return nil, fmt.Errorf("error initiating incremental restore [%v]", err)
