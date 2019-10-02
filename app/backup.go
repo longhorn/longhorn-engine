@@ -94,16 +94,17 @@ func fetchAllBackups(c *cli.Context) error {
 	for backupID, replicaAddress := range backupReplicaMap {
 		status, err := getBackupStatus(c, backupID, replicaAddress)
 		if err != nil {
-			if strings.Contains(err.Error(), "backup not found") {
-				err := cli.BackupReplicaMappingDelete(backupID)
-				if err != nil {
-					return err
-				}
-			} else {
+			return err
+		}
+
+		if status == nil {
+			continue
+		}
+		if strings.Contains(status.Error, "backup not found") {
+			err := cli.BackupReplicaMappingDelete(backupID)
+			if err != nil {
 				return err
 			}
-		}
-		if status == nil {
 			continue
 		}
 
