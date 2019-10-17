@@ -76,7 +76,7 @@ func CmdGetScsiCmd(cmd Command) byte {
 
 func CmdMemcpyIntoIovec(cmd Command, buf []byte, length int) int {
 	if len(buf) != length {
-		log.Errorln("read buffer length %v is not %v: ", len(buf), length)
+		log.Errorf("read buffer length %v is not %v: ", len(buf), length)
 		return 0
 	}
 	return int(C.tcmu_memcpy_into_iovec(cmd.iovec, cmd.iov_cnt, unsafe.Pointer(&buf[0]), C.size_t(length)))
@@ -84,7 +84,7 @@ func CmdMemcpyIntoIovec(cmd Command, buf []byte, length int) int {
 
 func CmdMemcpyFromIovec(cmd Command, buf []byte, length int) int {
 	if len(buf) != length {
-		log.Errorln("write buffer length %v is not %v: ", len(buf), length)
+		log.Errorf("write buffer length %v is not %v: ", len(buf), length)
 		return 0
 	}
 	return int(C.tcmu_memcpy_from_iovec(unsafe.Pointer(&buf[0]), C.size_t(length), cmd.iovec, cmd.iov_cnt))

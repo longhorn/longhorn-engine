@@ -238,7 +238,7 @@ func (t *Task) RestoreBackupIncrementally(backup, backupName, lastRestored strin
 		return err
 	}
 	if len(snapshots) != 2 {
-		return fmt.Errorf("BUG: replicas %s of standby volume should contains 2 snapshots only: volume head and the restore file", replicas)
+		return fmt.Errorf("BUG: replicas %+v of standby volume should contains 2 snapshots only: volume head and the restore file", replicas)
 	}
 	var snapshotName string
 	for _, s := range snapshots {
