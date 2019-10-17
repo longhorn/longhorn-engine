@@ -1,7 +1,8 @@
 package replica
 
 import (
-	"github.com/frostschutz/go-fibmap"
+	"github.com/rancher/go-fibmap"
+
 	"github.com/longhorn/longhorn-engine/types"
 )
 

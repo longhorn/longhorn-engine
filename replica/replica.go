@@ -13,7 +13,8 @@ import (
 	"sync"
 	"syscall"
 
-	fibmap "github.com/frostschutz/go-fibmap"
+	"github.com/rancher/go-fibmap"
+
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
