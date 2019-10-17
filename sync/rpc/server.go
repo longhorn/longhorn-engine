@@ -1062,7 +1062,7 @@ func (s *SyncAgentServer) processRemoveSnapshot(snapshot string) error {
 				return err
 			}
 		case replica.OpRemove:
-			logrus.Infof("Removing", op.Source)
+			logrus.Infof("Removing %v", op.Source)
 			if err := s.rmDisk(op.Source); err != nil {
 				return err
 			}
