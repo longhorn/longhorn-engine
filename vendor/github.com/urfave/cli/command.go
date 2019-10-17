@@ -3,7 +3,6 @@ package cli
 import (
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"sort"
 	"strings"
 )
@@ -57,7 +56,7 @@ type Command struct {
 	// Boolean to hide this command from help or completion
 	Hidden bool
 	// Boolean to enable short-option handling so user can combine several
-	// single-character bool arguements into one
+	// single-character bool arguments into one
 	// i.e. foobar -o -v -> foobar -ov
 	UseShortOptionHandling bool
 
@@ -111,6 +110,10 @@ func (c Command) Run(ctx *Context) (err error) {
 		)
 	}
 
+	if ctx.App.UseShortOptionHandling {
+		c.UseShortOptionHandling = true
+	}
+
 	set, err := c.parseFlags(ctx.Args().Tail())
 
 	context := NewContext(ctx.App, set, ctx)
@@ -125,14 +128,20 @@ func (c Command) Run(ctx *Context) (err error) {
 			context.App.handleExitCoder(context, err)
 			return err
 		}
-		fmt.Fprintln(context.App.Writer, "Incorrect Usage:", err.Error())
-		fmt.Fprintln(context.App.Writer)
-		ShowCommandHelp(context, c.Name)
+		_, _ = fmt.Fprintln(context.App.Writer, "Incorrect Usage:", err.Error())
+		_, _ = fmt.Fprintln(context.App.Writer)
+		_ = ShowCommandHelp(context, c.Name)
 		return err
 	}
 
 	if checkCommandHelp(context, c.Name) {
 		return nil
+	}
+
+	cerr := checkRequiredFlags(c.Flags, context)
+	if cerr != nil {
+		_ = ShowCommandHelp(context, c.Name)
+		return cerr
 	}
 
 	if c.After != nil {
@@ -152,7 +161,7 @@ func (c Command) Run(ctx *Context) (err error) {
 	if c.Before != nil {
 		err = c.Before(context)
 		if err != nil {
-			ShowCommandHelp(context, c.Name)
+			_ = ShowCommandHelp(context, c.Name)
 			context.App.handleExitCoder(context, err)
 			return err
 		}
@@ -171,25 +180,20 @@ func (c Command) Run(ctx *Context) (err error) {
 }
 
 func (c *Command) parseFlags(args Args) (*flag.FlagSet, error) {
-	set, err := flagSet(c.Name, c.Flags)
-	if err != nil {
-		return nil, err
-	}
-	set.SetOutput(ioutil.Discard)
-
 	if c.SkipFlagParsing {
-		return set, set.Parse(append([]string{"--"}, args...))
-	}
+		set, err := c.newFlagSet()
+		if err != nil {
+			return nil, err
+		}
 
-	if c.UseShortOptionHandling {
-		args = translateShortOptions(args)
+		return set, set.Parse(append([]string{"--"}, args...))
 	}
 
 	if !c.SkipArgReorder {
 		args = reorderArgs(args)
 	}
 
-	err = set.Parse(args)
+	set, err := parseIter(c, args)
 	if err != nil {
 		return nil, err
 	}
@@ -200,6 +204,14 @@ func (c *Command) parseFlags(args Args) (*flag.FlagSet, error) {
 	}
 
 	return set, nil
+}
+
+func (c *Command) newFlagSet() (*flag.FlagSet, error) {
+	return flagSet(c.Name, c.Flags)
+}
+
+func (c *Command) useShortOptionHandling() bool {
+	return c.UseShortOptionHandling
 }
 
 // reorderArgs moves all flags before arguments as this is what flag expects
@@ -232,21 +244,6 @@ func reorderArgs(args []string) []string {
 	return append(flags, nonflags...)
 }
 
-func translateShortOptions(flagArgs Args) []string {
-	// separate combined flags
-	var flagArgsSeparated []string
-	for _, flagArg := range flagArgs {
-		if strings.HasPrefix(flagArg, "-") && strings.HasPrefix(flagArg, "--") == false && len(flagArg) > 2 {
-			for _, flagChar := range flagArg[1:] {
-				flagArgsSeparated = append(flagArgsSeparated, "-"+string(flagChar))
-			}
-		} else {
-			flagArgsSeparated = append(flagArgsSeparated, flagArg)
-		}
-	}
-	return flagArgsSeparated
-}
-
 // Names returns the names including short names and aliases.
 func (c Command) Names() []string {
 	names := []string{c.Name}
@@ -271,6 +268,7 @@ func (c Command) HasName(name string) bool {
 func (c Command) startApp(ctx *Context) error {
 	app := NewApp()
 	app.Metadata = ctx.App.Metadata
+	app.ExitErrHandler = ctx.App.ExitErrHandler
 	// set the name and usage
 	app.Name = fmt.Sprintf("%s %s", ctx.App.Name, c.Name)
 	if c.HelpName == "" {
@@ -299,6 +297,7 @@ func (c Command) startApp(ctx *Context) error {
 	app.Email = ctx.App.Email
 	app.Writer = ctx.App.Writer
 	app.ErrWriter = ctx.App.ErrWriter
+	app.UseShortOptionHandling = ctx.App.UseShortOptionHandling
 
 	app.categories = CommandCategories{}
 	for _, command := range c.Subcommands {
