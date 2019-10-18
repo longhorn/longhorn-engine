@@ -14,7 +14,7 @@ import (
 
 	"github.com/longhorn/sparse-tools/cli/ssync"
 
-	"github.com/longhorn/longhorn-engine/app"
+	"github.com/longhorn/longhorn-engine/app/engine/cmd"
 	"github.com/longhorn/longhorn-engine/meta"
 )
 
@@ -102,18 +102,18 @@ func longhornCli() {
 		},
 	}
 	a.Commands = []cli.Command{
-		app.ControllerCmd(),
-		app.ReplicaCmd(),
-		app.SyncAgentCmd(),
-		app.SyncAgentServerResetCmd(),
-		app.StartWithReplicasCmd(),
-		app.AddReplicaCmd(),
-		app.LsReplicaCmd(),
-		app.RmReplicaCmd(),
-		app.SnapshotCmd(),
-		app.BackupCmd(),
-		app.Journal(),
-		app.InfoCmd(),
+		cmd.ControllerCmd(),
+		cmd.ReplicaCmd(),
+		cmd.SyncAgentCmd(),
+		cmd.SyncAgentServerResetCmd(),
+		cmd.StartWithReplicasCmd(),
+		cmd.AddReplicaCmd(),
+		cmd.LsReplicaCmd(),
+		cmd.RmReplicaCmd(),
+		cmd.SnapshotCmd(),
+		cmd.BackupCmd(),
+		cmd.Journal(),
+		cmd.InfoCmd(),
 		VersionCmd(),
 	}
 	a.CommandNotFound = cmdNotFound

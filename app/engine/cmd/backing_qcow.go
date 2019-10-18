@@ -1,6 +1,6 @@
 // +build qcow
 
-package app
+package cmd
 
 import (
 	"github.com/longhorn/longhorn-engine/qcow"
