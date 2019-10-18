@@ -10,8 +10,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/docker/docker/pkg/reexec"
 	"github.com/golang/protobuf/ptypes/empty"
+	"github.com/moby/moby/pkg/reexec"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
