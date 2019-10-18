@@ -1,21 +1,15 @@
 // +build qcow
 
-package cmd
+package backup
 
 import (
 	"github.com/longhorn/longhorn-engine/pkg/engine/qcow"
 	"github.com/longhorn/longhorn-engine/pkg/engine/replica"
-	"github.com/longhorn/longhorn-engine/pkg/engine/util"
 )
 
 func openBackingFile(file string) (*replica.BackingFile, error) {
 	if file == "" {
 		return nil, nil
-	}
-
-	file, err := util.ResolveBackingFilepath(file)
-	if err != nil {
-		return nil, err
 	}
 
 	f, err := qcow.Open(file)

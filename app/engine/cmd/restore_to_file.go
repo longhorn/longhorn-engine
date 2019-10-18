@@ -13,8 +13,8 @@ import (
 	"gopkg.in/cheggaaa/pb.v2"
 
 	"github.com/longhorn/backupstore"
-	"github.com/longhorn/longhorn-engine/replica"
-	"github.com/longhorn/longhorn-engine/util"
+	"github.com/longhorn/longhorn-engine/pkg/engine/replica"
+	"github.com/longhorn/longhorn-engine/pkg/engine/util"
 )
 
 const (

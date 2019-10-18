@@ -8,9 +8,9 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 
-	"github.com/longhorn/longhorn-engine/controller/client"
-	replicaClient "github.com/longhorn/longhorn-engine/replica/client"
-	"github.com/longhorn/longhorn-engine/types"
+	"github.com/longhorn/longhorn-engine/pkg/engine/controller/client"
+	replicaClient "github.com/longhorn/longhorn-engine/pkg/engine/replica/client"
+	"github.com/longhorn/longhorn-engine/pkg/engine/types"
 )
 
 func LsReplicaCmd() cli.Command {

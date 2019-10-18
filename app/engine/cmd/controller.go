@@ -8,13 +8,13 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 
-	"github.com/longhorn/longhorn-engine/backend/dynamic"
-	"github.com/longhorn/longhorn-engine/backend/file"
-	"github.com/longhorn/longhorn-engine/backend/remote"
-	"github.com/longhorn/longhorn-engine/controller"
-	controllerrpc "github.com/longhorn/longhorn-engine/controller/rpc"
-	"github.com/longhorn/longhorn-engine/types"
-	"github.com/longhorn/longhorn-engine/util"
+	"github.com/longhorn/longhorn-engine/pkg/engine/backend/dynamic"
+	"github.com/longhorn/longhorn-engine/pkg/engine/backend/file"
+	"github.com/longhorn/longhorn-engine/pkg/engine/backend/remote"
+	"github.com/longhorn/longhorn-engine/pkg/engine/controller"
+	controllerrpc "github.com/longhorn/longhorn-engine/pkg/engine/controller/rpc"
+	"github.com/longhorn/longhorn-engine/pkg/engine/types"
+	"github.com/longhorn/longhorn-engine/pkg/engine/util"
 )
 
 func ControllerCmd() cli.Command {

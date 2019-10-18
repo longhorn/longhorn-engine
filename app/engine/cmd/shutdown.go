@@ -7,7 +7,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/longhorn/longhorn-engine/util"
+	"github.com/longhorn/longhorn-engine/pkg/engine/util"
 )
 
 var (

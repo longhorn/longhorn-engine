@@ -12,8 +12,8 @@ import (
 	"github.com/longhorn/backupstore"
 	"github.com/longhorn/backupstore/cmd"
 
-	"github.com/longhorn/longhorn-engine/sync"
-	"github.com/longhorn/longhorn-engine/util"
+	"github.com/longhorn/longhorn-engine/pkg/engine/sync"
+	"github.com/longhorn/longhorn-engine/pkg/engine/util"
 )
 
 func BackupCmd() cli.Command {

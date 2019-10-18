@@ -15,7 +15,7 @@ import (
 	"github.com/longhorn/sparse-tools/cli/ssync"
 
 	"github.com/longhorn/longhorn-engine/app/engine/cmd"
-	"github.com/longhorn/longhorn-engine/meta"
+	"github.com/longhorn/longhorn-engine/pkg/engine/meta"
 )
 
 // following variables will be filled by `-ldflags "-X ..."`

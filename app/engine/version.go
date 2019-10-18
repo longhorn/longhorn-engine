@@ -7,8 +7,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 
-	"github.com/longhorn/longhorn-engine/controller/client"
-	"github.com/longhorn/longhorn-engine/meta"
+	"github.com/longhorn/longhorn-engine/pkg/engine/controller/client"
+	"github.com/longhorn/longhorn-engine/pkg/engine/meta"
 )
 
 func VersionCmd() cli.Command {

@@ -6,7 +6,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 
-	"github.com/longhorn/longhorn-engine/sync"
+	"github.com/longhorn/longhorn-engine/pkg/engine/sync"
 )
 
 func AddReplicaCmd() cli.Command {

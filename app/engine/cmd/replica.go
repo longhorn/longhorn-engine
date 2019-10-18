@@ -16,9 +16,9 @@ import (
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 
-	"github.com/longhorn/longhorn-engine/replica"
-	"github.com/longhorn/longhorn-engine/replica/rpc"
-	"github.com/longhorn/longhorn-engine/util"
+	"github.com/longhorn/longhorn-engine/pkg/engine/replica"
+	"github.com/longhorn/longhorn-engine/pkg/engine/replica/rpc"
+	"github.com/longhorn/longhorn-engine/pkg/engine/util"
 )
 
 func ReplicaCmd() cli.Command {

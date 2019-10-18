@@ -1,6 +1,6 @@
 // +build !qcow
 
-package cmd
+package backup
 
 import (
 	"fmt"
