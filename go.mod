@@ -2,8 +2,6 @@ module github.com/longhorn/longhorn-engine
 
 go 1.13
 
-replace github.com/rancher/kine => github.com/ibuildthecloud/kine v0.0.0-20190807043656-10106605fb70
-
 require (
 	github.com/RoaringBitmap/roaring v0.4.18
 	github.com/aws/aws-sdk-go v1.0.8 // indirect
@@ -26,7 +24,6 @@ require (
 	github.com/pkg/errors v0.8.1
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
 	github.com/rancher/go-rancher v0.1.1-0.20190307222549-9756097e5e4c
-	github.com/rancher/kine v0.0.0-00010101000000-000000000000
 	github.com/satori/go.uuid v1.0.0
 	github.com/sirupsen/logrus v1.4.1
 	github.com/smartystreets/goconvey v0.0.0-20190731233626-505e41936337 // indirect

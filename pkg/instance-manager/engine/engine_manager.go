@@ -6,7 +6,6 @@ import (
 
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
-	"github.com/rancher/kine/pkg/broadcaster"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc/codes"
@@ -16,6 +15,7 @@ import (
 
 	"github.com/longhorn/longhorn-engine/pkg/instance-manager/rpc"
 	"github.com/longhorn/longhorn-engine/pkg/instance-manager/util"
+	"github.com/longhorn/longhorn-engine/pkg/instance-manager/util/broadcaster"
 )
 
 /* Lock order
