@@ -3,7 +3,7 @@ package engine
 import (
 	"github.com/longhorn/longhorn-engine/controller/client"
 
-	"github.com/longhorn/longhorn-instance-manager/rpc"
+	"github.com/longhorn/longhorn-instance-manager/pkg/instance-manager/rpc"
 )
 
 type VolumeClientService interface {

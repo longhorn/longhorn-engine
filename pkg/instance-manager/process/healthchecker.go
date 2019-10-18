@@ -4,8 +4,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"time"
 
-	"github.com/longhorn/longhorn-instance-manager/types"
-	"github.com/longhorn/longhorn-instance-manager/util"
+	"github.com/longhorn/longhorn-instance-manager/pkg/instance-manager/types"
+	"github.com/longhorn/longhorn-instance-manager/pkg/instance-manager/util"
 )
 
 type HealthChecker interface {

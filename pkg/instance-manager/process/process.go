@@ -6,9 +6,9 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/longhorn/longhorn-instance-manager/rpc"
-	"github.com/longhorn/longhorn-instance-manager/types"
-	"github.com/longhorn/longhorn-instance-manager/util"
+	"github.com/longhorn/longhorn-instance-manager/pkg/instance-manager/rpc"
+	"github.com/longhorn/longhorn-instance-manager/pkg/instance-manager/types"
+	"github.com/longhorn/longhorn-instance-manager/pkg/instance-manager/util"
 )
 
 type State string

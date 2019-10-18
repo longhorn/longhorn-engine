@@ -15,9 +15,9 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/longhorn/longhorn-instance-manager/rpc"
-	"github.com/longhorn/longhorn-instance-manager/types"
-	"github.com/longhorn/longhorn-instance-manager/util"
+	"github.com/longhorn/longhorn-instance-manager/pkg/instance-manager/rpc"
+	"github.com/longhorn/longhorn-instance-manager/pkg/instance-manager/types"
+	"github.com/longhorn/longhorn-instance-manager/pkg/instance-manager/util"
 )
 
 /* Lock order

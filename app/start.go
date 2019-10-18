@@ -15,12 +15,12 @@ import (
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 
-	"github.com/longhorn/longhorn-instance-manager/engine"
-	"github.com/longhorn/longhorn-instance-manager/health"
-	"github.com/longhorn/longhorn-instance-manager/process"
-	"github.com/longhorn/longhorn-instance-manager/rpc"
-	"github.com/longhorn/longhorn-instance-manager/types"
-	"github.com/longhorn/longhorn-instance-manager/util"
+	"github.com/longhorn/longhorn-instance-manager/pkg/instance-manager/engine"
+	"github.com/longhorn/longhorn-instance-manager/pkg/instance-manager/health"
+	"github.com/longhorn/longhorn-instance-manager/pkg/instance-manager/process"
+	"github.com/longhorn/longhorn-instance-manager/pkg/instance-manager/rpc"
+	"github.com/longhorn/longhorn-instance-manager/pkg/instance-manager/types"
+	"github.com/longhorn/longhorn-instance-manager/pkg/instance-manager/util"
 )
 
 func StartCmd() cli.Command {

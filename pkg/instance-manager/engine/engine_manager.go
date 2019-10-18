@@ -14,8 +14,8 @@ import (
 
 	"github.com/longhorn/go-iscsi-helper/longhorndev"
 
-	"github.com/longhorn/longhorn-instance-manager/rpc"
-	"github.com/longhorn/longhorn-instance-manager/util"
+	"github.com/longhorn/longhorn-instance-manager/pkg/instance-manager/rpc"
+	"github.com/longhorn/longhorn-instance-manager/pkg/instance-manager/util"
 )
 
 /* Lock order

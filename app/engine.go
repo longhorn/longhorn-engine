@@ -7,8 +7,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 
-	"github.com/longhorn/longhorn-instance-manager/client"
-	"github.com/longhorn/longhorn-instance-manager/util"
+	"github.com/longhorn/longhorn-instance-manager/pkg/instance-manager/client"
+	"github.com/longhorn/longhorn-instance-manager/pkg/instance-manager/util"
 )
 
 func EngineCmd() cli.Command {

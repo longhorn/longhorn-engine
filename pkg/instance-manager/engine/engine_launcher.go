@@ -9,7 +9,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/longhorn/go-iscsi-helper/longhorndev"
-	"github.com/longhorn/longhorn-instance-manager/rpc"
+	"github.com/longhorn/longhorn-instance-manager/pkg/instance-manager/rpc"
 )
 
 const (

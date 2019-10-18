@@ -10,9 +10,9 @@ import (
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 
-	"github.com/longhorn/longhorn-instance-manager/process"
-	"github.com/longhorn/longhorn-instance-manager/rpc"
-	"github.com/longhorn/longhorn-instance-manager/types"
+	"github.com/longhorn/longhorn-instance-manager/pkg/instance-manager/process"
+	"github.com/longhorn/longhorn-instance-manager/pkg/instance-manager/rpc"
+	"github.com/longhorn/longhorn-instance-manager/pkg/instance-manager/types"
 
 	. "gopkg.in/check.v1"
 )
