@@ -1,4 +1,4 @@
-package app
+package cmd
 
 import (
 	"fmt"

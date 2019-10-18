@@ -6,7 +6,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 
-	"github.com/longhorn/longhorn-instance-manager/app"
+	"github.com/longhorn/longhorn-instance-manager/app/instance-manager/cmd"
 )
 
 func main() {
@@ -27,9 +27,9 @@ func main() {
 		},
 	}
 	a.Commands = []cli.Command{
-		app.StartCmd(),
-		app.EngineCmd(),
-		app.ProcessCmd(),
+		cmd.StartCmd(),
+		cmd.EngineCmd(),
+		cmd.ProcessCmd(),
 	}
 	if err := a.Run(os.Args); err != nil {
 		logrus.Fatal("Error when executing command: ", err)

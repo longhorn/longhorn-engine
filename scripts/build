@@ -6,4 +6,4 @@ source $(dirname $0)/version
 cd $(dirname $0)/..
 
 mkdir -p bin
-go build -o bin/longhorn-instance-manager
+go build -o bin/longhorn-instance-manager ./app/instance-manager
