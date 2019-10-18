@@ -22,4 +22,5 @@ python -m grpc_tools.protoc -I pkg/engine/replica/rpc -I vendor_proto/protobuf/s
 protoc -I pkg/engine/sync/rpc -I vendor_proto/protobuf/src/ pkg/engine/sync/rpc/rpc.proto --go_out=plugins=grpc:pkg/engine/sync/rpc
 
 # instance manager
-python -m grpc_tools.protoc -I vendor/github.com/longhorn/longhorn-instance-manager/rpc -I vendor_proto/protobuf/src/ --python_out=integration/rpc/instance_manager --grpc_python_out=integration/rpc/instance_manager vendor/github.com/longhorn/longhorn-instance-manager/rpc/rpc.proto
+python -m grpc_tools.protoc -I pkg/instance-manager/rpc -I vendor_proto/protobuf/src/ --python_out=integration/rpc/instance_manager --grpc_python_out=integration/rpc/instance_manager pkg/instance-manager/rpc/rpc.proto
+protoc -I pkg/instance-manager/rpc/ -I vendor_proto/protobuf/src/ pkg/instance-manager/rpc/rpc.proto --go_out=plugins=grpc:pkg/instance-manager/rpc

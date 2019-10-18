@@ -12,10 +12,10 @@ import (
 	"google.golang.org/grpc"
 
 	iutil "github.com/longhorn/go-iscsi-helper/util"
-	imclient "github.com/longhorn/longhorn-instance-manager/client"
 
 	"github.com/longhorn/longhorn-engine/pkg/engine/types"
 	"github.com/longhorn/longhorn-engine/pkg/engine/util"
+	imclient "github.com/longhorn/longhorn-engine/pkg/instance-manager/client"
 )
 
 type Controller struct {
