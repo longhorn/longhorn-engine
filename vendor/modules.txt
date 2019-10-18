@@ -46,7 +46,7 @@ github.com/golang/snappy
 github.com/gorilla/context
 # github.com/gorilla/handlers v1.4.2
 github.com/gorilla/handlers
-# github.com/gorilla/mux v1.7.0
+# github.com/gorilla/mux v1.7.3
 github.com/gorilla/mux
 # github.com/gorilla/websocket v1.4.0
 github.com/gorilla/websocket
@@ -54,7 +54,7 @@ github.com/gorilla/websocket
 github.com/jmespath/go-jmespath
 # github.com/konsorten/go-windows-terminal-sequences v1.0.1
 github.com/konsorten/go-windows-terminal-sequences
-# github.com/longhorn/backupstore v0.0.0-20191003224701-50aa0d328809
+# github.com/longhorn/backupstore v0.0.0-20191018221817-26f8c517c0c3
 github.com/longhorn/backupstore
 github.com/longhorn/backupstore/cmd
 github.com/longhorn/backupstore/fsops
@@ -63,12 +63,12 @@ github.com/longhorn/backupstore/nfs
 github.com/longhorn/backupstore/s3
 github.com/longhorn/backupstore/util
 github.com/longhorn/backupstore/vfs
-# github.com/longhorn/go-iscsi-helper v0.0.0-20190816204506-694fd1e35575
+# github.com/longhorn/go-iscsi-helper v0.0.0-20191018221834-9c502e2401f4
 github.com/longhorn/go-iscsi-helper/iscsi
 github.com/longhorn/go-iscsi-helper/iscsiblk
 github.com/longhorn/go-iscsi-helper/longhorndev
 github.com/longhorn/go-iscsi-helper/util
-# github.com/longhorn/sparse-tools v0.0.0-20190808234252-ddb6d8733e43
+# github.com/longhorn/sparse-tools v0.0.0-20191018221755-2c0ba6f832b2
 github.com/longhorn/sparse-tools/cli/ssync
 github.com/longhorn/sparse-tools/sparse
 github.com/longhorn/sparse-tools/sparse/rest
