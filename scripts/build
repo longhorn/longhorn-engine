@@ -10,4 +10,6 @@ go build -tags "tcmu qcow" -ldflags \
 	"-X main.Version=$VERSION \
 	-X main.GitCommit=$GITCOMMIT \
 	-X main.BuildDate=$BUILDDATE \
-	-linkmode external -extldflags -static" -o bin/longhorn
+	-linkmode external -extldflags -static" \
+	-o bin/longhorn ./app/engine
+go build -o bin/longhorn-instance-manager ./app/instance-manager
