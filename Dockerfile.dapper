@@ -1,4 +1,4 @@
-FROM ubuntu:16.04
+FROM ubuntu:18.04
 # FROM arm=armhf/ubuntu:16.04
 
 ARG DAPPER_HOST_ARCH=amd64
@@ -20,7 +20,7 @@ RUN apt-get update && \
     apt-get install -y cmake wget curl git less file \
         libglib2.0-dev libkmod-dev libnl-genl-3-dev linux-libc-dev pkg-config psmisc python-tox qemu-utils fuse python-dev \
         devscripts debhelper bash-completion librdmacm-dev libibverbs-dev xsltproc docbook-xsl \
-        libconfig-general-perl libaio-dev libc6-dev sg3-utils iptables libltdl7 python-pip uuid-runtime
+        libconfig-general-perl libaio-dev libc6-dev sg3-utils iptables libltdl7 python-pip uuid-runtime libdevmapper-dev iproute2
 
 # needed for ${!var} substitution
 RUN rm -f /bin/sh && ln -s /bin/bash /bin/sh
@@ -32,8 +32,8 @@ RUN wget -O - https://storage.googleapis.com/golang/go1.13.3.linux-${!GOLANG_ARC
     go get github.com/rancher/trash && go get -u golang.org/x/lint/golint
 
 # Docker
-ENV DOCKER_URL_amd64=https://download.docker.com/linux/ubuntu/dists/xenial/pool/stable/amd64/docker-ce_17.03.3~ce-0~ubuntu-xenial_amd64.deb \
-    DOCKER_URL_arm=https://download.docker.com/linux/ubuntu/dists/xenial/pool/stable/arm64/docker-ce_18.06.1~ce~3-0~ubuntu_arm64.deb \
+ENV DOCKER_URL_amd64=https://download.docker.com/linux/ubuntu/dists/bionic/pool/stable/amd64/docker-ce_18.06.3~ce~3-0~ubuntu_amd64.deb \
+    DOCKER_URL_arm=https://download.docker.com/linux/ubuntu/dists/bionic/pool/stable/arm64/docker-ce_18.06.3~ce~3-0~ubuntu_arm64.deb \
     DOCKER_URL=DOCKER_URL_${ARCH}
 
 RUN wget ${!DOCKER_URL} -O docker_ce_${ARCH} && dpkg -i docker_ce_${ARCH}
@@ -85,7 +85,7 @@ RUN cd /usr/src && \
 RUN cd /usr/src && \
     git clone https://github.com/rancher/tgt.git && \
     cd tgt && \
-    git checkout eed5fafb4de79b6a5a6ca4164773bf4286942afe && \
+    git checkout 7876a0831d9193449b289824132f25f08344543d && \
     ./scripts/build-pkg.sh deb && \
     dpkg -i ./pkg/tgt_*.deb
 
