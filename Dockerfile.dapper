@@ -41,18 +41,6 @@ RUN wget ${!DOCKER_URL} -O docker_ce_${ARCH} && dpkg -i docker_ce_${ARCH}
 # Minio
 RUN wget -O /usr/bin/minio https://dl.minio.io/server/minio/release/linux-amd64/archive/minio.RELEASE.2018-05-25T19-49-13Z && chmod +x /usr/bin/minio
 
-# Build TCMU
-RUN cd /usr/src && \
-    git clone https://github.com/open-iscsi/tcmu-runner.git && \
-    cd tcmu-runner && \
-    git checkout f34b67c65b7844a6d3fcb24c2feaf7db90a889cd
-RUN cd /usr/src/tcmu-runner && \
-    cmake . -Dwith-glfs=false && \
-    make && \
-    make install && \
-    cp scsi_defs.h /usr/local/include && \
-    cp libtcmu_static.a /usr/local/lib/libtcmu.a
-
 # Install libqcow
 RUN wget -O - https://s3-us-west-1.amazonaws.com/rancher-longhorn/libqcow-alpha-20181117.tar.gz | tar xvzf - -C /usr/src
 RUN cd /usr/src/libqcow-20181117 && \
