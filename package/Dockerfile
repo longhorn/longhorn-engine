@@ -1,8 +1,8 @@
-FROM ubuntu:16.04
+FROM ubuntu:18.04
 
 RUN apt-get update && apt-get install -y kmod curl nfs-common fuse \
         libibverbs1 librdmacm1 libconfig-general-perl libaio1 sg3-utils \
-        iputils-ping telnet iperf qemu-utils wget
+        iputils-ping telnet iperf qemu-utils wget iproute2
 
 # Install grpc_health_probe
 RUN wget -O /usr/local/bin/grpc_health_probe https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/v0.3.0/grpc_health_probe-linux-amd64 && \
