@@ -83,7 +83,7 @@ def test_frontend_show(grpc_engine_manager, grpc_controller,  # NOQA
     v = grpc_controller.volume_start(replicas=[r1_url, r2_url])
 
     ft = v.frontend
-    if ft == "tgt" or ft == "tcmu":
+    if ft == "tgt":
         assert v.endpoint == path.join(LONGHORN_DEV_DIR, VOLUME_NAME)
     elif ft == "socket":
         assert v.endpoint == get_socket_path(VOLUME_NAME)
