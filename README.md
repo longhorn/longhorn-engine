@@ -6,7 +6,7 @@ Longhorn Engine implements a lightweight block device storage controller capable
 
 1. The replicas are backed by Linux sparse files, and support efficient snapshots using differencing disks.
 1. The replicas function like a networked disk, supporting read/write operations over a network protocol.
-1. The frontend (either Open-iSCSI/tgt are supported at this moment) is a kernel driver that translates read/write operations on the Longhorn block device (mapped at `/dev/longhorn/vol-name`) to user-level network requests on the controller.
+1. The frontend (only Open-iSCSI/tgt are supported at this moment) is a kernel driver that translates read/write operations on the Longhorn block device (mapped at `/dev/longhorn/vol-name`) to user-level network requests on the controller.
 1. Each Longhorn block device is backed by its own dedicated controller.
 1. The controller sychronously replicates write operations to all replicas.
 1. The controller detects faulty replicas and rebuilds replicas.
