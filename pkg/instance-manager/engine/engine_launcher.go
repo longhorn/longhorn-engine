@@ -201,6 +201,13 @@ func (el *Launcher) finalizeUpgrade() error {
 	logrus.Debugf("engine launcher %v: finalize upgrade", el.LauncherName)
 
 	if err := el.dev.FinishUpgrade(); err != nil {
+		if _, errStop := el.pendingEngine.Stop(); errStop != nil {
+			return errors.Wrapf(errStop, "failed to stop the engine process %v after launching device failure: %v", el.pendingEngine.EngineName, err)
+		}
+		if errWait := el.pendingEngine.WaitForDeletion(); errWait != nil {
+			return errors.Wrapf(errWait, "engine launcher %v: failed to deleted the pending engine %v after launching device failure: %v", el.LauncherName, el.pendingEngine.EngineName, err)
+		}
+		logrus.Warnf("engine launcher %v: succeed to clean up the pending engine %v after launching device failure: %v", el.LauncherName, el.pendingEngine.EngineName, err)
 		return err
 	}
 
