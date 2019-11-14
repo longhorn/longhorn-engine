@@ -23,7 +23,7 @@ const (
 	DevPath         = "/dev/longhorn/"
 
 	WaitInterval = time.Second
-	WaitCount    = 60
+	WaitCount    = 30
 
 	SwitchWaitInterval = time.Second
 	SwitchWaitCount    = 15
@@ -224,6 +224,10 @@ func (d *LonghornDevice) createDev() error {
 }
 
 func (d *LonghornDevice) PrepareUpgrade() error {
+	if d.frontend == "" {
+		return nil
+	}
+
 	if err := util.RemoveFile(d.GetSocketPath()); err != nil {
 		return errors.Wrapf(err, "failed to remove socket %v", d.GetSocketPath())
 	}
@@ -231,6 +235,10 @@ func (d *LonghornDevice) PrepareUpgrade() error {
 }
 
 func (d *LonghornDevice) FinishUpgrade() (err error) {
+	if d.frontend == "" {
+		return nil
+	}
+
 	stopCh := make(chan struct{})
 	socketError := d.WaitForSocket(stopCh)
 	select {
