@@ -5,7 +5,7 @@ import (
 )
 
 const (
-	GRPCServiceTimeout = 1 * time.Minute
+	GRPCServiceTimeout = 3 * time.Minute
 
 	ProcessStateRunning  = "running"
 	ProcessStateStarting = "starting"
