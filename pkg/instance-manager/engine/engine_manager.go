@@ -211,7 +211,11 @@ func (em *Manager) EngineDelete(ctx context.Context, req *rpc.EngineRequest) (re
 	}
 
 	if err := el.Stop(); err != nil {
-		return nil, err
+		if statusCode, ok := status.FromError(err); ok && statusCode.Code() == codes.NotFound {
+			logrus.Warnf("Engine Manager: The related engine process of engine launcher %v is not found. But engine manager will continue cleaning up the engine launcher", el.LauncherName)
+		} else {
+			return nil, err
+		}
 	}
 
 	go em.unregisterEngineLauncher(req.Name)
