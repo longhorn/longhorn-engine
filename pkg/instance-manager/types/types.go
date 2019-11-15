@@ -18,3 +18,8 @@ var (
 	WaitInterval = 100 * time.Millisecond
 	WaitCount    = 600
 )
+
+const (
+	RetryInterval = 3 * time.Second
+	RetryCounts   = 3
+)

@@ -3,6 +3,7 @@ package engine
 import (
 	"fmt"
 	"sync"
+	"time"
 
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
@@ -14,6 +15,7 @@ import (
 	"github.com/longhorn/go-iscsi-helper/longhorndev"
 
 	"github.com/longhorn/longhorn-engine/pkg/instance-manager/rpc"
+	"github.com/longhorn/longhorn-engine/pkg/instance-manager/types"
 	"github.com/longhorn/longhorn-engine/pkg/instance-manager/util"
 	"github.com/longhorn/longhorn-engine/pkg/instance-manager/util/broadcaster"
 )
@@ -173,10 +175,19 @@ func (em *Manager) unregisterEngineLauncher(launcherName string) {
 
 	if el.IsSCSIDeviceEnabled() {
 		logrus.Warnf("Engine Manager need to cleanup frontend before unregistering engine launcher %v", launcherName)
-		if err := em.cleanupFrontend(el); err != nil {
-			// cleanup failed. cannot unregister engine launcher.
-			logrus.Errorf("Engine Manager fails to cleanup frontend before unregistering engine launcher %v", launcherName)
-			return
+		ok := false
+		for count := 0; count < types.RetryCounts; count++ {
+			err := em.cleanupFrontend(el)
+			if err == nil {
+				ok = true
+				break
+			}
+			logrus.Errorf("Engine Manager fails to cleanup frontend before unregistering engine launcher %v, will retry it: %v", launcherName, err)
+			time.Sleep(types.RetryInterval)
+		}
+		// Shutting down frontend failed. cannot block engine launcher cleanup.
+		if !ok {
+			logrus.Errorf("Engine Manager fails to cleanup frontend, will give up it and continue unregistering engine launcher %v", launcherName)
 		}
 	}
 	em.lock.Lock()
