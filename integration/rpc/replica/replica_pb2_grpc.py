@@ -55,6 +55,11 @@ class ReplicaServiceStub(object):
         request_serializer=replica__pb2.ReplicaSnapshotRequest.SerializeToString,
         response_deserializer=replica__pb2.Replica.FromString,
         )
+    self.ReplicaExpand = channel.unary_unary(
+        '/rpc.ReplicaService/ReplicaExpand',
+        request_serializer=replica__pb2.ReplicaExpandRequest.SerializeToString,
+        response_deserializer=replica__pb2.Replica.FromString,
+        )
     self.DiskRemove = channel.unary_unary(
         '/rpc.ReplicaService/DiskRemove',
         request_serializer=replica__pb2.DiskRemoveRequest.SerializeToString,
@@ -147,6 +152,13 @@ class ReplicaServiceServicer(object):
     context.set_details('Method not implemented!')
     raise NotImplementedError('Method not implemented!')
 
+  def ReplicaExpand(self, request, context):
+    # missing associated documentation comment in .proto file
+    pass
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
   def DiskRemove(self, request, context):
     # missing associated documentation comment in .proto file
     pass
@@ -230,6 +242,11 @@ def add_ReplicaServiceServicer_to_server(servicer, server):
       'ReplicaSnapshot': grpc.unary_unary_rpc_method_handler(
           servicer.ReplicaSnapshot,
           request_deserializer=replica__pb2.ReplicaSnapshotRequest.FromString,
+          response_serializer=replica__pb2.Replica.SerializeToString,
+      ),
+      'ReplicaExpand': grpc.unary_unary_rpc_method_handler(
+          servicer.ReplicaExpand,
+          request_deserializer=replica__pb2.ReplicaExpandRequest.FromString,
           response_serializer=replica__pb2.Replica.SerializeToString,
       ),
       'DiskRemove': grpc.unary_unary_rpc_method_handler(
