@@ -1,6 +1,7 @@
 package file
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/sirupsen/logrus"
@@ -26,6 +27,19 @@ func (f *Wrapper) Close() error {
 
 func (f *Wrapper) Snapshot(name string, userCreated bool, created string, labels map[string]string) error {
 	return nil
+}
+
+func (f *Wrapper) Expand(size int64) error {
+	currentSize, err := f.Size()
+	if err != nil {
+		return err
+	}
+	if size < currentSize {
+		return fmt.Errorf("Cannot truncate to a smaller size %v for the backend type file", size)
+	} else if size == currentSize {
+		return nil
+	}
+	return f.Truncate(size)
 }
 
 func (f *Wrapper) Size() (int64, error) {
