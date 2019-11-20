@@ -10,6 +10,7 @@ service ControllerService {
     rpc VolumeShutdown(google.protobuf.Empty) returns (Volume);
     rpc VolumeSnapshot(VolumeSnapshotRequest) returns (VolumeSnapshotReply);
     rpc VolumeRevert(VolumeRevertRequest) returns (Volume);
+    rpc VolumeExpand(VolumeExpandRequest) returns (Volume);
     rpc VolumeFrontendStart(VolumeFrontendStartRequest) returns (Volume);
     rpc VolumeFrontendShutdown(google.protobuf.Empty) returns (Volume);
 
@@ -72,6 +73,10 @@ message VolumeSnapshotReply {
 
 message VolumeRevertRequest {
     string name = 1;
+}
+
+message VolumeExpandRequest {
+    int64 size = 1;
 }
 
 message VolumeFrontendStartRequest {
