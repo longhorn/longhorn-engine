@@ -1,7 +1,6 @@
 package rpc
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/golang/protobuf/ptypes/empty"
@@ -142,7 +141,10 @@ func (cs *ControllerServer) VolumeRevert(ctx context.Context, req *controllerpb.
 }
 
 func (cs *ControllerServer) VolumeExpand(ctx context.Context, req *controllerpb.VolumeExpandRequest) (*controllerpb.Volume, error) {
-	return nil, fmt.Errorf("Unimplemented")
+	if err := cs.c.Expand(req.Size); err != nil {
+		return nil, err
+	}
+	return cs.getVolume(), nil
 }
 
 func (cs *ControllerServer) VolumeFrontendStart(ctx context.Context, req *controllerpb.VolumeFrontendStartRequest) (*controllerpb.Volume, error) {

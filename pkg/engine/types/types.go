@@ -39,6 +39,7 @@ type Backend interface {
 	ReaderWriterAt
 	io.Closer
 	Snapshot(name string, userCreated bool, created string, labels map[string]string) error
+	Expand(size int64) error
 	Size() (int64, error)
 	SectorSize() (int64, error)
 	RemainSnapshots() (int, error)
