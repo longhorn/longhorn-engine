@@ -40,6 +40,10 @@ const (
 	deltaSuffix        = ".img"
 	deltaName          = deltaPrefix + "%s" + deltaSuffix
 	snapTmpSuffix      = ".snap_tmp"
+
+	expansionSnapshotInfix = "expand-%d"
+
+	replicaExpansionLabelKey = "replica-expansion"
 )
 
 var (
@@ -232,6 +236,16 @@ func GetSnapshotNameFromDiskName(diskName string) (string, error) {
 
 func GenerateDeltaFileName(name string) string {
 	return fmt.Sprintf(deltaName, name)
+}
+
+func GenerateExpansionSnapshotName(size int64) string {
+	return fmt.Sprintf(expansionSnapshotInfix, size)
+}
+
+func GenerateExpansionSnapshotLabels(size int64) map[string]string {
+	return map[string]string{
+		replicaExpansionLabelKey: strconv.FormatInt(size, 10),
+	}
 }
 
 func IsHeadDisk(diskName string) bool {
@@ -751,6 +765,15 @@ func (r *Replica) revertDisk(parent, created string) (*Replica, error) {
 	return rNew, nil
 }
 
+func (r *Replica) expand() error {
+	if err := r.createDisk(GenerateExpansionSnapshotName(r.info.Size), false, util.Now(), GenerateExpansionSnapshotLabels(r.info.Size)); err != nil {
+		return err
+	}
+
+	r.volume.Expand(r.info.Size)
+	return nil
+}
+
 func (r *Replica) createDisk(name string, userCreated bool, created string, labels map[string]string) error {
 	if r.readOnly {
 		return fmt.Errorf("Can not create disk on read-only replica")
@@ -975,6 +998,22 @@ func (r *Replica) Revert(name, created string) (*Replica, error) {
 	defer r.Unlock()
 
 	return r.revertDisk(name, created)
+}
+
+func (r *Replica) Expand(size int64) error {
+	r.Lock()
+	defer r.Unlock()
+
+	if r.info.Size > size {
+		return fmt.Errorf("Cannot expand replica to a smaller size %v", size)
+	} else if r.info.Size == size {
+		logrus.Infof("Replica had been expanded to size %v", size)
+		return nil
+	}
+
+	r.info.Size = size
+	// Will create a new head with the expanded size and write the new size into the meta file
+	return r.expand()
 }
 
 func (r *Replica) WriteAt(buf []byte, offset int64) (int, error) {

@@ -40,6 +40,19 @@ func (d *diffDisk) RemoveIndex(index int) error {
 	return nil
 }
 
+func (d *diffDisk) Expand(size int64) {
+	d.rmLock.Lock()
+	defer d.rmLock.Unlock()
+
+	newLocationSize := int(size / d.sectorSize)
+	if size%d.sectorSize != 0 {
+		newLocationSize++
+	}
+
+	d.location = append(d.location, make([]byte, newLocationSize-len(d.location))...)
+	return
+}
+
 func (d *diffDisk) WriteAt(buf []byte, offset int64) (int, error) {
 	startOffset := offset % d.sectorSize
 	startCut := d.sectorSize - startOffset
