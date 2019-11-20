@@ -181,6 +181,18 @@ func (s *Server) Snapshot(name string, userCreated bool, createdTime string, lab
 	return s.r.Snapshot(name, userCreated, createdTime, labels)
 }
 
+func (s *Server) Expand(size int64) error {
+	s.Lock()
+	defer s.Unlock()
+
+	if s.r == nil {
+		return nil
+	}
+
+	logrus.Infof("Expanding replica to size %v", size)
+	return s.r.Expand(size)
+}
+
 func (s *Server) RemoveDiffDisk(name string, force bool) error {
 	s.Lock()
 	defer s.Unlock()

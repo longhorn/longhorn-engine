@@ -155,7 +155,11 @@ func (rs *ReplicaServer) ReplicaSnapshot(ctx context.Context, req *ReplicaSnapsh
 }
 
 func (rs *ReplicaServer) ReplicaExpand(ctx context.Context, req *ReplicaExpandRequest) (*Replica, error) {
-	return nil, fmt.Errorf("Unimplemented")
+	if err := rs.s.Expand(req.Size); err != nil {
+		return nil, err
+	}
+
+	return rs.getReplica(), nil
 }
 
 func (rs *ReplicaServer) DiskRemove(ctx context.Context, req *DiskRemoveRequest) (*Replica, error) {
