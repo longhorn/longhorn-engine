@@ -30,6 +30,8 @@ type Controller struct {
 	launcher   string
 	launcherID string
 
+	isExpanding bool
+
 	listenAddr string
 	listenPort string
 
@@ -125,6 +127,9 @@ func (c *Controller) canAdd(address string) (bool, error) {
 	if c.hasWOReplica() {
 		return false, fmt.Errorf("Can only have one WO replica at a time")
 	}
+	if c.isExpanding {
+		return false, fmt.Errorf("Cannot add WO replica during expansion")
+	}
 	return true, nil
 }
 
@@ -177,6 +182,96 @@ func (c *Controller) Snapshot(name string, labels map[string]string) (string, er
 		return "", err
 	}
 	return name, nil
+}
+
+func (c *Controller) Expand(size int64) error {
+	if err := c.startExpansion(); err != nil {
+		return err
+	}
+
+	go func(size int64) {
+		expanded := false
+		defer func() {
+			c.finishExpansion(expanded, size)
+		}()
+
+		// We perform a system level sync without the lock. Cannot block read/write
+		// Can be improved to only sync the filesystem on the block device later
+		if ne, err := iutil.NewNamespaceExecutor(util.GetInitiatorNS()); err != nil {
+			logrus.Errorf("WARNING: continue to expand to size %v for %v, but cannot sync due to cannot get the namespace executor: %v", size, c.Name, err)
+		} else {
+			if _, err := ne.Execute("sync", []string{}); err != nil {
+				// sync should never fail though, so it more like due to the nsenter
+				logrus.Errorf("WARNING: continue to expand to size %v for %v, but sync failed: %v", size, c.Name, err)
+			}
+		}
+
+		if size < c.size {
+			logrus.Errorf("Cannot expand to a smaller size %v", size)
+			return
+		} else if size == c.size {
+			logrus.Infof("Controller %v is already expanded to size %v", c.Name, size)
+			return
+		}
+
+		if remain, err := c.backend.RemainSnapshots(); err != nil {
+			logrus.Errorf("Cannot get remain snapshot count before expansion: %v", err)
+			return
+		} else if remain <= 0 {
+			logrus.Errorf("Cannot do expansion since too many snapshots created")
+			return
+		}
+
+		if err := c.handleErrorNoLock(c.backend.Expand(size)); err != nil {
+			logrus.Errorf("failed to expand the engine backend: %v", err)
+			return
+		}
+
+		if err := c.updateFrontend(size); err != nil {
+			logrus.Errorf("failed to expand the engine frontend: %v", err)
+			return
+		}
+
+		expanded = true
+		return
+	}(size)
+
+	return nil
+}
+
+func (c *Controller) startExpansion() error {
+	c.Lock()
+	defer c.Unlock()
+	if c.isExpanding {
+		return fmt.Errorf("the engine expansion is in progress")
+	}
+	if c.hasWOReplica() {
+		return fmt.Errorf("cannot do expansion since there is WO(rebuilding) replica")
+	}
+	c.isExpanding = true
+	return nil
+}
+
+func (c *Controller) finishExpansion(expanded bool, size int64) {
+	c.Lock()
+	c.Unlock()
+	if expanded {
+		c.size = size
+	}
+	c.isExpanding = false
+	return
+}
+
+func (c *Controller) updateFrontend(size int64) error {
+	if c.launcher == "" {
+		return nil
+	}
+
+	client := imclient.NewEngineManagerClient(c.launcher)
+	if err := client.EngineExpand(c.launcherID, size); err != nil {
+		return err
+	}
+	return nil
 }
 
 func (c *Controller) addReplicaNoLock(newBackend types.Backend, address string, snapshot bool) error {
