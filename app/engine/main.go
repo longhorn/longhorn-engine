@@ -112,6 +112,7 @@ func longhornCli() {
 		cmd.RmReplicaCmd(),
 		cmd.SnapshotCmd(),
 		cmd.BackupCmd(),
+		cmd.ExpandCmd(),
 		cmd.Journal(),
 		cmd.InfoCmd(),
 		VersionCmd(),

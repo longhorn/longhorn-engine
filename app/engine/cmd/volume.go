@@ -19,6 +19,23 @@ func InfoCmd() cli.Command {
 	}
 }
 
+func ExpandCmd() cli.Command {
+	return cli.Command{
+		Name: "expand",
+		Flags: []cli.Flag{
+			cli.Int64Flag{
+				Name:  "size",
+				Usage: "The new volume size. It should be larger than the current size",
+			},
+		},
+		Action: func(c *cli.Context) {
+			if err := expand(c); err != nil {
+				logrus.Fatalf("Error running expand command: %v", err)
+			}
+		},
+	}
+}
+
 func info(c *cli.Context) error {
 	cli := getCli(c)
 
@@ -33,5 +50,18 @@ func info(c *cli.Context) error {
 	}
 
 	fmt.Println(string(output))
+	return nil
+}
+
+func expand(c *cli.Context) error {
+	cli := getCli(c)
+
+	size := c.Int64("size")
+
+	err := cli.VolumeExpand(size)
+	if err != nil {
+		return err
+	}
+
 	return nil
 }
