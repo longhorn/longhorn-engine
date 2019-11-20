@@ -150,6 +150,26 @@ func (c *ControllerClient) VolumeRevert(snapshot string) error {
 	return nil
 }
 
+func (c *ControllerClient) VolumeExpand(size int64) error {
+	conn, err := grpc.Dial(c.grpcAddress, grpc.WithInsecure())
+	if err != nil {
+		return fmt.Errorf("cannot connect to ControllerService %v: %v", c.grpcAddress, err)
+	}
+	defer conn.Close()
+	controllerServiceClient := contollerpb.NewControllerServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
+	defer cancel()
+
+	if _, err := controllerServiceClient.VolumeExpand(ctx, &contollerpb.VolumeExpandRequest{
+		Size: size,
+	}); err != nil {
+		return fmt.Errorf("failed to expand to size %v for volume %v: %v", size, c.grpcAddress, err)
+	}
+
+	return nil
+}
+
 func (c *ControllerClient) VolumeFrontendStart(frontend string) error {
 	conn, err := grpc.Dial(c.grpcAddress, grpc.WithInsecure())
 	if err != nil {

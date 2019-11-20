@@ -40,6 +40,11 @@ class ControllerServiceStub(object):
         request_serializer=controller__pb2.VolumeRevertRequest.SerializeToString,
         response_deserializer=controller__pb2.Volume.FromString,
         )
+    self.VolumeExpand = channel.unary_unary(
+        '/pb.ControllerService/VolumeExpand',
+        request_serializer=controller__pb2.VolumeExpandRequest.SerializeToString,
+        response_deserializer=controller__pb2.Volume.FromString,
+        )
     self.VolumeFrontendStart = channel.unary_unary(
         '/pb.ControllerService/VolumeFrontendStart',
         request_serializer=controller__pb2.VolumeFrontendStartRequest.SerializeToString,
@@ -150,6 +155,13 @@ class ControllerServiceServicer(object):
     raise NotImplementedError('Method not implemented!')
 
   def VolumeRevert(self, request, context):
+    # missing associated documentation comment in .proto file
+    pass
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
+  def VolumeExpand(self, request, context):
     # missing associated documentation comment in .proto file
     pass
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -287,6 +299,11 @@ def add_ControllerServiceServicer_to_server(servicer, server):
       'VolumeRevert': grpc.unary_unary_rpc_method_handler(
           servicer.VolumeRevert,
           request_deserializer=controller__pb2.VolumeRevertRequest.FromString,
+          response_serializer=controller__pb2.Volume.SerializeToString,
+      ),
+      'VolumeExpand': grpc.unary_unary_rpc_method_handler(
+          servicer.VolumeExpand,
+          request_deserializer=controller__pb2.VolumeExpandRequest.FromString,
           response_serializer=controller__pb2.Volume.SerializeToString,
       ),
       'VolumeFrontendStart': grpc.unary_unary_rpc_method_handler(
