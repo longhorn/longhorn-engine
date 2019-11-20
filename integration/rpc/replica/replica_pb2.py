@@ -21,7 +21,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='rpc',
   syntax='proto3',
   serialized_options=None,
-  serialized_pb=_b('\n\rreplica.proto\x12\x03rpc\x1a\x1bgoogle/protobuf/empty.proto\"$\n\x14ReplicaCreateRequest\x12\x0c\n\x04size\x18\x01 \x01(\t\"5\n\x14ReplicaRevertRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0f\n\x07\x63reated\x18\x02 \x01(\t\"\xb4\x01\n\x16ReplicaSnapshotRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x13\n\x0buserCreated\x18\x02 \x01(\x08\x12\x0f\n\x07\x63reated\x18\x03 \x01(\t\x12\x37\n\x06labels\x18\x04 \x03(\x0b\x32\'.rpc.ReplicaSnapshotRequest.LabelsEntry\x1a-\n\x0bLabelsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"0\n\x11\x44iskRemoveRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\r\n\x05\x66orce\x18\x02 \x01(\x08\"4\n\x12\x44iskReplaceRequest\x12\x0e\n\x06target\x18\x01 \x01(\t\x12\x0e\n\x06source\x18\x02 \x01(\t\"(\n\x18\x44iskPrepareRemoveRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\"F\n\x16\x44iskPrepareRemoveReply\x12,\n\noperations\x18\x01 \x03(\x0b\x32\x18.rpc.PrepareRemoveAction\"(\n\x18\x44iskMarkAsRemovedRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\"*\n\x14RebuildingSetRequest\x12\x12\n\nrebuilding\x18\x01 \x01(\x08\",\n\x19RevisionCounterSetRequest\x12\x0f\n\x07\x63ounter\x18\x01 \x01(\x03\"\xa7\x02\n\x08\x44iskInfo\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0e\n\x06parent\x18\x02 \x01(\t\x12-\n\x08\x63hildren\x18\x03 \x03(\x0b\x32\x1b.rpc.DiskInfo.ChildrenEntry\x12\x0f\n\x07removed\x18\x04 \x01(\x08\x12\x13\n\x0buserCreated\x18\x05 \x01(\x08\x12\x0f\n\x07\x63reated\x18\x06 \x01(\t\x12\x0c\n\x04size\x18\x07 \x01(\t\x12)\n\x06labels\x18\x08 \x03(\x0b\x32\x19.rpc.DiskInfo.LabelsEntry\x1a/\n\rChildrenEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x08:\x02\x38\x01\x1a-\n\x0bLabelsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xb6\x02\n\x07Replica\x12\r\n\x05\x64irty\x18\x01 \x01(\x08\x12\x12\n\nrebuilding\x18\x02 \x01(\x08\x12\x0c\n\x04head\x18\x03 \x01(\t\x12\x0e\n\x06parent\x18\x04 \x01(\t\x12\x0c\n\x04size\x18\x05 \x01(\t\x12\x12\n\nsectorSize\x18\x06 \x01(\x03\x12\x13\n\x0b\x62\x61\x63kingFile\x18\x07 \x01(\t\x12\r\n\x05state\x18\x08 \x01(\t\x12\r\n\x05\x63hain\x18\t \x03(\t\x12&\n\x05\x64isks\x18\n \x03(\x0b\x32\x17.rpc.Replica.DisksEntry\x12\x17\n\x0fremainSnapshots\x18\x0b \x01(\x05\x12\x17\n\x0frevisionCounter\x18\x0c \x01(\x03\x1a;\n\nDisksEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x1c\n\x05value\x18\x02 \x01(\x0b\x32\r.rpc.DiskInfo:\x02\x38\x01\"E\n\x13PrepareRemoveAction\x12\x0e\n\x06\x61\x63tion\x18\x01 \x01(\t\x12\x0e\n\x06source\x18\x02 \x01(\t\x12\x0e\n\x06target\x18\x03 \x01(\t2\xf0\x06\n\x0eReplicaService\x12:\n\rReplicaCreate\x12\x19.rpc.ReplicaCreateRequest\x1a\x0c.rpc.Replica\"\x00\x12\x41\n\rReplicaDelete\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.Empty\"\x00\x12\x34\n\nReplicaGet\x12\x16.google.protobuf.Empty\x1a\x0c.rpc.Replica\"\x00\x12\x35\n\x0bReplicaOpen\x12\x16.google.protobuf.Empty\x1a\x0c.rpc.Replica\"\x00\x12\x36\n\x0cReplicaClose\x12\x16.google.protobuf.Empty\x1a\x0c.rpc.Replica\"\x00\x12\x37\n\rReplicaReload\x12\x16.google.protobuf.Empty\x1a\x0c.rpc.Replica\"\x00\x12:\n\rReplicaRevert\x12\x19.rpc.ReplicaRevertRequest\x1a\x0c.rpc.Replica\"\x00\x12>\n\x0fReplicaSnapshot\x12\x1b.rpc.ReplicaSnapshotRequest\x1a\x0c.rpc.Replica\"\x00\x12\x34\n\nDiskRemove\x12\x16.rpc.DiskRemoveRequest\x1a\x0c.rpc.Replica\"\x00\x12\x36\n\x0b\x44iskReplace\x12\x17.rpc.DiskReplaceRequest\x1a\x0c.rpc.Replica\"\x00\x12Q\n\x11\x44iskPrepareRemove\x12\x1d.rpc.DiskPrepareRemoveRequest\x1a\x1b.rpc.DiskPrepareRemoveReply\"\x00\x12\x42\n\x11\x44iskMarkAsRemoved\x12\x1d.rpc.DiskMarkAsRemovedRequest\x1a\x0c.rpc.Replica\"\x00\x12:\n\rRebuildingSet\x12\x19.rpc.RebuildingSetRequest\x1a\x0c.rpc.Replica\"\x00\x12\x44\n\x12RevisionCounterSet\x12\x1e.rpc.RevisionCounterSetRequest\x1a\x0c.rpc.Replica\"\x00\x62\x06proto3')
+  serialized_pb=_b('\n\rreplica.proto\x12\x03rpc\x1a\x1bgoogle/protobuf/empty.proto\"$\n\x14ReplicaCreateRequest\x12\x0c\n\x04size\x18\x01 \x01(\t\"5\n\x14ReplicaRevertRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0f\n\x07\x63reated\x18\x02 \x01(\t\"\xb4\x01\n\x16ReplicaSnapshotRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x13\n\x0buserCreated\x18\x02 \x01(\x08\x12\x0f\n\x07\x63reated\x18\x03 \x01(\t\x12\x37\n\x06labels\x18\x04 \x03(\x0b\x32\'.rpc.ReplicaSnapshotRequest.LabelsEntry\x1a-\n\x0bLabelsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"$\n\x14ReplicaExpandRequest\x12\x0c\n\x04size\x18\x01 \x01(\x03\"0\n\x11\x44iskRemoveRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\r\n\x05\x66orce\x18\x02 \x01(\x08\"4\n\x12\x44iskReplaceRequest\x12\x0e\n\x06target\x18\x01 \x01(\t\x12\x0e\n\x06source\x18\x02 \x01(\t\"(\n\x18\x44iskPrepareRemoveRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\"F\n\x16\x44iskPrepareRemoveReply\x12,\n\noperations\x18\x01 \x03(\x0b\x32\x18.rpc.PrepareRemoveAction\"(\n\x18\x44iskMarkAsRemovedRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\"*\n\x14RebuildingSetRequest\x12\x12\n\nrebuilding\x18\x01 \x01(\x08\",\n\x19RevisionCounterSetRequest\x12\x0f\n\x07\x63ounter\x18\x01 \x01(\x03\"\xa7\x02\n\x08\x44iskInfo\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0e\n\x06parent\x18\x02 \x01(\t\x12-\n\x08\x63hildren\x18\x03 \x03(\x0b\x32\x1b.rpc.DiskInfo.ChildrenEntry\x12\x0f\n\x07removed\x18\x04 \x01(\x08\x12\x13\n\x0buserCreated\x18\x05 \x01(\x08\x12\x0f\n\x07\x63reated\x18\x06 \x01(\t\x12\x0c\n\x04size\x18\x07 \x01(\t\x12)\n\x06labels\x18\x08 \x03(\x0b\x32\x19.rpc.DiskInfo.LabelsEntry\x1a/\n\rChildrenEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x08:\x02\x38\x01\x1a-\n\x0bLabelsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xb6\x02\n\x07Replica\x12\r\n\x05\x64irty\x18\x01 \x01(\x08\x12\x12\n\nrebuilding\x18\x02 \x01(\x08\x12\x0c\n\x04head\x18\x03 \x01(\t\x12\x0e\n\x06parent\x18\x04 \x01(\t\x12\x0c\n\x04size\x18\x05 \x01(\t\x12\x12\n\nsectorSize\x18\x06 \x01(\x03\x12\x13\n\x0b\x62\x61\x63kingFile\x18\x07 \x01(\t\x12\r\n\x05state\x18\x08 \x01(\t\x12\r\n\x05\x63hain\x18\t \x03(\t\x12&\n\x05\x64isks\x18\n \x03(\x0b\x32\x17.rpc.Replica.DisksEntry\x12\x17\n\x0fremainSnapshots\x18\x0b \x01(\x05\x12\x17\n\x0frevisionCounter\x18\x0c \x01(\x03\x1a;\n\nDisksEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x1c\n\x05value\x18\x02 \x01(\x0b\x32\r.rpc.DiskInfo:\x02\x38\x01\"E\n\x13PrepareRemoveAction\x12\x0e\n\x06\x61\x63tion\x18\x01 \x01(\t\x12\x0e\n\x06source\x18\x02 \x01(\t\x12\x0e\n\x06target\x18\x03 \x01(\t2\xac\x07\n\x0eReplicaService\x12:\n\rReplicaCreate\x12\x19.rpc.ReplicaCreateRequest\x1a\x0c.rpc.Replica\"\x00\x12\x41\n\rReplicaDelete\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.Empty\"\x00\x12\x34\n\nReplicaGet\x12\x16.google.protobuf.Empty\x1a\x0c.rpc.Replica\"\x00\x12\x35\n\x0bReplicaOpen\x12\x16.google.protobuf.Empty\x1a\x0c.rpc.Replica\"\x00\x12\x36\n\x0cReplicaClose\x12\x16.google.protobuf.Empty\x1a\x0c.rpc.Replica\"\x00\x12\x37\n\rReplicaReload\x12\x16.google.protobuf.Empty\x1a\x0c.rpc.Replica\"\x00\x12:\n\rReplicaRevert\x12\x19.rpc.ReplicaRevertRequest\x1a\x0c.rpc.Replica\"\x00\x12>\n\x0fReplicaSnapshot\x12\x1b.rpc.ReplicaSnapshotRequest\x1a\x0c.rpc.Replica\"\x00\x12:\n\rReplicaExpand\x12\x19.rpc.ReplicaExpandRequest\x1a\x0c.rpc.Replica\"\x00\x12\x34\n\nDiskRemove\x12\x16.rpc.DiskRemoveRequest\x1a\x0c.rpc.Replica\"\x00\x12\x36\n\x0b\x44iskReplace\x12\x17.rpc.DiskReplaceRequest\x1a\x0c.rpc.Replica\"\x00\x12Q\n\x11\x44iskPrepareRemove\x12\x1d.rpc.DiskPrepareRemoveRequest\x1a\x1b.rpc.DiskPrepareRemoveReply\"\x00\x12\x42\n\x11\x44iskMarkAsRemoved\x12\x1d.rpc.DiskMarkAsRemovedRequest\x1a\x0c.rpc.Replica\"\x00\x12:\n\rRebuildingSet\x12\x19.rpc.RebuildingSetRequest\x1a\x0c.rpc.Replica\"\x00\x12\x44\n\x12RevisionCounterSet\x12\x1e.rpc.RevisionCounterSetRequest\x1a\x0c.rpc.Replica\"\x00\x62\x06proto3')
   ,
   dependencies=[google_dot_protobuf_dot_empty__pb2.DESCRIPTOR,])
 
@@ -186,6 +186,37 @@ _REPLICASNAPSHOTREQUEST = _descriptor.Descriptor(
 )
 
 
+_REPLICAEXPANDREQUEST = _descriptor.Descriptor(
+  name='ReplicaExpandRequest',
+  full_name='rpc.ReplicaExpandRequest',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='size', full_name='rpc.ReplicaExpandRequest.size', index=0,
+      number=1, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=327,
+  serialized_end=363,
+)
+
+
 _DISKREMOVEREQUEST = _descriptor.Descriptor(
   name='DiskRemoveRequest',
   full_name='rpc.DiskRemoveRequest',
@@ -219,8 +250,8 @@ _DISKREMOVEREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=327,
-  serialized_end=375,
+  serialized_start=365,
+  serialized_end=413,
 )
 
 
@@ -257,8 +288,8 @@ _DISKREPLACEREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=377,
-  serialized_end=429,
+  serialized_start=415,
+  serialized_end=467,
 )
 
 
@@ -288,8 +319,8 @@ _DISKPREPAREREMOVEREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=431,
-  serialized_end=471,
+  serialized_start=469,
+  serialized_end=509,
 )
 
 
@@ -319,8 +350,8 @@ _DISKPREPAREREMOVEREPLY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=473,
-  serialized_end=543,
+  serialized_start=511,
+  serialized_end=581,
 )
 
 
@@ -350,8 +381,8 @@ _DISKMARKASREMOVEDREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=545,
-  serialized_end=585,
+  serialized_start=583,
+  serialized_end=623,
 )
 
 
@@ -381,8 +412,8 @@ _REBUILDINGSETREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=587,
-  serialized_end=629,
+  serialized_start=625,
+  serialized_end=667,
 )
 
 
@@ -412,8 +443,8 @@ _REVISIONCOUNTERSETREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=631,
-  serialized_end=675,
+  serialized_start=669,
+  serialized_end=713,
 )
 
 
@@ -450,8 +481,8 @@ _DISKINFO_CHILDRENENTRY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=879,
-  serialized_end=926,
+  serialized_start=917,
+  serialized_end=964,
 )
 
 _DISKINFO_LABELSENTRY = _descriptor.Descriptor(
@@ -566,8 +597,8 @@ _DISKINFO = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=678,
-  serialized_end=973,
+  serialized_start=716,
+  serialized_end=1011,
 )
 
 
@@ -604,8 +635,8 @@ _REPLICA_DISKSENTRY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1227,
-  serialized_end=1286,
+  serialized_start=1265,
+  serialized_end=1324,
 )
 
 _REPLICA = _descriptor.Descriptor(
@@ -711,8 +742,8 @@ _REPLICA = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=976,
-  serialized_end=1286,
+  serialized_start=1014,
+  serialized_end=1324,
 )
 
 
@@ -756,8 +787,8 @@ _PREPAREREMOVEACTION = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1288,
-  serialized_end=1357,
+  serialized_start=1326,
+  serialized_end=1395,
 )
 
 _REPLICASNAPSHOTREQUEST_LABELSENTRY.containing_type = _REPLICASNAPSHOTREQUEST
@@ -773,6 +804,7 @@ _REPLICA.fields_by_name['disks'].message_type = _REPLICA_DISKSENTRY
 DESCRIPTOR.message_types_by_name['ReplicaCreateRequest'] = _REPLICACREATEREQUEST
 DESCRIPTOR.message_types_by_name['ReplicaRevertRequest'] = _REPLICAREVERTREQUEST
 DESCRIPTOR.message_types_by_name['ReplicaSnapshotRequest'] = _REPLICASNAPSHOTREQUEST
+DESCRIPTOR.message_types_by_name['ReplicaExpandRequest'] = _REPLICAEXPANDREQUEST
 DESCRIPTOR.message_types_by_name['DiskRemoveRequest'] = _DISKREMOVEREQUEST
 DESCRIPTOR.message_types_by_name['DiskReplaceRequest'] = _DISKREPLACEREQUEST
 DESCRIPTOR.message_types_by_name['DiskPrepareRemoveRequest'] = _DISKPREPAREREMOVEREQUEST
@@ -813,6 +845,13 @@ ReplicaSnapshotRequest = _reflection.GeneratedProtocolMessageType('ReplicaSnapsh
   })
 _sym_db.RegisterMessage(ReplicaSnapshotRequest)
 _sym_db.RegisterMessage(ReplicaSnapshotRequest.LabelsEntry)
+
+ReplicaExpandRequest = _reflection.GeneratedProtocolMessageType('ReplicaExpandRequest', (_message.Message,), {
+  'DESCRIPTOR' : _REPLICAEXPANDREQUEST,
+  '__module__' : 'replica_pb2'
+  # @@protoc_insertion_point(class_scope:rpc.ReplicaExpandRequest)
+  })
+_sym_db.RegisterMessage(ReplicaExpandRequest)
 
 DiskRemoveRequest = _reflection.GeneratedProtocolMessageType('DiskRemoveRequest', (_message.Message,), {
   'DESCRIPTOR' : _DISKREMOVEREQUEST,
@@ -920,8 +959,8 @@ _REPLICASERVICE = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=0,
   serialized_options=None,
-  serialized_start=1360,
-  serialized_end=2240,
+  serialized_start=1398,
+  serialized_end=2338,
   methods=[
   _descriptor.MethodDescriptor(
     name='ReplicaCreate',
@@ -996,9 +1035,18 @@ _REPLICASERVICE = _descriptor.ServiceDescriptor(
     serialized_options=None,
   ),
   _descriptor.MethodDescriptor(
+    name='ReplicaExpand',
+    full_name='rpc.ReplicaService.ReplicaExpand',
+    index=8,
+    containing_service=None,
+    input_type=_REPLICAEXPANDREQUEST,
+    output_type=_REPLICA,
+    serialized_options=None,
+  ),
+  _descriptor.MethodDescriptor(
     name='DiskRemove',
     full_name='rpc.ReplicaService.DiskRemove',
-    index=8,
+    index=9,
     containing_service=None,
     input_type=_DISKREMOVEREQUEST,
     output_type=_REPLICA,
@@ -1007,7 +1055,7 @@ _REPLICASERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='DiskReplace',
     full_name='rpc.ReplicaService.DiskReplace',
-    index=9,
+    index=10,
     containing_service=None,
     input_type=_DISKREPLACEREQUEST,
     output_type=_REPLICA,
@@ -1016,7 +1064,7 @@ _REPLICASERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='DiskPrepareRemove',
     full_name='rpc.ReplicaService.DiskPrepareRemove',
-    index=10,
+    index=11,
     containing_service=None,
     input_type=_DISKPREPAREREMOVEREQUEST,
     output_type=_DISKPREPAREREMOVEREPLY,
@@ -1025,7 +1073,7 @@ _REPLICASERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='DiskMarkAsRemoved',
     full_name='rpc.ReplicaService.DiskMarkAsRemoved',
-    index=11,
+    index=12,
     containing_service=None,
     input_type=_DISKMARKASREMOVEDREQUEST,
     output_type=_REPLICA,
@@ -1034,7 +1082,7 @@ _REPLICASERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='RebuildingSet',
     full_name='rpc.ReplicaService.RebuildingSet',
-    index=12,
+    index=13,
     containing_service=None,
     input_type=_REBUILDINGSETREQUEST,
     output_type=_REPLICA,
@@ -1043,7 +1091,7 @@ _REPLICASERVICE = _descriptor.ServiceDescriptor(
   _descriptor.MethodDescriptor(
     name='RevisionCounterSet',
     full_name='rpc.ReplicaService.RevisionCounterSet',
-    index=13,
+    index=14,
     containing_service=None,
     input_type=_REVISIONCOUNTERSETREQUEST,
     output_type=_REPLICA,

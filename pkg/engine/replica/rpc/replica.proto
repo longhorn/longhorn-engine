@@ -13,6 +13,7 @@ service ReplicaService {
     rpc ReplicaReload(google.protobuf.Empty) returns (Replica) {}
     rpc ReplicaRevert(ReplicaRevertRequest) returns (Replica) {}
     rpc ReplicaSnapshot(ReplicaSnapshotRequest) returns (Replica) {}
+    rpc ReplicaExpand(ReplicaExpandRequest) returns (Replica) {}
     rpc DiskRemove(DiskRemoveRequest) returns (Replica) {}
     rpc DiskReplace(DiskReplaceRequest) returns (Replica) {}
     rpc DiskPrepareRemove(DiskPrepareRemoveRequest) returns (DiskPrepareRemoveReply) {}
@@ -35,6 +36,10 @@ message ReplicaSnapshotRequest {
     bool userCreated = 2;
     string created = 3;
     map<string, string> labels = 4;
+}
+
+message ReplicaExpandRequest {
+    int64 size = 1;
 }
 
 message DiskRemoveRequest {

@@ -107,6 +107,27 @@ func (r *Remote) Snapshot(name string, userCreated bool, created string, labels 
 	return nil
 }
 
+func (r *Remote) Expand(size int64) error {
+	logrus.Infof("Expand to size %v", size)
+	conn, err := grpc.Dial(r.replicaServiceURL, grpc.WithInsecure())
+	if err != nil {
+		return fmt.Errorf("cannot connect to ReplicaService %v: %v", r.replicaServiceURL, err)
+	}
+	defer conn.Close()
+	replicaServiceClient := replicarpc.NewReplicaServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), client.GRPCServiceCommonTimeout)
+	defer cancel()
+
+	if _, err := replicaServiceClient.ReplicaExpand(ctx, &replicarpc.ReplicaExpandRequest{
+		Size: size,
+	}); err != nil {
+		return fmt.Errorf("failed to expand replica %v from remote: %v", r.replicaServiceURL, err)
+	}
+
+	return nil
+}
+
 func (r *Remote) SetRevisionCounter(counter int64) error {
 	logrus.Infof("Set revision counter of %s to : %v", r.name, counter)
 
