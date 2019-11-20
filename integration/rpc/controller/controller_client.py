@@ -31,6 +31,10 @@ class ControllerClient(object):
         return self.stub.VolumeRevert(controller_pb2.VolumeRevertRequest(
             name=name))
 
+    def volume_expand(self, size):
+        return self.stub.VolumeExpand(controller_pb2.VolumeExpandRequest(
+            size=size))
+
     def replica_list(self):
         cr_list = self.stub.ReplicaList(empty_pb2.Empty()).replicas
         r_list = []
