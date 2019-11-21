@@ -13,12 +13,18 @@ from common import (  # NOQA
     engine_manager_client, grpc_controller_client,  # NOQA
     grpc_replica_client, grpc_replica_client2,  # NOQA
     cleanup_replica, cleanup_controller,
+    get_expansion_snapshot_name,
+    get_replica_paths_from_snapshot_name,
+    get_snapshot_file_paths,
+    get_replica_head_file_path,
+    wait_for_volume_expansion,
 
-    VOLUME_NAME, SIZE_STR, ENGINE_NAME,
+    VOLUME_NAME, ENGINE_NAME,
     RETRY_COUNTS2, FRONTEND_TGT_BLOCKDEV,
-    RETRY_INTERVAL
+    RETRY_INTERVAL,
+    SIZE, EXPANDED_SIZE,
+    SIZE_STR, EXPANDED_SIZE_STR,
 )
-
 
 BACKUP_DEST = '/data/backupbucket'
 
@@ -832,7 +838,7 @@ def backup_core(bin, engine_manager_client,  # NOQA
     cmd = [bin, '--url', grpc_controller_client.address,
            'backup', 'inspect',
            backup_target + "?backup=backup-1234"
-           + "&volume="+VOLUME_NAME]
+           + "&volume=" + VOLUME_NAME]
     # cannot find the backup
     with pytest.raises(subprocess.CalledProcessError):
         subprocess.check_call(cmd, env=env)
@@ -984,3 +990,172 @@ def test_backup_cli(bin, engine_manager_client,  # NOQA
         cleanup_replica(grpc_replica_client)
         cleanup_replica(grpc_replica_client2)
         cleanup_controller(grpc_controller_client)
+
+
+def test_volume_expand_with_snapshots(  # NOQA
+        bin, grpc_controller_client,  # NOQA
+        grpc_replica_client, grpc_replica_client2):  # NOQA
+    open_replica(grpc_replica_client)
+    open_replica(grpc_replica_client2)
+
+    r1_url = grpc_replica_client.url
+    r2_url = grpc_replica_client2.url
+    v = grpc_controller_client.volume_start(replicas=[
+        r1_url,
+        r2_url,
+    ])
+    assert v.replicaCount == 2
+
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'snapshot', 'create']
+    snap0 = subprocess.check_output(cmd).strip()
+    expected = grpc_replica_client.replica_get().chain[1]
+    assert expected == 'volume-snap-{}.img'.format(snap0)
+
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'snapshot', 'create',
+           '--label', 'name=snap1', '--label', 'key=value']
+    snap1 = subprocess.check_output(cmd).strip()
+
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'expand', '--size', EXPANDED_SIZE_STR]
+    subprocess.check_call(cmd)
+
+    wait_for_volume_expansion(grpc_controller_client, EXPANDED_SIZE)
+
+    # `expand` will create a snapshot then apply the new size
+    # on the new head file
+    snap_expansion = get_expansion_snapshot_name()
+    r1 = grpc_replica_client.replica_get()
+    assert r1.chain[1] == 'volume-snap-{}.img'.format(snap_expansion)
+    assert r1.size == EXPANDED_SIZE_STR
+    r2 = grpc_replica_client2.replica_get()
+    assert r2.chain[1] == 'volume-snap-{}.img'.format(snap_expansion)
+    assert r2.size == EXPANDED_SIZE_STR
+
+    replica_paths = get_replica_paths_from_snapshot_name(snap_expansion)
+    assert replica_paths
+    for p in replica_paths:
+        snap_path = get_snapshot_file_paths(
+            p, snap_expansion)
+        assert snap_path is not None
+        assert os.path.exists(snap_path)
+        assert os.path.getsize(snap_path) == SIZE
+        head_path = get_replica_head_file_path(p)
+        assert head_path is not None
+        assert os.path.exists(head_path)
+        assert os.path.getsize(head_path) == EXPANDED_SIZE
+
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'snapshot', 'create',
+           '--label', 'name=snap2']
+    snap2 = subprocess.check_output(cmd).strip()
+
+    cmd = [bin, '--debug',
+           '--url', grpc_controller_client.address,
+           'snapshot', 'ls']
+    ls_output = subprocess.check_output(cmd)
+
+    assert ls_output == '''ID
+{}
+{}
+{}
+{}
+'''.format(snap2, snap_expansion, snap1, snap0)
+
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'snapshot', 'info']
+    output = subprocess.check_output(cmd)
+    info = json.loads(output)
+
+    # cannot check the snapshot size here since the output will return
+    # the actual file size
+    assert info[snap_expansion]["parent"] == snap1
+    assert info[snap_expansion]["removed"] is False
+    assert info[snap_expansion]["usercreated"] is False
+    assert len(info[snap_expansion]["labels"]) == 1
+    assert \
+        info[snap_expansion]["labels"]["replica-expansion"] \
+        == EXPANDED_SIZE_STR
+    assert info[VOLUME_HEAD]["parent"] == snap2
+    assert len(info[VOLUME_HEAD]["labels"]) == 0
+
+    # snapshot purge command will coalesce the expansion snapshot
+    # with its child snapshot `snap2`
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'snapshot', 'purge']
+    subprocess.check_call(cmd)
+
+    cmd = [bin, '--debug',
+           '--url', grpc_controller_client.address,
+           'snapshot', 'ls']
+    ls_output = subprocess.check_output(cmd)
+
+    assert ls_output == '''ID
+{}
+{}
+{}
+'''.format(snap2, snap1, snap0)
+
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'snapshot', 'info']
+    output = subprocess.check_output(cmd)
+    info = json.loads(output)
+    assert snap_expansion not in info
+    assert info[snap2]["parent"] == snap1
+    assert info[snap2]["removed"] is False
+    assert info[snap2]["usercreated"] is True
+
+    for p in replica_paths:
+        snap1_path = get_snapshot_file_paths(
+            p, snap1)
+        assert snap1_path is not None
+        assert os.path.exists(snap1_path)
+        assert os.path.getsize(snap1_path) == SIZE
+        snap2_path = get_snapshot_file_paths(
+            p, snap2)
+        assert snap2_path is not None
+        assert os.path.exists(snap2_path)
+        assert os.path.getsize(snap2_path) == EXPANDED_SIZE
+
+    # Make sure the smaller snapshot `snap1` can be folded to
+    # the larger one `snap2` and the replica size won't change.
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'snapshot', 'rm', snap1]
+    subprocess.check_call(cmd)
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'snapshot', 'purge']
+    subprocess.check_call(cmd)
+
+    cmd = [bin, '--debug',
+           '--url', grpc_controller_client.address,
+           'snapshot', 'ls']
+    ls_output = subprocess.check_output(cmd)
+
+    assert ls_output == '''ID
+{}
+{}
+'''.format(snap2, snap0)
+
+    for p in replica_paths:
+        snap0_path = get_snapshot_file_paths(
+            p, snap0)
+        assert snap0_path is not None
+        assert os.path.exists(snap0_path)
+        assert os.path.getsize(snap0_path) == SIZE
+        snap2_path = get_snapshot_file_paths(
+            p, snap2)
+        assert snap2_path is not None
+        assert os.path.exists(snap2_path)
+        assert os.path.getsize(snap2_path) == EXPANDED_SIZE
+        head_path = get_replica_head_file_path(p)
+        assert head_path is not None
+        assert os.path.exists(head_path)
+        assert os.path.getsize(head_path) == EXPANDED_SIZE
+
+    r1 = grpc_replica_client.replica_get()
+    assert r1.chain[1] == 'volume-snap-{}.img'.format(snap2)
+    assert r1.size == EXPANDED_SIZE_STR
+    r2 = grpc_replica_client2.replica_get()
+    assert r2.chain[1] == 'volume-snap-{}.img'.format(snap2)
+    assert r2.size == EXPANDED_SIZE_STR

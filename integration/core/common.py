@@ -6,6 +6,7 @@ import grpc
 import tempfile
 import time
 import random
+import subprocess
 
 import pytest
 
@@ -264,3 +265,28 @@ def wait_for_volume_expansion(grpc_controller_client, size):
 
 def get_dev_path(name):
     return os.path.join("/dev/longhorn/", name)
+
+
+def get_expansion_snapshot_name():
+    return 'expand-{0}'.format(EXPANDED_SIZE_STR)
+
+
+def get_replica_paths_from_snapshot_name(snap_name):
+    replica_paths = []
+    cmd = ["find", "/tmp", "-name",
+           '*volume-snap-{0}.img'.format(snap_name)]
+    snap_paths = subprocess.check_output(cmd).split()
+    assert snap_paths
+    for p in snap_paths:
+        replica_paths.append(os.path.dirname(p))
+    return replica_paths
+
+
+def get_snapshot_file_paths(replica_path, snap_name):
+    return os.path.join(replica_path, 'volume-snap-{0}.img'.format(snap_name))
+
+
+def get_replica_head_file_path(replica_dir):
+    cmd = ["find", replica_dir, "-name",
+           '*volume-head-*.img']
+    return subprocess.check_output(cmd).strip()
