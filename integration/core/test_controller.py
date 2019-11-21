@@ -1,5 +1,4 @@
 import time
-import sys
 import os
 import grpc
 import pytest
@@ -7,15 +6,9 @@ import pytest
 from common import (  # NOQA
     grpc_controller_client as grpc_client,  # NOQA
     create_backend_file, cleanup_backend_file,
+    wait_for_volume_expansion,
+    EXPANDED_SIZE,
 )
-
-# include directory intergration/rpc for module import
-sys.path.append(
-    os.path.abspath(
-        os.path.join(os.path.split(__file__)[0], "../rpc")
-    )
-)
-from controller.controller_client import ControllerClient  # NOQA
 
 
 def test_replica_list(grpc_client):  # NOQA
@@ -138,6 +131,26 @@ def test_shutdown(grpc_client):  # NOQA
     assert len(rs) == 0
 
     cleanup_backend_file([f1, f2])
+
+
+def test_controller_expand(grpc_client):  # NOQA
+    v = grpc_client.volume_get()
+    assert v.replicaCount == 0
+
+    f1 = create_backend_file()
+    f2 = create_backend_file()
+    addresses = ['file://' + f1, 'file://' + f2]
+    v = grpc_client.volume_start(replicas=addresses)
+    assert v.replicaCount == 2
+
+    grpc_client.volume_expand(EXPANDED_SIZE)
+    wait_for_volume_expansion(grpc_client, EXPANDED_SIZE)
+    f1_size = os.path.getsize(f1)
+    f2_size = os.path.getsize(f2)
+    assert f1_size == f2_size == EXPANDED_SIZE
+
+    v = grpc_client.volume_shutdown()
+    assert v.replicaCount == 0
 
 
 def test_metric(grpc_client):  # NOQA
