@@ -257,6 +257,8 @@ func performIncrementalBackup(config *DeltaBackupConfig, delta *Mappings, deltaB
 	volume.LastBackupName = backup.Name
 	volume.LastBackupAt = backup.SnapshotCreatedAt
 	volume.BlockCount = volume.BlockCount + newBlocks
+	// The volume may be expanded
+	volume.Size = config.Volume.Size
 
 	if err := saveVolume(volume, bsDriver); err != nil {
 		return progress, "", err
