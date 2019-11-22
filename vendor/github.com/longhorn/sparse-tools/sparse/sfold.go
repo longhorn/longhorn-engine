@@ -33,9 +33,14 @@ func FoldFile(childFileName, parentFileName string, ops FoldFileOperations) erro
 		return fmt.Errorf("at least one file is directory, not a normal file")
 	}
 
-	// ensure file sizes are equal
+	// may caused by the expansion
 	if childFInfo.Size() != parentFInfo.Size() {
-		return fmt.Errorf("file sizes are not equal")
+		if childFInfo.Size() < parentFInfo.Size() {
+			return fmt.Errorf("file sizes are not equal and the parent file is larger than the child file")
+		}
+		if err := os.Truncate(parentFileName, childFInfo.Size()); err != nil {
+			return fmt.Errorf("failed to expand the parent file size before coalesce, error: %v", err)
+		}
 	}
 
 	// open child and parent files

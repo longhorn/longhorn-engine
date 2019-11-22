@@ -50,8 +50,8 @@ github.com/longhorn/backupstore v0.0.0-20191024011200-18aa87a9e271 h1:J8r0K0eiLK
 github.com/longhorn/backupstore v0.0.0-20191024011200-18aa87a9e271/go.mod h1:TEcXB6izcrf4DMxnAhEKasrrmRq0nK4wlTUVrDIZaYg=
 github.com/longhorn/go-iscsi-helper v0.0.0-20191217235054-ce79ff17c4a2 h1:TCTB1/AeQeYb3D4b8nBOKJeYZM84aoUGeetb0kFsFCU=
 github.com/longhorn/go-iscsi-helper v0.0.0-20191217235054-ce79ff17c4a2/go.mod h1:3RTrAwLd6uaku/4wPE0KkSQI2OmhPgGO1SQ2Hbix5hY=
-github.com/longhorn/sparse-tools v0.0.0-20191018221755-2c0ba6f832b2 h1:BKnVK+4JGW9ToQqsnLde/X2dUVs6+7Vj2kdvE1zMKBg=
-github.com/longhorn/sparse-tools v0.0.0-20191018221755-2c0ba6f832b2/go.mod h1:1WSSJRDNret4VKADAzvD49oaVt1/idYVWBL8TiyevRk=
+github.com/longhorn/sparse-tools v0.0.0-20191217235140-e01a17fdf345 h1:XzoImZBEQ29EPt98XANbMeKxKABrDYmBdGOHx9akPYI=
+github.com/longhorn/sparse-tools v0.0.0-20191217235140-e01a17fdf345/go.mod h1:1WSSJRDNret4VKADAzvD49oaVt1/idYVWBL8TiyevRk=
 github.com/mattn/go-colorable v0.1.4 h1:snbPLB8fVfU9iwbbo30TPtbLRzwWu6aJS6Xh4eaaviA=
 github.com/mattn/go-colorable v0.1.4/go.mod h1:U0ppj6V5qS13XJ6of8GYAs25YV2eR4EVcfRqFIhoBtE=
 github.com/mattn/go-isatty v0.0.8 h1:HLtExJ+uU2HOZ+wI0Tt5DtUDrx8yhUqDcp7fYERX4CE=
