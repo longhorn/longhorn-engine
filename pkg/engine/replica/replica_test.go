@@ -19,6 +19,28 @@ const (
 	bs = 512
 )
 
+type TestBackingFile struct {
+	*os.File
+}
+
+func NewTestBackingFile(path string) (*TestBackingFile, error) {
+	f, err := os.Create(path)
+	if err != nil {
+		return nil, err
+	}
+	return &TestBackingFile{
+		f,
+	}, nil
+}
+
+func (f *TestBackingFile) Size() (int64, error) {
+	info, err := f.File.Stat()
+	if err != nil {
+		return 0, err
+	}
+	return info.Size(), nil
+}
+
 func Test(t *testing.T) { TestingT(t) }
 
 type TestSuite struct{}
@@ -743,7 +765,7 @@ func (s *TestSuite) TestBackingFile(c *C) {
 	buf := make([]byte, 3*b)
 	fill(buf, 3)
 
-	f, err := os.Create(path.Join(dir, "backing"))
+	f, err := NewTestBackingFile(path.Join(dir, "backing"))
 	c.Assert(err, IsNil)
 	defer f.Close()
 	_, err = f.Write(buf)

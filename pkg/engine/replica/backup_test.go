@@ -60,7 +60,7 @@ func (s *TestSuite) TestBackupWithBackupsAndBacking(c *C) {
 	c.Assert(err, IsNil)
 	defer os.RemoveAll(dir)
 
-	f, err := os.Create(path.Join(dir, "backing"))
+	f, err := NewTestBackingFile(path.Join(dir, "backing"))
 	c.Assert(err, IsNil)
 	defer f.Close()
 
