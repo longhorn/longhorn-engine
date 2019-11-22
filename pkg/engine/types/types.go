@@ -31,6 +31,7 @@ type DiffDisk interface {
 	ReaderWriterAt
 	io.Closer
 	Fd() uintptr
+	Size() (int64, error)
 }
 
 type MonitorChannel chan error
