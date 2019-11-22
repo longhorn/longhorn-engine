@@ -2,7 +2,10 @@ package replica
 
 import (
 	"fmt"
+	"io"
 	"sync"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/rancher/go-fibmap"
 
@@ -215,11 +218,32 @@ func (d *diffDisk) fullReadAt(buf []byte, offset int64) (int, error) {
 	return count, nil
 }
 
-func (d *diffDisk) read(target byte, buf []byte, offset int64, startSector int64, sectors int64) (int, error) {
+func (d *diffDisk) read(target byte, buf []byte, startOffset int64, startSector int64, sectors int64) (int, error) {
 	bufStart := startSector * d.sectorSize
-	bufEnd := sectors * d.sectorSize
-	newBuf := buf[bufStart : bufStart+bufEnd]
-	return d.files[target].ReadAt(newBuf, offset+bufStart)
+	bufLength := sectors * d.sectorSize
+	offset := startOffset + bufStart
+	size, err := d.files[target].Size()
+	if err != nil {
+		return 0, err
+	}
+
+	// Reading the out-of-bound part is not allowed
+	if bufLength > d.size-offset {
+		logrus.Warnf("Trying to read the out-of-bound part")
+		return 0, io.ErrUnexpectedEOF
+	}
+
+	// May read the expanded part
+	if offset >= size {
+		return 0, nil
+	}
+	var newBuf []byte
+	if bufLength > size-offset {
+		newBuf = buf[bufStart : bufStart+size-offset]
+	} else {
+		newBuf = buf[bufStart : bufStart+bufLength]
+	}
+	return d.files[target].ReadAt(newBuf, offset)
 }
 
 func (d *diffDisk) lookup(sector int64) (byte, error) {
