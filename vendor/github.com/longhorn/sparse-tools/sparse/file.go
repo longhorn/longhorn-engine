@@ -50,6 +50,14 @@ func (file *BufferedFileIoProcessor) GetFile() *os.File {
 	return file.File
 }
 
+func (file *BufferedFileIoProcessor) Size() (int64, error) {
+	info, err := file.File.Stat()
+	if err != nil {
+		return 0, err
+	}
+	return info.Size(), nil
+}
+
 func (file *BufferedFileIoProcessor) Close() error {
 	file.File.Sync()
 	return file.File.Close()
@@ -112,6 +120,14 @@ func (file *DirectFileIoProcessor) WriteAt(data []byte, offset int64) (int, erro
 
 func (file *DirectFileIoProcessor) GetFile() *os.File {
 	return file.File
+}
+
+func (file *DirectFileIoProcessor) Size() (int64, error) {
+	info, err := file.File.Stat()
+	if err != nil {
+		return 0, err
+	}
+	return info.Size(), nil
 }
 
 // AllocateAligned returns []byte of size aligned to alignment

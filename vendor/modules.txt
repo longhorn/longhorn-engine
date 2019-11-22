@@ -82,7 +82,7 @@ github.com/longhorn/go-iscsi-helper/iscsi
 github.com/longhorn/go-iscsi-helper/iscsiblk
 github.com/longhorn/go-iscsi-helper/longhorndev
 github.com/longhorn/go-iscsi-helper/util
-# github.com/longhorn/sparse-tools v0.0.0-20191018221755-2c0ba6f832b2
+# github.com/longhorn/sparse-tools v0.0.0-20191217235140-e01a17fdf345
 github.com/longhorn/sparse-tools/cli/ssync
 github.com/longhorn/sparse-tools/sparse
 github.com/longhorn/sparse-tools/sparse/rest
