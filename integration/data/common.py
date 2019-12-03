@@ -1,5 +1,7 @@
+import fcntl
 import random
 import string
+import struct
 import subprocess
 import time
 import threading
@@ -12,7 +14,9 @@ import pytest
 
 import cmd
 from util import read_file, checksum_data
-from frontend import blockdev
+from frontend import (
+    blockdev, get_block_device_path,
+)
 from setting import (
     INSTANCE_MANAGER, LONGHORN_BINARY,
     VOLUME_NAME, VOLUME_BACKING_NAME, VOLUME_NO_FRONTEND_NAME,
@@ -669,3 +673,23 @@ def generate_random_data(dev, existings={}, length_limit=PAGE_SIZE):
     return Data(random_offset(length, existings),
                 length,
                 random_string(length))
+
+
+def wait_for_volume_expansion(grpc_controller_client, size):  # NOQA
+    for i in range(RETRY_COUNTS):
+        volume = grpc_controller_client.volume_get()
+        if volume.size == size:
+            break
+        time.sleep(RETRY_INTERVAL)
+    assert volume.size == size
+
+
+def check_block_device_size(volume_name, size):
+    device_path = get_block_device_path(volume_name)
+    # BLKGETSIZE64, result is bytes as unsigned 64-bit integer (uint64)
+    req = 0x80081272
+    buf = ' ' * 8
+    with open(device_path) as dev:
+        buf = fcntl.ioctl(dev.fileno(), req, buf)
+    device_size = struct.unpack('L', buf)[0]
+    assert device_size == size

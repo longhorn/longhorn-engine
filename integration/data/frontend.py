@@ -55,10 +55,14 @@ def get_socket_path(volume):
     return path.join(LONGHORN_SOCKET_DIR, "longhorn-" + volume + ".sock")
 
 
+def get_block_device_path(volume):
+    return path.join(LONGHORN_DEV_DIR, volume)
+
+
 class blockdev:
 
     def __init__(self, volume):
-        self.dev = path.join(LONGHORN_DEV_DIR, volume)
+        self.dev = get_block_device_path(volume)
 
     def readat(self, offset, length):
         with open(self.dev, 'r') as f:
