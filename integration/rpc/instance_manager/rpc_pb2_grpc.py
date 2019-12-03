@@ -50,6 +50,11 @@ class EngineManagerServiceStub(object):
         request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
         response_deserializer=rpc__pb2.EngineResponse.FromString,
         )
+    self.EngineExpand = channel.unary_unary(
+        '/EngineManagerService/EngineExpand',
+        request_serializer=rpc__pb2.EngineExpandRequest.SerializeToString,
+        response_deserializer=rpc__pb2.EngineResponse.FromString,
+        )
     self.FrontendStart = channel.unary_unary(
         '/EngineManagerService/FrontendStart',
         request_serializer=rpc__pb2.FrontendStartRequest.SerializeToString,
@@ -125,6 +130,13 @@ class EngineManagerServiceServicer(object):
     context.set_details('Method not implemented!')
     raise NotImplementedError('Method not implemented!')
 
+  def EngineExpand(self, request, context):
+    # missing associated documentation comment in .proto file
+    pass
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
   def FrontendStart(self, request, context):
     # missing associated documentation comment in .proto file
     pass
@@ -189,6 +201,11 @@ def add_EngineManagerServiceServicer_to_server(servicer, server):
       'EngineWatch': grpc.unary_stream_rpc_method_handler(
           servicer.EngineWatch,
           request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+          response_serializer=rpc__pb2.EngineResponse.SerializeToString,
+      ),
+      'EngineExpand': grpc.unary_unary_rpc_method_handler(
+          servicer.EngineExpand,
+          request_deserializer=rpc__pb2.EngineExpandRequest.FromString,
           response_serializer=rpc__pb2.EngineResponse.SerializeToString,
       ),
       'FrontendStart': grpc.unary_unary_rpc_method_handler(
