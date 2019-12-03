@@ -1,13 +1,18 @@
+import random
 import cmd
 from common import (  # NOQA
     grpc_controller, grpc_replica1, grpc_replica2,  # NOQA
     grpc_backing_controller, grpc_backing_replica1, grpc_backing_replica2,  # NOQA
     get_dev, get_backing_dev, read_dev,
     generate_random_data, read_from_backing_file,
-    Snapshot, snapshot_revert_with_frontend, wait_for_purge_completion
+    Snapshot, snapshot_revert_with_frontend, wait_for_purge_completion,
+    Data, random_length, random_string,
+    wait_for_volume_expansion, check_block_device_size,
 )
 from setting import (
     VOLUME_HEAD, ENGINE_NAME, ENGINE_BACKING_NAME,
+    VOLUME_NAME, VOLUME_BACKING_NAME,
+    PAGE_SIZE, SIZE, EXPAND_SIZE,
 )
 from snapshot_tree import snapshot_tree_build, snapshot_tree_verify_node
 
@@ -262,3 +267,99 @@ def test_snapshot_tree_basic(grpc_controller,  # NOQA
                               offset, length, snap, data, "1a")
     snapshot_tree_verify_node(dev, address, ENGINE_NAME,
                               offset, length, snap, data, "1b")
+
+
+def volume_expansion_with_snapshots_test(dev, grpc_controller,  # NOQA
+                                         volume_name, engine_name,
+                                         original_data):
+    # the default size is 4MB, will expand it to 8MB
+    address = grpc_controller.address
+    zero_char = b'\x00'.decode('utf-8')
+
+    # write the data to the original part then do expansion
+    data1_len = random_length(PAGE_SIZE)
+    data1 = Data(random.randrange(0, SIZE-2*PAGE_SIZE, PAGE_SIZE),
+                 data1_len, random_string(data1_len))
+    snap1 = Snapshot(dev, data1, address)
+
+    grpc_controller.volume_expand(EXPAND_SIZE)
+    wait_for_volume_expansion(grpc_controller, EXPAND_SIZE)
+    check_block_device_size(volume_name, EXPAND_SIZE)
+
+    snap1.verify_data()
+    assert \
+        dev.readat(0, SIZE) == \
+        original_data[0:data1.offset] + data1.content + \
+        original_data[data1.offset+data1.length:]
+    assert dev.readat(SIZE, SIZE) == zero_char*SIZE
+
+    # write the data to both the original part and the expanded part
+    data2_len = random_length(PAGE_SIZE)
+    data2 = Data(SIZE-PAGE_SIZE,
+                 data2_len, random_string(data2_len))
+    snap2 = Snapshot(dev, data2, address)
+    data3_len = random_length(PAGE_SIZE)
+    data3 = Data(random.randrange(SIZE, EXPAND_SIZE-PAGE_SIZE, PAGE_SIZE),
+                 data3_len, random_string(data3_len))
+    snap3 = Snapshot(dev, data3, address)
+    snap1.verify_data()
+    snap2.verify_data()
+    snap3.verify_data()
+    assert \
+        dev.readat(SIZE, SIZE) == zero_char*(data3.offset-SIZE) + \
+        data3.content + zero_char*(EXPAND_SIZE-data3.offset-data3.length)
+
+    data4_len = random_length(PAGE_SIZE)
+    data4 = Data(data1.offset,
+                 data4_len, random_string(data4_len))
+    snap4 = Snapshot(dev, data4, address)
+    snap4.verify_data()
+
+    # revert to snap1 then see if we can still r/w the existing data
+    # and expanded part
+    snapshot_revert_with_frontend(address, engine_name, snap1.name)
+    assert \
+        dev.readat(0, SIZE) == \
+        original_data[0:data1.offset] + data1.content + \
+        original_data[data1.offset+data1.length:]
+    assert dev.readat(SIZE, SIZE) == zero_char*SIZE
+
+    data5_len = random_length(PAGE_SIZE)
+    data5 = Data(random.randrange(SIZE, EXPAND_SIZE-PAGE_SIZE, PAGE_SIZE),
+                 data5_len, random_string(data5_len))
+    snap5 = Snapshot(dev, data5, address)
+    snap5.verify_data()
+    assert \
+        dev.readat(SIZE, SIZE) == zero_char*(data5.offset-SIZE) + \
+        data5.content + zero_char*(EXPAND_SIZE-data5.offset-data5.length)
+
+    # delete and purge the snap1. it will coalesce with the larger snap2
+    cmd.snapshot_rm(address, snap1.name)
+    cmd.snapshot_purge(address)
+    wait_for_purge_completion(address)
+    assert \
+        dev.readat(0, SIZE) == \
+        original_data[0:data1.offset] + data1.content + \
+        original_data[data1.offset+data1.length:]
+    assert \
+        dev.readat(SIZE, SIZE) == zero_char*(data5.offset-SIZE) + \
+        data5.content + zero_char*(EXPAND_SIZE-data5.offset-data5.length)
+
+
+def test_expansion_without_backing_file(grpc_controller,  # NOQA
+                                        grpc_replica1, grpc_replica2):  # NOQA
+    zero_char = b'\x00'.decode('utf-8')
+    dev = get_dev(grpc_replica1, grpc_replica2, grpc_controller)
+    volume_expansion_with_snapshots_test(dev, grpc_controller,
+                                         VOLUME_NAME, ENGINE_NAME,
+                                         zero_char*SIZE)
+
+
+def test_expansion_with_backing_file(grpc_backing_controller,  # NOQA
+                                     grpc_backing_replica1, grpc_backing_replica2):  # NOQA
+    dev = get_backing_dev(grpc_backing_replica1, grpc_backing_replica2,
+                          grpc_backing_controller)
+    volume_expansion_with_snapshots_test(dev, grpc_backing_controller,
+                                         VOLUME_BACKING_NAME,
+                                         ENGINE_BACKING_NAME,
+                                         read_from_backing_file(0, SIZE))
