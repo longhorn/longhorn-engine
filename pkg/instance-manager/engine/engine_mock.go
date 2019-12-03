@@ -87,3 +87,7 @@ func (mds *MockDeviceService) PrepareUpgrade() error {
 func (mds *MockDeviceService) FinishUpgrade() error {
 	return nil
 }
+
+func (mds *MockDeviceService) Expand(size int64) error {
+	return nil
+}
