@@ -10,13 +10,13 @@ service EngineManagerService {
 	rpc EngineUpgrade(EngineUpgradeRequest) returns (EngineResponse) {}
 	rpc EngineLog(LogRequest) returns (stream LogResponse) {}
 	rpc EngineWatch(google.protobuf.Empty) returns (stream EngineResponse) {}
+	rpc EngineExpand(EngineExpandRequest) returns (EngineResponse) {}
 
 	rpc FrontendStart(FrontendStartRequest) returns (google.protobuf.Empty) {}
 	rpc FrontendShutdown(EngineRequest) returns (google.protobuf.Empty) {}
 
 	rpc FrontendStartCallback(EngineRequest) returns (google.protobuf.Empty) {}
 	rpc FrontendShutdownCallback(EngineRequest) returns (google.protobuf.Empty) {}
-
 }
 
 message EngineSpec {
@@ -56,6 +56,11 @@ message EngineUpgradeRequest {
 
 message EngineListResponse {
 	map<string, EngineResponse> engines = 1;
+}
+
+message EngineExpandRequest {
+	string name = 1;
+	int64 size = 2;
 }
 
 message FrontendStartRequest {
