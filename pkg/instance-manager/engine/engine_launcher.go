@@ -320,6 +320,50 @@ func (el *Launcher) FrontendShutdownCallback() (int, error) {
 	return tID, nil
 }
 
+func (el *Launcher) EngineExpand(size int64) error {
+	logrus.Debugf("engine launcher %v: start to expand engine to size %v", el.LauncherName, size)
+
+	if needExpansion, err := el.checkExpansionSize(size); err != nil {
+		return err
+	} else if !needExpansion {
+		logrus.Debugf("engine launcher %v: no need to expand the device since the size is the same", el.LauncherName)
+		return nil
+	}
+
+	if err := el.dev.Expand(size); err != nil {
+		return err
+	}
+
+	el.updateSize(size)
+
+	el.updateCh <- el
+
+	logrus.Debugf("engine launcher %v: engine expansion succeed", el.LauncherName)
+
+	return nil
+}
+
+func (el *Launcher) checkExpansionSize(size int64) (bool, error) {
+	el.lock.RLock()
+	defer el.lock.RUnlock()
+	if el.Size > size {
+		return false, fmt.Errorf("engine launcher %v: cannot update frontend with smaller size %v", el.LauncherName, size)
+	} else if el.Size == size {
+		return false, nil
+	}
+	return true, nil
+}
+
+func (el *Launcher) updateSize(size int64) {
+	el.lock.Lock()
+	defer el.lock.Unlock()
+
+	el.Size = size
+	el.currentEngine.UpdateSize(size)
+
+	return
+}
+
 func (el *Launcher) IsSCSIDeviceEnabled() bool {
 	return el.dev.Enabled()
 }

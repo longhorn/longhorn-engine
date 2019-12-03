@@ -422,6 +422,23 @@ func (em *Manager) cleanupFrontend(el *Launcher) error {
 	return nil
 }
 
+func (em *Manager) EngineExpand(ctx context.Context, req *rpc.EngineExpandRequest) (ret *rpc.EngineResponse, err error) {
+	logrus.Infof("Engine Manager starts to expand the size of engine %v", req.Name)
+
+	el := em.getLauncher(req.Name)
+	if el == nil {
+		return nil, status.Errorf(codes.NotFound, "cannot find engine %v", req.Name)
+	}
+
+	if err := el.EngineExpand(req.Size); err != nil {
+		return nil, err
+	}
+
+	logrus.Infof("Engine Manager finishes engine %v expansion", req.Name)
+
+	return el.RPCResponse(), nil
+}
+
 func (em *Manager) getLauncher(name string) *Launcher {
 	em.lock.RLock()
 	defer em.lock.RUnlock()

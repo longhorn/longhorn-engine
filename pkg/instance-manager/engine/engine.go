@@ -208,3 +208,7 @@ func (e *Engine) Log(srv rpc.EngineManagerService_EngineLogServer) error {
 		Name: e.EngineName,
 	}, srv)
 }
+
+func (e *Engine) UpdateSize(size int64) {
+	e.Size = size
+}

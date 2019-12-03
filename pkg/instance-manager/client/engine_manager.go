@@ -297,3 +297,27 @@ func (cli *EngineManagerClient) FrontendShutdownCallback(name string) error {
 	}
 	return nil
 }
+
+func (cli *EngineManagerClient) EngineExpand(name string, size int64) error {
+	if name == "" {
+		return fmt.Errorf("failed to call gRPC EngineExpand: missing parameter name")
+	}
+
+	conn, err := grpc.Dial(cli.Address, grpc.WithInsecure())
+	if err != nil {
+		return fmt.Errorf("cannot connect to EngineExpand Service %v: %v", cli.Address, err)
+	}
+	defer conn.Close()
+	client := rpc.NewEngineManagerServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), types.GRPCServiceTimeout)
+	defer cancel()
+
+	if _, err := client.EngineExpand(ctx, &rpc.EngineExpandRequest{
+		Name: name,
+		Size: size,
+	}); err != nil {
+		return fmt.Errorf("failed to call gRPC EngineExpand for engine %v: %v", name, err)
+	}
+	return nil
+}
