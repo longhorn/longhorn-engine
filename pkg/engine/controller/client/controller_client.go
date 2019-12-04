@@ -32,12 +32,12 @@ func NewControllerClient(address string) *ControllerClient {
 func GetVolumeInfo(v *contollerpb.Volume) *types.VolumeInfo {
 	return &types.VolumeInfo{
 		Name:          v.Name,
+		Size:          v.Size,
 		ReplicaCount:  int(v.ReplicaCount),
 		Endpoint:      v.Endpoint,
 		Frontend:      v.Frontend,
 		FrontendState: v.FrontendState,
-		IsRestoring:   v.IsRestoring,
-		LastRestored:  v.LastRestored,
+		IsExpanding:   v.IsExpanding,
 	}
 }
 

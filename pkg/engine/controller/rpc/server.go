@@ -77,10 +77,12 @@ func (cs *ControllerServer) replicaToControllerReplica(r *types.Replica) *contro
 func (cs *ControllerServer) getVolume() *controllerpb.Volume {
 	return &controllerpb.Volume{
 		Name:          cs.c.Name,
+		Size:          cs.c.Size(),
 		ReplicaCount:  int32(len(cs.c.ListReplicas())),
 		Endpoint:      cs.c.Endpoint(),
 		Frontend:      cs.c.Frontend(),
 		FrontendState: cs.c.FrontendState(),
+		IsExpanding:   cs.c.IsExpanding(),
 	}
 }
 

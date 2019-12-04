@@ -34,12 +34,12 @@ type PrepareRemoveAction struct {
 
 type VolumeInfo struct {
 	Name          string `json:"name"`
+	Size          int64  `json:"size"`
 	ReplicaCount  int    `json:"replicaCount"`
 	Endpoint      string `json:"endpoint"`
 	Frontend      string `json:"frontend"`
 	FrontendState string `json:"frontendState"`
-	IsRestoring   bool   `json:"isRestoring"`
-	LastRestored  string `json:"lastRestored"`
+	IsExpanding   bool   `json:"isExpanding"`
 }
 
 type ControllerReplicaInfo struct {
