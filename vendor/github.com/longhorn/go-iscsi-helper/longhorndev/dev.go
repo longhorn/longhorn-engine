@@ -51,6 +51,7 @@ type DeviceService interface {
 	Shutdown() (int, error)
 	PrepareUpgrade() error
 	FinishUpgrade() error
+	Expand(size int64) error
 }
 
 type DeviceCreator interface {
@@ -342,4 +343,46 @@ func (d *LonghornDevice) GetFrontend() string {
 	d.RLock()
 	defer d.RUnlock()
 	return d.frontend
+}
+
+func (d *LonghornDevice) Expand(size int64) error {
+	d.Lock()
+	defer d.Unlock()
+
+	if d.size > size {
+		return fmt.Errorf("device %v: cannot expand the device from size %v to a smaller size %v", d.name, d.size, size)
+	} else if d.size == size {
+		return nil
+	}
+
+	d.size = size
+
+	if d.scsiDevice == nil {
+		return nil
+	}
+	if err := iscsiblk.UpdateScsiBackingStore(d.scsiDevice, "longhorn", fmt.Sprintf("size=%v", d.size)); err != nil {
+		return err
+	}
+
+	switch d.frontend {
+	case FrontendTGTBlockDev:
+		if err := iscsiblk.UpdateScsi(d.scsiDevice); err != nil {
+			return fmt.Errorf("device %v: fail to update SCSI device: %v", d.name, err)
+		}
+		logrus.Infof("device %v: SCSI device %v update", d.name, d.getDev())
+		break
+	case FrontendTGTISCSI:
+		if err := iscsiblk.UpdateTarget(d.scsiDevice); err != nil {
+			return fmt.Errorf("device %v: fail to update target %v: %v", d.name, d.scsiDevice.Target, err)
+		}
+		logrus.Infof("device %v: SCSI target %v update", d.name, d.scsiDevice.Target)
+		break
+	case "":
+		logrus.Infof("device %v: skip expansion since the frontend not enabled", d.name)
+		break
+	default:
+		return fmt.Errorf("device %v: unknown frontend %v for expansion", d.name, d.frontend)
+	}
+
+	return nil
 }

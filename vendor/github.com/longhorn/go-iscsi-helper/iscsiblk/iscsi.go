@@ -244,9 +244,68 @@ func DeleteTarget(target string, targetID int) error {
 		if err := iscsi.DeleteLun(targetID, TargetLunID); err != nil {
 			return err
 		}
+
+		sessionConnectionsMap, err := iscsi.GetTargetConnections(tid)
+		if err != nil {
+			return err
+		}
+		for sid, cidList := range sessionConnectionsMap {
+			for _, cid := range cidList {
+				if err := iscsi.CloseConnection(tid, sid, cid); err != nil {
+					return err
+				}
+			}
+		}
+
 		if err := iscsi.DeleteTarget(targetID); err != nil {
 			return err
 		}
 	}
+	return nil
+}
+
+func UpdateScsiBackingStore(dev *ScsiDevice, bsType, bsOpts string) error {
+	dev.BSType = bsType
+	dev.BSOpts = bsOpts
+	return nil
+}
+
+func UpdateTarget(dev *ScsiDevice) error {
+	if err := DeleteTarget(dev.Target, dev.TargetID); err != nil {
+		return err
+	}
+	if err := SetupTarget(dev); err != nil {
+		return err
+	}
+	return nil
+}
+
+func UpdateScsi(dev *ScsiDevice) error {
+	lock := nsfilelock.NewLockWithTimeout(util.GetHostNamespacePath(HostProc), LockFile, LockTimeout)
+	if err := lock.Lock(); err != nil {
+		return fmt.Errorf("Fail to lock: %v", err)
+	}
+	defer lock.Unlock()
+
+	ne, err := util.NewNamespaceExecutor(util.GetHostNamespacePath(HostProc))
+	if err != nil {
+		return err
+	}
+	if err := iscsi.CheckForInitiatorExistence(ne); err != nil {
+		return err
+	}
+	ip, err := util.GetIPToHost()
+	if err != nil {
+		return err
+	}
+
+	if err := UpdateTarget(dev); err != nil {
+		return err
+	}
+
+	if err := iscsi.RescanTarget(ip, dev.Target, ne); err != nil {
+		return err
+	}
+
 	return nil
 }
