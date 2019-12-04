@@ -274,6 +274,12 @@ func (c *Controller) updateFrontend(size int64) error {
 	return nil
 }
 
+func (c *Controller) IsExpanding() bool {
+	c.RLock()
+	defer c.RUnlock()
+	return c.isExpanding
+}
+
 func (c *Controller) addReplicaNoLock(newBackend types.Backend, address string, snapshot bool) error {
 	if ok, err := c.canAdd(address); !ok {
 		return err
@@ -620,8 +626,8 @@ func (c *Controller) Shutdown() error {
 	return nil
 }
 
-func (c *Controller) Size() (int64, error) {
-	return c.size, nil
+func (c *Controller) Size() int64 {
+	return c.size
 }
 
 func (c *Controller) monitoring(address string, backend types.Backend) {
