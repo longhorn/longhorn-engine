@@ -258,3 +258,80 @@ func ShutdownTgtd() error {
 	daemonIsRunning = false
 	return nil
 }
+
+func GetTargetConnections(tid int) (map[string][]string, error) {
+	opts := []string{
+		"--lld", "iscsi",
+		"--op", "show",
+		"--mode", "conn",
+		"--tid", strconv.Itoa(tid),
+	}
+	output, err := util.Execute(tgtBinary, opts)
+	if err != nil {
+		return nil, err
+	}
+	/* Output will looks like:
+	Session: 11
+	    Connection: 0
+	        Initiator: iqn.2016-08.com.example:a
+	        IP Address: 192.168.0.1
+	Session: 12
+	    Connection: 1
+	        Initiator: iqn.2016-08.com.example:a
+	        IP Address: 192.168.0.2
+		...
+	*/
+	res := map[string][]string{}
+	currentSIDString := ""
+	currentCIDStringList := []string{}
+	scanner := bufio.NewScanner(strings.NewReader(output))
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if strings.HasPrefix(line, "Session: ") {
+			if currentSIDString != "" {
+				res[currentSIDString] = currentCIDStringList
+			}
+			sidFields := strings.Split(line, ": ")
+			if len(sidFields) != 2 {
+				return nil, fmt.Errorf("failed to parse and get session id from line %v", line)
+			}
+			sidString := sidFields[1]
+			if _, err := strconv.Atoi(sidString); err != nil {
+				return nil, err
+			}
+			currentSIDString = sidString
+			currentCIDStringList = []string{}
+		}
+		if strings.HasPrefix(line, "Connection: ") {
+			cidFields := strings.Split(line, ": ")
+			if len(cidFields) != 2 {
+				return nil, fmt.Errorf("failed to parse and get connection id from line %v", line)
+			}
+			cidString := cidFields[1]
+			if _, err := strconv.Atoi(cidString); err != nil {
+				return nil, err
+			}
+			currentCIDStringList = append(currentCIDStringList, cidString)
+		}
+	}
+	if len(currentCIDStringList) != 0 {
+		res[currentSIDString] = currentCIDStringList
+	}
+	return res, nil
+}
+
+func CloseConnection(tid int, sid, cid string) error {
+	opts := []string{
+		"--lld", "iscsi",
+		"--op", "delete",
+		"--mode", "conn",
+		"--tid", strconv.Itoa(tid),
+		"--sid", sid,
+		"--cid", cid,
+	}
+	_, err := util.Execute(tgtBinary, opts)
+	if err != nil {
+		return err
+	}
+	return nil
+}
