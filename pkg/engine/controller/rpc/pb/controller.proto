@@ -35,12 +35,12 @@ service ControllerService {
 
 message Volume {
     string name = 1;
-    int32 replicaCount = 2;
-    string endpoint = 3;
-    string frontend = 4;
-    string frontendState = 5;
-    bool isRestoring = 6;
-    string lastRestored = 7;
+    int64 size = 2;
+    int32 replicaCount = 3;
+    string endpoint = 4;
+    string frontend = 5;
+    string frontendState = 6;
+    bool isExpanding = 7;
 }
 
 message ReplicaAddress {
