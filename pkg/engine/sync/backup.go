@@ -4,7 +4,9 @@ import (
 	"fmt"
 	"strings"
 	"sync"
+	"time"
 
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
 	"github.com/longhorn/backupstore"
@@ -226,10 +228,40 @@ func (t *Task) RestoreBackupIncrementally(backup, backupName, lastRestored strin
 		} else if ok {
 			return fmt.Errorf("can not incrementally restore from backup because %s is rebuilding", r.Address)
 		}
-		if ok, err := t.isDirty(r); err != nil {
-			return err
-		} else if ok {
-			return fmt.Errorf("BUG: replica %s of standby volume cannot be dirty", r.Address)
+	}
+
+	isValidLastRestored := true
+	if _, err := backupstore.InspectBackup(strings.Replace(backup, backupName, lastRestored, 1)); err != nil {
+		logrus.Warnf("Invalid argument last-restored, cannot find related backup %v, will do full restoration, err: %v", lastRestored, err)
+		isValidLastRestored = false
+	}
+
+	backupInfo, err := backupstore.InspectBackup(backup)
+	if err != nil {
+		return errors.Wrapf(err, "Failed to get the current restoring backup info")
+	}
+	if backupInfo.VolumeSize < volume.Size {
+		return fmt.Errorf("BUG: The size %v of backup volume %v smaller than the size %v of DR volume %v", backupInfo.VolumeName, backupInfo.VolumeSize, volume.Size, volume.Name)
+	} else if backupInfo.VolumeSize > volume.Size {
+		logrus.Infof("The DR volume %v needs to be expanded to size %v before incremental restoration", volume.Name, backupInfo.VolumeSize)
+		if err := t.client.VolumeExpand(backupInfo.VolumeSize); err != nil {
+			return errors.Wrapf(err, "Failed to expand the DR volume %v to size %v before incremental restoration", volume.Name, backupInfo.VolumeSize)
+		}
+
+		expanded := false
+		for i := 0; i < types.RetryCounts; i++ {
+			volume, err = t.client.VolumeGet()
+			if err != nil {
+				return err
+			}
+			if volume.Size == backupInfo.VolumeSize && !volume.IsExpanding {
+				expanded = true
+				break
+			}
+			time.Sleep(types.RetryInterval)
+		}
+		if !expanded {
+			return fmt.Errorf("failed to expand the DR volume %v to size %v before incremental restoration: Wait timeout", volume.Name, backupInfo.VolumeSize)
 		}
 	}
 
@@ -237,22 +269,17 @@ func (t *Task) RestoreBackupIncrementally(backup, backupName, lastRestored strin
 	if err != nil {
 		return err
 	}
-	if len(snapshots) != 2 {
-		return fmt.Errorf("BUG: replicas %+v of standby volume should contains 2 snapshots only: volume head and the restore file", replicas)
+	// There will be more than 1 snapshot if the DR volume is expanded
+	if len(snapshots) < 2 {
+		return fmt.Errorf("BUG: replicas %+v of standby volume should contains at least 2 snapshots only: volume head and the restore file", replicas)
 	}
 	var snapshotName string
 	for _, s := range snapshots {
-		if s.Name != VolumeHeadName {
-			snapshotName = s.Name
+		if s.Name == VolumeHeadName {
+			snapshotName = s.Parent
 		}
 	}
 	snapshotDiskName := replica.GenerateSnapshotDiskName(snapshotName)
-
-	isValidLastRestored := true
-	if _, err := backupstore.InspectBackup(strings.Replace(backup, backupName, lastRestored, 1)); err != nil {
-		logrus.Warnf("Invalid argument last-restored, cannot find related backup %v, will do full restoration, err: %v", lastRestored, err)
-		isValidLastRestored = false
-	}
 
 	errorMap := sync.Map{}
 	var wg sync.WaitGroup

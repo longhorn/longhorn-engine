@@ -15,10 +15,6 @@ import (
 	"github.com/longhorn/longhorn-engine/pkg/engine/types"
 )
 
-var (
-	RetryCounts = 3
-)
-
 const VolumeHeadName = "volume-head"
 
 type Task struct {
