@@ -2,6 +2,7 @@ package sync
 
 import (
 	"fmt"
+	"strconv"
 	"strings"
 	"sync"
 
@@ -247,6 +248,10 @@ func (t *Task) AddReplica(replica string) error {
 		return t.client.VolumeStart(replica)
 	}
 
+	if err := t.checkAndExpandReplica(replica, volume.Size); err != nil {
+		return err
+	}
+
 	if err := t.checkAndResetFailedRebuild(replica); err != nil {
 		return err
 	}
@@ -303,6 +308,43 @@ func (t *Task) checkAndResetFailedRebuild(address string) error {
 		}
 
 		return client.Close()
+	}
+
+	return nil
+}
+
+func (t *Task) checkAndExpandReplica(address string, size int64) error {
+	client, err := replicaClient.NewReplicaClient(address)
+	if err != nil {
+		return err
+	}
+
+	replica, err := client.GetReplica()
+	if err != nil {
+		return err
+	}
+
+	replicaSize, err := strconv.ParseInt(replica.Size, 10, 64)
+	if err != nil {
+		return err
+	}
+	if replicaSize > size {
+		return fmt.Errorf("cannot add a larger replica to the engine")
+	} else if replicaSize < size {
+		logrus.Infof("Prepare to expand new replica to size %v", size)
+		needClose := false
+		if replica.State == "closed" {
+			if err := client.OpenReplica(); err != nil {
+				return err
+			}
+			needClose = true
+		}
+		if _, err := client.ExpandReplica(size); err != nil {
+			return err
+		}
+		if needClose {
+			return client.Close()
+		}
 	}
 
 	return nil
