@@ -1,3 +1,4 @@
+import random
 from os import path
 import pytest
 import subprocess
@@ -16,6 +17,8 @@ from common import (  # NOQA
     cleanup_replica_dir,
     create_backup, rm_backups,
     restore_incrementally, wait_for_restore_completion,
+    random_length, Snapshot, Data,
+    wait_for_volume_expansion, check_block_device_size,
 )
 from setting import (
     FIXED_REPLICA_PATH1, FIXED_REPLICA_PATH2,
@@ -23,6 +26,7 @@ from setting import (
     ENGINE_NAME, ENGINE_NO_FRONTEND_NAME,
     BLOCK_SIZE, FRONTEND_TGT_BLOCKDEV, VFS_DIR,
     RETRY_COUNTS, RETRY_INTERVAL,
+    PAGE_SIZE, SIZE, EXPAND_SIZE, EXPAND_SIZE_STR,
 )
 
 
@@ -295,3 +299,106 @@ def cleanup_no_frontend_volume(grpc_em, grpc_c, grpc_r1, grpc_r2):
 
     cleanup_replica_dir(FIXED_REPLICA_PATH1)
     cleanup_replica_dir(FIXED_REPLICA_PATH2)
+
+
+def volume_expansion_with_backup_test(grpc_engine_manager,  # NOQA
+                                      grpc_controller,  # NOQA
+                                      grpc_dr_controller,  # NOQA
+                                      grpc_replica1, grpc_replica2,  # NOQA
+                                      grpc_dr_replica1,  # NOQA
+                                      grpc_dr_replica2,  # NOQA
+                                      volume_name, engine_name, backup_target):  # NOQA
+    address = grpc_controller.address
+    dr_address = grpc_dr_controller.address
+    dev = get_dev(grpc_replica1, grpc_replica2, grpc_controller)
+    start_no_frontend_volume(grpc_engine_manager, grpc_dr_controller,
+                             grpc_dr_replica1, grpc_dr_replica2)
+
+    try:
+        cmd.backup_volume_rm(address, volume_name, backup_target)
+    except Exception:
+        pass
+
+    data0_len = random_length(PAGE_SIZE)
+    data0 = Data(random.randrange(0, SIZE-2*PAGE_SIZE, PAGE_SIZE),
+                 data0_len, random_string(data0_len))
+    snap0 = Snapshot(dev, data0, address)
+
+    backup0_info = create_backup(address, snap0.name, backup_target)
+    assert backup0_info["VolumeName"] == volume_name
+    assert backup0_info["Size"] == str(BLOCK_SIZE)
+
+    cmd.backup_restore(dr_address, backup0_info["URL"])
+    wait_for_restore_completion(dr_address, backup0_info["URL"])
+    verify_no_frontend_data(grpc_engine_manager,
+                            data0.offset, data0.content,
+                            grpc_dr_controller)
+
+    grpc_controller.volume_expand(EXPAND_SIZE)
+    wait_for_volume_expansion(grpc_controller, EXPAND_SIZE)
+    check_block_device_size(volume_name, EXPAND_SIZE)
+
+    data1_len = random_length(PAGE_SIZE)
+    data1 = Data(random.randrange(SIZE, EXPAND_SIZE-PAGE_SIZE, PAGE_SIZE),
+                 data1_len, random_string(data1_len))
+    snap1 = Snapshot(dev, data1, address)
+
+    backup1_info = create_backup(address, snap1.name,
+                                 backup_target, EXPAND_SIZE_STR)
+    assert backup1_info["VolumeName"] == volume_name
+    assert backup1_info["Size"] == str(2*BLOCK_SIZE)
+
+    backup_volumes = cmd.backup_volume_list(address, volume_name,
+                                            backup_target)
+    assert volume_name in backup_volumes
+    assert backup_volumes[volume_name]["Size"] == EXPAND_SIZE_STR
+
+    # incremental restoration will implicitly expand the volume first
+    restore_incrementally(dr_address,
+                          backup1_info["URL"], backup0_info["Name"])
+    check_dr_volume_block_device_size(grpc_engine_manager,
+                                      grpc_dr_controller, EXPAND_SIZE)
+    verify_no_frontend_data(grpc_engine_manager,
+                            data1.offset, data1.content,
+                            grpc_dr_controller)
+
+    cmd.backup_volume_rm(grpc_controller.address,
+                         volume_name, backup_target)
+
+
+def test_expansion_with_inc_restore(grpc_engine_manager,  # NOQA
+                                    grpc_controller,  # NOQA
+                                    grpc_controller_no_frontend,  # NOQA
+                                    grpc_replica1, grpc_replica2,  # NOQA
+                                    grpc_fixed_dir_replica1,  # NOQA
+                                    grpc_fixed_dir_replica2,  # NOQA
+                                    backup_targets):  # NOQA
+
+    # Pick up a random backup target. We cannot test both targets in
+    # one test case. Since the engine/replica processes in the instance
+    # manager cannot be cleaned up inside the test case.
+    backup_target = backup_targets[random.randint(0, 1)]
+    volume_expansion_with_backup_test(grpc_engine_manager,
+                                      grpc_controller,
+                                      grpc_controller_no_frontend,
+                                      grpc_replica1, grpc_replica2,
+                                      grpc_fixed_dir_replica1,
+                                      grpc_fixed_dir_replica2,
+                                      VOLUME_NAME, ENGINE_NAME,
+                                      backup_target)
+
+
+def check_dr_volume_block_device_size(grpc_em, grpc_c, size):
+    grpc_em.frontend_start(ENGINE_NO_FRONTEND_NAME,
+                           FRONTEND_TGT_BLOCKDEV)
+    v = grpc_c.volume_get()
+    assert v.frontendState == "up"
+
+    get_blockdev(volume=VOLUME_NO_FRONTEND_NAME)
+    check_block_device_size(VOLUME_NO_FRONTEND_NAME, size)
+
+    grpc_em.frontend_shutdown(ENGINE_NO_FRONTEND_NAME)
+    v = grpc_c.volume_get()
+    assert v.frontendState == "down"
+    ep = grpc_em.engine_get(ENGINE_NO_FRONTEND_NAME)
+    assert ep.spec.frontend == ""
