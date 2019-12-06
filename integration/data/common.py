@@ -288,11 +288,11 @@ def restore_incrementally(url, backup_url, last_restored):
     return
 
 
-def create_backup(url, snap, backup_target):
+def create_backup(url, snap, backup_target, volume_size=SIZE_STR):
     backup = cmd.backup_create(url, snap, backup_target)
     backup_info = cmd.backup_inspect(url, backup)
     assert backup_info["URL"] == backup
-    assert backup_info["VolumeSize"] == SIZE_STR
+    assert backup_info["VolumeSize"] == volume_size
     assert snap in backup_info["SnapshotName"]
     return backup_info
 
