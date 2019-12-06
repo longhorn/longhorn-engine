@@ -1,12 +1,16 @@
+import random
+
 import cmd
 from common import (  # NOQA
     grpc_controller, grpc_replica1, grpc_replica2,  # NOQA
     grpc_backing_controller,  # NOQA
     grpc_backing_replica1, grpc_backing_replica2,  # NOQA
     open_replica, cleanup_replica, cleanup_controller,
-    get_blockdev, prepare_backup_dir,
+    get_dev, get_blockdev, prepare_backup_dir,
     random_string, verify_read, verify_data, verify_async,
-    verify_replica_state, wait_for_purge_completion
+    verify_replica_state, wait_for_purge_completion,
+    Snapshot, Data, random_length,
+    wait_for_volume_expansion, check_block_device_size,
 
 )
 from snapshot_tree import (
@@ -15,6 +19,7 @@ from snapshot_tree import (
 from setting import (
     VOLUME_NAME, VOLUME_BACKING_NAME,
     ENGINE_NAME, BACKUP_DIR, VOLUME_HEAD,
+    PAGE_SIZE, SIZE, EXPAND_SIZE,
 )
 
 
@@ -418,3 +423,84 @@ def test_ha_remove_extra_disks(grpc_controller,  # NOQA
     cmd.add_replica(address, r1_url)
 
     verify_data(dev, data_offset, data)
+
+
+def test_expansion_with_rebuild(grpc_controller,  # NOQA
+                                grpc_replica1, grpc_replica2):  # NOQA
+    address = grpc_controller.address
+    dev = get_dev(grpc_replica1, grpc_replica2, grpc_controller)
+
+    replicas = grpc_controller.replica_list()
+    assert len(replicas) == 2
+    assert replicas[0].mode == "RW"
+    assert replicas[1].mode == "RW"
+
+    # the default size is 4MB, will expand it to 8MB
+    address = grpc_controller.address
+    zero_char = b'\x00'.decode('utf-8')
+    original_data = zero_char * SIZE
+
+    # write the data to the original part then do expansion
+    data1_len = random_length(PAGE_SIZE)
+    data1 = Data(random.randrange(0, SIZE-2*PAGE_SIZE, PAGE_SIZE),
+                 data1_len, random_string(data1_len))
+    snap1 = Snapshot(dev, data1, address)
+
+    grpc_controller.volume_expand(EXPAND_SIZE)
+    wait_for_volume_expansion(grpc_controller, EXPAND_SIZE)
+    check_block_device_size(VOLUME_NAME, EXPAND_SIZE)
+
+    snap1.verify_data()
+    assert \
+        dev.readat(0, SIZE) == \
+        original_data[0:data1.offset] + data1.content + \
+        original_data[data1.offset+data1.length:]
+    assert dev.readat(SIZE, SIZE) == zero_char*SIZE
+
+    # write the data to both the original part and the expanded part
+    data2_len = random_length(PAGE_SIZE)
+    data2 = Data(SIZE-PAGE_SIZE,
+                 data2_len, random_string(data2_len))
+    snap2 = Snapshot(dev, data2, address)
+    data3_len = random_length(PAGE_SIZE)
+    data3 = Data(random.randrange(SIZE, EXPAND_SIZE-PAGE_SIZE, PAGE_SIZE),
+                 data3_len, random_string(data3_len))
+    snap3 = Snapshot(dev, data3, address)
+    snap1.verify_data()
+    snap2.verify_data()
+    snap3.verify_data()
+    assert \
+        dev.readat(SIZE, SIZE) == zero_char*(data3.offset-SIZE) + \
+        data3.content + zero_char*(EXPAND_SIZE-data3.offset-data3.length)
+
+    # Cleanup replica2
+    cleanup_replica(grpc_replica2)
+    verify_replica_state(grpc_controller, 1, "ERR")
+    grpc_controller.replica_delete(replicas[1].address)
+
+    # Rebuild replica2.
+    open_replica(grpc_replica2)
+    # The newly opened replica2 will be expanded automatically
+    cmd.add_replica(address, grpc_replica2.url)
+    verify_replica_state(grpc_controller, 1, "RW")
+
+    # Cleanup replica1 then check if the rebuilt replica2 works fine
+    cleanup_replica(grpc_replica1)
+    verify_replica_state(grpc_controller, 0, "ERR")
+    grpc_controller.replica_delete(replicas[0].address)
+
+    assert \
+        dev.readat(0, SIZE) == \
+        original_data[0:data1.offset] + data1.content + \
+        original_data[data1.offset+data1.length:data2.offset] + \
+        data2.content + \
+        original_data[data2.offset+data2.length:]
+    assert \
+        dev.readat(SIZE, SIZE) == zero_char*(data3.offset-SIZE) + \
+        data3.content + zero_char*(EXPAND_SIZE-data3.offset-data3.length)
+
+    data4_len = random_length(PAGE_SIZE)
+    data4 = Data(data1.offset,
+                 data4_len, random_string(data4_len))
+    snap4 = Snapshot(dev, data4, address)
+    snap4.verify_data()
