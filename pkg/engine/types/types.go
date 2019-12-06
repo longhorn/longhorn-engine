@@ -3,6 +3,7 @@ package types
 import (
 	"io"
 	"strings"
+	"time"
 )
 
 const (
@@ -20,6 +21,9 @@ const (
 	AWSAccessKey = "AWS_ACCESS_KEY_ID"
 	AWSSecretKey = "AWS_SECRET_ACCESS_KEY"
 	AWSEndPoint  = "AWS_ENDPOINTS"
+
+	RetryCounts   = 30
+	RetryInterval = 1 * time.Second
 )
 
 type ReaderWriterAt interface {
