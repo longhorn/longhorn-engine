@@ -18,6 +18,8 @@ type diffDisk struct {
 	// index 0 is nil or backing file and index n-1 is the active write layer
 	files      []types.DiffDisk
 	sectorSize int64
+	// current size of the head file.
+	size int64
 }
 
 func (d *diffDisk) RemoveIndex(index int) error {
@@ -50,6 +52,7 @@ func (d *diffDisk) Expand(size int64) {
 	}
 
 	d.location = append(d.location, make([]byte, newLocationSize-len(d.location))...)
+	d.size = size
 	return
 }
 

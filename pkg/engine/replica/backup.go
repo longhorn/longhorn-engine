@@ -298,6 +298,14 @@ func preload(d *diffDisk) error {
 		if generator.Err() != nil {
 			return generator.Err()
 		}
+
+		if i == (len(d.files) - 1) {
+			size, err := f.Size()
+			if err != nil {
+				return err
+			}
+			d.size = size
+		}
 	}
 
 	return nil

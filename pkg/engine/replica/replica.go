@@ -174,6 +174,7 @@ func construct(readonly bool, size, sectorSize int64, dir, head string, backingF
 	}
 	r.volume.location = make([]byte, locationSize)
 	r.volume.files = []types.DiffDisk{nil}
+	r.volume.size = r.info.Size
 
 	if r.readOnly && !exists {
 		return nil, os.ErrNotExist
@@ -927,6 +928,7 @@ func (r *Replica) readMetadata() (bool, error) {
 				return false, err
 			}
 			r.volume.sectorSize = defaultSectorSize
+			r.volume.size = r.info.Size
 		} else if strings.HasSuffix(file.Name(), metadataSuffix) {
 			if err := r.readDiskData(file.Name()); err != nil {
 				return false, err
