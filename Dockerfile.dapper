@@ -77,7 +77,7 @@ RUN pip install grpcio==1.22.0 grpcio_tools==1.22.0
 RUN cd /usr/src && \
     git clone https://github.com/rancher/liblonghorn.git && \
     cd liblonghorn && \
-    git checkout d30721547cd6c057aa5dfc0e707a02197dd990b9 && \
+    git checkout 6592b9967d1b5acbb51a5596abfe0a0d7bad16dc && \
     make deb && \
     dpkg -i ./pkg/liblonghorn_*.deb
 
@@ -85,7 +85,7 @@ RUN cd /usr/src && \
 RUN cd /usr/src && \
     git clone https://github.com/rancher/tgt.git && \
     cd tgt && \
-    git checkout 7876a0831d9193449b289824132f25f08344543d && \
+    git checkout e042fdd3616ca90619637b5826695a3de9b5dd8e && \
     ./scripts/build-pkg.sh deb && \
     dpkg -i ./pkg/tgt_*.deb
 
