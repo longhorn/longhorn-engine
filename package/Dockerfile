@@ -35,8 +35,9 @@ ENV TINI_amd64=https://github.com/krallin/tini/releases/download/${TINI_VERSION}
     TINI_arm64=https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini-arm64 \
     TINI=TINI_${ARCH}
 
-ADD ${!TINI} /tini
-RUN chmod +x /tini
+RUN wget -O /tini ${!TINI} && \
+    chmod +x /tini
+
 ENTRYPOINT ["/tini", "--"]
 
 CMD ["longhorn"]
