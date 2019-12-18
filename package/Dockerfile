@@ -6,6 +6,9 @@ RUN apt-get update && apt-get install -y kmod curl nfs-common fuse \
         libibverbs1 librdmacm1 libconfig-general-perl libaio1 sg3-utils \
         iputils-ping telnet iperf qemu-utils wget iproute2
 
+# needed for ${!var} substitution
+RUN rm -f /bin/sh && ln -s /bin/bash /bin/sh
+
 # Install grpc_health_probe
 ENV GRPC_HEALTH_amd64=https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/v0.3.1/grpc_health_probe-linux-amd64 \
     GRPC_HEALTH_arm=https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/v0.3.1/grpc_health_probe-linux-arm \
