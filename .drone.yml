@@ -1,6 +1,6 @@
 ---
 kind: pipeline
-name: default-linux-amd64
+name: amd64
 
 platform:
   os: linux
@@ -22,12 +22,12 @@ steps:
   settings:
     custom_dns: 1.1.1.1
     dockerfile: package/Dockerfile
+    username:
+      from_secret: docker_username
     password:
       from_secret: docker_password
     repo: longhornio/longhorn-engine
-    tag: master
-    username:
-      from_secret: docker_username
+    tag: master-amd64
   when:
     branch:
     - master
@@ -39,12 +39,12 @@ steps:
   settings:
     custom_dns: 1.1.1.1
     dockerfile: package/Dockerfile
+    username:
+      from_secret: docker_username
     password:
       from_secret: docker_password
     repo: longhornio/longhorn-engine
-    tag: staging
-    username:
-      from_secret: docker_username
+    tag: staging-amd64
   when:
     branch:
     - staging
@@ -57,64 +57,177 @@ volumes:
     path: /var/run/docker.sock
 
 ---
-  kind: pipeline
-  name: default-linux-arm64
-  
-  platform:
-    os: linux
-    arch: arm64
-  
-  steps:
-  - name: build
-    pull: default
-    image: rancher/dapper:v0.4.1
-    commands:
-    - dapper ci
-    privileged: true
-    volumes:
-    - name: socket
-      path: /var/run/docker.sock
-  
-  - name: publish-master-image
-    image: plugins/docker
-    settings:
-      build_args:
-      - ARCH=arm64
-      custom_dns: 1.1.1.1
-      dockerfile: package/Dockerfile
-      password:
-        from_secret: docker_password
-      repo: longhornio/longhorn-engine
-      tag: master-arm64
-      username:
-        from_secret: docker_username
-    when:
-      branch:
-      - master
-      event:
-      - push
-  
-  - name: publish-staging-image
-    image: plugins/docker
-    settings:
-      build_args:
-      - ARCH=arm64
-      custom_dns: 1.1.1.1
-      dockerfile: package/Dockerfile
-      password:
-        from_secret: docker_password
-      repo: longhornio/longhorn-engine
-      tag: staging-arm64
-      username:
-        from_secret: docker_username
-    when:
-      branch:
-      - staging
-      event:
-      - push
-  
+kind: pipeline
+name: arm64
+
+platform:
+  os: linux
+  arch: arm64
+
+steps:
+- name: build
+  pull: default
+  image: rancher/dapper:v0.4.1
+  commands:
+  - dapper ci
+  privileged: true
   volumes:
   - name: socket
-    host:
-      path: /var/run/docker.sock
-      
+    path: /var/run/docker.sock
+
+- name: publish-master-image
+  image: plugins/docker
+  settings:
+    build_args:
+    - ARCH=arm64
+    custom_dns: 1.1.1.1
+    dockerfile: package/Dockerfile
+    username:
+      from_secret: docker_username
+    password:
+      from_secret: docker_password
+    repo: longhornio/longhorn-engine
+    tag: master-arm64
+  when:
+    branch:
+    - master
+    event:
+    - push
+
+- name: publish-staging-image
+  image: plugins/docker
+  settings:
+    build_args:
+    - ARCH=arm64
+    custom_dns: 1.1.1.1
+    dockerfile: package/Dockerfile
+    username:
+      from_secret: docker_username
+    password:
+      from_secret: docker_password
+    repo: longhornio/longhorn-engine
+    tag: staging-arm64
+  when:
+    branch:
+    - staging
+    event:
+    - push
+
+volumes:
+- name: socket
+  host:
+    path: /var/run/docker.sock
+
+---
+kind: pipeline
+name: arm
+
+platform:
+  os: linux
+  arch: arm
+
+steps:
+- name: build
+  pull: default
+  image: rancher/dapper:v0.4.1
+  commands:
+  - dapper ci
+  privileged: true
+  volumes:
+  - name: socket
+    path: /var/run/docker.sock
+
+- name: publish-master-image
+  image: plugins/docker
+  settings:
+    build_args:
+    - ARCH=arm
+    custom_dns: 1.1.1.1
+    dockerfile: package/Dockerfile
+    username:
+      from_secret: docker_username
+    password:
+      from_secret: docker_password
+    repo: longhornio/longhorn-engine
+    tag: master-arm
+  when:
+    branch:
+    - master
+    event:
+    - push
+
+- name: publish-staging-image
+  image: plugins/docker
+  settings:
+    build_args:
+    - ARCH=arm
+    custom_dns: 1.1.1.1
+    dockerfile: package/Dockerfile
+    username:
+      from_secret: docker_username
+    password:
+      from_secret: docker_password
+    repo: longhornio/longhorn-engine
+    tag: staging-arm
+  when:
+    branch:
+    - staging
+    event:
+    - push
+
+volumes:
+- name: socket
+  host:
+    path: /var/run/docker.sock
+
+---
+kind: pipeline
+name: manifest
+
+platform:
+  os: linux
+  arch: amd64
+
+steps:
+- name: manifest-master
+  image: plugins/manifest:1.0.2
+  settings:
+    username:
+      from_secret: docker_username
+    password:
+      from_secret: docker_password
+    platforms:
+      - linux/amd64
+      - linux/arm64
+      - linux/arm
+    target: "longhornio/longhorn-engine:master"
+    template: "longhornio/longhorn-engine:master-ARCH"
+  when:
+    branch:
+    - master
+    event:
+    - push
+
+- name: manifest-staging
+  image: plugins/manifest:1.0.2
+  settings:
+    username:
+      from_secret: docker_username
+    password:
+      from_secret: docker_password
+    platforms:
+      - linux/amd64
+      - linux/arm64
+      - linux/arm
+    target: "longhornio/longhorn-engine:staging"
+    template: "longhornio/longhorn-engine:staging-ARCH"
+  when:
+    branch:
+    - staging
+    event:
+    - push
+
+depends_on:
+- amd64
+- arm64
+- arm
