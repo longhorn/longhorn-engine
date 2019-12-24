@@ -1,6 +1,5 @@
 import fcntl
 import struct
-import sys
 import os
 import grpc
 import tempfile
@@ -8,18 +7,13 @@ import time
 import random
 import subprocess
 
-import pytest
 
-# include directory intergration/rpc for module import
-sys.path.append(
-    os.path.abspath(
-        os.path.join(os.path.split(__file__)[0], "../rpc")
-    )
-)
-from instance_manager.engine_manager_client import EngineManagerClient  # NOQA
-from instance_manager.process_manager_client import ProcessManagerClient  # NOQA
-from replica.replica_client import ReplicaClient  # NOQA
-from controller.controller_client import ControllerClient  # NOQA
+from rpc.instance_manager.engine_manager_client import EngineManagerClient  # NOQA
+from rpc.instance_manager.process_manager_client import ProcessManagerClient  # NOQA
+
+from rpc.replica.replica_client import ReplicaClient  # NOQA
+
+from rpc.controller.controller_client import ControllerClient  # NOQA
 
 
 INSTANCE_MANAGER = "localhost:8500"
@@ -56,13 +50,6 @@ PROC_STATE_ERROR = "error"
 FRONTEND_TGT_BLOCKDEV = "tgt-blockdev"
 
 
-@pytest.fixture
-def process_manager_client(request, address=INSTANCE_MANAGER):
-    c = ProcessManagerClient(address)
-    request.addfinalizer(lambda: cleanup_process(c))
-    return c
-
-
 def cleanup_process(pm_client):
     cleanup_engine_process(EngineManagerClient(pm_client.address))
     for name in pm_client.process_list():
@@ -82,15 +69,8 @@ def cleanup_process(pm_client):
     return pm_client
 
 
-@pytest.fixture
-def engine_manager_client(request, address=INSTANCE_MANAGER):
-    c = EngineManagerClient(address)
-    request.addfinalizer(lambda: cleanup_engine_process(c))
-    return c
-
-
 def cleanup_engine_process(em_client):
-    for _, engine in em_client.engine_list().iteritems():
+    for _, engine in iter(em_client.engine_list().items()):
         try:
             em_client.engine_delete(engine.spec.name)
         except grpc.RpcError as e:
@@ -166,14 +146,6 @@ def get_replica_address(r):
     return "localhost:" + str(r.status.port_start)
 
 
-@pytest.fixture
-def grpc_controller_client(request):
-    em_client = engine_manager_client(request)
-    e = create_engine_process(em_client)
-
-    return ControllerClient(e.spec.listen)
-
-
 def cleanup_controller(grpc_client):
     try:
         v = grpc_client.volume_get()
@@ -189,26 +161,6 @@ def cleanup_controller(grpc_client):
     for r in grpc_client.replica_list():
         grpc_client.replica_delete(r.address)
     return grpc_client
-
-
-@pytest.fixture
-def grpc_replica_client(request):
-    pm_client = process_manager_client(request)
-    r = create_replica_process(pm_client, REPLICA_NAME)
-
-    listen = get_replica_address(r)
-    c = ReplicaClient(listen)
-    return cleanup_replica(c)
-
-
-@pytest.fixture
-def grpc_replica_client2(request):
-    pm_client = process_manager_client(request)
-    r = create_replica_process(pm_client, REPLICA_2_NAME)
-
-    listen = get_replica_address(r)
-    c = ReplicaClient(listen)
-    return cleanup_replica(c)
 
 
 def cleanup_replica(grpc_client):
@@ -278,12 +230,13 @@ def get_replica_paths_from_snapshot_name(snap_name):
     snap_paths = subprocess.check_output(cmd).split()
     assert snap_paths
     for p in snap_paths:
-        replica_paths.append(os.path.dirname(p))
+        replica_paths.append(os.path.dirname(p.decode('utf-8')))
     return replica_paths
 
 
 def get_snapshot_file_paths(replica_path, snap_name):
-    return os.path.join(replica_path, 'volume-snap-{0}.img'.format(snap_name))
+    return os.path.join(replica_path,
+                        'volume-snap-{0}.img'.format(snap_name))
 
 
 def get_replica_head_file_path(replica_dir):
