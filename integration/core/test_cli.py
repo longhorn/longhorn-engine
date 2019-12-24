@@ -7,11 +7,9 @@ import json
 import datetime
 import pytest
 
-from urlparse import urlparse
+from urllib.parse import urlparse
 
-from common import (  # NOQA
-    engine_manager_client, grpc_controller_client,  # NOQA
-    grpc_replica_client, grpc_replica_client2,  # NOQA
+from core.common import (  # NOQA
     cleanup_replica, cleanup_controller,
     get_expansion_snapshot_name,
     get_replica_paths_from_snapshot_name,
@@ -358,7 +356,7 @@ def test_snapshot(bin, grpc_controller_client,  # NOQA
 
     cmd = [bin, '--debug', '--url', grpc_controller_client.address,
            'snapshot']
-    output = subprocess.check_output(cmd)
+    output = subprocess.check_output(cmd, encoding='utf-8')
 
     assert output == '''ID
 {}
@@ -387,7 +385,7 @@ def test_snapshot_ls(bin, grpc_controller_client,  # NOQA
 
     cmd = [bin, '--debug', '--url', grpc_controller_client.address,
            'snapshot', 'ls']
-    output = subprocess.check_output(cmd)
+    output = subprocess.check_output(cmd, encoding='utf-8')
 
     assert output == '''ID
 {}
@@ -469,19 +467,19 @@ def test_snapshot_create(bin, grpc_controller_client,  # NOQA
 
     cmd = [bin, '--url', grpc_controller_client.address,
            'snapshot', 'create']
-    snap0 = subprocess.check_output(cmd).strip()
+    snap0 = subprocess.check_output(cmd, encoding='utf-8').strip()
     expected = grpc_replica_client.replica_get().chain[1]
     assert expected == 'volume-snap-{}.img'.format(snap0)
 
     cmd = [bin, '--url', grpc_controller_client.address,
            'snapshot', 'create',
            '--label', 'name=snap1', '--label', 'key=value']
-    snap1 = subprocess.check_output(cmd).strip()
+    snap1 = subprocess.check_output(cmd, encoding='utf-8').strip()
 
     cmd = [bin, '--debug',
            '--url', grpc_controller_client.address,
            'snapshot', 'ls']
-    ls_output = subprocess.check_output(cmd)
+    ls_output = subprocess.check_output(cmd, encoding='utf-8')
 
     assert ls_output == '''ID
 {}
@@ -522,7 +520,7 @@ def test_snapshot_rm(bin, grpc_controller_client,  # NOQA
     cmd = [bin, '--url', grpc_controller_client.address,
            'snapshot', 'create']
     subprocess.check_call(cmd)
-    output = subprocess.check_output(cmd).strip()
+    output = subprocess.check_output(cmd, encoding='utf-8').strip()
 
     chain = grpc_replica_client.replica_get().chain
     assert len(chain) == 3
@@ -557,14 +555,14 @@ def test_snapshot_rm_empty(bin, grpc_controller_client,  # NOQA
            'snapshot', 'create']
 
     # first snapshot
-    output1 = subprocess.check_output(cmd).strip()
+    output1 = subprocess.check_output(cmd, encoding='utf-8').strip()
     chain = grpc_replica_client.replica_get().chain
     assert len(chain) == 2
     assert chain[0] == 'volume-head-001.img'
     assert chain[1] == 'volume-snap-{}.img'.format(output1)
 
     # second snapshot
-    output2 = subprocess.check_output(cmd).strip()
+    output2 = subprocess.check_output(cmd, encoding='utf-8').strip()
     chain = grpc_replica_client.replica_get().chain
     assert len(chain) == 3
     assert chain[0] == 'volume-head-002.img'
@@ -600,7 +598,7 @@ def test_snapshot_last(bin, grpc_controller_client,  # NOQA
     subprocess.check_output(cmd)
     cmd = [bin, '--url', grpc_controller_client.address,
            'snapshot', 'ls']
-    output = subprocess.check_output(cmd)
+    output = subprocess.check_output(cmd, encoding='utf-8')
     output = output.splitlines()[1]
 
     chain = grpc_replica_client.replica_get().chain
@@ -624,7 +622,7 @@ def get_backup_url(bin, url, backupID):
     rValue = ""
     cmd = [bin, '--url', url, 'backup', 'status', backupID]
     for x in range(RETRY_COUNTS2):
-        output = subprocess.check_output(cmd).strip()
+        output = subprocess.check_output(cmd, encoding='utf-8').strip()
         backup = json.loads(output)
         assert 'state' in backup.keys()
         if backup['state'] == "complete":
@@ -656,10 +654,12 @@ def restore_backup(engine_manager_client,  # NOQA
 
     status_cmd = [bin, '--url', url, 'backup', 'restore-status']
     completed = 0
-    rs = json.loads(subprocess.check_output(status_cmd).strip())
+    rs = json.loads(subprocess.check_output(status_cmd, encoding='utf-8').
+                    strip())
     for x in range(RETRY_COUNTS2):
         completed = 0
-        rs = json.loads(subprocess.check_output(status_cmd).strip())
+        rs = json.loads(subprocess.check_output(status_cmd, encoding='utf-8').
+                        strip())
         for status in rs.values():
             assert 'state' in status.keys()
             if status['backupURL'] != backup_url:
@@ -703,7 +703,7 @@ def backup_core(bin, engine_manager_client,  # NOQA
     backup_type = urlparse(backup_target).scheme
     cmd = [bin, '--url', grpc_controller_client.address,
            'snapshot', 'create']
-    snapshot1 = subprocess.check_output(cmd).strip()
+    snapshot1 = subprocess.check_output(cmd, encoding='utf-8').strip()
     output = grpc_replica_client.replica_get().chain[1]
 
     assert output == 'volume-snap-{}.img'.format(snapshot1)
@@ -713,7 +713,8 @@ def backup_core(bin, engine_manager_client,  # NOQA
            '--dest', backup_target,
            '--label', 'name=backup1',
            '--label', 'type=' + backup_type]
-    backup = json.loads(subprocess.check_output(cmd, env=env).strip())
+    backup = json.loads(subprocess.
+                        check_output(cmd, env=env, encoding='utf-8').strip())
     assert "backupID" in backup.keys()
     assert "isIncremental" in backup.keys()
     assert backup["isIncremental"] is False
@@ -722,7 +723,7 @@ def backup_core(bin, engine_manager_client,  # NOQA
 
     cmd = [bin, '--url', grpc_controller_client.address,
            'snapshot', 'create']
-    snapshot2 = subprocess.check_output(cmd).strip()
+    snapshot2 = subprocess.check_output(cmd, encoding='utf-8').strip()
     output = grpc_replica_client.replica_get().chain[1]
 
     assert output == 'volume-snap-{}.img'.format(snapshot2)
@@ -730,7 +731,8 @@ def backup_core(bin, engine_manager_client,  # NOQA
     cmd = [bin, '--url', grpc_controller_client.address,
            'backup', 'create', snapshot2,
            '--dest', backup_target]
-    backup = json.loads(subprocess.check_output(cmd, env=env).strip())
+    backup = json.loads(subprocess.
+                        check_output(cmd, env=env, encoding='utf-8').strip())
     assert "backupID" in backup.keys()
     assert "isIncremental" in backup.keys()
     assert backup["isIncremental"] is True
@@ -762,7 +764,7 @@ def backup_core(bin, engine_manager_client,  # NOQA
 
     cmd = [bin, '--url', grpc_controller_client.address,
            'backup', 'ls', backup_target]
-    data = subprocess.check_output(cmd, env=env).strip()
+    data = subprocess.check_output(cmd, env=env, encoding='utf-8').strip()
     volume_info = json.loads(data)[VOLUME_NAME]
     assert volume_info["Name"] == VOLUME_NAME
     assert volume_info["Size"] == SIZE_STR
@@ -870,8 +872,8 @@ def test_snapshot_purge_basic(bin, grpc_controller_client,  # NOQA
 
     cmd = [bin, '--url', grpc_controller_client.address,
            'snapshot', 'create']
-    snap0 = subprocess.check_output(cmd).strip()
-    snap1 = subprocess.check_output(cmd).strip()
+    snap0 = subprocess.check_output(cmd, encoding='utf-8').strip()
+    snap1 = subprocess.check_output(cmd, encoding='utf-8').strip()
 
     chain = grpc_replica_client.replica_get().chain
     assert len(chain) == 3
@@ -930,8 +932,8 @@ def test_snapshot_purge_head_parent(bin, grpc_controller_client,  # NOQA
 
     cmd = [bin, '--url', grpc_controller_client.address,
            'snapshot', 'create']
-    snap0 = subprocess.check_output(cmd).strip()
-    snap1 = subprocess.check_output(cmd).strip()
+    snap0 = subprocess.check_output(cmd, encoding='utf-8').strip()
+    snap1 = subprocess.check_output(cmd, encoding='utf-8').strip()
 
     chain = grpc_replica_client.replica_get().chain
     assert len(chain) == 3
@@ -1008,14 +1010,14 @@ def test_volume_expand_with_snapshots(  # NOQA
 
     cmd = [bin, '--url', grpc_controller_client.address,
            'snapshot', 'create']
-    snap0 = subprocess.check_output(cmd).strip()
+    snap0 = subprocess.check_output(cmd, encoding='utf-8').strip()
     expected = grpc_replica_client.replica_get().chain[1]
     assert expected == 'volume-snap-{}.img'.format(snap0)
 
     cmd = [bin, '--url', grpc_controller_client.address,
            'snapshot', 'create',
            '--label', 'name=snap1', '--label', 'key=value']
-    snap1 = subprocess.check_output(cmd).strip()
+    snap1 = subprocess.check_output(cmd, encoding='utf-8').strip()
 
     cmd = [bin, '--url', grpc_controller_client.address,
            'expand', '--size', EXPANDED_SIZE_STR]
@@ -1049,19 +1051,22 @@ def test_volume_expand_with_snapshots(  # NOQA
     cmd = [bin, '--url', grpc_controller_client.address,
            'snapshot', 'create',
            '--label', 'name=snap2']
-    snap2 = subprocess.check_output(cmd).strip()
+    snap2 = subprocess.check_output(cmd, encoding='utf-8').strip()
 
     cmd = [bin, '--debug',
            '--url', grpc_controller_client.address,
            'snapshot', 'ls']
-    ls_output = subprocess.check_output(cmd)
+    ls_output = subprocess.check_output(cmd, encoding='utf-8')
 
     assert ls_output == '''ID
 {}
 {}
 {}
 {}
-'''.format(snap2, snap_expansion, snap1, snap0)
+'''.format(snap2,
+           snap_expansion,
+           snap1,
+           snap0)
 
     cmd = [bin, '--url', grpc_controller_client.address,
            'snapshot', 'info']
@@ -1089,13 +1094,15 @@ def test_volume_expand_with_snapshots(  # NOQA
     cmd = [bin, '--debug',
            '--url', grpc_controller_client.address,
            'snapshot', 'ls']
-    ls_output = subprocess.check_output(cmd)
+    ls_output = subprocess.check_output(cmd, encoding='utf-8')
 
     assert ls_output == '''ID
 {}
 {}
 {}
-'''.format(snap2, snap1, snap0)
+'''.format(snap2,
+           snap1,
+           snap0)
 
     cmd = [bin, '--url', grpc_controller_client.address,
            'snapshot', 'info']
@@ -1130,7 +1137,7 @@ def test_volume_expand_with_snapshots(  # NOQA
     cmd = [bin, '--debug',
            '--url', grpc_controller_client.address,
            'snapshot', 'ls']
-    ls_output = subprocess.check_output(cmd)
+    ls_output = subprocess.check_output(cmd, encoding='utf-8')
 
     assert ls_output == '''ID
 {}
