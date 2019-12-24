@@ -110,6 +110,7 @@ func longhornCli() {
 		cmd.AddReplicaCmd(),
 		cmd.LsReplicaCmd(),
 		cmd.RmReplicaCmd(),
+		cmd.RebuildStatusCmd(),
 		cmd.SnapshotCmd(),
 		cmd.BackupCmd(),
 		cmd.ExpandCmd(),
