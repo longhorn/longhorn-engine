@@ -1,11 +1,9 @@
-from common import (  # NOQA
-    grpc_controller_no_frontend,  # NOQA
-    grpc_replica1, grpc_replica2,  # NOQA
+from data.common import (  # NOQA
     open_replica,
     get_blockdev, random_string, verify_read, verify_data,
     start_engine_frontend, shutdown_engine_frontend,
 )
-from setting import (
+from data.setting import (
     VOLUME_NO_FRONTEND_NAME, ENGINE_NO_FRONTEND_NAME,
 )
 

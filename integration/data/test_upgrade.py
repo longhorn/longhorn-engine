@@ -1,16 +1,13 @@
 import pytest
 import grpc
 
-from common import (  # NOQA
-    grpc_engine_manager, grpc_controller,  # NOQA
-    grpc_fixed_dir_replica1, grpc_fixed_dir_replica2,  # NOQA
-    grpc_extra_replica1, grpc_extra_replica2,  # NOQA
+from data.common import (  # NOQA
     get_dev, read_dev, write_dev,
     random_string, verify_data,
     wait_for_process_running,
     open_replica, cleanup_replica,
 )
-from setting import (
+from data.setting import (
     SIZE, ENGINE_NAME,
     LONGHORN_BINARY, LONGHORN_UPGRADE_BINARY,
     INSTANCE_MANAGER_TYPE_ENGINE,

@@ -1,10 +1,8 @@
 import random
 
-import cmd
-from common import (  # NOQA
-    grpc_controller, grpc_replica1, grpc_replica2,  # NOQA
-    grpc_backing_controller,  # NOQA
-    grpc_backing_replica1, grpc_backing_replica2,  # NOQA
+import data.cmd as cmd
+
+from data.common import (  # NOQA
     open_replica, cleanup_replica, cleanup_controller,
     get_dev, get_blockdev, prepare_backup_dir,
     random_string, verify_read, verify_data, verify_async,
@@ -13,10 +11,12 @@ from common import (  # NOQA
     wait_for_volume_expansion, check_block_device_size,
 
 )
-from snapshot_tree import (
+
+from data.snapshot_tree import (
     snapshot_tree_build, snapshot_tree_verify
 )
-from setting import (
+
+from data.setting import (
     VOLUME_NAME, VOLUME_BACKING_NAME,
     ENGINE_NAME, BACKUP_DIR, VOLUME_HEAD,
     PAGE_SIZE, SIZE, EXPAND_SIZE,

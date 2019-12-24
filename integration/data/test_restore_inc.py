@@ -4,13 +4,8 @@ import pytest
 import subprocess
 import time
 
-import cmd
-from common import (  # NOQA
-    backup_targets,  # NOQA
-    grpc_engine_manager,  # NOQA
-    grpc_controller, grpc_controller_no_frontend,  # NOQA
-    grpc_replica1, grpc_replica2,  # NOQA
-    grpc_fixed_dir_replica1, grpc_fixed_dir_replica2,  # NOQA
+import data.cmd as cmd
+from data.common import (  # NOQA
     open_replica, cleanup_controller, cleanup_replica,
     get_dev, get_blockdev, verify_read, verify_data,
     random_string,
@@ -20,7 +15,7 @@ from common import (  # NOQA
     random_length, Snapshot, Data,
     wait_for_volume_expansion, check_block_device_size,
 )
-from setting import (
+from data.setting import (
     FIXED_REPLICA_PATH1, FIXED_REPLICA_PATH2,
     VOLUME_NAME, VOLUME_NO_FRONTEND_NAME,
     ENGINE_NAME, ENGINE_NO_FRONTEND_NAME,
@@ -128,7 +123,7 @@ def restore_inc_test(grpc_engine_manager,  # NOQA
         blocks = subprocess.check_output(command).split()
         assert len(blocks) != 0
         for blk in blocks:
-            command = ["mv", blk, blk+".tmp"]
+            command = ["mv", blk, blk+".tmp".encode('utf-8')]
             subprocess.check_output(command).strip()
         # should fail
         is_failed = False
@@ -151,7 +146,7 @@ def restore_inc_test(grpc_engine_manager,  # NOQA
         assert path.exists(FIXED_REPLICA_PATH1 + delta_file1)
         assert path.exists(FIXED_REPLICA_PATH2 + delta_file1)
         for blk in blocks:
-            command = ["mv", blk+".tmp", blk]
+            command = ["mv", blk+".tmp".encode('utf-8'), blk]
             subprocess.check_output(command)
 
     data1 = \

@@ -4,16 +4,14 @@ from os import path
 
 import pytest
 
-import cmd
-from common import (  # NOQA
-    dev, get_dev, read_dev, write_dev,  # NOQA
-    grpc_engine_manager,  # NOQA
-    grpc_controller, grpc_replica1, grpc_replica2,  # NOQA
+import data.cmd as cmd
+from data.common import (  # NOQA
+    get_dev, read_dev, write_dev,  # NOQA
     random_string, verify_data,
     open_replica,
 )
-from frontend import get_socket_path
-from setting import (
+from data.frontend import get_socket_path
+from data.setting import (
     LONGHORN_DEV_DIR, PAGE_SIZE, SIZE,
     VOLUME_NAME, ENGINE_NAME,
 )
@@ -22,7 +20,7 @@ from setting import (
 def test_basic_rw(dev):  # NOQA
     for i in range(0, 10):
         base = random.randint(1, SIZE - PAGE_SIZE)
-        offset = (base / PAGE_SIZE) * PAGE_SIZE
+        offset = (base // PAGE_SIZE) * PAGE_SIZE
         length = base - offset
         data = random_string(length)
         verify_data(dev, offset, data)
@@ -38,7 +36,7 @@ def test_rw_with_metric(grpc_controller,  # NOQA
 
     for i in range(0, 5):
         base = random.randint(1, SIZE - PAGE_SIZE)
-        offset = (base / PAGE_SIZE) * PAGE_SIZE
+        offset = (base // PAGE_SIZE) * PAGE_SIZE
         length = base - offset
         data = random_string(length)
         verify_data(rw_dev, offset, data)

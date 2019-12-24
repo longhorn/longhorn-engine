@@ -241,7 +241,7 @@ def create_backup(url, snap, backup_target, volume_size=SIZE_STR):
     backup_info = cmd.backup_inspect(url, backup)
     assert backup_info["URL"] == backup
     assert backup_info["VolumeSize"] == volume_size
-    assert snap.decode('utf-8') in backup_info["SnapshotName"]
+    assert snap in backup_info["SnapshotName"]
     return backup_info
 
 
