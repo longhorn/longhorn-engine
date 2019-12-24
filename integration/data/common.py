@@ -5,42 +5,36 @@ import struct
 import subprocess
 import time
 import threading
-import sys
 import grpc
 import tempfile
 import os
 
 import pytest
 
-import cmd
-from util import read_file, checksum_data
-from frontend import (
-    blockdev, get_block_device_path,
-)
-from setting import (
-    INSTANCE_MANAGER, LONGHORN_BINARY,
-    VOLUME_NAME, VOLUME_BACKING_NAME, VOLUME_NO_FRONTEND_NAME,
-    ENGINE_NAME, ENGINE_BACKING_NAME, ENGINE_NO_FRONTEND_NAME,
-    REPLICA_NAME, SIZE, PAGE_SIZE, SIZE_STR,
-    BACKUP_DIR, BACKING_FILE, FRONTEND_TGT_BLOCKDEV,
-    FIXED_REPLICA_PATH1, FIXED_REPLICA_PATH2,
-    BACKING_FILE_PATH1, BACKING_FILE_PATH2,
-    RETRY_COUNTS, RETRY_INTERVAL,
-    RETRY_COUNTS_SHORT, RETRY_INTERVAL_SHORT,
-    INSTANCE_MANAGER_TYPE_REPLICA, INSTANCE_MANAGER_TYPE_ENGINE,
-    PROC_STATE_STARTING, PROC_STATE_RUNNING,
-)
+import data.cmd as cmd
+from data.util import read_file, checksum_data
+from data.frontend import blockdev, get_block_device_path
 
-# include directory intergration/rpc for module import
-sys.path.append(
-    os.path.abspath(
-        os.path.join(os.path.split(__file__)[0], "../rpc")
-    )
-)
-from instance_manager.engine_manager_client import EngineManagerClient  # NOQA
-from instance_manager.process_manager_client import ProcessManagerClient  # NOQA
-from replica.replica_client import ReplicaClient  # NOQA
-from controller.controller_client import ControllerClient  # NOQA
+from data.setting import INSTANCE_MANAGER
+from data.setting import LONGHORN_BINARY
+from data.setting import VOLUME_NAME
+from data.setting import VOLUME_BACKING_NAME
+from data.setting import SIZE
+from data.setting import PAGE_SIZE
+from data.setting import SIZE_STR
+from data.setting import BACKUP_DIR
+from data.setting import BACKING_FILE
+from data.setting import FRONTEND_TGT_BLOCKDEV
+from data.setting import RETRY_COUNTS
+from data.setting import RETRY_INTERVAL
+from data.setting import RETRY_COUNTS_SHORT
+from data.setting import RETRY_INTERVAL_SHORT
+from data.setting import INSTANCE_MANAGER_TYPE_REPLICA
+from data.setting import INSTANCE_MANAGER_TYPE_ENGINE
+from data.setting import PROC_STATE_STARTING
+from data.setting import PROC_STATE_RUNNING
+
+from rpc.instance_manager.engine_manager_client import EngineManagerClient
 
 thread_failed = False
 
@@ -51,12 +45,6 @@ def _file(f):
 
 def _base():
     return os.path.dirname(__file__)
-
-
-def process_manager_client(request, address=INSTANCE_MANAGER):
-    c = ProcessManagerClient(address)
-    request.addfinalizer(lambda: cleanup_process(c))
-    return c
 
 
 def cleanup_process(pm_client):
@@ -78,14 +66,8 @@ def cleanup_process(pm_client):
     return pm_client
 
 
-def engine_manager_client(request, address=INSTANCE_MANAGER):
-    c = EngineManagerClient(address)
-    request.addfinalizer(lambda: cleanup_engine_process(c))
-    return c
-
-
 def cleanup_engine_process(em_client):
-    for _, engine in em_client.engine_list().iteritems():
+    for _, engine in iter(em_client.engine_list().items()):
         try:
             em_client.engine_delete(engine.spec.name)
         except grpc.RpcError as e:
@@ -160,40 +142,6 @@ def create_engine_process(client, name,
 
 def get_replica_address(r):
     return "localhost:" + str(r.status.port_start)
-
-
-@pytest.fixture()
-def grpc_engine_manager(request):
-    return engine_manager_client(request)
-
-
-@pytest.fixture()
-def grpc_controller(request):
-    return grpc_controller_client(request, ENGINE_NAME, VOLUME_NAME)
-
-
-@pytest.fixture()
-def grpc_controller_no_frontend(request):
-    return grpc_controller_client(request, ENGINE_NO_FRONTEND_NAME,
-                                  VOLUME_NO_FRONTEND_NAME,
-                                  frontend="")
-
-
-@pytest.fixture()
-def grpc_backing_controller(request):
-    return grpc_controller_client(request, ENGINE_BACKING_NAME,
-                                  VOLUME_BACKING_NAME)
-
-
-def grpc_controller_client(request, engine_name, volume_name,
-                           frontend=FRONTEND_TGT_BLOCKDEV):
-    em_client = engine_manager_client(request)
-    e = create_engine_process(em_client,
-                              name=engine_name,
-                              volume_name=volume_name,
-                              frontend=frontend)
-
-    return ControllerClient(e.spec.listen)
 
 
 def cleanup_controller(grpc_client):
@@ -293,7 +241,7 @@ def create_backup(url, snap, backup_target, volume_size=SIZE_STR):
     backup_info = cmd.backup_inspect(url, backup)
     assert backup_info["URL"] == backup
     assert backup_info["VolumeSize"] == volume_size
-    assert snap in backup_info["SnapshotName"]
+    assert snap.decode('utf-8') in backup_info["SnapshotName"]
     return backup_info
 
 
@@ -322,109 +270,6 @@ def snapshot_revert_with_frontend(url, engine_name, name):
     shutdown_engine_frontend(engine_name)
     cmd.snapshot_revert(url, name)
     start_engine_frontend(engine_name)
-
-
-@pytest.fixture()
-def dev(request):
-    grpc_replica1 = grpc_replica_client(request, REPLICA_NAME + "-1")
-    grpc_replica2 = grpc_replica_client(request, REPLICA_NAME + "-2")
-    grpc_controller = grpc_controller_client(
-        request, ENGINE_NAME, VOLUME_NAME)
-
-    return get_dev(grpc_replica1, grpc_replica2, grpc_controller)
-
-
-@pytest.fixture()
-def backing_dev(request):
-    grpc_replica1 = grpc_replica_client(
-        request, REPLICA_NAME + "-backing-1",
-        args=["replica", tempfile.mkdtemp(), "--size", str(SIZE),
-              "--backing-file", BACKING_FILE_PATH1])
-    grpc_replica2 = grpc_replica_client(
-        request, REPLICA_NAME + "-backing-2",
-        args=["replica", tempfile.mkdtemp(), "--size", str(SIZE),
-              "--backing-file", BACKING_FILE_PATH2])
-    grpc_controller = grpc_controller_client(
-        request, ENGINE_BACKING_NAME, VOLUME_BACKING_NAME)
-
-    return get_backing_dev(grpc_replica1, grpc_replica2,
-                           grpc_controller)
-
-
-@pytest.fixture()
-def grpc_replica1(request):
-    return grpc_replica_client(request, REPLICA_NAME + "-1")
-
-
-@pytest.fixture()
-def grpc_replica2(request):
-    return grpc_replica_client(request, REPLICA_NAME + "-2")
-
-
-@pytest.fixture()
-def grpc_backing_replica1(request):
-    return grpc_replica_client(
-        request, REPLICA_NAME + "-backing-1",
-        args=["replica", tempfile.mkdtemp(),
-              "--backing-file", BACKING_FILE_PATH1,
-              "--size", str(SIZE)])
-
-
-@pytest.fixture()
-def grpc_backing_replica2(request):
-    return grpc_replica_client(
-        request, REPLICA_NAME + "-backing-2",
-        args=["replica", tempfile.mkdtemp(),
-              "--backing-file", BACKING_FILE_PATH2,
-              "--size", str(SIZE)])
-
-
-@pytest.fixture()
-def grpc_fixed_dir_replica1(request):
-    request.addfinalizer(lambda: cleanup_replica_dir(
-        FIXED_REPLICA_PATH1))
-    return grpc_replica_client(
-        request, REPLICA_NAME + "-fixed-dir-1",
-        args=["replica", FIXED_REPLICA_PATH1, "--size", str(SIZE)])
-
-
-@pytest.fixture()
-def grpc_fixed_dir_replica2(request):
-    request.addfinalizer(lambda: cleanup_replica_dir(
-        FIXED_REPLICA_PATH2))
-    return grpc_replica_client(
-        request, REPLICA_NAME + "-fixed-dir-2",
-        args=["replica", FIXED_REPLICA_PATH2, "--size", str(SIZE)])
-
-
-@pytest.fixture()
-def grpc_extra_replica1(request):
-    request.addfinalizer(lambda: cleanup_replica_dir(
-        FIXED_REPLICA_PATH1))
-    return grpc_replica_client(
-        request, REPLICA_NAME + "-extra-1",
-        args=["replica", FIXED_REPLICA_PATH1, "--size", str(SIZE)])
-
-
-@pytest.fixture()
-def grpc_extra_replica2(request):
-    request.addfinalizer(lambda: cleanup_replica_dir(
-        FIXED_REPLICA_PATH2))
-    return grpc_replica_client(
-        request, REPLICA_NAME + "-extra-2",
-        args=["replica", FIXED_REPLICA_PATH2, "--size", str(SIZE)])
-
-
-@pytest.fixture
-def grpc_replica_client(request, replica_name, args=[]):
-    pm_client = process_manager_client(request)
-    r = create_replica_process(
-        pm_client, replica_name, args=args)
-
-    listen = get_replica_address(r)
-
-    c = ReplicaClient(listen)
-    return cleanup_replica(c)
 
 
 def cleanup_replica(grpc_client):
@@ -485,7 +330,8 @@ def read_dev(dev, offset, length):
 
 
 def random_string(length):
-    return ''.join(random.choice(string.lowercase) for x in range(length))
+    return \
+        ''.join(random.choice(string.ascii_lowercase) for x in range(length))
 
 
 def verify_data(dev, offset, data):
@@ -508,7 +354,7 @@ def read_from_backing_file(offset, length):
 
 
 def checksum_dev(dev):
-    return checksum_data(dev.readat(0, SIZE))
+    return checksum_data(dev.readat(0, SIZE).encode('utf-8'))
 
 
 def data_verifier(dev, times, offset, length):
@@ -599,13 +445,6 @@ def get_backing_dev(grpc_backing_replica1, grpc_backing_replica2,
     d = get_blockdev(v.name)
 
     return d
-
-
-@pytest.fixture()
-def backup_targets():
-    env = dict(os.environ)
-    assert env["BACKUPTARGETS"] != ""
-    return env["BACKUPTARGETS"].split(",")
 
 
 def random_offset(size, existings={}):
