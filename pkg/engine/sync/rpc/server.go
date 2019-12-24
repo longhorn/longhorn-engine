@@ -313,6 +313,10 @@ func (s *SyncAgentServer) ReceiverLaunch(ctx context.Context, req *syncagentpb.R
 	return &syncagentpb.ReceiverLaunchReply{Port: int32(port)}, nil
 }
 
+func (s *SyncAgentServer) FilesSync(ctx context.Context, req *syncagentpb.FilesSyncRequest) (*empty.Empty, error) {
+	return nil, fmt.Errorf("unimplemented call")
+}
+
 func (s *SyncAgentServer) BackupCreate(ctx context.Context, req *syncagentpb.BackupCreateRequest) (*syncagentpb.BackupCreateReply, error) {
 	backupType, err := util.CheckBackupType(req.BackupTarget)
 	if err != nil {
@@ -1226,4 +1230,8 @@ func (b *BackupList) BackupDelete(backupID string) error {
 		}
 	}
 	return fmt.Errorf("backup not found %v", backupID)
+}
+
+func (s *SyncAgentServer) ReplicaRebuildStatus(ctx context.Context, req *empty.Empty) (*syncagentpb.ReplicaRebuildStatusReply, error) {
+	return nil, fmt.Errorf("unimplemented call")
 }

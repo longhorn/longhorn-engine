@@ -95,9 +95,15 @@ message ReplicaListReply {
     repeated ControllerReplica replicas = 1;
 }
 
+message SyncFileInfo {
+    string from_file_name = 1;
+    string to_file_name = 2;
+    int64 actual_size = 3;
+}
+
 message ReplicaPrepareRebuildReply {
     ControllerReplica replica = 1;
-    repeated string disks = 2;
+    repeated SyncFileInfo sync_file_info_list = 2;
 }
 
 message JournalListRequest {
