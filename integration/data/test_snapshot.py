@@ -1,20 +1,22 @@
 import random
-import cmd
-from common import (  # NOQA
-    grpc_controller, grpc_replica1, grpc_replica2,  # NOQA
-    grpc_backing_controller, grpc_backing_replica1, grpc_backing_replica2,  # NOQA
+
+import data.cmd as cmd
+
+from data.common import (  # NOQA
     get_dev, get_backing_dev, read_dev,
     generate_random_data, read_from_backing_file,
     Snapshot, snapshot_revert_with_frontend, wait_for_purge_completion,
     Data, random_length, random_string,
     wait_for_volume_expansion, check_block_device_size,
 )
-from setting import (
+
+from data.setting import (
     VOLUME_HEAD, ENGINE_NAME, ENGINE_BACKING_NAME,
     VOLUME_NAME, VOLUME_BACKING_NAME,
     PAGE_SIZE, SIZE, EXPAND_SIZE,
 )
-from snapshot_tree import snapshot_tree_build, snapshot_tree_verify_node
+
+from data.snapshot_tree import snapshot_tree_build, snapshot_tree_verify_node
 
 
 def snapshot_revert_test(dev, address, engine_name):  # NOQA

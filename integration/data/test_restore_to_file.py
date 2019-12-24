@@ -1,11 +1,8 @@
 import os
 import pyqcow
 
-import cmd
-from common import (  # NOQA
-    backup_targets,  # NOQA
-    grpc_controller, grpc_replica1, grpc_replica2,  # NOQA
-    grpc_backing_controller, grpc_backing_replica1, grpc_backing_replica2,  # NOQA
+import data.cmd as cmd
+from data.common import (  # NOQA
     cleanup_controller, cleanup_replica,
     get_dev, get_backing_dev, read_dev, checksum_dev,
     random_string, verify_data,
@@ -13,10 +10,10 @@ from common import (  # NOQA
     create_backup, rm_backups, rm_snaps,
     snapshot_revert_with_frontend,
 )
-from util import (
+from data.util import (
     file, checksum_data,
 )
-from setting import (
+from data.setting import (
     SIZE, BACKING_FILE_QCOW,
     ENGINE_NAME, ENGINE_BACKING_NAME,
 )
@@ -46,7 +43,7 @@ def check_backing(offset=0, length=4*1024):
     backing_data_raw = read_from_backing_file(offset, length)
     backing_data_qcow2 = read_qcow2_file_without_backing_file(
         file(BACKING_FILE_QCOW), offset, length)
-    assert backing_data_raw == backing_data_qcow2
+    assert backing_data_raw == backing_data_qcow2.decode('utf-8')
 
 
 # check whether volume (with base image) is empty
@@ -93,7 +90,7 @@ def restore_to_file_with_backing_file_test(backup_target,  # NOQA
                         output_raw_path, IMAGE_FORMAT_RAW)
     output0_raw = read_file(output_raw_path, offset0, length0)
     output0_checksum = checksum_data(
-        read_file(output_raw_path, 0, SIZE))
+        read_file(output_raw_path, 0, SIZE).encode('utf-8'))
     assert output0_raw == backing_data
     assert output0_checksum == dev_checksum
     os.remove(output_raw_path)
@@ -105,8 +102,8 @@ def restore_to_file_with_backing_file_test(backup_target,  # NOQA
         output_qcow2_path, offset0, length0)
     output0_checksum = checksum_data(
         read_qcow2_file_without_backing_file(output_qcow2_path, 0, SIZE))
-    assert output0_qcow2 == backing_data
-    assert output0_qcow2 == volume_data
+    assert output0_qcow2.decode('utf-8') == backing_data
+    assert output0_qcow2.decode('utf-8') == volume_data
     assert output0_checksum == dev_checksum
     os.remove(output_qcow2_path)
     assert not os.path.exists(output_qcow2_path)
@@ -132,7 +129,7 @@ def restore_to_file_with_backing_file_test(backup_target,  # NOQA
     output1_raw_backing = read_file(
         output_raw_path, offset1, length0 - offset1)
     output1_checksum = checksum_data(
-        read_file(output_raw_path, 0, SIZE))
+        read_file(output_raw_path, 0, SIZE).encode('utf-8'))
     assert output1_raw_snap1 == snap1_data
     assert output1_raw_backing == backing_data
     assert output1_raw_snap1 + output1_raw_backing == volume_data
@@ -148,9 +145,10 @@ def restore_to_file_with_backing_file_test(backup_target,  # NOQA
         output_qcow2_path, offset1, length0 - offset1)
     output1_checksum = checksum_data(
         read_qcow2_file_without_backing_file(output_qcow2_path, 0, SIZE))
-    assert output1_qcow2_snap1 == snap1_data
-    assert output1_qcow2_backing == backing_data
-    assert output1_qcow2_snap1 + output1_qcow2_backing == volume_data
+    assert output1_qcow2_snap1.decode('utf-8') == snap1_data
+    assert output1_qcow2_backing.decode('utf-8') == backing_data
+    assert output1_qcow2_snap1.decode('utf-8') + \
+        output1_qcow2_backing.decode('utf-8') == volume_data
     assert output1_checksum == dev_checksum
     os.remove(output_qcow2_path)
     assert not os.path.exists(output_qcow2_path)
@@ -186,7 +184,7 @@ def restore_to_file_with_backing_file_test(backup_target,  # NOQA
     output2_raw_backing = read_file(
         output_raw_path, offset1, length0 - offset1)
     output2_checksum = checksum_data(
-        read_file(output_raw_path, 0, SIZE))
+        read_file(output_raw_path, 0, SIZE).encode('utf-8'))
     assert output2_raw_snap2 == snap2_data
     assert output2_raw_snap1 == snap1_data[offset2: length1]
     assert output2_raw_backing == backing_data
@@ -207,12 +205,14 @@ def restore_to_file_with_backing_file_test(backup_target,  # NOQA
         output_qcow2_path, offset1, length0 - offset1)
     output2_checksum = checksum_data(
         read_qcow2_file_without_backing_file(output_qcow2_path, 0, SIZE))
-    assert output2_qcow2_snap2 == snap2_data
-    assert output2_qcow2_snap1 == snap1_data[offset2: length1]
-    assert output2_qcow2_backing == backing_data
+    assert output2_qcow2_snap2.decode('utf-8') == snap2_data
+    assert output2_qcow2_snap1.decode('utf-8') == snap1_data[offset2: length1]
+    assert output2_qcow2_backing.decode('utf-8') == backing_data
     assert \
         volume_data == \
-        output2_qcow2_snap2 + output2_qcow2_snap1 + output1_qcow2_backing
+        output2_qcow2_snap2.decode('utf-8') + \
+        output2_qcow2_snap1.decode('utf-8') + \
+        output1_qcow2_backing.decode('utf-8')
     assert output2_checksum == dev_checksum
     os.remove(output_qcow2_path)
     assert not os.path.exists(output_qcow2_path)
@@ -261,7 +261,7 @@ def restore_to_file_without_backing_file_test(backup_target,  # NOQA
                         output_qcow2_path, IMAGE_FORMAT_QCOW2)
     output1_qcow2 = read_qcow2_file_without_backing_file(
         output_qcow2_path, offset0, length0)
-    assert output1_qcow2 == snap1_data
+    assert output1_qcow2.decode('utf-8') == snap1_data
     os.remove(output_qcow2_path)
     assert not os.path.exists(output_qcow2_path)
 
@@ -295,8 +295,8 @@ def restore_to_file_without_backing_file_test(backup_target,  # NOQA
         output_qcow2_path, offset0, length1)
     output2_qcow2_snap1 = read_qcow2_file_without_backing_file(
         output_qcow2_path, offset1, length0 - length1)
-    assert output2_qcow2_snap2 == snap2_data
-    assert output2_qcow2_snap1 == snap1_data[offset1: length0]
+    assert output2_qcow2_snap2.decode('utf-8') == snap2_data
+    assert output2_qcow2_snap1.decode('utf-8') == snap1_data[offset1: length0]
     os.remove(output_qcow2_path)
     assert not os.path.exists(output_qcow2_path)
 

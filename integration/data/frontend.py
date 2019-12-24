@@ -4,7 +4,7 @@ import stat
 import mmap
 import directio
 
-from setting import (
+from data.setting import (
     LONGHORN_SOCKET_DIR, LONGHORN_DEV_DIR, PAGE_SIZE,
 )
 
@@ -31,9 +31,9 @@ def readat_direct(dev, offset, length):
 
 
 def writeat_direct(dev, offset, data):
-    pg = offset / PAGE_SIZE
+    pg = offset // PAGE_SIZE
     # don't support across page write
-    assert pg == (offset + len(data)) / PAGE_SIZE
+    assert pg == (offset + len(data)) // PAGE_SIZE
     pg_offset = pg * PAGE_SIZE
 
     f = os.open(dev, os.O_DIRECT | os.O_RDWR)
@@ -43,8 +43,8 @@ def writeat_direct(dev, offset, data):
         pg_data = readat_direct(dev, pg_offset, PAGE_SIZE)
         m.write(pg_data)
         m.seek(offset % PAGE_SIZE)
-        m.write(data)
-        ret = directio.write(f, m)
+        m.write(data.encode('utf-8'))
+        ret = directio.write(f, m[:PAGE_SIZE])
     finally:
         m.close()
         os.close(f)

@@ -1,9 +1,5 @@
-import cmd
-from common import (  # NOQA
-    backup_targets,  # NOQA
-    grpc_controller, grpc_backing_controller,  # NOQA
-    grpc_replica1, grpc_replica2,  # NOQA
-    grpc_backing_replica1, grpc_backing_replica2,  # NOQA
+import data.cmd as cmd
+from data.common import (  # NOQA
     cleanup_controller, cleanup_replica,
     get_dev, get_backing_dev, read_dev,
     read_from_backing_file,
@@ -11,10 +7,10 @@ from common import (  # NOQA
     create_backup, rm_backups,
     restore_with_frontend,
 )
-from snapshot_tree import (
+from data.snapshot_tree import (
     snapshot_tree_build, snapshot_tree_verify_backup_node
 )
-from setting import (
+from data.setting import (
     VOLUME_NAME, VOLUME_BACKING_NAME, BLOCK_SIZE_STR,
     ENGINE_NAME, ENGINE_BACKING_NAME,
 )
