@@ -48,7 +48,7 @@ def em_client(request, address=INSTANCE_MANAGER):
 
 
 def cleanup_engine(client):
-    for _, engine in client.engine_list().iteritems():
+    for _, engine in iter(client.engine_list().items()):
         delete_engine_process(client, engine.spec.name)
     for i in range(RETRY_COUNTS):
         es = client.engine_list()
