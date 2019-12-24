@@ -2,7 +2,7 @@ package controller
 
 import (
 	"fmt"
-	"reflect"
+	"strconv"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -11,7 +11,7 @@ import (
 	"github.com/longhorn/longhorn-engine/pkg/engine/types"
 )
 
-func getReplicaDisksAndHead(address string) (map[string]struct{}, string, error) {
+func getReplicaDisksAndHead(address string) (map[string]types.DiskInfo, string, error) {
 	repClient, err := client.NewReplicaClient(address)
 	if err != nil {
 		return nil, "", fmt.Errorf("Cannot get replica client for %v: %v",
@@ -24,9 +24,9 @@ func getReplicaDisksAndHead(address string) (map[string]struct{}, string, error)
 			address, err)
 	}
 
-	disks := map[string]struct{}{}
+	disks := map[string]types.DiskInfo{}
 	head := rep.Chain[0]
-	for diskName := range rep.Disks {
+	for diskName, info := range rep.Disks {
 		// skip volume head
 		if diskName == head {
 			continue
@@ -35,9 +35,13 @@ func getReplicaDisksAndHead(address string) (map[string]struct{}, string, error)
 		if diskName == rep.BackingFile {
 			continue
 		}
-		disks[diskName] = struct{}{}
+		disks[diskName] = info
 	}
 	return disks, head, nil
+}
+
+func getDiskMetaFileName(disk string) string {
+	return fmt.Sprintf("%s.meta", disk)
 }
 
 func (c *Controller) getCurrentAndRWReplica(address string) (*types.Replica, *types.Replica, error) {
@@ -90,9 +94,17 @@ func (c *Controller) VerifyRebuildReplica(address string) error {
 		return err
 	}
 
-	if !reflect.DeepEqual(fromDisks, toDisks) {
-		return fmt.Errorf("Replica %v's chain not equal to RW replica %v's chain: %+v vs %+v",
-			address, rwReplica.Address, fromDisks, toDisks)
+	// The `Children` field of disk info may contain volume head. And the head file index of rebuilt replica
+	// is different from that of health replicas. Hence we cannot directly compare the disk info map here.
+	if len(fromDisks) != len(toDisks) {
+		return fmt.Errorf("Replica %v's disk number is not equal to that of RW replica %v: %+v vs %+v",
+			address, rwReplica.Address, toDisks, fromDisks)
+	}
+	for diskName := range fromDisks {
+		if _, exist := toDisks[diskName]; !exist {
+			return fmt.Errorf("Replica %v's chain not equal to RW replica %v's chain: %+v vs %+v",
+				address, rwReplica.Address, toDisks, fromDisks)
+		}
 	}
 
 	counter, err := c.backend.GetRevisionCounter(rwReplica.Address)
@@ -143,7 +155,7 @@ func syncFile(from, to string, fromReplica, toReplica *types.Replica) error {
 	return err
 }
 
-func (c *Controller) PrepareRebuildReplica(address string) ([]string, error) {
+func (c *Controller) PrepareRebuildReplica(address string) ([]types.SyncFileInfo, error) {
 	c.Lock()
 	defer c.Unlock()
 
@@ -169,25 +181,41 @@ func (c *Controller) PrepareRebuildReplica(address string) ([]string, error) {
 		return nil, err
 	}
 
-	ret := []string{}
+	syncFileInfoList := []types.SyncFileInfo{}
 	extraDisks := toDisks
-	for disk := range fromDisks {
-		ret = append(ret, disk)
-		delete(extraDisks, disk)
+	for diskName, info := range fromDisks {
+		diskMeta := getDiskMetaFileName(diskName)
+		diskSize, err := strconv.ParseInt(info.Size, 10, 64)
+		if err != nil {
+			return nil, err
+		}
+		syncFileInfoList = append(syncFileInfoList, types.SyncFileInfo{
+			FromFileName: diskName,
+			ToFileName:   diskName,
+			ActualSize:   diskSize,
+		})
+		// Consider the meta file size as 0
+		syncFileInfoList = append(syncFileInfoList, types.SyncFileInfo{
+			FromFileName: diskMeta,
+			ToFileName:   diskMeta,
+			ActualSize:   0,
+		})
+		delete(extraDisks, diskName)
 	}
 
 	if err := removeExtraDisks(extraDisks, address); err != nil {
 		return nil, err
 	}
 
+	// The lock will block the read/write for this head file sync
 	if err := syncFile(fromHead+".meta", toHead+".meta", rwReplica, replica); err != nil {
 		return nil, err
 	}
 
-	return ret, nil
+	return syncFileInfoList, nil
 }
 
-func removeExtraDisks(extraDisks map[string]struct{}, address string) (err error) {
+func removeExtraDisks(extraDisks map[string]types.DiskInfo, address string) (err error) {
 	defer func() {
 		err = errors.Wrapf(err, "failed to remove extra disks %v in replica %v", extraDisks, address)
 	}()

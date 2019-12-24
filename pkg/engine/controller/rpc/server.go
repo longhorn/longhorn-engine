@@ -74,6 +74,22 @@ func (cs *ControllerServer) replicaToControllerReplica(r *types.Replica) *contro
 	return cr
 }
 
+func (cs *ControllerServer) syncFileInfoListToControllerFormat(list []types.SyncFileInfo) []*controllerpb.SyncFileInfo {
+	res := []*controllerpb.SyncFileInfo{}
+	for _, info := range list {
+		res = append(res, cs.syncFileInfoToControllerFormat(info))
+	}
+	return res
+}
+
+func (cs *ControllerServer) syncFileInfoToControllerFormat(info types.SyncFileInfo) *controllerpb.SyncFileInfo {
+	return &controllerpb.SyncFileInfo{
+		FromFileName: info.FromFileName,
+		ToFileName:   info.ToFileName,
+		ActualSize:   info.ActualSize,
+	}
+}
+
 func (cs *ControllerServer) getVolume() *controllerpb.Volume {
 	return &controllerpb.Volume{
 		Name:          cs.c.Name,
@@ -200,14 +216,14 @@ func (cs *ControllerServer) ReplicaUpdate(ctx context.Context, req *controllerpb
 }
 
 func (cs *ControllerServer) ReplicaPrepareRebuild(ctx context.Context, req *controllerpb.ReplicaAddress) (*controllerpb.ReplicaPrepareRebuildReply, error) {
-	disks, err := cs.c.PrepareRebuildReplica(req.Address)
+	list, err := cs.c.PrepareRebuildReplica(req.Address)
 	if err != nil {
 		return nil, err
 	}
 
 	return &controllerpb.ReplicaPrepareRebuildReply{
-		Replica: cs.getControllerReplica(req.Address),
-		Disks:   disks,
+		Replica:          cs.getControllerReplica(req.Address),
+		SyncFileInfoList: cs.syncFileInfoListToControllerFormat(list),
 	}, nil
 }
 
