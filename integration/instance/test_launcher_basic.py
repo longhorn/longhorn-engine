@@ -1,6 +1,6 @@
 import tempfile
 
-from common import (  # NOQA
+from instance.common import (  # NOQA
     em_client, pm_client,  # NOQA
     create_replica_process, create_engine_process,
     delete_engine_process, wait_for_process_running,
