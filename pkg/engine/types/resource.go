@@ -47,6 +47,8 @@ type ControllerReplicaInfo struct {
 	Mode    Mode   `json:"mode"`
 }
 
-type PrepareRebuildOutput struct {
-	Disks []string `json:"disks"`
+type SyncFileInfo struct {
+	FromFileName string `json:"fromFileName"`
+	ToFileName   string `json:"toFileName"`
+	ActualSize   int64  `json:"actualSize"`
 }

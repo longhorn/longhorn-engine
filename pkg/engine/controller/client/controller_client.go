@@ -69,6 +69,22 @@ func GetControllerReplica(r *types.ControllerReplicaInfo) *contollerpb.Controlle
 	return cr
 }
 
+func GetSyncFileInfoList(list []*contollerpb.SyncFileInfo) []types.SyncFileInfo {
+	res := []types.SyncFileInfo{}
+	for _, info := range list {
+		res = append(res, GetSyncFileInfo(info))
+	}
+	return res
+}
+
+func GetSyncFileInfo(info *contollerpb.SyncFileInfo) types.SyncFileInfo {
+	return types.SyncFileInfo{
+		FromFileName: info.FromFileName,
+		ToFileName:   info.ToFileName,
+		ActualSize:   info.ActualSize,
+	}
+}
+
 func (c *ControllerClient) VolumeGet() (*types.VolumeInfo, error) {
 	conn, err := grpc.Dial(c.grpcAddress, grpc.WithInsecure())
 	if err != nil {
@@ -313,7 +329,7 @@ func (c *ControllerClient) ReplicaUpdate(replica *types.ControllerReplicaInfo) (
 	return GetControllerReplicaInfo(cr), nil
 }
 
-func (c *ControllerClient) ReplicaPrepareRebuild(address string) (*types.PrepareRebuildOutput, error) {
+func (c *ControllerClient) ReplicaPrepareRebuild(address string) ([]types.SyncFileInfo, error) {
 	conn, err := grpc.Dial(c.grpcAddress, grpc.WithInsecure())
 	if err != nil {
 		return nil, fmt.Errorf("cannot connect to ControllerService %v: %v", c.grpcAddress, err)
@@ -331,9 +347,7 @@ func (c *ControllerClient) ReplicaPrepareRebuild(address string) (*types.Prepare
 		return nil, fmt.Errorf("failed to prepare rebuilding replica %v for volume %v: %v", address, c.grpcAddress, err)
 	}
 
-	return &types.PrepareRebuildOutput{
-		Disks: reply.Disks,
-	}, nil
+	return GetSyncFileInfoList(reply.SyncFileInfoList), nil
 }
 
 func (c *ControllerClient) ReplicaVerifyRebuild(address string) error {
