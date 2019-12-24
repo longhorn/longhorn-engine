@@ -3,7 +3,7 @@ directio==1.2
 protobuf==3.8.0
 grpcio==1.21.1
 
-flake8==3.4.0
-pytest==2.3.5
+flake8
+pytest==5.3.2
 
 libqcow-python==20181227
