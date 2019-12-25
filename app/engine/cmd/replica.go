@@ -17,7 +17,8 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	"github.com/longhorn/longhorn-engine/pkg/engine/replica"
-	"github.com/longhorn/longhorn-engine/pkg/engine/replica/rpc"
+	replicarpc "github.com/longhorn/longhorn-engine/pkg/engine/replica/rpc"
+	replicapb "github.com/longhorn/longhorn-engine/pkg/engine/replica/rpc/pb"
 	"github.com/longhorn/longhorn-engine/pkg/engine/util"
 )
 
@@ -105,9 +106,9 @@ func startReplica(c *cli.Context) error {
 		}
 
 		server := grpc.NewServer()
-		rs := rpc.NewReplicaServer(s)
-		rpc.RegisterReplicaServiceServer(server, rs)
-		healthpb.RegisterHealthServer(server, rpc.NewReplicaHealthCheckServer(rs))
+		rs := replicarpc.NewReplicaServer(s)
+		replicapb.RegisterReplicaServiceServer(server, rs)
+		healthpb.RegisterHealthServer(server, replicarpc.NewReplicaHealthCheckServer(rs))
 		reflection.Register(server)
 
 		logrus.Infof("Listening on gRPC Replica server %s", controlAddress)
@@ -117,7 +118,7 @@ func startReplica(c *cli.Context) error {
 	}()
 
 	go func() {
-		rpcServer := rpc.NewDataServer(dataAddress, s)
+		rpcServer := replicarpc.NewDataServer(dataAddress, s)
 		logrus.Infof("Listening on data server %s", dataAddress)
 		err := rpcServer.ListenAndServe()
 		logrus.Warnf("Replica rest server at %v is down: %v", dataAddress, err)

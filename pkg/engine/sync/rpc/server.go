@@ -19,7 +19,8 @@ import (
 	"github.com/longhorn/backupstore"
 	"github.com/longhorn/longhorn-engine/pkg/engine/backup"
 	"github.com/longhorn/longhorn-engine/pkg/engine/replica"
-	replicarpc "github.com/longhorn/longhorn-engine/pkg/engine/replica/rpc"
+	replicapb "github.com/longhorn/longhorn-engine/pkg/engine/replica/rpc/pb"
+	syncagentpb "github.com/longhorn/longhorn-engine/pkg/engine/sync/rpc/pb"
 	"github.com/longhorn/longhorn-engine/pkg/engine/types"
 	"github.com/longhorn/longhorn-engine/pkg/engine/util"
 	"github.com/longhorn/sparse-tools/sparse"
@@ -91,7 +92,7 @@ func (ps *PurgeStatus) UpdateFoldFileProgress(progress int, done bool, err error
 	ps.Unlock()
 }
 
-func GetDiskInfo(info *replicarpc.DiskInfo) *types.DiskInfo {
+func GetDiskInfo(info *replicapb.DiskInfo) *types.DiskInfo {
 	diskInfo := &types.DiskInfo{
 		Name:        info.Name,
 		Parent:      info.Parent,
@@ -211,7 +212,7 @@ func (s *SyncAgentServer) Reset(ctx context.Context, req *empty.Empty) (*empty.E
 	return &empty.Empty{}, nil
 }
 
-func (*SyncAgentServer) FileRemove(ctx context.Context, req *FileRemoveRequest) (*empty.Empty, error) {
+func (*SyncAgentServer) FileRemove(ctx context.Context, req *syncagentpb.FileRemoveRequest) (*empty.Empty, error) {
 	logrus.Infof("Running rm %v", req.FileName)
 
 	if err := os.Remove(req.FileName); err != nil {
@@ -223,7 +224,7 @@ func (*SyncAgentServer) FileRemove(ctx context.Context, req *FileRemoveRequest) 
 	return &empty.Empty{}, nil
 }
 
-func (*SyncAgentServer) FileRename(ctx context.Context, req *FileRenameRequest) (*empty.Empty, error) {
+func (*SyncAgentServer) FileRename(ctx context.Context, req *syncagentpb.FileRenameRequest) (*empty.Empty, error) {
 	logrus.Infof("Running rename file from %v to %v", req.OldFileName, req.NewFileName)
 
 	if err := os.Rename(req.OldFileName, req.NewFileName); err != nil {
@@ -235,7 +236,7 @@ func (*SyncAgentServer) FileRename(ctx context.Context, req *FileRenameRequest) 
 	return &empty.Empty{}, nil
 }
 
-func (s *SyncAgentServer) FileSend(ctx context.Context, req *FileSendRequest) (*empty.Empty, error) {
+func (s *SyncAgentServer) FileSend(ctx context.Context, req *syncagentpb.FileSendRequest) (*empty.Empty, error) {
 	args := []string{"ssync"}
 	if req.Host != "" {
 		args = append(args, "-host", req.Host)
@@ -268,7 +269,7 @@ func (s *SyncAgentServer) FileSend(ctx context.Context, req *FileSendRequest) (*
 	return &empty.Empty{}, nil
 }
 
-func (s *SyncAgentServer) ReceiverLaunch(ctx context.Context, req *ReceiverLaunchRequest) (*ReceiverLaunchReply, error) {
+func (s *SyncAgentServer) ReceiverLaunch(ctx context.Context, req *syncagentpb.ReceiverLaunchRequest) (*syncagentpb.ReceiverLaunchReply, error) {
 	port, err := s.nextPort("LaunchReceiver")
 	if err != nil {
 		return nil, err
@@ -309,10 +310,10 @@ func (s *SyncAgentServer) ReceiverLaunch(ctx context.Context, req *ReceiverLaunc
 		logrus.Infof("Done running %s %v", "ssync", args)
 	}()
 
-	return &ReceiverLaunchReply{Port: int32(port)}, nil
+	return &syncagentpb.ReceiverLaunchReply{Port: int32(port)}, nil
 }
 
-func (s *SyncAgentServer) BackupCreate(ctx context.Context, req *BackupCreateRequest) (*BackupCreateReply, error) {
+func (s *SyncAgentServer) BackupCreate(ctx context.Context, req *syncagentpb.BackupCreateRequest) (*syncagentpb.BackupCreateReply, error) {
 	backupType, err := util.CheckBackupType(req.BackupTarget)
 	if err != nil {
 		return nil, err
@@ -336,7 +337,7 @@ func (s *SyncAgentServer) BackupCreate(ctx context.Context, req *BackupCreateReq
 		return nil, err
 	}
 
-	reply := &BackupCreateReply{
+	reply := &syncagentpb.BackupCreateReply{
 		Backup:        backupID,
 		IsIncremental: replicaObj.IsIncremental,
 	}
@@ -349,7 +350,7 @@ func (s *SyncAgentServer) BackupCreate(ctx context.Context, req *BackupCreateReq
 	return reply, nil
 }
 
-func (s *SyncAgentServer) BackupGetStatus(ctx context.Context, req *BackupProgressRequest) (*BackupStatusReply, error) {
+func (s *SyncAgentServer) BackupGetStatus(ctx context.Context, req *syncagentpb.BackupProgressRequest) (*syncagentpb.BackupStatusReply, error) {
 	if req.Backup == "" {
 		return nil, fmt.Errorf("bad request: empty backup name")
 	}
@@ -364,7 +365,7 @@ func (s *SyncAgentServer) BackupGetStatus(ctx context.Context, req *BackupProgre
 		return nil, fmt.Errorf("couldn't get snapshot name: %v", err)
 	}
 
-	reply := &BackupStatusReply{
+	reply := &syncagentpb.BackupStatusReply{
 		Progress:     int32(replicaObj.Progress),
 		BackupURL:    replicaObj.BackupURL,
 		Error:        replicaObj.Error,
@@ -374,7 +375,7 @@ func (s *SyncAgentServer) BackupGetStatus(ctx context.Context, req *BackupProgre
 	return reply, nil
 }
 
-func (*SyncAgentServer) BackupRemove(ctx context.Context, req *BackupRemoveRequest) (*empty.Empty, error) {
+func (*SyncAgentServer) BackupRemove(ctx context.Context, req *syncagentpb.BackupRemoveRequest) (*empty.Empty, error) {
 	cmd := reexec.Command("sbackup", "delete", req.Backup)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Pdeathsig: syscall.SIGKILL,
@@ -422,7 +423,7 @@ func (s *SyncAgentServer) waitForRestoreComplete() error {
 	return nil
 }
 
-func (s *SyncAgentServer) BackupRestore(ctx context.Context, req *BackupRestoreRequest) (e *empty.Empty, err error) {
+func (s *SyncAgentServer) BackupRestore(ctx context.Context, req *syncagentpb.BackupRestoreRequest) (e *empty.Empty, err error) {
 	backupType, err := util.CheckBackupType(req.Backup)
 	if err != nil {
 		return nil, err
@@ -547,13 +548,13 @@ func (s *SyncAgentServer) postIncrementalFullRestoreOperations(restoreStatus *re
 
 	defer func() {
 		// try to cleanup tmp files
-		if _, err := s.FileRemove(nil, &FileRemoveRequest{
+		if _, err := s.FileRemove(nil, &syncagentpb.FileRemoveRequest{
 			FileName: tmpSnapshotDiskName,
 		}); err != nil {
 			logrus.Warnf("Failed to cleanup delta file %s: %v", tmpSnapshotDiskName, err)
 		}
 
-		if _, err := s.FileRemove(nil, &FileRemoveRequest{
+		if _, err := s.FileRemove(nil, &syncagentpb.FileRemoveRequest{
 			FileName: tmpSnapshotDiskMetaName,
 		}); err != nil {
 			logrus.Warnf("Failed to cleanup delta file %s: %v", tmpSnapshotDiskMetaName, err)
@@ -561,7 +562,7 @@ func (s *SyncAgentServer) postIncrementalFullRestoreOperations(restoreStatus *re
 	}()
 
 	// replace old snapshot
-	fileRenameReq := &FileRenameRequest{
+	fileRenameReq := &syncagentpb.FileRenameRequest{
 		OldFileName: tmpSnapshotDiskName,
 		NewFileName: snapshotDiskName,
 	}
@@ -601,12 +602,12 @@ func (s *SyncAgentServer) replicaRevert(name, created string) error {
 		return fmt.Errorf("cannot connect to ReplicaService %v: %v", s.replicaAddress, err)
 	}
 	defer conn.Close()
-	replicaServiceClient := replicarpc.NewReplicaServiceClient(conn)
+	replicaServiceClient := replicapb.NewReplicaServiceClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
 	defer cancel()
 
-	if _, err := replicaServiceClient.ReplicaRevert(ctx, &replicarpc.ReplicaRevertRequest{
+	if _, err := replicaServiceClient.ReplicaRevert(ctx, &replicapb.ReplicaRevertRequest{
 		Name:    name,
 		Created: created,
 	}); err != nil {
@@ -617,7 +618,7 @@ func (s *SyncAgentServer) replicaRevert(name, created string) error {
 }
 
 func (s *SyncAgentServer) BackupRestoreIncrementally(ctx context.Context,
-	req *BackupRestoreIncrementallyRequest) (e *empty.Empty, err error) {
+	req *syncagentpb.BackupRestoreIncrementallyRequest) (e *empty.Empty, err error) {
 	backupType, err := util.CheckBackupType(req.Backup)
 	if err != nil {
 		return nil, err
@@ -716,7 +717,7 @@ func (s *SyncAgentServer) postIncrementalRestoreOperations(restoreStatus *replic
 	}
 
 	// cleanup
-	fileRemoveReq := &FileRemoveRequest{
+	fileRemoveReq := &syncagentpb.FileRemoveRequest{
 		FileName: deltaFileName,
 	}
 	if _, err := s.FileRemove(nil, fileRemoveReq); err != nil {
@@ -747,7 +748,7 @@ func (s *SyncAgentServer) reloadReplica() error {
 		return fmt.Errorf("cannot connect to ReplicaService %v: %v", s.replicaAddress, err)
 	}
 	defer conn.Close()
-	replicaServiceClient := replicarpc.NewReplicaServiceClient(conn)
+	replicaServiceClient := replicapb.NewReplicaServiceClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
 	defer cancel()
@@ -759,8 +760,8 @@ func (s *SyncAgentServer) reloadReplica() error {
 	return nil
 }
 
-func (s *SyncAgentServer) RestoreStatus(ctx context.Context, req *empty.Empty) (*RestoreStatusReply, error) {
-	rs := &RestoreStatusReply{
+func (s *SyncAgentServer) RestoreStatus(ctx context.Context, req *empty.Empty) (*syncagentpb.RestoreStatusReply, error) {
+	rs := &syncagentpb.RestoreStatusReply{
 		IsRestoring:  s.IsRestoring(),
 		LastRestored: s.GetLastRestored(),
 	}
@@ -886,12 +887,12 @@ func (s *SyncAgentServer) SnapshotPurge(ctx context.Context, req *empty.Empty) (
 	return &empty.Empty{}, nil
 }
 
-func (s *SyncAgentServer) SnapshotPurgeStatus(ctx context.Context, req *empty.Empty) (*SnapshotPurgeStatusReply, error) {
+func (s *SyncAgentServer) SnapshotPurgeStatus(ctx context.Context, req *empty.Empty) (*syncagentpb.SnapshotPurgeStatusReply, error) {
 	isPurging := s.IsPurging()
 
 	s.PurgeStatus.RLock()
 	defer s.PurgeStatus.RUnlock()
-	return &SnapshotPurgeStatusReply{
+	return &syncagentpb.SnapshotPurgeStatusReply{
 		IsPurging: isPurging,
 		Error:     s.PurgeStatus.Error,
 		Progress:  int32(s.PurgeStatus.Progress),
@@ -944,7 +945,7 @@ func (s *SyncAgentServer) getSnapshotsInfo() (map[string]types.DiskInfo, int, er
 	}
 	defer conn.Close()
 
-	replicaServiceClient := replicarpc.NewReplicaServiceClient(conn)
+	replicaServiceClient := replicapb.NewReplicaServiceClient(conn)
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
 	defer cancel()
 
@@ -1022,11 +1023,11 @@ func (s *SyncAgentServer) markSnapshotAsRemoved(snapshot string) error {
 	}
 	defer conn.Close()
 
-	replicaServiceClient := replicarpc.NewReplicaServiceClient(conn)
+	replicaServiceClient := replicapb.NewReplicaServiceClient(conn)
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
 	defer cancel()
 
-	if _, err := replicaServiceClient.DiskMarkAsRemoved(ctx, &replicarpc.DiskMarkAsRemovedRequest{
+	if _, err := replicaServiceClient.DiskMarkAsRemoved(ctx, &replicapb.DiskMarkAsRemovedRequest{
 		Name: snapshot,
 	}); err != nil {
 		return err
@@ -1042,11 +1043,11 @@ func (s *SyncAgentServer) processRemoveSnapshot(snapshot string) error {
 	}
 	defer conn.Close()
 
-	replicaServiceClient := replicarpc.NewReplicaServiceClient(conn)
+	replicaServiceClient := replicapb.NewReplicaServiceClient(conn)
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
 	defer cancel()
 
-	ops, err := replicaServiceClient.DiskPrepareRemove(ctx, &replicarpc.DiskPrepareRemoveRequest{
+	ops, err := replicaServiceClient.DiskPrepareRemove(ctx, &replicapb.DiskPrepareRemoveRequest{
 		Name: snapshot,
 	})
 	if err != nil {
@@ -1085,11 +1086,11 @@ func (s *SyncAgentServer) replaceDisk(source, target string) error {
 	}
 	defer conn.Close()
 
-	replicaServiceClient := replicarpc.NewReplicaServiceClient(conn)
+	replicaServiceClient := replicapb.NewReplicaServiceClient(conn)
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
 	defer cancel()
 
-	if _, err := replicaServiceClient.DiskReplace(ctx, &replicarpc.DiskReplaceRequest{
+	if _, err := replicaServiceClient.DiskReplace(ctx, &replicapb.DiskReplaceRequest{
 		Source: source,
 		Target: target,
 	}); err != nil {
@@ -1106,11 +1107,11 @@ func (s *SyncAgentServer) rmDisk(disk string) error {
 	}
 	defer conn.Close()
 
-	replicaServiceClient := replicarpc.NewReplicaServiceClient(conn)
+	replicaServiceClient := replicapb.NewReplicaServiceClient(conn)
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
 	defer cancel()
 
-	if _, err := replicaServiceClient.DiskRemove(ctx, &replicarpc.DiskRemoveRequest{
+	if _, err := replicaServiceClient.DiskRemove(ctx, &replicapb.DiskRemoveRequest{
 		Force: false,
 		Name:  disk,
 	}); err != nil {

@@ -9,6 +9,7 @@ import (
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
 	"github.com/longhorn/longhorn-engine/pkg/engine/replica"
+	replicapb "github.com/longhorn/longhorn-engine/pkg/engine/replica/rpc/pb"
 )
 
 type ReplicaServer struct {
@@ -31,13 +32,13 @@ func NewReplicaHealthCheckServer(rs *ReplicaServer) *ReplicaHealthCheckServer {
 	}
 }
 
-func (rs *ReplicaServer) listReplicaDisks() map[string]*DiskInfo {
-	disks := map[string]*DiskInfo{}
+func (rs *ReplicaServer) listReplicaDisks() map[string]*replicapb.DiskInfo {
+	disks := map[string]*replicapb.DiskInfo{}
 	r := rs.s.Replica()
 	if r != nil {
 		ds := r.ListDisks()
 		for name, info := range ds {
-			disks[name] = &DiskInfo{
+			disks[name] = &replicapb.DiskInfo{
 				Name:        info.Name,
 				Parent:      info.Parent,
 				Children:    info.Children,
@@ -52,9 +53,9 @@ func (rs *ReplicaServer) listReplicaDisks() map[string]*DiskInfo {
 	return disks
 }
 
-func (rs *ReplicaServer) getReplica() (replica *Replica) {
+func (rs *ReplicaServer) getReplica() (replica *replicapb.Replica) {
 	state, info := rs.s.Status()
-	replica = &Replica{
+	replica = &replicapb.Replica{
 		Dirty:       info.Dirty,
 		Rebuilding:  info.Rebuilding,
 		Head:        info.Head,
@@ -75,7 +76,7 @@ func (rs *ReplicaServer) getReplica() (replica *Replica) {
 	return replica
 }
 
-func (rs *ReplicaServer) ReplicaCreate(ctx context.Context, req *ReplicaCreateRequest) (*Replica, error) {
+func (rs *ReplicaServer) ReplicaCreate(ctx context.Context, req *replicapb.ReplicaCreateRequest) (*replicapb.Replica, error) {
 	size := int64(0)
 	if req.Size != "" {
 		var err error
@@ -96,11 +97,11 @@ func (rs *ReplicaServer) ReplicaDelete(ctx context.Context, req *empty.Empty) (*
 	return &empty.Empty{}, rs.s.Delete()
 }
 
-func (rs *ReplicaServer) ReplicaGet(ctx context.Context, req *empty.Empty) (*Replica, error) {
+func (rs *ReplicaServer) ReplicaGet(ctx context.Context, req *empty.Empty) (*replicapb.Replica, error) {
 	return rs.getReplica(), nil
 }
 
-func (rs *ReplicaServer) ReplicaOpen(ctx context.Context, req *empty.Empty) (*Replica, error) {
+func (rs *ReplicaServer) ReplicaOpen(ctx context.Context, req *empty.Empty) (*replicapb.Replica, error) {
 	if err := rs.s.Open(); err != nil {
 		return nil, err
 	}
@@ -108,7 +109,7 @@ func (rs *ReplicaServer) ReplicaOpen(ctx context.Context, req *empty.Empty) (*Re
 	return rs.getReplica(), nil
 }
 
-func (rs *ReplicaServer) ReplicaClose(ctx context.Context, req *empty.Empty) (*Replica, error) {
+func (rs *ReplicaServer) ReplicaClose(ctx context.Context, req *empty.Empty) (*replicapb.Replica, error) {
 	if err := rs.s.Close(); err != nil {
 		return nil, err
 	}
@@ -116,7 +117,7 @@ func (rs *ReplicaServer) ReplicaClose(ctx context.Context, req *empty.Empty) (*R
 	return rs.getReplica(), nil
 }
 
-func (rs *ReplicaServer) ReplicaReload(ctx context.Context, req *empty.Empty) (*Replica, error) {
+func (rs *ReplicaServer) ReplicaReload(ctx context.Context, req *empty.Empty) (*replicapb.Replica, error) {
 	if err := rs.s.Reload(); err != nil {
 		return nil, err
 	}
@@ -124,7 +125,7 @@ func (rs *ReplicaServer) ReplicaReload(ctx context.Context, req *empty.Empty) (*
 	return rs.getReplica(), nil
 }
 
-func (rs *ReplicaServer) ReplicaRevert(ctx context.Context, req *ReplicaRevertRequest) (*Replica, error) {
+func (rs *ReplicaServer) ReplicaRevert(ctx context.Context, req *replicapb.ReplicaRevertRequest) (*replicapb.Replica, error) {
 	if req.Name == "" {
 		return nil, fmt.Errorf("Cannot accept empty snapshot name")
 	}
@@ -139,7 +140,7 @@ func (rs *ReplicaServer) ReplicaRevert(ctx context.Context, req *ReplicaRevertRe
 	return rs.getReplica(), nil
 }
 
-func (rs *ReplicaServer) ReplicaSnapshot(ctx context.Context, req *ReplicaSnapshotRequest) (*Replica, error) {
+func (rs *ReplicaServer) ReplicaSnapshot(ctx context.Context, req *replicapb.ReplicaSnapshotRequest) (*replicapb.Replica, error) {
 	if req.Name == "" {
 		return nil, fmt.Errorf("Cannot accept empty snapshot name")
 	}
@@ -154,7 +155,7 @@ func (rs *ReplicaServer) ReplicaSnapshot(ctx context.Context, req *ReplicaSnapsh
 	return rs.getReplica(), nil
 }
 
-func (rs *ReplicaServer) ReplicaExpand(ctx context.Context, req *ReplicaExpandRequest) (*Replica, error) {
+func (rs *ReplicaServer) ReplicaExpand(ctx context.Context, req *replicapb.ReplicaExpandRequest) (*replicapb.Replica, error) {
 	if err := rs.s.Expand(req.Size); err != nil {
 		return nil, err
 	}
@@ -162,7 +163,7 @@ func (rs *ReplicaServer) ReplicaExpand(ctx context.Context, req *ReplicaExpandRe
 	return rs.getReplica(), nil
 }
 
-func (rs *ReplicaServer) DiskRemove(ctx context.Context, req *DiskRemoveRequest) (*Replica, error) {
+func (rs *ReplicaServer) DiskRemove(ctx context.Context, req *replicapb.DiskRemoveRequest) (*replicapb.Replica, error) {
 	if err := rs.s.RemoveDiffDisk(req.Name, req.Force); err != nil {
 		return nil, err
 	}
@@ -170,7 +171,7 @@ func (rs *ReplicaServer) DiskRemove(ctx context.Context, req *DiskRemoveRequest)
 	return rs.getReplica(), nil
 }
 
-func (rs *ReplicaServer) DiskReplace(ctx context.Context, req *DiskReplaceRequest) (*Replica, error) {
+func (rs *ReplicaServer) DiskReplace(ctx context.Context, req *replicapb.DiskReplaceRequest) (*replicapb.Replica, error) {
 	if err := rs.s.ReplaceDisk(req.Target, req.Source); err != nil {
 		return nil, err
 	}
@@ -178,15 +179,15 @@ func (rs *ReplicaServer) DiskReplace(ctx context.Context, req *DiskReplaceReques
 	return rs.getReplica(), nil
 }
 
-func (rs *ReplicaServer) DiskPrepareRemove(ctx context.Context, req *DiskPrepareRemoveRequest) (*DiskPrepareRemoveReply, error) {
+func (rs *ReplicaServer) DiskPrepareRemove(ctx context.Context, req *replicapb.DiskPrepareRemoveRequest) (*replicapb.DiskPrepareRemoveReply, error) {
 	operations, err := rs.s.PrepareRemoveDisk(req.Name)
 	if err != nil {
 		return nil, err
 	}
 
-	reply := &DiskPrepareRemoveReply{}
+	reply := &replicapb.DiskPrepareRemoveReply{}
 	for _, op := range operations {
-		reply.Operations = append(reply.Operations, &PrepareRemoveAction{
+		reply.Operations = append(reply.Operations, &replicapb.PrepareRemoveAction{
 			Action: op.Action,
 			Source: op.Source,
 			Target: op.Target,
@@ -195,7 +196,7 @@ func (rs *ReplicaServer) DiskPrepareRemove(ctx context.Context, req *DiskPrepare
 	return reply, err
 }
 
-func (rs *ReplicaServer) DiskMarkAsRemoved(ctx context.Context, req *DiskMarkAsRemovedRequest) (*Replica, error) {
+func (rs *ReplicaServer) DiskMarkAsRemoved(ctx context.Context, req *replicapb.DiskMarkAsRemovedRequest) (*replicapb.Replica, error) {
 	if err := rs.s.MarkDiskAsRemoved(req.Name); err != nil {
 		return nil, err
 	}
@@ -203,7 +204,7 @@ func (rs *ReplicaServer) DiskMarkAsRemoved(ctx context.Context, req *DiskMarkAsR
 	return rs.getReplica(), nil
 }
 
-func (rs *ReplicaServer) RebuildingSet(ctx context.Context, req *RebuildingSetRequest) (*Replica, error) {
+func (rs *ReplicaServer) RebuildingSet(ctx context.Context, req *replicapb.RebuildingSetRequest) (*replicapb.Replica, error) {
 	if err := rs.s.SetRebuilding(req.Rebuilding); err != nil {
 		return nil, err
 	}
@@ -211,7 +212,7 @@ func (rs *ReplicaServer) RebuildingSet(ctx context.Context, req *RebuildingSetRe
 	return rs.getReplica(), nil
 }
 
-func (rs *ReplicaServer) RevisionCounterSet(ctx context.Context, req *RevisionCounterSetRequest) (*Replica, error) {
+func (rs *ReplicaServer) RevisionCounterSet(ctx context.Context, req *replicapb.RevisionCounterSetRequest) (*replicapb.Replica, error) {
 	if err := rs.s.SetRevisionCounter(req.Counter); err != nil {
 		return nil, err
 	}
