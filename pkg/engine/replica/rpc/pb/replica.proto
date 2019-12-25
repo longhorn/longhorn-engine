@@ -1,8 +1,8 @@
 syntax="proto3";
 
-import "google/protobuf/empty.proto";
+package pb;
 
-package rpc;
+import "google/protobuf/empty.proto";
 
 service ReplicaService {
     rpc ReplicaCreate(ReplicaCreateRequest) returns (Replica) {}

@@ -15,11 +15,11 @@ protoc -I pkg/engine/controller/rpc/pb -I vendor_proto/protobuf/src/ pkg/engine/
 python3 -m grpc_tools.protoc -I pkg/engine/controller/rpc/pb -I vendor_proto/protobuf/src/ --python_out=integration/rpc/controller --grpc_python_out=integration/rpc/controller pkg/engine/controller/rpc/pb/controller.proto
 
 # replica
-protoc -I pkg/engine/replica/rpc -I vendor_proto/protobuf/src/ pkg/engine/replica/rpc/replica.proto --go_out=plugins=grpc:pkg/engine/replica/rpc
-python3 -m grpc_tools.protoc -I pkg/engine/replica/rpc -I vendor_proto/protobuf/src/ --python_out=integration/rpc/replica --grpc_python_out=integration/rpc/replica pkg/engine/replica/rpc/replica.proto
+protoc -I pkg/engine/replica/rpc/pb -I vendor_proto/protobuf/src/ pkg/engine/replica/rpc/pb/replica.proto --go_out=plugins=grpc:pkg/engine/replica/rpc/pb
+python3 -m grpc_tools.protoc -I pkg/engine/replica/rpc/pb -I vendor_proto/protobuf/src/ --python_out=integration/rpc/replica --grpc_python_out=integration/rpc/replica pkg/engine/replica/rpc/pb/replica.proto
 
 # sync agent
-protoc -I pkg/engine/sync/rpc -I vendor_proto/protobuf/src/ pkg/engine/sync/rpc/rpc.proto --go_out=plugins=grpc:pkg/engine/sync/rpc
+protoc -I pkg/engine/sync/rpc/pb -I vendor_proto/protobuf/src/ pkg/engine/sync/rpc/pb/syncagent.proto --go_out=plugins=grpc:pkg/engine/sync/rpc/pb
 
 # instance manager
 python3 -m grpc_tools.protoc -I pkg/instance-manager/rpc -I vendor_proto/protobuf/src/ --python_out=integration/rpc/instance_manager --grpc_python_out=integration/rpc/instance_manager pkg/instance-manager/rpc/rpc.proto

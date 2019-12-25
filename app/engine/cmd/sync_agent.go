@@ -13,7 +13,8 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	"github.com/longhorn/longhorn-engine/pkg/engine/sync"
-	"github.com/longhorn/longhorn-engine/pkg/engine/sync/rpc"
+	syncagentrpc "github.com/longhorn/longhorn-engine/pkg/engine/sync/rpc"
+	replicapb "github.com/longhorn/longhorn-engine/pkg/engine/sync/rpc/pb"
 )
 
 func SyncAgentCmd() cli.Command {
@@ -79,7 +80,7 @@ func startSyncAgent(c *cli.Context) error {
 	}
 
 	server := grpc.NewServer()
-	rpc.RegisterSyncAgentServiceServer(server, rpc.NewSyncAgentServer(start, end, replicaAddress))
+	replicapb.RegisterSyncAgentServiceServer(server, syncagentrpc.NewSyncAgentServer(start, end, replicaAddress))
 	reflection.Register(server)
 
 	logrus.Infof("Listening on sync %s", listenPort)

@@ -16,77 +16,77 @@ class ReplicaServiceStub(object):
       channel: A grpc.Channel.
     """
     self.ReplicaCreate = channel.unary_unary(
-        '/rpc.ReplicaService/ReplicaCreate',
+        '/pb.ReplicaService/ReplicaCreate',
         request_serializer=replica__pb2.ReplicaCreateRequest.SerializeToString,
         response_deserializer=replica__pb2.Replica.FromString,
         )
     self.ReplicaDelete = channel.unary_unary(
-        '/rpc.ReplicaService/ReplicaDelete',
+        '/pb.ReplicaService/ReplicaDelete',
         request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
         response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
         )
     self.ReplicaGet = channel.unary_unary(
-        '/rpc.ReplicaService/ReplicaGet',
+        '/pb.ReplicaService/ReplicaGet',
         request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
         response_deserializer=replica__pb2.Replica.FromString,
         )
     self.ReplicaOpen = channel.unary_unary(
-        '/rpc.ReplicaService/ReplicaOpen',
+        '/pb.ReplicaService/ReplicaOpen',
         request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
         response_deserializer=replica__pb2.Replica.FromString,
         )
     self.ReplicaClose = channel.unary_unary(
-        '/rpc.ReplicaService/ReplicaClose',
+        '/pb.ReplicaService/ReplicaClose',
         request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
         response_deserializer=replica__pb2.Replica.FromString,
         )
     self.ReplicaReload = channel.unary_unary(
-        '/rpc.ReplicaService/ReplicaReload',
+        '/pb.ReplicaService/ReplicaReload',
         request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
         response_deserializer=replica__pb2.Replica.FromString,
         )
     self.ReplicaRevert = channel.unary_unary(
-        '/rpc.ReplicaService/ReplicaRevert',
+        '/pb.ReplicaService/ReplicaRevert',
         request_serializer=replica__pb2.ReplicaRevertRequest.SerializeToString,
         response_deserializer=replica__pb2.Replica.FromString,
         )
     self.ReplicaSnapshot = channel.unary_unary(
-        '/rpc.ReplicaService/ReplicaSnapshot',
+        '/pb.ReplicaService/ReplicaSnapshot',
         request_serializer=replica__pb2.ReplicaSnapshotRequest.SerializeToString,
         response_deserializer=replica__pb2.Replica.FromString,
         )
     self.ReplicaExpand = channel.unary_unary(
-        '/rpc.ReplicaService/ReplicaExpand',
+        '/pb.ReplicaService/ReplicaExpand',
         request_serializer=replica__pb2.ReplicaExpandRequest.SerializeToString,
         response_deserializer=replica__pb2.Replica.FromString,
         )
     self.DiskRemove = channel.unary_unary(
-        '/rpc.ReplicaService/DiskRemove',
+        '/pb.ReplicaService/DiskRemove',
         request_serializer=replica__pb2.DiskRemoveRequest.SerializeToString,
         response_deserializer=replica__pb2.Replica.FromString,
         )
     self.DiskReplace = channel.unary_unary(
-        '/rpc.ReplicaService/DiskReplace',
+        '/pb.ReplicaService/DiskReplace',
         request_serializer=replica__pb2.DiskReplaceRequest.SerializeToString,
         response_deserializer=replica__pb2.Replica.FromString,
         )
     self.DiskPrepareRemove = channel.unary_unary(
-        '/rpc.ReplicaService/DiskPrepareRemove',
+        '/pb.ReplicaService/DiskPrepareRemove',
         request_serializer=replica__pb2.DiskPrepareRemoveRequest.SerializeToString,
         response_deserializer=replica__pb2.DiskPrepareRemoveReply.FromString,
         )
     self.DiskMarkAsRemoved = channel.unary_unary(
-        '/rpc.ReplicaService/DiskMarkAsRemoved',
+        '/pb.ReplicaService/DiskMarkAsRemoved',
         request_serializer=replica__pb2.DiskMarkAsRemovedRequest.SerializeToString,
         response_deserializer=replica__pb2.Replica.FromString,
         )
     self.RebuildingSet = channel.unary_unary(
-        '/rpc.ReplicaService/RebuildingSet',
+        '/pb.ReplicaService/RebuildingSet',
         request_serializer=replica__pb2.RebuildingSetRequest.SerializeToString,
         response_deserializer=replica__pb2.Replica.FromString,
         )
     self.RevisionCounterSet = channel.unary_unary(
-        '/rpc.ReplicaService/RevisionCounterSet',
+        '/pb.ReplicaService/RevisionCounterSet',
         request_serializer=replica__pb2.RevisionCounterSetRequest.SerializeToString,
         response_deserializer=replica__pb2.Replica.FromString,
         )
@@ -281,5 +281,5 @@ def add_ReplicaServiceServicer_to_server(servicer, server):
       ),
   }
   generic_handler = grpc.method_handlers_generic_handler(
-      'rpc.ReplicaService', rpc_method_handlers)
+      'pb.ReplicaService', rpc_method_handlers)
   server.add_generic_rpc_handlers((generic_handler,))
