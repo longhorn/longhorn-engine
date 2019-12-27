@@ -100,6 +100,22 @@ func GetReplicaInfo(r *replicapb.Replica) *types.ReplicaInfo {
 	return replicaInfo
 }
 
+func (c *ReplicaClient) syncFileInfoListToSyncAgentGRPCFormat(list []types.SyncFileInfo) []*syncagentpb.SyncFileInfo {
+	res := []*syncagentpb.SyncFileInfo{}
+	for _, info := range list {
+		res = append(res, c.syncFileInfoToSyncAgentGRPCFormat(info))
+	}
+	return res
+}
+
+func (c *ReplicaClient) syncFileInfoToSyncAgentGRPCFormat(info types.SyncFileInfo) *syncagentpb.SyncFileInfo {
+	return &syncagentpb.SyncFileInfo{
+		FromFileName: info.FromFileName,
+		ToFileName:   info.ToFileName,
+		ActualSize:   info.ActualSize,
+	}
+}
+
 func (c *ReplicaClient) GetReplica() (*types.ReplicaInfo, error) {
 	conn, err := grpc.Dial(c.replicaServiceURL, grpc.WithInsecure())
 	if err != nil {
@@ -411,6 +427,28 @@ func (c *ReplicaClient) LaunchReceiver(toFilePath string) (string, int32, error)
 	}
 
 	return c.host, reply.Port, nil
+}
+
+func (c *ReplicaClient) SyncFiles(fromAddress string, list []types.SyncFileInfo) error {
+	conn, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure())
+	if err != nil {
+		return fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
+	}
+	defer conn.Close()
+	syncAgentServiceClient := syncagentpb.NewSyncAgentServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceLongTimeout)
+	defer cancel()
+
+	if _, err := syncAgentServiceClient.FilesSync(ctx, &syncagentpb.FilesSyncRequest{
+		FromAddress:      fromAddress,
+		ToHost:           c.host,
+		SyncFileInfoList: c.syncFileInfoListToSyncAgentGRPCFormat(list),
+	}); err != nil {
+		return fmt.Errorf("failed to sync files %+v from %v: %v", list, fromAddress, err)
+	}
+
+	return nil
 }
 
 func (c *ReplicaClient) CreateBackup(snapshot, dest, volume string, labels []string, credential map[string]string) (*syncagentpb.BackupCreateReply, error) {
