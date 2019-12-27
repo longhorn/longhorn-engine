@@ -9,6 +9,7 @@ from data.common import (  # NOQA
     verify_replica_state, wait_for_purge_completion,
     Snapshot, Data, random_length,
     wait_for_volume_expansion, check_block_device_size,
+    wait_for_rebuild_complete,
 
 )
 
@@ -96,6 +97,7 @@ def test_ha_single_replica_rebuild(grpc_controller,  # NOQA
     # Rebuild replica2
     open_replica(grpc_replica2)
     cmd.add_replica(address, r2_url)
+    wait_for_rebuild_complete(address)
 
     verify_async(dev, 10, 128, 1)
 
@@ -197,6 +199,7 @@ def test_ha_double_replica_rebuild(grpc_controller,  # NOQA
     grpc_controller.replica_delete(replicas[0].address)
 
     cmd.add_replica(grpc_controller.address, r2_url)
+    wait_for_rebuild_complete(grpc_controller.address)
 
     verify_async(dev, 10, 128, 1)
 
@@ -288,6 +291,7 @@ def test_snapshot_tree_rebuild(grpc_controller,  # NOQA
     # Rebuild replica2
     open_replica(grpc_replica2)
     cmd.add_replica(address, r2_url)
+    wait_for_rebuild_complete(address)
 
     verify_async(dev, 10, 128, 1)
 
@@ -341,6 +345,7 @@ def test_ha_single_backing_replica_rebuild(grpc_backing_controller,  # NOQA
     # Rebuild replica2
     open_replica(grpc_backing_replica2)
     cmd.add_replica(address, r2_url)
+    wait_for_rebuild_complete(address)
 
     verify_async(dev, 10, 128, 1)
 
@@ -421,6 +426,7 @@ def test_ha_remove_extra_disks(grpc_controller,  # NOQA
     print(r1)
 
     cmd.add_replica(address, r1_url)
+    wait_for_rebuild_complete(address)
 
     verify_data(dev, data_offset, data)
 
@@ -482,6 +488,7 @@ def test_expansion_with_rebuild(grpc_controller,  # NOQA
     open_replica(grpc_replica2)
     # The newly opened replica2 will be expanded automatically
     cmd.add_replica(address, grpc_replica2.url)
+    wait_for_rebuild_complete(address)
     verify_replica_state(grpc_controller, 1, "RW")
 
     # Cleanup replica1 then check if the rebuilt replica2 works fine

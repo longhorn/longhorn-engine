@@ -532,3 +532,33 @@ def check_block_device_size(volume_name, size):
         buf = fcntl.ioctl(dev.fileno(), req, buf)
     device_size = struct.unpack('L', buf)[0]
     assert device_size == size
+
+
+def wait_for_rebuild_complete(url):
+    completed = 0
+    rebuild_status = {}
+    for x in range(RETRY_COUNTS):
+        completed = 0
+        rebuild_status = cmd.replica_rebuild_status(url)
+        for rebuild in rebuild_status.values():
+            if rebuild['state'] == "complete":
+                assert rebuild['progress'] == 100
+                assert not rebuild['isRebuilding']
+                completed += 1
+            elif rebuild['state'] == "":
+                assert not rebuild['isRebuilding']
+                completed += 1
+            # Right now add-replica/rebuild is a blocking call.
+            # Hence the state won't become `in_progress` when
+            # we check the rebuild status.
+            elif rebuild['state'] == "in_progress":
+                assert rebuild['state'] == "in_progress"
+                assert rebuild['isRebuilding']
+            else:
+                assert rebuild['state'] == "error"
+                assert rebuild['error'] != ""
+                assert not rebuild['isRebuilding']
+        if completed == len(rebuild_status):
+            break
+        time.sleep(RETRY_INTERVAL)
+    return completed == len(rebuild_status)

@@ -16,6 +16,7 @@ from core.common import (  # NOQA
     get_snapshot_file_paths,
     get_replica_head_file_path,
     wait_for_volume_expansion,
+    wait_for_rebuild_complete,
 
     VOLUME_NAME, ENGINE_NAME,
     RETRY_COUNTS2, FRONTEND_TGT_BLOCKDEV,
@@ -120,6 +121,7 @@ def test_replica_add_start(bin, grpc_controller_client,  # NOQA
            'add-replica',
            grpc_replica_client.url]
     subprocess.check_call(cmd)
+    wait_for_rebuild_complete(bin, grpc_controller_client.address)
 
     volume = grpc_controller_client.volume_get()
     assert volume.replicaCount == 1
@@ -157,6 +159,7 @@ def test_replica_add_rebuild(bin, grpc_controller_client,  # NOQA
            'add-replica',
            grpc_replica_client.url]
     subprocess.check_call(cmd)
+    wait_for_rebuild_complete(bin, grpc_controller_client.address)
 
     volume = grpc_controller_client.volume_get()
     assert volume.replicaCount == 1
@@ -165,6 +168,7 @@ def test_replica_add_rebuild(bin, grpc_controller_client,  # NOQA
            'add-replica',
            grpc_replica_client2.url]
     subprocess.check_call(cmd)
+    wait_for_rebuild_complete(bin, grpc_controller_client.address)
 
     volume = grpc_controller_client.volume_get()
     assert volume.replicaCount == 2

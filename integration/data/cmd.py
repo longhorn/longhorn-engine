@@ -128,6 +128,11 @@ def add_replica(url, replica_url):
     return subprocess.check_output(cmd, encoding='utf-8').strip()
 
 
+def replica_rebuild_status(url):
+    cmd = [_bin(), '--url', url, '--debug', 'replica-rebuild-status']
+    return json.loads(subprocess.check_output(cmd).strip())
+
+
 def restore_to_file(url, backup_url,
                     backing_file='', output_file='', format=''):
     cmd = [_bin(), '--url', url, '--debug',
