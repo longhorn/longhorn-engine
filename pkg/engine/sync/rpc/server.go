@@ -1,8 +1,8 @@
 package rpc
 
 import (
-	"errors"
 	"fmt"
+	"net/http"
 	"os"
 	"strconv"
 	"strings"
@@ -12,6 +12,7 @@ import (
 
 	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/moby/moby/pkg/reexec"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -19,11 +20,13 @@ import (
 	"github.com/longhorn/backupstore"
 	"github.com/longhorn/longhorn-engine/pkg/engine/backup"
 	"github.com/longhorn/longhorn-engine/pkg/engine/replica"
+	replicaclient "github.com/longhorn/longhorn-engine/pkg/engine/replica/client"
 	replicapb "github.com/longhorn/longhorn-engine/pkg/engine/replica/rpc/pb"
 	syncagentpb "github.com/longhorn/longhorn-engine/pkg/engine/sync/rpc/pb"
 	"github.com/longhorn/longhorn-engine/pkg/engine/types"
 	"github.com/longhorn/longhorn-engine/pkg/engine/util"
 	"github.com/longhorn/sparse-tools/sparse"
+	sparserest "github.com/longhorn/sparse-tools/sparse/rest"
 )
 
 /*
@@ -39,6 +42,8 @@ const (
 
 	GRPCServiceCommonTimeout = 1 * time.Minute
 
+	FileSyncTimeout = 120
+
 	VolumeHeadName = "volume-head"
 )
 
@@ -51,12 +56,14 @@ type SyncAgentServer struct {
 	processesByPort map[int]string
 	isPurging       bool
 	isRestoring     bool
+	isRebuilding    bool
 	lastRestored    string
 	replicaAddress  string
 
-	BackupList  *BackupList
-	RestoreInfo *replica.RestoreStatus
-	PurgeStatus *PurgeStatus
+	BackupList    *BackupList
+	RestoreInfo   *replica.RestoreStatus
+	PurgeStatus   *PurgeStatus
+	RebuildStatus *RebuildStatus
 }
 
 type BackupList struct {
@@ -92,6 +99,23 @@ func (ps *PurgeStatus) UpdateFoldFileProgress(progress int, done bool, err error
 	ps.Unlock()
 }
 
+type RebuildStatus struct {
+	sync.RWMutex
+	Error    string
+	Progress int
+	State    types.ProcessState
+
+	processedSize int64
+	totalSize     int64
+}
+
+func (rs *RebuildStatus) UpdateSyncFileProgress(size int64) {
+	rs.Lock()
+	rs.processedSize = rs.processedSize + size
+	rs.Progress = int((float32(rs.processedSize) / float32(rs.totalSize)) * 100)
+	rs.Unlock()
+}
+
 func GetDiskInfo(info *replicapb.DiskInfo) *types.DiskInfo {
 	diskInfo := &types.DiskInfo{
 		Name:        info.Name,
@@ -123,6 +147,9 @@ func NewSyncAgentServer(startPort, endPort int, replicaAddress string) *SyncAgen
 			RWMutex: sync.RWMutex{},
 		},
 		PurgeStatus: &PurgeStatus{
+			RWMutex: sync.RWMutex{},
+		},
+		RebuildStatus: &RebuildStatus{
 			RWMutex: sync.RWMutex{},
 		},
 	}
@@ -237,84 +264,141 @@ func (*SyncAgentServer) FileRename(ctx context.Context, req *syncagentpb.FileRen
 }
 
 func (s *SyncAgentServer) FileSend(ctx context.Context, req *syncagentpb.FileSendRequest) (*empty.Empty, error) {
-	args := []string{"ssync"}
-	if req.Host != "" {
-		args = append(args, "-host", req.Host)
-	}
-	if req.Port != 0 {
-		args = append(args, "-port", strconv.FormatInt(int64(req.Port), 10))
-	}
-	if req.FromFileName != "" {
-		args = append(args, req.FromFileName)
-	}
-
-	cmd := reexec.Command(args...)
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Pdeathsig: syscall.SIGKILL,
-	}
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-
-	if err := cmd.Start(); err != nil {
+	address := fmt.Sprintf("%s:%d", req.Host, req.Port)
+	logrus.Infof("Sending file %v to %v", req.FromFileName, address)
+	if err := sparse.SyncFile(req.FromFileName, address, FileSyncTimeout); err != nil {
 		return nil, err
 	}
+	logrus.Infof("Done sending file %v to %v", req.FromFileName, address)
 
-	logrus.Infof("Running %s %v", "ssync", args)
-	if err := cmd.Wait(); err != nil {
-		logrus.Infof("Error running %s %v: %v", "ssync", args, err)
-		return nil, err
-	}
-
-	logrus.Infof("Done running %s %v", "ssync", args)
 	return &empty.Empty{}, nil
 }
 
 func (s *SyncAgentServer) ReceiverLaunch(ctx context.Context, req *syncagentpb.ReceiverLaunchRequest) (*syncagentpb.ReceiverLaunchReply, error) {
-	port, err := s.nextPort("LaunchReceiver")
+	port, err := s.launchReceiver("ReceiverLaunch", req.ToFileName, &sparserest.SyncFileStub{})
 	if err != nil {
 		return nil, err
+	}
+	logrus.Infof("Launching receiver for file %v", req.ToFileName)
+
+	return &syncagentpb.ReceiverLaunchReply{Port: int32(port)}, nil
+}
+
+func (s *SyncAgentServer) launchReceiver(processName, toFileName string, ops sparserest.SyncFileOperations) (int, error) {
+	port, err := s.nextPort(processName)
+	if err != nil {
+		return 0, err
 	}
 
 	go func() {
 		defer func() {
 			s.Lock()
-			delete(s.processesByPort, int(port))
+			delete(s.processesByPort, port)
 			s.Unlock()
 		}()
 
-		args := []string{"ssync"}
-		if port != 0 {
-			args = append(args, "-port", strconv.Itoa(port))
-		}
-		if req.ToFileName != "" {
-			args = append(args, "-daemon", req.ToFileName)
-		}
-		cmd := reexec.Command(args...)
-		cmd.SysProcAttr = &syscall.SysProcAttr{
-			Pdeathsig: syscall.SIGKILL,
-		}
-		cmd.Stdout = os.Stdout
-		cmd.Stderr = os.Stderr
-
-		if err = cmd.Start(); err != nil {
-			logrus.Errorf("Error running %s %v: %v", "ssync", args, err)
+		logrus.Infof("Running ssync server for file %v at port %v", toFileName, port)
+		if err = sparserest.Server(strconv.Itoa(port), toFileName, ops); err != nil && err != http.ErrServerClosed {
+			logrus.Errorf("Error running ssync server: %v", err)
 			return
 		}
-
-		logrus.Infof("Running %s %v", "ssync", args)
-		if err = cmd.Wait(); err != nil {
-			logrus.Errorf("Error running %s %v: %v", "ssync", args, err)
-			return
-		}
-
-		logrus.Infof("Done running %s %v", "ssync", args)
+		logrus.Infof("Done running ssync server for file %v at port %v", toFileName, port)
 	}()
 
-	return &syncagentpb.ReceiverLaunchReply{Port: int32(port)}, nil
+	return port, nil
 }
 
 func (s *SyncAgentServer) FilesSync(ctx context.Context, req *syncagentpb.FilesSyncRequest) (*empty.Empty, error) {
-	return nil, fmt.Errorf("unimplemented call")
+	if err := s.PrepareRebuild(req.SyncFileInfoList); err != nil {
+		return nil, err
+	}
+
+	var err error
+	defer func() {
+		s.RebuildStatus.Lock()
+		if err != nil {
+			s.RebuildStatus.Error = err.Error()
+			s.RebuildStatus.State = types.ProcessStateError
+			logrus.Errorf("Sync agent gRPC server failed to rebuild replica/sync files: %v", err)
+		} else {
+			s.RebuildStatus.State = types.ProcessStateComplete
+		}
+		s.RebuildStatus.Unlock()
+
+		if err := s.FinishRebuild(); err != nil {
+			logrus.Errorf("could not finish rebuilding: %v", err)
+		}
+	}()
+
+	fromClient, err := replicaclient.NewReplicaClient(req.FromAddress)
+	if err != nil {
+		return nil, err
+	}
+
+	var ops sparserest.SyncFileOperations
+	fileStub := &sparserest.SyncFileStub{}
+	for _, info := range req.SyncFileInfoList {
+		// Do not count size for disk meta file or empty disk file.
+		if info.ActualSize == 0 {
+			ops = fileStub
+		} else {
+			ops = s.RebuildStatus
+		}
+
+		port, err := s.launchReceiver("FilesSync", info.ToFileName, ops)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to launch receiver for file %v", info.ToFileName)
+		}
+		if err = fromClient.SendFile(info.FromFileName, req.ToHost, int32(port)); err != nil {
+			return nil, errors.Wrapf(err, "replica %v failed to send file %v to %v:%v", req.FromAddress, info.ToFileName, req.ToHost, port)
+		}
+	}
+
+	return &empty.Empty{}, nil
+}
+
+func (s *SyncAgentServer) PrepareRebuild(list []*syncagentpb.SyncFileInfo) error {
+	s.Lock()
+	defer s.Unlock()
+
+	if s.isRebuilding {
+		return fmt.Errorf("replica is already rebuilding")
+	}
+
+	s.isRebuilding = true
+
+	s.RebuildStatus.Lock()
+	s.RebuildStatus.Error = ""
+	s.RebuildStatus.State = types.ProcessStateInProgress
+	// avoid possible division by zero
+	s.RebuildStatus.processedSize = 1
+	s.RebuildStatus.totalSize = 1
+	for _, info := range list {
+		s.RebuildStatus.totalSize += info.ActualSize
+	}
+	s.RebuildStatus.Progress = int((float32(s.RebuildStatus.processedSize) / float32(s.RebuildStatus.totalSize)) * 100)
+	s.RebuildStatus.Unlock()
+
+	return nil
+}
+
+func (s *SyncAgentServer) FinishRebuild() error {
+	s.Lock()
+	defer s.Unlock()
+
+	if !s.isRebuilding {
+		return fmt.Errorf("BUG: replica is not rebuilding")
+	}
+
+	s.isRebuilding = false
+	return nil
+}
+
+func (s *SyncAgentServer) IsRebuilding() bool {
+	s.Lock()
+	defer s.Unlock()
+
+	return s.isRebuilding
 }
 
 func (s *SyncAgentServer) BackupCreate(ctx context.Context, req *syncagentpb.BackupCreateRequest) (*syncagentpb.BackupCreateReply, error) {
