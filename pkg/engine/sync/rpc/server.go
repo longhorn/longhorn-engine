@@ -401,6 +401,19 @@ func (s *SyncAgentServer) IsRebuilding() bool {
 	return s.isRebuilding
 }
 
+func (s *SyncAgentServer) ReplicaRebuildStatus(ctx context.Context, req *empty.Empty) (*syncagentpb.ReplicaRebuildStatusReply, error) {
+	isRebuilding := s.IsRebuilding()
+
+	s.RebuildStatus.RLock()
+	defer s.RebuildStatus.RUnlock()
+	return &syncagentpb.ReplicaRebuildStatusReply{
+		IsRebuilding: isRebuilding,
+		Error:        s.RebuildStatus.Error,
+		Progress:     int32(s.RebuildStatus.Progress),
+		State:        string(s.RebuildStatus.State),
+	}, nil
+}
+
 func (s *SyncAgentServer) BackupCreate(ctx context.Context, req *syncagentpb.BackupCreateRequest) (*syncagentpb.BackupCreateReply, error) {
 	backupType, err := util.CheckBackupType(req.BackupTarget)
 	if err != nil {
@@ -1314,8 +1327,4 @@ func (b *BackupList) BackupDelete(backupID string) error {
 		}
 	}
 	return fmt.Errorf("backup not found %v", backupID)
-}
-
-func (s *SyncAgentServer) ReplicaRebuildStatus(ctx context.Context, req *empty.Empty) (*syncagentpb.ReplicaRebuildStatusReply, error) {
-	return nil, fmt.Errorf("unimplemented call")
 }
