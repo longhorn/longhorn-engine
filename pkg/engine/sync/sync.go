@@ -258,7 +258,7 @@ func (t *Task) AddReplica(replica string) error {
 		return err
 	}
 
-	fromClient, toClient, err := t.getTransferClients(replica)
+	_, toClient, fromAddress, _, err := t.getTransferClients(replica)
 	if err != nil {
 		return err
 	}
@@ -267,12 +267,16 @@ func (t *Task) AddReplica(replica string) error {
 		return err
 	}
 
-	output, err := t.client.ReplicaPrepareRebuild(replica)
+	resp, err := t.client.ReplicaPrepareRebuild(replica)
 	if err != nil {
 		return err
 	}
 
-	if err = t.syncFiles(fromClient, toClient, output.Disks); err != nil {
+	if checkIfVolumeHeadExists(resp) {
+		return fmt.Errorf("sync file list shouldn't contain volume head")
+	}
+
+	if err = toClient.SyncFiles(fromAddress, resp); err != nil {
 		return err
 	}
 
@@ -362,69 +366,41 @@ func (t *Task) reloadAndVerify(address string, repClient *replicaClient.ReplicaC
 	return nil
 }
 
-func (t *Task) syncFiles(fromClient *replicaClient.ReplicaClient, toClient *replicaClient.ReplicaClient, disks []string) error {
+func checkIfVolumeHeadExists(infoList []types.SyncFileInfo) bool {
 	// volume head has been synced by PrepareRebuild()
-	for _, disk := range disks {
-		if strings.Contains(disk, VolumeHeadName) {
-			return fmt.Errorf("Disk list shouldn't contain %s", VolumeHeadName)
-		}
-		if err := t.syncFile(disk, "", fromClient, toClient); err != nil {
-			return err
-		}
-
-		if err := t.syncFile(disk+".meta", "", fromClient, toClient); err != nil {
-			return err
+	for _, info := range infoList {
+		if strings.Contains(info.FromFileName, VolumeHeadName) {
+			return true
 		}
 	}
-
-	return nil
+	return false
 }
 
-func (t *Task) syncFile(from, to string, fromClient *replicaClient.ReplicaClient, toClient *replicaClient.ReplicaClient) error {
-	if to == "" {
-		to = from
-	}
-
-	host, port, err := toClient.LaunchReceiver(to)
-	if err != nil {
-		return err
-	}
-
-	logrus.Infof("Synchronizing %s to %s@%s:%d", from, to, host, port)
-	err = fromClient.SendFile(from, host, port)
-	if err != nil {
-		logrus.Infof("Failed synchronizing %s to %s@%s:%d: %v", from, to, host, port, err)
-	} else {
-		logrus.Infof("Done synchronizing %s to %s@%s:%d", from, to, host, port)
-	}
-
-	return err
-}
-
-func (t *Task) getTransferClients(address string) (*replicaClient.ReplicaClient, *replicaClient.ReplicaClient, error) {
+func (t *Task) getTransferClients(address string) (
+	*replicaClient.ReplicaClient, *replicaClient.ReplicaClient, string, string, error) {
 	from, err := t.getFromReplica()
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, "", "", err
 	}
 	logrus.Infof("Using replica %s as the source for rebuild ", from.Address)
 
 	fromClient, err := replicaClient.NewReplicaClient(from.Address)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, "", "", err
 	}
 
 	to, err := t.getToReplica(address)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, "", "", err
 	}
 	logrus.Infof("Using replica %s as the target for rebuild ", to.Address)
 
 	toClient, err := replicaClient.NewReplicaClient(to.Address)
 	if err != nil {
-		return nil, nil, err
+		return nil, nil, "", "", err
 	}
 
-	return fromClient, toClient, nil
+	return fromClient, toClient, from.Address, to.Address, nil
 }
 
 func (t *Task) getFromReplica() (*types.ControllerReplicaInfo, error) {
