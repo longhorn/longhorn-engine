@@ -40,7 +40,8 @@ func Main() {
 		}
 		dstPath := args[0]
 
-		err := rest.Server(*port, dstPath)
+		ops := &rest.SyncFileStub{}
+		err := rest.Server(*port, dstPath, ops)
 		if err != nil {
 			log.Fatalf("Ssync server failed, err: %s", err)
 		}
