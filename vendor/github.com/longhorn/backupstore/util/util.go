@@ -134,7 +134,7 @@ func IsMounted(mountPoint string) bool {
 	}
 	lines := strings.Split(output, "\n")
 	for _, line := range lines {
-		if strings.Contains(line, mountPoint) {
+		if strings.Contains(line, " "+mountPoint+" ") {
 			return true
 		}
 	}
