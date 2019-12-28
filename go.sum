@@ -46,8 +46,8 @@ github.com/jtolds/gls v4.20.0+incompatible h1:xdiiI2gbIgH/gLH7ADydsJ1uDOEzR8yvV7
 github.com/jtolds/gls v4.20.0+incompatible/go.mod h1:QJZ7F/aHp+rZTRtaJ1ow/lLfFfVYBRgL+9YlvaHOwJU=
 github.com/konsorten/go-windows-terminal-sequences v1.0.1 h1:mweAR1A6xJ3oS2pRaGiHgQ4OO8tzTaLawm8vnODuwDk=
 github.com/konsorten/go-windows-terminal-sequences v1.0.1/go.mod h1:T0+1ngSBFLxvqU3pZ+m/2kptfBszLMUkC4ZK/EgS/cQ=
-github.com/longhorn/backupstore v0.0.0-20191217235113-71a8d8bcfe92 h1:0nEvUN7umKsEbI6Eh2XEwxX/LwiB1oJtPgsKM0Ii4bw=
-github.com/longhorn/backupstore v0.0.0-20191217235113-71a8d8bcfe92/go.mod h1:TEcXB6izcrf4DMxnAhEKasrrmRq0nK4wlTUVrDIZaYg=
+github.com/longhorn/backupstore v0.0.0-20191228031959-3524b8ae9518 h1:MujcirudfHDmbVXhkKHwjYf9OVMM5Mwb2/li9/XA2uo=
+github.com/longhorn/backupstore v0.0.0-20191228031959-3524b8ae9518/go.mod h1:TEcXB6izcrf4DMxnAhEKasrrmRq0nK4wlTUVrDIZaYg=
 github.com/longhorn/go-iscsi-helper v0.0.0-20191217235054-ce79ff17c4a2 h1:TCTB1/AeQeYb3D4b8nBOKJeYZM84aoUGeetb0kFsFCU=
 github.com/longhorn/go-iscsi-helper v0.0.0-20191217235054-ce79ff17c4a2/go.mod h1:3RTrAwLd6uaku/4wPE0KkSQI2OmhPgGO1SQ2Hbix5hY=
 github.com/longhorn/sparse-tools v0.0.0-20191217235140-e01a17fdf345 h1:XzoImZBEQ29EPt98XANbMeKxKABrDYmBdGOHx9akPYI=
