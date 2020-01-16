@@ -29,6 +29,7 @@ type Controller struct {
 	frontend   types.Frontend
 	launcher   string
 	launcherID string
+	isUpgrade  bool
 
 	isExpanding bool
 
@@ -48,7 +49,7 @@ type Controller struct {
 	backupListMutex *sync.RWMutex
 }
 
-func NewController(name string, factory types.BackendFactory, frontend types.Frontend, launcher, launcherID string) *Controller {
+func NewController(name string, factory types.BackendFactory, frontend types.Frontend, launcher, launcherID string, isUpgrade bool) *Controller {
 	c := &Controller{
 		factory:       factory,
 		Name:          name,
@@ -60,6 +61,8 @@ func NewController(name string, factory types.BackendFactory, frontend types.Fro
 
 		backupList:      map[string]string{},
 		backupListMutex: &sync.RWMutex{},
+
+		isUpgrade: isUpgrade,
 	}
 	c.reset()
 	c.metricsStart()
@@ -385,6 +388,14 @@ func (c *Controller) setReplicaModeNoLock(address string, mode types.Mode) {
 
 func (c *Controller) startFrontend() error {
 	if len(c.replicas) > 0 && c.frontend != nil {
+		if c.isUpgrade {
+			logrus.Infof("Upgrading frontend")
+			if err := c.frontend.Upgrade(c.Name, c.size, c.sectorSize, c); err != nil {
+				logrus.Errorf("Failed to upgrade frontend: %v", err)
+				return errors.Wrap(err, "failed to upgrade frontend")
+			}
+			return nil
+		}
 		if err := c.frontend.Startup(c.Name, c.size, c.sectorSize, c); err != nil {
 			logrus.Errorf("Failed to startup frontend: %v", err)
 			return errors.Wrap(err, "failed to start up frontend")

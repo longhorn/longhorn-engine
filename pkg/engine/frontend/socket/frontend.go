@@ -157,3 +157,7 @@ func (d DataProcessorWrapper) WriteAt(p []byte, off int64) (n int, err error) {
 func (d DataProcessorWrapper) PingResponse() error {
 	return nil
 }
+
+func (t *Socket) Upgrade(name string, size, sectorSize int64, rw types.ReaderWriterAt) error {
+	return fmt.Errorf("Upgrade is not supported")
+}
