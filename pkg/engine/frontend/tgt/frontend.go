@@ -3,7 +3,9 @@ package tgt
 import (
 	"fmt"
 	"os"
+	"os/exec"
 	"path/filepath"
+	"time"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -129,5 +131,35 @@ func (t *Tgt) createDev() error {
 		return err
 	}
 	logrus.Infof("Device %s is ready", dev)
+	return nil
+}
+
+func (t *Tgt) Upgrade(name string, size, sectorSize int64, rw types.ReaderWriterAt) error {
+	if err := t.s.Startup(name, size, sectorSize, rw); err != nil {
+		return err
+	}
+	if t.scsiDevice == nil {
+		bsOpts := fmt.Sprintf("size=%v", t.s.Size)
+		scsiDev, err := iscsiblk.NewScsiDevice(t.s.Volume, t.s.GetSocketPath(), "longhorn", bsOpts, DefaultTargetID)
+		if err != nil {
+			return err
+		}
+		t.scsiDevice = scsiDev
+	}
+	if err := t.ReloadSocketConnection(name); err != nil {
+		return err
+	}
+	t.isUp = true
+
+	return nil
+}
+
+func (t *Tgt) ReloadSocketConnection(name string) error {
+	//TODO add wait for the socket
+	time.Sleep(3 * time.Second)
+	cmd := exec.Command("sg_raw", "/dev/longhorn/"+name, "a6", "00", "00", "00", "00", "00")
+	if err := cmd.Run(); err != nil {
+		return errors.Wrapf(err, "failed to reload socket connection")
+	}
 	return nil
 }
