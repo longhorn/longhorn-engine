@@ -1,6 +1,7 @@
 package rest
 
 import (
+	"fmt"
 	"net/http"
 	"os"
 
@@ -85,4 +86,8 @@ func (d *Device) Endpoint() string {
 		return "http://localhost:9414"
 	}
 	return ""
+}
+
+func (d *Device) Upgrade(name string, size, sectorSize int64, rw types.ReaderWriterAt) error {
+	return fmt.Errorf("Upgrade is not supported")
 }
