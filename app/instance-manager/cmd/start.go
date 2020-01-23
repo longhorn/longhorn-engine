@@ -64,11 +64,11 @@ func cleanup(pm *process.Manager, em *engine.Manager) {
 		emResp, err := em.EngineList(nil, &empty.Empty{})
 		if err != nil {
 			logrus.Errorf("Failed to list engine processes when shutting down")
-			return
+			break
 		}
 		if len(emResp.Engines) == 0 {
 			logrus.Infof("Instance Manager has shutdown all processes and cleaned up all engine processes. Graceful shutdown succeeded")
-			return
+			break
 		}
 		time.Sleep(types.WaitInterval)
 	}
@@ -88,7 +88,7 @@ func cleanup(pm *process.Manager, em *engine.Manager) {
 		pmResp, err := pm.ProcessList(nil, &rpc.ProcessListRequest{})
 		if err != nil {
 			logrus.Errorf("Failed to list instance processes when shutting down")
-			return
+			break
 		}
 		if len(pmResp.Processes) == 0 {
 			logrus.Infof("Instance Manager has shutdown all processes.")
