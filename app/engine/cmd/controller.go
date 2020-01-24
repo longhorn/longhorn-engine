@@ -36,12 +36,6 @@ func ControllerCmd() cli.Command {
 			cli.StringSliceFlag{
 				Name: "replica",
 			},
-			cli.StringFlag{
-				Name: "launcher",
-			},
-			cli.StringFlag{
-				Name: "launcher-id",
-			},
 			cli.BoolFlag{
 				Name: "upgrade",
 			},
@@ -68,8 +62,6 @@ func startController(c *cli.Context) error {
 	backends := c.StringSlice("enable-backend")
 	replicas := c.StringSlice("replica")
 	frontendName := c.String("frontend")
-	launcher := c.String("launcher")
-	launcherID := c.String("launcher-id")
 	isUpgrade := c.Bool("upgrade")
 
 	factories := map[string]types.BackendFactory{}
@@ -93,12 +85,12 @@ func startController(c *cli.Context) error {
 		frontend = f
 	}
 
-	control := controller.NewController(name, dynamic.New(factories), frontend, launcher, launcherID, isUpgrade)
+	control := controller.NewController(name, dynamic.New(factories), frontend, isUpgrade)
 
 	// need to wait for Shutdown() completion
 	control.ShutdownWG.Add(1)
 	addShutdown(func() {
-		logrus.Debugf("Starting to execute shutdown function for the engine controller of volume %v with launcherID %v", name, launcherID)
+		logrus.Debugf("Starting to execute shutdown function for the engine controller of volume %v", name)
 		control.Shutdown()
 		control.ShutdownWG.Done()
 	})
