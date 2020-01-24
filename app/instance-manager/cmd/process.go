@@ -18,6 +18,7 @@ func ProcessCmd() cli.Command {
 			ProcessDeleteCmd(),
 			ProcessGetCmd(),
 			ProcessListCmd(),
+			ProcessReplaceCmd(),
 		},
 	}
 }
@@ -135,4 +136,47 @@ func listProcess(c *cli.Context) error {
 		return fmt.Errorf("failed to list processes: %v", err)
 	}
 	return util.PrintJSON(processes)
+}
+
+func ProcessReplaceCmd() cli.Command {
+	return cli.Command{
+		Name: "replace",
+		Flags: []cli.Flag{
+			cli.StringFlag{
+				Name: "name",
+			},
+			cli.StringFlag{
+				Name: "binary",
+			},
+			cli.IntFlag{
+				Name: "port-count",
+			},
+			cli.StringSliceFlag{
+				Name:  "port-args",
+				Usage: "Automatically add additional arguments when starting the process. In case of space, use `,` instead.",
+			},
+			cli.StringFlag{
+				Name:  "terminate-signal",
+				Usage: "The signal used to terminate the old process",
+				Value: "SIGHUP",
+			},
+		},
+		Action: func(c *cli.Context) {
+			if err := replaceProcess(c); err != nil {
+				logrus.Fatalf("Error running engine replace command: %v.", err)
+			}
+		},
+	}
+}
+
+func replaceProcess(c *cli.Context) error {
+	url := c.GlobalString("url")
+
+	cli := client.NewProcessManagerClient(url)
+	process, err := cli.ProcessReplace(c.String("name"), c.String("binary"),
+		c.Int("port-count"), c.Args(), c.StringSlice("port-args"), c.String("terminate-signal"))
+	if err != nil {
+		return fmt.Errorf("failed to replace processes: %v", err)
+	}
+	return util.PrintJSON(process)
 }
