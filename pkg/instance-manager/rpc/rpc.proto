@@ -75,6 +75,7 @@ service ProcessManagerService {
 	rpc ProcessList(ProcessListRequest) returns (ProcessListResponse) {}
 	rpc ProcessLog(LogRequest) returns (stream LogResponse) {}
 	rpc ProcessWatch(google.protobuf.Empty) returns (stream ProcessResponse) {}
+	rpc ProcessReplace(ProcessReplaceRequest) returns (ProcessResponse) {}
 }
 
 message ProcessSpec {
@@ -123,4 +124,9 @@ message LogRequest {
 
 message LogResponse{
 	string line = 2;
+}
+
+message ProcessReplaceRequest {
+	ProcessSpec spec = 1;
+	string terminateSignal = 2;
 }

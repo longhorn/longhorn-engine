@@ -274,6 +274,11 @@ class ProcessManagerServiceStub(object):
         request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
         response_deserializer=rpc__pb2.ProcessResponse.FromString,
         )
+    self.ProcessReplace = channel.unary_unary(
+        '/ProcessManagerService/ProcessReplace',
+        request_serializer=rpc__pb2.ProcessReplaceRequest.SerializeToString,
+        response_deserializer=rpc__pb2.ProcessResponse.FromString,
+        )
 
 
 class ProcessManagerServiceServicer(object):
@@ -322,6 +327,13 @@ class ProcessManagerServiceServicer(object):
     context.set_details('Method not implemented!')
     raise NotImplementedError('Method not implemented!')
 
+  def ProcessReplace(self, request, context):
+    # missing associated documentation comment in .proto file
+    pass
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
 
 def add_ProcessManagerServiceServicer_to_server(servicer, server):
   rpc_method_handlers = {
@@ -353,6 +365,11 @@ def add_ProcessManagerServiceServicer_to_server(servicer, server):
       'ProcessWatch': grpc.unary_stream_rpc_method_handler(
           servicer.ProcessWatch,
           request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+          response_serializer=rpc__pb2.ProcessResponse.SerializeToString,
+      ),
+      'ProcessReplace': grpc.unary_unary_rpc_method_handler(
+          servicer.ProcessReplace,
+          request_deserializer=rpc__pb2.ProcessReplaceRequest.FromString,
           response_serializer=rpc__pb2.ProcessResponse.SerializeToString,
       ),
   }

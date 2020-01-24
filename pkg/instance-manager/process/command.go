@@ -17,6 +17,7 @@ type Command interface {
 	SetOutput(io.Writer)
 	Started() bool
 	Stop()
+	StopWithSignal(signal syscall.Signal)
 	Kill()
 }
 
@@ -65,6 +66,14 @@ func (bc *BinaryCommand) Started() bool {
 	bc.RLock()
 	defer bc.RUnlock()
 	return bc.Process != nil
+}
+
+func (bc *BinaryCommand) StopWithSignal(signal syscall.Signal) {
+	bc.RLock()
+	defer bc.RUnlock()
+	if bc.Process != nil {
+		bc.Process.Signal(signal)
+	}
 }
 
 func (bc *BinaryCommand) Stop() {
@@ -138,6 +147,10 @@ func (mc *MockCommand) Stop() {
 	mc.Unlock()
 
 	mc.stopCh <- nil
+}
+
+func (mc *MockCommand) StopWithSignal(signal syscall.Signal) {
+	mc.Stop()
 }
 
 func (mc *MockCommand) Kill() {
