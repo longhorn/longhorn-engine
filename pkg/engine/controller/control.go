@@ -15,7 +15,6 @@ import (
 
 	"github.com/longhorn/longhorn-engine/pkg/engine/types"
 	"github.com/longhorn/longhorn-engine/pkg/engine/util"
-	imclient "github.com/longhorn/longhorn-engine/pkg/instance-manager/client"
 )
 
 type Controller struct {
@@ -27,8 +26,6 @@ type Controller struct {
 	factory    types.BackendFactory
 	backend    *replicator
 	frontend   types.Frontend
-	launcher   string
-	launcherID string
 	isUpgrade  bool
 
 	isExpanding bool
@@ -49,13 +46,11 @@ type Controller struct {
 	backupListMutex *sync.RWMutex
 }
 
-func NewController(name string, factory types.BackendFactory, frontend types.Frontend, launcher, launcherID string, isUpgrade bool) *Controller {
+func NewController(name string, factory types.BackendFactory, frontend types.Frontend, isUpgrade bool) *Controller {
 	c := &Controller{
 		factory:       factory,
 		Name:          name,
 		frontend:      frontend,
-		launcher:      launcher,
-		launcherID:    launcherID,
 		metrics:       &types.Metrics{},
 		latestMetrics: &types.Metrics{},
 
@@ -266,15 +261,8 @@ func (c *Controller) finishExpansion(expanded bool, size int64) {
 }
 
 func (c *Controller) updateFrontend(size int64) error {
-	if c.launcher == "" {
-		return nil
-	}
-
-	client := imclient.NewEngineManagerClient(c.launcher)
-	if err := client.EngineExpand(c.launcherID, size); err != nil {
-		return err
-	}
-	return nil
+	//TODO fix volume expansion
+	return fmt.Errorf("volume expansion is not supported")
 }
 
 func (c *Controller) IsExpanding() bool {
@@ -399,15 +387,6 @@ func (c *Controller) startFrontend() error {
 		if err := c.frontend.Startup(c.Name, c.size, c.sectorSize, c); err != nil {
 			logrus.Errorf("Failed to startup frontend: %v", err)
 			return errors.Wrap(err, "failed to start up frontend")
-		}
-		if c.launcher != "" {
-			if err := c.frontendStartCallback(); err != nil {
-				logrus.Errorf("Shutting down frontend due to failed to callback launcher: %v", err)
-				if err := c.frontend.Shutdown(); err != nil {
-					logrus.Errorf("Failed to shutdown frontend: %v", err)
-				}
-				return errors.Wrap(err, "failed to start up launcher")
-			}
 		}
 	}
 	return nil
@@ -590,13 +569,6 @@ func (c *Controller) shutdownFrontend() error {
 	c.RLock()
 	defer c.RUnlock()
 
-	// shutdown launcher's frontend if applied
-	if c.launcher != "" {
-		logrus.Infof("Asking the launcher to shutdown the frontend")
-		if err := c.frontendShutdownCallback(); err != nil {
-			return err
-		}
-	}
 	if c.frontend != nil {
 		return c.frontend.Shutdown()
 	}
@@ -676,32 +648,6 @@ func (c *Controller) FrontendState() string {
 		return string(c.frontend.State())
 	}
 	return ""
-}
-
-func (c *Controller) frontendStartCallback() error {
-	if c.launcher == "" {
-		return nil
-	}
-
-	client := imclient.NewEngineManagerClient(c.launcher)
-	if err := client.FrontendStartCallback(c.launcherID); err != nil {
-		return fmt.Errorf("failed to start frontend: %v", err)
-	}
-
-	return nil
-}
-
-func (c *Controller) frontendShutdownCallback() error {
-	if c.launcher == "" {
-		return nil
-	}
-
-	client := imclient.NewEngineManagerClient(c.launcher)
-	if err := client.FrontendShutdownCallback(c.launcherID); err != nil {
-		return fmt.Errorf("failed to shutdown frontend: %v", err)
-	}
-
-	return nil
 }
 
 func (c *Controller) recordMetrics(isRead bool, dataLength int, latency time.Duration) {
