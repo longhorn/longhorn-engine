@@ -174,8 +174,6 @@ func (pm *Manager) ProcessDelete(ctx context.Context, req *rpc.ProcessDeleteRequ
 }
 
 func (pm *Manager) registerProcess(p *Process) error {
-	var err error
-
 	pm.lock.Lock()
 	defer pm.lock.Unlock()
 
@@ -184,22 +182,8 @@ func (pm *Manager) registerProcess(p *Process) error {
 		return status.Errorf(codes.AlreadyExists, "process %v already exists", p.Name)
 	}
 
-	if len(p.PortArgs) > int(p.PortCount) {
-		return fmt.Errorf("too many port args %v for port count %v", p.PortArgs, p.PortCount)
-	}
-
-	p.PortStart, p.PortEnd, err = pm.allocatePorts(p.PortCount)
-	if err != nil {
-		return errors.Wrapf(err, "cannot allocate %v ports for %v", p.PortCount, p.Name)
-	}
-
-	if len(p.PortArgs) != 0 {
-		for i, arg := range p.PortArgs {
-			if p.PortStart+int32(i) > p.PortEnd {
-				return fmt.Errorf("cannot fit port args %v", arg)
-			}
-			p.Args = append(p.Args, strings.Split(arg+strconv.Itoa(int(p.PortStart)+i), ",")...)
-		}
+	if err := pm.allocateProcessPorts(p); err != nil {
+		return err
 	}
 
 	p.UpdateCh = pm.processUpdateCh
@@ -226,14 +210,11 @@ func (pm *Manager) unregisterProcess(p *Process) {
 	}
 
 	if p.IsStopped() {
+		pm.releaseProcessPorts(p)
 		pm.lock.Lock()
-		if err := pm.releasePorts(p.PortStart, p.PortEnd); err != nil {
-			logrus.Errorf("Process Manager: cannot deallocate %v ports (%v-%v) for %v: %v",
-				p.PortCount, p.PortStart, p.PortEnd, p.Name, err)
-		}
-		logrus.Infof("Process Manager: successfully unregistered process %v", p.Name)
 		delete(pm.processes, p.Name)
 		pm.lock.Unlock()
+		logrus.Infof("Process Manager: successfully unregistered process %v", p.Name)
 		p.UpdateCh <- p
 	} else {
 		logrus.Errorf("Process Manager: failed to unregister process %v since it is state %v rather than stopped", p.Name, p.State)
@@ -417,7 +398,11 @@ func (pm *Manager) ProcessReplace(ctx context.Context, req *rpc.ProcessReplaceRe
 	for i := 0; i < 30; i++ {
 		resp := p.RPCResponse()
 		if resp.Status.State == types.ProcessStateRunning {
+			logrus.Infof("Process Manager: replacement process for %v started running", req.Spec.Name)
 			replacementRunning = true
+			break
+		} else if resp.Status.State != types.ProcessStateStarting {
+			logrus.Errorf("Process Manager: replacement process for %v failed to start, now in state %v", req.Spec.Name, resp.Status.State)
 			break
 		}
 		logrus.Debugf("Process Manager: waiting for the replace process %v to start", req.Spec.Name)
@@ -427,24 +412,17 @@ func (pm *Manager) ProcessReplace(ctx context.Context, req *rpc.ProcessReplaceRe
 		p.Stop()
 
 		// TODO Wait for the process to exit before releasing the port
-		pm.lock.Lock()
-		if err := pm.releasePorts(p.PortStart, p.PortEnd); err != nil {
-			logrus.Errorf("Process Manager: cannot deallocate %v ports (%v-%v) for %v: %v",
-				p.PortCount, p.PortStart, p.PortEnd, p.Name, err)
-		}
-		pm.lock.Unlock()
+		pm.releaseProcessPorts(p)
+		logrus.Errorf("Process Manager: cleaned up the replacement process for %v", req.Spec.Name)
 
-		return nil, fmt.Errorf("Failed to start replacement process: ", p.Name)
+		return nil, fmt.Errorf("Failed to start replacement process %v", p.Name)
 	}
 	pm.lock.Lock()
 
 	oldProcess := pm.processes[p.Name]
 	oldProcess.StopWithSignal(terminateSignal)
 	//TODO wait for the old process to stop
-	if err := pm.releasePorts(p.PortStart, p.PortEnd); err != nil {
-		logrus.Errorf("Process Manager: cannot deallocate %v ports (%v-%v) for %v: %v",
-			p.PortCount, p.PortStart, p.PortEnd, p.Name, err)
-	}
+	pm.releaseProcessPorts(oldProcess)
 	logrus.Infof("Process Manager: successfully unregistered old process %v", p.Name)
 
 	p.UpdateCh = pm.processUpdateCh
@@ -459,8 +437,6 @@ func (pm *Manager) ProcessReplace(ctx context.Context, req *rpc.ProcessReplaceRe
 }
 
 func (pm *Manager) initProcessReplace(p *Process) error {
-	var err error
-
 	pm.lock.Lock()
 	defer pm.lock.Unlock()
 
@@ -469,6 +445,11 @@ func (pm *Manager) initProcessReplace(p *Process) error {
 		return status.Errorf(codes.AlreadyExists, "process %v doesn't exists", p.Name)
 	}
 
+	return pm.allocateProcessPorts(p)
+}
+
+func (pm *Manager) allocateProcessPorts(p *Process) error {
+	var err error
 	if len(p.PortArgs) > int(p.PortCount) {
 		return fmt.Errorf("too many port args %v for port count %v", p.PortArgs, p.PortCount)
 	}
@@ -488,4 +469,11 @@ func (pm *Manager) initProcessReplace(p *Process) error {
 	}
 
 	return nil
+}
+
+func (pm *Manager) releaseProcessPorts(p *Process) {
+	if err := pm.releasePorts(p.PortStart, p.PortEnd); err != nil {
+		logrus.Errorf("Process Manager: cannot deallocate %v ports (%v-%v) for %v: %v",
+			p.PortCount, p.PortStart, p.PortEnd, p.Name, err)
+	}
 }
