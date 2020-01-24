@@ -2,6 +2,7 @@ package process
 
 import (
 	"sync"
+	"syscall"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -127,6 +128,10 @@ func (p *Process) RPCResponse() *rpc.ProcessResponse {
 }
 
 func (p *Process) Stop() {
+	p.StopWithSignal(syscall.SIGINT)
+}
+
+func (p *Process) StopWithSignal(signal syscall.Signal) {
 	needStop := false
 	p.lock.Lock()
 	if p.State != StateStopping && p.State != StateStopped && p.State != StateError {
@@ -158,7 +163,7 @@ func (p *Process) Stop() {
 
 		// no need for lock
 		logrus.Debugf("Process Manager: trying to stop process %v", p.Name)
-		cmd.Stop()
+		cmd.StopWithSignal(signal)
 		for i := 0; i < types.WaitCount; i++ {
 			if p.IsStopped() {
 				return

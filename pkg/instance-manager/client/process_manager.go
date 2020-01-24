@@ -157,3 +157,37 @@ func (cli *ProcessManagerClient) ProcessWatch() (*api.ProcessStream, error) {
 
 	return api.NewProcessStream(conn, cancel, stream), nil
 }
+
+func (cli *ProcessManagerClient) ProcessReplace(name, binary string, portCount int, args, portArgs []string, terminateSignal string) (*api.Process, error) {
+	if name == "" || binary == "" {
+		return nil, fmt.Errorf("failed to start process: missing required parameter")
+	}
+	if terminateSignal != "SIGHUP" {
+		return nil, fmt.Errorf("Unsupported terminate signal %v", terminateSignal)
+	}
+
+	conn, err := grpc.Dial(cli.Address, grpc.WithInsecure())
+	if err != nil {
+		return nil, fmt.Errorf("cannot connect process manager service to %v: %v", cli.Address, err)
+	}
+	defer conn.Close()
+
+	client := rpc.NewProcessManagerServiceClient(conn)
+	ctx, cancel := context.WithTimeout(context.Background(), types.GRPCServiceTimeout)
+	defer cancel()
+
+	p, err := client.ProcessReplace(ctx, &rpc.ProcessReplaceRequest{
+		Spec: &rpc.ProcessSpec{
+			Name:      name,
+			Binary:    binary,
+			Args:      args,
+			PortCount: int32(portCount),
+			PortArgs:  portArgs,
+		},
+		TerminateSignal: terminateSignal,
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to start process: %v", err)
+	}
+	return api.RPCToProcess(p), nil
+}
