@@ -21,7 +21,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='',
   syntax='proto3',
   serialized_options=None,
-  serialized_pb=_b('\n\trpc.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xa6\x01\n\nEngineSpec\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x13\n\x0bvolume_name\x18\x02 \x01(\t\x12\x0e\n\x06\x62inary\x18\x03 \x01(\t\x12\x0e\n\x06listen\x18\x04 \x01(\t\x12\x11\n\tlisten_ip\x18\x05 \x01(\t\x12\x0c\n\x04size\x18\x06 \x01(\x03\x12\x10\n\x08\x66rontend\x18\x07 \x01(\t\x12\x10\n\x08\x62\x61\x63kends\x18\x08 \x03(\t\x12\x10\n\x08replicas\x18\t \x03(\t\"H\n\x0c\x45ngineStatus\x12&\n\x0eprocess_status\x18\x01 \x01(\x0b\x32\x0e.ProcessStatus\x12\x10\n\x08\x65ndpoint\x18\x02 \x01(\t\"[\n\x0e\x45ngineResponse\x12\x19\n\x04spec\x18\x01 \x01(\x0b\x32\x0b.EngineSpec\x12\x1d\n\x06status\x18\x02 \x01(\x0b\x32\r.EngineStatus\x12\x0f\n\x07\x64\x65leted\x18\x03 \x01(\x08\"0\n\x13\x45ngineCreateRequest\x12\x19\n\x04spec\x18\x01 \x01(\x0b\x32\x0b.EngineSpec\"\x1d\n\rEngineRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\"1\n\x14\x45ngineUpgradeRequest\x12\x19\n\x04spec\x18\x01 \x01(\x0b\x32\x0b.EngineSpec\"\x88\x01\n\x12\x45ngineListResponse\x12\x31\n\x07\x65ngines\x18\x01 \x03(\x0b\x32 .EngineListResponse.EnginesEntry\x1a?\n\x0c\x45nginesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x1e\n\x05value\x18\x02 \x01(\x0b\x32\x0f.EngineResponse:\x02\x38\x01\"1\n\x13\x45ngineExpandRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0c\n\x04size\x18\x02 \x01(\x03\"6\n\x14\x46rontendStartRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x10\n\x08\x66rontend\x18\x02 \x01(\t\"`\n\x0bProcessSpec\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0e\n\x06\x62inary\x18\x02 \x01(\t\x12\x0c\n\x04\x61rgs\x18\x03 \x03(\t\x12\x12\n\nport_count\x18\x04 \x01(\x05\x12\x11\n\tport_args\x18\x05 \x03(\t\"W\n\rProcessStatus\x12\r\n\x05state\x18\x01 \x01(\t\x12\x11\n\terror_msg\x18\x02 \x01(\t\x12\x12\n\nport_start\x18\x03 \x01(\x05\x12\x10\n\x08port_end\x18\x04 \x01(\x05\"2\n\x14ProcessCreateRequest\x12\x1a\n\x04spec\x18\x01 \x01(\x0b\x32\x0c.ProcessSpec\"$\n\x14ProcessDeleteRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\"!\n\x11ProcessGetRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\"^\n\x0fProcessResponse\x12\x1a\n\x04spec\x18\x01 \x01(\x0b\x32\x0c.ProcessSpec\x12\x1e\n\x06status\x18\x02 \x01(\x0b\x32\x0e.ProcessStatus\x12\x0f\n\x07\x64\x65leted\x18\x03 \x01(\x08\"\x14\n\x12ProcessListRequest\"\x91\x01\n\x13ProcessListResponse\x12\x36\n\tprocesses\x18\x01 \x03(\x0b\x32#.ProcessListResponse.ProcessesEntry\x1a\x42\n\x0eProcessesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x1f\n\x05value\x18\x02 \x01(\x0b\x32\x10.ProcessResponse:\x02\x38\x01\"\x1a\n\nLogRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\"\x1b\n\x0bLogResponse\x12\x0c\n\x04line\x18\x02 \x01(\t2\xd4\x05\n\x14\x45ngineManagerService\x12\x37\n\x0c\x45ngineCreate\x12\x14.EngineCreateRequest\x1a\x0f.EngineResponse\"\x00\x12\x31\n\x0c\x45ngineDelete\x12\x0e.EngineRequest\x1a\x0f.EngineResponse\"\x00\x12.\n\tEngineGet\x12\x0e.EngineRequest\x1a\x0f.EngineResponse\"\x00\x12;\n\nEngineList\x12\x16.google.protobuf.Empty\x1a\x13.EngineListResponse\"\x00\x12\x39\n\rEngineUpgrade\x12\x15.EngineUpgradeRequest\x1a\x0f.EngineResponse\"\x00\x12*\n\tEngineLog\x12\x0b.LogRequest\x1a\x0c.LogResponse\"\x00\x30\x01\x12:\n\x0b\x45ngineWatch\x12\x16.google.protobuf.Empty\x1a\x0f.EngineResponse\"\x00\x30\x01\x12\x37\n\x0c\x45ngineExpand\x12\x14.EngineExpandRequest\x1a\x0f.EngineResponse\"\x00\x12@\n\rFrontendStart\x12\x15.FrontendStartRequest\x1a\x16.google.protobuf.Empty\"\x00\x12<\n\x10\x46rontendShutdown\x12\x0e.EngineRequest\x1a\x16.google.protobuf.Empty\"\x00\x12\x41\n\x15\x46rontendStartCallback\x12\x0e.EngineRequest\x1a\x16.google.protobuf.Empty\"\x00\x12\x44\n\x18\x46rontendShutdownCallback\x12\x0e.EngineRequest\x1a\x16.google.protobuf.Empty\"\x00\x32\xec\x02\n\x15ProcessManagerService\x12:\n\rProcessCreate\x12\x15.ProcessCreateRequest\x1a\x10.ProcessResponse\"\x00\x12:\n\rProcessDelete\x12\x15.ProcessDeleteRequest\x1a\x10.ProcessResponse\"\x00\x12\x34\n\nProcessGet\x12\x12.ProcessGetRequest\x1a\x10.ProcessResponse\"\x00\x12:\n\x0bProcessList\x12\x13.ProcessListRequest\x1a\x14.ProcessListResponse\"\x00\x12+\n\nProcessLog\x12\x0b.LogRequest\x1a\x0c.LogResponse\"\x00\x30\x01\x12<\n\x0cProcessWatch\x12\x16.google.protobuf.Empty\x1a\x10.ProcessResponse\"\x00\x30\x01\x62\x06proto3')
+  serialized_pb=_b('\n\trpc.proto\x1a\x1bgoogle/protobuf/empty.proto\"\xa6\x01\n\nEngineSpec\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x13\n\x0bvolume_name\x18\x02 \x01(\t\x12\x0e\n\x06\x62inary\x18\x03 \x01(\t\x12\x0e\n\x06listen\x18\x04 \x01(\t\x12\x11\n\tlisten_ip\x18\x05 \x01(\t\x12\x0c\n\x04size\x18\x06 \x01(\x03\x12\x10\n\x08\x66rontend\x18\x07 \x01(\t\x12\x10\n\x08\x62\x61\x63kends\x18\x08 \x03(\t\x12\x10\n\x08replicas\x18\t \x03(\t\"H\n\x0c\x45ngineStatus\x12&\n\x0eprocess_status\x18\x01 \x01(\x0b\x32\x0e.ProcessStatus\x12\x10\n\x08\x65ndpoint\x18\x02 \x01(\t\"[\n\x0e\x45ngineResponse\x12\x19\n\x04spec\x18\x01 \x01(\x0b\x32\x0b.EngineSpec\x12\x1d\n\x06status\x18\x02 \x01(\x0b\x32\r.EngineStatus\x12\x0f\n\x07\x64\x65leted\x18\x03 \x01(\x08\"0\n\x13\x45ngineCreateRequest\x12\x19\n\x04spec\x18\x01 \x01(\x0b\x32\x0b.EngineSpec\"\x1d\n\rEngineRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\"1\n\x14\x45ngineUpgradeRequest\x12\x19\n\x04spec\x18\x01 \x01(\x0b\x32\x0b.EngineSpec\"\x88\x01\n\x12\x45ngineListResponse\x12\x31\n\x07\x65ngines\x18\x01 \x03(\x0b\x32 .EngineListResponse.EnginesEntry\x1a?\n\x0c\x45nginesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x1e\n\x05value\x18\x02 \x01(\x0b\x32\x0f.EngineResponse:\x02\x38\x01\"1\n\x13\x45ngineExpandRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0c\n\x04size\x18\x02 \x01(\x03\"6\n\x14\x46rontendStartRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x10\n\x08\x66rontend\x18\x02 \x01(\t\"`\n\x0bProcessSpec\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0e\n\x06\x62inary\x18\x02 \x01(\t\x12\x0c\n\x04\x61rgs\x18\x03 \x03(\t\x12\x12\n\nport_count\x18\x04 \x01(\x05\x12\x11\n\tport_args\x18\x05 \x03(\t\"W\n\rProcessStatus\x12\r\n\x05state\x18\x01 \x01(\t\x12\x11\n\terror_msg\x18\x02 \x01(\t\x12\x12\n\nport_start\x18\x03 \x01(\x05\x12\x10\n\x08port_end\x18\x04 \x01(\x05\"2\n\x14ProcessCreateRequest\x12\x1a\n\x04spec\x18\x01 \x01(\x0b\x32\x0c.ProcessSpec\"$\n\x14ProcessDeleteRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\"!\n\x11ProcessGetRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\"^\n\x0fProcessResponse\x12\x1a\n\x04spec\x18\x01 \x01(\x0b\x32\x0c.ProcessSpec\x12\x1e\n\x06status\x18\x02 \x01(\x0b\x32\x0e.ProcessStatus\x12\x0f\n\x07\x64\x65leted\x18\x03 \x01(\x08\"\x14\n\x12ProcessListRequest\"\x91\x01\n\x13ProcessListResponse\x12\x36\n\tprocesses\x18\x01 \x03(\x0b\x32#.ProcessListResponse.ProcessesEntry\x1a\x42\n\x0eProcessesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x1f\n\x05value\x18\x02 \x01(\x0b\x32\x10.ProcessResponse:\x02\x38\x01\"\x1a\n\nLogRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\"\x1b\n\x0bLogResponse\x12\x0c\n\x04line\x18\x02 \x01(\t\"L\n\x15ProcessReplaceRequest\x12\x1a\n\x04spec\x18\x01 \x01(\x0b\x32\x0c.ProcessSpec\x12\x17\n\x0fterminateSignal\x18\x02 \x01(\t2\xd4\x05\n\x14\x45ngineManagerService\x12\x37\n\x0c\x45ngineCreate\x12\x14.EngineCreateRequest\x1a\x0f.EngineResponse\"\x00\x12\x31\n\x0c\x45ngineDelete\x12\x0e.EngineRequest\x1a\x0f.EngineResponse\"\x00\x12.\n\tEngineGet\x12\x0e.EngineRequest\x1a\x0f.EngineResponse\"\x00\x12;\n\nEngineList\x12\x16.google.protobuf.Empty\x1a\x13.EngineListResponse\"\x00\x12\x39\n\rEngineUpgrade\x12\x15.EngineUpgradeRequest\x1a\x0f.EngineResponse\"\x00\x12*\n\tEngineLog\x12\x0b.LogRequest\x1a\x0c.LogResponse\"\x00\x30\x01\x12:\n\x0b\x45ngineWatch\x12\x16.google.protobuf.Empty\x1a\x0f.EngineResponse\"\x00\x30\x01\x12\x37\n\x0c\x45ngineExpand\x12\x14.EngineExpandRequest\x1a\x0f.EngineResponse\"\x00\x12@\n\rFrontendStart\x12\x15.FrontendStartRequest\x1a\x16.google.protobuf.Empty\"\x00\x12<\n\x10\x46rontendShutdown\x12\x0e.EngineRequest\x1a\x16.google.protobuf.Empty\"\x00\x12\x41\n\x15\x46rontendStartCallback\x12\x0e.EngineRequest\x1a\x16.google.protobuf.Empty\"\x00\x12\x44\n\x18\x46rontendShutdownCallback\x12\x0e.EngineRequest\x1a\x16.google.protobuf.Empty\"\x00\x32\xaa\x03\n\x15ProcessManagerService\x12:\n\rProcessCreate\x12\x15.ProcessCreateRequest\x1a\x10.ProcessResponse\"\x00\x12:\n\rProcessDelete\x12\x15.ProcessDeleteRequest\x1a\x10.ProcessResponse\"\x00\x12\x34\n\nProcessGet\x12\x12.ProcessGetRequest\x1a\x10.ProcessResponse\"\x00\x12:\n\x0bProcessList\x12\x13.ProcessListRequest\x1a\x14.ProcessListResponse\"\x00\x12+\n\nProcessLog\x12\x0b.LogRequest\x1a\x0c.LogResponse\"\x00\x30\x01\x12<\n\x0cProcessWatch\x12\x16.google.protobuf.Empty\x1a\x10.ProcessResponse\"\x00\x30\x01\x12<\n\x0eProcessReplace\x12\x16.ProcessReplaceRequest\x1a\x10.ProcessResponse\"\x00\x62\x06proto3')
   ,
   dependencies=[google_dot_protobuf_dot_empty__pb2.DESCRIPTOR,])
 
@@ -837,6 +837,44 @@ _LOGRESPONSE = _descriptor.Descriptor(
   serialized_end=1389,
 )
 
+
+_PROCESSREPLACEREQUEST = _descriptor.Descriptor(
+  name='ProcessReplaceRequest',
+  full_name='ProcessReplaceRequest',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='spec', full_name='ProcessReplaceRequest.spec', index=0,
+      number=1, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='terminateSignal', full_name='ProcessReplaceRequest.terminateSignal', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1391,
+  serialized_end=1467,
+)
+
 _ENGINESTATUS.fields_by_name['process_status'].message_type = _PROCESSSTATUS
 _ENGINERESPONSE.fields_by_name['spec'].message_type = _ENGINESPEC
 _ENGINERESPONSE.fields_by_name['status'].message_type = _ENGINESTATUS
@@ -851,6 +889,7 @@ _PROCESSRESPONSE.fields_by_name['status'].message_type = _PROCESSSTATUS
 _PROCESSLISTRESPONSE_PROCESSESENTRY.fields_by_name['value'].message_type = _PROCESSRESPONSE
 _PROCESSLISTRESPONSE_PROCESSESENTRY.containing_type = _PROCESSLISTRESPONSE
 _PROCESSLISTRESPONSE.fields_by_name['processes'].message_type = _PROCESSLISTRESPONSE_PROCESSESENTRY
+_PROCESSREPLACEREQUEST.fields_by_name['spec'].message_type = _PROCESSSPEC
 DESCRIPTOR.message_types_by_name['EngineSpec'] = _ENGINESPEC
 DESCRIPTOR.message_types_by_name['EngineStatus'] = _ENGINESTATUS
 DESCRIPTOR.message_types_by_name['EngineResponse'] = _ENGINERESPONSE
@@ -870,6 +909,7 @@ DESCRIPTOR.message_types_by_name['ProcessListRequest'] = _PROCESSLISTREQUEST
 DESCRIPTOR.message_types_by_name['ProcessListResponse'] = _PROCESSLISTRESPONSE
 DESCRIPTOR.message_types_by_name['LogRequest'] = _LOGREQUEST
 DESCRIPTOR.message_types_by_name['LogResponse'] = _LOGRESPONSE
+DESCRIPTOR.message_types_by_name['ProcessReplaceRequest'] = _PROCESSREPLACEREQUEST
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 EngineSpec = _reflection.GeneratedProtocolMessageType('EngineSpec', (_message.Message,), {
@@ -1021,6 +1061,13 @@ LogResponse = _reflection.GeneratedProtocolMessageType('LogResponse', (_message.
   })
 _sym_db.RegisterMessage(LogResponse)
 
+ProcessReplaceRequest = _reflection.GeneratedProtocolMessageType('ProcessReplaceRequest', (_message.Message,), {
+  'DESCRIPTOR' : _PROCESSREPLACEREQUEST,
+  '__module__' : 'rpc_pb2'
+  # @@protoc_insertion_point(class_scope:ProcessReplaceRequest)
+  })
+_sym_db.RegisterMessage(ProcessReplaceRequest)
+
 
 _ENGINELISTRESPONSE_ENGINESENTRY._options = None
 _PROCESSLISTRESPONSE_PROCESSESENTRY._options = None
@@ -1031,8 +1078,8 @@ _ENGINEMANAGERSERVICE = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=0,
   serialized_options=None,
-  serialized_start=1392,
-  serialized_end=2116,
+  serialized_start=1470,
+  serialized_end=2194,
   methods=[
   _descriptor.MethodDescriptor(
     name='EngineCreate',
@@ -1154,8 +1201,8 @@ _PROCESSMANAGERSERVICE = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=1,
   serialized_options=None,
-  serialized_start=2119,
-  serialized_end=2483,
+  serialized_start=2197,
+  serialized_end=2623,
   methods=[
   _descriptor.MethodDescriptor(
     name='ProcessCreate',
@@ -1208,6 +1255,15 @@ _PROCESSMANAGERSERVICE = _descriptor.ServiceDescriptor(
     index=5,
     containing_service=None,
     input_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
+    output_type=_PROCESSRESPONSE,
+    serialized_options=None,
+  ),
+  _descriptor.MethodDescriptor(
+    name='ProcessReplace',
+    full_name='ProcessManagerService.ProcessReplace',
+    index=6,
+    containing_service=None,
+    input_type=_PROCESSREPLACEREQUEST,
     output_type=_PROCESSRESPONSE,
     serialized_options=None,
   ),
