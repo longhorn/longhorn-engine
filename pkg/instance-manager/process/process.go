@@ -53,8 +53,10 @@ func (p *Process) Start() error {
 	p.cmd = cmd
 	p.lock.Unlock()
 
+	probeStopCh := make(chan struct{})
 	go func() {
 		if err := cmd.Run(); err != nil {
+			close(probeStopCh)
 			p.lock.Lock()
 			p.State = StateError
 			p.ErrorMsg = err.Error()
@@ -64,6 +66,7 @@ func (p *Process) Start() error {
 			p.UpdateCh <- p
 			return
 		}
+		close(probeStopCh)
 		p.lock.Lock()
 		p.State = StateStopped
 		logrus.Infof("Process Manager: process %v stopped", p.Name)
@@ -75,7 +78,7 @@ func (p *Process) Start() error {
 	go func() {
 		if p.PortStart != 0 {
 			address := util.GetURL("localhost", int(p.PortStart))
-			if p.healthChecker.WaitForRunning(address, p.Name) {
+			if p.healthChecker.WaitForRunning(address, p.Name, probeStopCh) {
 				p.lock.Lock()
 				p.State = StateRunning
 				p.lock.Unlock()

@@ -10,7 +10,7 @@ import (
 
 type HealthChecker interface {
 	IsRunning(address string) bool
-	WaitForRunning(address, name string) bool
+	WaitForRunning(address, name string, stopCh chan struct{}) bool
 }
 
 type GRPCHealthChecker struct{}
@@ -19,14 +19,20 @@ func (c *GRPCHealthChecker) IsRunning(address string) bool {
 	return util.GRPCServiceReadinessProbe(address)
 }
 
-func (c *GRPCHealthChecker) WaitForRunning(address, name string) bool {
+func (c *GRPCHealthChecker) WaitForRunning(address, name string, stopCh chan struct{}) bool {
+	ticker := time.NewTicker(types.WaitInterval)
 	for i := 0; i < types.WaitCount; i++ {
-		if c.IsRunning(address) {
-			logrus.Infof("Process %v has started", name)
-			return true
+		select {
+		case <-stopCh:
+			logrus.Infof("stop waiting for gRPC service of process %v to start", name)
+			return false
+		case <-ticker.C:
+			if c.IsRunning(address) {
+				logrus.Infof("Process %v has started", name)
+				return true
+			}
+			logrus.Infof("wait for gRPC service of process %v to start", name)
 		}
-		logrus.Infof("wait for gRPC service of process %v to start", name)
-		time.Sleep(types.WaitInterval)
 	}
 	return false
 }
@@ -37,6 +43,6 @@ func (c *MockHealthChecker) IsRunning(address string) bool {
 	return true
 }
 
-func (c *MockHealthChecker) WaitForRunning(address, name string) bool {
+func (c *MockHealthChecker) WaitForRunning(address, name string, stopCh chan struct{}) bool {
 	return true
 }
