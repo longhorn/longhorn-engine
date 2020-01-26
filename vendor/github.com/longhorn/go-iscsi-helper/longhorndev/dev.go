@@ -11,7 +11,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
-	"github.com/longhorn/go-iscsi-helper/iscsiblk"
+	"github.com/longhorn/go-iscsi-helper/iscsidev"
 	"github.com/longhorn/go-iscsi-helper/util"
 )
 
@@ -36,7 +36,7 @@ type LonghornDevice struct {
 	frontend string
 	endpoint string
 
-	scsiDevice *iscsiblk.ScsiDevice
+	scsiDevice *iscsidev.Device
 }
 
 type DeviceService interface {
@@ -47,8 +47,8 @@ type DeviceService interface {
 	GetEndpoint() string
 	Enabled() bool
 
-	Start(tID int) error
-	Shutdown() (int, error)
+	Start() error
+	Shutdown() error
 	PrepareUpgrade() error
 	FinishUpgrade() error
 	Expand(size int64) error
@@ -75,7 +75,7 @@ func (ldc *LonghornDeviceCreator) NewDevice(name string, size int64, frontend st
 	return dev, nil
 }
 
-func (d *LonghornDevice) Start(tID int) error {
+func (d *LonghornDevice) Start() error {
 	d.Lock()
 	defer d.Unlock()
 
@@ -89,7 +89,7 @@ func (d *LonghornDevice) Start(tID int) error {
 	}
 
 	bsOpts := fmt.Sprintf("size=%v", d.size)
-	scsiDev, err := iscsiblk.NewScsiDevice(d.name, d.GetSocketPath(), "longhorn", bsOpts, tID)
+	scsiDev, err := iscsidev.NewDevice(d.name, d.GetSocketPath(), "longhorn", bsOpts)
 	if err != nil {
 		return err
 	}
@@ -97,7 +97,10 @@ func (d *LonghornDevice) Start(tID int) error {
 
 	switch d.frontend {
 	case FrontendTGTBlockDev:
-		if err := iscsiblk.StartScsi(d.scsiDevice); err != nil {
+		if err := d.scsiDevice.CreateTarget(); err != nil {
+			return err
+		}
+		if err := d.scsiDevice.StartInitator(); err != nil {
 			return err
 		}
 		if err := d.createDev(); err != nil {
@@ -109,7 +112,7 @@ func (d *LonghornDevice) Start(tID int) error {
 		logrus.Infof("device %v: SCSI device %s created", d.name, d.scsiDevice.Device)
 		break
 	case FrontendTGTISCSI:
-		if err := iscsiblk.SetupTarget(d.scsiDevice); err != nil {
+		if err := d.scsiDevice.CreateTarget(); err != nil {
 			return err
 		}
 
@@ -125,28 +128,31 @@ func (d *LonghornDevice) Start(tID int) error {
 	return nil
 }
 
-func (d *LonghornDevice) Shutdown() (int, error) {
+func (d *LonghornDevice) Shutdown() error {
 	d.Lock()
 	defer d.Unlock()
 
 	if d.scsiDevice == nil {
-		return 0, nil
+		return nil
 	}
 
 	switch d.frontend {
 	case FrontendTGTBlockDev:
 		dev := d.getDev()
 		if err := util.RemoveDevice(dev); err != nil {
-			return 0, fmt.Errorf("device %v: fail to remove device %s: %v", d.name, dev, err)
+			return fmt.Errorf("device %v: fail to remove device %s: %v", d.name, dev, err)
 		}
-		if err := iscsiblk.StopScsi(d.name, d.scsiDevice.TargetID); err != nil {
-			return 0, fmt.Errorf("device %v: fail to stop SCSI device: %v", d.name, err)
+		if err := d.scsiDevice.StopInitiator(); err != nil {
+			return fmt.Errorf("device %v: fail to stop SCSI device: %v", d.name, err)
+		}
+		if err := d.scsiDevice.DeleteTarget(); err != nil {
+			return fmt.Errorf("device %v: fail to delete target %v", d.name, d.scsiDevice.Target)
 		}
 		logrus.Infof("device %v: SCSI device %v shutdown", d.name, dev)
 		break
 	case FrontendTGTISCSI:
-		if err := iscsiblk.DeleteTarget(d.scsiDevice.Target, d.scsiDevice.TargetID); err != nil {
-			return 0, fmt.Errorf("device %v: fail to delete target %v", d.name, d.scsiDevice.Target)
+		if err := d.scsiDevice.DeleteTarget(); err != nil {
+			return fmt.Errorf("device %v: fail to delete target %v", d.name, d.scsiDevice.Target)
 		}
 		logrus.Infof("device %v: SCSI target %v ", d.name, d.scsiDevice.Target)
 		break
@@ -154,14 +160,13 @@ func (d *LonghornDevice) Shutdown() (int, error) {
 		logrus.Infof("device %v: skip shutdown frontend since it's not enabled", d.name)
 		break
 	default:
-		return 0, fmt.Errorf("device %v: unknown frontend %v", d.name, d.frontend)
+		return fmt.Errorf("device %v: unknown frontend %v", d.name, d.frontend)
 	}
 
-	tID := d.scsiDevice.TargetID
 	d.scsiDevice = nil
 	d.endpoint = ""
 
-	return tID, nil
+	return nil
 }
 
 func (d *LonghornDevice) WaitForSocket(stopCh chan struct{}) chan error {
@@ -261,6 +266,13 @@ func (d *LonghornDevice) FinishUpgrade() (err error) {
 		return err
 	}
 
+	bsOpts := fmt.Sprintf("size=%v", d.size)
+	scsiDev, err := iscsidev.NewDevice(d.name, d.GetSocketPath(), "longhorn", bsOpts)
+	if err != nil {
+		return err
+	}
+	d.scsiDevice = scsiDev
+
 	return nil
 }
 
@@ -271,8 +283,9 @@ func (d *LonghornDevice) ReloadSocketConnection() error {
 
 	cmd := exec.Command("sg_raw", dev, "a6", "00", "00", "00", "00", "00")
 	if err := cmd.Run(); err != nil {
-		return errors.Wrapf(err, "failed to reload socket connection")
+		return errors.Wrapf(err, "failed to reload socket connection at %v", dev)
 	}
+	logrus.Infof("Reloaded completed for device %v", dev)
 	return nil
 }
 
@@ -360,20 +373,23 @@ func (d *LonghornDevice) Expand(size int64) error {
 	if d.scsiDevice == nil {
 		return nil
 	}
-	if err := iscsiblk.UpdateScsiBackingStore(d.scsiDevice, "longhorn", fmt.Sprintf("size=%v", d.size)); err != nil {
+	if err := d.scsiDevice.UpdateScsiBackingStore("longhorn", fmt.Sprintf("size=%v", d.size)); err != nil {
 		return err
 	}
 
 	switch d.frontend {
 	case FrontendTGTBlockDev:
-		if err := iscsiblk.UpdateScsi(d.scsiDevice); err != nil {
-			return fmt.Errorf("device %v: fail to update SCSI device: %v", d.name, err)
+		if err := d.scsiDevice.RecreateTarget(); err != nil {
+			return fmt.Errorf("device %v: fail to recreate target %v: %v", d.name, d.scsiDevice.Target, err)
+		}
+		if err := d.scsiDevice.ReloadInitiator(); err != nil {
+			return fmt.Errorf("device %v: fail to reload iSCSI initiator: %v", d.name, err)
 		}
 		logrus.Infof("device %v: SCSI device %v update", d.name, d.getDev())
 		break
 	case FrontendTGTISCSI:
-		if err := iscsiblk.UpdateTarget(d.scsiDevice); err != nil {
-			return fmt.Errorf("device %v: fail to update target %v: %v", d.name, d.scsiDevice.Target, err)
+		if err := d.scsiDevice.RecreateTarget(); err != nil {
+			return fmt.Errorf("device %v: fail to recreate target %v: %v", d.name, d.scsiDevice.Target, err)
 		}
 		logrus.Infof("device %v: SCSI target %v update", d.name, d.scsiDevice.Target)
 		break
