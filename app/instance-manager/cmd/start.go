@@ -7,7 +7,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
@@ -15,7 +14,6 @@ import (
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 
-	"github.com/longhorn/longhorn-engine/pkg/instance-manager/engine"
 	"github.com/longhorn/longhorn-engine/pkg/instance-manager/health"
 	"github.com/longhorn/longhorn-engine/pkg/instance-manager/process"
 	"github.com/longhorn/longhorn-engine/pkg/instance-manager/rpc"
@@ -48,31 +46,8 @@ func StartCmd() cli.Command {
 	}
 }
 
-func cleanup(pm *process.Manager, em *engine.Manager) {
+func cleanup(pm *process.Manager) {
 	logrus.Infof("Try to gracefully shut down Instance Manager")
-	emResp, err := em.EngineList(nil, &empty.Empty{})
-	if err != nil {
-		logrus.Errorf("Failed to list engine processes before shutdown")
-		return
-	}
-	for _, e := range emResp.Engines {
-		em.EngineDelete(nil, &rpc.EngineRequest{
-			Name: e.Spec.Name,
-		})
-	}
-	for i := 0; i < types.WaitCount; i++ {
-		emResp, err := em.EngineList(nil, &empty.Empty{})
-		if err != nil {
-			logrus.Errorf("Failed to list engine processes when shutting down")
-			break
-		}
-		if len(emResp.Engines) == 0 {
-			logrus.Infof("Instance Manager has shutdown all processes and cleaned up all engine processes. Graceful shutdown succeeded")
-			break
-		}
-		time.Sleep(types.WaitInterval)
-	}
-
 	pmResp, err := pm.ProcessList(nil, &rpc.ProcessListRequest{})
 	if err != nil {
 		logrus.Errorf("Failed to list processes before shutdown")
@@ -114,15 +89,7 @@ func start(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	processUpdateCh, err := pm.Subscribe()
-	if err != nil {
-		return err
-	}
-	em, err := engine.NewEngineManager(pm, processUpdateCh, listen, shutdownCh)
-	if err != nil {
-		return err
-	}
-	hc := health.NewHealthCheckServer(em, pm)
+	hc := health.NewHealthCheckServer(pm)
 
 	listenAt, err := net.Listen("tcp", listen)
 	if err != nil {
@@ -131,7 +98,6 @@ func start(c *cli.Context) error {
 
 	rpcService := grpc.NewServer()
 	rpc.RegisterProcessManagerServiceServer(rpcService, pm)
-	rpc.RegisterEngineManagerServiceServer(rpcService, em)
 	healthpb.RegisterHealthServer(rpcService, hc)
 	reflection.Register(rpcService)
 
@@ -140,7 +106,7 @@ func start(c *cli.Context) error {
 			logrus.Errorf("Stopping due to %v:", err)
 		}
 		// graceful shutdown before exit
-		cleanup(pm, em)
+		cleanup(pm)
 		close(shutdownCh)
 	}()
 	logrus.Infof("Instance Manager listening to %v", listen)
