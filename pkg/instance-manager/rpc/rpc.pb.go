@@ -25,461 +25,6 @@ var _ = math.Inf
 // proto package needs to be updated.
 const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
-type EngineSpec struct {
-	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	VolumeName           string   `protobuf:"bytes,2,opt,name=volume_name,json=volumeName,proto3" json:"volume_name,omitempty"`
-	Binary               string   `protobuf:"bytes,3,opt,name=binary,proto3" json:"binary,omitempty"`
-	Listen               string   `protobuf:"bytes,4,opt,name=listen,proto3" json:"listen,omitempty"`
-	ListenIp             string   `protobuf:"bytes,5,opt,name=listen_ip,json=listenIp,proto3" json:"listen_ip,omitempty"`
-	Size                 int64    `protobuf:"varint,6,opt,name=size,proto3" json:"size,omitempty"`
-	Frontend             string   `protobuf:"bytes,7,opt,name=frontend,proto3" json:"frontend,omitempty"`
-	Backends             []string `protobuf:"bytes,8,rep,name=backends,proto3" json:"backends,omitempty"`
-	Replicas             []string `protobuf:"bytes,9,rep,name=replicas,proto3" json:"replicas,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *EngineSpec) Reset()         { *m = EngineSpec{} }
-func (m *EngineSpec) String() string { return proto.CompactTextString(m) }
-func (*EngineSpec) ProtoMessage()    {}
-func (*EngineSpec) Descriptor() ([]byte, []int) {
-	return fileDescriptor_77a6da22d6a3feb1, []int{0}
-}
-
-func (m *EngineSpec) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_EngineSpec.Unmarshal(m, b)
-}
-func (m *EngineSpec) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_EngineSpec.Marshal(b, m, deterministic)
-}
-func (m *EngineSpec) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_EngineSpec.Merge(m, src)
-}
-func (m *EngineSpec) XXX_Size() int {
-	return xxx_messageInfo_EngineSpec.Size(m)
-}
-func (m *EngineSpec) XXX_DiscardUnknown() {
-	xxx_messageInfo_EngineSpec.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_EngineSpec proto.InternalMessageInfo
-
-func (m *EngineSpec) GetName() string {
-	if m != nil {
-		return m.Name
-	}
-	return ""
-}
-
-func (m *EngineSpec) GetVolumeName() string {
-	if m != nil {
-		return m.VolumeName
-	}
-	return ""
-}
-
-func (m *EngineSpec) GetBinary() string {
-	if m != nil {
-		return m.Binary
-	}
-	return ""
-}
-
-func (m *EngineSpec) GetListen() string {
-	if m != nil {
-		return m.Listen
-	}
-	return ""
-}
-
-func (m *EngineSpec) GetListenIp() string {
-	if m != nil {
-		return m.ListenIp
-	}
-	return ""
-}
-
-func (m *EngineSpec) GetSize() int64 {
-	if m != nil {
-		return m.Size
-	}
-	return 0
-}
-
-func (m *EngineSpec) GetFrontend() string {
-	if m != nil {
-		return m.Frontend
-	}
-	return ""
-}
-
-func (m *EngineSpec) GetBackends() []string {
-	if m != nil {
-		return m.Backends
-	}
-	return nil
-}
-
-func (m *EngineSpec) GetReplicas() []string {
-	if m != nil {
-		return m.Replicas
-	}
-	return nil
-}
-
-type EngineStatus struct {
-	ProcessStatus        *ProcessStatus `protobuf:"bytes,1,opt,name=process_status,json=processStatus,proto3" json:"process_status,omitempty"`
-	Endpoint             string         `protobuf:"bytes,2,opt,name=endpoint,proto3" json:"endpoint,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}       `json:"-"`
-	XXX_unrecognized     []byte         `json:"-"`
-	XXX_sizecache        int32          `json:"-"`
-}
-
-func (m *EngineStatus) Reset()         { *m = EngineStatus{} }
-func (m *EngineStatus) String() string { return proto.CompactTextString(m) }
-func (*EngineStatus) ProtoMessage()    {}
-func (*EngineStatus) Descriptor() ([]byte, []int) {
-	return fileDescriptor_77a6da22d6a3feb1, []int{1}
-}
-
-func (m *EngineStatus) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_EngineStatus.Unmarshal(m, b)
-}
-func (m *EngineStatus) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_EngineStatus.Marshal(b, m, deterministic)
-}
-func (m *EngineStatus) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_EngineStatus.Merge(m, src)
-}
-func (m *EngineStatus) XXX_Size() int {
-	return xxx_messageInfo_EngineStatus.Size(m)
-}
-func (m *EngineStatus) XXX_DiscardUnknown() {
-	xxx_messageInfo_EngineStatus.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_EngineStatus proto.InternalMessageInfo
-
-func (m *EngineStatus) GetProcessStatus() *ProcessStatus {
-	if m != nil {
-		return m.ProcessStatus
-	}
-	return nil
-}
-
-func (m *EngineStatus) GetEndpoint() string {
-	if m != nil {
-		return m.Endpoint
-	}
-	return ""
-}
-
-type EngineResponse struct {
-	Spec                 *EngineSpec   `protobuf:"bytes,1,opt,name=spec,proto3" json:"spec,omitempty"`
-	Status               *EngineStatus `protobuf:"bytes,2,opt,name=status,proto3" json:"status,omitempty"`
-	Deleted              bool          `protobuf:"varint,3,opt,name=deleted,proto3" json:"deleted,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}      `json:"-"`
-	XXX_unrecognized     []byte        `json:"-"`
-	XXX_sizecache        int32         `json:"-"`
-}
-
-func (m *EngineResponse) Reset()         { *m = EngineResponse{} }
-func (m *EngineResponse) String() string { return proto.CompactTextString(m) }
-func (*EngineResponse) ProtoMessage()    {}
-func (*EngineResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_77a6da22d6a3feb1, []int{2}
-}
-
-func (m *EngineResponse) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_EngineResponse.Unmarshal(m, b)
-}
-func (m *EngineResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_EngineResponse.Marshal(b, m, deterministic)
-}
-func (m *EngineResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_EngineResponse.Merge(m, src)
-}
-func (m *EngineResponse) XXX_Size() int {
-	return xxx_messageInfo_EngineResponse.Size(m)
-}
-func (m *EngineResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_EngineResponse.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_EngineResponse proto.InternalMessageInfo
-
-func (m *EngineResponse) GetSpec() *EngineSpec {
-	if m != nil {
-		return m.Spec
-	}
-	return nil
-}
-
-func (m *EngineResponse) GetStatus() *EngineStatus {
-	if m != nil {
-		return m.Status
-	}
-	return nil
-}
-
-func (m *EngineResponse) GetDeleted() bool {
-	if m != nil {
-		return m.Deleted
-	}
-	return false
-}
-
-type EngineCreateRequest struct {
-	Spec                 *EngineSpec `protobuf:"bytes,1,opt,name=spec,proto3" json:"spec,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}    `json:"-"`
-	XXX_unrecognized     []byte      `json:"-"`
-	XXX_sizecache        int32       `json:"-"`
-}
-
-func (m *EngineCreateRequest) Reset()         { *m = EngineCreateRequest{} }
-func (m *EngineCreateRequest) String() string { return proto.CompactTextString(m) }
-func (*EngineCreateRequest) ProtoMessage()    {}
-func (*EngineCreateRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_77a6da22d6a3feb1, []int{3}
-}
-
-func (m *EngineCreateRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_EngineCreateRequest.Unmarshal(m, b)
-}
-func (m *EngineCreateRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_EngineCreateRequest.Marshal(b, m, deterministic)
-}
-func (m *EngineCreateRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_EngineCreateRequest.Merge(m, src)
-}
-func (m *EngineCreateRequest) XXX_Size() int {
-	return xxx_messageInfo_EngineCreateRequest.Size(m)
-}
-func (m *EngineCreateRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_EngineCreateRequest.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_EngineCreateRequest proto.InternalMessageInfo
-
-func (m *EngineCreateRequest) GetSpec() *EngineSpec {
-	if m != nil {
-		return m.Spec
-	}
-	return nil
-}
-
-type EngineRequest struct {
-	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *EngineRequest) Reset()         { *m = EngineRequest{} }
-func (m *EngineRequest) String() string { return proto.CompactTextString(m) }
-func (*EngineRequest) ProtoMessage()    {}
-func (*EngineRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_77a6da22d6a3feb1, []int{4}
-}
-
-func (m *EngineRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_EngineRequest.Unmarshal(m, b)
-}
-func (m *EngineRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_EngineRequest.Marshal(b, m, deterministic)
-}
-func (m *EngineRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_EngineRequest.Merge(m, src)
-}
-func (m *EngineRequest) XXX_Size() int {
-	return xxx_messageInfo_EngineRequest.Size(m)
-}
-func (m *EngineRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_EngineRequest.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_EngineRequest proto.InternalMessageInfo
-
-func (m *EngineRequest) GetName() string {
-	if m != nil {
-		return m.Name
-	}
-	return ""
-}
-
-type EngineUpgradeRequest struct {
-	Spec                 *EngineSpec `protobuf:"bytes,1,opt,name=spec,proto3" json:"spec,omitempty"`
-	XXX_NoUnkeyedLiteral struct{}    `json:"-"`
-	XXX_unrecognized     []byte      `json:"-"`
-	XXX_sizecache        int32       `json:"-"`
-}
-
-func (m *EngineUpgradeRequest) Reset()         { *m = EngineUpgradeRequest{} }
-func (m *EngineUpgradeRequest) String() string { return proto.CompactTextString(m) }
-func (*EngineUpgradeRequest) ProtoMessage()    {}
-func (*EngineUpgradeRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_77a6da22d6a3feb1, []int{5}
-}
-
-func (m *EngineUpgradeRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_EngineUpgradeRequest.Unmarshal(m, b)
-}
-func (m *EngineUpgradeRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_EngineUpgradeRequest.Marshal(b, m, deterministic)
-}
-func (m *EngineUpgradeRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_EngineUpgradeRequest.Merge(m, src)
-}
-func (m *EngineUpgradeRequest) XXX_Size() int {
-	return xxx_messageInfo_EngineUpgradeRequest.Size(m)
-}
-func (m *EngineUpgradeRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_EngineUpgradeRequest.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_EngineUpgradeRequest proto.InternalMessageInfo
-
-func (m *EngineUpgradeRequest) GetSpec() *EngineSpec {
-	if m != nil {
-		return m.Spec
-	}
-	return nil
-}
-
-type EngineListResponse struct {
-	Engines              map[string]*EngineResponse `protobuf:"bytes,1,rep,name=engines,proto3" json:"engines,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
-	XXX_NoUnkeyedLiteral struct{}                   `json:"-"`
-	XXX_unrecognized     []byte                     `json:"-"`
-	XXX_sizecache        int32                      `json:"-"`
-}
-
-func (m *EngineListResponse) Reset()         { *m = EngineListResponse{} }
-func (m *EngineListResponse) String() string { return proto.CompactTextString(m) }
-func (*EngineListResponse) ProtoMessage()    {}
-func (*EngineListResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_77a6da22d6a3feb1, []int{6}
-}
-
-func (m *EngineListResponse) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_EngineListResponse.Unmarshal(m, b)
-}
-func (m *EngineListResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_EngineListResponse.Marshal(b, m, deterministic)
-}
-func (m *EngineListResponse) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_EngineListResponse.Merge(m, src)
-}
-func (m *EngineListResponse) XXX_Size() int {
-	return xxx_messageInfo_EngineListResponse.Size(m)
-}
-func (m *EngineListResponse) XXX_DiscardUnknown() {
-	xxx_messageInfo_EngineListResponse.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_EngineListResponse proto.InternalMessageInfo
-
-func (m *EngineListResponse) GetEngines() map[string]*EngineResponse {
-	if m != nil {
-		return m.Engines
-	}
-	return nil
-}
-
-type EngineExpandRequest struct {
-	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Size                 int64    `protobuf:"varint,2,opt,name=size,proto3" json:"size,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *EngineExpandRequest) Reset()         { *m = EngineExpandRequest{} }
-func (m *EngineExpandRequest) String() string { return proto.CompactTextString(m) }
-func (*EngineExpandRequest) ProtoMessage()    {}
-func (*EngineExpandRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_77a6da22d6a3feb1, []int{7}
-}
-
-func (m *EngineExpandRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_EngineExpandRequest.Unmarshal(m, b)
-}
-func (m *EngineExpandRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_EngineExpandRequest.Marshal(b, m, deterministic)
-}
-func (m *EngineExpandRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_EngineExpandRequest.Merge(m, src)
-}
-func (m *EngineExpandRequest) XXX_Size() int {
-	return xxx_messageInfo_EngineExpandRequest.Size(m)
-}
-func (m *EngineExpandRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_EngineExpandRequest.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_EngineExpandRequest proto.InternalMessageInfo
-
-func (m *EngineExpandRequest) GetName() string {
-	if m != nil {
-		return m.Name
-	}
-	return ""
-}
-
-func (m *EngineExpandRequest) GetSize() int64 {
-	if m != nil {
-		return m.Size
-	}
-	return 0
-}
-
-type FrontendStartRequest struct {
-	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	Frontend             string   `protobuf:"bytes,2,opt,name=frontend,proto3" json:"frontend,omitempty"`
-	XXX_NoUnkeyedLiteral struct{} `json:"-"`
-	XXX_unrecognized     []byte   `json:"-"`
-	XXX_sizecache        int32    `json:"-"`
-}
-
-func (m *FrontendStartRequest) Reset()         { *m = FrontendStartRequest{} }
-func (m *FrontendStartRequest) String() string { return proto.CompactTextString(m) }
-func (*FrontendStartRequest) ProtoMessage()    {}
-func (*FrontendStartRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_77a6da22d6a3feb1, []int{8}
-}
-
-func (m *FrontendStartRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_FrontendStartRequest.Unmarshal(m, b)
-}
-func (m *FrontendStartRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_FrontendStartRequest.Marshal(b, m, deterministic)
-}
-func (m *FrontendStartRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_FrontendStartRequest.Merge(m, src)
-}
-func (m *FrontendStartRequest) XXX_Size() int {
-	return xxx_messageInfo_FrontendStartRequest.Size(m)
-}
-func (m *FrontendStartRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_FrontendStartRequest.DiscardUnknown(m)
-}
-
-var xxx_messageInfo_FrontendStartRequest proto.InternalMessageInfo
-
-func (m *FrontendStartRequest) GetName() string {
-	if m != nil {
-		return m.Name
-	}
-	return ""
-}
-
-func (m *FrontendStartRequest) GetFrontend() string {
-	if m != nil {
-		return m.Frontend
-	}
-	return ""
-}
-
 type ProcessSpec struct {
 	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	Binary               string   `protobuf:"bytes,2,opt,name=binary,proto3" json:"binary,omitempty"`
@@ -495,7 +40,7 @@ func (m *ProcessSpec) Reset()         { *m = ProcessSpec{} }
 func (m *ProcessSpec) String() string { return proto.CompactTextString(m) }
 func (*ProcessSpec) ProtoMessage()    {}
 func (*ProcessSpec) Descriptor() ([]byte, []int) {
-	return fileDescriptor_77a6da22d6a3feb1, []int{9}
+	return fileDescriptor_77a6da22d6a3feb1, []int{0}
 }
 
 func (m *ProcessSpec) XXX_Unmarshal(b []byte) error {
@@ -565,7 +110,7 @@ func (m *ProcessStatus) Reset()         { *m = ProcessStatus{} }
 func (m *ProcessStatus) String() string { return proto.CompactTextString(m) }
 func (*ProcessStatus) ProtoMessage()    {}
 func (*ProcessStatus) Descriptor() ([]byte, []int) {
-	return fileDescriptor_77a6da22d6a3feb1, []int{10}
+	return fileDescriptor_77a6da22d6a3feb1, []int{1}
 }
 
 func (m *ProcessStatus) XXX_Unmarshal(b []byte) error {
@@ -625,7 +170,7 @@ func (m *ProcessCreateRequest) Reset()         { *m = ProcessCreateRequest{} }
 func (m *ProcessCreateRequest) String() string { return proto.CompactTextString(m) }
 func (*ProcessCreateRequest) ProtoMessage()    {}
 func (*ProcessCreateRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_77a6da22d6a3feb1, []int{11}
+	return fileDescriptor_77a6da22d6a3feb1, []int{2}
 }
 
 func (m *ProcessCreateRequest) XXX_Unmarshal(b []byte) error {
@@ -664,7 +209,7 @@ func (m *ProcessDeleteRequest) Reset()         { *m = ProcessDeleteRequest{} }
 func (m *ProcessDeleteRequest) String() string { return proto.CompactTextString(m) }
 func (*ProcessDeleteRequest) ProtoMessage()    {}
 func (*ProcessDeleteRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_77a6da22d6a3feb1, []int{12}
+	return fileDescriptor_77a6da22d6a3feb1, []int{3}
 }
 
 func (m *ProcessDeleteRequest) XXX_Unmarshal(b []byte) error {
@@ -703,7 +248,7 @@ func (m *ProcessGetRequest) Reset()         { *m = ProcessGetRequest{} }
 func (m *ProcessGetRequest) String() string { return proto.CompactTextString(m) }
 func (*ProcessGetRequest) ProtoMessage()    {}
 func (*ProcessGetRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_77a6da22d6a3feb1, []int{13}
+	return fileDescriptor_77a6da22d6a3feb1, []int{4}
 }
 
 func (m *ProcessGetRequest) XXX_Unmarshal(b []byte) error {
@@ -744,7 +289,7 @@ func (m *ProcessResponse) Reset()         { *m = ProcessResponse{} }
 func (m *ProcessResponse) String() string { return proto.CompactTextString(m) }
 func (*ProcessResponse) ProtoMessage()    {}
 func (*ProcessResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_77a6da22d6a3feb1, []int{14}
+	return fileDescriptor_77a6da22d6a3feb1, []int{5}
 }
 
 func (m *ProcessResponse) XXX_Unmarshal(b []byte) error {
@@ -796,7 +341,7 @@ func (m *ProcessListRequest) Reset()         { *m = ProcessListRequest{} }
 func (m *ProcessListRequest) String() string { return proto.CompactTextString(m) }
 func (*ProcessListRequest) ProtoMessage()    {}
 func (*ProcessListRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_77a6da22d6a3feb1, []int{15}
+	return fileDescriptor_77a6da22d6a3feb1, []int{6}
 }
 
 func (m *ProcessListRequest) XXX_Unmarshal(b []byte) error {
@@ -828,7 +373,7 @@ func (m *ProcessListResponse) Reset()         { *m = ProcessListResponse{} }
 func (m *ProcessListResponse) String() string { return proto.CompactTextString(m) }
 func (*ProcessListResponse) ProtoMessage()    {}
 func (*ProcessListResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_77a6da22d6a3feb1, []int{16}
+	return fileDescriptor_77a6da22d6a3feb1, []int{7}
 }
 
 func (m *ProcessListResponse) XXX_Unmarshal(b []byte) error {
@@ -867,7 +412,7 @@ func (m *LogRequest) Reset()         { *m = LogRequest{} }
 func (m *LogRequest) String() string { return proto.CompactTextString(m) }
 func (*LogRequest) ProtoMessage()    {}
 func (*LogRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_77a6da22d6a3feb1, []int{17}
+	return fileDescriptor_77a6da22d6a3feb1, []int{8}
 }
 
 func (m *LogRequest) XXX_Unmarshal(b []byte) error {
@@ -906,7 +451,7 @@ func (m *LogResponse) Reset()         { *m = LogResponse{} }
 func (m *LogResponse) String() string { return proto.CompactTextString(m) }
 func (*LogResponse) ProtoMessage()    {}
 func (*LogResponse) Descriptor() ([]byte, []int) {
-	return fileDescriptor_77a6da22d6a3feb1, []int{18}
+	return fileDescriptor_77a6da22d6a3feb1, []int{9}
 }
 
 func (m *LogResponse) XXX_Unmarshal(b []byte) error {
@@ -946,7 +491,7 @@ func (m *ProcessReplaceRequest) Reset()         { *m = ProcessReplaceRequest{} }
 func (m *ProcessReplaceRequest) String() string { return proto.CompactTextString(m) }
 func (*ProcessReplaceRequest) ProtoMessage()    {}
 func (*ProcessReplaceRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_77a6da22d6a3feb1, []int{19}
+	return fileDescriptor_77a6da22d6a3feb1, []int{10}
 }
 
 func (m *ProcessReplaceRequest) XXX_Unmarshal(b []byte) error {
@@ -982,16 +527,6 @@ func (m *ProcessReplaceRequest) GetTerminateSignal() string {
 }
 
 func init() {
-	proto.RegisterType((*EngineSpec)(nil), "EngineSpec")
-	proto.RegisterType((*EngineStatus)(nil), "EngineStatus")
-	proto.RegisterType((*EngineResponse)(nil), "EngineResponse")
-	proto.RegisterType((*EngineCreateRequest)(nil), "EngineCreateRequest")
-	proto.RegisterType((*EngineRequest)(nil), "EngineRequest")
-	proto.RegisterType((*EngineUpgradeRequest)(nil), "EngineUpgradeRequest")
-	proto.RegisterType((*EngineListResponse)(nil), "EngineListResponse")
-	proto.RegisterMapType((map[string]*EngineResponse)(nil), "EngineListResponse.EnginesEntry")
-	proto.RegisterType((*EngineExpandRequest)(nil), "EngineExpandRequest")
-	proto.RegisterType((*FrontendStartRequest)(nil), "FrontendStartRequest")
 	proto.RegisterType((*ProcessSpec)(nil), "ProcessSpec")
 	proto.RegisterType((*ProcessStatus)(nil), "ProcessStatus")
 	proto.RegisterType((*ProcessCreateRequest)(nil), "ProcessCreateRequest")
@@ -1009,71 +544,44 @@ func init() {
 func init() { proto.RegisterFile("rpc.proto", fileDescriptor_77a6da22d6a3feb1) }
 
 var fileDescriptor_77a6da22d6a3feb1 = []byte{
-	// 1021 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x94, 0x56, 0xdd, 0x6e, 0x1b, 0x45,
-	0x14, 0xf6, 0xfa, 0x27, 0x89, 0x8f, 0x63, 0x27, 0x4c, 0xec, 0x68, 0xd9, 0x0a, 0x61, 0xa6, 0x6a,
-	0x89, 0x8a, 0x34, 0x2d, 0xe1, 0xa7, 0x25, 0x14, 0x89, 0x28, 0x75, 0x2b, 0x44, 0x5a, 0xa1, 0x8d,
-	0x10, 0x97, 0xd6, 0x66, 0x3d, 0xdd, 0xae, 0xba, 0x9e, 0x5d, 0x66, 0xc7, 0x81, 0x20, 0x5e, 0x80,
-	0x87, 0xe0, 0x1e, 0xf1, 0x3c, 0x3c, 0x0b, 0xd7, 0xd5, 0xfc, 0xad, 0xbd, 0xf6, 0xda, 0x49, 0xef,
-	0xe6, 0xfc, 0xcd, 0x39, 0x3e, 0xf3, 0x7d, 0xdf, 0x1a, 0xda, 0x3c, 0x0b, 0x49, 0xc6, 0x53, 0x91,
-	0x7a, 0x77, 0xa2, 0x34, 0x8d, 0x12, 0xfa, 0x50, 0x59, 0x97, 0xb3, 0xd7, 0x0f, 0xe9, 0x34, 0x13,
-	0xd7, 0x3a, 0x88, 0xff, 0x77, 0x00, 0x46, 0x2c, 0x8a, 0x19, 0xbd, 0xc8, 0x68, 0x88, 0x10, 0x34,
-	0x59, 0x30, 0xa5, 0xae, 0x33, 0x74, 0x8e, 0xda, 0xbe, 0x3a, 0xa3, 0x8f, 0xa1, 0x73, 0x95, 0x26,
-	0xb3, 0x29, 0x1d, 0xab, 0x50, 0x5d, 0x85, 0x40, 0xbb, 0x5e, 0xc9, 0x84, 0x43, 0xd8, 0xba, 0x8c,
-	0x59, 0xc0, 0xaf, 0xdd, 0x86, 0x8a, 0x19, 0x4b, 0xfa, 0x93, 0x38, 0x17, 0x94, 0xb9, 0x4d, 0xed,
-	0xd7, 0x16, 0xba, 0x03, 0x6d, 0x7d, 0x1a, 0xc7, 0x99, 0xdb, 0x52, 0xa1, 0x1d, 0xed, 0xf8, 0x21,
-	0x93, 0x13, 0xe4, 0xf1, 0x1f, 0xd4, 0xdd, 0x1a, 0x3a, 0x47, 0x0d, 0x5f, 0x9d, 0x91, 0x07, 0x3b,
-	0xaf, 0x79, 0xca, 0x04, 0x65, 0x13, 0x77, 0x5b, 0xe7, 0x5b, 0x5b, 0xc6, 0x2e, 0x83, 0xf0, 0x2d,
-	0x65, 0x93, 0xdc, 0xdd, 0x19, 0x36, 0x64, 0xcc, 0xda, 0x32, 0xc6, 0x69, 0x96, 0xc4, 0x61, 0x90,
-	0xbb, 0x6d, 0x1d, 0xb3, 0x36, 0x0e, 0x60, 0xd7, 0xfc, 0x6e, 0x11, 0x88, 0x59, 0x8e, 0xbe, 0x82,
-	0x5e, 0xc6, 0xd3, 0x90, 0xe6, 0xf9, 0x38, 0x57, 0x1e, 0xb5, 0x83, 0xce, 0x71, 0x8f, 0xfc, 0xa4,
-	0xdd, 0x3a, 0xcf, 0xef, 0x66, 0x8b, 0xa6, 0x6c, 0x41, 0xd9, 0x24, 0x4b, 0x63, 0x26, 0xcc, 0x66,
-	0x0a, 0x1b, 0x73, 0xe8, 0xe9, 0x16, 0x3e, 0xcd, 0xb3, 0x94, 0xe5, 0x72, 0x95, 0xcd, 0x3c, 0xa3,
-	0xa1, 0xb9, 0xba, 0x43, 0xe6, 0x9b, 0xf7, 0x55, 0x00, 0xdd, 0x83, 0x2d, 0xd3, 0xbd, 0xae, 0x52,
-	0xba, 0x64, 0x71, 0x48, 0xdf, 0x04, 0x91, 0x0b, 0xdb, 0x13, 0x9a, 0x50, 0x41, 0x27, 0x6a, 0xe5,
-	0x3b, 0xbe, 0x35, 0xf1, 0xd7, 0x70, 0xa0, 0x2b, 0xce, 0x38, 0x0d, 0x04, 0xf5, 0xe9, 0xaf, 0x33,
-	0x9a, 0x8b, 0x1b, 0x1b, 0xe3, 0xbb, 0xd0, 0xb5, 0xb3, 0xea, 0x8a, 0x0a, 0x24, 0xe0, 0xc7, 0xd0,
-	0xd7, 0x49, 0x3f, 0x67, 0x11, 0x0f, 0x26, 0xb7, 0xbf, 0xfd, 0x6f, 0x07, 0x90, 0x76, 0x9e, 0xc7,
-	0xb9, 0x28, 0xd6, 0x71, 0x02, 0xdb, 0x54, 0x79, 0xe5, 0xb2, 0x1b, 0x47, 0x9d, 0xe3, 0x21, 0x59,
-	0xcd, 0x32, 0xae, 0x7c, 0xc4, 0x04, 0xbf, 0xf6, 0x6d, 0x81, 0xf7, 0xa3, 0x7d, 0x3f, 0x1d, 0x40,
-	0xfb, 0xd0, 0x78, 0x4b, 0xaf, 0xcd, 0xb8, 0xf2, 0x88, 0xee, 0x41, 0xeb, 0x2a, 0x48, 0x66, 0xd4,
-	0xac, 0x72, 0x8f, 0x94, 0x1f, 0xc3, 0xd7, 0xd1, 0x93, 0xfa, 0x13, 0x07, 0x7f, 0x67, 0xb7, 0x36,
-	0xfa, 0x3d, 0x0b, 0xd8, 0x64, 0xc3, 0x0e, 0x0a, 0x7c, 0xd6, 0xe7, 0xf8, 0xc4, 0xcf, 0xa1, 0xff,
-	0xdc, 0xe0, 0xf1, 0x42, 0x04, 0x5c, 0x6c, 0xaa, 0x5f, 0xc4, 0x72, 0xbd, 0x8c, 0x65, 0xfc, 0x97,
-	0x03, 0x1d, 0x8b, 0xb6, 0x75, 0x6c, 0x9c, 0x93, 0xad, 0x5e, 0x22, 0x1b, 0x82, 0x66, 0xc0, 0xa3,
-	0xdc, 0x6d, 0x28, 0x9c, 0xab, 0x33, 0xfa, 0x08, 0x20, 0x4b, 0xb9, 0x18, 0x87, 0xe9, 0x8c, 0x09,
-	0x45, 0xc2, 0x96, 0xdf, 0x96, 0x9e, 0x33, 0xe9, 0x90, 0x3c, 0x54, 0x61, 0x55, 0xd7, 0xd2, 0xfc,
-	0x90, 0x8e, 0x53, 0x1e, 0xe5, 0xf8, 0x4f, 0xe8, 0x96, 0x80, 0x8f, 0xfa, 0xd0, 0x92, 0xe8, 0xb3,
-	0xd3, 0x68, 0x43, 0xde, 0x41, 0x39, 0x4f, 0xf9, 0x78, 0x9a, 0x47, 0x05, 0x01, 0xa4, 0xe3, 0x65,
-	0x1e, 0x15, 0xfd, 0x73, 0xb9, 0x14, 0x85, 0x54, 0xd3, 0x5f, 0x6d, 0x09, 0x7d, 0x08, 0xaa, 0xdd,
-	0x58, 0xae, 0x42, 0x0f, 0xb7, 0x2d, 0xed, 0x11, 0x9b, 0xe0, 0x27, 0xd0, 0x37, 0xdd, 0xcb, 0x38,
-	0x1e, 0x96, 0x90, 0xb6, 0x4b, 0x16, 0xb6, 0x65, 0xa0, 0xf6, 0xa0, 0xa8, 0x7c, 0xa6, 0x28, 0xb1,
-	0x09, 0xcf, 0x9f, 0xc2, 0x07, 0x26, 0xf7, 0x05, 0xdd, 0xf4, 0x68, 0x78, 0x06, 0x7b, 0x26, 0xb1,
-	0xc0, 0xee, 0x8d, 0x93, 0xa0, 0xfb, 0x4b, 0x5c, 0x5e, 0x56, 0x92, 0x9b, 0xc9, 0xdc, 0x07, 0x64,
-	0x4a, 0x34, 0x21, 0xd4, 0x80, 0xf8, 0x1f, 0x07, 0x0e, 0x4a, 0x6e, 0x33, 0xd1, 0x29, 0xb4, 0x8d,
-	0x36, 0x15, 0x7c, 0xba, 0x4b, 0x2a, 0x12, 0xad, 0xcf, 0x52, 0x6a, 0x5e, 0xe5, 0xbd, 0x82, 0x5e,
-	0x39, 0x58, 0x41, 0xab, 0xfb, 0x65, 0x5a, 0xed, 0x93, 0xa5, 0xcd, 0x2c, 0xf2, 0x6a, 0x08, 0x70,
-	0x9e, 0x46, 0x9b, 0x36, 0xfb, 0x09, 0x74, 0x54, 0x86, 0xf9, 0x0d, 0x08, 0x9a, 0x49, 0xcc, 0xec,
-	0x47, 0x46, 0x9d, 0x71, 0x08, 0x83, 0xa2, 0x45, 0x96, 0x04, 0xe1, 0xed, 0xc1, 0x80, 0x8e, 0x60,
-	0x4f, 0x50, 0x3e, 0x8d, 0x59, 0x20, 0xe8, 0x45, 0x1c, 0xb1, 0x20, 0x31, 0x37, 0x2f, 0xbb, 0x8f,
-	0xff, 0x6b, 0x59, 0x6d, 0x7b, 0x19, 0xb0, 0x20, 0xa2, 0xfc, 0x82, 0xf2, 0xab, 0x38, 0xa4, 0xe8,
-	0xb1, 0xd5, 0x19, 0x0d, 0x44, 0xd4, 0x27, 0x15, 0xfa, 0xea, 0x2d, 0x8b, 0x0b, 0xae, 0xa1, 0xcf,
-	0x6d, 0xa1, 0xc6, 0x21, 0xea, 0x91, 0x92, 0xc0, 0x56, 0x95, 0x10, 0x68, 0x6b, 0xdf, 0x0b, 0x2a,
-	0x6e, 0x93, 0xff, 0xad, 0xfd, 0x76, 0xcb, 0xe7, 0x45, 0x87, 0x44, 0x7f, 0xe8, 0x89, 0xfd, 0xd0,
-	0x93, 0x91, 0xfc, 0xd0, 0x7b, 0x07, 0x15, 0xa2, 0x8a, 0x6b, 0xe8, 0x1b, 0xab, 0xf8, 0x46, 0xcc,
-	0xd1, 0x80, 0x54, 0x89, 0x7b, 0x55, 0xdf, 0x07, 0x76, 0xce, 0xf3, 0x34, 0x42, 0x1d, 0x32, 0x7f,
-	0x62, 0x6f, 0x97, 0x2c, 0xbc, 0x26, 0xae, 0x3d, 0x72, 0xd0, 0x09, 0x74, 0x74, 0xee, 0x2f, 0x81,
-	0x08, 0xdf, 0xac, 0x1d, 0x72, 0xb5, 0xcb, 0x23, 0x67, 0xbe, 0x7b, 0x2d, 0xcb, 0xc5, 0xee, 0x4b,
-	0x2a, 0x5d, 0x35, 0xe0, 0xf7, 0xd0, 0x2d, 0x09, 0x32, 0x1a, 0x90, 0x2a, 0x81, 0xf6, 0xd6, 0x4c,
-	0x83, 0x6b, 0xe8, 0x29, 0xec, 0x17, 0x15, 0x6f, 0x66, 0x62, 0x92, 0xfe, 0xc6, 0x56, 0x5e, 0x64,
-	0x7d, 0xf5, 0x29, 0x0c, 0x4a, 0xfd, 0xce, 0x82, 0x24, 0x91, 0xff, 0x4a, 0xde, 0xe3, 0x8a, 0x67,
-	0xe0, 0x2e, 0x0f, 0xf0, 0xfe, 0xb7, 0x1c, 0xff, 0xdb, 0x28, 0xc8, 0xb3, 0x84, 0xeb, 0x93, 0x42,
-	0xdf, 0x0d, 0xb0, 0x07, 0xa4, 0x4a, 0x71, 0xbd, 0x15, 0x7e, 0xe3, 0xda, 0x42, 0xad, 0xc1, 0x76,
-	0x51, 0x5b, 0xd2, 0xdc, 0xca, 0xda, 0x2f, 0x01, 0xe6, 0x9a, 0x8b, 0x10, 0x59, 0x11, 0xe0, 0x35,
-	0x1d, 0x3b, 0x0b, 0x4a, 0x86, 0x0e, 0xc8, 0xaa, 0x2e, 0x7a, 0xfd, 0x2a, 0xb1, 0xc3, 0x35, 0xf4,
-	0x59, 0xd1, 0xf1, 0x16, 0x70, 0x7d, 0x0a, 0xbb, 0x26, 0x79, 0x33, 0x5e, 0x2b, 0x86, 0x54, 0xd5,
-	0xbd, 0xb2, 0x54, 0xa1, 0x43, 0x52, 0xa9, 0x5d, 0x55, 0xf5, 0x97, 0x5b, 0xaa, 0xc7, 0x17, 0xef,
-	0x02, 0x00, 0x00, 0xff, 0xff, 0xf0, 0x4f, 0xff, 0xaa, 0xbc, 0x0b, 0x00, 0x00,
+	// 589 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0x8c, 0x54, 0xc1, 0x6e, 0xd3, 0x40,
+	0x10, 0xad, 0x9b, 0xa4, 0x6d, 0xc6, 0xa5, 0x2d, 0xd3, 0xb4, 0x32, 0xa9, 0x90, 0xc2, 0x22, 0x95,
+	0x08, 0xa4, 0x2d, 0x0a, 0x1c, 0xaa, 0x8a, 0x4b, 0x55, 0x2a, 0x2e, 0x2d, 0x42, 0xce, 0x81, 0x63,
+	0xb4, 0x75, 0x06, 0x13, 0xe1, 0xd8, 0x66, 0x77, 0x5d, 0x29, 0x12, 0x3f, 0xc0, 0x9f, 0x20, 0xbe,
+	0x12, 0x79, 0xbd, 0xb6, 0x93, 0xd6, 0x14, 0x6e, 0x3b, 0x6f, 0xe7, 0x65, 0x9e, 0xdf, 0xbc, 0x2c,
+	0x74, 0x65, 0x1a, 0xf0, 0x54, 0x26, 0x3a, 0xe9, 0x1f, 0x85, 0x49, 0x12, 0x46, 0x74, 0x62, 0xaa,
+	0x9b, 0xec, 0xcb, 0x09, 0xcd, 0x53, 0xbd, 0x28, 0x2e, 0xd9, 0x4f, 0x07, 0xdc, 0x4f, 0x32, 0x09,
+	0x48, 0xa9, 0x71, 0x4a, 0x01, 0x22, 0xb4, 0x63, 0x31, 0x27, 0xcf, 0x19, 0x38, 0xc3, 0xae, 0x6f,
+	0xce, 0x78, 0x08, 0x1b, 0x37, 0xb3, 0x58, 0xc8, 0x85, 0xb7, 0x6e, 0x50, 0x5b, 0xe5, 0xbd, 0x42,
+	0x86, 0xca, 0x6b, 0x0d, 0x5a, 0x79, 0x6f, 0x7e, 0xc6, 0xa7, 0x00, 0x69, 0x22, 0xf5, 0x24, 0x48,
+	0xb2, 0x58, 0x7b, 0xed, 0x81, 0x33, 0xec, 0xf8, 0xdd, 0x1c, 0xb9, 0xc8, 0x01, 0x3c, 0x02, 0x53,
+	0x4c, 0x0c, 0xaf, 0x63, 0x78, 0x5b, 0x39, 0x70, 0x2e, 0x43, 0xc5, 0x7e, 0xc0, 0xa3, 0x52, 0x8a,
+	0x16, 0x3a, 0x53, 0xd8, 0x83, 0x8e, 0xd2, 0x42, 0x97, 0x6a, 0x8a, 0x22, 0xff, 0x0d, 0x92, 0x32,
+	0x91, 0x93, 0xb9, 0x0a, 0xad, 0xa2, 0x2d, 0x03, 0x5c, 0xab, 0xb0, 0x9a, 0xaf, 0xb4, 0x90, 0xda,
+	0x6b, 0xd5, 0xf3, 0xc7, 0x39, 0x80, 0x4f, 0xc0, 0x8c, 0x9b, 0x50, 0x3c, 0xb5, 0xe2, 0x36, 0xf3,
+	0xfa, 0x32, 0x9e, 0xb2, 0x53, 0xe8, 0xd9, 0xe9, 0x17, 0x92, 0x84, 0x26, 0x9f, 0xbe, 0x67, 0xa4,
+	0x34, 0x0e, 0xa0, 0xad, 0x52, 0x0a, 0x8c, 0x06, 0x77, 0xb4, 0xcd, 0x97, 0xdc, 0xf2, 0xcd, 0x0d,
+	0x7b, 0x59, 0x31, 0xdf, 0x53, 0x44, 0x35, 0xb3, 0xc1, 0x4b, 0xf6, 0x02, 0x1e, 0xdb, 0xde, 0x0f,
+	0xa4, 0x1f, 0x6a, 0xcc, 0x60, 0xd7, 0x36, 0xfa, 0xa4, 0xd2, 0x24, 0x56, 0xf4, 0x6f, 0x25, 0x78,
+	0x0c, 0x1b, 0xca, 0x58, 0x67, 0x7c, 0x71, 0x47, 0x3b, 0x7c, 0xc5, 0x50, 0xdf, 0xde, 0xa2, 0x07,
+	0x9b, 0x53, 0x23, 0x75, 0x6a, 0x2c, 0xda, 0xf2, 0xcb, 0x92, 0xf5, 0x00, 0x2d, 0xe5, 0x6a, 0xa6,
+	0x4a, 0x81, 0xec, 0x97, 0x03, 0xfb, 0x2b, 0xb0, 0x55, 0x74, 0x0e, 0xdd, 0xb4, 0x80, 0x49, 0x79,
+	0xce, 0xa0, 0x35, 0x74, 0x47, 0xcf, 0x79, 0x43, 0x63, 0x89, 0x91, 0xba, 0x8c, 0xb5, 0x5c, 0xf8,
+	0x35, 0xab, 0xff, 0x11, 0x76, 0x56, 0x2f, 0x71, 0x0f, 0x5a, 0xdf, 0x68, 0x61, 0xcd, 0xc8, 0x8f,
+	0x78, 0x0c, 0x9d, 0x5b, 0x11, 0x65, 0x64, 0xbf, 0x6a, 0x8f, 0xdf, 0x71, 0xc6, 0x2f, 0xae, 0xcf,
+	0xd6, 0x4f, 0x1d, 0x36, 0x00, 0xb8, 0x4a, 0xc2, 0x87, 0x9c, 0x7d, 0x06, 0xae, 0xe9, 0xb0, 0xdf,
+	0x80, 0xd0, 0x8e, 0x66, 0x31, 0xd9, 0x24, 0x99, 0x33, 0x0b, 0xe0, 0xa0, 0x1a, 0x91, 0x46, 0x22,
+	0xf8, 0xff, 0x30, 0xe0, 0x10, 0x76, 0x35, 0xc9, 0xf9, 0x2c, 0x16, 0x9a, 0xc6, 0xb3, 0x30, 0x16,
+	0x91, 0xfd, 0xe5, 0xbb, 0xf0, 0xe8, 0x77, 0xab, 0x9a, 0x72, 0x2d, 0x62, 0x11, 0x92, 0x1c, 0x93,
+	0xbc, 0x9d, 0x05, 0x84, 0x67, 0xd5, 0x1f, 0xa1, 0x88, 0x22, 0x1e, 0xf0, 0xa6, 0x68, 0xf6, 0xef,
+	0x19, 0xc1, 0xd6, 0x96, 0xb8, 0x45, 0x18, 0x6b, 0xee, 0x4a, 0x38, 0x1b, 0xb9, 0x6f, 0x01, 0xea,
+	0x70, 0x22, 0xf2, 0x7b, 0x49, 0xfd, 0xcb, 0x44, 0x77, 0x69, 0xe5, 0xb8, 0xcf, 0xef, 0x07, 0xa8,
+	0xdf, 0x6b, 0x4a, 0x05, 0x5b, 0xc3, 0x57, 0xd5, 0xc4, 0xab, 0x24, 0x44, 0x97, 0xd7, 0xab, 0xeb,
+	0x6f, 0xf3, 0xa5, 0x2d, 0xb1, 0xb5, 0xd7, 0x0e, 0xbe, 0x83, 0x6d, 0xdb, 0xfc, 0x59, 0xe8, 0xe0,
+	0x2b, 0x1e, 0xf2, 0xe2, 0x65, 0xe3, 0xe5, 0xcb, 0xc6, 0x2f, 0xf3, 0x97, 0xad, 0x49, 0xa4, 0x61,
+	0xef, 0xac, 0xee, 0x14, 0x0f, 0x79, 0xe3, 0x92, 0x9b, 0xf8, 0x37, 0x1b, 0x66, 0xc6, 0x9b, 0x3f,
+	0x01, 0x00, 0x00, 0xff, 0xff, 0x43, 0x98, 0x73, 0x2d, 0x58, 0x05, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -1083,529 +591,6 @@ var _ grpc.ClientConn
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
 const _ = grpc.SupportPackageIsVersion4
-
-// EngineManagerServiceClient is the client API for EngineManagerService service.
-//
-// For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
-type EngineManagerServiceClient interface {
-	EngineCreate(ctx context.Context, in *EngineCreateRequest, opts ...grpc.CallOption) (*EngineResponse, error)
-	EngineDelete(ctx context.Context, in *EngineRequest, opts ...grpc.CallOption) (*EngineResponse, error)
-	EngineGet(ctx context.Context, in *EngineRequest, opts ...grpc.CallOption) (*EngineResponse, error)
-	EngineList(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*EngineListResponse, error)
-	EngineUpgrade(ctx context.Context, in *EngineUpgradeRequest, opts ...grpc.CallOption) (*EngineResponse, error)
-	EngineLog(ctx context.Context, in *LogRequest, opts ...grpc.CallOption) (EngineManagerService_EngineLogClient, error)
-	EngineWatch(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (EngineManagerService_EngineWatchClient, error)
-	EngineExpand(ctx context.Context, in *EngineExpandRequest, opts ...grpc.CallOption) (*EngineResponse, error)
-	FrontendStart(ctx context.Context, in *FrontendStartRequest, opts ...grpc.CallOption) (*empty.Empty, error)
-	FrontendShutdown(ctx context.Context, in *EngineRequest, opts ...grpc.CallOption) (*empty.Empty, error)
-	FrontendStartCallback(ctx context.Context, in *EngineRequest, opts ...grpc.CallOption) (*empty.Empty, error)
-	FrontendShutdownCallback(ctx context.Context, in *EngineRequest, opts ...grpc.CallOption) (*empty.Empty, error)
-}
-
-type engineManagerServiceClient struct {
-	cc *grpc.ClientConn
-}
-
-func NewEngineManagerServiceClient(cc *grpc.ClientConn) EngineManagerServiceClient {
-	return &engineManagerServiceClient{cc}
-}
-
-func (c *engineManagerServiceClient) EngineCreate(ctx context.Context, in *EngineCreateRequest, opts ...grpc.CallOption) (*EngineResponse, error) {
-	out := new(EngineResponse)
-	err := c.cc.Invoke(ctx, "/EngineManagerService/EngineCreate", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *engineManagerServiceClient) EngineDelete(ctx context.Context, in *EngineRequest, opts ...grpc.CallOption) (*EngineResponse, error) {
-	out := new(EngineResponse)
-	err := c.cc.Invoke(ctx, "/EngineManagerService/EngineDelete", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *engineManagerServiceClient) EngineGet(ctx context.Context, in *EngineRequest, opts ...grpc.CallOption) (*EngineResponse, error) {
-	out := new(EngineResponse)
-	err := c.cc.Invoke(ctx, "/EngineManagerService/EngineGet", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *engineManagerServiceClient) EngineList(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*EngineListResponse, error) {
-	out := new(EngineListResponse)
-	err := c.cc.Invoke(ctx, "/EngineManagerService/EngineList", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *engineManagerServiceClient) EngineUpgrade(ctx context.Context, in *EngineUpgradeRequest, opts ...grpc.CallOption) (*EngineResponse, error) {
-	out := new(EngineResponse)
-	err := c.cc.Invoke(ctx, "/EngineManagerService/EngineUpgrade", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *engineManagerServiceClient) EngineLog(ctx context.Context, in *LogRequest, opts ...grpc.CallOption) (EngineManagerService_EngineLogClient, error) {
-	stream, err := c.cc.NewStream(ctx, &_EngineManagerService_serviceDesc.Streams[0], "/EngineManagerService/EngineLog", opts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &engineManagerServiceEngineLogClient{stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	return x, nil
-}
-
-type EngineManagerService_EngineLogClient interface {
-	Recv() (*LogResponse, error)
-	grpc.ClientStream
-}
-
-type engineManagerServiceEngineLogClient struct {
-	grpc.ClientStream
-}
-
-func (x *engineManagerServiceEngineLogClient) Recv() (*LogResponse, error) {
-	m := new(LogResponse)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
-func (c *engineManagerServiceClient) EngineWatch(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (EngineManagerService_EngineWatchClient, error) {
-	stream, err := c.cc.NewStream(ctx, &_EngineManagerService_serviceDesc.Streams[1], "/EngineManagerService/EngineWatch", opts...)
-	if err != nil {
-		return nil, err
-	}
-	x := &engineManagerServiceEngineWatchClient{stream}
-	if err := x.ClientStream.SendMsg(in); err != nil {
-		return nil, err
-	}
-	if err := x.ClientStream.CloseSend(); err != nil {
-		return nil, err
-	}
-	return x, nil
-}
-
-type EngineManagerService_EngineWatchClient interface {
-	Recv() (*EngineResponse, error)
-	grpc.ClientStream
-}
-
-type engineManagerServiceEngineWatchClient struct {
-	grpc.ClientStream
-}
-
-func (x *engineManagerServiceEngineWatchClient) Recv() (*EngineResponse, error) {
-	m := new(EngineResponse)
-	if err := x.ClientStream.RecvMsg(m); err != nil {
-		return nil, err
-	}
-	return m, nil
-}
-
-func (c *engineManagerServiceClient) EngineExpand(ctx context.Context, in *EngineExpandRequest, opts ...grpc.CallOption) (*EngineResponse, error) {
-	out := new(EngineResponse)
-	err := c.cc.Invoke(ctx, "/EngineManagerService/EngineExpand", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *engineManagerServiceClient) FrontendStart(ctx context.Context, in *FrontendStartRequest, opts ...grpc.CallOption) (*empty.Empty, error) {
-	out := new(empty.Empty)
-	err := c.cc.Invoke(ctx, "/EngineManagerService/FrontendStart", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *engineManagerServiceClient) FrontendShutdown(ctx context.Context, in *EngineRequest, opts ...grpc.CallOption) (*empty.Empty, error) {
-	out := new(empty.Empty)
-	err := c.cc.Invoke(ctx, "/EngineManagerService/FrontendShutdown", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *engineManagerServiceClient) FrontendStartCallback(ctx context.Context, in *EngineRequest, opts ...grpc.CallOption) (*empty.Empty, error) {
-	out := new(empty.Empty)
-	err := c.cc.Invoke(ctx, "/EngineManagerService/FrontendStartCallback", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-func (c *engineManagerServiceClient) FrontendShutdownCallback(ctx context.Context, in *EngineRequest, opts ...grpc.CallOption) (*empty.Empty, error) {
-	out := new(empty.Empty)
-	err := c.cc.Invoke(ctx, "/EngineManagerService/FrontendShutdownCallback", in, out, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
-// EngineManagerServiceServer is the server API for EngineManagerService service.
-type EngineManagerServiceServer interface {
-	EngineCreate(context.Context, *EngineCreateRequest) (*EngineResponse, error)
-	EngineDelete(context.Context, *EngineRequest) (*EngineResponse, error)
-	EngineGet(context.Context, *EngineRequest) (*EngineResponse, error)
-	EngineList(context.Context, *empty.Empty) (*EngineListResponse, error)
-	EngineUpgrade(context.Context, *EngineUpgradeRequest) (*EngineResponse, error)
-	EngineLog(*LogRequest, EngineManagerService_EngineLogServer) error
-	EngineWatch(*empty.Empty, EngineManagerService_EngineWatchServer) error
-	EngineExpand(context.Context, *EngineExpandRequest) (*EngineResponse, error)
-	FrontendStart(context.Context, *FrontendStartRequest) (*empty.Empty, error)
-	FrontendShutdown(context.Context, *EngineRequest) (*empty.Empty, error)
-	FrontendStartCallback(context.Context, *EngineRequest) (*empty.Empty, error)
-	FrontendShutdownCallback(context.Context, *EngineRequest) (*empty.Empty, error)
-}
-
-// UnimplementedEngineManagerServiceServer can be embedded to have forward compatible implementations.
-type UnimplementedEngineManagerServiceServer struct {
-}
-
-func (*UnimplementedEngineManagerServiceServer) EngineCreate(ctx context.Context, req *EngineCreateRequest) (*EngineResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method EngineCreate not implemented")
-}
-func (*UnimplementedEngineManagerServiceServer) EngineDelete(ctx context.Context, req *EngineRequest) (*EngineResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method EngineDelete not implemented")
-}
-func (*UnimplementedEngineManagerServiceServer) EngineGet(ctx context.Context, req *EngineRequest) (*EngineResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method EngineGet not implemented")
-}
-func (*UnimplementedEngineManagerServiceServer) EngineList(ctx context.Context, req *empty.Empty) (*EngineListResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method EngineList not implemented")
-}
-func (*UnimplementedEngineManagerServiceServer) EngineUpgrade(ctx context.Context, req *EngineUpgradeRequest) (*EngineResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method EngineUpgrade not implemented")
-}
-func (*UnimplementedEngineManagerServiceServer) EngineLog(req *LogRequest, srv EngineManagerService_EngineLogServer) error {
-	return status.Errorf(codes.Unimplemented, "method EngineLog not implemented")
-}
-func (*UnimplementedEngineManagerServiceServer) EngineWatch(req *empty.Empty, srv EngineManagerService_EngineWatchServer) error {
-	return status.Errorf(codes.Unimplemented, "method EngineWatch not implemented")
-}
-func (*UnimplementedEngineManagerServiceServer) EngineExpand(ctx context.Context, req *EngineExpandRequest) (*EngineResponse, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method EngineExpand not implemented")
-}
-func (*UnimplementedEngineManagerServiceServer) FrontendStart(ctx context.Context, req *FrontendStartRequest) (*empty.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method FrontendStart not implemented")
-}
-func (*UnimplementedEngineManagerServiceServer) FrontendShutdown(ctx context.Context, req *EngineRequest) (*empty.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method FrontendShutdown not implemented")
-}
-func (*UnimplementedEngineManagerServiceServer) FrontendStartCallback(ctx context.Context, req *EngineRequest) (*empty.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method FrontendStartCallback not implemented")
-}
-func (*UnimplementedEngineManagerServiceServer) FrontendShutdownCallback(ctx context.Context, req *EngineRequest) (*empty.Empty, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method FrontendShutdownCallback not implemented")
-}
-
-func RegisterEngineManagerServiceServer(s *grpc.Server, srv EngineManagerServiceServer) {
-	s.RegisterService(&_EngineManagerService_serviceDesc, srv)
-}
-
-func _EngineManagerService_EngineCreate_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(EngineCreateRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(EngineManagerServiceServer).EngineCreate(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/EngineManagerService/EngineCreate",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EngineManagerServiceServer).EngineCreate(ctx, req.(*EngineCreateRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _EngineManagerService_EngineDelete_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(EngineRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(EngineManagerServiceServer).EngineDelete(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/EngineManagerService/EngineDelete",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EngineManagerServiceServer).EngineDelete(ctx, req.(*EngineRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _EngineManagerService_EngineGet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(EngineRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(EngineManagerServiceServer).EngineGet(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/EngineManagerService/EngineGet",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EngineManagerServiceServer).EngineGet(ctx, req.(*EngineRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _EngineManagerService_EngineList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(empty.Empty)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(EngineManagerServiceServer).EngineList(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/EngineManagerService/EngineList",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EngineManagerServiceServer).EngineList(ctx, req.(*empty.Empty))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _EngineManagerService_EngineUpgrade_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(EngineUpgradeRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(EngineManagerServiceServer).EngineUpgrade(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/EngineManagerService/EngineUpgrade",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EngineManagerServiceServer).EngineUpgrade(ctx, req.(*EngineUpgradeRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _EngineManagerService_EngineLog_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(LogRequest)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(EngineManagerServiceServer).EngineLog(m, &engineManagerServiceEngineLogServer{stream})
-}
-
-type EngineManagerService_EngineLogServer interface {
-	Send(*LogResponse) error
-	grpc.ServerStream
-}
-
-type engineManagerServiceEngineLogServer struct {
-	grpc.ServerStream
-}
-
-func (x *engineManagerServiceEngineLogServer) Send(m *LogResponse) error {
-	return x.ServerStream.SendMsg(m)
-}
-
-func _EngineManagerService_EngineWatch_Handler(srv interface{}, stream grpc.ServerStream) error {
-	m := new(empty.Empty)
-	if err := stream.RecvMsg(m); err != nil {
-		return err
-	}
-	return srv.(EngineManagerServiceServer).EngineWatch(m, &engineManagerServiceEngineWatchServer{stream})
-}
-
-type EngineManagerService_EngineWatchServer interface {
-	Send(*EngineResponse) error
-	grpc.ServerStream
-}
-
-type engineManagerServiceEngineWatchServer struct {
-	grpc.ServerStream
-}
-
-func (x *engineManagerServiceEngineWatchServer) Send(m *EngineResponse) error {
-	return x.ServerStream.SendMsg(m)
-}
-
-func _EngineManagerService_EngineExpand_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(EngineExpandRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(EngineManagerServiceServer).EngineExpand(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/EngineManagerService/EngineExpand",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EngineManagerServiceServer).EngineExpand(ctx, req.(*EngineExpandRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _EngineManagerService_FrontendStart_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(FrontendStartRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(EngineManagerServiceServer).FrontendStart(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/EngineManagerService/FrontendStart",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EngineManagerServiceServer).FrontendStart(ctx, req.(*FrontendStartRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _EngineManagerService_FrontendShutdown_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(EngineRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(EngineManagerServiceServer).FrontendShutdown(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/EngineManagerService/FrontendShutdown",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EngineManagerServiceServer).FrontendShutdown(ctx, req.(*EngineRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _EngineManagerService_FrontendStartCallback_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(EngineRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(EngineManagerServiceServer).FrontendStartCallback(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/EngineManagerService/FrontendStartCallback",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EngineManagerServiceServer).FrontendStartCallback(ctx, req.(*EngineRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-func _EngineManagerService_FrontendShutdownCallback_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(EngineRequest)
-	if err := dec(in); err != nil {
-		return nil, err
-	}
-	if interceptor == nil {
-		return srv.(EngineManagerServiceServer).FrontendShutdownCallback(ctx, in)
-	}
-	info := &grpc.UnaryServerInfo{
-		Server:     srv,
-		FullMethod: "/EngineManagerService/FrontendShutdownCallback",
-	}
-	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(EngineManagerServiceServer).FrontendShutdownCallback(ctx, req.(*EngineRequest))
-	}
-	return interceptor(ctx, in, info, handler)
-}
-
-var _EngineManagerService_serviceDesc = grpc.ServiceDesc{
-	ServiceName: "EngineManagerService",
-	HandlerType: (*EngineManagerServiceServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "EngineCreate",
-			Handler:    _EngineManagerService_EngineCreate_Handler,
-		},
-		{
-			MethodName: "EngineDelete",
-			Handler:    _EngineManagerService_EngineDelete_Handler,
-		},
-		{
-			MethodName: "EngineGet",
-			Handler:    _EngineManagerService_EngineGet_Handler,
-		},
-		{
-			MethodName: "EngineList",
-			Handler:    _EngineManagerService_EngineList_Handler,
-		},
-		{
-			MethodName: "EngineUpgrade",
-			Handler:    _EngineManagerService_EngineUpgrade_Handler,
-		},
-		{
-			MethodName: "EngineExpand",
-			Handler:    _EngineManagerService_EngineExpand_Handler,
-		},
-		{
-			MethodName: "FrontendStart",
-			Handler:    _EngineManagerService_FrontendStart_Handler,
-		},
-		{
-			MethodName: "FrontendShutdown",
-			Handler:    _EngineManagerService_FrontendShutdown_Handler,
-		},
-		{
-			MethodName: "FrontendStartCallback",
-			Handler:    _EngineManagerService_FrontendStartCallback_Handler,
-		},
-		{
-			MethodName: "FrontendShutdownCallback",
-			Handler:    _EngineManagerService_FrontendShutdownCallback_Handler,
-		},
-	},
-	Streams: []grpc.StreamDesc{
-		{
-			StreamName:    "EngineLog",
-			Handler:       _EngineManagerService_EngineLog_Handler,
-			ServerStreams: true,
-		},
-		{
-			StreamName:    "EngineWatch",
-			Handler:       _EngineManagerService_EngineWatch_Handler,
-			ServerStreams: true,
-		},
-	},
-	Metadata: "rpc.proto",
-}
 
 // ProcessManagerServiceClient is the client API for ProcessManagerService service.
 //
