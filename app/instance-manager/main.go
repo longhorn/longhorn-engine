@@ -28,7 +28,6 @@ func main() {
 	}
 	a.Commands = []cli.Command{
 		cmd.StartCmd(),
-		cmd.EngineCmd(),
 		cmd.ProcessCmd(),
 	}
 	if err := a.Run(os.Args); err != nil {
