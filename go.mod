@@ -2,6 +2,8 @@ module github.com/longhorn/longhorn-engine
 
 go 1.13
 
+replace github.com/longhorn/go-iscsi-helper => /home/yasker/develop/go/src/github.com/longhorn/go-iscsi-helper
+
 require (
 	github.com/RoaringBitmap/roaring v0.4.18
 	github.com/c9s/goprocinfo v0.0.0-20190309065803-0b2ad9ac246b // indirect

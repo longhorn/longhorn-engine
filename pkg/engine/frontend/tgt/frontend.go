@@ -1,19 +1,11 @@
 package tgt
 
 import (
-	"fmt"
-	"os"
-	"os/exec"
-	"path/filepath"
-	"time"
-
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
-	"github.com/longhorn/go-iscsi-helper/iscsiblk"
+	"github.com/longhorn/go-iscsi-helper/longhorndev"
 	"github.com/longhorn/longhorn-engine/pkg/engine/frontend/socket"
 	"github.com/longhorn/longhorn-engine/pkg/engine/types"
-	"github.com/longhorn/longhorn-engine/pkg/engine/util"
 )
 
 const (
@@ -27,8 +19,8 @@ const (
 type Tgt struct {
 	s *socket.Socket
 
-	isUp       bool
-	scsiDevice *iscsiblk.ScsiDevice
+	isUp bool
+	dev  longhorndev.DeviceService
 }
 
 func New() types.Frontend {
@@ -49,11 +41,14 @@ func (t *Tgt) Startup(name string, size, sectorSize int64, rw types.ReaderWriter
 		return err
 	}
 
-	if err := t.startScsiDevice(); err != nil {
+	ldc := longhorndev.LonghornDeviceCreator{}
+	dev, err := ldc.NewDevice(name, size, "tgt-blockdev")
+	if err != nil {
 		return err
 	}
+	t.dev = dev
 
-	if err := t.createDev(); err != nil {
+	if err := t.dev.Start(); err != nil {
 		return err
 	}
 
@@ -63,13 +58,9 @@ func (t *Tgt) Startup(name string, size, sectorSize int64, rw types.ReaderWriter
 }
 
 func (t *Tgt) Shutdown() error {
-	if t.s.Volume != "" {
-		dev := t.getDev()
-		if err := util.RemoveDevice(dev); err != nil {
-			return fmt.Errorf("Fail to remove device %s: %v", dev, err)
-		}
-		if err := iscsiblk.StopScsi(t.s.Volume, t.scsiDevice.TargetID); err != nil {
-			return fmt.Errorf("Fail to stop SCSI device: %v", err)
+	if t.dev != nil {
+		if err := t.dev.Shutdown(); err != nil {
+			return err
 		}
 	}
 	if err := t.s.Shutdown(); err != nil {
@@ -89,77 +80,28 @@ func (t *Tgt) State() types.State {
 
 func (t *Tgt) Endpoint() string {
 	if t.isUp {
-		return t.getDev()
+		return t.dev.GetEndpoint()
 	}
 	return ""
-}
-
-func (t *Tgt) getDev() string {
-	return filepath.Join(DevPath, t.s.Volume)
-}
-
-func (t *Tgt) startScsiDevice() error {
-	if t.scsiDevice == nil {
-		bsOpts := fmt.Sprintf("size=%v", t.s.Size)
-		scsiDev, err := iscsiblk.NewScsiDevice(t.s.Volume, t.s.GetSocketPath(), "longhorn", bsOpts, DefaultTargetID)
-		if err != nil {
-			return err
-		}
-		t.scsiDevice = scsiDev
-	}
-	if err := iscsiblk.StartScsi(t.scsiDevice); err != nil {
-		return err
-	}
-	logrus.Infof("SCSI device %s created", t.scsiDevice.Device)
-	return nil
-}
-
-func (t *Tgt) createDev() error {
-	if err := os.MkdirAll(DevPath, 0755); err != nil {
-		logrus.Fatalln("Cannot create directory ", DevPath)
-	}
-
-	dev := t.getDev()
-	if _, err := os.Stat(dev); err == nil {
-		logrus.Warnf("Device %s already exists, clean it up", dev)
-		if err := util.RemoveDevice(dev); err != nil {
-			return errors.Wrapf(err, "cannot cleanup block device file %v", dev)
-		}
-	}
-
-	if err := util.DuplicateDevice(t.scsiDevice.Device, dev); err != nil {
-		return err
-	}
-	logrus.Infof("Device %s is ready", dev)
-	return nil
 }
 
 func (t *Tgt) Upgrade(name string, size, sectorSize int64, rw types.ReaderWriterAt) error {
 	if err := t.s.Startup(name, size, sectorSize, rw); err != nil {
 		return err
 	}
-	if t.scsiDevice == nil {
-		bsOpts := fmt.Sprintf("size=%v", t.s.Size)
-		scsiDev, err := iscsiblk.NewScsiDevice(t.s.Volume, t.s.GetSocketPath(), "longhorn", bsOpts, DefaultTargetID)
-		if err != nil {
-			return err
-		}
-		t.scsiDevice = scsiDev
+
+	ldc := longhorndev.LonghornDeviceCreator{}
+	dev, err := ldc.NewDevice(name, size, "tgt-blockdev")
+	if err != nil {
+		return err
 	}
-	if err := t.ReloadSocketConnection(name); err != nil {
+	t.dev = dev
+
+	if err := t.dev.FinishUpgrade(); err != nil {
 		return err
 	}
 	t.isUp = true
+	logrus.Infof("engine: Finish upgrading for %v", name)
 
-	return nil
-}
-
-func (t *Tgt) ReloadSocketConnection(name string) error {
-	//TODO add wait for the socket
-	time.Sleep(3 * time.Second)
-	cmd := exec.Command("sg_raw", "/dev/longhorn/"+name, "a6", "00", "00", "00", "00", "00")
-	if err := cmd.Run(); err != nil {
-		return errors.Wrapf(err, "failed to reload socket connection")
-	}
 	return nil
 }
