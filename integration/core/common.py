@@ -9,7 +9,6 @@ import random
 import subprocess
 
 
-from rpc.instance_manager.engine_manager_client import EngineManagerClient  # NOQA
 from rpc.instance_manager.process_manager_client import ProcessManagerClient  # NOQA
 
 from rpc.replica.replica_client import ReplicaClient  # NOQA
@@ -17,7 +16,8 @@ from rpc.replica.replica_client import ReplicaClient  # NOQA
 from rpc.controller.controller_client import ControllerClient  # NOQA
 
 
-INSTANCE_MANAGER = "localhost:8500"
+INSTANCE_MANAGER_REPLICA = "localhost:8500"
+INSTANCE_MANAGER_ENGINE = "localhost:8501"
 
 INSTANCE_MANAGER_TYPE_ENGINE = "engine"
 INSTANCE_MANAGER_TYPE_REPLICA = "replica"
@@ -48,11 +48,11 @@ PROC_STATE_STOPPING = "stopping"
 PROC_STATE_STOPPED = "stopped"
 PROC_STATE_ERROR = "error"
 
-FRONTEND_TGT_BLOCKDEV = "tgt-blockdev"
+# FRONTEND_TGT_BLOCKDEV = "tgt-blockdev"
+FRONTEND_TGT_BLOCKDEV = "tgt"
 
 
 def cleanup_process(pm_client):
-    cleanup_engine_process(EngineManagerClient(pm_client.address))
     for name in pm_client.process_list():
         try:
             pm_client.process_delete(name)
@@ -70,36 +70,10 @@ def cleanup_process(pm_client):
     return pm_client
 
 
-def cleanup_engine_process(em_client):
-    for _, engine in iter(em_client.engine_list().items()):
-        try:
-            em_client.engine_delete(engine.spec.name)
-        except grpc.RpcError as e:
-            if 'cannot find engine' not in e.details():
-                raise e
-    for i in range(RETRY_COUNTS):
-        es = em_client.engine_list()
-        if len(es) == 0:
-            break
-        time.sleep(RETRY_INTERVAL)
-
-    es = em_client.engine_list()
-    assert len(es) == 0
-    return em_client
-
-
-def wait_for_process_running(client, name, type):
+def wait_for_process_running(client, name):
     healthy = False
     for i in range(RETRY_COUNTS):
-        if type == INSTANCE_MANAGER_TYPE_ENGINE:
-            e = client.engine_get(name)
-            state = e.status.process_status.state
-        elif type == INSTANCE_MANAGER_TYPE_REPLICA:
-            state = client.process_get(name).status.state
-        else:
-            # invalid type
-            assert False
-
+        state = client.process_get(name).status.state
         if state == PROC_STATE_RUNNING:
             healthy = True
             break
@@ -120,8 +94,7 @@ def create_replica_process(client, name, replica_dir="",
         name=name, binary=binary,
         args=["replica", replica_dir, "--size", str(size)],
         port_count=port_count, port_args=port_args)
-    wait_for_process_running(client, name,
-                             INSTANCE_MANAGER_TYPE_REPLICA)
+    wait_for_process_running(client, name)
 
     return client.process_get(name)
 
@@ -130,21 +103,24 @@ def create_engine_process(client, name=ENGINE_NAME,
                           volume_name=VOLUME_NAME,
                           binary=LONGHORN_BINARY,
                           listen="", listen_ip="localhost",
-                          size=SIZE, frontend="tgt-blockdev",
+                          size=SIZE, frontend=FRONTEND_TGT_BLOCKDEV,
                           replicas=[], backends=["file"]):
-    client.engine_create(
-        name=name, volume_name=volume_name,
-        binary=binary, listen=listen, listen_ip=listen_ip,
-        size=size, frontend=frontend, replicas=replicas,
-        backends=backends)
-    wait_for_process_running(client, name,
-                             INSTANCE_MANAGER_TYPE_ENGINE)
+    args = ["controller", volume_name,
+            "--frontend", frontend]
+    for r in replicas:
+        args += ["--replica", r]
+    for b in backends:
+        args += ["--enable-backend", b]
+    client.process_create(
+        name=name, binary=binary, args=args,
+        port_count=1, port_args=["--listen,localhost:"])
+    wait_for_process_running(client, name)
 
-    return client.engine_get(name)
+    return client.process_get(name)
 
 
-def get_replica_address(r):
-    return "localhost:" + str(r.status.port_start)
+def get_process_address(p):
+    return "localhost:" + str(p.status.port_start)
 
 
 def cleanup_controller(grpc_client):
