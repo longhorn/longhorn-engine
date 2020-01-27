@@ -4,7 +4,7 @@ import datetime
 import grpc
 import pytest
 
-from core.common import SIZE_STR
+from common.core import SIZE_STR
 
 
 @pytest.fixture
