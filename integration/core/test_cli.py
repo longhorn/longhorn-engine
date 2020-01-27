@@ -25,6 +25,10 @@ from core.common import (  # NOQA
     SIZE_STR, EXPANDED_SIZE_STR,
 )
 
+from data.common import (
+    wait_for_purge_completion,
+)
+
 BACKUP_DEST = '/data/backupbucket'
 
 VOLUME_HEAD = "volume-head"
@@ -329,10 +333,10 @@ def test_revert(engine_manager_client,  # NOQA
                         'volume-snap-foo1.img']
     assert r1.chain == r2.chain
 
-    engine_manager_client.frontend_shutdown(ENGINE_NAME)
+    grpc_controller_client.volume_frontend_shutdown()
     grpc_controller_client.volume_revert(name='foo1')
-    engine_manager_client.frontend_start(ENGINE_NAME,
-                                         FRONTEND_TGT_BLOCKDEV)
+    grpc_controller_client.volume_frontend_start(
+            frontend=FRONTEND_TGT_BLOCKDEV)
     r1 = grpc_replica_client.replica_get()
     r2 = grpc_replica_client2.replica_get()
     assert r1.chain == ['volume-head-003.img', 'volume-snap-foo1.img']
@@ -649,7 +653,7 @@ def get_backup_url(bin, url, backupID):
 
 def restore_backup(engine_manager_client,  # NOQA
                    bin, url, backup_url, env, grpc_c):
-    engine_manager_client.frontend_shutdown(ENGINE_NAME)
+    grpc_c.volume_frontend_shutdown()
     v = grpc_c.volume_get()
     assert v.frontendState == "down"
 
@@ -681,8 +685,8 @@ def restore_backup(engine_manager_client,  # NOQA
             break
         time.sleep(RETRY_INTERVAL)
     assert completed == len(rs)
-    engine_manager_client.frontend_start(ENGINE_NAME,
-                                         FRONTEND_TGT_BLOCKDEV)
+    grpc_c.volume_frontend_start(
+            frontend=FRONTEND_TGT_BLOCKDEV)
     v = grpc_c.volume_get()
     assert v.frontendState == "up"
 
@@ -854,8 +858,8 @@ def backup_core(bin, engine_manager_client,  # NOQA
     # cannot find the backup
     with pytest.raises(subprocess.CalledProcessError):
         subprocess.check_call(cmd, env=env)
-    engine_manager_client.frontend_start(ENGINE_NAME,
-                                         FRONTEND_TGT_BLOCKDEV)
+    grpc_controller_client.volume_frontend_start(
+            frontend=FRONTEND_TGT_BLOCKDEV)
     v = grpc_controller_client.volume_get()
     assert v.frontendState == "up"
 
@@ -909,6 +913,8 @@ def test_snapshot_purge_basic(bin, grpc_controller_client,  # NOQA
     cmd = [bin, '--url', grpc_controller_client.address,
            'snapshot', 'purge']
     subprocess.check_call(cmd)
+
+    wait_for_purge_completion(grpc_controller_client.address)
 
     cmd = [bin, '--url', grpc_controller_client.address,
            'snapshot', 'info']
@@ -998,6 +1004,7 @@ def test_backup_cli(bin, engine_manager_client,  # NOQA
         cleanup_controller(grpc_controller_client)
 
 
+@pytest.mark.skip(reason="need to implement expand in engine")
 def test_volume_expand_with_snapshots(  # NOQA
         bin, grpc_controller_client,  # NOQA
         grpc_replica_client, grpc_replica_client2):  # NOQA

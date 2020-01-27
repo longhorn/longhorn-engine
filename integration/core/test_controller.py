@@ -134,6 +134,7 @@ def test_shutdown(grpc_controller_client):  # NOQA
     cleanup_backend_file([f1, f2])
 
 
+@pytest.mark.skip(reason="need to implement expand in engine")
 def test_controller_expand(grpc_controller_client):  # NOQA
     v = grpc_controller_client.volume_get()
     assert v.replicaCount == 0
