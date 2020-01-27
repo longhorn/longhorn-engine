@@ -3,7 +3,7 @@ import os
 import grpc
 import pytest
 
-from core.common import (  # NOQA
+from common.core import (  # NOQA
     create_backend_file, cleanup_backend_file,
     wait_for_volume_expansion,
     EXPANDED_SIZE,

@@ -9,7 +9,7 @@ import pytest
 
 from urllib.parse import urlparse
 
-from core.common import (  # NOQA
+from common.core import (  # NOQA
     cleanup_replica, cleanup_controller,
     get_expansion_snapshot_name,
     get_replica_paths_from_snapshot_name,

@@ -1,16 +1,16 @@
 import pytest
 
-from core.common import cleanup_process
-from core.common import cleanup_replica
-from core.common import create_engine_process
-from core.common import create_replica_process
-from core.common import REPLICA_NAME
-from core.common import REPLICA_2_NAME
-from core.common import get_process_address
-from core.common import ReplicaClient
+from common.core import cleanup_process
+from common.core import cleanup_replica
+from common.core import create_engine_process
+from common.core import create_replica_process
+from common.core import REPLICA_NAME
+from common.core import REPLICA_2_NAME
+from common.core import get_process_address
+from common.core import ReplicaClient
 
 
-from core.common import INSTANCE_MANAGER_REPLICA, INSTANCE_MANAGER_ENGINE
+from common.core import INSTANCE_MANAGER_REPLICA, INSTANCE_MANAGER_ENGINE
 
 from rpc.controller.controller_client import ControllerClient
 from rpc.instance_manager.process_manager_client import ProcessManagerClient
