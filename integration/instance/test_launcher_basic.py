@@ -11,7 +11,7 @@ from common.core import (
 )
 
 from common.constants import (
-    SIZE, LONGHORN_UPGRADE_BINARY,
+    LONGHORN_UPGRADE_BINARY,
     INSTANCE_MANAGER_TYPE_ENGINE, PROC_STATE_RUNNING,
     PROC_STATE_STOPPING, PROC_STATE_STOPPED,
     VOLUME_NAME_BASE, ENGINE_NAME_BASE, REPLICA_NAME_BASE,
@@ -108,6 +108,8 @@ def test_one_volume(pm_client, em_client):  # NOQA
     ps = pm_client.process_list()
     assert len(ps) == 3
 
+    delete_process(em_client, engine_name)
+    # test duplicate call
     delete_process(em_client, engine_name)
     wait_for_process_deletion(em_client, engine_name)
     # test duplicate call
