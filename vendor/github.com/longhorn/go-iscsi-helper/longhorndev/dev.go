@@ -49,6 +49,7 @@ type DeviceService interface {
 
 	Start() error
 	Shutdown() error
+	PrepareUpgrade() error
 	FinishUpgrade() error
 	Expand(size int64) error
 }
@@ -282,8 +283,9 @@ func (d *LonghornDevice) ReloadSocketConnection() error {
 
 	cmd := exec.Command("sg_raw", dev, "a6", "00", "00", "00", "00", "00")
 	if err := cmd.Run(); err != nil {
-		return errors.Wrapf(err, "failed to reload socket connection")
+		return errors.Wrapf(err, "failed to reload socket connection at %v", dev)
 	}
+	logrus.Infof("Reloaded for device %v", dev)
 	return nil
 }
 

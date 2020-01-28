@@ -86,16 +86,20 @@ func (t *Tgt) Endpoint() string {
 }
 
 func (t *Tgt) Upgrade(name string, size, sectorSize int64, rw types.ReaderWriterAt) error {
-	if err := t.s.Startup(name, size, sectorSize, rw); err != nil {
-		return err
-	}
-
 	ldc := longhorndev.LonghornDeviceCreator{}
 	dev, err := ldc.NewDevice(name, size, "tgt-blockdev")
 	if err != nil {
 		return err
 	}
 	t.dev = dev
+
+	if err := t.dev.PrepareUpgrade(); err != nil {
+		return err
+	}
+
+	if err := t.s.Startup(name, size, sectorSize, rw); err != nil {
+		return err
+	}
 
 	if err := t.dev.FinishUpgrade(); err != nil {
 		return err
