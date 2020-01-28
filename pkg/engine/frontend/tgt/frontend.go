@@ -42,7 +42,7 @@ func (t *Tgt) Startup(name string, size, sectorSize int64, rw types.ReaderWriter
 	}
 
 	ldc := longhorndev.LonghornDeviceCreator{}
-	dev, err := ldc.NewDevice(name, size, "tgt-blockdev")
+	dev, err := ldc.NewDevice(name, size, longhorndev.FrontendTGTBlockDev)
 	if err != nil {
 		return err
 	}
@@ -103,5 +103,12 @@ func (t *Tgt) Upgrade(name string, size, sectorSize int64, rw types.ReaderWriter
 	t.isUp = true
 	logrus.Infof("engine: Finish upgrading for %v", name)
 
+	return nil
+}
+
+func (t *Tgt) Expand(size int64) error {
+	if t.dev != nil {
+		return t.dev.Expand(size)
+	}
 	return nil
 }
