@@ -6,6 +6,9 @@ import pytest
 from common.core import (  # NOQA
     create_backend_file, cleanup_backend_file,
     wait_for_volume_expansion,
+)
+
+from common.constants import (
     EXPANDED_SIZE,
 )
 

@@ -1,8 +1,8 @@
 import os
 import pyqcow
 
-import data.cmd as cmd
-from data.common import (  # NOQA
+import common.cmd as cmd
+from common.core import (  # NOQA
     cleanup_controller, cleanup_replica,
     get_dev, get_backing_dev, read_dev, checksum_dev,
     random_string, verify_data,
@@ -10,10 +10,10 @@ from data.common import (  # NOQA
     create_backup, rm_backups, rm_snaps,
     snapshot_revert_with_frontend,
 )
-from data.util import (
+from common.util import (
     file, checksum_data,
 )
-from data.setting import (
+from common.constants import (
     SIZE, BACKING_FILE_QCOW,
     ENGINE_NAME, ENGINE_BACKING_NAME,
 )

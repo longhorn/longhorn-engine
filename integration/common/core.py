@@ -1,5 +1,4 @@
 import fcntl
-import json
 import struct
 import os
 import grpc
@@ -7,49 +6,37 @@ import tempfile
 import time
 import random
 import subprocess
+import string
+import threading
+
+import pytest
+
+from rpc.controller.controller_client import ControllerClient
+
+import common.cmd as cmd
+from common.util import read_file, checksum_data
+from common.frontend import blockdev, get_block_device_path
+
+from common.constants import (
+    LONGHORN_BINARY, VOLUME_NAME, VOLUME_BACKING_NAME,
+    SIZE, PAGE_SIZE, SIZE_STR,
+    BACKUP_DIR, BACKING_FILE,
+    FRONTEND_TGT_BLOCKDEV,
+    RETRY_COUNTS, RETRY_INTERVAL, RETRY_COUNTS2,
+    RETRY_COUNTS_SHORT, RETRY_INTERVAL_SHORT,
+    PROC_STATE_STARTING, PROC_STATE_RUNNING,
+    ENGINE_NAME, EXPANDED_SIZE_STR,
+)
+
+thread_failed = False
 
 
-from rpc.instance_manager.process_manager_client import ProcessManagerClient  # NOQA
-
-from rpc.replica.replica_client import ReplicaClient  # NOQA
-
-from rpc.controller.controller_client import ControllerClient  # NOQA
+def _file(f):
+    return os.path.join(_base(), '../../{}'.format(f))
 
 
-INSTANCE_MANAGER_REPLICA = "localhost:8500"
-INSTANCE_MANAGER_ENGINE = "localhost:8501"
-
-INSTANCE_MANAGER_TYPE_ENGINE = "engine"
-INSTANCE_MANAGER_TYPE_REPLICA = "replica"
-
-LONGHORN_BINARY = "./bin/longhorn"
-BINARY_PATH_IN_TEST = "../bin/longhorn"
-
-RETRY_INTERVAL = 0.5
-RETRY_COUNTS = 30
-RETRY_COUNTS2 = 100
-
-SIZE = 4 * 1024 * 1024
-SIZE_STR = str(SIZE)
-
-EXPANDED_SIZE = 2 * SIZE
-EXPANDED_SIZE_STR = str(EXPANDED_SIZE)
-
-TEST_PREFIX = dict(os.environ)["TESTPREFIX"]
-
-VOLUME_NAME = TEST_PREFIX + "core-volume"
-ENGINE_NAME = TEST_PREFIX + "core-engine"
-REPLICA_NAME = TEST_PREFIX + "core-replica-1"
-REPLICA_2_NAME = TEST_PREFIX + "core-replica-2"
-
-PROC_STATE_STARTING = "starting"
-PROC_STATE_RUNNING = "running"
-PROC_STATE_STOPPING = "stopping"
-PROC_STATE_STOPPED = "stopped"
-PROC_STATE_ERROR = "error"
-
-# FRONTEND_TGT_BLOCKDEV = "tgt-blockdev"
-FRONTEND_TGT_BLOCKDEV = "tgt"
+def _base():
+    return os.path.dirname(__file__)
 
 
 def cleanup_process(pm_client):
@@ -85,14 +72,15 @@ def wait_for_process_running(client, name):
 
 
 def create_replica_process(client, name, replica_dir="",
-                           binary=LONGHORN_BINARY,
+                           args=[], binary=LONGHORN_BINARY,
                            size=SIZE, port_count=15,
                            port_args=["--listen,localhost:"]):
     if not replica_dir:
         replica_dir = tempfile.mkdtemp()
+    if not args:
+        args = ["replica", replica_dir, "--size", str(size)]
     client.process_create(
-        name=name, binary=binary,
-        args=["replica", replica_dir, "--size", str(size)],
+        name=name, binary=binary, args=args,
         port_count=port_count, port_args=port_args)
     wait_for_process_running(client, name)
 
@@ -105,8 +93,9 @@ def create_engine_process(client, name=ENGINE_NAME,
                           listen="", listen_ip="localhost",
                           size=SIZE, frontend=FRONTEND_TGT_BLOCKDEV,
                           replicas=[], backends=["file"]):
-    args = ["controller", volume_name,
-            "--frontend", frontend]
+    args = ["controller", volume_name]
+    if frontend != "":
+        args += ["--frontend", frontend]
     for r in replicas:
         args += ["--replica", r]
     for b in backends:
@@ -222,13 +211,12 @@ def get_replica_head_file_path(replica_dir):
     return subprocess.check_output(cmd).strip()
 
 
-def wait_for_rebuild_complete(bin, url):
-    cmd = [bin, '--url', url, 'replica-rebuild-status']
+def wait_for_rebuild_complete(url):
     completed = 0
     rebuild_status = {}
-    for x in range(RETRY_COUNTS2):
+    for x in range(RETRY_COUNTS):
         completed = 0
-        rebuild_status = json.loads(subprocess.check_output(cmd).strip())
+        rebuild_status = cmd.replica_rebuild_status(url)
         for rebuild in rebuild_status.values():
             if rebuild['state'] == "complete":
                 assert rebuild['progress'] == 100
@@ -251,3 +239,350 @@ def wait_for_rebuild_complete(bin, url):
             break
         time.sleep(RETRY_INTERVAL)
     return completed == len(rebuild_status)
+
+
+def wait_for_purge_completion(url):
+    completed = 0
+    purge_status = {}
+    for x in range(RETRY_COUNTS):
+        completed = 0
+        purge_status = cmd.snapshot_purge_status(url)
+        for status in purge_status.values():
+            assert 'isPurging' in status.keys()
+            if not status['isPurging']:
+                assert status['progress'] == 100
+                completed += 1
+            assert 'error' in status.keys()
+            assert status['error'] == ''
+        if completed == len(purge_status):
+            break
+        time.sleep(RETRY_INTERVAL)
+    assert completed == len(purge_status)
+
+
+def wait_for_restore_completion(url, backup_url):
+    completed = 0
+    rs = {}
+    for x in range(RETRY_COUNTS):
+        completed = 0
+        rs = cmd.restore_status(url)
+        for status in rs.values():
+            assert 'state' in status.keys()
+            if status['backupURL'] != backup_url:
+                break
+            if status['state'] == "complete":
+                assert 'progress' in status.keys()
+                assert status['progress'] == 100
+                completed += 1
+            elif status['state'] == "error":
+                assert 'error' in status.keys()
+                assert status['error'] == ""
+            else:
+                assert status['state'] == "in_progress"
+        if completed == len(rs):
+            break
+        time.sleep(RETRY_INTERVAL)
+    assert completed == len(rs)
+
+
+def restore_with_frontend(url, engine_name, backup):
+    client = ControllerClient(url)
+    client.volume_frontend_shutdown()
+    cmd.backup_restore(url, backup)
+    wait_for_restore_completion(url, backup)
+    client.volume_frontend_start(FRONTEND_TGT_BLOCKDEV)
+    return
+
+
+def restore_incrementally(url, backup_url, last_restored):
+    cmd.restore_inc(url, backup_url, last_restored)
+    wait_for_restore_completion(url, backup_url)
+    return
+
+
+def create_backup(url, snap, backup_target, volume_size=SIZE_STR):
+    backup = cmd.backup_create(url, snap, backup_target)
+    backup_info = cmd.backup_inspect(url, backup)
+    assert backup_info["URL"] == backup
+    assert backup_info["VolumeSize"] == volume_size
+    assert snap in backup_info["SnapshotName"]
+    return backup_info
+
+
+def rm_backups(url, engine_name, backups):
+    for b in backups:
+        cmd.backup_rm(url, b)
+        with pytest.raises(subprocess.CalledProcessError):
+            restore_with_frontend(url, engine_name, b)
+        with pytest.raises(subprocess.CalledProcessError):
+            cmd.backup_inspect(url, b)
+    # Engine frontend is down, Start it up
+    client = ControllerClient(url)
+    client.volume_frontend_start(FRONTEND_TGT_BLOCKDEV)
+
+
+def rm_snaps(url, snaps):
+    for s in snaps:
+        cmd.snapshot_rm(url, s)
+        cmd.snapshot_purge(url)
+        wait_for_purge_completion(url)
+    snap_info_list = cmd.snapshot_info(url)
+    for s in snaps:
+        assert s not in snap_info_list
+
+
+def snapshot_revert_with_frontend(url, engine_name, name):
+    client = ControllerClient(url)
+    client.volume_frontend_shutdown()
+    cmd.snapshot_revert(url, name)
+    client.volume_frontend_start(FRONTEND_TGT_BLOCKDEV)
+
+
+def cleanup_replica_dir(dir=""):
+    if dir and os.path.exists(dir):
+        try:
+            cmd = ['rm', '-r', dir + "*"]
+            subprocess.check_call(cmd)
+        except Exception:
+            pass
+
+
+def open_replica(grpc_client, backing_file=None):
+    r = grpc_client.replica_get()
+    assert r.state == 'initial'
+    assert r.size == '0'
+    assert r.sectorSize == 0
+    assert r.parent == ''
+    assert r.head == ''
+
+    r = grpc_client.replica_create(size=str(1024 * 4096))
+
+    assert r.state == 'closed'
+    assert r.size == str(1024 * 4096)
+    assert r.sectorSize == 512
+    assert r.parent == ''
+    assert r.head == 'volume-head-000.img'
+
+    return r
+
+
+def get_blockdev(volume):
+    dev = blockdev(volume)
+    for i in range(10):
+        if not dev.ready():
+            time.sleep(1)
+    assert dev.ready()
+    return dev
+
+
+def write_dev(dev, offset, data):
+    return dev.writeat(offset, data)
+
+
+def read_dev(dev, offset, length):
+    return dev.readat(offset, length)
+
+
+def random_string(length):
+    return \
+        ''.join(random.choice(string.ascii_lowercase) for x in range(length))
+
+
+def verify_data(dev, offset, data):
+    write_dev(dev, offset, data)
+    readed = read_dev(dev, offset, len(data))
+    assert data == readed
+
+
+def prepare_backup_dir(backup_dir):
+    if os.path.exists(backup_dir):
+        subprocess.check_call(["rm", "-rf", backup_dir])
+
+    os.makedirs(backup_dir)
+    assert os.path.exists(backup_dir)
+
+
+def read_from_backing_file(offset, length):
+    p = _file(BACKING_FILE)
+    return read_file(p, offset, length)
+
+
+def checksum_dev(dev):
+    return checksum_data(dev.readat(0, SIZE).encode('utf-8'))
+
+
+def data_verifier(dev, times, offset, length):
+    try:
+        verify_loop(dev, times, offset, length)
+    except Exception as ex:
+        global thread_failed
+        thread_failed = True
+        raise ex
+
+
+def verify_loop(dev, times, offset, length):
+    for i in range(times):
+        data = random_string(length)
+        verify_data(dev, offset, data)
+
+
+def verify_replica_state(grpc_c, index, state):
+    for i in range(RETRY_COUNTS_SHORT):
+        replicas = grpc_c.replica_list()
+        assert len(replicas) == 2
+
+        if replicas[index].mode == state:
+            break
+
+        time.sleep(RETRY_INTERVAL_SHORT)
+
+    assert replicas[index].mode == state
+
+
+def verify_read(dev, offset, data):
+    for i in range(10):
+        readed = read_dev(dev, offset, len(data))
+        assert data == readed
+
+
+def verify_async(dev, times, length, count):
+    assert length * count < SIZE
+
+    threads = []
+    for i in range(count):
+        t = threading.Thread(target=data_verifier,
+                             args=(dev, times, i * PAGE_SIZE, length))
+        t.start()
+        threads.append(t)
+
+    for i in range(count):
+        threads[i].join()
+
+    global thread_failed
+    if thread_failed:
+        thread_failed = False
+        raise Exception("data_verifier thread failed")
+
+
+def get_dev(grpc_replica1, grpc_replica2, grpc_controller):
+    prepare_backup_dir(BACKUP_DIR)
+    open_replica(grpc_replica1)
+    open_replica(grpc_replica2)
+
+    replicas = grpc_controller.replica_list()
+    assert len(replicas) == 0
+
+    r1_url = grpc_replica1.url
+    r2_url = grpc_replica2.url
+    v = grpc_controller.volume_start(replicas=[r1_url, r2_url])
+    assert v.replicaCount == 2
+    d = get_blockdev(v.name)
+
+    return d
+
+
+def get_backing_dev(grpc_backing_replica1, grpc_backing_replica2,
+                    grpc_backing_controller):
+    prepare_backup_dir(BACKUP_DIR)
+    open_replica(grpc_backing_replica1)
+    open_replica(grpc_backing_replica2)
+
+    replicas = grpc_backing_controller.replica_list()
+    assert len(replicas) == 0
+
+    r1_url = grpc_backing_replica1.url
+    r2_url = grpc_backing_replica2.url
+    v = grpc_backing_controller.volume_start(
+        replicas=[r1_url, r2_url])
+    assert v.name == VOLUME_BACKING_NAME
+    assert v.replicaCount == 2
+    d = get_blockdev(v.name)
+
+    return d
+
+
+def random_offset(size, existings={}):
+    assert size < PAGE_SIZE
+    for i in range(RETRY_COUNTS):
+        offset = 0
+        if int(SIZE) != size:
+            offset = random.randrange(0, int(SIZE) - size, PAGE_SIZE)
+        collided = False
+        # it's [start, end) vs [pos, pos + size)
+        for start, end in existings.items():
+            if offset + size <= start or offset >= end:
+                continue
+            collided = True
+            break
+        if not collided:
+            break
+    assert not collided
+    existings[offset] = offset + size
+    return offset
+
+
+def random_length(length_limit):
+    return random.randint(1, length_limit - 1)
+
+
+class Data:
+    def __init__(self, offset, length, content):
+        self.offset = offset
+        self.length = length
+        self.content = content
+
+    def write_and_verify_data(self, dev):
+        verify_data(dev, self.offset, self.content)
+
+    def read_and_verify_data(self, dev):
+        assert read_dev(dev, self.offset, self.length) == self.content
+
+    def read_and_refute_data(self, dev):
+        assert read_dev(dev, self.offset, self.length) != self.content
+
+
+class Snapshot:
+    def __init__(self, dev, data, controller_addr):
+        self.dev = dev
+        self.data = data
+        self.controller_addr = controller_addr
+        self.data.write_and_verify_data(self.dev)
+        self.checksum = checksum_dev(self.dev)
+        self.name = cmd.snapshot_create(controller_addr)
+
+    # verify the whole disk is at the state when snapshot was taken
+    def verify_checksum(self):
+        assert checksum_dev(self.dev) == self.checksum
+
+    def verify_data(self):
+        self.data.read_and_verify_data(self.dev)
+
+    def refute_data(self):
+        self.data.read_and_refute_data(self.dev)
+
+
+def generate_random_data(dev, existings={}, length_limit=PAGE_SIZE):
+    length = random_length(length_limit)
+    return Data(random_offset(length, existings),
+                length,
+                random_string(length))
+
+
+def wait_for_volume_expansion(grpc_controller_client, size):  # NOQA
+    for i in range(RETRY_COUNTS):
+        volume = grpc_controller_client.volume_get()
+        if volume.size == size:
+            break
+        time.sleep(RETRY_INTERVAL)
+    assert volume.size == size
+
+
+def check_block_device_size(volume_name, size):
+    device_path = get_block_device_path(volume_name)
+    # BLKGETSIZE64, result is bytes as unsigned 64-bit integer (uint64)
+    req = 0x80081272
+    buf = ' ' * 8
+    with open(device_path) as dev:
+        buf = fcntl.ioctl(dev.fileno(), req, buf)
+    device_size = struct.unpack('L', buf)[0]
+    assert device_size == size

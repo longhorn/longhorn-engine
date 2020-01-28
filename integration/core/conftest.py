@@ -4,15 +4,16 @@ from common.core import cleanup_process
 from common.core import cleanup_replica
 from common.core import create_engine_process
 from common.core import create_replica_process
-from common.core import REPLICA_NAME
-from common.core import REPLICA_2_NAME
 from common.core import get_process_address
-from common.core import ReplicaClient
 
+from common.constants import (
+    REPLICA_NAME, REPLICA_2_NAME,
+    INSTANCE_MANAGER_REPLICA, INSTANCE_MANAGER_ENGINE,
+)
 
-from common.core import INSTANCE_MANAGER_REPLICA, INSTANCE_MANAGER_ENGINE
 
 from rpc.controller.controller_client import ControllerClient
+from rpc.replica.replica_client import ReplicaClient
 from rpc.instance_manager.process_manager_client import ProcessManagerClient
 
 
