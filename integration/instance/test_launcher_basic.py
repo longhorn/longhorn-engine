@@ -7,6 +7,7 @@ from common.core import (
     delete_process, wait_for_process_running,
     wait_for_process_deletion,
     check_dev_existence, wait_for_dev_deletion,
+    upgrade_engine,
 )
 
 from common.constants import (
@@ -108,14 +109,9 @@ def test_one_volume(pm_client, em_client):  # NOQA
     assert len(ps) == 3
 
     delete_process(em_client, engine_name)
-    # test duplicate call
-    # FIXME
-    # delete_process(em_client, engine_name)
     wait_for_process_deletion(em_client, engine_name)
-
     # test duplicate call
-    # FIXME
-    # delete_process(em_client, engine_name)
+    delete_process(em_client, engine_name)
 
     ps = pm_client.process_list()
     assert len(ps) == 3
@@ -216,7 +212,7 @@ def test_engine_upgrade(pm_client, em_client):  # NOQA
         assert r.status.state == PROC_STATE_RUNNING
 
         rs = pm_client.process_list()
-        assert len(rs) == (2*i+1)
+        assert len(rs) == i+1
         assert replica_name in rs
         r = rs[replica_name]
         assert r.spec.name == replica_name
@@ -234,14 +230,11 @@ def test_engine_upgrade(pm_client, em_client):  # NOQA
         check_dev_existence(volume_name)
 
         es = em_client.process_list()
-        assert len(es) == (i+1)
+        assert len(es) == i+1
         assert engine_name in es
         e = es[engine_name]
         assert e.spec.name == engine_name
         assert e.status.state == PROC_STATE_RUNNING
-
-        ps = pm_client.process_list()
-        assert len(ps) == 2*(i+1)
 
     dir = dir_base + "0"
     engine_name = ENGINE_NAME_BASE + "0"
@@ -254,10 +247,8 @@ def test_engine_upgrade(pm_client, em_client):  # NOQA
     assert r.spec.name == replica_name_upgrade
     assert r.status.state == PROC_STATE_RUNNING
 
-    replica_args = ["tcp://localhost:"+str(r.status.port_start)]
-    e = em_client.engine_upgrade(engine_name,
-                                 LONGHORN_UPGRADE_BINARY,
-                                 SIZE, replica_args)
+    replicas = ["tcp://localhost:"+str(r.status.port_start)]
+    e = upgrade_engine(em_client, engine_name, replicas)
     assert e.spec.name == engine_name
     check_dev_existence(volume_name)
 
