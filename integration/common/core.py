@@ -163,24 +163,6 @@ def cleanup_backend_file(paths):
             os.remove(path)
 
 
-def wait_for_volume_expansion(grpc_controller_client, size):
-    for i in range(RETRY_COUNTS2):
-        volume = grpc_controller_client.volume_get()
-        if volume.size == size:
-            break
-        time.sleep(RETRY_INTERVAL)
-    assert volume.size == size
-
-    device_path = get_dev_path(volume.name)
-    # BLKGETSIZE64, result is bytes as unsigned 64-bit integer (uint64)
-    req = 0x80081272
-    buf = ' ' * 8
-    with open(device_path) as dev:
-        buf = fcntl.ioctl(dev.fileno(), req, buf)
-    device_size = struct.unpack('L', buf)[0]
-    assert device_size == size
-
-
 def get_dev_path(name):
     return os.path.join("/dev/longhorn/", name)
 
@@ -575,6 +557,7 @@ def wait_for_volume_expansion(grpc_controller_client, size):  # NOQA
             break
         time.sleep(RETRY_INTERVAL)
     assert volume.size == size
+    return volume
 
 
 def check_block_device_size(volume_name, size):
@@ -586,6 +569,11 @@ def check_block_device_size(volume_name, size):
         buf = fcntl.ioctl(dev.fileno(), req, buf)
     device_size = struct.unpack('L', buf)[0]
     assert device_size == size
+
+
+def wait_and_check_volume_expansion(grpc_controller_client, size):
+    v = wait_for_volume_expansion(grpc_controller_client, size)
+    check_block_device_size(v.name, size)
 
 
 def delete_process(client, name):

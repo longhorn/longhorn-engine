@@ -15,7 +15,7 @@ from common.core import (  # NOQA
     get_replica_paths_from_snapshot_name,
     get_snapshot_file_paths,
     get_replica_head_file_path,
-    wait_for_volume_expansion,
+    wait_and_check_volume_expansion,
     wait_for_rebuild_complete,
     wait_for_purge_completion,
 )
@@ -1003,7 +1003,6 @@ def test_backup_cli(bin, engine_manager_client,  # NOQA
         cleanup_controller(grpc_controller_client)
 
 
-@pytest.mark.skip(reason="need to implement expand in engine")
 def test_volume_expand_with_snapshots(  # NOQA
         bin, grpc_controller_client,  # NOQA
         grpc_replica_client, grpc_replica_client2):  # NOQA
@@ -1033,7 +1032,8 @@ def test_volume_expand_with_snapshots(  # NOQA
            'expand', '--size', EXPANDED_SIZE_STR]
     subprocess.check_call(cmd)
 
-    wait_for_volume_expansion(grpc_controller_client, EXPANDED_SIZE)
+    wait_and_check_volume_expansion(
+        grpc_controller_client, EXPANDED_SIZE)
 
     # `expand` will create a snapshot then apply the new size
     # on the new head file
@@ -1100,6 +1100,7 @@ def test_volume_expand_with_snapshots(  # NOQA
     cmd = [bin, '--url', grpc_controller_client.address,
            'snapshot', 'purge']
     subprocess.check_call(cmd)
+    wait_for_purge_completion(grpc_controller_client.address)
 
     cmd = [bin, '--debug',
            '--url', grpc_controller_client.address,
@@ -1143,6 +1144,7 @@ def test_volume_expand_with_snapshots(  # NOQA
     cmd = [bin, '--url', grpc_controller_client.address,
            'snapshot', 'purge']
     subprocess.check_call(cmd)
+    wait_for_purge_completion(grpc_controller_client.address)
 
     cmd = [bin, '--debug',
            '--url', grpc_controller_client.address,

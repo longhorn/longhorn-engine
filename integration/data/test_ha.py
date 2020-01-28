@@ -1,7 +1,5 @@
 import random
 
-import pytest
-
 import common.cmd as cmd
 
 from common.core import (  # NOQA
@@ -10,7 +8,7 @@ from common.core import (  # NOQA
     random_string, verify_read, verify_data, verify_async,
     verify_replica_state, wait_for_purge_completion,
     Snapshot, Data, random_length,
-    wait_for_volume_expansion, check_block_device_size,
+    wait_and_check_volume_expansion,
     wait_for_rebuild_complete,
 
 )
@@ -433,7 +431,6 @@ def test_ha_remove_extra_disks(grpc_controller,  # NOQA
     verify_data(dev, data_offset, data)
 
 
-@pytest.mark.skip(reason="need to implement expand feature")
 def test_expansion_with_rebuild(grpc_controller,  # NOQA
                                 grpc_replica1, grpc_replica2):  # NOQA
     address = grpc_controller.address
@@ -456,8 +453,8 @@ def test_expansion_with_rebuild(grpc_controller,  # NOQA
     snap1 = Snapshot(dev, data1, address)
 
     grpc_controller.volume_expand(EXPANDED_SIZE)
-    wait_for_volume_expansion(grpc_controller, EXPANDED_SIZE)
-    check_block_device_size(VOLUME_NAME, EXPANDED_SIZE)
+    wait_and_check_volume_expansion(
+        grpc_controller, EXPANDED_SIZE)
 
     snap1.verify_data()
     assert \
