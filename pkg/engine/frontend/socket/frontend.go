@@ -161,3 +161,7 @@ func (d DataProcessorWrapper) PingResponse() error {
 func (t *Socket) Upgrade(name string, size, sectorSize int64, rw types.ReaderWriterAt) error {
 	return fmt.Errorf("Upgrade is not supported")
 }
+
+func (t *Socket) Expand(size int64) error {
+	return fmt.Errorf("Expand is not supported")
+}

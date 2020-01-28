@@ -109,3 +109,10 @@ func (t *Tgt) Upgrade(name string, size, sectorSize int64, rw types.ReaderWriter
 
 	return nil
 }
+
+func (t *Tgt) Expand(size int64) error {
+	if t.dev != nil {
+		return t.dev.Expand(size)
+	}
+	return nil
+}

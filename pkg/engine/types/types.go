@@ -90,6 +90,7 @@ type Frontend interface {
 	State() State
 	Endpoint() string
 	Upgrade(name string, size, sectorSize int64, rw ReaderWriterAt) error
+	Expand(size int64) error
 }
 
 type DataProcessor interface {
