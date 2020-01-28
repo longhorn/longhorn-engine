@@ -67,3 +67,7 @@ BACKING_FILE_PATH2 = '/tmp/replica_backing_dir_2/' + BACKING_FILE_QCOW
 VFS_DIR = "/data/backupbucket/"
 
 VOLUME_HEAD = 'volume-head'
+
+VOLUME_NAME_BASE = TEST_PREFIX + "instance-volume-"
+ENGINE_NAME_BASE = TEST_PREFIX + "instance-engine-"
+REPLICA_NAME_BASE = TEST_PREFIX + "instance-replica-"
