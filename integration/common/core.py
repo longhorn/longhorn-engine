@@ -616,12 +616,12 @@ def wait_for_dev_deletion(volume_name):
     assert not found
 
 
-def upgrade_engine(client, engine_name, replicas):
-    args = ["controller", engine_name, "--frontend", "tgt",
+def upgrade_engine(client, binary, engine_name, volume_name, replicas):
+    args = ["controller", volume_name, "--frontend", "tgt",
             "--upgrade"]
     for r in replicas:
         args += ["--replica", r]
 
     return client.process_replace(
-        engine_name, LONGHORN_UPGRADE_BINARY, args,
+        engine_name, binary, args,
     )

@@ -12,8 +12,7 @@ from common.core import (
 
 from common.constants import (
     LONGHORN_UPGRADE_BINARY,
-    INSTANCE_MANAGER_TYPE_ENGINE, PROC_STATE_RUNNING,
-    PROC_STATE_STOPPING, PROC_STATE_STOPPED,
+    PROC_STATE_RUNNING, PROC_STATE_STOPPING, PROC_STATE_STOPPED,
     VOLUME_NAME_BASE, ENGINE_NAME_BASE, REPLICA_NAME_BASE,
 )
 
@@ -191,7 +190,7 @@ def test_multiple_volumes(pm_client, em_client):  # NOQA
         assert engine_name not in es
 
 
-@pytest.mark.skip(reason="to be updated")  # NOQA
+@pytest.mark.skip(reason="debug")
 def test_engine_upgrade(pm_client, em_client):  # NOQA
     rs = pm_client.process_list()
     assert len(rs) == 0
@@ -250,7 +249,8 @@ def test_engine_upgrade(pm_client, em_client):  # NOQA
     assert r.status.state == PROC_STATE_RUNNING
 
     replicas = ["tcp://localhost:"+str(r.status.port_start)]
-    e = upgrade_engine(em_client, engine_name, replicas)
+    e = upgrade_engine(em_client, LONGHORN_UPGRADE_BINARY,
+                       engine_name, volume_name, replicas)
     assert e.spec.name == engine_name
     check_dev_existence(volume_name)
 
@@ -263,8 +263,7 @@ def test_engine_upgrade(pm_client, em_client):  # NOQA
 
     check_dev_existence(volume_name)
 
-    wait_for_process_running(em_client, engine_name,
-                             INSTANCE_MANAGER_TYPE_ENGINE)
+    wait_for_process_running(em_client, engine_name)
     es = em_client.process_list()
     assert engine_name in es
     e = es[engine_name]

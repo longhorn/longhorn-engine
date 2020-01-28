@@ -1,20 +1,22 @@
-import pytest
 import grpc
+
+import pytest
+
+import time
 
 from common.core import (  # NOQA
     get_dev, read_dev, write_dev,
     random_string, verify_data,
     wait_for_process_running,
     open_replica, cleanup_replica,
+    upgrade_engine, get_process_address,
 )
 from common.constants import (
-    SIZE, ENGINE_NAME,
+    ENGINE_NAME, VOLUME_NAME,
     LONGHORN_BINARY, LONGHORN_UPGRADE_BINARY,
-    INSTANCE_MANAGER_TYPE_ENGINE,
 )
 
 
-@pytest.mark.skip(reason="to be updated")
 def test_upgrade(grpc_engine_manager,  # NOQA
                  grpc_controller,  # NOQA
                  grpc_fixed_dir_replica1, grpc_fixed_dir_replica2,  # NOQA
@@ -38,29 +40,29 @@ def test_upgrade(grpc_engine_manager,  # NOQA
     v = grpc_controller.volume_start(replicas=[r1_url, r2_url])
     assert v.replicaCount == 2
 
-    upgrade_e = grpc_engine_manager.engine_upgrade(
-        ENGINE_NAME, LONGHORN_UPGRADE_BINARY,
-        SIZE, [upgrade_r1_url, upgrade_r2_url])
+    upgrade_e = upgrade_engine(grpc_engine_manager,
+                               LONGHORN_UPGRADE_BINARY,
+                               ENGINE_NAME, VOLUME_NAME,
+                               replicas=[upgrade_r1_url, upgrade_r2_url])
     assert upgrade_e.spec.binary == LONGHORN_UPGRADE_BINARY
 
     verify_data(dev, offset, data)
 
-    grpc_controller.client_upgrade(upgrade_e.spec.listen)
-    wait_for_process_running(grpc_engine_manager, ENGINE_NAME,
-                             INSTANCE_MANAGER_TYPE_ENGINE)
+    grpc_controller.client_upgrade(get_process_address(upgrade_e))
+    wait_for_process_running(grpc_engine_manager, ENGINE_NAME)
 
     # cannot start with same binary
-    with pytest.raises(grpc.RpcError):
-        grpc_engine_manager.engine_upgrade(
-            ENGINE_NAME, LONGHORN_UPGRADE_BINARY,
-            SIZE, [r1_url, r2_url])
-    verify_data(dev, offset, data)
+    # with pytest.raises(grpc.RpcError):
+    #     grpc_engine_manager.engine_upgrade(
+    #         ENGINE_NAME, LONGHORN_UPGRADE_BINARY,
+    #         SIZE, [r1_url, r2_url])
+    # verify_data(dev, offset, data)
 
     # cannot start with wrong replica, would trigger rollback
     with pytest.raises(grpc.RpcError):
-        grpc_engine_manager.engine_upgrade(
-            ENGINE_NAME, LONGHORN_UPGRADE_BINARY,
-            SIZE, ["random"])
+        upgrade_engine(grpc_engine_manager, LONGHORN_BINARY,
+                       ENGINE_NAME, VOLUME_NAME,
+                       ["random"])
     verify_data(dev, offset, data)
 
     grpc_fixed_dir_replica1 = cleanup_replica(grpc_fixed_dir_replica1)
@@ -68,12 +70,17 @@ def test_upgrade(grpc_engine_manager,  # NOQA
     open_replica(grpc_fixed_dir_replica1)
     open_replica(grpc_fixed_dir_replica2)
 
-    e = grpc_engine_manager.engine_upgrade(
-        ENGINE_NAME, LONGHORN_BINARY, SIZE, [r1_url, r2_url])
+    e = upgrade_engine(grpc_engine_manager,
+                       LONGHORN_BINARY,
+                       ENGINE_NAME, VOLUME_NAME,
+                       [r1_url, r2_url])
     assert e.spec.binary == LONGHORN_BINARY
+
+    # FIXME BUG: We shouldn't need to wait for 1 second
+    # Something in the connection reload is wrong
+    time.sleep(1)
 
     verify_data(dev, offset, data)
 
-    grpc_controller.client_upgrade(e.spec.listen)
-    wait_for_process_running(grpc_engine_manager, ENGINE_NAME,
-                             INSTANCE_MANAGER_TYPE_ENGINE)
+    grpc_controller.client_upgrade(get_process_address(e))
+    wait_for_process_running(grpc_engine_manager, ENGINE_NAME)
