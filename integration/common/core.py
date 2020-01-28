@@ -586,3 +586,42 @@ def check_block_device_size(volume_name, size):
         buf = fcntl.ioctl(dev.fileno(), req, buf)
     device_size = struct.unpack('L', buf)[0]
     assert device_size == size
+
+
+def delete_process(client, name):
+    try:
+        client.process_delete(name)
+    except grpc.RpcError as e:
+        if 'cannot find engine' not in e.details():
+            raise e
+
+
+def wait_for_process_deletion(client, name):
+    deleted = False
+    for i in range(RETRY_COUNTS):
+        rs = client.process_list()
+        if name not in rs:
+            deleted = True
+            break
+        time.sleep(RETRY_INTERVAL)
+    assert deleted
+
+
+def check_dev_existence(volume_name):
+    found = False
+    for i in range(RETRY_COUNTS):
+        if os.path.exists(get_dev_path(volume_name)):
+            found = True
+            break
+        time.sleep(RETRY_INTERVAL)
+    assert found
+
+
+def wait_for_dev_deletion(volume_name):
+    found = True
+    for i in range(RETRY_COUNTS):
+        if not os.path.exists(get_dev_path(volume_name)):
+            found = False
+            break
+        time.sleep(RETRY_INTERVAL)
+    assert not found
