@@ -18,7 +18,8 @@ from common.util import read_file, checksum_data
 from common.frontend import blockdev, get_block_device_path
 
 from common.constants import (
-    LONGHORN_BINARY, VOLUME_NAME, VOLUME_BACKING_NAME,
+    LONGHORN_BINARY, LONGHORN_UPGRADE_BINARY,
+    VOLUME_NAME, VOLUME_BACKING_NAME,
     SIZE, PAGE_SIZE, SIZE_STR,
     BACKUP_DIR, BACKING_FILE,
     FRONTEND_TGT_BLOCKDEV,
@@ -580,7 +581,7 @@ def delete_process(client, name):
     try:
         client.process_delete(name)
     except grpc.RpcError as e:
-        if 'cannot find engine' not in e.details():
+        if 'cannot find process' not in e.details():
             raise e
 
 
@@ -613,3 +614,14 @@ def wait_for_dev_deletion(volume_name):
             break
         time.sleep(RETRY_INTERVAL)
     assert not found
+
+
+def upgrade_engine(client, engine_name, replicas):
+    args = ["controller", engine_name, "--frontend", "tgt",
+            "--upgrade"]
+    for r in replicas:
+        args += ["--replica", r]
+
+    return client.process_replace(
+        engine_name, LONGHORN_UPGRADE_BINARY, args,
+    )
