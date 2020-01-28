@@ -21,7 +21,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='',
   syntax='proto3',
   serialized_options=None,
-  serialized_pb=_b('\n\trpc.proto\x1a\x1bgoogle/protobuf/empty.proto\"`\n\x0bProcessSpec\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0e\n\x06\x62inary\x18\x02 \x01(\t\x12\x0c\n\x04\x61rgs\x18\x03 \x03(\t\x12\x12\n\nport_count\x18\x04 \x01(\x05\x12\x11\n\tport_args\x18\x05 \x03(\t\"W\n\rProcessStatus\x12\r\n\x05state\x18\x01 \x01(\t\x12\x11\n\terror_msg\x18\x02 \x01(\t\x12\x12\n\nport_start\x18\x03 \x01(\x05\x12\x10\n\x08port_end\x18\x04 \x01(\x05\"2\n\x14ProcessCreateRequest\x12\x1a\n\x04spec\x18\x01 \x01(\x0b\x32\x0c.ProcessSpec\"$\n\x14ProcessDeleteRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\"!\n\x11ProcessGetRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\"^\n\x0fProcessResponse\x12\x1a\n\x04spec\x18\x01 \x01(\x0b\x32\x0c.ProcessSpec\x12\x1e\n\x06status\x18\x02 \x01(\x0b\x32\x0e.ProcessStatus\x12\x0f\n\x07\x64\x65leted\x18\x03 \x01(\x08\"\x14\n\x12ProcessListRequest\"\x91\x01\n\x13ProcessListResponse\x12\x36\n\tprocesses\x18\x01 \x03(\x0b\x32#.ProcessListResponse.ProcessesEntry\x1a\x42\n\x0eProcessesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x1f\n\x05value\x18\x02 \x01(\x0b\x32\x10.ProcessResponse:\x02\x38\x01\"\x1a\n\nLogRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\"\x1b\n\x0bLogResponse\x12\x0c\n\x04line\x18\x02 \x01(\t\"L\n\x15ProcessReplaceRequest\x12\x1a\n\x04spec\x18\x01 \x01(\x0b\x32\x0c.ProcessSpec\x12\x17\n\x0fterminateSignal\x18\x02 \x01(\t2\xaa\x03\n\x15ProcessManagerService\x12:\n\rProcessCreate\x12\x15.ProcessCreateRequest\x1a\x10.ProcessResponse\"\x00\x12:\n\rProcessDelete\x12\x15.ProcessDeleteRequest\x1a\x10.ProcessResponse\"\x00\x12\x34\n\nProcessGet\x12\x12.ProcessGetRequest\x1a\x10.ProcessResponse\"\x00\x12:\n\x0bProcessList\x12\x13.ProcessListRequest\x1a\x14.ProcessListResponse\"\x00\x12+\n\nProcessLog\x12\x0b.LogRequest\x1a\x0c.LogResponse\"\x00\x30\x01\x12<\n\x0cProcessWatch\x12\x16.google.protobuf.Empty\x1a\x10.ProcessResponse\"\x00\x30\x01\x12<\n\x0eProcessReplace\x12\x16.ProcessReplaceRequest\x1a\x10.ProcessResponse\"\x00\x62\x06proto3')
+  serialized_pb=_b('\n\trpc.proto\x1a\x1bgoogle/protobuf/empty.proto\"`\n\x0bProcessSpec\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0e\n\x06\x62inary\x18\x02 \x01(\t\x12\x0c\n\x04\x61rgs\x18\x03 \x03(\t\x12\x12\n\nport_count\x18\x04 \x01(\x05\x12\x11\n\tport_args\x18\x05 \x03(\t\"W\n\rProcessStatus\x12\r\n\x05state\x18\x01 \x01(\t\x12\x11\n\terror_msg\x18\x02 \x01(\t\x12\x12\n\nport_start\x18\x03 \x01(\x05\x12\x10\n\x08port_end\x18\x04 \x01(\x05\"2\n\x14ProcessCreateRequest\x12\x1a\n\x04spec\x18\x01 \x01(\x0b\x32\x0c.ProcessSpec\"$\n\x14ProcessDeleteRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\"!\n\x11ProcessGetRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\"^\n\x0fProcessResponse\x12\x1a\n\x04spec\x18\x01 \x01(\x0b\x32\x0c.ProcessSpec\x12\x1e\n\x06status\x18\x02 \x01(\x0b\x32\x0e.ProcessStatus\x12\x0f\n\x07\x64\x65leted\x18\x03 \x01(\x08\"\x14\n\x12ProcessListRequest\"\x91\x01\n\x13ProcessListResponse\x12\x36\n\tprocesses\x18\x01 \x03(\x0b\x32#.ProcessListResponse.ProcessesEntry\x1a\x42\n\x0eProcessesEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x1f\n\x05value\x18\x02 \x01(\x0b\x32\x10.ProcessResponse:\x02\x38\x01\"\x1a\n\nLogRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\"\x1b\n\x0bLogResponse\x12\x0c\n\x04line\x18\x02 \x01(\t\"M\n\x15ProcessReplaceRequest\x12\x1a\n\x04spec\x18\x01 \x01(\x0b\x32\x0c.ProcessSpec\x12\x18\n\x10terminate_signal\x18\x02 \x01(\t2\xaa\x03\n\x15ProcessManagerService\x12:\n\rProcessCreate\x12\x15.ProcessCreateRequest\x1a\x10.ProcessResponse\"\x00\x12:\n\rProcessDelete\x12\x15.ProcessDeleteRequest\x1a\x10.ProcessResponse\"\x00\x12\x34\n\nProcessGet\x12\x12.ProcessGetRequest\x1a\x10.ProcessResponse\"\x00\x12:\n\x0bProcessList\x12\x13.ProcessListRequest\x1a\x14.ProcessListResponse\"\x00\x12+\n\nProcessLog\x12\x0b.LogRequest\x1a\x0c.LogResponse\"\x00\x30\x01\x12<\n\x0cProcessWatch\x12\x16.google.protobuf.Empty\x1a\x10.ProcessResponse\"\x00\x30\x01\x12<\n\x0eProcessReplace\x12\x16.ProcessReplaceRequest\x1a\x10.ProcessResponse\"\x00\x62\x06proto3')
   ,
   dependencies=[google_dot_protobuf_dot_empty__pb2.DESCRIPTOR,])
 
@@ -446,7 +446,7 @@ _PROCESSREPLACEREQUEST = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='terminateSignal', full_name='ProcessReplaceRequest.terminateSignal', index=1,
+      name='terminate_signal', full_name='ProcessReplaceRequest.terminate_signal', index=1,
       number=2, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
@@ -465,7 +465,7 @@ _PROCESSREPLACEREQUEST = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=677,
-  serialized_end=753,
+  serialized_end=754,
 )
 
 _PROCESSCREATEREQUEST.fields_by_name['spec'].message_type = _PROCESSSPEC
@@ -582,8 +582,8 @@ _PROCESSMANAGERSERVICE = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=0,
   serialized_options=None,
-  serialized_start=756,
-  serialized_end=1182,
+  serialized_start=757,
+  serialized_end=1183,
   methods=[
   _descriptor.MethodDescriptor(
     name='ProcessCreate',
