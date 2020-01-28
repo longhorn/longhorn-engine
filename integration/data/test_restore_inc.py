@@ -13,7 +13,8 @@ from common.core import (  # NOQA
     create_backup, rm_backups,
     restore_incrementally, wait_for_restore_completion,
     random_length, Snapshot, Data,
-    wait_for_volume_expansion, check_block_device_size,
+    wait_and_check_volume_expansion,
+    check_block_device_size,
 )
 from common.constants import (
     FIXED_REPLICA_PATH1, FIXED_REPLICA_PATH2,
@@ -327,8 +328,8 @@ def volume_expansion_with_backup_test(grpc_engine_manager,  # NOQA
                             grpc_dr_controller)
 
     grpc_controller.volume_expand(EXPANDED_SIZE)
-    wait_for_volume_expansion(grpc_controller, EXPANDED_SIZE)
-    check_block_device_size(volume_name, EXPANDED_SIZE)
+    wait_and_check_volume_expansion(
+        grpc_controller, EXPANDED_SIZE)
 
     data1_len = random_length(PAGE_SIZE)
     data1 = Data(random.randrange(SIZE, EXPANDED_SIZE-PAGE_SIZE, PAGE_SIZE),
@@ -358,7 +359,6 @@ def volume_expansion_with_backup_test(grpc_engine_manager,  # NOQA
                          volume_name, backup_target)
 
 
-@pytest.mark.skip(reason="need to implement expand feature")
 def test_expansion_with_inc_restore(grpc_engine_manager,  # NOQA
                                     grpc_controller,  # NOQA
                                     grpc_controller_no_frontend,  # NOQA

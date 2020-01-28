@@ -1,7 +1,5 @@
 import random
 
-import pytest
-
 import common.cmd as cmd
 
 from common.core import (  # NOQA
@@ -9,7 +7,7 @@ from common.core import (  # NOQA
     generate_random_data, read_from_backing_file,
     Snapshot, snapshot_revert_with_frontend, wait_for_purge_completion,
     Data, random_length, random_string,
-    wait_for_volume_expansion, check_block_device_size,
+    wait_and_check_volume_expansion,
 )
 
 from common.constants import (
@@ -287,8 +285,8 @@ def volume_expansion_with_snapshots_test(dev, grpc_controller,  # NOQA
     snap1 = Snapshot(dev, data1, address)
 
     grpc_controller.volume_expand(EXPANDED_SIZE)
-    wait_for_volume_expansion(grpc_controller, EXPANDED_SIZE)
-    check_block_device_size(volume_name, EXPANDED_SIZE)
+    wait_and_check_volume_expansion(
+        grpc_controller, EXPANDED_SIZE)
 
     snap1.verify_data()
     assert \
@@ -350,7 +348,6 @@ def volume_expansion_with_snapshots_test(dev, grpc_controller,  # NOQA
         data5.content + zero_char*(EXPANDED_SIZE-data5.offset-data5.length)
 
 
-@pytest.mark.skip(reason="need to implement expand feature")
 def test_expansion_without_backing_file(grpc_controller,  # NOQA
                                         grpc_replica1, grpc_replica2):  # NOQA
     zero_char = b'\x00'.decode('utf-8')
@@ -360,7 +357,6 @@ def test_expansion_without_backing_file(grpc_controller,  # NOQA
                                          zero_char*SIZE)
 
 
-@pytest.mark.skip(reason="need to implement expand feature")
 def test_expansion_with_backing_file(grpc_backing_controller,  # NOQA
                                      grpc_backing_replica1, grpc_backing_replica2):  # NOQA
     dev = get_backing_dev(grpc_backing_replica1, grpc_backing_replica2,
