@@ -1,8 +1,10 @@
 import random
 
-import data.cmd as cmd
+import pytest
 
-from data.common import (  # NOQA
+import common.cmd as cmd
+
+from common.core import (  # NOQA
     open_replica, cleanup_replica, cleanup_controller,
     get_dev, get_blockdev, prepare_backup_dir,
     random_string, verify_read, verify_data, verify_async,
@@ -17,10 +19,10 @@ from data.snapshot_tree import (
     snapshot_tree_build, snapshot_tree_verify
 )
 
-from data.setting import (
+from common.constants import (
     VOLUME_NAME, VOLUME_BACKING_NAME,
     ENGINE_NAME, BACKUP_DIR, VOLUME_HEAD,
-    PAGE_SIZE, SIZE, EXPAND_SIZE,
+    PAGE_SIZE, SIZE, EXPANDED_SIZE,
 )
 
 
@@ -431,6 +433,7 @@ def test_ha_remove_extra_disks(grpc_controller,  # NOQA
     verify_data(dev, data_offset, data)
 
 
+@pytest.mark.skip(reason="need to implement expand feature")
 def test_expansion_with_rebuild(grpc_controller,  # NOQA
                                 grpc_replica1, grpc_replica2):  # NOQA
     address = grpc_controller.address
@@ -452,9 +455,9 @@ def test_expansion_with_rebuild(grpc_controller,  # NOQA
                  data1_len, random_string(data1_len))
     snap1 = Snapshot(dev, data1, address)
 
-    grpc_controller.volume_expand(EXPAND_SIZE)
-    wait_for_volume_expansion(grpc_controller, EXPAND_SIZE)
-    check_block_device_size(VOLUME_NAME, EXPAND_SIZE)
+    grpc_controller.volume_expand(EXPANDED_SIZE)
+    wait_for_volume_expansion(grpc_controller, EXPANDED_SIZE)
+    check_block_device_size(VOLUME_NAME, EXPANDED_SIZE)
 
     snap1.verify_data()
     assert \
@@ -469,7 +472,7 @@ def test_expansion_with_rebuild(grpc_controller,  # NOQA
                  data2_len, random_string(data2_len))
     snap2 = Snapshot(dev, data2, address)
     data3_len = random_length(PAGE_SIZE)
-    data3 = Data(random.randrange(SIZE, EXPAND_SIZE-PAGE_SIZE, PAGE_SIZE),
+    data3 = Data(random.randrange(SIZE, EXPANDED_SIZE-PAGE_SIZE, PAGE_SIZE),
                  data3_len, random_string(data3_len))
     snap3 = Snapshot(dev, data3, address)
     snap1.verify_data()
@@ -477,7 +480,7 @@ def test_expansion_with_rebuild(grpc_controller,  # NOQA
     snap3.verify_data()
     assert \
         dev.readat(SIZE, SIZE) == zero_char*(data3.offset-SIZE) + \
-        data3.content + zero_char*(EXPAND_SIZE-data3.offset-data3.length)
+        data3.content + zero_char*(EXPANDED_SIZE-data3.offset-data3.length)
 
     # Cleanup replica2
     cleanup_replica(grpc_replica2)
@@ -504,7 +507,7 @@ def test_expansion_with_rebuild(grpc_controller,  # NOQA
         original_data[data2.offset+data2.length:]
     assert \
         dev.readat(SIZE, SIZE) == zero_char*(data3.offset-SIZE) + \
-        data3.content + zero_char*(EXPAND_SIZE-data3.offset-data3.length)
+        data3.content + zero_char*(EXPANDED_SIZE-data3.offset-data3.length)
 
     data4_len = random_length(PAGE_SIZE)
     data4 = Data(data1.offset,

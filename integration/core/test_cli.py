@@ -17,16 +17,15 @@ from common.core import (  # NOQA
     get_replica_head_file_path,
     wait_for_volume_expansion,
     wait_for_rebuild_complete,
+    wait_for_purge_completion,
+)
 
-    VOLUME_NAME, ENGINE_NAME,
+from common.constants import (
+    VOLUME_NAME,
     RETRY_COUNTS2, FRONTEND_TGT_BLOCKDEV,
     RETRY_INTERVAL,
     SIZE, EXPANDED_SIZE,
     SIZE_STR, EXPANDED_SIZE_STR,
-)
-
-from data.common import (
-    wait_for_purge_completion,
 )
 
 BACKUP_DEST = '/data/backupbucket'
@@ -125,7 +124,7 @@ def test_replica_add_start(bin, grpc_controller_client,  # NOQA
            'add-replica',
            grpc_replica_client.url]
     subprocess.check_call(cmd)
-    wait_for_rebuild_complete(bin, grpc_controller_client.address)
+    wait_for_rebuild_complete(grpc_controller_client.address)
 
     volume = grpc_controller_client.volume_get()
     assert volume.replicaCount == 1
@@ -163,7 +162,7 @@ def test_replica_add_rebuild(bin, grpc_controller_client,  # NOQA
            'add-replica',
            grpc_replica_client.url]
     subprocess.check_call(cmd)
-    wait_for_rebuild_complete(bin, grpc_controller_client.address)
+    wait_for_rebuild_complete(grpc_controller_client.address)
 
     volume = grpc_controller_client.volume_get()
     assert volume.replicaCount == 1
@@ -172,7 +171,7 @@ def test_replica_add_rebuild(bin, grpc_controller_client,  # NOQA
            'add-replica',
            grpc_replica_client2.url]
     subprocess.check_call(cmd)
-    wait_for_rebuild_complete(bin, grpc_controller_client.address)
+    wait_for_rebuild_complete(grpc_controller_client.address)
 
     volume = grpc_controller_client.volume_get()
     assert volume.replicaCount == 2
