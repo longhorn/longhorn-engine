@@ -62,5 +62,5 @@ message LogResponse{
 
 message ProcessReplaceRequest {
 	ProcessSpec spec = 1;
-	string terminateSignal = 2;
+	string terminate_signal = 2;
 }
