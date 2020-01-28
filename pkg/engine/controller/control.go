@@ -225,9 +225,11 @@ func (c *Controller) Expand(size int64) error {
 			return
 		}
 
-		if err := c.updateFrontend(size); err != nil {
-			logrus.Errorf("failed to expand the engine frontend: %v", err)
-			return
+		if c.frontend != nil {
+			if err := c.frontend.Expand(size); err != nil {
+				logrus.Errorf("failed to expand the engine frontend: %v", err)
+				return
+			}
 		}
 
 		expanded = true
@@ -258,11 +260,6 @@ func (c *Controller) finishExpansion(expanded bool, size int64) {
 	}
 	c.isExpanding = false
 	return
-}
-
-func (c *Controller) updateFrontend(size int64) error {
-	//TODO fix volume expansion
-	return fmt.Errorf("volume expansion is not supported")
 }
 
 func (c *Controller) IsExpanding() bool {
