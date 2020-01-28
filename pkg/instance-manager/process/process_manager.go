@@ -415,7 +415,7 @@ func (pm *Manager) ProcessReplace(ctx context.Context, req *rpc.ProcessReplaceRe
 		pm.releaseProcessPorts(p)
 		logrus.Errorf("Process Manager: cleaned up the replacement process for %v", req.Spec.Name)
 
-		return nil, fmt.Errorf("Failed to start replacement process: ", p.Name)
+		return nil, fmt.Errorf("Failed to start replacement process %v", p.Name)
 	}
 	pm.lock.Lock()
 
@@ -473,7 +473,7 @@ func (pm *Manager) allocateProcessPorts(p *Process) error {
 
 func (pm *Manager) releaseProcessPorts(p *Process) {
 	if err := pm.releasePorts(p.PortStart, p.PortEnd); err != nil {
-		fmt.Errorf("Process Manager: cannot deallocate %v ports (%v-%v) for %v: %v",
+		logrus.Errorf("Process Manager: cannot deallocate %v ports (%v-%v) for %v: %v",
 			p.PortCount, p.PortStart, p.PortEnd, p.Name, err)
 	}
 }
