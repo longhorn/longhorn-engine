@@ -95,9 +95,6 @@ func (l LonghornWriter) Close() error {
 	if err := l.file.Close(); err != nil {
 		return err
 	}
-	if err := os.Remove(l.path); err != nil {
-		return err
-	}
 	return nil
 }
 
