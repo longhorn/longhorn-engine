@@ -241,8 +241,8 @@ func LogoutTarget(target string) error {
 
 func (dev *Device) DeleteTarget() error {
 	if tid, err := iscsi.GetTargetTid(dev.Target); err == nil && tid != -1 {
-		if tid != dev.targetID {
-			logrus.Fatalf("BUG: Invalid TID %v found for %v", tid, dev.Target)
+		if tid != dev.targetID && dev.targetID != 0 {
+			logrus.Errorf("BUG: Invalid TID %v found for %v, was %v", tid, dev.Target, dev.targetID)
 		}
 		logrus.Infof("Shutdown SCSI target %v", dev.Target)
 		if err := iscsi.UnbindInitiator(tid, "ALL"); err != nil {
