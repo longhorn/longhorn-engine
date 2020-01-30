@@ -2,8 +2,6 @@ import grpc
 
 import pytest
 
-import time
-
 from common.core import (  # NOQA
     get_dev, read_dev, write_dev,
     random_string, verify_data,
@@ -75,10 +73,6 @@ def test_upgrade(grpc_engine_manager,  # NOQA
                        ENGINE_NAME, VOLUME_NAME,
                        [r1_url, r2_url])
     assert e.spec.binary == LONGHORN_BINARY
-
-    # FIXME BUG: We shouldn't need to wait for 1 second
-    # Something in the connection reload is wrong
-    time.sleep(1)
 
     verify_data(dev, offset, data)
 

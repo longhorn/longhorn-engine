@@ -422,7 +422,7 @@ func (pm *Manager) ProcessReplace(ctx context.Context, req *rpc.ProcessReplaceRe
 	oldProcess := pm.processes[p.Name]
 	oldProcess.StopWithSignal(terminateSignal)
 	//TODO wait for the old process to stop
-	pm.releaseProcessPorts(p)
+	pm.releaseProcessPorts(oldProcess)
 	logrus.Infof("Process Manager: successfully unregistered old process %v", p.Name)
 
 	p.UpdateCh = pm.processUpdateCh
