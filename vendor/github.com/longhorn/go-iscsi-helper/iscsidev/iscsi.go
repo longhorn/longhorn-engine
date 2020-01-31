@@ -51,7 +51,7 @@ func Volume2ISCSIName(name string) string {
 }
 
 func GetTargetName(name string) string {
-	return "iqn.2014-09.com.rancher:" + Volume2ISCSIName(name)
+	return "iqn.2019-10.io.longhorn:" + Volume2ISCSIName(name)
 }
 
 func (dev *Device) CreateTarget() error {

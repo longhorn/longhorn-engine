@@ -50,8 +50,8 @@ func DiscoverTarget(ip, target string, ne *util.NamespaceExecutor) error {
 	//  iscsiadm: Could not stat /etc/iscsi/nodes//,3260,-1/default to
 	//  delete node: No such file or directory\n\niscsiadm: Could not
 	//  add/update [tcp:[hw=,ip=,net_if=,iscsi_if=default] 172.18.0.5,3260,1
-	//  iqn.2014-07.com.rancher:vol9]\n172.18.0.5:3260,1
-	//  iqn.2014-07.com.rancher:vol9\n"
+	//  iqn.2019-10.io.longhorn:vol9]\n172.18.0.5:3260,1
+	//  iqn.2019-10.io.longhorn:vol9\n"
 	if strings.Contains(output, "Could not") {
 		return fmt.Errorf("Cannot discover target: %s", output)
 	}
@@ -161,9 +161,9 @@ func IsTargetLoggedIn(ip, target string, ne *util.NamespaceExecutor) bool {
 		return false
 	}
 	/* It will looks like:
-		tcp: [463] 172.17.0.2:3260,1 iqn.2014-07.com.rancher:test-volume
+		tcp: [463] 172.17.0.2:3260,1 iqn.2019-10.io.longhorn:test-volume
 	or:
-		tcp: [463] 172.17.0.2:3260,1 iqn.2014-07.com.rancher:test-volume (non-flash)
+		tcp: [463] 172.17.0.2:3260,1 iqn.2019-10.io.longhorn:test-volume (non-flash)
 	*/
 	found := false
 	scanner := bufio.NewScanner(strings.NewReader(output))
@@ -194,7 +194,7 @@ func findScsiDevice(ip, target string, lun int, ne *util.NamespaceExecutor) (str
 	}
 	/*
 		Now we got something like this in output, and need to parse it
-		Target: iqn.2016-09.com.rancher:for.all (non-flash)
+		Target: iqn.2019-10.io.longhorn:for.all (non-flash)
 			Current Portal: 172.17.0.2:3260,1
 			Persistent Portal: 172.17.0.2:3260,1
 			...
@@ -218,9 +218,9 @@ func findScsiDevice(ip, target string, lun int, ne *util.NamespaceExecutor) (str
 	inLun := false
 	for scanner.Scan() {
 		/* Target line can be:
-			Target: iqn.2016-09.com.rancher:for.all (non-flash)
+			Target: iqn.2019-10.io.longhorn:for.all (non-flash)
 		or:
-			Target: iqn.2016-09.com.rancher:for.all
+			Target: iqn.2019-10.io.longhorn:for.all
 		*/
 		if !inTarget &&
 			(strings.Contains(scanner.Text(), targetLine+" ") ||
