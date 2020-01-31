@@ -77,12 +77,15 @@ cp $backing_qcow2 $backing_dir2
 cp -a ./bin/longhorn /opt/
 
 ./bin/longhorn-instance-manager --debug daemon &
-pid_im=$!
+pid_imr=$!
+./bin/longhorn-instance-manager --debug daemon --listen localhost:8501 --port-range 35000-40000 &
+pid_ime=$!
 
 # make sure everything is running before continue integration test
-ps $pid_im
+ps $pid_imr
+ps $pid_ime
 
-trap "cleanupISCSI && kill $pid_im" EXIT
+trap "kill $pid_ime && cleanupISCSI && kill $pid_imr" EXIT
 
 # start minio server to test s3 backup and set credential keys
 export MINIO_ACCESS_KEY=test-access-key

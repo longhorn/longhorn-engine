@@ -1,40 +1,33 @@
 import fcntl
-import random
-import string
 import struct
-import subprocess
-import time
-import threading
+import os
 import grpc
 import tempfile
-import os
+import time
+import random
+import subprocess
+import string
+import threading
 
 import pytest
 
-import data.cmd as cmd
-from data.util import read_file, checksum_data
-from data.frontend import blockdev, get_block_device_path
+from rpc.controller.controller_client import ControllerClient
 
-from data.setting import INSTANCE_MANAGER
-from data.setting import LONGHORN_BINARY
-from data.setting import VOLUME_NAME
-from data.setting import VOLUME_BACKING_NAME
-from data.setting import SIZE
-from data.setting import PAGE_SIZE
-from data.setting import SIZE_STR
-from data.setting import BACKUP_DIR
-from data.setting import BACKING_FILE
-from data.setting import FRONTEND_TGT_BLOCKDEV
-from data.setting import RETRY_COUNTS
-from data.setting import RETRY_INTERVAL
-from data.setting import RETRY_COUNTS_SHORT
-from data.setting import RETRY_INTERVAL_SHORT
-from data.setting import INSTANCE_MANAGER_TYPE_REPLICA
-from data.setting import INSTANCE_MANAGER_TYPE_ENGINE
-from data.setting import PROC_STATE_STARTING
-from data.setting import PROC_STATE_RUNNING
+import common.cmd as cmd
+from common.util import read_file, checksum_data
+from common.frontend import blockdev, get_block_device_path
 
-from rpc.instance_manager.engine_manager_client import EngineManagerClient
+from common.constants import (
+    LONGHORN_BINARY, LONGHORN_UPGRADE_BINARY,
+    VOLUME_NAME, VOLUME_BACKING_NAME,
+    SIZE, PAGE_SIZE, SIZE_STR,
+    BACKUP_DIR, BACKING_FILE,
+    FRONTEND_TGT_BLOCKDEV,
+    RETRY_COUNTS, RETRY_INTERVAL, RETRY_COUNTS2,
+    RETRY_COUNTS_SHORT, RETRY_INTERVAL_SHORT,
+    PROC_STATE_STARTING, PROC_STATE_RUNNING,
+    ENGINE_NAME, EXPANDED_SIZE_STR,
+)
 
 thread_failed = False
 
@@ -48,60 +41,34 @@ def _base():
 
 
 def cleanup_process(pm_client):
-    cleanup_engine_process(EngineManagerClient(pm_client.address))
     for name in pm_client.process_list():
         try:
             pm_client.process_delete(name)
         except grpc.RpcError as e:
             if 'cannot find process' not in e.details():
                 raise e
-    for i in range(RETRY_COUNTS_SHORT):
+    for i in range(RETRY_COUNTS):
         ps = pm_client.process_list()
         if len(ps) == 0:
             break
-        time.sleep(RETRY_INTERVAL_SHORT)
+        time.sleep(RETRY_INTERVAL)
 
     ps = pm_client.process_list()
     assert len(ps) == 0
     return pm_client
 
 
-def cleanup_engine_process(em_client):
-    for _, engine in iter(em_client.engine_list().items()):
-        try:
-            em_client.engine_delete(engine.spec.name)
-        except grpc.RpcError as e:
-            if 'cannot find engine' not in e.details():
-                raise e
-    for i in range(RETRY_COUNTS_SHORT):
-        es = em_client.engine_list()
-        if len(es) == 0:
-            break
-        time.sleep(RETRY_INTERVAL_SHORT)
-
-    es = em_client.engine_list()
-    assert len(es) == 0
-    return em_client
-
-
-def wait_for_process_running(client, name, type):
+def wait_for_process_running(client, name):
     healthy = False
-    for i in range(RETRY_COUNTS_SHORT):
-        if type == INSTANCE_MANAGER_TYPE_ENGINE:
-            e = client.engine_get(name)
-            state = e.status.process_status.state
-        elif type == INSTANCE_MANAGER_TYPE_REPLICA:
-            state = client.process_get(name).status.state
-        else:
-            # invalid type
-            assert False
+    for i in range(RETRY_COUNTS):
+        state = client.process_get(name).status.state
         if state == PROC_STATE_RUNNING:
             healthy = True
             break
         elif state != PROC_STATE_STARTING:
             # invalid state
             assert False
-        time.sleep(RETRY_INTERVAL_SHORT)
+        time.sleep(RETRY_INTERVAL)
     assert healthy
 
 
@@ -113,35 +80,37 @@ def create_replica_process(client, name, replica_dir="",
         replica_dir = tempfile.mkdtemp()
     if not args:
         args = ["replica", replica_dir, "--size", str(size)]
-
     client.process_create(
         name=name, binary=binary, args=args,
         port_count=port_count, port_args=port_args)
-    wait_for_process_running(client, name,
-                             INSTANCE_MANAGER_TYPE_REPLICA)
+    wait_for_process_running(client, name)
 
     return client.process_get(name)
 
 
-def create_engine_process(client, name,
+def create_engine_process(client, name=ENGINE_NAME,
                           volume_name=VOLUME_NAME,
                           binary=LONGHORN_BINARY,
                           listen="", listen_ip="localhost",
                           size=SIZE, frontend=FRONTEND_TGT_BLOCKDEV,
                           replicas=[], backends=["file"]):
-    client.engine_create(
-        name=name, volume_name=volume_name,
-        binary=binary, listen=listen, listen_ip=listen_ip,
-        size=size, frontend=frontend, replicas=replicas,
-        backends=backends)
-    wait_for_process_running(client, name,
-                             INSTANCE_MANAGER_TYPE_ENGINE)
+    args = ["controller", volume_name]
+    if frontend != "":
+        args += ["--frontend", frontend]
+    for r in replicas:
+        args += ["--replica", r]
+    for b in backends:
+        args += ["--enable-backend", b]
+    client.process_create(
+        name=name, binary=binary, args=args,
+        port_count=1, port_args=["--listen,localhost:"])
+    wait_for_process_running(client, name)
 
-    return client.engine_get(name)
+    return client.process_get(name)
 
 
-def get_replica_address(r):
-    return "localhost:" + str(r.status.port_start)
+def get_process_address(p):
+    return "localhost:" + str(p.status.port_start)
 
 
 def cleanup_controller(grpc_client):
@@ -150,6 +119,7 @@ def cleanup_controller(grpc_client):
     except grpc.RpcError as grpc_err:
         if "Socket closed" not in grpc_err.details() and \
                 "failed to connect to all addresses" not in grpc_err.details():
+
             raise grpc_err
         return grpc_client
 
@@ -160,22 +130,98 @@ def cleanup_controller(grpc_client):
     return grpc_client
 
 
-def start_engine_frontend(engine_name, frontend=FRONTEND_TGT_BLOCKDEV,
-                          em_address=INSTANCE_MANAGER):
-    em_client = EngineManagerClient(em_address)
-    em_client.frontend_start(engine_name, frontend)
-    e = em_client.engine_get(engine_name)
-    assert e.spec.frontend == frontend
-    assert e.status.endpoint != ""
+def cleanup_replica(grpc_client):
+    r = grpc_client.replica_get()
+    if r.state == 'initial':
+        return grpc_client
+    if r.state == 'closed':
+        grpc_client.replica_open()
+    grpc_client.replica_delete()
+    r = grpc_client.replica_reload()
+    assert r.state == 'initial'
+    return grpc_client
 
 
-def shutdown_engine_frontend(engine_name,
-                             em_address=INSTANCE_MANAGER):
-    em_client = EngineManagerClient(em_address)
-    em_client.frontend_shutdown(engine_name)
-    e = em_client.engine_get(engine_name)
-    assert e.spec.frontend == ""
-    assert e.status.endpoint == ""
+def random_str():
+    return 'random-{0}-{1}'.format(random_num(), int(time.time()))
+
+
+def random_num():
+    return random.randint(0, 1000000)
+
+
+def create_backend_file():
+    name = random_str()
+    fo = open(name, "w+")
+    fo.truncate(SIZE)
+    fo.close()
+    return os.path.abspath(name)
+
+
+def cleanup_backend_file(paths):
+    for path in paths:
+        if os.path.exists(path):
+            os.remove(path)
+
+
+def get_dev_path(name):
+    return os.path.join("/dev/longhorn/", name)
+
+
+def get_expansion_snapshot_name():
+    return 'expand-{0}'.format(EXPANDED_SIZE_STR)
+
+
+def get_replica_paths_from_snapshot_name(snap_name):
+    replica_paths = []
+    cmd = ["find", "/tmp", "-name",
+           '*volume-snap-{0}.img'.format(snap_name)]
+    snap_paths = subprocess.check_output(cmd).split()
+    assert snap_paths
+    for p in snap_paths:
+        replica_paths.append(os.path.dirname(p.decode('utf-8')))
+    return replica_paths
+
+
+def get_snapshot_file_paths(replica_path, snap_name):
+    return os.path.join(replica_path,
+                        'volume-snap-{0}.img'.format(snap_name))
+
+
+def get_replica_head_file_path(replica_dir):
+    cmd = ["find", replica_dir, "-name",
+           '*volume-head-*.img']
+    return subprocess.check_output(cmd).strip()
+
+
+def wait_for_rebuild_complete(url):
+    completed = 0
+    rebuild_status = {}
+    for x in range(RETRY_COUNTS):
+        completed = 0
+        rebuild_status = cmd.replica_rebuild_status(url)
+        for rebuild in rebuild_status.values():
+            if rebuild['state'] == "complete":
+                assert rebuild['progress'] == 100
+                assert not rebuild['isRebuilding']
+                completed += 1
+            elif rebuild['state'] == "":
+                assert not rebuild['isRebuilding']
+                completed += 1
+            # Right now add-replica/rebuild is a blocking call.
+            # Hence the state won't become `in_progress` when
+            # we check the rebuild status.
+            elif rebuild['state'] == "in_progress":
+                assert rebuild['state'] == "in_progress"
+                assert rebuild['isRebuilding']
+            else:
+                assert rebuild['state'] == "error"
+                assert rebuild['error'] != ""
+                assert not rebuild['isRebuilding']
+        if completed == len(rebuild_status):
+            break
+        time.sleep(RETRY_INTERVAL)
+    return completed == len(rebuild_status)
 
 
 def wait_for_purge_completion(url):
@@ -223,10 +269,11 @@ def wait_for_restore_completion(url, backup_url):
 
 
 def restore_with_frontend(url, engine_name, backup):
-    shutdown_engine_frontend(engine_name)
+    client = ControllerClient(url)
+    client.volume_frontend_shutdown()
     cmd.backup_restore(url, backup)
     wait_for_restore_completion(url, backup)
-    start_engine_frontend(engine_name)
+    client.volume_frontend_start(FRONTEND_TGT_BLOCKDEV)
     return
 
 
@@ -253,7 +300,8 @@ def rm_backups(url, engine_name, backups):
         with pytest.raises(subprocess.CalledProcessError):
             cmd.backup_inspect(url, b)
     # Engine frontend is down, Start it up
-    start_engine_frontend(engine_name)
+    client = ControllerClient(url)
+    client.volume_frontend_start(FRONTEND_TGT_BLOCKDEV)
 
 
 def rm_snaps(url, snaps):
@@ -267,21 +315,10 @@ def rm_snaps(url, snaps):
 
 
 def snapshot_revert_with_frontend(url, engine_name, name):
-    shutdown_engine_frontend(engine_name)
+    client = ControllerClient(url)
+    client.volume_frontend_shutdown()
     cmd.snapshot_revert(url, name)
-    start_engine_frontend(engine_name)
-
-
-def cleanup_replica(grpc_client):
-    r = grpc_client.replica_get()
-    if r.state == 'initial':
-        return grpc_client
-    if r.state == 'closed':
-        grpc_client.replica_open()
-    grpc_client.replica_delete()
-    r = grpc_client.replica_reload()
-    assert r.state == 'initial'
-    return grpc_client
+    client.volume_frontend_start(FRONTEND_TGT_BLOCKDEV)
 
 
 def cleanup_replica_dir(dir=""):
@@ -521,6 +558,7 @@ def wait_for_volume_expansion(grpc_controller_client, size):  # NOQA
             break
         time.sleep(RETRY_INTERVAL)
     assert volume.size == size
+    return volume
 
 
 def check_block_device_size(volume_name, size):
@@ -534,31 +572,56 @@ def check_block_device_size(volume_name, size):
     assert device_size == size
 
 
-def wait_for_rebuild_complete(url):
-    completed = 0
-    rebuild_status = {}
-    for x in range(RETRY_COUNTS):
-        completed = 0
-        rebuild_status = cmd.replica_rebuild_status(url)
-        for rebuild in rebuild_status.values():
-            if rebuild['state'] == "complete":
-                assert rebuild['progress'] == 100
-                assert not rebuild['isRebuilding']
-                completed += 1
-            elif rebuild['state'] == "":
-                assert not rebuild['isRebuilding']
-                completed += 1
-            # Right now add-replica/rebuild is a blocking call.
-            # Hence the state won't become `in_progress` when
-            # we check the rebuild status.
-            elif rebuild['state'] == "in_progress":
-                assert rebuild['state'] == "in_progress"
-                assert rebuild['isRebuilding']
-            else:
-                assert rebuild['state'] == "error"
-                assert rebuild['error'] != ""
-                assert not rebuild['isRebuilding']
-        if completed == len(rebuild_status):
+def wait_and_check_volume_expansion(grpc_controller_client, size):
+    v = wait_for_volume_expansion(grpc_controller_client, size)
+    check_block_device_size(v.name, size)
+
+
+def delete_process(client, name):
+    try:
+        client.process_delete(name)
+    except grpc.RpcError as e:
+        if 'cannot find process' not in e.details():
+            raise e
+
+
+def wait_for_process_deletion(client, name):
+    deleted = False
+    for i in range(RETRY_COUNTS):
+        rs = client.process_list()
+        if name not in rs:
+            deleted = True
             break
         time.sleep(RETRY_INTERVAL)
-    return completed == len(rebuild_status)
+    assert deleted
+
+
+def check_dev_existence(volume_name):
+    found = False
+    for i in range(RETRY_COUNTS):
+        if os.path.exists(get_dev_path(volume_name)):
+            found = True
+            break
+        time.sleep(RETRY_INTERVAL)
+    assert found
+
+
+def wait_for_dev_deletion(volume_name):
+    found = True
+    for i in range(RETRY_COUNTS):
+        if not os.path.exists(get_dev_path(volume_name)):
+            found = False
+            break
+        time.sleep(RETRY_INTERVAL)
+    assert not found
+
+
+def upgrade_engine(client, binary, engine_name, volume_name, replicas):
+    args = ["controller", volume_name, "--frontend", "tgt",
+            "--upgrade"]
+    for r in replicas:
+        args += ["--replica", r]
+
+    return client.process_replace(
+        engine_name, binary, args,
+    )
