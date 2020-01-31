@@ -12,13 +12,11 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/longhorn/go-iscsi-helper/iscsidev"
+	"github.com/longhorn/go-iscsi-helper/types"
 	"github.com/longhorn/go-iscsi-helper/util"
 )
 
 const (
-	FrontendTGTBlockDev = "tgt-blockdev"
-	FrontendTGTISCSI    = "tgt-iscsi"
-
 	SocketDirectory = "/var/run"
 	DevPath         = "/dev/longhorn/"
 
@@ -96,7 +94,7 @@ func (d *LonghornDevice) Start() error {
 	d.scsiDevice = scsiDev
 
 	switch d.frontend {
-	case FrontendTGTBlockDev:
+	case types.FrontendTGTBlockDev:
 		if err := d.scsiDevice.CreateTarget(); err != nil {
 			return err
 		}
@@ -111,7 +109,7 @@ func (d *LonghornDevice) Start() error {
 
 		logrus.Infof("device %v: SCSI device %s created", d.name, d.scsiDevice.Device)
 		break
-	case FrontendTGTISCSI:
+	case types.FrontendTGTISCSI:
 		if err := d.scsiDevice.CreateTarget(); err != nil {
 			return err
 		}
@@ -137,7 +135,7 @@ func (d *LonghornDevice) Shutdown() error {
 	}
 
 	switch d.frontend {
-	case FrontendTGTBlockDev:
+	case types.FrontendTGTBlockDev:
 		dev := d.getDev()
 		if err := util.RemoveDevice(dev); err != nil {
 			return fmt.Errorf("device %v: fail to remove device %s: %v", d.name, dev, err)
@@ -150,7 +148,7 @@ func (d *LonghornDevice) Shutdown() error {
 		}
 		logrus.Infof("device %v: SCSI device %v shutdown", d.name, dev)
 		break
-	case FrontendTGTISCSI:
+	case types.FrontendTGTISCSI:
 		if err := d.scsiDevice.DeleteTarget(); err != nil {
 			return fmt.Errorf("device %v: fail to delete target %v", d.name, d.scsiDevice.Target)
 		}
@@ -290,7 +288,7 @@ func (d *LonghornDevice) ReloadSocketConnection() error {
 }
 
 func (d *LonghornDevice) SetFrontend(frontend string) error {
-	if frontend != FrontendTGTBlockDev && frontend != FrontendTGTISCSI && frontend != "" {
+	if frontend != types.FrontendTGTBlockDev && frontend != types.FrontendTGTISCSI && frontend != "" {
 		return fmt.Errorf("invalid frontend %v", frontend)
 	}
 
@@ -378,7 +376,7 @@ func (d *LonghornDevice) Expand(size int64) error {
 	}
 
 	switch d.frontend {
-	case FrontendTGTBlockDev:
+	case types.FrontendTGTBlockDev:
 		if err := d.scsiDevice.RecreateTarget(); err != nil {
 			return fmt.Errorf("device %v: fail to recreate target %v: %v", d.name, d.scsiDevice.Target, err)
 		}
@@ -387,7 +385,7 @@ func (d *LonghornDevice) Expand(size int64) error {
 		}
 		logrus.Infof("device %v: SCSI device %v update", d.name, d.getDev())
 		break
-	case FrontendTGTISCSI:
+	case types.FrontendTGTISCSI:
 		if err := d.scsiDevice.RecreateTarget(); err != nil {
 			return fmt.Errorf("device %v: fail to recreate target %v: %v", d.name, d.scsiDevice.Target, err)
 		}
