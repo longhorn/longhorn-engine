@@ -1,19 +1,19 @@
 import random
 
-import data.cmd as cmd
+import common.cmd as cmd
 
-from data.common import (  # NOQA
+from common.core import (  # NOQA
     get_dev, get_backing_dev, read_dev,
     generate_random_data, read_from_backing_file,
     Snapshot, snapshot_revert_with_frontend, wait_for_purge_completion,
     Data, random_length, random_string,
-    wait_for_volume_expansion, check_block_device_size,
+    wait_and_check_volume_expansion,
 )
 
-from data.setting import (
+from common.constants import (
     VOLUME_HEAD, ENGINE_NAME, ENGINE_BACKING_NAME,
     VOLUME_NAME, VOLUME_BACKING_NAME,
-    PAGE_SIZE, SIZE, EXPAND_SIZE,
+    PAGE_SIZE, SIZE, EXPANDED_SIZE,
 )
 
 from data.snapshot_tree import snapshot_tree_build, snapshot_tree_verify_node
@@ -284,9 +284,9 @@ def volume_expansion_with_snapshots_test(dev, grpc_controller,  # NOQA
                  data1_len, random_string(data1_len))
     snap1 = Snapshot(dev, data1, address)
 
-    grpc_controller.volume_expand(EXPAND_SIZE)
-    wait_for_volume_expansion(grpc_controller, EXPAND_SIZE)
-    check_block_device_size(volume_name, EXPAND_SIZE)
+    grpc_controller.volume_expand(EXPANDED_SIZE)
+    wait_and_check_volume_expansion(
+        grpc_controller, EXPANDED_SIZE)
 
     snap1.verify_data()
     assert \
@@ -301,7 +301,7 @@ def volume_expansion_with_snapshots_test(dev, grpc_controller,  # NOQA
                  data2_len, random_string(data2_len))
     snap2 = Snapshot(dev, data2, address)
     data3_len = random_length(PAGE_SIZE)
-    data3 = Data(random.randrange(SIZE, EXPAND_SIZE-PAGE_SIZE, PAGE_SIZE),
+    data3 = Data(random.randrange(SIZE, EXPANDED_SIZE-PAGE_SIZE, PAGE_SIZE),
                  data3_len, random_string(data3_len))
     snap3 = Snapshot(dev, data3, address)
     snap1.verify_data()
@@ -309,7 +309,7 @@ def volume_expansion_with_snapshots_test(dev, grpc_controller,  # NOQA
     snap3.verify_data()
     assert \
         dev.readat(SIZE, SIZE) == zero_char*(data3.offset-SIZE) + \
-        data3.content + zero_char*(EXPAND_SIZE-data3.offset-data3.length)
+        data3.content + zero_char*(EXPANDED_SIZE-data3.offset-data3.length)
 
     data4_len = random_length(PAGE_SIZE)
     data4 = Data(data1.offset,
@@ -327,13 +327,13 @@ def volume_expansion_with_snapshots_test(dev, grpc_controller,  # NOQA
     assert dev.readat(SIZE, SIZE) == zero_char*SIZE
 
     data5_len = random_length(PAGE_SIZE)
-    data5 = Data(random.randrange(SIZE, EXPAND_SIZE-PAGE_SIZE, PAGE_SIZE),
+    data5 = Data(random.randrange(SIZE, EXPANDED_SIZE-PAGE_SIZE, PAGE_SIZE),
                  data5_len, random_string(data5_len))
     snap5 = Snapshot(dev, data5, address)
     snap5.verify_data()
     assert \
         dev.readat(SIZE, SIZE) == zero_char*(data5.offset-SIZE) + \
-        data5.content + zero_char*(EXPAND_SIZE-data5.offset-data5.length)
+        data5.content + zero_char*(EXPANDED_SIZE-data5.offset-data5.length)
 
     # delete and purge the snap1. it will coalesce with the larger snap2
     cmd.snapshot_rm(address, snap1.name)
@@ -345,7 +345,7 @@ def volume_expansion_with_snapshots_test(dev, grpc_controller,  # NOQA
         original_data[data1.offset+data1.length:]
     assert \
         dev.readat(SIZE, SIZE) == zero_char*(data5.offset-SIZE) + \
-        data5.content + zero_char*(EXPAND_SIZE-data5.offset-data5.length)
+        data5.content + zero_char*(EXPANDED_SIZE-data5.offset-data5.length)
 
 
 def test_expansion_without_backing_file(grpc_controller,  # NOQA

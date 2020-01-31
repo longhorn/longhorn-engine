@@ -2,32 +2,31 @@ import pytest
 import os
 import tempfile
 
-from data.setting import INSTANCE_MANAGER
-from data.setting import VOLUME_NAME
-from data.setting import VOLUME_BACKING_NAME
-from data.setting import VOLUME_NO_FRONTEND_NAME
-from data.setting import ENGINE_NAME
-from data.setting import ENGINE_BACKING_NAME
-from data.setting import ENGINE_NO_FRONTEND_NAME
-from data.setting import REPLICA_NAME
-from data.setting import SIZE
-from data.setting import FRONTEND_TGT_BLOCKDEV
-from data.setting import FIXED_REPLICA_PATH1
-from data.setting import FIXED_REPLICA_PATH2
-from data.setting import BACKING_FILE_PATH1
-from data.setting import BACKING_FILE_PATH2
+from common.constants import INSTANCE_MANAGER_REPLICA
+from common.constants import INSTANCE_MANAGER_ENGINE
+from common.constants import VOLUME_NAME
+from common.constants import VOLUME_BACKING_NAME
+from common.constants import VOLUME_NO_FRONTEND_NAME
+from common.constants import ENGINE_NAME
+from common.constants import ENGINE_BACKING_NAME
+from common.constants import ENGINE_NO_FRONTEND_NAME
+from common.constants import REPLICA_NAME
+from common.constants import SIZE
+from common.constants import FRONTEND_TGT_BLOCKDEV
+from common.constants import FIXED_REPLICA_PATH1
+from common.constants import FIXED_REPLICA_PATH2
+from common.constants import BACKING_FILE_PATH1
+from common.constants import BACKING_FILE_PATH2
 
-from data.common import cleanup_replica
-from data.common import cleanup_process
-from data.common import create_replica_process
-from data.common import create_engine_process
-from data.common import cleanup_engine_process
-from data.common import cleanup_replica_dir
-from data.common import get_replica_address
-from data.common import get_dev
+from common.core import cleanup_replica
+from common.core import cleanup_process
+from common.core import create_replica_process
+from common.core import create_engine_process
+from common.core import cleanup_replica_dir
+from common.core import get_process_address
+from common.core import get_dev
 
 
-from rpc.instance_manager.engine_manager_client import EngineManagerClient
 from rpc.instance_manager.process_manager_client import ProcessManagerClient
 from rpc.replica.replica_client import ReplicaClient
 from rpc.controller.controller_client import ControllerClient
@@ -121,7 +120,7 @@ def grpc_extra_replica2(request, grpc_replica_client):
 
 
 @pytest.fixture
-def process_manager_client(request, address=INSTANCE_MANAGER):
+def process_manager_client(request, address=INSTANCE_MANAGER_REPLICA):
     c = ProcessManagerClient(address)
     request.addfinalizer(lambda: cleanup_process(c))
     return c
@@ -135,7 +134,7 @@ def grpc_replica_client(request, process_manager_client):
                                    replica_name,
                                    args=args)
 
-        listen = get_replica_address(r)
+        listen = get_process_address(r)
 
         c = ReplicaClient(listen)
         grpc_replica_client.replica_client = cleanup_replica(c)
@@ -145,9 +144,9 @@ def grpc_replica_client(request, process_manager_client):
 
 
 @pytest.fixture
-def engine_manager_client(request, address=INSTANCE_MANAGER):
-    c = EngineManagerClient(address)
-    request.addfinalizer(lambda: cleanup_engine_process(c))
+def engine_manager_client(request, address=INSTANCE_MANAGER_ENGINE):
+    c = ProcessManagerClient(address)
+    request.addfinalizer(lambda: cleanup_process(c))
     return c
 
 
@@ -162,7 +161,8 @@ def grpc_controller_client(request, engine_manager_client):
                                   volume_name=volume_name,
                                   frontend=frontend)
 
-        grpc_controller_client.process_client = ControllerClient(e.spec.listen)
+        grpc_controller_client.process_client = \
+            ControllerClient(get_process_address(e))
         return grpc_controller_client.process_client
 
     yield generate_grpc_controller_client

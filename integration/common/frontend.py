@@ -4,7 +4,7 @@ import stat
 import mmap
 import directio
 
-from data.setting import (
+from common.constants import (
     LONGHORN_SOCKET_DIR, LONGHORN_DEV_DIR, PAGE_SIZE,
 )
 

@@ -36,3 +36,17 @@ class ProcessManagerClient(object):
             raise Exception("missing parameter")
 
         return self.stub.ProcessDelete(rpc_pb2.ProcessDeleteRequest(name=name))
+
+    def process_replace(self, name, binary, args, port_count=1,
+                        port_args=["--listen,localhost:"],
+                        terminate_signal="SIGHUP"):
+        if not name:
+            raise Exception("missing parameter")
+
+        return self.stub.ProcessReplace(rpc_pb2.ProcessReplaceRequest(
+            spec=rpc_pb2.ProcessSpec(
+                name=name, binary=binary,
+                args=args, port_count=port_count, port_args=port_args,
+            ),
+            terminate_signal=terminate_signal,
+        ))

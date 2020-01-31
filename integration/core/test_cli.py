@@ -9,16 +9,19 @@ import pytest
 
 from urllib.parse import urlparse
 
-from core.common import (  # NOQA
+from common.core import (  # NOQA
     cleanup_replica, cleanup_controller,
     get_expansion_snapshot_name,
     get_replica_paths_from_snapshot_name,
     get_snapshot_file_paths,
     get_replica_head_file_path,
-    wait_for_volume_expansion,
+    wait_and_check_volume_expansion,
     wait_for_rebuild_complete,
+    wait_for_purge_completion,
+)
 
-    VOLUME_NAME, ENGINE_NAME,
+from common.constants import (
+    VOLUME_NAME,
     RETRY_COUNTS2, FRONTEND_TGT_BLOCKDEV,
     RETRY_INTERVAL,
     SIZE, EXPANDED_SIZE,
@@ -121,7 +124,7 @@ def test_replica_add_start(bin, grpc_controller_client,  # NOQA
            'add-replica',
            grpc_replica_client.url]
     subprocess.check_call(cmd)
-    wait_for_rebuild_complete(bin, grpc_controller_client.address)
+    wait_for_rebuild_complete(grpc_controller_client.address)
 
     volume = grpc_controller_client.volume_get()
     assert volume.replicaCount == 1
@@ -159,7 +162,7 @@ def test_replica_add_rebuild(bin, grpc_controller_client,  # NOQA
            'add-replica',
            grpc_replica_client.url]
     subprocess.check_call(cmd)
-    wait_for_rebuild_complete(bin, grpc_controller_client.address)
+    wait_for_rebuild_complete(grpc_controller_client.address)
 
     volume = grpc_controller_client.volume_get()
     assert volume.replicaCount == 1
@@ -168,7 +171,7 @@ def test_replica_add_rebuild(bin, grpc_controller_client,  # NOQA
            'add-replica',
            grpc_replica_client2.url]
     subprocess.check_call(cmd)
-    wait_for_rebuild_complete(bin, grpc_controller_client.address)
+    wait_for_rebuild_complete(grpc_controller_client.address)
 
     volume = grpc_controller_client.volume_get()
     assert volume.replicaCount == 2
@@ -329,10 +332,10 @@ def test_revert(engine_manager_client,  # NOQA
                         'volume-snap-foo1.img']
     assert r1.chain == r2.chain
 
-    engine_manager_client.frontend_shutdown(ENGINE_NAME)
+    grpc_controller_client.volume_frontend_shutdown()
     grpc_controller_client.volume_revert(name='foo1')
-    engine_manager_client.frontend_start(ENGINE_NAME,
-                                         FRONTEND_TGT_BLOCKDEV)
+    grpc_controller_client.volume_frontend_start(
+            frontend=FRONTEND_TGT_BLOCKDEV)
     r1 = grpc_replica_client.replica_get()
     r2 = grpc_replica_client2.replica_get()
     assert r1.chain == ['volume-head-003.img', 'volume-snap-foo1.img']
@@ -649,7 +652,7 @@ def get_backup_url(bin, url, backupID):
 
 def restore_backup(engine_manager_client,  # NOQA
                    bin, url, backup_url, env, grpc_c):
-    engine_manager_client.frontend_shutdown(ENGINE_NAME)
+    grpc_c.volume_frontend_shutdown()
     v = grpc_c.volume_get()
     assert v.frontendState == "down"
 
@@ -681,8 +684,8 @@ def restore_backup(engine_manager_client,  # NOQA
             break
         time.sleep(RETRY_INTERVAL)
     assert completed == len(rs)
-    engine_manager_client.frontend_start(ENGINE_NAME,
-                                         FRONTEND_TGT_BLOCKDEV)
+    grpc_c.volume_frontend_start(
+            frontend=FRONTEND_TGT_BLOCKDEV)
     v = grpc_c.volume_get()
     assert v.frontendState == "up"
 
@@ -854,8 +857,8 @@ def backup_core(bin, engine_manager_client,  # NOQA
     # cannot find the backup
     with pytest.raises(subprocess.CalledProcessError):
         subprocess.check_call(cmd, env=env)
-    engine_manager_client.frontend_start(ENGINE_NAME,
-                                         FRONTEND_TGT_BLOCKDEV)
+    grpc_controller_client.volume_frontend_start(
+            frontend=FRONTEND_TGT_BLOCKDEV)
     v = grpc_controller_client.volume_get()
     assert v.frontendState == "up"
 
@@ -909,6 +912,8 @@ def test_snapshot_purge_basic(bin, grpc_controller_client,  # NOQA
     cmd = [bin, '--url', grpc_controller_client.address,
            'snapshot', 'purge']
     subprocess.check_call(cmd)
+
+    wait_for_purge_completion(grpc_controller_client.address)
 
     cmd = [bin, '--url', grpc_controller_client.address,
            'snapshot', 'info']
@@ -1027,7 +1032,8 @@ def test_volume_expand_with_snapshots(  # NOQA
            'expand', '--size', EXPANDED_SIZE_STR]
     subprocess.check_call(cmd)
 
-    wait_for_volume_expansion(grpc_controller_client, EXPANDED_SIZE)
+    wait_and_check_volume_expansion(
+        grpc_controller_client, EXPANDED_SIZE)
 
     # `expand` will create a snapshot then apply the new size
     # on the new head file
@@ -1094,6 +1100,7 @@ def test_volume_expand_with_snapshots(  # NOQA
     cmd = [bin, '--url', grpc_controller_client.address,
            'snapshot', 'purge']
     subprocess.check_call(cmd)
+    wait_for_purge_completion(grpc_controller_client.address)
 
     cmd = [bin, '--debug',
            '--url', grpc_controller_client.address,
@@ -1137,6 +1144,7 @@ def test_volume_expand_with_snapshots(  # NOQA
     cmd = [bin, '--url', grpc_controller_client.address,
            'snapshot', 'purge']
     subprocess.check_call(cmd)
+    wait_for_purge_completion(grpc_controller_client.address)
 
     cmd = [bin, '--debug',
            '--url', grpc_controller_client.address,
