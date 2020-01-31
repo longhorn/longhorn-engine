@@ -24,6 +24,9 @@ const (
 
 	RetryCounts   = 30
 	RetryInterval = 1 * time.Second
+
+	EngineFrontendBlockDev = "tgt-blockdev"
+	EngineFrontendISCSI    = "tgt-iscsi"
 )
 
 type ReaderWriterAt interface {
