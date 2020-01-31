@@ -4,14 +4,14 @@ from os import path
 
 import pytest
 
-import data.cmd as cmd
-from data.common import (  # NOQA
+import common.cmd as cmd
+from common.core import (  # NOQA
     get_dev, read_dev, write_dev,  # NOQA
     random_string, verify_data,
     open_replica,
 )
-from data.frontend import get_socket_path
-from data.setting import (
+from common.frontend import get_socket_path
+from common.constants import (
     LONGHORN_DEV_DIR, PAGE_SIZE, SIZE,
     VOLUME_NAME, ENGINE_NAME,
 )

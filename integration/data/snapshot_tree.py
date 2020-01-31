@@ -1,10 +1,10 @@
-import data.cmd as cmd
-from data.common import (  # NOQA
+import common.cmd as cmd
+from common.core import (  # NOQA
     read_dev, random_string, verify_data,
     snapshot_revert_with_frontend,
     restore_with_frontend,
 )
-from data.setting import VOLUME_HEAD
+from common.constants import VOLUME_HEAD
 
 
 def snapshot_tree_build(dev, address, engine_name,

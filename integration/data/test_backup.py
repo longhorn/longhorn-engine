@@ -1,5 +1,5 @@
-import data.cmd as cmd
-from data.common import (  # NOQA
+import common.cmd as cmd
+from common.core import (  # NOQA
     cleanup_controller, cleanup_replica,
     get_dev, get_backing_dev, read_dev,
     read_from_backing_file,
@@ -10,7 +10,7 @@ from data.common import (  # NOQA
 from data.snapshot_tree import (
     snapshot_tree_build, snapshot_tree_verify_backup_node
 )
-from data.setting import (
+from common.constants import (
     VOLUME_NAME, VOLUME_BACKING_NAME, BLOCK_SIZE_STR,
     ENGINE_NAME, ENGINE_BACKING_NAME,
 )

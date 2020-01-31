@@ -69,6 +69,13 @@ class ControllerClient(object):
         self.channel = grpc.insecure_channel(address)
         self.stub = controller_pb2_grpc.ControllerServiceStub(self.channel)
 
+    def volume_frontend_start(self, frontend=""):
+        return self.stub.VolumeFrontendStart(controller_pb2.VolumeFrontendStartRequest(
+            frontend=frontend))
+
+    def volume_frontend_shutdown(self):
+        return self.stub.VolumeFrontendShutdown(empty_pb2.Empty())
+
 
 class ControllerReplicaInfo(object):
     def __init__(self, cr):

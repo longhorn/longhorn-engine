@@ -4,8 +4,8 @@ import pytest
 import subprocess
 import time
 
-import data.cmd as cmd
-from data.common import (  # NOQA
+import common.cmd as cmd
+from common.core import (  # NOQA
     open_replica, cleanup_controller, cleanup_replica,
     get_dev, get_blockdev, verify_read, verify_data,
     random_string,
@@ -13,15 +13,16 @@ from data.common import (  # NOQA
     create_backup, rm_backups,
     restore_incrementally, wait_for_restore_completion,
     random_length, Snapshot, Data,
-    wait_for_volume_expansion, check_block_device_size,
+    wait_and_check_volume_expansion,
+    check_block_device_size,
 )
-from data.setting import (
+from common.constants import (
     FIXED_REPLICA_PATH1, FIXED_REPLICA_PATH2,
     VOLUME_NAME, VOLUME_NO_FRONTEND_NAME,
-    ENGINE_NAME, ENGINE_NO_FRONTEND_NAME,
+    ENGINE_NAME,
     BLOCK_SIZE, FRONTEND_TGT_BLOCKDEV, VFS_DIR,
     RETRY_COUNTS, RETRY_INTERVAL,
-    PAGE_SIZE, SIZE, EXPAND_SIZE, EXPAND_SIZE_STR,
+    PAGE_SIZE, SIZE, EXPANDED_SIZE, EXPANDED_SIZE_STR,
 )
 
 
@@ -237,24 +238,22 @@ def compare_last_restored_with_backup(restore_status, backup):
 
 
 def verify_no_frontend_data(grpc_em, data_offset, data, grpc_c):
-    grpc_em.frontend_start(ENGINE_NO_FRONTEND_NAME,
-                           FRONTEND_TGT_BLOCKDEV)
+    grpc_c.volume_frontend_start(FRONTEND_TGT_BLOCKDEV)
     v = grpc_c.volume_get()
     assert v.frontendState == "up"
 
     dev = get_blockdev(volume=VOLUME_NO_FRONTEND_NAME)
     verify_read(dev, data_offset, data)
 
-    grpc_em.frontend_shutdown(ENGINE_NO_FRONTEND_NAME)
+    grpc_c.volume_frontend_shutdown()
     v = grpc_c.volume_get()
     assert v.frontendState == "down"
-    ep = grpc_em.engine_get(ENGINE_NO_FRONTEND_NAME)
-    assert ep.spec.frontend == ""
+    # ep = grpc_cm.engine_get(ENGINE_NO_FRONTEND_NAME)
+    # assert ep.spec.frontend == ""
 
 
 def start_no_frontend_volume(grpc_em, grpc_c, grpc_r1, grpc_r2):
-    grpc_em.frontend_start(ENGINE_NO_FRONTEND_NAME,
-                           FRONTEND_TGT_BLOCKDEV)
+    grpc_c.volume_frontend_start(FRONTEND_TGT_BLOCKDEV)
 
     open_replica(grpc_r1)
     open_replica(grpc_r2)
@@ -267,26 +266,25 @@ def start_no_frontend_volume(grpc_em, grpc_c, grpc_r1, grpc_r2):
     v = grpc_c.volume_start(replicas=[r1_url, r2_url])
     assert v.replicaCount == 2
 
-    grpc_em.frontend_shutdown(ENGINE_NO_FRONTEND_NAME)
+    grpc_c.volume_frontend_shutdown()
     v = grpc_c.volume_get()
     assert v.frontendState == "down"
-    ep = grpc_em.engine_get(ENGINE_NO_FRONTEND_NAME)
-    assert ep.spec.frontend == ""
+    # ep = grpc_em.engine_get(ENGINE_NO_FRONTEND_NAME)
+    # assert ep.spec.frontend == ""
 
 
 def cleanup_no_frontend_volume(grpc_em, grpc_c, grpc_r1, grpc_r2):
-    grpc_em.frontend_start(ENGINE_NO_FRONTEND_NAME,
-                           FRONTEND_TGT_BLOCKDEV)
+    grpc_c.volume_frontend_start(FRONTEND_TGT_BLOCKDEV)
     v = grpc_c.volume_get()
     assert v.frontendState == "up"
 
     cmd.sync_agent_server_reset(grpc_c.address)
 
-    grpc_em.frontend_shutdown(ENGINE_NO_FRONTEND_NAME)
+    grpc_c.volume_frontend_shutdown()
     v = grpc_c.volume_get()
     assert v.frontendState == "down"
-    ep = grpc_em.engine_get(ENGINE_NO_FRONTEND_NAME)
-    assert ep.spec.frontend == ""
+    # ep = grpc_em.engine_get(ENGINE_NO_FRONTEND_NAME)
+    # assert ep.spec.frontend == ""
 
     cleanup_controller(grpc_c)
     cleanup_replica(grpc_r1)
@@ -329,30 +327,30 @@ def volume_expansion_with_backup_test(grpc_engine_manager,  # NOQA
                             data0.offset, data0.content,
                             grpc_dr_controller)
 
-    grpc_controller.volume_expand(EXPAND_SIZE)
-    wait_for_volume_expansion(grpc_controller, EXPAND_SIZE)
-    check_block_device_size(volume_name, EXPAND_SIZE)
+    grpc_controller.volume_expand(EXPANDED_SIZE)
+    wait_and_check_volume_expansion(
+        grpc_controller, EXPANDED_SIZE)
 
     data1_len = random_length(PAGE_SIZE)
-    data1 = Data(random.randrange(SIZE, EXPAND_SIZE-PAGE_SIZE, PAGE_SIZE),
+    data1 = Data(random.randrange(SIZE, EXPANDED_SIZE-PAGE_SIZE, PAGE_SIZE),
                  data1_len, random_string(data1_len))
     snap1 = Snapshot(dev, data1, address)
 
     backup1_info = create_backup(address, snap1.name,
-                                 backup_target, EXPAND_SIZE_STR)
+                                 backup_target, EXPANDED_SIZE_STR)
     assert backup1_info["VolumeName"] == volume_name
     assert backup1_info["Size"] == str(2*BLOCK_SIZE)
 
     backup_volumes = cmd.backup_volume_list(address, volume_name,
                                             backup_target)
     assert volume_name in backup_volumes
-    assert backup_volumes[volume_name]["Size"] == EXPAND_SIZE_STR
+    assert backup_volumes[volume_name]["Size"] == EXPANDED_SIZE_STR
 
     # incremental restoration will implicitly expand the volume first
     restore_incrementally(dr_address,
                           backup1_info["URL"], backup0_info["Name"])
     check_dr_volume_block_device_size(grpc_engine_manager,
-                                      grpc_dr_controller, EXPAND_SIZE)
+                                      grpc_dr_controller, EXPANDED_SIZE)
     verify_no_frontend_data(grpc_engine_manager,
                             data1.offset, data1.content,
                             grpc_dr_controller)
@@ -384,16 +382,15 @@ def test_expansion_with_inc_restore(grpc_engine_manager,  # NOQA
 
 
 def check_dr_volume_block_device_size(grpc_em, grpc_c, size):
-    grpc_em.frontend_start(ENGINE_NO_FRONTEND_NAME,
-                           FRONTEND_TGT_BLOCKDEV)
+    grpc_c.volume_frontend_start(FRONTEND_TGT_BLOCKDEV)
     v = grpc_c.volume_get()
     assert v.frontendState == "up"
 
     get_blockdev(volume=VOLUME_NO_FRONTEND_NAME)
     check_block_device_size(VOLUME_NO_FRONTEND_NAME, size)
 
-    grpc_em.frontend_shutdown(ENGINE_NO_FRONTEND_NAME)
+    grpc_c.volume_frontend_shutdown()
     v = grpc_c.volume_get()
     assert v.frontendState == "down"
-    ep = grpc_em.engine_get(ENGINE_NO_FRONTEND_NAME)
-    assert ep.spec.frontend == ""
+    # ep = grpc_em.engine_get(ENGINE_NO_FRONTEND_NAME)
+    # assert ep.spec.frontend == ""

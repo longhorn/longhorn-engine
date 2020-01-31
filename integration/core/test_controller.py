@@ -3,9 +3,12 @@ import os
 import grpc
 import pytest
 
-from core.common import (  # NOQA
+from common.core import (  # NOQA
     create_backend_file, cleanup_backend_file,
-    wait_for_volume_expansion,
+    wait_and_check_volume_expansion,
+)
+
+from common.constants import (
     EXPANDED_SIZE,
 )
 
@@ -145,7 +148,8 @@ def test_controller_expand(grpc_controller_client):  # NOQA
     assert v.replicaCount == 2
 
     grpc_controller_client.volume_expand(EXPANDED_SIZE)
-    wait_for_volume_expansion(grpc_controller_client, EXPANDED_SIZE)
+    wait_and_check_volume_expansion(
+        grpc_controller_client, EXPANDED_SIZE)
     f1_size = os.path.getsize(f1)
     f2_size = os.path.getsize(f2)
     assert f1_size == f2_size == EXPANDED_SIZE
