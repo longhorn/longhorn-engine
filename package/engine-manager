@@ -2,4 +2,6 @@
 
 mount --rbind /host/dev /dev
 
+tgtd -f 2>&1 | tee /var/log/tgtd.log &
+
 exec longhorn-instance-manager "$@"
