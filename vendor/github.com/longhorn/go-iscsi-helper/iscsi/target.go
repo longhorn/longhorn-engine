@@ -16,8 +16,6 @@ import (
 var (
 	TgtdRetryCounts   = 5
 	TgtdRetryInterval = 1 * time.Second
-
-	daemonIsRunning = false
 )
 
 const (
@@ -154,19 +152,20 @@ func UnbindInitiator(tid int, initiator string) error {
 
 // StartDaemon will start tgtd daemon, prepare for further commands
 func StartDaemon(debug bool) error {
-	if daemonIsRunning {
+	if CheckTargetForBackingStore("rdwr") {
+		fmt.Fprintf(os.Stderr, "go-iscsi-helper: tgtd is already running\n")
 		return nil
 	}
 
 	logFile := "/var/log/tgtd.log"
-	logf, err := os.Create(logFile)
+	logf, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
 	}
 	go startDaemon(logf, debug)
 
 	// Wait until daemon is up
-	daemonIsRunning = false
+	daemonIsRunning := false
 	for i := 0; i < TgtdRetryCounts; i++ {
 		if CheckTargetForBackingStore("rdwr") {
 			daemonIsRunning = true
@@ -261,7 +260,6 @@ func ShutdownTgtd() error {
 	if err != nil {
 		return err
 	}
-	daemonIsRunning = false
 	return nil
 }
 
