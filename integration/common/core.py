@@ -617,7 +617,7 @@ def wait_for_dev_deletion(volume_name):
 
 
 def upgrade_engine(client, binary, engine_name, volume_name, replicas):
-    args = ["controller", volume_name, "--frontend", "tgt",
+    args = ["controller", volume_name, "--frontend", FRONTEND_TGT_BLOCKDEV,
             "--upgrade"]
     for r in replicas:
         args += ["--replica", r]
