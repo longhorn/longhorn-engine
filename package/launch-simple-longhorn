@@ -25,7 +25,7 @@ fi
 if [ -z $frontend ]
 then
         echo Use default frontend TGT block device
-        frontend="tgt"
+        frontend="tgt-blockdev"
 fi
 
 function start() {

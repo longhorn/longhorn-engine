@@ -9,8 +9,6 @@ import (
 )
 
 const (
-	frontendName = "tgt"
-
 	DevPath = "/dev/longhorn/"
 
 	DefaultTargetID = 1
@@ -19,17 +17,18 @@ const (
 type Tgt struct {
 	s *socket.Socket
 
-	isUp bool
-	dev  longhorndev.DeviceService
+	isUp         bool
+	dev          longhorndev.DeviceService
+	frontendName string
 }
 
-func New() types.Frontend {
+func New(frontendName string) types.Frontend {
 	s := socket.New()
-	return &Tgt{s, false, nil}
+	return &Tgt{s, false, nil, frontendName}
 }
 
 func (t *Tgt) FrontendName() string {
-	return frontendName
+	return t.frontendName
 }
 
 func (t *Tgt) Startup(name string, size, sectorSize int64, rw types.ReaderWriterAt) error {
@@ -42,7 +41,7 @@ func (t *Tgt) Startup(name string, size, sectorSize int64, rw types.ReaderWriter
 	}
 
 	ldc := longhorndev.LonghornDeviceCreator{}
-	dev, err := ldc.NewDevice(name, size, longhorndev.FrontendTGTBlockDev)
+	dev, err := ldc.NewDevice(name, size, t.frontendName)
 	if err != nil {
 		return err
 	}
@@ -87,7 +86,7 @@ func (t *Tgt) Endpoint() string {
 
 func (t *Tgt) Upgrade(name string, size, sectorSize int64, rw types.ReaderWriterAt) error {
 	ldc := longhorndev.LonghornDeviceCreator{}
-	dev, err := ldc.NewDevice(name, size, "tgt-blockdev")
+	dev, err := ldc.NewDevice(name, size, t.frontendName)
 	if err != nil {
 		return err
 	}

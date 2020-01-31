@@ -50,8 +50,7 @@ PROC_STATE_STOPPING = "stopping"
 PROC_STATE_STOPPED = "stopped"
 PROC_STATE_ERROR = "error"
 
-# FRONTEND_TGT_BLOCKDEV = "tgt-blockdev"
-FRONTEND_TGT_BLOCKDEV = "tgt"
+FRONTEND_TGT_BLOCKDEV = "tgt-blockdev"
 
 FIXED_REPLICA_PATH1 = '/tmp/replica_fixed_dir_1/'
 FIXED_REPLICA_PATH2 = '/tmp/replica_fixed_dir_2/'
