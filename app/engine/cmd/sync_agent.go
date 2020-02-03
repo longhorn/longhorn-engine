@@ -14,7 +14,7 @@ import (
 
 	"github.com/longhorn/longhorn-engine/pkg/engine/sync"
 	syncagentrpc "github.com/longhorn/longhorn-engine/pkg/engine/sync/rpc"
-	replicapb "github.com/longhorn/longhorn-engine/pkg/engine/sync/rpc/pb"
+	"github.com/longhorn/longhorn-engine/proto/ptypes"
 )
 
 func SyncAgentCmd() cli.Command {
@@ -80,7 +80,7 @@ func startSyncAgent(c *cli.Context) error {
 	}
 
 	server := grpc.NewServer()
-	replicapb.RegisterSyncAgentServiceServer(server, syncagentrpc.NewSyncAgentServer(start, end, replicaAddress))
+	ptypes.RegisterSyncAgentServiceServer(server, syncagentrpc.NewSyncAgentServer(start, end, replicaAddress))
 	reflection.Register(server)
 
 	logrus.Infof("Listening on sync %s", listenPort)

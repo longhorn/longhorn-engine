@@ -18,8 +18,8 @@ import (
 
 	"github.com/longhorn/longhorn-engine/pkg/engine/replica"
 	replicarpc "github.com/longhorn/longhorn-engine/pkg/engine/replica/rpc"
-	replicapb "github.com/longhorn/longhorn-engine/pkg/engine/replica/rpc/pb"
 	"github.com/longhorn/longhorn-engine/pkg/engine/util"
+	"github.com/longhorn/longhorn-engine/proto/ptypes"
 )
 
 func ReplicaCmd() cli.Command {
@@ -107,7 +107,7 @@ func startReplica(c *cli.Context) error {
 
 		server := grpc.NewServer()
 		rs := replicarpc.NewReplicaServer(s)
-		replicapb.RegisterReplicaServiceServer(server, rs)
+		ptypes.RegisterReplicaServiceServer(server, rs)
 		healthpb.RegisterHealthServer(server, replicarpc.NewReplicaHealthCheckServer(rs))
 		reflection.Register(server)
 
