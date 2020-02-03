@@ -1,8 +1,9 @@
 syntax="proto3";
 
-package pb;
+package ptypes;
 
 import "google/protobuf/empty.proto";
+import "common.proto";
 
 service SyncAgentService {
     rpc FileRemove(FileRemoveRequest) returns (google.protobuf.Empty) {}
@@ -43,12 +44,6 @@ message FileSendRequest {
     string fromFileName = 1;
     string host = 2;
     int32 port =3;
-}
-
-message SyncFileInfo {
-    string from_file_name = 1;
-    string to_file_name = 2;
-    int64 actual_size = 3;
 }
 
 message FilesSyncRequest {

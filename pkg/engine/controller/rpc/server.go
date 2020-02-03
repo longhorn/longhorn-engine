@@ -14,8 +14,8 @@ import (
 	journal "github.com/longhorn/sparse-tools/stats"
 
 	"github.com/longhorn/longhorn-engine/pkg/engine/controller"
-	controllerpb "github.com/longhorn/longhorn-engine/pkg/engine/controller/rpc/pb"
 	"github.com/longhorn/longhorn-engine/pkg/engine/types"
+	"github.com/longhorn/longhorn-engine/proto/ptypes"
 )
 
 const (
@@ -46,7 +46,7 @@ func GetControllerGRPCServer(c *controller.Controller) *grpc.Server {
 	grpcServer := grpc.NewServer()
 
 	cs := NewControllerServer(c)
-	controllerpb.RegisterControllerServiceServer(grpcServer, cs)
+	ptypes.RegisterControllerServiceServer(grpcServer, cs)
 
 	healthpb.RegisterHealthServer(grpcServer, NewControllerHealthCheckServer(cs))
 	reflection.Register(grpcServer)
@@ -54,19 +54,19 @@ func GetControllerGRPCServer(c *controller.Controller) *grpc.Server {
 	return grpcServer
 }
 
-func (cs *ControllerServer) replicaToControllerReplica(r *types.Replica) *controllerpb.ControllerReplica {
-	cr := &controllerpb.ControllerReplica{
-		Address: &controllerpb.ReplicaAddress{
+func (cs *ControllerServer) replicaToControllerReplica(r *types.Replica) *ptypes.ControllerReplica {
+	cr := &ptypes.ControllerReplica{
+		Address: &ptypes.ReplicaAddress{
 			Address: r.Address,
 		}}
 
 	switch r.Mode {
 	case types.WO:
-		cr.Mode = controllerpb.ReplicaMode_WO
+		cr.Mode = ptypes.ReplicaMode_WO
 	case types.RW:
-		cr.Mode = controllerpb.ReplicaMode_RW
+		cr.Mode = ptypes.ReplicaMode_RW
 	case types.ERR:
-		cr.Mode = controllerpb.ReplicaMode_ERR
+		cr.Mode = ptypes.ReplicaMode_ERR
 	default:
 		return nil
 	}
@@ -74,24 +74,24 @@ func (cs *ControllerServer) replicaToControllerReplica(r *types.Replica) *contro
 	return cr
 }
 
-func (cs *ControllerServer) syncFileInfoListToControllerFormat(list []types.SyncFileInfo) []*controllerpb.SyncFileInfo {
-	res := []*controllerpb.SyncFileInfo{}
+func (cs *ControllerServer) syncFileInfoListToControllerFormat(list []types.SyncFileInfo) []*ptypes.SyncFileInfo {
+	res := []*ptypes.SyncFileInfo{}
 	for _, info := range list {
 		res = append(res, cs.syncFileInfoToControllerFormat(info))
 	}
 	return res
 }
 
-func (cs *ControllerServer) syncFileInfoToControllerFormat(info types.SyncFileInfo) *controllerpb.SyncFileInfo {
-	return &controllerpb.SyncFileInfo{
+func (cs *ControllerServer) syncFileInfoToControllerFormat(info types.SyncFileInfo) *ptypes.SyncFileInfo {
+	return &ptypes.SyncFileInfo{
 		FromFileName: info.FromFileName,
 		ToFileName:   info.ToFileName,
 		ActualSize:   info.ActualSize,
 	}
 }
 
-func (cs *ControllerServer) getVolume() *controllerpb.Volume {
-	return &controllerpb.Volume{
+func (cs *ControllerServer) getVolume() *ptypes.Volume {
+	return &ptypes.Volume{
 		Name:          cs.c.Name,
 		Size:          cs.c.Size(),
 		ReplicaCount:  int32(len(cs.c.ListReplicas())),
@@ -102,7 +102,7 @@ func (cs *ControllerServer) getVolume() *controllerpb.Volume {
 	}
 }
 
-func (cs *ControllerServer) getControllerReplica(address string) *controllerpb.ControllerReplica {
+func (cs *ControllerServer) getControllerReplica(address string) *ptypes.ControllerReplica {
 	for _, r := range cs.c.ListReplicas() {
 		if r.Address == address {
 			return cs.replicaToControllerReplica(&r)
@@ -112,8 +112,8 @@ func (cs *ControllerServer) getControllerReplica(address string) *controllerpb.C
 	return nil
 }
 
-func (cs *ControllerServer) listControllerReplica() []*controllerpb.ControllerReplica {
-	csList := []*controllerpb.ControllerReplica{}
+func (cs *ControllerServer) listControllerReplica() []*ptypes.ControllerReplica {
+	csList := []*ptypes.ControllerReplica{}
 	for _, r := range cs.c.ListReplicas() {
 		csList = append(csList, cs.replicaToControllerReplica(&r))
 	}
@@ -121,36 +121,36 @@ func (cs *ControllerServer) listControllerReplica() []*controllerpb.ControllerRe
 	return csList
 }
 
-func (cs *ControllerServer) VolumeGet(ctx context.Context, req *empty.Empty) (*controllerpb.Volume, error) {
+func (cs *ControllerServer) VolumeGet(ctx context.Context, req *empty.Empty) (*ptypes.Volume, error) {
 	return cs.getVolume(), nil
 }
 
-func (cs *ControllerServer) VolumeStart(ctx context.Context, req *controllerpb.VolumeStartRequest) (*controllerpb.Volume, error) {
+func (cs *ControllerServer) VolumeStart(ctx context.Context, req *ptypes.VolumeStartRequest) (*ptypes.Volume, error) {
 	if err := cs.c.Start(req.ReplicaAddresses...); err != nil {
 		return nil, err
 	}
 	return cs.getVolume(), nil
 }
 
-func (cs *ControllerServer) VolumeShutdown(ctx context.Context, req *empty.Empty) (*controllerpb.Volume, error) {
+func (cs *ControllerServer) VolumeShutdown(ctx context.Context, req *empty.Empty) (*ptypes.Volume, error) {
 	if err := cs.c.Shutdown(); err != nil {
 		return nil, err
 	}
 	return cs.getVolume(), nil
 }
 
-func (cs *ControllerServer) VolumeSnapshot(ctx context.Context, req *controllerpb.VolumeSnapshotRequest) (*controllerpb.VolumeSnapshotReply, error) {
+func (cs *ControllerServer) VolumeSnapshot(ctx context.Context, req *ptypes.VolumeSnapshotRequest) (*ptypes.VolumeSnapshotReply, error) {
 	name, err := cs.c.Snapshot(req.Name, req.Labels)
 	if err != nil {
 		return nil, err
 	}
 
-	return &controllerpb.VolumeSnapshotReply{
+	return &ptypes.VolumeSnapshotReply{
 		Name: name,
 	}, nil
 }
 
-func (cs *ControllerServer) VolumeRevert(ctx context.Context, req *controllerpb.VolumeRevertRequest) (*controllerpb.Volume, error) {
+func (cs *ControllerServer) VolumeRevert(ctx context.Context, req *ptypes.VolumeRevertRequest) (*ptypes.Volume, error) {
 	if err := cs.c.Revert(req.Name); err != nil {
 		return nil, err
 	}
@@ -158,14 +158,14 @@ func (cs *ControllerServer) VolumeRevert(ctx context.Context, req *controllerpb.
 	return cs.getVolume(), nil
 }
 
-func (cs *ControllerServer) VolumeExpand(ctx context.Context, req *controllerpb.VolumeExpandRequest) (*controllerpb.Volume, error) {
+func (cs *ControllerServer) VolumeExpand(ctx context.Context, req *ptypes.VolumeExpandRequest) (*ptypes.Volume, error) {
 	if err := cs.c.Expand(req.Size); err != nil {
 		return nil, err
 	}
 	return cs.getVolume(), nil
 }
 
-func (cs *ControllerServer) VolumeFrontendStart(ctx context.Context, req *controllerpb.VolumeFrontendStartRequest) (*controllerpb.Volume, error) {
+func (cs *ControllerServer) VolumeFrontendStart(ctx context.Context, req *ptypes.VolumeFrontendStartRequest) (*ptypes.Volume, error) {
 	if err := cs.c.StartFrontend(req.Frontend); err != nil {
 		return nil, err
 	}
@@ -173,7 +173,7 @@ func (cs *ControllerServer) VolumeFrontendStart(ctx context.Context, req *contro
 	return cs.getVolume(), nil
 }
 
-func (cs *ControllerServer) VolumeFrontendShutdown(ctx context.Context, req *empty.Empty) (*controllerpb.Volume, error) {
+func (cs *ControllerServer) VolumeFrontendShutdown(ctx context.Context, req *empty.Empty) (*ptypes.Volume, error) {
 	if err := cs.c.ShutdownFrontend(); err != nil {
 		return nil, err
 	}
@@ -181,17 +181,17 @@ func (cs *ControllerServer) VolumeFrontendShutdown(ctx context.Context, req *emp
 	return cs.getVolume(), nil
 }
 
-func (cs *ControllerServer) ReplicaList(ctx context.Context, req *empty.Empty) (*controllerpb.ReplicaListReply, error) {
-	return &controllerpb.ReplicaListReply{
+func (cs *ControllerServer) ReplicaList(ctx context.Context, req *empty.Empty) (*ptypes.ReplicaListReply, error) {
+	return &ptypes.ReplicaListReply{
 		Replicas: cs.listControllerReplica(),
 	}, nil
 }
 
-func (cs *ControllerServer) ReplicaGet(ctx context.Context, req *controllerpb.ReplicaAddress) (*controllerpb.ControllerReplica, error) {
+func (cs *ControllerServer) ReplicaGet(ctx context.Context, req *ptypes.ReplicaAddress) (*ptypes.ControllerReplica, error) {
 	return cs.getControllerReplica(req.Address), nil
 }
 
-func (cs *ControllerServer) ReplicaCreate(ctx context.Context, req *controllerpb.ReplicaAddress) (*controllerpb.ControllerReplica, error) {
+func (cs *ControllerServer) ReplicaCreate(ctx context.Context, req *ptypes.ReplicaAddress) (*ptypes.ControllerReplica, error) {
 	if err := cs.c.AddReplica(req.Address); err != nil {
 		return nil, err
 	}
@@ -199,7 +199,7 @@ func (cs *ControllerServer) ReplicaCreate(ctx context.Context, req *controllerpb
 	return cs.getControllerReplica(req.Address), nil
 }
 
-func (cs *ControllerServer) ReplicaDelete(ctx context.Context, req *controllerpb.ReplicaAddress) (*empty.Empty, error) {
+func (cs *ControllerServer) ReplicaDelete(ctx context.Context, req *ptypes.ReplicaAddress) (*empty.Empty, error) {
 	if err := cs.c.RemoveReplica(req.Address); err != nil {
 		return nil, err
 	}
@@ -207,7 +207,7 @@ func (cs *ControllerServer) ReplicaDelete(ctx context.Context, req *controllerpb
 	return &empty.Empty{}, nil
 }
 
-func (cs *ControllerServer) ReplicaUpdate(ctx context.Context, req *controllerpb.ControllerReplica) (*controllerpb.ControllerReplica, error) {
+func (cs *ControllerServer) ReplicaUpdate(ctx context.Context, req *ptypes.ControllerReplica) (*ptypes.ControllerReplica, error) {
 	if err := cs.c.SetReplicaMode(req.Address.Address, types.Mode(req.Mode.String())); err != nil {
 		return nil, err
 	}
@@ -215,19 +215,19 @@ func (cs *ControllerServer) ReplicaUpdate(ctx context.Context, req *controllerpb
 	return cs.getControllerReplica(req.Address.Address), nil
 }
 
-func (cs *ControllerServer) ReplicaPrepareRebuild(ctx context.Context, req *controllerpb.ReplicaAddress) (*controllerpb.ReplicaPrepareRebuildReply, error) {
+func (cs *ControllerServer) ReplicaPrepareRebuild(ctx context.Context, req *ptypes.ReplicaAddress) (*ptypes.ReplicaPrepareRebuildReply, error) {
 	list, err := cs.c.PrepareRebuildReplica(req.Address)
 	if err != nil {
 		return nil, err
 	}
 
-	return &controllerpb.ReplicaPrepareRebuildReply{
+	return &ptypes.ReplicaPrepareRebuildReply{
 		Replica:          cs.getControllerReplica(req.Address),
 		SyncFileInfoList: cs.syncFileInfoListToControllerFormat(list),
 	}, nil
 }
 
-func (cs *ControllerServer) ReplicaVerifyRebuild(ctx context.Context, req *controllerpb.ReplicaAddress) (*controllerpb.ControllerReplica, error) {
+func (cs *ControllerServer) ReplicaVerifyRebuild(ctx context.Context, req *ptypes.ReplicaAddress) (*ptypes.ControllerReplica, error) {
 	if err := cs.c.VerifyRebuildReplica(req.Address); err != nil {
 		return nil, err
 	}
@@ -235,16 +235,16 @@ func (cs *ControllerServer) ReplicaVerifyRebuild(ctx context.Context, req *contr
 	return cs.getControllerReplica(req.Address), nil
 }
 
-func (cs *ControllerServer) JournalList(ctx context.Context, req *controllerpb.JournalListRequest) (*empty.Empty, error) {
+func (cs *ControllerServer) JournalList(ctx context.Context, req *ptypes.JournalListRequest) (*empty.Empty, error) {
 	//ListJournal flushes operation journal (replica read/write, ping, etc.) accumulated since previous flush
 	journal.PrintLimited(int(req.Limit))
 	return &empty.Empty{}, nil
 }
 
-func (cs *ControllerServer) VersionDetailGet(ctx context.Context, req *empty.Empty) (*controllerpb.VersionDetailGetReply, error) {
+func (cs *ControllerServer) VersionDetailGet(ctx context.Context, req *empty.Empty) (*ptypes.VersionDetailGetReply, error) {
 	version := meta.GetVersion()
-	return &controllerpb.VersionDetailGetReply{
-		Version: &controllerpb.VersionOutput{
+	return &ptypes.VersionDetailGetReply{
+		Version: &ptypes.VersionOutput{
 			Version:                 version.Version,
 			GitCommit:               version.GitCommit,
 			BuildDate:               version.BuildDate,
@@ -258,11 +258,11 @@ func (cs *ControllerServer) VersionDetailGet(ctx context.Context, req *empty.Emp
 	}, nil
 }
 
-func (cs *ControllerServer) MetricGet(req *empty.Empty, srv controllerpb.ControllerService_MetricGetServer) error {
+func (cs *ControllerServer) MetricGet(req *empty.Empty, srv ptypes.ControllerService_MetricGetServer) error {
 	cnt := 0
 	for {
 		latestMetics := cs.c.GetLatestMetics()
-		metric := &controllerpb.Metric{}
+		metric := &ptypes.Metric{}
 		if latestMetics.IOPS.Read != 0 {
 			metric.ReadBandwidth = latestMetics.Bandwidth.Read
 			metric.ReadLatency = latestMetics.TotalLatency.Read / latestMetics.IOPS.Read
@@ -273,7 +273,7 @@ func (cs *ControllerServer) MetricGet(req *empty.Empty, srv controllerpb.Control
 		}
 		metric.IOPS = latestMetics.IOPS.Read + latestMetics.IOPS.Write
 
-		if err := srv.Send(&controllerpb.MetricGetReply{
+		if err := srv.Send(&ptypes.MetricGetReply{
 			Metric: metric,
 		}); err != nil {
 			logrus.Errorf("failed to send metric in gRPC streaming: %v", err)
@@ -327,7 +327,7 @@ func (hc *ControllerHealthCheckServer) Watch(req *healthpb.HealthCheckRequest, w
 }
 
 func (cs *ControllerServer) BackupReplicaMappingCreate(ctx context.Context,
-	req *controllerpb.BackupReplicaMapping) (*empty.Empty, error) {
+	req *ptypes.BackupReplicaMapping) (*empty.Empty, error) {
 	if err := cs.c.BackupReplicaMappingCreate(req.Backup, req.ReplicaAddress); err != nil {
 		return nil, err
 	}
@@ -335,14 +335,14 @@ func (cs *ControllerServer) BackupReplicaMappingCreate(ctx context.Context,
 	return &empty.Empty{}, nil
 }
 
-func (cs *ControllerServer) BackupReplicaMappingGet(ctx context.Context, req *empty.Empty) (*controllerpb.BackupReplicaMap, error) {
-	return &controllerpb.BackupReplicaMap{
+func (cs *ControllerServer) BackupReplicaMappingGet(ctx context.Context, req *empty.Empty) (*ptypes.BackupReplicaMap, error) {
+	return &ptypes.BackupReplicaMap{
 		BackupReplicaMap: cs.c.BackupReplicaMappingGet(),
 	}, nil
 }
 
 func (cs *ControllerServer) BackupReplicaMappingDelete(ctx context.Context,
-	req *controllerpb.BackupReplicaMappingDeleteRequest) (*empty.Empty, error) {
+	req *ptypes.BackupReplicaMappingDeleteRequest) (*empty.Empty, error) {
 	if err := cs.c.BackupReplicaMappingDelete(req.Backup); err != nil {
 		return nil, err
 	}

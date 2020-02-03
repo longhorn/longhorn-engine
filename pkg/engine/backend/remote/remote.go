@@ -14,9 +14,9 @@ import (
 	"github.com/longhorn/longhorn-engine/pkg/engine/dataconn"
 	"github.com/longhorn/longhorn-engine/pkg/engine/replica/client"
 	replicaClient "github.com/longhorn/longhorn-engine/pkg/engine/replica/client"
-	replicapb "github.com/longhorn/longhorn-engine/pkg/engine/replica/rpc/pb"
 	"github.com/longhorn/longhorn-engine/pkg/engine/types"
 	"github.com/longhorn/longhorn-engine/pkg/engine/util"
+	"github.com/longhorn/longhorn-engine/proto/ptypes"
 )
 
 var (
@@ -51,7 +51,7 @@ func (r *Remote) Close() error {
 		return fmt.Errorf("cannot connect to ReplicaService %v: %v", r.replicaServiceURL, err)
 	}
 	defer conn.Close()
-	replicaServiceClient := replicapb.NewReplicaServiceClient(conn)
+	replicaServiceClient := ptypes.NewReplicaServiceClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), client.GRPCServiceCommonTimeout)
 	defer cancel()
@@ -70,7 +70,7 @@ func (r *Remote) open() error {
 		return fmt.Errorf("cannot connect to ReplicaService %v: %v", r.replicaServiceURL, err)
 	}
 	defer conn.Close()
-	replicaServiceClient := replicapb.NewReplicaServiceClient(conn)
+	replicaServiceClient := ptypes.NewReplicaServiceClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), client.GRPCServiceCommonTimeout)
 	defer cancel()
@@ -90,12 +90,12 @@ func (r *Remote) Snapshot(name string, userCreated bool, created string, labels 
 		return fmt.Errorf("cannot connect to ReplicaService %v: %v", r.replicaServiceURL, err)
 	}
 	defer conn.Close()
-	replicaServiceClient := replicapb.NewReplicaServiceClient(conn)
+	replicaServiceClient := ptypes.NewReplicaServiceClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), client.GRPCServiceCommonTimeout)
 	defer cancel()
 
-	if _, err := replicaServiceClient.ReplicaSnapshot(ctx, &replicapb.ReplicaSnapshotRequest{
+	if _, err := replicaServiceClient.ReplicaSnapshot(ctx, &ptypes.ReplicaSnapshotRequest{
 		Name:        name,
 		UserCreated: userCreated,
 		Created:     created,
@@ -114,12 +114,12 @@ func (r *Remote) Expand(size int64) error {
 		return fmt.Errorf("cannot connect to ReplicaService %v: %v", r.replicaServiceURL, err)
 	}
 	defer conn.Close()
-	replicaServiceClient := replicapb.NewReplicaServiceClient(conn)
+	replicaServiceClient := ptypes.NewReplicaServiceClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), client.GRPCServiceCommonTimeout)
 	defer cancel()
 
-	if _, err := replicaServiceClient.ReplicaExpand(ctx, &replicapb.ReplicaExpandRequest{
+	if _, err := replicaServiceClient.ReplicaExpand(ctx, &ptypes.ReplicaExpandRequest{
 		Size: size,
 	}); err != nil {
 		return fmt.Errorf("failed to expand replica %v from remote: %v", r.replicaServiceURL, err)
@@ -136,12 +136,12 @@ func (r *Remote) SetRevisionCounter(counter int64) error {
 		return fmt.Errorf("cannot connect to ReplicaService %v: %v", r.replicaServiceURL, err)
 	}
 	defer conn.Close()
-	replicaServiceClient := replicapb.NewReplicaServiceClient(conn)
+	replicaServiceClient := ptypes.NewReplicaServiceClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), client.GRPCServiceCommonTimeout)
 	defer cancel()
 
-	if _, err := replicaServiceClient.RevisionCounterSet(ctx, &replicapb.RevisionCounterSetRequest{
+	if _, err := replicaServiceClient.RevisionCounterSet(ctx, &ptypes.RevisionCounterSetRequest{
 		Counter: counter,
 	}); err != nil {
 		return fmt.Errorf("failed to set revision counter to %d for replica %v from remote: %v", counter, r.replicaServiceURL, err)
@@ -195,7 +195,7 @@ func (r *Remote) info() (*types.ReplicaInfo, error) {
 		return nil, fmt.Errorf("cannot connect to ReplicaService %v: %v", r.replicaServiceURL, err)
 	}
 	defer conn.Close()
-	replicaServiceClient := replicapb.NewReplicaServiceClient(conn)
+	replicaServiceClient := ptypes.NewReplicaServiceClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), client.GRPCServiceCommonTimeout)
 	defer cancel()

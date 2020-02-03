@@ -3,24 +3,29 @@
 set -e
 
 # check and download dependency for gRPC code generate
-if [ ! -e ./vendor_proto/protobuf/src/google/protobuf ]; then
-    rm -rf ./vendor_proto/protobuf/src/google/protobuf
-    DIR="./vendor_proto/protobuf/src/google/protobuf"
+if [ ! -e ./proto/vendor/protobuf/src/google/protobuf ]; then
+    rm -rf ./proto/vendor/protobuf/src/google/protobuf
+    DIR="./proto/vendor/protobuf/src/google/protobuf"
     mkdir -p $DIR
     wget https://raw.githubusercontent.com/protocolbuffers/protobuf/v3.9.0/src/google/protobuf/empty.proto -P $DIR
 fi
 
+#common
+protoc -I proto/ptypes/ -I proto/vendor/protobuf/src/ proto/ptypes/common.proto --go_out=plugins=grpc:proto/ptypes/
+python3 -m grpc_tools.protoc -I proto/ptypes/ -I proto/vendor/protobuf/src/ --python_out=integration/rpc/controller --grpc_python_out=integration/rpc/controller proto/ptypes/common.proto
+python3 -m grpc_tools.protoc -I proto/ptypes/ -I proto/vendor/protobuf/src/ --python_out=integration/rpc/replica --grpc_python_out=integration/rpc/replica proto/ptypes/common.proto
+
 # controller
-protoc -I pkg/engine/controller/rpc/pb -I vendor_proto/protobuf/src/ pkg/engine/controller/rpc/pb/controller.proto --go_out=plugins=grpc:pkg/engine/controller/rpc/pb
-python3 -m grpc_tools.protoc -I pkg/engine/controller/rpc/pb -I vendor_proto/protobuf/src/ --python_out=integration/rpc/controller --grpc_python_out=integration/rpc/controller pkg/engine/controller/rpc/pb/controller.proto
+protoc -I proto/ptypes/ -I proto/vendor/protobuf/src/ proto/ptypes/controller.proto --go_out=plugins=grpc:proto/ptypes/
+python3 -m grpc_tools.protoc -I proto/ptypes/ -I proto/vendor/protobuf/src/ --python_out=integration/rpc/controller --grpc_python_out=integration/rpc/controller proto/ptypes/controller.proto
 
 # replica
-protoc -I pkg/engine/replica/rpc/pb -I vendor_proto/protobuf/src/ pkg/engine/replica/rpc/pb/replica.proto --go_out=plugins=grpc:pkg/engine/replica/rpc/pb
-python3 -m grpc_tools.protoc -I pkg/engine/replica/rpc/pb -I vendor_proto/protobuf/src/ --python_out=integration/rpc/replica --grpc_python_out=integration/rpc/replica pkg/engine/replica/rpc/pb/replica.proto
+protoc -I proto/ptypes/ -I proto/vendor/protobuf/src/ proto/ptypes/replica.proto --go_out=plugins=grpc:proto/ptypes/
+python3 -m grpc_tools.protoc -I proto/ptypes/ -I proto/vendor/protobuf/src/ --python_out=integration/rpc/replica --grpc_python_out=integration/rpc/replica proto/ptypes/replica.proto
 
 # sync agent
-protoc -I pkg/engine/sync/rpc/pb -I vendor_proto/protobuf/src/ pkg/engine/sync/rpc/pb/syncagent.proto --go_out=plugins=grpc:pkg/engine/sync/rpc/pb
+protoc -I proto/ptypes/ -I proto/vendor/protobuf/src/ proto/ptypes/syncagent.proto --go_out=plugins=grpc:proto/ptypes/
 
 # instance manager
-python3 -m grpc_tools.protoc -I pkg/instance-manager/rpc -I vendor_proto/protobuf/src/ --python_out=integration/rpc/instance_manager --grpc_python_out=integration/rpc/instance_manager pkg/instance-manager/rpc/rpc.proto
-protoc -I pkg/instance-manager/rpc/ -I vendor_proto/protobuf/src/ pkg/instance-manager/rpc/rpc.proto --go_out=plugins=grpc:pkg/instance-manager/rpc
+python3 -m grpc_tools.protoc -I pkg/instance-manager/rpc -I proto/vendor/protobuf/src/ --python_out=integration/rpc/instance_manager --grpc_python_out=integration/rpc/instance_manager pkg/instance-manager/rpc/rpc.proto
+protoc -I pkg/instance-manager/rpc/ -I proto/vendor/protobuf/src/ pkg/instance-manager/rpc/rpc.proto --go_out=plugins=grpc:pkg/instance-manager/rpc
