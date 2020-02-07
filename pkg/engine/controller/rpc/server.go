@@ -245,15 +245,17 @@ func (cs *ControllerServer) VersionDetailGet(ctx context.Context, req *empty.Emp
 	version := meta.GetVersion()
 	return &ptypes.VersionDetailGetReply{
 		Version: &ptypes.VersionOutput{
-			Version:                 version.Version,
-			GitCommit:               version.GitCommit,
-			BuildDate:               version.BuildDate,
-			CliAPIVersion:           int64(version.CLIAPIVersion),
-			CliAPIMinVersion:        int64(version.CLIAPIMinVersion),
-			ControllerAPIVersion:    int64(version.ControllerAPIVersion),
-			ControllerAPIMinVersion: int64(version.ControllerAPIMinVersion),
-			DataFormatVersion:       int64(version.DataFormatVersion),
-			DataFormatMinVersion:    int64(version.DataFormatMinVersion),
+			Version:                      version.Version,
+			GitCommit:                    version.GitCommit,
+			BuildDate:                    version.BuildDate,
+			CliAPIVersion:                int64(version.CLIAPIVersion),
+			CliAPIMinVersion:             int64(version.CLIAPIMinVersion),
+			ControllerAPIVersion:         int64(version.ControllerAPIVersion),
+			ControllerAPIMinVersion:      int64(version.ControllerAPIMinVersion),
+			DataFormatVersion:            int64(version.DataFormatVersion),
+			DataFormatMinVersion:         int64(version.DataFormatMinVersion),
+			InstanceManagerAPIVersion:    int64(version.InstanceManagerAPIVersion),
+			InstanceManagerAPIMinVersion: int64(version.InstanceManagerAPIMinVersion),
 		},
 	}, nil
 }

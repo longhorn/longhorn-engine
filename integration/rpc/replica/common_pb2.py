@@ -20,7 +20,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='ptypes',
   syntax='proto3',
   serialized_options=None,
-  serialized_pb=_b('\n\x0c\x63ommon.proto\x12\x06ptypes\"Q\n\x0cSyncFileInfo\x12\x16\n\x0e\x66rom_file_name\x18\x01 \x01(\t\x12\x14\n\x0cto_file_name\x18\x02 \x01(\t\x12\x13\n\x0b\x61\x63tual_size\x18\x03 \x01(\x03\x62\x06proto3')
+  serialized_pb=_b('\n\x0c\x63ommon.proto\x12\x06ptypes\"Q\n\x0cSyncFileInfo\x12\x16\n\x0e\x66rom_file_name\x18\x01 \x01(\t\x12\x14\n\x0cto_file_name\x18\x02 \x01(\t\x12\x13\n\x0b\x61\x63tual_size\x18\x03 \x01(\x03\"\xb8\x02\n\rVersionOutput\x12\x0f\n\x07version\x18\x01 \x01(\t\x12\x11\n\tgitCommit\x18\x02 \x01(\t\x12\x11\n\tbuildDate\x18\x03 \x01(\t\x12\x15\n\rcliAPIVersion\x18\x04 \x01(\x03\x12\x18\n\x10\x63liAPIMinVersion\x18\x05 \x01(\x03\x12\x1c\n\x14\x63ontrollerAPIVersion\x18\x06 \x01(\x03\x12\x1f\n\x17\x63ontrollerAPIMinVersion\x18\x07 \x01(\x03\x12\x19\n\x11\x64\x61taFormatVersion\x18\x08 \x01(\x03\x12\x1c\n\x14\x64\x61taFormatMinVersion\x18\t \x01(\x03\x12!\n\x19instanceManagerAPIVersion\x18\n \x01(\x03\x12$\n\x1cinstanceManagerAPIMinVersion\x18\x0b \x01(\x03\x62\x06proto3')
 )
 
 
@@ -70,7 +70,109 @@ _SYNCFILEINFO = _descriptor.Descriptor(
   serialized_end=105,
 )
 
+
+_VERSIONOUTPUT = _descriptor.Descriptor(
+  name='VersionOutput',
+  full_name='ptypes.VersionOutput',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='version', full_name='ptypes.VersionOutput.version', index=0,
+      number=1, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='gitCommit', full_name='ptypes.VersionOutput.gitCommit', index=1,
+      number=2, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='buildDate', full_name='ptypes.VersionOutput.buildDate', index=2,
+      number=3, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='cliAPIVersion', full_name='ptypes.VersionOutput.cliAPIVersion', index=3,
+      number=4, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='cliAPIMinVersion', full_name='ptypes.VersionOutput.cliAPIMinVersion', index=4,
+      number=5, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='controllerAPIVersion', full_name='ptypes.VersionOutput.controllerAPIVersion', index=5,
+      number=6, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='controllerAPIMinVersion', full_name='ptypes.VersionOutput.controllerAPIMinVersion', index=6,
+      number=7, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='dataFormatVersion', full_name='ptypes.VersionOutput.dataFormatVersion', index=7,
+      number=8, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='dataFormatMinVersion', full_name='ptypes.VersionOutput.dataFormatMinVersion', index=8,
+      number=9, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='instanceManagerAPIVersion', full_name='ptypes.VersionOutput.instanceManagerAPIVersion', index=9,
+      number=10, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='instanceManagerAPIMinVersion', full_name='ptypes.VersionOutput.instanceManagerAPIMinVersion', index=10,
+      number=11, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=108,
+  serialized_end=420,
+)
+
 DESCRIPTOR.message_types_by_name['SyncFileInfo'] = _SYNCFILEINFO
+DESCRIPTOR.message_types_by_name['VersionOutput'] = _VERSIONOUTPUT
 _sym_db.RegisterFileDescriptor(DESCRIPTOR)
 
 SyncFileInfo = _reflection.GeneratedProtocolMessageType('SyncFileInfo', (_message.Message,), {
@@ -79,6 +181,13 @@ SyncFileInfo = _reflection.GeneratedProtocolMessageType('SyncFileInfo', (_messag
   # @@protoc_insertion_point(class_scope:ptypes.SyncFileInfo)
   })
 _sym_db.RegisterMessage(SyncFileInfo)
+
+VersionOutput = _reflection.GeneratedProtocolMessageType('VersionOutput', (_message.Message,), {
+  'DESCRIPTOR' : _VERSIONOUTPUT,
+  '__module__' : 'common_pb2'
+  # @@protoc_insertion_point(class_scope:ptypes.VersionOutput)
+  })
+_sym_db.RegisterMessage(VersionOutput)
 
 
 # @@protoc_insertion_point(module_scope)

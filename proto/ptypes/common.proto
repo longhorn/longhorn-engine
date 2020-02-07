@@ -7,3 +7,18 @@ message SyncFileInfo {
     string to_file_name = 2;
     int64 actual_size = 3;
 }
+
+message VersionOutput {
+    string version = 1;
+    string gitCommit = 2;
+    string buildDate = 3;
+
+    int64 cliAPIVersion = 4;
+    int64 cliAPIMinVersion = 5;
+    int64 controllerAPIVersion = 6;
+    int64 controllerAPIMinVersion = 7;
+    int64 dataFormatVersion = 8;
+    int64 dataFormatMinVersion = 9;
+    int64 instanceManagerAPIVersion = 10;
+    int64 instanceManagerAPIMinVersion = 11;
+}

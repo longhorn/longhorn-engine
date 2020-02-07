@@ -12,6 +12,10 @@ const (
 	// DataFormatVersion used by the Replica to store data
 	DataFormatVersion    = 1
 	DataFormatMinVersion = 1
+
+	// InstanceManagerAPIVersion used to communicate with user e.g. longhorn-manager
+	InstanceManagerAPIVersion    = 1
+	InstanceManagerAPIMinVersion = 1
 )
 
 // Following variables are filled in by main.go
@@ -26,12 +30,14 @@ type VersionOutput struct {
 	GitCommit string `json:"gitCommit"`
 	BuildDate string `json:"buildDate"`
 
-	CLIAPIVersion           int `json:"cliAPIVersion"`
-	CLIAPIMinVersion        int `json:"cliAPIMinVersion"`
-	ControllerAPIVersion    int `json:"controllerAPIVersion"`
-	ControllerAPIMinVersion int `json:"controllerAPIMinVersion"`
-	DataFormatVersion       int `json:"dataFormatVersion"`
-	DataFormatMinVersion    int `json:"dataFormatMinVersion"`
+	CLIAPIVersion                int `json:"cliAPIVersion"`
+	CLIAPIMinVersion             int `json:"cliAPIMinVersion"`
+	ControllerAPIVersion         int `json:"controllerAPIVersion"`
+	ControllerAPIMinVersion      int `json:"controllerAPIMinVersion"`
+	DataFormatVersion            int `json:"dataFormatVersion"`
+	DataFormatMinVersion         int `json:"dataFormatMinVersion"`
+	InstanceManagerAPIVersion    int `json:"instanceManagerAPIVersion"`
+	InstanceManagerAPIMinVersion int `json:"instanceManagerAPIMinVersion"`
 }
 
 func GetVersion() VersionOutput {
@@ -40,11 +46,13 @@ func GetVersion() VersionOutput {
 		GitCommit: GitCommit,
 		BuildDate: BuildDate,
 
-		CLIAPIVersion:           CLIAPIVersion,
-		CLIAPIMinVersion:        CLIAPIMinVersion,
-		ControllerAPIVersion:    ControllerAPIVersion,
-		ControllerAPIMinVersion: ControllerAPIMinVersion,
-		DataFormatVersion:       DataFormatVersion,
-		DataFormatMinVersion:    DataFormatMinVersion,
+		CLIAPIVersion:                CLIAPIVersion,
+		CLIAPIMinVersion:             CLIAPIMinVersion,
+		ControllerAPIVersion:         ControllerAPIVersion,
+		ControllerAPIMinVersion:      ControllerAPIMinVersion,
+		DataFormatVersion:            DataFormatVersion,
+		DataFormatMinVersion:         DataFormatMinVersion,
+		InstanceManagerAPIVersion:    InstanceManagerAPIVersion,
+		InstanceManagerAPIMinVersion: InstanceManagerAPIMinVersion,
 	}
 }

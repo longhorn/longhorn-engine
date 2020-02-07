@@ -407,15 +407,17 @@ func (c *ControllerClient) VersionDetailGet() (*meta.VersionOutput, error) {
 	}
 
 	return &meta.VersionOutput{
-		Version:                 reply.Version.Version,
-		GitCommit:               reply.Version.GitCommit,
-		BuildDate:               reply.Version.BuildDate,
-		CLIAPIVersion:           int(reply.Version.CliAPIVersion),
-		CLIAPIMinVersion:        int(reply.Version.CliAPIMinVersion),
-		ControllerAPIVersion:    int(reply.Version.ControllerAPIVersion),
-		ControllerAPIMinVersion: int(reply.Version.ControllerAPIMinVersion),
-		DataFormatVersion:       int(reply.Version.DataFormatVersion),
-		DataFormatMinVersion:    int(reply.Version.DataFormatMinVersion),
+		Version:                      reply.Version.Version,
+		GitCommit:                    reply.Version.GitCommit,
+		BuildDate:                    reply.Version.BuildDate,
+		CLIAPIVersion:                int(reply.Version.CliAPIVersion),
+		CLIAPIMinVersion:             int(reply.Version.CliAPIMinVersion),
+		ControllerAPIVersion:         int(reply.Version.ControllerAPIVersion),
+		ControllerAPIMinVersion:      int(reply.Version.ControllerAPIMinVersion),
+		DataFormatVersion:            int(reply.Version.DataFormatVersion),
+		DataFormatMinVersion:         int(reply.Version.DataFormatMinVersion),
+		InstanceManagerAPIVersion:    int(reply.Version.InstanceManagerAPIVersion),
+		InstanceManagerAPIMinVersion: int(reply.Version.InstanceManagerAPIMinVersion),
 	}, nil
 
 }
