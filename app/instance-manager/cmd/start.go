@@ -16,9 +16,9 @@ import (
 
 	"github.com/longhorn/longhorn-engine/pkg/instance-manager/health"
 	"github.com/longhorn/longhorn-engine/pkg/instance-manager/process"
-	"github.com/longhorn/longhorn-engine/pkg/instance-manager/rpc"
 	"github.com/longhorn/longhorn-engine/pkg/instance-manager/types"
 	"github.com/longhorn/longhorn-engine/pkg/instance-manager/util"
+	"github.com/longhorn/longhorn-engine/proto/ptypes"
 )
 
 func StartCmd() cli.Command {
@@ -48,19 +48,19 @@ func StartCmd() cli.Command {
 
 func cleanup(pm *process.Manager) {
 	logrus.Infof("Try to gracefully shut down Instance Manager")
-	pmResp, err := pm.ProcessList(nil, &rpc.ProcessListRequest{})
+	pmResp, err := pm.ProcessList(nil, &ptypes.ProcessListRequest{})
 	if err != nil {
 		logrus.Errorf("Failed to list processes before shutdown")
 		return
 	}
 	for _, p := range pmResp.Processes {
-		pm.ProcessDelete(nil, &rpc.ProcessDeleteRequest{
+		pm.ProcessDelete(nil, &ptypes.ProcessDeleteRequest{
 			Name: p.Spec.Name,
 		})
 	}
 
 	for i := 0; i < types.WaitCount; i++ {
-		pmResp, err := pm.ProcessList(nil, &rpc.ProcessListRequest{})
+		pmResp, err := pm.ProcessList(nil, &ptypes.ProcessListRequest{})
 		if err != nil {
 			logrus.Errorf("Failed to list instance processes when shutting down")
 			break
@@ -97,7 +97,7 @@ func start(c *cli.Context) error {
 	}
 
 	rpcService := grpc.NewServer()
-	rpc.RegisterProcessManagerServiceServer(rpcService, pm)
+	ptypes.RegisterProcessManagerServiceServer(rpcService, pm)
 	healthpb.RegisterHealthServer(rpcService, hc)
 	reflection.Register(rpcService)
 

@@ -11,8 +11,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 
-	"github.com/longhorn/longhorn-engine/pkg/instance-manager/rpc"
 	"github.com/longhorn/longhorn-engine/pkg/instance-manager/types"
+	"github.com/longhorn/longhorn-engine/proto/ptypes"
 
 	. "gopkg.in/check.v1"
 )
@@ -40,7 +40,7 @@ type ProcessWatcher struct {
 	grpc.ServerStream
 }
 
-func (pw *ProcessWatcher) Send(resp *rpc.ProcessResponse) error {
+func (pw *ProcessWatcher) Send(resp *ptypes.ProcessResponse) error {
 	//Do nothing for now, just act as the receiving end
 	return nil
 }
@@ -74,8 +74,8 @@ func (s *TestSuite) TestCRUD(c *C) {
 			binary := "any"
 			go s.pm.ProcessWatch(nil, pw)
 
-			createReq := &rpc.ProcessCreateRequest{
-				Spec: &rpc.ProcessSpec{
+			createReq := &ptypes.ProcessCreateRequest{
+				Spec: &ptypes.ProcessSpec{
 					Name:      name,
 					Binary:    binary,
 					Args:      []string{},
@@ -89,7 +89,7 @@ func (s *TestSuite) TestCRUD(c *C) {
 			c.Assert(createResp.Status.State, Not(Equals), types.ProcessStateStopped)
 			c.Assert(createResp.Status.State, Not(Equals), types.ProcessStateError)
 
-			getResp, err := s.pm.ProcessGet(nil, &rpc.ProcessGetRequest{
+			getResp, err := s.pm.ProcessGet(nil, &ptypes.ProcessGetRequest{
 				Name: name,
 			})
 			c.Assert(err, IsNil)
@@ -98,7 +98,7 @@ func (s *TestSuite) TestCRUD(c *C) {
 			c.Assert(getResp.Status.State, Not(Equals), types.ProcessStateStopped)
 			c.Assert(getResp.Status.State, Not(Equals), types.ProcessStateError)
 
-			listResp, err := s.pm.ProcessList(nil, &rpc.ProcessListRequest{})
+			listResp, err := s.pm.ProcessList(nil, &ptypes.ProcessListRequest{})
 			c.Assert(err, IsNil)
 			c.Assert(listResp.Processes[name], NotNil)
 			c.Assert(listResp.Processes[name].Spec.Name, Equals, name)
@@ -108,7 +108,7 @@ func (s *TestSuite) TestCRUD(c *C) {
 
 			running := false
 			for j := 0; j < RetryCount; j++ {
-				getResp, err := s.pm.ProcessGet(nil, &rpc.ProcessGetRequest{
+				getResp, err := s.pm.ProcessGet(nil, &ptypes.ProcessGetRequest{
 					Name: name,
 				})
 				c.Assert(err, IsNil)
@@ -120,7 +120,7 @@ func (s *TestSuite) TestCRUD(c *C) {
 			}
 			c.Assert(running, Equals, true)
 
-			deleteReq := &rpc.ProcessDeleteRequest{
+			deleteReq := &ptypes.ProcessDeleteRequest{
 				Name: name,
 			}
 			deleteResp, err := s.pm.ProcessDelete(nil, deleteReq)

@@ -6,7 +6,7 @@ import (
 	"github.com/pkg/errors"
 	"google.golang.org/grpc"
 
-	"github.com/longhorn/longhorn-engine/pkg/instance-manager/rpc"
+	"github.com/longhorn/longhorn-engine/proto/ptypes"
 )
 
 type Process struct {
@@ -21,7 +21,7 @@ type Process struct {
 	Deleted bool `json:"deleted"`
 }
 
-func RPCToProcess(obj *rpc.ProcessResponse) *Process {
+func RPCToProcess(obj *ptypes.ProcessResponse) *Process {
 	return &Process{
 		Name:          obj.Spec.Name,
 		Binary:        obj.Spec.Binary,
@@ -32,7 +32,7 @@ func RPCToProcess(obj *rpc.ProcessResponse) *Process {
 	}
 }
 
-func RPCToProcessList(obj *rpc.ProcessListResponse) map[string]*Process {
+func RPCToProcessList(obj *ptypes.ProcessListResponse) map[string]*Process {
 	ret := map[string]*Process{}
 	for name, p := range obj.Processes {
 		ret[name] = RPCToProcess(p)
@@ -47,7 +47,7 @@ type ProcessStatus struct {
 	PortEnd   int32  `json:"portEnd"`
 }
 
-func RPCToProcessStatus(obj *rpc.ProcessStatus) ProcessStatus {
+func RPCToProcessStatus(obj *ptypes.ProcessStatus) ProcessStatus {
 	return ProcessStatus{
 		State:     obj.State,
 		ErrorMsg:  obj.ErrorMsg,
@@ -59,10 +59,10 @@ func RPCToProcessStatus(obj *rpc.ProcessStatus) ProcessStatus {
 type ProcessStream struct {
 	conn      *grpc.ClientConn
 	ctxCancel context.CancelFunc
-	stream    rpc.ProcessManagerService_ProcessWatchClient
+	stream    ptypes.ProcessManagerService_ProcessWatchClient
 }
 
-func NewProcessStream(conn *grpc.ClientConn, ctxCancel context.CancelFunc, stream rpc.ProcessManagerService_ProcessWatchClient) *ProcessStream {
+func NewProcessStream(conn *grpc.ClientConn, ctxCancel context.CancelFunc, stream ptypes.ProcessManagerService_ProcessWatchClient) *ProcessStream {
 	return &ProcessStream{
 		conn,
 		ctxCancel,
@@ -86,7 +86,7 @@ func (s *ProcessStream) Recv() (*Process, error) {
 	return RPCToProcess(resp), nil
 }
 
-func NewLogStream(conn *grpc.ClientConn, ctxCancel context.CancelFunc, stream rpc.ProcessManagerService_ProcessLogClient) *LogStream {
+func NewLogStream(conn *grpc.ClientConn, ctxCancel context.CancelFunc, stream ptypes.ProcessManagerService_ProcessLogClient) *LogStream {
 	return &LogStream{
 		conn,
 		ctxCancel,
@@ -97,7 +97,7 @@ func NewLogStream(conn *grpc.ClientConn, ctxCancel context.CancelFunc, stream rp
 type LogStream struct {
 	conn      *grpc.ClientConn
 	ctxCancel context.CancelFunc
-	stream    rpc.ProcessManagerService_ProcessLogClient
+	stream    ptypes.ProcessManagerService_ProcessLogClient
 }
 
 func (s *LogStream) Close() error {

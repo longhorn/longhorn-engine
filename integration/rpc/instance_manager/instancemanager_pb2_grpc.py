@@ -2,7 +2,7 @@
 import grpc
 
 from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
-import rpc_pb2 as rpc__pb2
+import instancemanager_pb2 as instancemanager__pb2
 
 
 class ProcessManagerServiceStub(object):
@@ -16,39 +16,39 @@ class ProcessManagerServiceStub(object):
       channel: A grpc.Channel.
     """
     self.ProcessCreate = channel.unary_unary(
-        '/ProcessManagerService/ProcessCreate',
-        request_serializer=rpc__pb2.ProcessCreateRequest.SerializeToString,
-        response_deserializer=rpc__pb2.ProcessResponse.FromString,
+        '/ptypes.ProcessManagerService/ProcessCreate',
+        request_serializer=instancemanager__pb2.ProcessCreateRequest.SerializeToString,
+        response_deserializer=instancemanager__pb2.ProcessResponse.FromString,
         )
     self.ProcessDelete = channel.unary_unary(
-        '/ProcessManagerService/ProcessDelete',
-        request_serializer=rpc__pb2.ProcessDeleteRequest.SerializeToString,
-        response_deserializer=rpc__pb2.ProcessResponse.FromString,
+        '/ptypes.ProcessManagerService/ProcessDelete',
+        request_serializer=instancemanager__pb2.ProcessDeleteRequest.SerializeToString,
+        response_deserializer=instancemanager__pb2.ProcessResponse.FromString,
         )
     self.ProcessGet = channel.unary_unary(
-        '/ProcessManagerService/ProcessGet',
-        request_serializer=rpc__pb2.ProcessGetRequest.SerializeToString,
-        response_deserializer=rpc__pb2.ProcessResponse.FromString,
+        '/ptypes.ProcessManagerService/ProcessGet',
+        request_serializer=instancemanager__pb2.ProcessGetRequest.SerializeToString,
+        response_deserializer=instancemanager__pb2.ProcessResponse.FromString,
         )
     self.ProcessList = channel.unary_unary(
-        '/ProcessManagerService/ProcessList',
-        request_serializer=rpc__pb2.ProcessListRequest.SerializeToString,
-        response_deserializer=rpc__pb2.ProcessListResponse.FromString,
+        '/ptypes.ProcessManagerService/ProcessList',
+        request_serializer=instancemanager__pb2.ProcessListRequest.SerializeToString,
+        response_deserializer=instancemanager__pb2.ProcessListResponse.FromString,
         )
     self.ProcessLog = channel.unary_stream(
-        '/ProcessManagerService/ProcessLog',
-        request_serializer=rpc__pb2.LogRequest.SerializeToString,
-        response_deserializer=rpc__pb2.LogResponse.FromString,
+        '/ptypes.ProcessManagerService/ProcessLog',
+        request_serializer=instancemanager__pb2.LogRequest.SerializeToString,
+        response_deserializer=instancemanager__pb2.LogResponse.FromString,
         )
     self.ProcessWatch = channel.unary_stream(
-        '/ProcessManagerService/ProcessWatch',
+        '/ptypes.ProcessManagerService/ProcessWatch',
         request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
-        response_deserializer=rpc__pb2.ProcessResponse.FromString,
+        response_deserializer=instancemanager__pb2.ProcessResponse.FromString,
         )
     self.ProcessReplace = channel.unary_unary(
-        '/ProcessManagerService/ProcessReplace',
-        request_serializer=rpc__pb2.ProcessReplaceRequest.SerializeToString,
-        response_deserializer=rpc__pb2.ProcessResponse.FromString,
+        '/ptypes.ProcessManagerService/ProcessReplace',
+        request_serializer=instancemanager__pb2.ProcessReplaceRequest.SerializeToString,
+        response_deserializer=instancemanager__pb2.ProcessResponse.FromString,
         )
 
 
@@ -110,40 +110,40 @@ def add_ProcessManagerServiceServicer_to_server(servicer, server):
   rpc_method_handlers = {
       'ProcessCreate': grpc.unary_unary_rpc_method_handler(
           servicer.ProcessCreate,
-          request_deserializer=rpc__pb2.ProcessCreateRequest.FromString,
-          response_serializer=rpc__pb2.ProcessResponse.SerializeToString,
+          request_deserializer=instancemanager__pb2.ProcessCreateRequest.FromString,
+          response_serializer=instancemanager__pb2.ProcessResponse.SerializeToString,
       ),
       'ProcessDelete': grpc.unary_unary_rpc_method_handler(
           servicer.ProcessDelete,
-          request_deserializer=rpc__pb2.ProcessDeleteRequest.FromString,
-          response_serializer=rpc__pb2.ProcessResponse.SerializeToString,
+          request_deserializer=instancemanager__pb2.ProcessDeleteRequest.FromString,
+          response_serializer=instancemanager__pb2.ProcessResponse.SerializeToString,
       ),
       'ProcessGet': grpc.unary_unary_rpc_method_handler(
           servicer.ProcessGet,
-          request_deserializer=rpc__pb2.ProcessGetRequest.FromString,
-          response_serializer=rpc__pb2.ProcessResponse.SerializeToString,
+          request_deserializer=instancemanager__pb2.ProcessGetRequest.FromString,
+          response_serializer=instancemanager__pb2.ProcessResponse.SerializeToString,
       ),
       'ProcessList': grpc.unary_unary_rpc_method_handler(
           servicer.ProcessList,
-          request_deserializer=rpc__pb2.ProcessListRequest.FromString,
-          response_serializer=rpc__pb2.ProcessListResponse.SerializeToString,
+          request_deserializer=instancemanager__pb2.ProcessListRequest.FromString,
+          response_serializer=instancemanager__pb2.ProcessListResponse.SerializeToString,
       ),
       'ProcessLog': grpc.unary_stream_rpc_method_handler(
           servicer.ProcessLog,
-          request_deserializer=rpc__pb2.LogRequest.FromString,
-          response_serializer=rpc__pb2.LogResponse.SerializeToString,
+          request_deserializer=instancemanager__pb2.LogRequest.FromString,
+          response_serializer=instancemanager__pb2.LogResponse.SerializeToString,
       ),
       'ProcessWatch': grpc.unary_stream_rpc_method_handler(
           servicer.ProcessWatch,
           request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
-          response_serializer=rpc__pb2.ProcessResponse.SerializeToString,
+          response_serializer=instancemanager__pb2.ProcessResponse.SerializeToString,
       ),
       'ProcessReplace': grpc.unary_unary_rpc_method_handler(
           servicer.ProcessReplace,
-          request_deserializer=rpc__pb2.ProcessReplaceRequest.FromString,
-          response_serializer=rpc__pb2.ProcessResponse.SerializeToString,
+          request_deserializer=instancemanager__pb2.ProcessReplaceRequest.FromString,
+          response_serializer=instancemanager__pb2.ProcessResponse.SerializeToString,
       ),
   }
   generic_handler = grpc.method_handlers_generic_handler(
-      'ProcessManagerService', rpc_method_handlers)
+      'ptypes.ProcessManagerService', rpc_method_handlers)
   server.add_generic_rpc_handlers((generic_handler,))

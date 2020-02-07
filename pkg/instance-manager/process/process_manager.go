@@ -15,10 +15,10 @@ import (
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 
-	"github.com/longhorn/longhorn-engine/pkg/instance-manager/rpc"
 	"github.com/longhorn/longhorn-engine/pkg/instance-manager/types"
 	"github.com/longhorn/longhorn-engine/pkg/instance-manager/util"
 	"github.com/longhorn/longhorn-engine/pkg/instance-manager/util/broadcaster"
+	"github.com/longhorn/longhorn-engine/proto/ptypes"
 )
 
 /* Lock order
@@ -113,7 +113,7 @@ func (pm *Manager) Shutdown() {
 
 // ProcessCreate will create a process according to the request.
 // If the specified process name exists already, the creation will fail.
-func (pm *Manager) ProcessCreate(ctx context.Context, req *rpc.ProcessCreateRequest) (ret *rpc.ProcessResponse, err error) {
+func (pm *Manager) ProcessCreate(ctx context.Context, req *ptypes.ProcessCreateRequest) (ret *ptypes.ProcessResponse, err error) {
 	if req.Spec.Name == "" || req.Spec.Binary == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "missing required argument")
 	}
@@ -154,7 +154,7 @@ func (pm *Manager) ProcessCreate(ctx context.Context, req *rpc.ProcessCreateRequ
 
 // ProcessDelete will delete the process named by the request.
 // If the process doesn't exist, the deletion will return with ErrorNotFound
-func (pm *Manager) ProcessDelete(ctx context.Context, req *rpc.ProcessDeleteRequest) (ret *rpc.ProcessResponse, err error) {
+func (pm *Manager) ProcessDelete(ctx context.Context, req *ptypes.ProcessDeleteRequest) (ret *ptypes.ProcessResponse, err error) {
 	logrus.Debugf("Process Manager: prepare to delete process %v", req.Name)
 
 	p := pm.findProcess(req.Name)
@@ -232,7 +232,7 @@ func (pm *Manager) findProcess(name string) *Process {
 
 // ProcessGet will get a process named by the request.
 // If the process doesn't exist, the call will return with ErrorNotFound
-func (pm *Manager) ProcessGet(ctx context.Context, req *rpc.ProcessGetRequest) (*rpc.ProcessResponse, error) {
+func (pm *Manager) ProcessGet(ctx context.Context, req *ptypes.ProcessGetRequest) (*ptypes.ProcessResponse, error) {
 	p := pm.findProcess(req.Name)
 	if p == nil {
 		return nil, status.Errorf(codes.NotFound, "cannot find process %v", req.Name)
@@ -241,12 +241,12 @@ func (pm *Manager) ProcessGet(ctx context.Context, req *rpc.ProcessGetRequest) (
 	return p.RPCResponse(), nil
 }
 
-func (pm *Manager) ProcessList(ctx context.Context, req *rpc.ProcessListRequest) (*rpc.ProcessListResponse, error) {
+func (pm *Manager) ProcessList(ctx context.Context, req *ptypes.ProcessListRequest) (*ptypes.ProcessListResponse, error) {
 	pm.lock.RLock()
 	defer pm.lock.RUnlock()
 
-	resp := &rpc.ProcessListResponse{
-		Processes: map[string]*rpc.ProcessResponse{},
+	resp := &ptypes.ProcessListResponse{
+		Processes: map[string]*ptypes.ProcessResponse{},
 	}
 	for _, p := range pm.processes {
 		resp.Processes[p.Name] = p.RPCResponse()
@@ -254,7 +254,7 @@ func (pm *Manager) ProcessList(ctx context.Context, req *rpc.ProcessListRequest)
 	return resp, nil
 }
 
-func (pm *Manager) ProcessLog(req *rpc.LogRequest, srv rpc.ProcessManagerService_ProcessLogServer) error {
+func (pm *Manager) ProcessLog(req *ptypes.LogRequest, srv ptypes.ProcessManagerService_ProcessLogServer) error {
 	logrus.Debugf("Process Manager: start getting logs for process %v", req.Name)
 	p := pm.findProcess(req.Name)
 	if p == nil {
@@ -266,7 +266,7 @@ func (pm *Manager) ProcessLog(req *rpc.LogRequest, srv rpc.ProcessManagerService
 		return err
 	}
 	for logLine := range logChan {
-		if err := srv.Send(&rpc.LogResponse{Line: logLine}); err != nil {
+		if err := srv.Send(&ptypes.LogResponse{Line: logLine}); err != nil {
 			doneChan <- struct{}{}
 			close(doneChan)
 			return err
@@ -284,7 +284,7 @@ func (pm *Manager) Subscribe() (<-chan interface{}, error) {
 	return pm.broadcaster.Subscribe(context.TODO(), pm.broadcastConnector)
 }
 
-func (pm *Manager) ProcessWatch(req *empty.Empty, srv rpc.ProcessManagerService_ProcessWatchServer) (err error) {
+func (pm *Manager) ProcessWatch(req *empty.Empty, srv ptypes.ProcessManagerService_ProcessWatchServer) (err error) {
 	responseChan, err := pm.Subscribe()
 	if err != nil {
 		return err
@@ -300,7 +300,7 @@ func (pm *Manager) ProcessWatch(req *empty.Empty, srv rpc.ProcessManagerService_
 	logrus.Debugf("started new process manager update watch")
 
 	for resp := range responseChan {
-		r, ok := resp.(*rpc.ProcessResponse)
+		r, ok := resp.(*ptypes.ProcessResponse)
 		if !ok {
 			return fmt.Errorf("BUG: cannot get ProcessResponse from channel")
 		}
@@ -354,7 +354,7 @@ func ParsePortRange(portRange string) (int32, int32, error) {
 
 // ProcessReplace will replace a process with the new process according to the request.
 // If the specified process name doesn't exist already, the replace will fail.
-func (pm *Manager) ProcessReplace(ctx context.Context, req *rpc.ProcessReplaceRequest) (ret *rpc.ProcessResponse, err error) {
+func (pm *Manager) ProcessReplace(ctx context.Context, req *ptypes.ProcessReplaceRequest) (ret *ptypes.ProcessResponse, err error) {
 	if req.Spec.Name == "" || req.Spec.Binary == "" {
 		return nil, status.Errorf(codes.InvalidArgument, "missing required argument")
 	}

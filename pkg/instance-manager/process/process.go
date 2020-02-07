@@ -7,9 +7,9 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/longhorn/longhorn-engine/pkg/instance-manager/rpc"
 	"github.com/longhorn/longhorn-engine/pkg/instance-manager/types"
 	"github.com/longhorn/longhorn-engine/pkg/instance-manager/util"
+	"github.com/longhorn/longhorn-engine/proto/ptypes"
 )
 
 type State string
@@ -103,14 +103,14 @@ func (p *Process) Start() error {
 	return nil
 }
 
-func (p *Process) RPCResponse() *rpc.ProcessResponse {
+func (p *Process) RPCResponse() *ptypes.ProcessResponse {
 	p.lock.RLock()
 	defer p.lock.RUnlock()
 	if p.ErrorMsg != "" {
 		logrus.Debugf("Process update: %v: state %v: Error: %v", p.Name, p.State, p.ErrorMsg)
 	}
-	return &rpc.ProcessResponse{
-		Spec: &rpc.ProcessSpec{
+	return &ptypes.ProcessResponse{
+		Spec: &ptypes.ProcessSpec{
 			Name:      p.Name,
 			Binary:    p.Binary,
 			Args:      p.Args,
@@ -118,7 +118,7 @@ func (p *Process) RPCResponse() *rpc.ProcessResponse {
 			PortArgs:  p.PortArgs,
 		},
 
-		Status: &rpc.ProcessStatus{
+		Status: &ptypes.ProcessStatus{
 			State:     string(p.State),
 			ErrorMsg:  p.ErrorMsg,
 			PortStart: p.PortStart,

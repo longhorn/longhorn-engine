@@ -9,8 +9,8 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/longhorn/longhorn-engine/pkg/instance-manager/api"
-	"github.com/longhorn/longhorn-engine/pkg/instance-manager/rpc"
 	"github.com/longhorn/longhorn-engine/pkg/instance-manager/types"
+	"github.com/longhorn/longhorn-engine/proto/ptypes"
 )
 
 type ProcessManagerClient struct {
@@ -34,12 +34,12 @@ func (cli *ProcessManagerClient) ProcessCreate(name, binary string, portCount in
 	}
 	defer conn.Close()
 
-	client := rpc.NewProcessManagerServiceClient(conn)
+	client := ptypes.NewProcessManagerServiceClient(conn)
 	ctx, cancel := context.WithTimeout(context.Background(), types.GRPCServiceTimeout)
 	defer cancel()
 
-	p, err := client.ProcessCreate(ctx, &rpc.ProcessCreateRequest{
-		Spec: &rpc.ProcessSpec{
+	p, err := client.ProcessCreate(ctx, &ptypes.ProcessCreateRequest{
+		Spec: &ptypes.ProcessSpec{
 			Name:      name,
 			Binary:    binary,
 			Args:      args,
@@ -64,11 +64,11 @@ func (cli *ProcessManagerClient) ProcessDelete(name string) (*api.Process, error
 	}
 	defer conn.Close()
 
-	client := rpc.NewProcessManagerServiceClient(conn)
+	client := ptypes.NewProcessManagerServiceClient(conn)
 	ctx, cancel := context.WithTimeout(context.Background(), types.GRPCServiceTimeout)
 	defer cancel()
 
-	p, err := client.ProcessDelete(ctx, &rpc.ProcessDeleteRequest{
+	p, err := client.ProcessDelete(ctx, &ptypes.ProcessDeleteRequest{
 		Name: name,
 	})
 	if err != nil {
@@ -88,11 +88,11 @@ func (cli *ProcessManagerClient) ProcessGet(name string) (*api.Process, error) {
 	}
 	defer conn.Close()
 
-	client := rpc.NewProcessManagerServiceClient(conn)
+	client := ptypes.NewProcessManagerServiceClient(conn)
 	ctx, cancel := context.WithTimeout(context.Background(), types.GRPCServiceTimeout)
 	defer cancel()
 
-	p, err := client.ProcessGet(ctx, &rpc.ProcessGetRequest{
+	p, err := client.ProcessGet(ctx, &ptypes.ProcessGetRequest{
 		Name: name,
 	})
 	if err != nil {
@@ -108,11 +108,11 @@ func (cli *ProcessManagerClient) ProcessList() (map[string]*api.Process, error) 
 	}
 	defer conn.Close()
 
-	client := rpc.NewProcessManagerServiceClient(conn)
+	client := ptypes.NewProcessManagerServiceClient(conn)
 	ctx, cancel := context.WithTimeout(context.Background(), types.GRPCServiceTimeout)
 	defer cancel()
 
-	ps, err := client.ProcessList(ctx, &rpc.ProcessListRequest{})
+	ps, err := client.ProcessList(ctx, &ptypes.ProcessListRequest{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list processes: %v", err)
 	}
@@ -129,9 +129,9 @@ func (cli *ProcessManagerClient) ProcessLog(name string) (*api.LogStream, error)
 		return nil, fmt.Errorf("cannot connect process manager service to %v: %v", cli.Address, err)
 	}
 
-	client := rpc.NewProcessManagerServiceClient(conn)
+	client := ptypes.NewProcessManagerServiceClient(conn)
 	ctx, cancel := context.WithTimeout(context.Background(), types.GRPCServiceTimeout)
-	stream, err := client.ProcessLog(ctx, &rpc.LogRequest{
+	stream, err := client.ProcessLog(ctx, &ptypes.LogRequest{
 		Name: name,
 	})
 	if err != nil {
@@ -148,7 +148,7 @@ func (cli *ProcessManagerClient) ProcessWatch() (*api.ProcessStream, error) {
 
 	// Don't cleanup the Client here, we don't know when the user will be done with the Stream. Pass it to the wrapper
 	// and allow the user to take care of it.
-	client := rpc.NewProcessManagerServiceClient(conn)
+	client := ptypes.NewProcessManagerServiceClient(conn)
 	ctx, cancel := context.WithCancel(context.Background())
 	stream, err := client.ProcessWatch(ctx, &empty.Empty{})
 	if err != nil {
@@ -172,12 +172,12 @@ func (cli *ProcessManagerClient) ProcessReplace(name, binary string, portCount i
 	}
 	defer conn.Close()
 
-	client := rpc.NewProcessManagerServiceClient(conn)
+	client := ptypes.NewProcessManagerServiceClient(conn)
 	ctx, cancel := context.WithTimeout(context.Background(), types.GRPCServiceTimeout)
 	defer cancel()
 
-	p, err := client.ProcessReplace(ctx, &rpc.ProcessReplaceRequest{
-		Spec: &rpc.ProcessSpec{
+	p, err := client.ProcessReplace(ctx, &ptypes.ProcessReplaceRequest{
+		Spec: &ptypes.ProcessSpec{
 			Name:      name,
 			Binary:    binary,
 			Args:      args,
