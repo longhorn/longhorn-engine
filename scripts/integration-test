@@ -76,9 +76,9 @@ cp $backing_qcow2 $backing_dir2
 # for live upgrade test
 cp -a ./bin/longhorn /opt/
 
-./bin/longhorn-instance-manager --debug daemon &
+/usr/local/bin/longhorn-instance-manager --debug daemon &
 pid_imr=$!
-./bin/longhorn-instance-manager --debug daemon --listen localhost:8501 --port-range 35000-40000 &
+/usr/local/bin/longhorn-instance-manager --debug daemon --listen localhost:8501 --port-range 35000-40000 &
 pid_ime=$!
 
 # make sure everything is running before continue integration test
