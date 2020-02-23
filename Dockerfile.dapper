@@ -94,6 +94,14 @@ RUN mkdir integration/
 COPY integration/setup.py integration/tox.ini integration/requirements.txt integration/flake8-requirements.txt integration/
 RUN cd integration && tox --notest
 
+# Build longhorn-instance-manager
+RUN cd /go/src/github.com/longhorn && \
+    git clone https://github.com/longhorn/longhorn-instance-manager.git && \
+    cd longhorn-instance-manager && \
+    git checkout 79261f97ecdbe7f5e2d5dbfd52453c64652cc7c8 && \
+    go build -o ./longhorn-instance-manager && \
+    cp longhorn-instance-manager /usr/local/bin
+
 VOLUME /tmp
 ENV TMPDIR /tmp
 ENTRYPOINT ["./scripts/entry"]
