@@ -11,4 +11,4 @@ go build -tags "qcow" -ldflags \
 	-X main.GitCommit=$GITCOMMIT \
 	-X main.BuildDate=$BUILDDATE \
 	-linkmode external -extldflags -static" \
-	-o bin/longhorn ./app/engine
+	-o bin/longhorn

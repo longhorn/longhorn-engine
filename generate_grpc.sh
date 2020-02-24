@@ -25,7 +25,3 @@ python3 -m grpc_tools.protoc -I proto/ptypes/ -I proto/vendor/protobuf/src/ --py
 
 # sync agent
 protoc -I proto/ptypes/ -I proto/vendor/protobuf/src/ proto/ptypes/syncagent.proto --go_out=plugins=grpc:proto/ptypes/
-
-# instance manager
-python3 -m grpc_tools.protoc -I pkg/instance-manager/rpc -I proto/vendor/protobuf/src/ --python_out=integration/rpc/instance_manager --grpc_python_out=integration/rpc/instance_manager pkg/instance-manager/rpc/rpc.proto
-protoc -I pkg/instance-manager/rpc/ -I proto/vendor/protobuf/src/ pkg/instance-manager/rpc/rpc.proto --go_out=plugins=grpc:pkg/instance-manager/rpc

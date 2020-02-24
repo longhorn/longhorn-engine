@@ -98,8 +98,9 @@ RUN cd integration && tox --notest
 RUN cd /go/src/github.com/longhorn && \
     git clone https://github.com/longhorn/longhorn-instance-manager.git && \
     cd longhorn-instance-manager && \
-    git checkout 79261f97ecdbe7f5e2d5dbfd52453c64652cc7c8 && \
+    git checkout 656918205b569bb9217a73cf0460116bf6a8a2a3 && \
     go build -o ./longhorn-instance-manager && \
+    cp -r integration/rpc/ ${DAPPER_SOURCE}/integration/rpc/ && \
     cp longhorn-instance-manager /usr/local/bin
 
 VOLUME /tmp
