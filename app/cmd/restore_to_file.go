@@ -12,6 +12,8 @@ import (
 	"github.com/urfave/cli"
 	"gopkg.in/cheggaaa/pb.v2"
 
+	iutil "github.com/longhorn/go-iscsi-helper/util"
+
 	"github.com/longhorn/backupstore"
 	"github.com/longhorn/longhorn-engine/pkg/replica"
 	"github.com/longhorn/longhorn-engine/pkg/util"
@@ -174,7 +176,7 @@ func outputFormatSupported(desiredFormat string) bool {
 }
 
 func CheckBackingFileFormat(backingFilePath string) error {
-	output, err := util.ExecuteWithoutTimeout(QEMUImageBinary, "info", backingFilePath)
+	output, err := iutil.ExecuteWithoutTimeout(QEMUImageBinary, []string{"info", backingFilePath})
 	if err != nil {
 		return errors.Wrapf(err, "failed CheckBackingFileFormat %s", backingFilePath)
 	}
@@ -185,7 +187,7 @@ func CheckBackingFileFormat(backingFilePath string) error {
 }
 
 func CopyFile(backingFilepath, outputFile string) error {
-	if _, err := util.ExecuteWithoutTimeout("cp", backingFilepath, outputFile); err != nil {
+	if _, err := iutil.ExecuteWithoutTimeout("cp", []string{backingFilepath, outputFile}); err != nil {
 		return err
 	}
 	return nil
@@ -216,7 +218,7 @@ func CleanupTempFiles(outputFile string, files ...string) {
 
 func ConvertImage(srcFilepath, dstFilepath, format string) error {
 	logrus.Infof("Start ConvertImage (%s) %s -> %s", format, srcFilepath, dstFilepath)
-	_, err := util.ExecuteWithoutTimeout(QEMUImageBinary, "convert", "-O", format, srcFilepath, dstFilepath)
+	_, err := iutil.ExecuteWithoutTimeout(QEMUImageBinary, []string{"convert", "-O", format, srcFilepath, dstFilepath})
 	if err != nil {
 		return errors.Wrapf(err, "failed convertImage (%s) %s -> %s", format, srcFilepath, dstFilepath)
 	}
@@ -235,7 +237,7 @@ func MergeSnapshotsToBackingFile(snapFilepath, backingFilepath string) error {
 
 func rebaseSnapshot(snapFilepath, backingFilepath string) error {
 	logrus.Infof("Start rebaseSnapshot %s -> %s", snapFilepath, backingFilepath)
-	_, err := util.ExecuteWithoutTimeout(QEMUImageBinary, "rebase", "-u", "-b", backingFilepath, snapFilepath)
+	_, err := iutil.ExecuteWithoutTimeout(QEMUImageBinary, []string{"rebase", "-u", "-b", backingFilepath, snapFilepath})
 	if err != nil {
 		return errors.Wrapf(err, "failed rebaseSnapshot %s -> %s", snapFilepath, backingFilepath)
 	}
@@ -247,7 +249,7 @@ func rebaseSnapshot(snapFilepath, backingFilepath string) error {
 // into a lower-level 'base' image (backingFilepath).
 func commitSnapshot(snapFilepath string) error {
 	logrus.Infof("Start commitSnapshot %s", snapFilepath)
-	_, err := util.ExecuteWithoutTimeout(QEMUImageBinary, "commit", snapFilepath)
+	_, err := iutil.ExecuteWithoutTimeout(QEMUImageBinary, []string{"commit", snapFilepath})
 	if err != nil {
 		return errors.Wrapf(err, "failed commitSnapshot %s", snapFilepath)
 	}
