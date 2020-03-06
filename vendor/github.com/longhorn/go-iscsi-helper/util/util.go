@@ -1,8 +1,8 @@
 package util
 
 import (
+	"bytes"
 	"fmt"
-	"log"
 	"net"
 	"os"
 	"os/exec"
@@ -90,46 +90,87 @@ func NewNamespaceExecutor(ns string) (*NamespaceExecutor, error) {
 	return ne, nil
 }
 
-func (ne *NamespaceExecutor) Execute(name string, args []string) (string, error) {
-	if ne.ns == "" {
-		return Execute(name, args)
-	}
+func (ne *NamespaceExecutor) prepareCommandArgs(name string, args []string) []string {
 	cmdArgs := []string{
 		"--mount=" + filepath.Join(ne.ns, "mnt"),
 		"--net=" + filepath.Join(ne.ns, "net"),
 		name,
 	}
-	cmdArgs = append(cmdArgs, args...)
-	return Execute(NSBinary, cmdArgs)
+	return append(cmdArgs, args...)
+}
+
+func (ne *NamespaceExecutor) Execute(name string, args []string) (string, error) {
+	if ne.ns == "" {
+		return Execute(name, args)
+	}
+	return Execute(NSBinary, ne.prepareCommandArgs(name, args))
+}
+
+func (ne *NamespaceExecutor) ExecuteWithTimeout(timeout time.Duration, name string, args []string) (string, error) {
+	if ne.ns == "" {
+		return ExecuteWithoutTimeout(name, args)
+	}
+	return ExecuteWithTimeout(timeout, NSBinary, ne.prepareCommandArgs(name, args))
+}
+
+func (ne *NamespaceExecutor) ExecuteWithoutTimeout(name string, args []string) (string, error) {
+	if ne.ns == "" {
+		return ExecuteWithoutTimeout(name, args)
+	}
+	return ExecuteWithoutTimeout(NSBinary, ne.prepareCommandArgs(name, args))
 }
 
 func Execute(binary string, args []string) (string, error) {
-	var output []byte
+	return ExecuteWithTimeout(cmdTimeout, binary, args)
+}
+
+func ExecuteWithTimeout(timeout time.Duration, binary string, args []string) (string, error) {
 	var err error
 	cmd := exec.Command(binary, args...)
 	done := make(chan struct{})
 
+	var output, stderr bytes.Buffer
+	cmd.Stdout = &output
+	cmd.Stderr = &stderr
+
 	go func() {
-		output, err = cmd.CombinedOutput()
+		err = cmd.Run()
 		done <- struct{}{}
 	}()
 
 	select {
 	case <-done:
-	case <-time.After(cmdTimeout):
+	case <-time.After(timeout):
 		if cmd.Process != nil {
 			if err := cmd.Process.Kill(); err != nil {
-				log.Printf("Problem killing process pid=%v: %s", cmd.Process.Pid, err)
+				logrus.Warnf("Problem killing process pid=%v: %s", cmd.Process.Pid, err)
 			}
 
 		}
-		return "", fmt.Errorf("Timeout executing: %v %v, output %v, error %v", binary, args, string(output), err)
+		return "", fmt.Errorf("Timeout executing: %v %v, output %s, stderr, %s, error %v",
+			binary, args, output.String(), stderr.String(), err)
 	}
 
 	if err != nil {
-		return "", fmt.Errorf("Failed to execute: %v %v, output %v, error %v", binary, args, string(output), err)
+		return "", fmt.Errorf("Failed to execute: %v %v, output %s, stderr, %s, error %v",
+			binary, args, output.String(), stderr.String(), err)
 	}
-	return string(output), nil
+	return output.String(), nil
+}
+
+func ExecuteWithoutTimeout(binary string, args []string) (string, error) {
+	var err error
+	var output, stderr bytes.Buffer
+
+	cmd := exec.Command(binary, args...)
+	cmd.Stdout = &output
+	cmd.Stderr = &stderr
+
+	if err = cmd.Run(); err != nil {
+		return "", fmt.Errorf("Failed to execute: %v %v, output %s, stderr, %s, error %v",
+			binary, args, output.String(), stderr.String(), err)
+	}
+	return output.String(), nil
 }
 
 func RemoveFile(file string) error {
