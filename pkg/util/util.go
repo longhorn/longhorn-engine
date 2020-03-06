@@ -1,13 +1,11 @@
 package util
 
 import (
-	"bytes"
 	"fmt"
 	"io"
 	"net/http"
 	"net/url"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -243,59 +241,6 @@ func UnescapeURL(url string) string {
 	result = strings.TrimLeft(result, "\"'")
 	result = strings.TrimRight(result, "\"'")
 	return result
-}
-
-func Execute(binary string, args ...string) (string, error) {
-	return ExecuteWithTimeout(cmdTimeout, binary, args...)
-}
-
-func ExecuteWithTimeout(timeout time.Duration, binary string, args ...string) (string, error) {
-	var err error
-	cmd := exec.Command(binary, args...)
-	done := make(chan struct{})
-
-	var output, stderr bytes.Buffer
-	cmd.Stdout = &output
-	cmd.Stderr = &stderr
-
-	go func() {
-		err = cmd.Run()
-		done <- struct{}{}
-	}()
-
-	select {
-	case <-done:
-	case <-time.After(timeout):
-		if cmd.Process != nil {
-			if err := cmd.Process.Kill(); err != nil {
-				logrus.Warnf("Problem killing process pid=%v: %s", cmd.Process.Pid, err)
-			}
-
-		}
-		return "", fmt.Errorf("Timeout executing: %v %v, output %s, stderr, %s, error %v",
-			binary, args, output.String(), stderr.String(), err)
-	}
-
-	if err != nil {
-		return "", fmt.Errorf("Failed to execute: %v %v, output %s, stderr, %s, error %v",
-			binary, args, output.String(), stderr.String(), err)
-	}
-	return output.String(), nil
-}
-
-func ExecuteWithoutTimeout(binary string, args ...string) (string, error) {
-	var err error
-	var output, stderr bytes.Buffer
-
-	cmd := exec.Command(binary, args...)
-	cmd.Stdout = &output
-	cmd.Stderr = &stderr
-
-	if err = cmd.Run(); err != nil {
-		return "", fmt.Errorf("Failed to execute: %v %v, output %s, stderr, %s, error %v",
-			binary, args, output.String(), stderr.String(), err)
-	}
-	return output.String(), nil
 }
 
 func CheckBackupType(backupTarget string) (string, error) {
