@@ -119,21 +119,6 @@ func LogoutTarget(ip, target string, ne *util.NamespaceExecutor) error {
 	return nil
 }
 
-func RescanTarget(ip, target string, ne *util.NamespaceExecutor) error {
-	opts := []string{
-		"-m", "node",
-		"-T", target,
-		"-R",
-	}
-	if ip != "" {
-		opts = append(opts, "-p", ip)
-	}
-	if _, err := ne.Execute(iscsiBinary, opts); err != nil {
-		return err
-	}
-	return nil
-}
-
 func GetDevice(ip, target string, lun int, ne *util.NamespaceExecutor) (string, error) {
 	var err error
 
