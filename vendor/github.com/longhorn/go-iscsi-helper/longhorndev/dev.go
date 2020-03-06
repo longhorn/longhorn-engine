@@ -360,43 +360,16 @@ func (d *LonghornDevice) Expand(size int64) error {
 	d.Lock()
 	defer d.Unlock()
 
+	if d.scsiDevice != nil {
+		return fmt.Errorf("cannot expand the device %v to size %v since the frontend %v is already up", d.name, size, d.frontend)
+	}
+
 	if d.size > size {
 		return fmt.Errorf("device %v: cannot expand the device from size %v to a smaller size %v", d.name, d.size, size)
 	} else if d.size == size {
 		return nil
 	}
-
 	d.size = size
-
-	if d.scsiDevice == nil {
-		return nil
-	}
-	if err := d.scsiDevice.UpdateScsiBackingStore("longhorn", fmt.Sprintf("size=%v", d.size)); err != nil {
-		return err
-	}
-
-	switch d.frontend {
-	case types.FrontendTGTBlockDev:
-		if err := d.scsiDevice.RecreateTarget(); err != nil {
-			return fmt.Errorf("device %v: fail to recreate target %v: %v", d.name, d.scsiDevice.Target, err)
-		}
-		if err := d.scsiDevice.ReloadInitiator(); err != nil {
-			return fmt.Errorf("device %v: fail to reload iSCSI initiator: %v", d.name, err)
-		}
-		logrus.Infof("device %v: SCSI device %v update", d.name, d.getDev())
-		break
-	case types.FrontendTGTISCSI:
-		if err := d.scsiDevice.RecreateTarget(); err != nil {
-			return fmt.Errorf("device %v: fail to recreate target %v: %v", d.name, d.scsiDevice.Target, err)
-		}
-		logrus.Infof("device %v: SCSI target %v update", d.name, d.scsiDevice.Target)
-		break
-	case "":
-		logrus.Infof("device %v: skip expansion since the frontend not enabled", d.name)
-		break
-	default:
-		return fmt.Errorf("device %v: unknown frontend %v for expansion", d.name, d.frontend)
-	}
 
 	return nil
 }
