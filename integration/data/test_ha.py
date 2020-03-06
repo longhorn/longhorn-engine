@@ -8,6 +8,7 @@ from common.core import (  # NOQA
     random_string, verify_read, verify_data, verify_async,
     verify_replica_state, wait_for_purge_completion,
     Snapshot, Data, random_length,
+    expand_volume_with_frontend,
     wait_and_check_volume_expansion,
     wait_for_rebuild_complete,
 
@@ -452,7 +453,7 @@ def test_expansion_with_rebuild(grpc_controller,  # NOQA
                  data1_len, random_string(data1_len))
     snap1 = Snapshot(dev, data1, address)
 
-    grpc_controller.volume_expand(EXPANDED_SIZE)
+    expand_volume_with_frontend(grpc_controller, EXPANDED_SIZE)
     wait_and_check_volume_expansion(
         grpc_controller, EXPANDED_SIZE)
 

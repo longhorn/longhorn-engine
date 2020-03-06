@@ -13,6 +13,7 @@ from common.core import (  # NOQA
     create_backup, rm_backups,
     restore_incrementally, wait_for_restore_completion,
     random_length, Snapshot, Data,
+    expand_volume_with_frontend,
     wait_and_check_volume_expansion,
     check_block_device_size,
 )
@@ -327,7 +328,7 @@ def volume_expansion_with_backup_test(grpc_engine_manager,  # NOQA
                             data0.offset, data0.content,
                             grpc_dr_controller)
 
-    grpc_controller.volume_expand(EXPANDED_SIZE)
+    expand_volume_with_frontend(grpc_controller, EXPANDED_SIZE)
     wait_and_check_volume_expansion(
         grpc_controller, EXPANDED_SIZE)
 

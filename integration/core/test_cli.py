@@ -15,6 +15,7 @@ from common.core import (  # NOQA
     get_replica_paths_from_snapshot_name,
     get_snapshot_file_paths,
     get_replica_head_file_path,
+    expand_volume_with_frontend,
     wait_and_check_volume_expansion,
     wait_for_rebuild_complete,
     wait_for_purge_completion,
@@ -1028,10 +1029,7 @@ def test_volume_expand_with_snapshots(  # NOQA
            '--label', 'name=snap1', '--label', 'key=value']
     snap1 = subprocess.check_output(cmd, encoding='utf-8').strip()
 
-    cmd = [bin, '--url', grpc_controller_client.address,
-           'expand', '--size', EXPANDED_SIZE_STR]
-    subprocess.check_call(cmd)
-
+    expand_volume_with_frontend(grpc_controller_client, EXPANDED_SIZE)
     wait_and_check_volume_expansion(
         grpc_controller_client, EXPANDED_SIZE)
 

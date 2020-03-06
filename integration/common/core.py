@@ -551,6 +551,13 @@ def generate_random_data(dev, existings={}, length_limit=PAGE_SIZE):
                 random_string(length))
 
 
+def expand_volume_with_frontend(grpc_controller_client, size):  # NOQA
+    grpc_controller_client.volume_frontend_shutdown()
+    grpc_controller_client.volume_expand(size)
+    wait_for_volume_expansion(grpc_controller_client, size)
+    grpc_controller_client.volume_frontend_start(FRONTEND_TGT_BLOCKDEV)
+
+
 def wait_for_volume_expansion(grpc_controller_client, size):  # NOQA
     for i in range(RETRY_COUNTS):
         volume = grpc_controller_client.volume_get()
