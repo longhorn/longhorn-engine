@@ -78,7 +78,7 @@ cp -a ./bin/longhorn /opt/
 
 /usr/local/bin/longhorn-instance-manager --debug daemon &
 pid_imr=$!
-/usr/local/bin/longhorn-instance-manager --debug daemon --listen localhost:8501 --port-range 35000-40000 &
+/usr/local/bin/longhorn-instance-manager --debug daemon --listen localhost:8501 --port-range 30001-32000 &
 pid_ime=$!
 
 # make sure everything is running before continue integration test
