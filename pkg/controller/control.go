@@ -227,7 +227,7 @@ func (c *Controller) Expand(size int64) error {
 
 		if c.frontend != nil {
 			if err := c.frontend.Expand(size); err != nil {
-				logrus.Errorf("failed to expand the engine frontend: %v", err)
+				logrus.Errorf("failed to expand the frontend: %v", err)
 				return
 			}
 		}
@@ -252,6 +252,9 @@ func (c *Controller) startExpansion(size int64) error {
 		return fmt.Errorf("controller cannot be expanded to a smaller size %v", size)
 	} else if c.size == size {
 		return fmt.Errorf("controller %v is already expanded to size %v", c.Name, size)
+	}
+	if c.frontend != nil && c.frontend.State() == types.StateUp {
+		return fmt.Errorf("controller %v doesn't support on-line expansion, frontend: %v", c.Name, c.frontend.FrontendName())
 	}
 
 	c.isExpanding = true

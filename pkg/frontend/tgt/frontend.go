@@ -1,6 +1,8 @@
 package tgt
 
 import (
+	"fmt"
+
 	"github.com/sirupsen/logrus"
 
 	"github.com/longhorn/go-iscsi-helper/longhorndev"
@@ -110,6 +112,9 @@ func (t *Tgt) Upgrade(name string, size, sectorSize int64, rw types.ReaderWriter
 }
 
 func (t *Tgt) Expand(size int64) error {
+	if t.isUp {
+		return fmt.Errorf("cannot expand the active frontend %v", t.frontendName)
+	}
 	if t.dev != nil {
 		return t.dev.Expand(size)
 	}
