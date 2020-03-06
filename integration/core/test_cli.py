@@ -19,6 +19,10 @@ from common.core import (  # NOQA
     wait_and_check_volume_expansion,
     wait_for_rebuild_complete,
     wait_for_purge_completion,
+
+    create_engine_process, create_replica_process,
+    cleanup_process,
+    get_process_address,
 )
 
 from common.constants import (
@@ -27,7 +31,15 @@ from common.constants import (
     RETRY_INTERVAL,
     SIZE, EXPANDED_SIZE,
     SIZE_STR, EXPANDED_SIZE_STR,
+
+    INSTANCE_MANAGER_ENGINE, INSTANCE_MANAGER_REPLICA,
+    REPLICA_NAME,
 )
+
+from rpc.controller.controller_client import ControllerClient
+from rpc.replica.replica_client import ReplicaClient
+from rpc.instance_manager.process_manager_client import ProcessManagerClient
+
 
 BACKUP_DEST = '/data/backupbucket'
 
@@ -1176,3 +1188,31 @@ def test_volume_expand_with_snapshots(  # NOQA
     r2 = grpc_replica_client2.replica_get()
     assert r2.chain[1] == 'volume-snap-{}.img'.format(snap2)
     assert r2.size == EXPANDED_SIZE_STR
+
+
+def test_expand_multiple_times():
+    for i in range(30):
+        em_client = ProcessManagerClient(INSTANCE_MANAGER_ENGINE)
+        engine_process = create_engine_process(em_client)
+        grpc_controller_client = ControllerClient(
+            get_process_address(engine_process))
+        rm_client = ProcessManagerClient(INSTANCE_MANAGER_REPLICA)
+        replica_process = create_replica_process(rm_client, REPLICA_NAME)
+        grpc_replica_client = ReplicaClient(
+            get_process_address(replica_process))
+        cleanup_replica(grpc_replica_client)
+
+        open_replica(grpc_replica_client)
+        r1_url = grpc_replica_client.url
+        v = grpc_controller_client.volume_start(replicas=[
+            r1_url,
+        ])
+        assert v.replicaCount == 1
+
+        expand_volume_with_frontend(
+            grpc_controller_client, EXPANDED_SIZE)
+        wait_and_check_volume_expansion(
+            grpc_controller_client, EXPANDED_SIZE)
+
+        cleanup_process(em_client)
+        cleanup_process(rm_client)
