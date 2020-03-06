@@ -46,6 +46,10 @@ type Controller struct {
 	backupListMutex *sync.RWMutex
 }
 
+const (
+	syncTimeout = 60 * time.Minute
+)
+
 func NewController(name string, factory types.BackendFactory, frontend types.Frontend, isUpgrade bool) *Controller {
 	c := &Controller{
 		factory:       factory,
@@ -156,7 +160,7 @@ func (c *Controller) Snapshot(name string, labels map[string]string) (string, er
 	if ne, err := iutil.NewNamespaceExecutor(util.GetInitiatorNS()); err != nil {
 		logrus.Errorf("WARNING: continue to snapshot for %v, but cannot sync due to cannot get the namespace executor: %v", name, err)
 	} else {
-		if _, err := ne.Execute("sync", []string{}); err != nil {
+		if _, err := ne.ExecuteWithTimeout(syncTimeout, "sync", []string{}); err != nil {
 			// sync should never fail though, so it more like due to the nsenter
 			logrus.Errorf("WARNING: continue to snapshot for %v, but sync failed: %v", name, err)
 		}
@@ -198,7 +202,7 @@ func (c *Controller) Expand(size int64) error {
 		if ne, err := iutil.NewNamespaceExecutor(util.GetInitiatorNS()); err != nil {
 			logrus.Errorf("WARNING: continue to expand to size %v for %v, but cannot sync due to cannot get the namespace executor: %v", size, c.Name, err)
 		} else {
-			if _, err := ne.Execute("sync", []string{}); err != nil {
+			if _, err := ne.ExecuteWithTimeout(syncTimeout, "sync", []string{}); err != nil {
 				// sync should never fail though, so it more like due to the nsenter
 				logrus.Errorf("WARNING: continue to expand to size %v for %v, but sync failed: %v", size, c.Name, err)
 			}
