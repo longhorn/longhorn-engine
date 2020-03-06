@@ -54,15 +54,15 @@ func GetTargetName(name string) string {
 	return "iqn.2019-10.io.longhorn:" + Volume2ISCSIName(name)
 }
 
-func (dev *Device) CreateTarget() error {
+func (dev *Device) CreateTarget() (err error) {
 	// Start tgtd daemon if it's not already running
 	if err := iscsi.StartDaemon(false); err != nil {
 		return err
 	}
 
+	tid := 0
 	for i := 0; i < RetryCounts; i++ {
-		tid, err := iscsi.FindNextAvailableTargetID()
-		if err != nil {
+		if tid, err = iscsi.FindNextAvailableTargetID(); err != nil {
 			return err
 		}
 		logrus.Infof("go-iscsi-helper: found available target id %v", tid)
@@ -74,6 +74,9 @@ func (dev *Device) CreateTarget() error {
 		logrus.Infof("go-iscsi-helper: failed to use target id %v, retrying with a new target ID: err %v", tid, err)
 		time.Sleep(RetryIntervalTargetID)
 		continue
+	}
+	if err != nil {
+		return err
 	}
 
 	if err := iscsi.AddLun(dev.targetID, TargetLunID, dev.BackingFile, dev.BSType, dev.BSOpts); err != nil {
@@ -248,9 +251,6 @@ func (dev *Device) DeleteTarget() error {
 		if err := iscsi.UnbindInitiator(tid, "ALL"); err != nil {
 			return err
 		}
-		if err := iscsi.DeleteLun(tid, TargetLunID); err != nil {
-			return err
-		}
 
 		sessionConnectionsMap, err := iscsi.GetTargetConnections(tid)
 		if err != nil {
@@ -262,6 +262,10 @@ func (dev *Device) DeleteTarget() error {
 					return err
 				}
 			}
+		}
+
+		if err := iscsi.DeleteLun(tid, TargetLunID); err != nil {
+			return err
 		}
 
 		if err := iscsi.DeleteTarget(tid); err != nil {
