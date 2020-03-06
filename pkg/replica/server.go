@@ -176,7 +176,7 @@ func (s *Server) Snapshot(name string, userCreated bool, createdTime string, lab
 		return nil
 	}
 
-	logrus.Infof("Snapshotting [%s] volume, user created %v, created time %v, labels %v",
+	logrus.Infof("Replica server starts to snapshot [%s] volume, user created %v, created time %v, labels %v",
 		name, userCreated, createdTime, labels)
 	return s.r.Snapshot(name, userCreated, createdTime, labels)
 }
@@ -189,7 +189,8 @@ func (s *Server) Expand(size int64) error {
 		return nil
 	}
 
-	logrus.Infof("Expanding replica to size %v", size)
+	logrus.Infof("Replica server starts to expand to size %v", size)
+
 	return s.r.Expand(size)
 }
 
