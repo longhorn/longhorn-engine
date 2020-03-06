@@ -187,7 +187,8 @@ func (c *Controller) Snapshot(name string, labels map[string]string) (string, er
 }
 
 func (c *Controller) Expand(size int64) error {
-	if err := c.startExpansion(); err != nil {
+	if err := c.startExpansion(size); err != nil {
+		logrus.Errorf("controller failed to start expansion: %v", err)
 		return err
 	}
 
@@ -208,14 +209,9 @@ func (c *Controller) Expand(size int64) error {
 			}
 		}
 
-		if size < c.size {
-			logrus.Errorf("Cannot expand to a smaller size %v", size)
-			return
-		} else if size == c.size {
-			logrus.Infof("Controller %v is already expanded to size %v", c.Name, size)
-			return
-		}
-
+		// Should block R/W during the expansion.
+		c.Lock()
+		defer c.Unlock()
 		if remain, err := c.backend.RemainSnapshots(); err != nil {
 			logrus.Errorf("Cannot get remain snapshot count before expansion: %v", err)
 			return
@@ -243,15 +239,21 @@ func (c *Controller) Expand(size int64) error {
 	return nil
 }
 
-func (c *Controller) startExpansion() error {
+func (c *Controller) startExpansion(size int64) error {
 	c.Lock()
 	defer c.Unlock()
 	if c.isExpanding {
-		return fmt.Errorf("the engine expansion is in progress")
+		return fmt.Errorf("controller expansion is in progress")
 	}
 	if c.hasWOReplica() {
 		return fmt.Errorf("cannot do expansion since there is WO(rebuilding) replica")
 	}
+	if c.size > size {
+		return fmt.Errorf("controller cannot be expanded to a smaller size %v", size)
+	} else if c.size == size {
+		return fmt.Errorf("controller %v is already expanded to size %v", c.Name, size)
+	}
+
 	c.isExpanding = true
 	return nil
 }
