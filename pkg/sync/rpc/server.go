@@ -307,12 +307,11 @@ func (s *SyncAgentServer) launchReceiver(processName, toFileName string, ops spa
 	return port, nil
 }
 
-func (s *SyncAgentServer) FilesSync(ctx context.Context, req *ptypes.FilesSyncRequest) (*empty.Empty, error) {
+func (s *SyncAgentServer) FilesSync(ctx context.Context, req *ptypes.FilesSyncRequest) (res *empty.Empty, err error) {
 	if err := s.PrepareRebuild(req.SyncFileInfoList); err != nil {
 		return nil, err
 	}
 
-	var err error
 	defer func() {
 		s.RebuildStatus.Lock()
 		if err != nil {
@@ -321,10 +320,11 @@ func (s *SyncAgentServer) FilesSync(ctx context.Context, req *ptypes.FilesSyncRe
 			logrus.Errorf("Sync agent gRPC server failed to rebuild replica/sync files: %v", err)
 		} else {
 			s.RebuildStatus.State = types.ProcessStateComplete
+			logrus.Infof("Sync agent gRPC server finished rebuilding replica/sync files for replica %v", req.ToHost)
 		}
 		s.RebuildStatus.Unlock()
 
-		if err := s.FinishRebuild(); err != nil {
+		if err = s.FinishRebuild(); err != nil {
 			logrus.Errorf("could not finish rebuilding: %v", err)
 		}
 	}()
@@ -348,7 +348,7 @@ func (s *SyncAgentServer) FilesSync(ctx context.Context, req *ptypes.FilesSyncRe
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to launch receiver for file %v", info.ToFileName)
 		}
-		if err = fromClient.SendFile(info.FromFileName, req.ToHost, int32(port)); err != nil {
+		if err := fromClient.SendFile(info.FromFileName, req.ToHost, int32(port)); err != nil {
 			return nil, errors.Wrapf(err, "replica %v failed to send file %v to %v:%v", req.FromAddress, info.ToFileName, req.ToHost, port)
 		}
 	}
