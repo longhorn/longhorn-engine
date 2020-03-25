@@ -891,100 +891,100 @@ func (s *SyncAgentServer) SnapshotPurge(ctx context.Context, req *empty.Empty) (
 		return nil, err
 	}
 
-	go func() {
-		var err error
-
-		defer func() {
-			s.PurgeStatus.Lock()
-			if err != nil {
-				s.PurgeStatus.Error = err.Error()
-				s.PurgeStatus.State = types.ProcessStateError
-			} else {
-				s.PurgeStatus.State = types.ProcessStateComplete
-			}
-			s.PurgeStatus.Unlock()
-
-			if err := s.FinishPurge(); err != nil {
-				logrus.Errorf("could not mark finish purge: %v", err)
-			}
-		}()
-
-		var leaves []string
-
-		snapshotsInfo, _, err := s.getSnapshotsInfo()
-		if err != nil {
-			return
-		}
-
-		for snapshot, info := range snapshotsInfo {
-			if len(info.Children) == 0 {
-				leaves = append(leaves, snapshot)
-			}
-			if info.Name == VolumeHeadName {
-				continue
-			}
-			// Mark system generated snapshots as removed
-			if !info.UserCreated && !info.Removed {
-				if err = s.markSnapshotAsRemoved(snapshot); err != nil {
-					return
-				}
-			}
-		}
-
-		snapshotsInfo, markedRemoved, err := s.getSnapshotsInfo()
-		if err != nil {
-			return
-		}
-
-		s.PurgeStatus.Lock()
-		s.PurgeStatus.total = markedRemoved
-		s.PurgeStatus.Unlock()
-
-		// We're tracing up from each leaf to the root
-		var removed int
-		for _, leaf := range leaves {
-			// Somehow the leaf was removed during the process
-			if _, ok := snapshotsInfo[leaf]; !ok {
-				continue
-			}
-			snapshot := leaf
-			for snapshot != "" {
-				// Snapshot already removed? Skip to the next leaf
-				info, ok := snapshotsInfo[snapshot]
-				if !ok {
-					break
-				}
-				if info.Removed {
-					if info.Name == VolumeHeadName {
-						err = fmt.Errorf("BUG: Volume head was marked as removed")
-						return
-					}
-
-					if err = s.processRemoveSnapshot(snapshot); err != nil {
-						return
-					}
-					removed++
-					s.PurgeStatus.Lock()
-					s.PurgeStatus.processed = removed
-					s.PurgeStatus.Unlock()
-				}
-				snapshot = info.Parent
-			}
-			// Update snapshotInfo in case some nodes have been removed
-			snapshotsInfo, _, err = s.getSnapshotsInfo()
-			if err != nil {
-				return
-			}
-			s.PurgeStatus.Lock()
-			s.PurgeStatus.Progress = int(float32(removed) / float32(markedRemoved) * 100)
-			s.PurgeStatus.Unlock()
-		}
-		s.PurgeStatus.Lock()
-		s.PurgeStatus.Progress = 100
-		s.PurgeStatus.Unlock()
-	}()
+	go s.purgeSnapshots()
 
 	return &empty.Empty{}, nil
+}
+
+func (s *SyncAgentServer) purgeSnapshots() (err error) {
+	defer func() {
+		s.PurgeStatus.Lock()
+		if err != nil {
+			s.PurgeStatus.Error = err.Error()
+			s.PurgeStatus.State = types.ProcessStateError
+		} else {
+			s.PurgeStatus.State = types.ProcessStateComplete
+		}
+		s.PurgeStatus.Unlock()
+
+		if err := s.FinishPurge(); err != nil {
+			logrus.Errorf("could not mark finish purge: %v", err)
+		}
+	}()
+
+	var leaves []string
+
+	snapshotsInfo, _, err := s.getSnapshotsInfo()
+	if err != nil {
+		return err
+	}
+
+	for snapshot, info := range snapshotsInfo {
+		if len(info.Children) == 0 {
+			leaves = append(leaves, snapshot)
+		}
+		if info.Name == VolumeHeadName {
+			continue
+		}
+		// Mark system generated snapshots as removed
+		if !info.UserCreated && !info.Removed {
+			if err := s.markSnapshotAsRemoved(snapshot); err != nil {
+				return err
+			}
+		}
+	}
+
+	snapshotsInfo, markedRemoved, err := s.getSnapshotsInfo()
+	if err != nil {
+		return err
+	}
+
+	s.PurgeStatus.Lock()
+	s.PurgeStatus.total = markedRemoved
+	s.PurgeStatus.Unlock()
+
+	// We're tracing up from each leaf to the root
+	var removed int
+	for _, leaf := range leaves {
+		// Somehow the leaf was removed during the process
+		if _, ok := snapshotsInfo[leaf]; !ok {
+			continue
+		}
+		snapshot := leaf
+		for snapshot != "" {
+			// Snapshot already removed? Skip to the next leaf
+			info, ok := snapshotsInfo[snapshot]
+			if !ok {
+				break
+			}
+			if info.Removed {
+				if info.Name == VolumeHeadName {
+					return fmt.Errorf("BUG: Volume head was marked as removed")
+				}
+				if err := s.processRemoveSnapshot(snapshot); err != nil {
+					return err
+				}
+				removed++
+				s.PurgeStatus.Lock()
+				s.PurgeStatus.processed = removed
+				s.PurgeStatus.Unlock()
+			}
+			snapshot = info.Parent
+		}
+		// Update snapshotInfo in case some nodes have been removed
+		snapshotsInfo, _, err = s.getSnapshotsInfo()
+		if err != nil {
+			return err
+		}
+		s.PurgeStatus.Lock()
+		s.PurgeStatus.Progress = int(float32(removed) / float32(markedRemoved) * 100)
+		s.PurgeStatus.Unlock()
+	}
+	s.PurgeStatus.Lock()
+	s.PurgeStatus.Progress = 100
+	s.PurgeStatus.Unlock()
+
+	return nil
 }
 
 func (s *SyncAgentServer) SnapshotPurgeStatus(ctx context.Context, req *empty.Empty) (*ptypes.SnapshotPurgeStatusReply, error) {
