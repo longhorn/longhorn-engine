@@ -5,5 +5,6 @@ grpcio==1.21.1
 
 flake8
 pytest==5.3.2
+pytest-parallel==0.0.10
 
 libqcow-python==20181227
