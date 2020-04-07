@@ -219,7 +219,9 @@ func (s *SyncAgentServer) finishRestoreNoLock(currentRestored string) error {
 		s.lastRestored = currentRestored
 	}
 	s.isRestoring = false
-	s.RestoreInfo.FinishRestore()
+	if s.RestoreInfo != nil {
+		s.RestoreInfo.FinishRestore()
+	}
 	return nil
 }
 
