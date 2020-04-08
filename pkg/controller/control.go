@@ -603,13 +603,17 @@ func (c *Controller) Shutdown() error {
 		Need to shutdown frontend first because it will write
 		the final piece of data to backend
 	*/
-	err := c.shutdownFrontend()
-	if err != nil {
-		logrus.Error("Error when shutting down frontend:", err)
+	errFrontend := c.shutdownFrontend()
+	if errFrontend != nil {
+		logrus.Error("Error when shutting down frontend:", errFrontend)
 	}
-	err = c.shutdownBackend()
-	if err != nil {
-		logrus.Error("Error when shutting down backend:", err)
+	errBackend := c.shutdownBackend()
+	if errBackend != nil {
+		logrus.Error("Error when shutting down backend:", errBackend)
+	}
+	if errFrontend != nil || errBackend != nil {
+		return fmt.Errorf("errors when shutting down controller: frontend: %v backend: %v",
+			errFrontend, errBackend)
 	}
 
 	return nil

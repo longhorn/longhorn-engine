@@ -90,10 +90,9 @@ func startController(c *cli.Context) error {
 	// need to wait for Shutdown() completion
 	control.ShutdownWG.Add(1)
 	addShutdown(func() (err error) {
+		defer control.ShutdownWG.Done()
 		logrus.Debugf("Starting to execute shutdown function for the engine controller of volume %v", name)
-		control.Shutdown()
-		control.ShutdownWG.Done()
-		return nil
+		return control.Shutdown()
 	})
 
 	if len(replicas) > 0 {
