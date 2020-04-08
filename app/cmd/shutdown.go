@@ -11,10 +11,10 @@ import (
 )
 
 var (
-	hooks = []func(){}
+	hooks = []func() (err error){}
 )
 
-func addShutdown(f func()) {
+func addShutdown(f func() (err error)) {
 	if len(hooks) == 0 {
 		registerShutdown()
 	}
@@ -29,11 +29,15 @@ func registerShutdown() {
 	go func() {
 		for s := range c {
 			logrus.Warnf("Received signal %v to shutdown", s)
+			exitCode := 0
 			for _, hook := range hooks {
 				logrus.Warnf("Starting to execute registered shutdown func %v", util.GetFunctionName(hook))
-				hook()
+				if err := hook(); err != nil {
+					logrus.Warnf("Failed to execute hook %v: %v", util.GetFunctionName(hook), err)
+					exitCode = 1
+				}
 			}
-			os.Exit(1)
+			os.Exit(exitCode)
 		}
 	}()
 }
