@@ -22,11 +22,12 @@ type BackupCreateInfo struct {
 }
 
 type BackupStatusInfo struct {
-	Progress     int    `json:"progress"`
-	BackupURL    string `json:"backupURL,omitempty"`
-	Error        string `json:"error,omitempty"`
-	SnapshotName string `json:"snapshotName"`
-	State        string `json:"state"`
+	Progress       int    `json:"progress"`
+	BackupURL      string `json:"backupURL,omitempty"`
+	Error          string `json:"error,omitempty"`
+	SnapshotName   string `json:"snapshotName"`
+	State          string `json:"state"`
+	ReplicaAddress string `json:"replicaAddress"`
 }
 
 type RestoreStatus struct {
@@ -113,26 +114,27 @@ func (t *Task) createBackup(replicaInController *types.ControllerReplicaInfo, sn
 	return info, nil
 }
 
-func (t *Task) FetchBackupStatus(backupID string, replicaIP string) (*BackupStatusInfo, error) {
-	repClient, err := replicaClient.NewReplicaClient(replicaIP)
+func (t *Task) FetchBackupStatus(backupID string, replicaAddr string) (*BackupStatusInfo, error) {
+	repClient, err := replicaClient.NewReplicaClient(replicaAddr)
 	if err != nil {
-		logrus.Errorf("Cannot create a replica client for IP[%v]: %v", replicaIP, err)
+		logrus.Errorf("Cannot create a replica client for IP[%v]: %v", replicaAddr, err)
 		return nil, err
 	}
 
 	bs, err := repClient.GetBackupStatus(backupID)
 	if err != nil {
 		return &BackupStatusInfo{
-			Error: fmt.Sprintf("Failed to get backup status on %s for %v: %v", replicaIP, backupID, err),
+			Error: fmt.Sprintf("Failed to get backup status on %s for %v: %v", replicaAddr, backupID, err),
 		}, nil
 	}
 
 	info := &BackupStatusInfo{
-		Progress:     int(bs.Progress),
-		BackupURL:    bs.BackupURL,
-		Error:        bs.Error,
-		SnapshotName: bs.SnapshotName,
-		State:        bs.State,
+		Progress:       int(bs.Progress),
+		BackupURL:      bs.BackupURL,
+		Error:          bs.Error,
+		SnapshotName:   bs.SnapshotName,
+		State:          bs.State,
+		ReplicaAddress: replicaAddr,
 	}
 
 	return info, nil
