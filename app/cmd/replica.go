@@ -155,7 +155,7 @@ func startReplica(c *cli.Context) error {
 	}
 
 	// empty shutdown hook for signal message
-	addShutdown(func() {})
+	addShutdown(func() (err error) { return nil })
 
 	return <-resp
 }
