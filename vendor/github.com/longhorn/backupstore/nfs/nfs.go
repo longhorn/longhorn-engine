@@ -28,7 +28,7 @@ const (
 	KIND = "nfs"
 
 	NfsPath  = "nfs.path"
-	MountDir = "/var/lib/longhorn/mounts"
+	MountDir = "/var/lib/longhorn-backupstore-mounts"
 
 	MaxCleanupLevel = 10
 )

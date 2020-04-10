@@ -3,6 +3,7 @@ package util
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"net"
 	"os"
 	"os/exec"
@@ -108,7 +109,7 @@ func (ne *NamespaceExecutor) Execute(name string, args []string) (string, error)
 
 func (ne *NamespaceExecutor) ExecuteWithTimeout(timeout time.Duration, name string, args []string) (string, error) {
 	if ne.ns == "" {
-		return ExecuteWithoutTimeout(name, args)
+		return ExecuteWithTimeout(timeout, name, args)
 	}
 	return ExecuteWithTimeout(timeout, NSBinary, ne.prepareCommandArgs(name, args))
 }
@@ -158,6 +159,8 @@ func ExecuteWithTimeout(timeout time.Duration, binary string, args []string) (st
 	return output.String(), nil
 }
 
+// TODO: Merge this with ExecuteWithTimeout
+
 func ExecuteWithoutTimeout(binary string, args []string) (string, error) {
 	var err error
 	var output, stderr bytes.Buffer
@@ -167,6 +170,63 @@ func ExecuteWithoutTimeout(binary string, args []string) (string, error) {
 	cmd.Stderr = &stderr
 
 	if err = cmd.Run(); err != nil {
+		return "", fmt.Errorf("Failed to execute: %v %v, output %s, stderr, %s, error %v",
+			binary, args, output.String(), stderr.String(), err)
+	}
+	return output.String(), nil
+}
+
+func (ne *NamespaceExecutor) ExecuteWithStdin(name string, args []string, stdinString string) (string, error) {
+	if ne.ns == "" {
+		return ExecuteWithStdin(name, args, stdinString)
+	}
+	cmdArgs := []string{
+		"--mount=" + filepath.Join(ne.ns, "mnt"),
+		"--net=" + filepath.Join(ne.ns, "net"),
+		name,
+	}
+	cmdArgs = append(cmdArgs, args...)
+	return ExecuteWithStdin(NSBinary, cmdArgs, stdinString)
+}
+
+func ExecuteWithStdin(binary string, args []string, stdinString string) (string, error) {
+	var err error
+	cmd := exec.Command(binary, args...)
+	done := make(chan struct{})
+
+	var output, stderr bytes.Buffer
+	cmd.Stdout = &output
+	cmd.Stderr = &stderr
+
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
+		return "", err
+	}
+
+	go func() {
+		defer stdin.Close()
+		io.WriteString(stdin, stdinString)
+	}()
+
+	go func() {
+		err = cmd.Run()
+		done <- struct{}{}
+	}()
+
+	select {
+	case <-done:
+	case <-time.After(cmdTimeout):
+		if cmd.Process != nil {
+			if err := cmd.Process.Kill(); err != nil {
+				logrus.Warnf("Problem killing process pid=%v: %s", cmd.Process.Pid, err)
+			}
+
+		}
+		return "", fmt.Errorf("Timeout executing: %v %v, output %s, stderr, %s, error %v",
+			binary, args, output.String(), stderr.String(), err)
+	}
+
+	if err != nil {
 		return "", fmt.Errorf("Failed to execute: %v %v, output %s, stderr, %s, error %v",
 			binary, args, output.String(), stderr.String(), err)
 	}
