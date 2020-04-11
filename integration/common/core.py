@@ -567,9 +567,10 @@ def expand_volume_with_frontend(grpc_controller_client, size):  # NOQA
 def wait_for_volume_expansion(grpc_controller_client, size):  # NOQA
     for i in range(RETRY_COUNTS):
         volume = grpc_controller_client.volume_get()
-        if volume.size == size:
+        if not volume.isExpanding and volume.size == size:
             break
         time.sleep(RETRY_INTERVAL)
+    assert not volume.isExpanding
     assert volume.size == size
     return volume
 

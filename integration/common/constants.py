@@ -70,3 +70,8 @@ VOLUME_HEAD = 'volume-head'
 VOLUME_NAME_BASE = TEST_PREFIX + "instance-volume-"
 ENGINE_NAME_BASE = TEST_PREFIX + "instance-engine-"
 REPLICA_NAME_BASE = TEST_PREFIX + "instance-replica-"
+
+REPLICA_META_FILE_NAME = "volume.meta"
+EXPANSION_DISK_TMP_META_NAME = \
+    "volume-snap-expand-%d.img.meta.tmp" % EXPANDED_SIZE
+EXPANSION_DISK_NAME = "volume-snap-expand-%d.img" % EXPANDED_SIZE
