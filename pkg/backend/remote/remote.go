@@ -107,8 +107,12 @@ func (r *Remote) Snapshot(name string, userCreated bool, created string, labels 
 	return nil
 }
 
-func (r *Remote) Expand(size int64) error {
+func (r *Remote) Expand(size int64) (err error) {
 	logrus.Infof("Expand to size %v", size)
+	defer func() {
+		err = types.WrapError(err, "failed to expand replica %v from remote", r.replicaServiceURL)
+	}()
+
 	conn, err := grpc.Dial(r.replicaServiceURL, grpc.WithInsecure())
 	if err != nil {
 		return fmt.Errorf("cannot connect to ReplicaService %v: %v", r.replicaServiceURL, err)
@@ -122,7 +126,7 @@ func (r *Remote) Expand(size int64) error {
 	if _, err := replicaServiceClient.ReplicaExpand(ctx, &ptypes.ReplicaExpandRequest{
 		Size: size,
 	}); err != nil {
-		return fmt.Errorf("failed to expand replica %v from remote: %v", r.replicaServiceURL, err)
+		return types.UnmarshalGRPCError(err)
 	}
 
 	return nil
