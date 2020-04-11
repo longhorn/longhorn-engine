@@ -672,7 +672,7 @@ func (r *Replica) openFile(name string, flag int) (types.DiffDisk, error) {
 	return sparse.NewDirectFileIoProcessor(r.diskPath(name), os.O_RDWR|flag, 06666, true)
 }
 
-func (r *Replica) createNewHead(oldHead, parent, created string) (types.DiffDisk, disk, error) {
+func (r *Replica) createNewHead(oldHead, parent, created string, size int64) (f types.DiffDisk, newDisk disk, err error) {
 	newHeadName, err := r.nextFile(diskPattern, headName, oldHead)
 	if err != nil {
 		return nil, disk{}, err
@@ -682,15 +682,32 @@ func (r *Replica) createNewHead(oldHead, parent, created string) (types.DiffDisk
 		return nil, disk{}, fmt.Errorf("%s already exists", newHeadName)
 	}
 
-	f, err := r.openFile(newHeadName, os.O_TRUNC)
+	defer func() {
+		var rollbackErr error
+		if err != nil {
+			if _, err := os.Stat(r.diskPath(newHeadName)); err == nil {
+				if err := os.Remove(r.diskPath(newHeadName)); err != nil {
+					rollbackErr = err
+				}
+			}
+			if _, err := os.Stat(r.diskPath(newHeadName + metadataSuffix)); err == nil {
+				if err := os.Remove(r.diskPath(newHeadName + metadataSuffix)); err != nil {
+					rollbackErr = types.CombineErrors(rollbackErr, err)
+				}
+			}
+			err = types.GenerateFunctionErrorWithRollback(err, rollbackErr)
+		}
+	}()
+
+	f, err = r.openFile(r.diskPath(newHeadName), os.O_TRUNC)
 	if err != nil {
 		return nil, disk{}, err
 	}
-	if err := syscall.Truncate(r.diskPath(newHeadName), r.info.Size); err != nil {
+	if err := syscall.Truncate(r.diskPath(newHeadName), size); err != nil {
 		return nil, disk{}, err
 	}
 
-	newDisk := disk{
+	newDisk = disk{
 		Parent:      parent,
 		Name:        newHeadName,
 		Removed:     false,
@@ -755,7 +772,7 @@ func (r *Replica) revertDisk(parent, created string) (*Replica, error) {
 	}
 
 	oldHead := r.info.Head
-	f, newHeadDisk, err := r.createNewHead(oldHead, parent, created)
+	f, newHeadDisk, err := r.createNewHead(oldHead, parent, created, r.info.Size)
 	if err != nil {
 		return nil, err
 	}
@@ -807,7 +824,7 @@ func (r *Replica) createDisk(name string, userCreated bool, created string, labe
 		newSnapName = ""
 	}
 
-	f, newHeadDisk, err := r.createNewHead(oldHead, newSnapName, created)
+	f, newHeadDisk, err := r.createNewHead(oldHead, newSnapName, created, r.info.Size)
 	if err != nil {
 		return err
 	}
