@@ -53,7 +53,8 @@ def test_ha_single_replica_failure(grpc_controller,  # NOQA
 
     verify_async(dev, 10, 128, 1)
 
-    verify_replica_state(grpc_controller, 1, "ERR")
+    verify_replica_state(grpc_controller,
+                         r2_url, "ERR")
 
     verify_read(dev, data_offset, data)
 
@@ -89,7 +90,8 @@ def test_ha_single_replica_rebuild(grpc_controller,  # NOQA
 
     verify_async(dev, 10, 128, 1)
 
-    verify_replica_state(grpc_controller, 1, "ERR")
+    verify_replica_state(grpc_controller,
+                         r2_url, "ERR")
 
     verify_read(dev, data_offset, data)
 
@@ -102,7 +104,8 @@ def test_ha_single_replica_rebuild(grpc_controller,  # NOQA
 
     verify_async(dev, 10, 128, 1)
 
-    verify_replica_state(grpc_controller, 1, "RW")
+    verify_replica_state(grpc_controller,
+                         r2_url, "RW")
 
     verify_read(dev, data_offset, data)
 
@@ -158,7 +161,8 @@ def test_ha_double_replica_rebuild(grpc_controller,  # NOQA
 
     verify_async(dev, 10, 128, 1)
 
-    verify_replica_state(grpc_controller, 1, "ERR")
+    verify_replica_state(grpc_controller,
+                         r2_url, "ERR")
 
     verify_read(dev, data1_offset, data1)
 
@@ -204,7 +208,8 @@ def test_ha_double_replica_rebuild(grpc_controller,  # NOQA
 
     verify_async(dev, 10, 128, 1)
 
-    verify_replica_state(grpc_controller, 1, "RW")
+    verify_replica_state(grpc_controller,
+                         r2_url, "RW")
 
     verify_read(dev, data1_offset, data1)
     verify_read(dev, data2_offset, data2)
@@ -283,7 +288,8 @@ def test_snapshot_tree_rebuild(grpc_controller,  # NOQA
 
     verify_async(dev, 10, 128, 1)
 
-    verify_replica_state(grpc_controller, 1, "ERR")
+    verify_replica_state(grpc_controller,
+                         r2_url, "ERR")
 
     verify_read(dev, data_offset, data)
 
@@ -296,7 +302,8 @@ def test_snapshot_tree_rebuild(grpc_controller,  # NOQA
 
     verify_async(dev, 10, 128, 1)
 
-    verify_replica_state(grpc_controller, 1, "RW")
+    verify_replica_state(grpc_controller,
+                         r2_url, "RW")
 
     snapshot_tree_verify(dev, address, ENGINE_NAME,
                          offset, length, snap, snap_data)
@@ -337,7 +344,8 @@ def test_ha_single_backing_replica_rebuild(grpc_backing_controller,  # NOQA
 
     verify_async(dev, 10, 128, 1)
 
-    verify_replica_state(grpc_backing_controller, 1, "ERR")
+    verify_replica_state(grpc_backing_controller,
+                         r2_url, "ERR")
 
     verify_read(dev, data_offset, data)
 
@@ -350,7 +358,8 @@ def test_ha_single_backing_replica_rebuild(grpc_backing_controller,  # NOQA
 
     verify_async(dev, 10, 128, 1)
 
-    verify_replica_state(grpc_backing_controller, 1, "RW")
+    verify_replica_state(grpc_backing_controller,
+                         r2_url, "RW")
 
     verify_read(dev, data_offset, data)
 
@@ -482,7 +491,8 @@ def test_expansion_with_rebuild(grpc_controller,  # NOQA
 
     # Cleanup replica2
     cleanup_replica(grpc_replica2)
-    verify_replica_state(grpc_controller, 1, "ERR")
+    verify_replica_state(grpc_controller,
+                         grpc_replica2.address, "ERR")
     grpc_controller.replica_delete(replicas[1].address)
 
     # Rebuild replica2.
@@ -490,11 +500,13 @@ def test_expansion_with_rebuild(grpc_controller,  # NOQA
     # The newly opened replica2 will be expanded automatically
     cmd.add_replica(address, grpc_replica2.url)
     wait_for_rebuild_complete(address)
-    verify_replica_state(grpc_controller, 1, "RW")
+    verify_replica_state(grpc_controller,
+                         grpc_replica2.address, "RW")
 
     # Cleanup replica1 then check if the rebuilt replica2 works fine
     cleanup_replica(grpc_replica1)
-    verify_replica_state(grpc_controller, 0, "ERR")
+    verify_replica_state(grpc_controller,
+                         grpc_replica1.address, "ERR")
     grpc_controller.replica_delete(replicas[0].address)
 
     assert \
