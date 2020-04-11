@@ -25,6 +25,7 @@ from common.constants import (
     VOLUME_NAME, VOLUME_BACKING_NAME,
     ENGINE_NAME, BACKUP_DIR, VOLUME_HEAD,
     PAGE_SIZE, SIZE, EXPANDED_SIZE,
+    EXPANDED_SIZE_STR,
     FIXED_REPLICA_PATH1, FIXED_REPLICA_PATH2,
     FRONTEND_TGT_BLOCKDEV,
     REPLICA_META_FILE_NAME,
@@ -687,3 +688,112 @@ def test_expansion_rollback_with_rebuild(
                  data4_len, random_string(data4_len))
     snap4 = Snapshot(dev, data4, address)
     snap4.verify_data()
+
+
+def test_single_replica_expansion_failed(
+        grpc_controller, grpc_fixed_dir_replica1, grpc_fixed_dir_replica2):  # NOQA
+    """
+    The test flow:
+    1. Write random data into the block device.
+    2. Create the 1st snapshot.
+    3. Create an empty directory using the tmp meta file path of
+       the expansion disk for replica1.
+    4. Try to expand the volume. replica1 will be directly marked as ERR state.
+       Finally the volume expansion should succeed.
+    5. Check the volume status, and if the expanded volume works fine:
+       r/w data then create the 2nd snapshot.
+    6. Rebuild replica1 and check the replica1 is expanded automatically.
+    7. Delete replica2 then check if the rebuilt replica1 works fine.
+    """
+    address = grpc_controller.address
+    r1_url = grpc_fixed_dir_replica1.address
+    r2_url = grpc_fixed_dir_replica2.address
+    dev = get_dev(grpc_fixed_dir_replica1, grpc_fixed_dir_replica2,
+                  grpc_controller)
+
+    replicas = grpc_controller.replica_list()
+    assert len(replicas) == 2
+    assert replicas[0].mode == "RW"
+    assert replicas[1].mode == "RW"
+
+    # the default size is 4MB, will expand it to 8MB
+    zero_char = b'\x00'.decode('utf-8')
+
+    # write the data to the original part then do expansion
+    data1_len = random_length(PAGE_SIZE)
+    data1 = Data(random.randrange(0, SIZE-2*PAGE_SIZE, PAGE_SIZE),
+                 data1_len, random_string(data1_len))
+    snap1 = Snapshot(dev, data1, address)
+
+    disk_meta_tmp_1 = os.path.join(
+        FIXED_REPLICA_PATH1, EXPANSION_DISK_TMP_META_NAME)
+    os.mkdir(disk_meta_tmp_1)
+
+    # replica1 will fail to expand the size,
+    # then engine will directly mark it as ERR state.
+    # Finally, The volume expansion should succeed since replica2 works fine.
+    grpc_controller.volume_frontend_shutdown()
+    grpc_controller.volume_expand(EXPANDED_SIZE)
+    wait_for_volume_expansion(grpc_controller, EXPANDED_SIZE)
+    grpc_controller.volume_frontend_start(FRONTEND_TGT_BLOCKDEV)
+
+    volume_info = grpc_controller.volume_get()
+    assert volume_info.last_expansion_error != ""
+    assert volume_info.last_expansion_failed_at != ""
+    verify_replica_state(grpc_controller, r1_url, "ERR")
+    verify_replica_state(grpc_controller, r2_url, "RW")
+
+    expansion_disk_2 = os.path.join(FIXED_REPLICA_PATH2, EXPANSION_DISK_NAME)
+    disk_meta_tmp_2 = os.path.join(
+        FIXED_REPLICA_PATH2, EXPANSION_DISK_TMP_META_NAME)
+    assert os.path.exists(expansion_disk_2)
+    assert not os.path.exists(disk_meta_tmp_2)
+    # The meta info file should keep unchanged
+    replica_meta_file_2 = os.path.join(FIXED_REPLICA_PATH2,
+                                       REPLICA_META_FILE_NAME)
+    with open(replica_meta_file_2) as f:
+        replica_meta_2 = json.load(f)
+    assert replica_meta_2["Size"] == EXPANDED_SIZE
+
+    # Cleanup replica1 then check if replica2 works fine
+    cleanup_replica(grpc_fixed_dir_replica1)
+    verify_replica_state(grpc_controller, r1_url, "ERR")
+    grpc_controller.replica_delete(replicas[0].address)
+
+    snap1.verify_data()
+    data2_len = random_length(PAGE_SIZE)
+    data2 = Data(SIZE-PAGE_SIZE,
+                 data2_len, random_string(data2_len))
+    snap2 = Snapshot(dev, data2, address)
+    snap2.verify_data()
+    assert dev.readat(SIZE, SIZE) == zero_char*SIZE
+
+    # Rebuild replica1.
+    # The newly opened replica1 will be expanded automatically
+    open_replica(grpc_fixed_dir_replica1)
+    cmd.add_replica(address, grpc_fixed_dir_replica1.url)
+    wait_for_rebuild_complete(address)
+    r1 = grpc_fixed_dir_replica1.replica_get()
+    assert r1.size == EXPANDED_SIZE_STR
+    verify_replica_state(grpc_controller, r1_url, "RW")
+    replica_meta_file_1 = os.path.join(FIXED_REPLICA_PATH1,
+                                       REPLICA_META_FILE_NAME)
+    with open(replica_meta_file_1) as f:
+        replica_meta_1 = json.load(f)
+    assert replica_meta_1["Size"] == EXPANDED_SIZE
+
+    # Delete replica2 then check if the rebuilt replica1 works fine
+    cleanup_replica(grpc_fixed_dir_replica2)
+    verify_replica_state(grpc_controller, r2_url, "ERR")
+    grpc_controller.replica_delete(replicas[1].address)
+
+    data3_len = random_length(PAGE_SIZE)
+    data3 = Data(random.randrange(SIZE, EXPANDED_SIZE-PAGE_SIZE, PAGE_SIZE),
+                 data3_len, random_string(data3_len))
+    snap3 = Snapshot(dev, data3, address)
+    snap1.verify_data()
+    snap2.verify_data()
+    snap3.verify_data()
+    assert \
+        dev.readat(SIZE, SIZE) == zero_char*(data3.offset-SIZE) + \
+        data3.content + zero_char*(EXPANDED_SIZE-data3.offset-data3.length)
