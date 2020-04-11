@@ -798,15 +798,6 @@ func (r *Replica) revertDisk(parent, created string) (*Replica, error) {
 	return rNew, nil
 }
 
-func (r *Replica) expand() error {
-	if err := r.createDisk(GenerateExpansionSnapshotName(r.info.Size), false, util.Now(), GenerateExpansionSnapshotLabels(r.info.Size), r.info.Size); err != nil {
-		return err
-	}
-
-	r.volume.Expand(r.info.Size)
-	return nil
-}
-
 func (r *Replica) createDisk(name string, userCreated bool, created string, labels map[string]string, size int64) (err error) {
 	if r.readOnly {
 		return fmt.Errorf("Can not create disk on read-only replica")
@@ -1044,7 +1035,7 @@ func (r *Replica) Revert(name, created string) (*Replica, error) {
 	return r.revertDisk(name, created)
 }
 
-func (r *Replica) Expand(size int64) error {
+func (r *Replica) Expand(size int64) (err error) {
 	r.Lock()
 	defer r.Unlock()
 
@@ -1055,9 +1046,15 @@ func (r *Replica) Expand(size int64) error {
 		return nil
 	}
 
-	r.info.Size = size
 	// Will create a new head with the expanded size and write the new size into the meta file
-	return r.expand()
+	if err := r.createDisk(
+		GenerateExpansionSnapshotName(size), false, util.Now(),
+		GenerateExpansionSnapshotLabels(size), size); err != nil {
+		return err
+	}
+	r.volume.Expand(size)
+
+	return nil
 }
 
 func (r *Replica) WriteAt(buf []byte, offset int64) (int, error) {

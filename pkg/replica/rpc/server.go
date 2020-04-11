@@ -6,9 +6,12 @@ import (
 
 	"github.com/golang/protobuf/ptypes/empty"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc/codes"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/grpc/status"
 
 	"github.com/longhorn/longhorn-engine/pkg/replica"
+	"github.com/longhorn/longhorn-engine/pkg/types"
 	"github.com/longhorn/longhorn-engine/proto/ptypes"
 )
 
@@ -157,7 +160,12 @@ func (rs *ReplicaServer) ReplicaSnapshot(ctx context.Context, req *ptypes.Replic
 
 func (rs *ReplicaServer) ReplicaExpand(ctx context.Context, req *ptypes.ReplicaExpandRequest) (*ptypes.Replica, error) {
 	if err := rs.s.Expand(req.Size); err != nil {
-		return nil, err
+		errWithCode, ok := err.(*types.Error)
+		if !ok {
+			errWithCode = types.NewError(types.ErrorCodeFunctionFailedWithoutRollback,
+				err.Error(), "")
+		}
+		return nil, status.Errorf(codes.Internal, errWithCode.ToJSONString())
 	}
 
 	return rs.getReplica(), nil
