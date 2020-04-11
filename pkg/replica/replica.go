@@ -192,7 +192,7 @@ func construct(readonly bool, size, sectorSize int64, dir, head string, backingF
 	} else if size <= 0 {
 		return nil, os.ErrNotExist
 	} else {
-		if err := r.createDisk("000", false, util.Now(), nil); err != nil {
+		if err := r.createDisk("000", false, util.Now(), nil, size); err != nil {
 			return nil, err
 		}
 	}
@@ -799,7 +799,7 @@ func (r *Replica) revertDisk(parent, created string) (*Replica, error) {
 }
 
 func (r *Replica) expand() error {
-	if err := r.createDisk(GenerateExpansionSnapshotName(r.info.Size), false, util.Now(), GenerateExpansionSnapshotLabels(r.info.Size)); err != nil {
+	if err := r.createDisk(GenerateExpansionSnapshotName(r.info.Size), false, util.Now(), GenerateExpansionSnapshotLabels(r.info.Size), r.info.Size); err != nil {
 		return err
 	}
 
@@ -807,7 +807,7 @@ func (r *Replica) expand() error {
 	return nil
 }
 
-func (r *Replica) createDisk(name string, userCreated bool, created string, labels map[string]string) error {
+func (r *Replica) createDisk(name string, userCreated bool, created string, labels map[string]string, size int64) (err error) {
 	if r.readOnly {
 		return fmt.Errorf("Can not create disk on read-only replica")
 	}
@@ -816,7 +816,6 @@ func (r *Replica) createDisk(name string, userCreated bool, created string, labe
 		return fmt.Errorf("Too many active disks: %v", len(r.activeDiskData)+1)
 	}
 
-	done := false
 	oldHead := r.info.Head
 	newSnapName := GenerateSnapshotDiskName(name)
 
@@ -824,18 +823,29 @@ func (r *Replica) createDisk(name string, userCreated bool, created string, labe
 		newSnapName = ""
 	}
 
-	f, newHeadDisk, err := r.createNewHead(oldHead, newSnapName, created, r.info.Size)
+	f, newHeadDisk, err := r.createNewHead(oldHead, newSnapName, created, size)
 	if err != nil {
 		return err
 	}
 	defer func() {
-		if !done {
-			r.rmDisk(newHeadDisk.Name)
-			r.rmDisk(newSnapName)
-			f.Close()
-			return
+		var rollbackErr error
+		if err != nil {
+			logrus.Errorf("failed to create disk %v, will do rollback: %v", name, err)
+			delete(r.diskData, newHeadDisk.Name)
+			delete(r.diskData, newSnapName)
+			delete(r.diskChildrenMap, newSnapName)
+			rollbackErr = types.CombineErrors(
+				r.rmDisk(newHeadDisk.Name),
+				r.rmDisk(newSnapName),
+				f.Close(),
+				r.encodeToFile(&r.info, volumeMetaData),
+			)
+			err = types.WrapError(
+				types.GenerateFunctionErrorWithRollback(err, rollbackErr),
+				"failed to create new disk %v", name)
+		} else {
+			r.rmDisk(oldHead)
 		}
-		r.rmDisk(oldHead)
 	}()
 
 	if err := r.linkDisk(r.info.Head, newSnapName); err != nil {
@@ -846,12 +856,12 @@ func (r *Replica) createDisk(name string, userCreated bool, created string, labe
 	info.Head = newHeadDisk.Name
 	info.Dirty = true
 	info.Parent = newSnapName
+	info.Size = size
 
 	if err := r.encodeToFile(&info, volumeMetaData); err != nil {
 		return err
 	}
 
-	done = true
 	r.diskData[newHeadDisk.Name] = &newHeadDisk
 	if newSnapName != "" {
 		r.addChildDisk(newSnapName, newHeadDisk.Name)
@@ -1024,7 +1034,7 @@ func (r *Replica) Snapshot(name string, userCreated bool, created string, labels
 	r.Lock()
 	defer r.Unlock()
 
-	return r.createDisk(name, userCreated, created, labels)
+	return r.createDisk(name, userCreated, created, labels, r.info.Size)
 }
 
 func (r *Replica) Revert(name, created string) (*Replica, error) {
