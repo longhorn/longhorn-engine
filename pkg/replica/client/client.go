@@ -189,7 +189,11 @@ func (c *ReplicaClient) ReloadReplica() (*types.ReplicaInfo, error) {
 	return GetReplicaInfo(replica), nil
 }
 
-func (c *ReplicaClient) ExpandReplica(size int64) (*types.ReplicaInfo, error) {
+func (c *ReplicaClient) ExpandReplica(size int64) (r *types.ReplicaInfo, err error) {
+	defer func() {
+		err = types.WrapError(err, "failed to expand replica %v", c.replicaServiceURL)
+	}()
+
 	conn, err := grpc.Dial(c.replicaServiceURL, grpc.WithInsecure())
 	if err != nil {
 		return nil, fmt.Errorf("cannot connect to ReplicaService %v: %v", c.replicaServiceURL, err)
@@ -204,7 +208,7 @@ func (c *ReplicaClient) ExpandReplica(size int64) (*types.ReplicaInfo, error) {
 		Size: size,
 	})
 	if err != nil {
-		return nil, fmt.Errorf("failed to expand replica %v: %v", c.replicaServiceURL, err)
+		return nil, types.UnmarshalGRPCError(err)
 	}
 
 	return GetReplicaInfo(replica), nil
