@@ -29,7 +29,16 @@ func (f *Wrapper) Snapshot(name string, userCreated bool, created string, labels
 	return nil
 }
 
-func (f *Wrapper) Expand(size int64) error {
+func (f *Wrapper) Expand(size int64) (err error) {
+	defer func() {
+		if err != nil {
+			if _, ok := err.(*types.Error); !ok {
+				err = types.NewError(types.ErrorCodeFunctionFailedWithoutRollback,
+					err.Error(), "")
+			}
+		}
+	}()
+
 	currentSize, err := f.Size()
 	if err != nil {
 		return err
@@ -39,6 +48,14 @@ func (f *Wrapper) Expand(size int64) error {
 	} else if size == currentSize {
 		return nil
 	}
+
+	defer func() {
+		if err != nil {
+			err = types.WrapError(
+				types.GenerateFunctionErrorWithRollback(err, f.Truncate(currentSize)),
+				"failed to expand the file to size %v", size)
+		}
+	}()
 	return f.Truncate(size)
 }
 
