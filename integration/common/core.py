@@ -409,17 +409,23 @@ def verify_loop(dev, times, offset, length):
         verify_data(dev, offset, data)
 
 
-def verify_replica_state(grpc_c, index, state):
+def verify_replica_state(grpc_c, addr, state):
+    if not addr.startswith("tcp://"):
+        addr = "tcp://" + addr
+
+    verified = False
     for i in range(RETRY_COUNTS_SHORT):
         replicas = grpc_c.replica_list()
         assert len(replicas) == 2
-
-        if replicas[index].mode == state:
+        for r in replicas:
+            if r.address == addr and r.mode == state:
+                verified = True
+                break
+        if verified:
             break
 
         time.sleep(RETRY_INTERVAL_SHORT)
-
-    assert replicas[index].mode == state
+    assert verified
 
 
 def verify_read(dev, offset, data):
