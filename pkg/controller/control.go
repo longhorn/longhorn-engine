@@ -44,6 +44,9 @@ type Controller struct {
 
 	backupList      map[string]string
 	backupListMutex *sync.RWMutex
+
+	lastExpansionError    string
+	lastExpansionFailedAt string
 }
 
 const (
@@ -220,9 +223,21 @@ func (c *Controller) Expand(size int64) error {
 			return
 		}
 
-		if err := c.handleErrorNoLock(c.backend.Expand(size)); err != nil {
-			logrus.Errorf("failed to expand the engine backend: %v", err)
-			return
+		expansionSuccess, errsNeedToBeHandled, errsForRecording := c.backend.Expand(size)
+		if errsForRecording != nil {
+			c.lastExpansionFailedAt = time.Now().UTC().Format(time.RFC3339)
+			if expansionSuccess {
+				c.lastExpansionError = fmt.Sprintf("the expansion succeeded, but some replica expansion failed: %v", errsForRecording)
+			} else {
+				c.lastExpansionError = fmt.Sprintf("the expansion failed since all replica expansion failed: %v", errsForRecording)
+			}
+			if err := c.handleErrorNoLock(errsNeedToBeHandled); err != nil {
+				logrus.Errorf("failed to handle the backend expansion errors: %v", err)
+			}
+			// If there is expansion failure, controller cannot continue expanding the frontend
+			if !expansionSuccess {
+				return
+			}
 		}
 
 		if c.frontend != nil {
@@ -239,9 +254,18 @@ func (c *Controller) Expand(size int64) error {
 	return nil
 }
 
-func (c *Controller) startExpansion(size int64) error {
+func (c *Controller) startExpansion(size int64) (err error) {
 	c.Lock()
 	defer c.Unlock()
+
+	defer func() {
+		if err != nil {
+			err = fmt.Errorf("failed to start expansion: %v", err)
+			c.lastExpansionFailedAt = time.Now().UTC().Format(time.RFC3339)
+			c.lastExpansionError = err.Error()
+		}
+	}()
+
 	if c.isExpanding {
 		return fmt.Errorf("controller expansion is in progress")
 	}

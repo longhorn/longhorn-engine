@@ -207,21 +207,48 @@ func (r *replicator) Snapshot(name string, userCreated bool, created string, lab
 	return nil
 }
 
-func (r *replicator) Expand(size int64) error {
-	retErrorLock := sync.Mutex{}
-	retError := &BackendError{
+// Expand tries to handle the expansion for all replicas, as well as the rollback result if the rollback is applied.
+// It returns 1 boolean and 2 errors:
+//   - The boolean indicates if the expansion succeeds or not.
+//     As long as there is one replica expansion success, we will consider the backend expansion as success.
+//     Otherwise we need to do manual rollback for these replicas, which make things more complicated.
+//   - The 1st one indicates that the related replica is out of sync and it should be marked as ERROR state later;
+//   - The 2nd one just records why the replica expansion/rollback fails.
+//     The controller doesn't need to mark the related replica as ERROR state.
+func (r *replicator) Expand(size int64) (bool, error, error) {
+	errorLock := sync.Mutex{}
+	errs := &BackendError{
+		Errors: map[string]error{},
+	}
+	outOfSyncErrs := &BackendError{
 		Errors: map[string]error{},
 	}
 	wg := sync.WaitGroup{}
+	rwReplicaCount := 0
 
 	for addr, backend := range r.backends {
 		if backend.mode != types.ERR {
 			wg.Add(1)
+			rwReplicaCount++
 			go func(address string, backend types.Backend) {
 				if err := backend.Expand(size); err != nil {
-					retErrorLock.Lock()
-					retError.Errors[address] = err
-					retErrorLock.Unlock()
+					errWithCode, ok := err.(*types.Error)
+					if !ok {
+						errWithCode = types.NewError(types.ErrorCodeResultUnknown,
+							err.Error(), "")
+					}
+					errorLock.Lock()
+					errs.Errors[address] = errWithCode
+					// - If the error code is not `ErrorCodeFunctionFailedRollbackSucceeded`,
+					//   the related replica must be out of sync and it is no longer reusable.
+					// - If the error code is `ErrorCodeFunctionFailedRollbackSucceeded`,
+					//   it doesn't mean the related replica is in sync. The state of the replica
+					//   depends on the final result and we will re-check `outOfSyncErrs` at that time.
+					if errWithCode.Code != types.ErrorCodeFunctionFailedRollbackSucceeded {
+						outOfSyncErrs.Errors[address] = errWithCode
+					}
+					errorLock.Unlock()
+
 				}
 				wg.Done()
 			}(addr, backend.backend)
@@ -230,10 +257,27 @@ func (r *replicator) Expand(size int64) error {
 
 	wg.Wait()
 
-	if len(retError.Errors) != 0 {
-		return retError
+	if len(errs.Errors) != 0 {
+		// Only some of the replica expansion failed,
+		// those related replicas were out of sync even if the rollback succeeded.
+		if len(errs.Errors) < rwReplicaCount {
+			outOfSyncErrs = errs
+			logrus.Infof("Only some of the replica expansion failed: %v", outOfSyncErrs)
+			return true, outOfSyncErrs, errs
+		}
+		// All replica expansion failed and some replica rollback failed,
+		// only the replicas that failed the rollback were out of sync.
+		if len(outOfSyncErrs.Errors) != 0 {
+			logrus.Infof("All replica expansion failed and some replica rollback failed: %v", errs)
+			return false, outOfSyncErrs, errs
+		}
+		// All replica expansion failed but all replicas rollback succeeded.
+		logrus.Infof("All replica expansion failed but all replicas rollback succeeded: %v", errs)
+		return false, nil, errs
 	}
-	return nil
+
+	logrus.Infof("Succeeded to expand the backend")
+	return true, nil, nil
 }
 
 func (r *replicator) Close() error {
