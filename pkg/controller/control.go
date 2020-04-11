@@ -301,6 +301,12 @@ func (c *Controller) IsExpanding() bool {
 	return c.isExpanding
 }
 
+func (c *Controller) GetExpansionErrorInfo() (string, string) {
+	c.RLock()
+	defer c.RUnlock()
+	return c.lastExpansionError, c.lastExpansionFailedAt
+}
+
 func (c *Controller) addReplicaNoLock(newBackend types.Backend, address string, snapshot bool) error {
 	if ok, err := c.canAdd(address); !ok {
 		return err

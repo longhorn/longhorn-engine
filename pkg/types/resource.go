@@ -33,13 +33,15 @@ type PrepareRemoveAction struct {
 }
 
 type VolumeInfo struct {
-	Name          string `json:"name"`
-	Size          int64  `json:"size"`
-	ReplicaCount  int    `json:"replicaCount"`
-	Endpoint      string `json:"endpoint"`
-	Frontend      string `json:"frontend"`
-	FrontendState string `json:"frontendState"`
-	IsExpanding   bool   `json:"isExpanding"`
+	Name                  string `json:"name"`
+	Size                  int64  `json:"size"`
+	ReplicaCount          int    `json:"replicaCount"`
+	Endpoint              string `json:"endpoint"`
+	Frontend              string `json:"frontend"`
+	FrontendState         string `json:"frontendState"`
+	IsExpanding           bool   `json:"isExpanding"`
+	LastExpansionError    string `json:"lastExpansionError"`
+	LastExpansionFailedAt string `json:"lastExpansionFailedAt"`
 }
 
 type ControllerReplicaInfo struct {
