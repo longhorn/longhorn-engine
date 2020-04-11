@@ -40,6 +40,7 @@ const (
 	deltaSuffix        = ".img"
 	deltaName          = deltaPrefix + "%s" + deltaSuffix
 	snapTmpSuffix      = ".snap_tmp"
+	tmpFileSuffix      = ".tmp"
 
 	expansionSnapshotInfix = "expand-%d"
 
@@ -617,12 +618,26 @@ func (r *Replica) close() error {
 	return r.writeVolumeMetaData(false, r.info.Rebuilding)
 }
 
-func (r *Replica) encodeToFile(obj interface{}, file string) error {
+func (r *Replica) encodeToFile(obj interface{}, file string) (err error) {
 	if r.readOnly {
 		return nil
 	}
 
-	f, err := os.Create(r.diskPath(file + ".tmp"))
+	tmpFileName := fmt.Sprintf("%s%s", file, tmpFileSuffix)
+
+	defer func() {
+		var rollbackErr error
+		if err != nil {
+			if _, err := os.Stat(r.diskPath(tmpFileName)); err == nil {
+				if err := os.Remove(r.diskPath(tmpFileName)); err != nil {
+					rollbackErr = err
+				}
+			}
+		}
+		err = types.GenerateFunctionErrorWithRollback(err, rollbackErr)
+	}()
+
+	f, err := os.Create(r.diskPath(tmpFileName))
 	if err != nil {
 		return err
 	}
@@ -636,7 +651,7 @@ func (r *Replica) encodeToFile(obj interface{}, file string) error {
 		return err
 	}
 
-	return os.Rename(r.diskPath(file+".tmp"), r.diskPath(file))
+	return os.Rename(r.diskPath(tmpFileName), r.diskPath(file))
 }
 
 func (r *Replica) nextFile(parsePattern *regexp.Regexp, pattern, parent string) (string, error) {
