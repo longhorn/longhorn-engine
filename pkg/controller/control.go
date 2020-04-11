@@ -402,6 +402,9 @@ func (c *Controller) StartFrontend(frontend string) error {
 	c.Lock()
 	defer c.Unlock()
 
+	if c.isExpanding {
+		return fmt.Errorf("Cannot start frontend during the engine expanison")
+	}
 	if frontend == "" {
 		return fmt.Errorf("Cannot start empty frontend")
 	}
