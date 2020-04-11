@@ -42,6 +42,9 @@ message Volume {
     string frontend = 5;
     string frontendState = 6;
     bool isExpanding = 7;
+
+    string last_expansion_error = 8;
+    string last_expansion_failed_at = 9;
 }
 
 message ReplicaAddress {
