@@ -117,4 +117,5 @@ message ReplicaRebuildStatusReply {
     string error = 2;
     int32 progress = 3;
     string state = 4;
+    string from_replica_address = 5;
 }
