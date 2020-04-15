@@ -100,9 +100,10 @@ func (ps *PurgeStatus) UpdateFoldFileProgress(progress int, done bool, err error
 
 type RebuildStatus struct {
 	sync.RWMutex
-	Error    string
-	Progress int
-	State    types.ProcessState
+	Error              string
+	Progress           int
+	State              types.ProcessState
+	FromReplicaAddress string
 
 	processedSize int64
 	totalSize     int64
@@ -310,7 +311,7 @@ func (s *SyncAgentServer) launchReceiver(processName, toFileName string, ops spa
 }
 
 func (s *SyncAgentServer) FilesSync(ctx context.Context, req *ptypes.FilesSyncRequest) (res *empty.Empty, err error) {
-	if err := s.PrepareRebuild(req.SyncFileInfoList); err != nil {
+	if err := s.PrepareRebuild(req.SyncFileInfoList, req.FromAddress); err != nil {
 		return nil, err
 	}
 
@@ -358,7 +359,7 @@ func (s *SyncAgentServer) FilesSync(ctx context.Context, req *ptypes.FilesSyncRe
 	return &empty.Empty{}, nil
 }
 
-func (s *SyncAgentServer) PrepareRebuild(list []*ptypes.SyncFileInfo) error {
+func (s *SyncAgentServer) PrepareRebuild(list []*ptypes.SyncFileInfo, fromReplicaAddress string) error {
 	s.Lock()
 	defer s.Unlock()
 
@@ -369,6 +370,7 @@ func (s *SyncAgentServer) PrepareRebuild(list []*ptypes.SyncFileInfo) error {
 	s.isRebuilding = true
 
 	s.RebuildStatus.Lock()
+	s.RebuildStatus.FromReplicaAddress = fromReplicaAddress
 	s.RebuildStatus.Error = ""
 	s.RebuildStatus.State = types.ProcessStateInProgress
 	// avoid possible division by zero
@@ -408,10 +410,11 @@ func (s *SyncAgentServer) ReplicaRebuildStatus(ctx context.Context, req *empty.E
 	s.RebuildStatus.RLock()
 	defer s.RebuildStatus.RUnlock()
 	return &ptypes.ReplicaRebuildStatusReply{
-		IsRebuilding: isRebuilding,
-		Error:        s.RebuildStatus.Error,
-		Progress:     int32(s.RebuildStatus.Progress),
-		State:        string(s.RebuildStatus.State),
+		IsRebuilding:       isRebuilding,
+		Error:              s.RebuildStatus.Error,
+		Progress:           int32(s.RebuildStatus.Progress),
+		State:              string(s.RebuildStatus.State),
+		FromReplicaAddress: s.RebuildStatus.FromReplicaAddress,
 	}, nil
 }
 
