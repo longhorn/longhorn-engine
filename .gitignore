@@ -5,7 +5,6 @@
 *.pyo
 *.swp
 
-integration/.idea/
 integration/.tox/
 integration/.venv/
 integration/MANIFEST
@@ -15,3 +14,8 @@ integration/MANIFEST
 
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
+
+# ignores all goland project folders and files
+.idea/
+*.iml
+*.ipr
