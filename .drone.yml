@@ -7,6 +7,11 @@ platform:
   arch: amd64
 
 steps:
+- name: fetch
+  image: alpine/git
+  commands:
+  - git fetch --tags
+
 - name: build
   pull: default
   image: rancher/dapper:1.10.3
@@ -33,6 +38,23 @@ steps:
     - master
     event:
     - push
+
+- name: publish-tagged-image
+  image: plugins/docker
+  settings:
+    custom_dns: 1.1.1.1
+    dockerfile: package/Dockerfile
+    password:
+      from_secret: docker_password
+    repo: longhornio/longhorn-engine
+    tag: "${DRONE_TAG}"
+    username:
+      from_secret: docker_username
+  when:
+    branch:
+    - master
+    event:
+    - tag
 
 - name: slack_notify
   image: plugins/slack
