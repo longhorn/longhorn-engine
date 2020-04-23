@@ -502,23 +502,29 @@ func (c *Controller) Start(addresses ...string) error {
 		c.setReplicaModeNoLock(address, types.RW)
 	}
 
-	revisionCounters := make(map[string]int64)
-	for _, r := range c.replicas {
-		counter, err := c.backend.GetRevisionCounter(r.Address)
-		if err != nil {
-			return err
+	// If the live upgrade is in-progress, the revision counters among replicas can be temporarily
+	// out of sync. They will be refreshed after the first write command.
+	// For more details, see the following url:
+	// https://github.com/longhorn/longhorn/issues/1235
+	if !c.isUpgrade {
+		revisionCounters := make(map[string]int64)
+		for _, r := range c.replicas {
+			counter, err := c.backend.GetRevisionCounter(r.Address)
+			if err != nil {
+				return err
+			}
+			if counter > expectedRevision {
+				expectedRevision = counter
+			}
+			revisionCounters[r.Address] = counter
 		}
-		if counter > expectedRevision {
-			expectedRevision = counter
-		}
-		revisionCounters[r.Address] = counter
-	}
 
-	for address, counter := range revisionCounters {
-		if counter != expectedRevision {
-			logrus.Errorf("Revision conflict detected! Expect %v, got %v in replica %v. Mark as ERR",
-				expectedRevision, counter, address)
-			c.setReplicaModeNoLock(address, types.ERR)
+		for address, counter := range revisionCounters {
+			if counter != expectedRevision {
+				logrus.Errorf("Revision conflict detected! Expect %v, got %v in replica %v. Mark as ERR",
+					expectedRevision, counter, address)
+				c.setReplicaModeNoLock(address, types.ERR)
+			}
 		}
 	}
 
