@@ -120,6 +120,17 @@ func (r *Replica) increaseRevisionCounter() error {
 	r.revisionLock.Lock()
 	defer r.revisionLock.Unlock()
 
+	if !r.revisionRefreshed {
+		counter, err := r.readRevisionCounter()
+		if err != nil {
+			return err
+		}
+		logrus.Infof("Reloading the revision counter before processing the first write, the current revision cache is %v, the latest revision counter in file is %v",
+			r.revisionCache, counter)
+		r.revisionCache = counter
+		r.revisionRefreshed = true
+	}
+
 	if err := r.writeRevisionCounter(r.revisionCache + 1); err != nil {
 		return err
 	}

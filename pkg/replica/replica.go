@@ -63,9 +63,10 @@ type Replica struct {
 	activeDiskData []*disk
 	readOnly       bool
 
-	revisionLock  sync.Mutex
-	revisionCache int64
-	revisionFile  *sparse.DirectFileIoProcessor
+	revisionLock      sync.Mutex
+	revisionCache     int64
+	revisionFile      *sparse.DirectFileIoProcessor
+	revisionRefreshed bool
 }
 
 type Info struct {
