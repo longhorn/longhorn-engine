@@ -49,6 +49,9 @@ def test_upgrade(grpc_engine_manager,  # NOQA
     grpc_controller.client_upgrade(get_process_address(upgrade_e))
     wait_for_process_running(grpc_engine_manager, ENGINE_NAME)
 
+    info = grpc_controller.volume_get()
+    assert info.endpoint != ""
+
     # cannot start with same binary
     # with pytest.raises(grpc.RpcError):
     #     grpc_engine_manager.engine_upgrade(
@@ -78,3 +81,6 @@ def test_upgrade(grpc_engine_manager,  # NOQA
 
     grpc_controller.client_upgrade(get_process_address(e))
     wait_for_process_running(grpc_engine_manager, ENGINE_NAME)
+
+    info = grpc_controller.volume_get()
+    assert info.endpoint != ""
