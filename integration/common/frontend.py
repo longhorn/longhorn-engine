@@ -65,6 +65,7 @@ class blockdev:
         self.dev = get_block_device_path(volume)
 
     def readat(self, offset, length):
+        assert self.ready()
         with open(self.dev, 'r') as f:
             f.seek(offset)
             ret = f.read(length)
@@ -72,6 +73,7 @@ class blockdev:
         # return readat_direct(self.dev, offset, length)
 
     def writeat(self, offset, data):
+        assert self.ready()
         return writeat_direct(self.dev, offset, data)
 
     def ready(self):
