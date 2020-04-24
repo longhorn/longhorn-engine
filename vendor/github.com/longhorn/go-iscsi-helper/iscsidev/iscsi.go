@@ -2,7 +2,6 @@ package iscsidev
 
 import (
 	"fmt"
-	"os"
 	"strings"
 	"time"
 
@@ -27,11 +26,11 @@ var (
 )
 
 type Device struct {
-	Target      string
-	Device      string
-	BackingFile string
-	BSType      string
-	BSOpts      string
+	Target       string
+	KernelDevice *util.KernelDevice
+	BackingFile  string
+	BSType       string
+	BSOpts       string
 
 	targetID int
 }
@@ -132,21 +131,10 @@ func (dev *Device) StartInitator() error {
 	if err := iscsi.LoginTarget(localIP, dev.Target, ne); err != nil {
 		return err
 	}
-	if dev.Device, err = iscsi.GetDevice(localIP, dev.Target, TargetLunID, ne); err != nil {
+	if dev.KernelDevice, err = iscsi.GetDevice(localIP, dev.Target, TargetLunID, ne); err != nil {
 		return err
 	}
 
-	deviceFound := false
-	for i := 0; i < RetryCounts; i++ {
-		if st, err := os.Stat(dev.Device); err == nil && (st.Mode()&os.ModeDevice != 0) {
-			deviceFound = true
-			break
-		}
-		time.Sleep(RetryIntervalSCSI)
-	}
-	if !deviceFound {
-		return fmt.Errorf("Failed to wait for device %s to show up", dev.Device)
-	}
 	return nil
 }
 

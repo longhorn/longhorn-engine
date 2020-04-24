@@ -12,7 +12,7 @@ import (
 )
 
 var (
-	DeviceWaitRetryCounts   = 5
+	DeviceWaitRetryCounts   = 10
 	DeviceWaitRetryInterval = 1 * time.Second
 
 	ScsiNodesDirs = []string{
@@ -119,10 +119,10 @@ func LogoutTarget(ip, target string, ne *util.NamespaceExecutor) error {
 	return nil
 }
 
-func GetDevice(ip, target string, lun int, ne *util.NamespaceExecutor) (string, error) {
+func GetDevice(ip, target string, lun int, ne *util.NamespaceExecutor) (*util.KernelDevice, error) {
 	var err error
 
-	dev := ""
+	var dev *util.KernelDevice
 	for i := 0; i < DeviceWaitRetryCounts; i++ {
 		dev, err = findScsiDevice(ip, target, lun, ne)
 		if err == nil {
@@ -131,9 +131,9 @@ func GetDevice(ip, target string, lun int, ne *util.NamespaceExecutor) (string, 
 		time.Sleep(DeviceWaitRetryInterval)
 	}
 	if err != nil {
-		return "", err
+		return nil, err
 	}
-	return strings.TrimSpace(dev), nil
+	return dev, nil
 }
 
 // IsTargetLoggedIn check all portals if ip == ""
@@ -166,8 +166,8 @@ func IsTargetLoggedIn(ip, target string, ne *util.NamespaceExecutor) bool {
 	return found
 }
 
-func findScsiDevice(ip, target string, lun int, ne *util.NamespaceExecutor) (string, error) {
-	dev := ""
+func findScsiDevice(ip, target string, lun int, ne *util.NamespaceExecutor) (*util.KernelDevice, error) {
+	name := ""
 
 	opts := []string{
 		"-m", "session",
@@ -175,7 +175,7 @@ func findScsiDevice(ip, target string, lun int, ne *util.NamespaceExecutor) (str
 	}
 	output, err := ne.Execute(iscsiBinary, opts)
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 	/*
 		Now we got something like this in output, and need to parse it
@@ -225,18 +225,30 @@ func findScsiDevice(ip, target string, lun int, ne *util.NamespaceExecutor) (str
 		if inLun {
 			line := scanner.Text()
 			if !strings.Contains(line, diskPrefix) {
-				return "", fmt.Errorf("Invalid output format, cannot find disk in: %s\n %s", line, output)
+				return nil, fmt.Errorf("Invalid output format, cannot find disk in: %s\n %s", line, output)
 			}
 			line = strings.TrimSpace(strings.Split(line, stateLine)[0])
 			line = strings.TrimPrefix(line, diskPrefix)
-			dev = strings.TrimSpace(line)
+			name = strings.TrimSpace(line)
 			break
 		}
 	}
-	if dev == "" {
-		return "", fmt.Errorf("Cannot find iscsi device")
+
+	if name == "" {
+		return nil, fmt.Errorf("Cannot find iscsi device")
 	}
-	dev = "/dev/" + dev
+
+	// now that we know the device is mapped, we can get it's (major:minor)
+	devices, err := util.GetKnownDevices(ne)
+	if err != nil {
+		return nil, err
+	}
+
+	dev, known := devices[name]
+	if !known {
+		return nil, fmt.Errorf("Cannot find kernel device for iscsi device: %s", name)
+	}
+
 	return dev, nil
 }
 
@@ -266,7 +278,7 @@ func CleanupScsiNodes(target string, ne *util.NamespaceExecutor) error {
 					return fmt.Errorf("Failed to cleanup empty SCSI node file %v: %v", file, err)
 				}
 				// We're trying to clean up the upper level directory as well, but won't mind if we fail
-				ne.Execute("rmdir", []string{filepath.Dir(file)})
+				_, _ = ne.Execute("rmdir", []string{filepath.Dir(file)})
 			}
 		}
 	}
