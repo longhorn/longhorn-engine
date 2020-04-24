@@ -1,5 +1,6 @@
 import random
 import time
+import os
 from os import path
 
 import pytest
@@ -9,12 +10,27 @@ from common.core import (  # NOQA
     get_dev, read_dev, write_dev,  # NOQA
     random_string, verify_data,
     open_replica,
+    get_dev_path, check_dev_existence,
 )
 from common.frontend import get_socket_path
 from common.constants import (
     LONGHORN_DEV_DIR, PAGE_SIZE, SIZE,
     VOLUME_NAME, ENGINE_NAME,
 )
+
+
+def test_device_creation(first_available_device,
+                         grpc_controller_device_name_test,  # NOQA
+                         grpc_replica1, grpc_replica2):  # NOQA
+    block_device = get_dev(grpc_replica1, grpc_replica2,
+                           grpc_controller_device_name_test)
+    assert block_device
+    check_dev_existence(VOLUME_NAME)
+    longhorn_dev = get_dev_path(VOLUME_NAME)
+    dev_info = os.stat(first_available_device)
+    assert dev_info.st_rdev == os.stat(os.devnull).st_rdev
+    assert dev_info.st_rdev != os.stat(longhorn_dev).st_rdev
+    test_basic_rw(block_device)
 
 
 def test_basic_rw(dev):  # NOQA

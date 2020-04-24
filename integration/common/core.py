@@ -18,7 +18,7 @@ from common.util import read_file, checksum_data
 from common.frontend import blockdev, get_block_device_path
 
 from common.constants import (
-    LONGHORN_BINARY, LONGHORN_UPGRADE_BINARY,
+    LONGHORN_BINARY, LONGHORN_UPGRADE_BINARY, LONGHORN_DEV_DIR,
     VOLUME_NAME, VOLUME_BACKING_NAME,
     SIZE, PAGE_SIZE, SIZE_STR,
     BACKUP_DIR, BACKING_FILE,
@@ -165,7 +165,7 @@ def cleanup_backend_file(paths):
 
 
 def get_dev_path(name):
-    return os.path.join("/dev/longhorn/", name)
+    return os.path.join(LONGHORN_DEV_DIR, name)
 
 
 def get_expansion_snapshot_name():

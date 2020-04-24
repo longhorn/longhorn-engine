@@ -1,5 +1,6 @@
 import pytest
 import os
+import string
 import tempfile
 
 from common.constants import INSTANCE_MANAGER_REPLICA
@@ -47,6 +48,39 @@ def grpc_controller_no_frontend(request, grpc_controller_client):
     return grpc_controller_client(ENGINE_NO_FRONTEND_NAME,
                                   VOLUME_NO_FRONTEND_NAME,
                                   frontend="")
+
+
+@pytest.fixture
+def first_available_device(request):
+    # we find the next available scsi name based on the current
+    # nodes in the /dev filesystem which isn't fool proof
+    device_prefix = "/dev/sd"
+    first_available_device = ""
+    for i in list(string.ascii_lowercase):
+        dev = device_prefix + i
+        if not os.path.exists(dev):
+            first_available_device = dev
+            break
+
+    assert first_available_device != ""
+    return first_available_device
+
+
+@pytest.fixture
+def grpc_controller_device_name_test(request, first_available_device,
+                                     grpc_controller_client):
+    # link the next available device to /dev/null
+    os.link(os.devnull, first_available_device)
+
+    def cleanup():
+        # cleanup our symbolic link only if it still points to devnull
+        dev_info = os.stat(first_available_device)
+        assert dev_info.st_rdev == os.stat(os.devnull).st_rdev
+        os.unlink(first_available_device)
+
+    request.addfinalizer(cleanup)
+    return grpc_controller_client(ENGINE_NAME,
+                                  VOLUME_NAME)
 
 
 @pytest.fixture
