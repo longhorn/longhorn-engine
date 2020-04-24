@@ -1,6 +1,7 @@
 package util
 
 import (
+	"bufio"
 	"bytes"
 	"fmt"
 	"io"
@@ -16,12 +17,19 @@ import (
 )
 
 const (
-	NSBinary = "nsenter"
+	NSBinary    = "nsenter"
+	LSBLKBinary = "lsblk"
 )
 
 var (
 	cmdTimeout = time.Minute // one minute by default
 )
+
+type KernelDevice struct {
+	Name  string
+	Major int
+	Minor int
+}
 
 func getIPFromAddrs(addrs []net.Addr) string {
 	for _, addr := range addrs {
@@ -255,15 +263,50 @@ func RemoveDevice(dev string) error {
 	return nil
 }
 
-func DuplicateDevice(src, dest string) error {
-	stat := unix.Stat_t{}
-	if err := unix.Stat(src, &stat); err != nil {
-		return fmt.Errorf("Cannot duplicate device because cannot find %s: %v", src, err)
+func GetKnownDevices(ne *NamespaceExecutor) (map[string]*KernelDevice, error) {
+	knownDevices := make(map[string]*KernelDevice)
+
+	/* Example command output
+	   $ lsblk -l -n -o NAME,MAJ:MIN
+	   sda           8:0
+	   sdb           8:16
+	   sdc           8:32
+	   nvme0n1     259:0
+	   nvme0n1p1   259:1
+	   nvme0n1p128 259:2
+	   nvme1n1     259:3
+	*/
+
+	opts := []string{
+		"-l", "-n", "-o", "NAME,MAJ:MIN",
 	}
-	major := int(stat.Rdev / 256)
-	minor := int(stat.Rdev % 256)
-	if err := mknod(dest, major, minor); err != nil {
-		return fmt.Errorf("Cannot duplicate device %s to %s", src, dest)
+
+	output, err := ne.Execute(LSBLKBinary, opts)
+	if err != nil {
+		return knownDevices, err
+	}
+
+	scanner := bufio.NewScanner(strings.NewReader(output))
+	for scanner.Scan() {
+		line := scanner.Text()
+		f := strings.Fields(line)
+		if len(f) == 2 {
+			dev := &KernelDevice{
+				Name: f[0],
+			}
+			if _, err := fmt.Sscanf(f[1], "%d:%d", &dev.Major, &dev.Minor); err != nil {
+				return nil, fmt.Errorf("Invalid major:minor %s for device %s", dev.Name, f[1])
+			}
+			knownDevices[dev.Name] = dev
+		}
+	}
+
+	return knownDevices, nil
+}
+
+func DuplicateDevice(dev *KernelDevice, dest string) error {
+	if err := mknod(dest, dev.Major, dev.Minor); err != nil {
+		return fmt.Errorf("Cannot create device node %s for device %s", dest, dev.Name)
 	}
 	if err := os.Chmod(dest, 0660); err != nil {
 		return fmt.Errorf("Couldn't change permission of the device %s: %s", dest, err)
@@ -274,7 +317,7 @@ func DuplicateDevice(src, dest string) error {
 func mknod(device string, major, minor int) error {
 	var fileMode os.FileMode = 0660
 	fileMode |= unix.S_IFBLK
-	dev := int((major << 8) | (minor & 0xff) | ((minor & 0xfff00) << 12))
+	dev := int(unix.Mkdev(uint32(major), uint32(minor)))
 
 	logrus.Infof("Creating device %s %d:%d", device, major, minor)
 	return unix.Mknod(device, uint32(fileMode), dev)

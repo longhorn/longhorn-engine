@@ -74,9 +74,6 @@ func (ldc *LonghornDeviceCreator) NewDevice(name string, size int64, frontend st
 }
 
 func (d *LonghornDevice) Start() error {
-	d.Lock()
-	defer d.Unlock()
-
 	if d.scsiDevice != nil {
 		return nil
 	}
@@ -85,6 +82,13 @@ func (d *LonghornDevice) Start() error {
 	if err := <-d.WaitForSocket(stopCh); err != nil {
 		return err
 	}
+
+	return d.initDevice(true)
+}
+
+func (d *LonghornDevice) initDevice(startScsiDevice bool) (err error) {
+	d.Lock()
+	defer d.Unlock()
 
 	bsOpts := fmt.Sprintf("size=%v", d.size)
 	scsiDev, err := iscsidev.NewDevice(d.name, d.GetSocketPath(), "longhorn", bsOpts)
@@ -95,28 +99,34 @@ func (d *LonghornDevice) Start() error {
 
 	switch d.frontend {
 	case types.FrontendTGTBlockDev:
-		if err := d.scsiDevice.CreateTarget(); err != nil {
-			return err
-		}
-		if err := d.scsiDevice.StartInitator(); err != nil {
-			return err
-		}
-		if err := d.createDev(); err != nil {
-			return err
+		// If ISCSI device is not started here, e.g., device upgrade,
+		// d.scsiDevice.KernelDevice is nil.
+		if startScsiDevice {
+			if err := d.scsiDevice.CreateTarget(); err != nil {
+				return err
+			}
+			if err := d.scsiDevice.StartInitator(); err != nil {
+				return err
+			}
+			if err := d.createDev(); err != nil {
+				return err
+			}
+			logrus.Infof("device %v: SCSI device %s created", d.name, d.scsiDevice.KernelDevice.Name)
 		}
 
 		d.endpoint = d.getDev()
 
-		logrus.Infof("device %v: SCSI device %s created", d.name, d.scsiDevice.Device)
 		break
 	case types.FrontendTGTISCSI:
-		if err := d.scsiDevice.CreateTarget(); err != nil {
-			return err
+		if startScsiDevice {
+			if err := d.scsiDevice.CreateTarget(); err != nil {
+				return err
+			}
+			logrus.Infof("device %v: iSCSI target %s created", d.name, d.scsiDevice.Target)
 		}
 
 		d.endpoint = d.scsiDevice.Target
 
-		logrus.Infof("device %v: iSCSI target %s created", d.name, d.scsiDevice.Target)
 		break
 	default:
 		return fmt.Errorf("unknown frontend %v", d.frontend)
@@ -218,7 +228,7 @@ func (d *LonghornDevice) createDev() error {
 		}
 	}
 
-	if err := util.DuplicateDevice(d.scsiDevice.Device, dev); err != nil {
+	if err := util.DuplicateDevice(d.scsiDevice.KernelDevice, dev); err != nil {
 		return err
 	}
 
@@ -260,18 +270,12 @@ func (d *LonghornDevice) FinishUpgrade() (err error) {
 		return err
 	}
 
-	if err = d.ReloadSocketConnection(); err != nil {
+	// TODO: Need to fix `ReloadSocketConnection` since it doesn't work for frontend `FrontendTGTISCSI`.
+	if err := d.ReloadSocketConnection(); err != nil {
 		return err
 	}
 
-	bsOpts := fmt.Sprintf("size=%v", d.size)
-	scsiDev, err := iscsidev.NewDevice(d.name, d.GetSocketPath(), "longhorn", bsOpts)
-	if err != nil {
-		return err
-	}
-	d.scsiDevice = scsiDev
-
-	return nil
+	return d.initDevice(false)
 }
 
 func (d *LonghornDevice) ReloadSocketConnection() error {
