@@ -61,7 +61,26 @@ fi
 # set credential for replica to test backup restore
 export AWS_ACCESS_KEY_ID=test-access-key
 export AWS_SECRET_ACCESS_KEY=test-secret-key
-export AWS_ENDPOINTS=http://127.0.0.1:9000
+export AWS_ENDPOINTS=https://127.0.0.1:9000
+export AWS_CERT="-----BEGIN CERTIFICATE-----
+MIIDLDCCAhSgAwIBAgIRAMdo42phTeyk17/bLrZ5YDswDQYJKoZIhvcNAQELBQAw
+GjEYMBYGA1UEChMPTG9uZ2hvcm4gLSBUZXN0MCAXDTIwMDQyNzIzMDAxMVoYDzIx
+MjAwNDAzMjMwMDExWjAaMRgwFgYDVQQKEw9Mb25naG9ybiAtIFRlc3QwggEiMA0G
+CSqGSIb3DQEBAQUAA4IBDwAwggEKAoIBAQDXzUurgPZDgzT3DYuaebgewqowdeAD
+84VYazfSuQ+7+mNkiiQPozUU2foQaF/PqzBbQmegoaOyy5Xj3UExmFretx0ZF5NV
+JN/9eaI5dWFOmxxi0IOPb6ODilMjquDmEOIycv4Sh+/Ij9fMgKKWP7IdlC5BOy8d
+w09WdrLqhOVcpJjcqb3z+xHHwyCNXxhhFomolPVzInyTPBSfDnH0nKIGQyvlhB0k
+TpGK61sjkfqS+xi59IxuklvHEsPr1WnTsaOhiXz7yPJZ+q3A1fhW0UkRZDYgZsEm
+/gNJ3rp8XYuDgki3gE+8IWAdAXq1yhjD7RJB8TSIa5tHjJQKjgCeHnGzAgMBAAGj
+azBpMA4GA1UdDwEB/wQEAwICpDATBgNVHSUEDDAKBggrBgEFBQcDATAPBgNVHRMB
+Af8EBTADAQH/MDEGA1UdEQQqMCiCCWxvY2FsaG9zdIIVbWluaW8tc2VydmljZS5k
+ZWZhdWx0hwR/AAABMA0GCSqGSIb3DQEBCwUAA4IBAQCmFL39MHuY31a11Dj4p25c
+qPEC4DvIQj3NOdSGV2d+f6sgzFz1WL8VrqvB1B1S6r4Jb2PEuIBD84YpUrHORMSc
+wubLJiHKDkBfoe9Ab5p/UjJrKKnj34DlvsW/Gp0Y6XsPViWiUj+oRKmGVI24CBHv
+g+BmW3CyNQGTKj94xM6s3AWlGEoyaqWPe5xyeUe3f1AZF97tCjIJReVlCmhCF+Bm
+aTcTRQcwqWoCp0bbYpyDDYpRlq8GPlIE9o2Z6AsNfLrUpamgqX2kXkh1kysJQ+jP
+zQZtrR0mmtur3DnEm2bi4NKHAQHpW9Mu16GQjE1NbXqQtTB88jK76ctH934Cal6V
+-----END CERTIFICATE-----"
 
 # replica with 4MB backing file
 backing_file='backing_file.raw'
@@ -90,6 +109,41 @@ trap "kill $pid_ime && cleanupISCSI && kill $pid_imr" EXIT
 # start minio server to test s3 backup and set credential keys
 export MINIO_ACCESS_KEY=test-access-key
 export MINIO_SECRET_KEY=test-secret-key
+
+# create custom ssl test certs
+mkdir -p ~/.minio/certs
+echo "$AWS_CERT" > ~/.minio/certs/public.crt
+cat <<"EOT" > ~/.minio/certs/private.key
+-----BEGIN PRIVATE KEY-----
+MIIEvQIBADANBgkqhkiG9w0BAQEFAASCBKcwggSjAgEAAoIBAQDXzUurgPZDgzT3
+DYuaebgewqowdeAD84VYazfSuQ+7+mNkiiQPozUU2foQaF/PqzBbQmegoaOyy5Xj
+3UExmFretx0ZF5NVJN/9eaI5dWFOmxxi0IOPb6ODilMjquDmEOIycv4Sh+/Ij9fM
+gKKWP7IdlC5BOy8dw09WdrLqhOVcpJjcqb3z+xHHwyCNXxhhFomolPVzInyTPBSf
+DnH0nKIGQyvlhB0kTpGK61sjkfqS+xi59IxuklvHEsPr1WnTsaOhiXz7yPJZ+q3A
+1fhW0UkRZDYgZsEm/gNJ3rp8XYuDgki3gE+8IWAdAXq1yhjD7RJB8TSIa5tHjJQK
+jgCeHnGzAgMBAAECggEAfUrCXka3tCbff3irzvpQffuDmDM35tNiXh2SAZRUoE0V
+m+/gU/vr+7k6yH/w8L9xieqaA9cVFd/BnNR+326Xg6tJB6J6dfq82YvfNgECiALi
+jjSFzaeBhgOvlYvGm4y955CAFv45p3ZsUl11CEre/PFlkZXtGxikXYz4/9Q83nXY
+s6x7Oa82R7pOikihwCAoU57F78eaJ8mqNi0FQvlyqJOP11BmZxvnxeMuKjhB9ONp
+LSp1jsey9l6MGjUn0FLnwDvdUdb+FePI1N7VaCAwxI+rGkrSZHgzHVXOvUJN7kvA
+j5FO5on4h/+xWnF33yqgEoYft0QI/jWKcNWWukjBwQKBgQDeE6RFEJlOd5iW1ymj
+n9DCgs5EmqmEswYOynCwSda+YM6vUbiZsY8Yop1TfUcxqHv6APXjUwcAPmPTOJEo
+2RmKLSbHlNw8lSN1blX0D/s3jg5GueUogmnSVxLkHu8XJGJ7W1QxE3doHPtkq3ij
+hkOPNridS4Rlj52pbHlr5/C4cQKBgQD4xEbjnrMaxUvoLqU4oOlb9W9S+RRYSsG1
+lIRh376SWFnM9Rtj21243XdhN3PPmI3Mz+0b7r2vRR/K1/BsRTBykN/dnEn5U1BA
+botpfHKRosQTGXHBA/3Bk4/j9jeStfUx3glwyB4/hNG/J3VUWaWyDSFnjdQ/pblG
+zUilIPf+YwKBgQCp2GXbeI13yNpICzlKbjFQgpBVQeCCoBTy/PtgqKh3pDyPM7Y2
+vekOU1h2ASuRHCXtmAx3FwoUsqLQacQDdL8mwc+V9xDVuM6Mwp00c4CUBa5/gy9z
+YwKiH3xQQiRkE6zKYZgrjJLXassOPGKg1lAXWSerDZWtw0A20sKut46Q0QKBgHFe
+qdvUGFWr8oL2tw9OrerduIU8xFvUfeEttQMRv7zcDNjOH1RrxZOZQm2IovvJz122
+qJ1hOQrmWq3LqWL+SSz8/zj0n/XDVUB34IsLTv82CVuW7fODySJuCFZggEUZLYwz
+X2QJn1ddRWVzKxJs5Il3WHDj/wWelghBR8kRdFN3AoGAI6WCv2PCYTKVY6008V0n
+rL47a9Ojvtc/5KfqJ1i2JJMH2B/cmMVE+83gi81HSQj1a+6pczKfAZieg0FOg/My
+PzVVQbjJNv4C39+7qH85XgYMvaq2th1Dee/Csl2S8BUtqnfsEn1F0qheYBYodblp
+WtThNhF/hEXsnBQ9DrZBJOU=
+-----END PRIVATE KEY-----
+EOT
+
 # create default bucket
 mkdir -p /data/backupbucket
 # run minio server
