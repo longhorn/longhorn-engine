@@ -1,4 +1,5 @@
 import grpc
+from os import path
 
 import pytest
 
@@ -12,6 +13,7 @@ from common.core import (  # NOQA
 from common.constants import (
     ENGINE_NAME, VOLUME_NAME,
     LONGHORN_BINARY, LONGHORN_UPGRADE_BINARY,
+    LONGHORN_DEV_DIR
 )
 
 
@@ -50,7 +52,7 @@ def test_upgrade(grpc_engine_manager,  # NOQA
     wait_for_process_running(grpc_engine_manager, ENGINE_NAME)
 
     info = grpc_controller.volume_get()
-    assert info.endpoint != ""
+    assert info.endpoint == path.join(LONGHORN_DEV_DIR, VOLUME_NAME)
 
     # cannot start with same binary
     # with pytest.raises(grpc.RpcError):
@@ -83,4 +85,4 @@ def test_upgrade(grpc_engine_manager,  # NOQA
     wait_for_process_running(grpc_engine_manager, ENGINE_NAME)
 
     info = grpc_controller.volume_get()
-    assert info.endpoint != ""
+    assert info.endpoint == path.join(LONGHORN_DEV_DIR, VOLUME_NAME)
