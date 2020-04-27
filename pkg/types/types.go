@@ -21,6 +21,7 @@ const (
 	AWSAccessKey = "AWS_ACCESS_KEY_ID"
 	AWSSecretKey = "AWS_SECRET_ACCESS_KEY"
 	AWSEndPoint  = "AWS_ENDPOINTS"
+	AWSCert      = "AWS_CERT"
 
 	RetryCounts   = 30
 	RetryInterval = 1 * time.Second

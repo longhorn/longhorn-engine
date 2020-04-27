@@ -431,6 +431,11 @@ func (s *SyncAgentServer) BackupCreate(ctx context.Context, req *ptypes.BackupCr
 			os.Setenv(types.AWSAccessKey, credential[types.AWSAccessKey])
 			os.Setenv(types.AWSSecretKey, credential[types.AWSSecretKey])
 			os.Setenv(types.AWSEndPoint, credential[types.AWSEndPoint])
+
+			// set a custom ca cert if available
+			if credential[types.AWSCert] != "" {
+				os.Setenv(types.AWSCert, credential[types.AWSCert])
+			}
 		} else if os.Getenv(types.AWSAccessKey) == "" || os.Getenv(types.AWSSecretKey) == "" {
 			return nil, errors.New("Could not backup to s3 without setting credential secret")
 		}
@@ -541,6 +546,11 @@ func (s *SyncAgentServer) BackupRestore(ctx context.Context, req *ptypes.BackupR
 			os.Setenv(types.AWSAccessKey, credential[types.AWSAccessKey])
 			os.Setenv(types.AWSSecretKey, credential[types.AWSSecretKey])
 			os.Setenv(types.AWSEndPoint, credential[types.AWSEndPoint])
+
+			// set a custom ca cert if available
+			if credential[types.AWSCert] != "" {
+				os.Setenv(types.AWSCert, credential[types.AWSCert])
+			}
 		} else if os.Getenv(types.AWSAccessKey) == "" || os.Getenv(types.AWSSecretKey) == "" {
 			return nil, errors.New("Could not backup to s3 without setting credential secret")
 		}
@@ -736,6 +746,11 @@ func (s *SyncAgentServer) BackupRestoreIncrementally(ctx context.Context,
 			os.Setenv(types.AWSAccessKey, credential[types.AWSAccessKey])
 			os.Setenv(types.AWSSecretKey, credential[types.AWSSecretKey])
 			os.Setenv(types.AWSEndPoint, credential[types.AWSEndPoint])
+
+			// set a custom ca cert if available
+			if credential[types.AWSCert] != "" {
+				os.Setenv(types.AWSCert, credential[types.AWSCert])
+			}
 		} else if os.Getenv(types.AWSAccessKey) == "" || os.Getenv(types.AWSSecretKey) == "" {
 			return nil, errors.New("Could not backup to s3 without setting credential secret")
 		}
