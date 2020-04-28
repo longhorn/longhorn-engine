@@ -590,7 +590,7 @@ func DeleteDeltaBlockBackup(backupURL string) error {
 
 	v, err := loadVolume(volumeName, bsDriver)
 	if err != nil {
-		return fmt.Errorf("Cannot find volume %v in backupstore", volumeName, err)
+		return fmt.Errorf("Cannot find volume %v in backupstore due to: %v", volumeName, err)
 	}
 
 	backup, err := loadBackup(backupName, volumeName, bsDriver)
