@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"path/filepath"
 
-	"github.com/sirupsen/logrus"
 	"github.com/longhorn/backupstore/util"
+	"github.com/sirupsen/logrus"
 
 	. "github.com/longhorn/backupstore/logging"
 )
@@ -86,7 +86,7 @@ func RestoreSingleFileBackup(backupURL, path string) (string, error) {
 
 	if _, err := loadVolume(srcVolumeName, driver); err != nil {
 		return "", generateError(logrus.Fields{
-			LogFieldVolume:     srcVolumeName,
+			LogFieldVolume:    srcVolumeName,
 			LogEventBackupURL: backupURL,
 		}, "Volume doesn't exist in backupstore: %v", err)
 	}
@@ -117,7 +117,7 @@ func DeleteSingleFileBackup(backupURL string) error {
 
 	_, err = loadVolume(volumeName, driver)
 	if err != nil {
-		return fmt.Errorf("Cannot find volume %v in backupstore", volumeName, err)
+		return fmt.Errorf("Cannot find volume %v in backupstore due to: %v", volumeName, err)
 	}
 
 	backup, err := loadBackup(backupName, volumeName, driver)

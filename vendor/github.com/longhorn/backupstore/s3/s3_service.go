@@ -3,6 +3,7 @@ package s3
 import (
 	"fmt"
 	"io"
+	"net/http"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
@@ -14,6 +15,7 @@ import (
 type Service struct {
 	Region string
 	Bucket string
+	Client *http.Client
 }
 
 func (s *Service) New() (*s3.S3, error) {
@@ -24,7 +26,16 @@ func (s *Service) New() (*s3.S3, error) {
 		config.Endpoint = aws.String(endpoints)
 		config.S3ForcePathStyle = aws.Bool(true)
 	}
-	return s3.New(session.New(), config), nil
+
+	if s.Client != nil {
+		config.HTTPClient = s.Client
+	}
+
+	ses, err := session.NewSession(config)
+	if err != nil {
+		return nil, err
+	}
+	return s3.New(ses), nil
 }
 
 func (s *Service) Close() {

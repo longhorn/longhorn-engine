@@ -34,7 +34,7 @@ var (
 )
 
 func generateError(fields logrus.Fields, format string, v ...interface{}) error {
-	return ErrorWithFields("backupstore", fields, format, v)
+	return ErrorWithFields("backupstore", fields, format, v...)
 }
 
 func init() {
