@@ -13,6 +13,7 @@ import (
 	"github.com/longhorn/backupstore/cmd"
 
 	"github.com/longhorn/longhorn-engine/pkg/sync"
+	"github.com/longhorn/longhorn-engine/pkg/types"
 	"github.com/longhorn/longhorn-engine/pkg/util"
 )
 
@@ -82,16 +83,51 @@ func getBackupStatus(c *cli.Context, backupID string, replicaAddress string) (*s
 	return backupStatus, nil
 }
 
+func getReplicaModeMap(c *cli.Context) (map[string]types.Mode, error) {
+	cli := getCli(c)
+	replicas, err := cli.ReplicaList()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get replica list: %v", err)
+	}
+
+	replicaModeMap := make(map[string]types.Mode)
+	for _, replica := range replicas {
+		replicaModeMap[replica.Address] = replica.Mode
+	}
+
+	return replicaModeMap, nil
+}
+
 func fetchAllBackups(c *cli.Context) error {
 	backupProgressList := make(map[string]*sync.BackupStatusInfo)
 
 	cli := getCli(c)
 	backupReplicaMap, err := cli.BackupReplicaMappingGet()
 	if err != nil {
-		return fmt.Errorf("failed to get list of backupIDs:%v", err)
+		return fmt.Errorf("failed to get list of backupIDs: %v", err)
+	}
+
+	replicaModeMap, err := getReplicaModeMap(c)
+	if err != nil {
+		return err
 	}
 
 	for backupID, replicaAddress := range backupReplicaMap {
+		// Only a replica in RW mode can create backups.
+		if mode := replicaModeMap[replicaAddress]; mode != types.RW {
+			err := cli.BackupReplicaMappingDelete(backupID)
+			if err != nil {
+				return err
+			}
+			backupProgressList[backupID] = &sync.BackupStatusInfo{
+				ReplicaAddress: replicaAddress,
+				State:          "error",
+				Error: fmt.Sprintf("Failed to get backup status on %s for %v: %v",
+					replicaAddress, backupID, "unknown replica"),
+			}
+			continue
+		}
+
 		status, err := getBackupStatus(c, backupID, replicaAddress)
 		if err != nil {
 			return err
@@ -104,6 +140,12 @@ func fetchAllBackups(c *cli.Context) error {
 			err := cli.BackupReplicaMappingDelete(backupID)
 			if err != nil {
 				return err
+			}
+			backupProgressList[backupID] = &sync.BackupStatusInfo{
+				ReplicaAddress: replicaAddress,
+				State:          "error",
+				Error: fmt.Sprintf("Failed to get backup status on %s for %v: %v",
+					replicaAddress, backupID, "backup not found"),
 			}
 			continue
 		}
@@ -136,12 +178,19 @@ func checkBackupStatus(c *cli.Context) error {
 		return err
 	}
 	replicaAddress, present := br[backupID]
-	if present == false {
-		return fmt.Errorf("couldn't find replica address for backup:%v", backupID)
+	if !present || replicaAddress == "" {
+		return fmt.Errorf("failed to get backup status for %v: %v",
+			backupID, "replica not found")
 	}
 
-	if replicaAddress == "" {
-		return fmt.Errorf("replica address is empty")
+	replicaModeMap, err := getReplicaModeMap(c)
+	if err != nil {
+		return err
+	}
+	if mode := replicaModeMap[replicaAddress]; mode != types.RW {
+		_ = client.BackupReplicaMappingDelete(backupID)
+		return fmt.Errorf("Failed to get backup status on %s for %v: %v",
+			replicaAddress, backupID, "unknown replica")
 	}
 
 	status, err := getBackupStatus(c, backupID, replicaAddress)
