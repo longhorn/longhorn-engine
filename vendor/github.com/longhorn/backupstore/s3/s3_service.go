@@ -41,8 +41,7 @@ func (s *Service) New() (*s3.S3, error) {
 func (s *Service) Close() {
 }
 
-func parseAwsError(resp string, err error) error {
-	log.Errorln(resp)
+func parseAwsError(err error) error {
 	if awsErr, ok := err.(awserr.Error); ok {
 		message := fmt.Sprintln("AWS Error: ", awsErr.Code(), awsErr.Message(), awsErr.OrigErr())
 		if reqErr, ok := err.(awserr.RequestFailure); ok {
@@ -68,7 +67,8 @@ func (s *Service) ListObjects(key, delimiter string) ([]*s3.Object, []*s3.Common
 	}
 	resp, err := svc.ListObjects(params)
 	if err != nil {
-		return nil, nil, parseAwsError(resp.String(), err)
+		return nil, nil, fmt.Errorf("failed to list objects with param: %+v response: %v error: %v",
+			params, resp.String(), parseAwsError(err))
 	}
 	return resp.Contents, resp.CommonPrefixes, nil
 }
@@ -85,7 +85,8 @@ func (s *Service) HeadObject(key string) (*s3.HeadObjectOutput, error) {
 	}
 	resp, err := svc.HeadObject(params)
 	if err != nil {
-		return nil, parseAwsError(resp.String(), err)
+		return nil, fmt.Errorf("failed to get metadata for object: %v response: %v error: %v",
+			key, resp.String(), parseAwsError(err))
 	}
 	return resp, nil
 }
@@ -105,7 +106,8 @@ func (s *Service) PutObject(key string, reader io.ReadSeeker) error {
 
 	resp, err := svc.PutObject(params)
 	if err != nil {
-		return parseAwsError(resp.String(), err)
+		return fmt.Errorf("failed to put object: %v response: %v error: %v",
+			key, resp.String(), parseAwsError(err))
 	}
 	return nil
 }
@@ -124,7 +126,8 @@ func (s *Service) GetObject(key string) (io.ReadCloser, error) {
 
 	resp, err := svc.GetObject(params)
 	if err != nil {
-		return nil, parseAwsError(resp.String(), err)
+		return nil, fmt.Errorf("failed to get object: %v response: %v error: %v",
+			key, resp.String(), parseAwsError(err))
 	}
 
 	return resp.Body, nil
@@ -172,7 +175,8 @@ func (s *Service) DeleteObjects(keys []string) error {
 
 		resp, err := svc.DeleteObjects(params)
 		if err != nil {
-			return fmt.Errorf("failed to remove objects with param %+v: %v", params, parseAwsError(resp.String(), err))
+			return fmt.Errorf("failed to delete objects with param: %+v response: %v error: %v", params,
+				resp.String(), parseAwsError(err))
 		}
 	}
 	return nil
