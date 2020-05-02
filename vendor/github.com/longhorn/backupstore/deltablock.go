@@ -96,16 +96,21 @@ func CreateDeltaBlockBackup(config *DeltaBackupConfig) (string, bool, error) {
 	if lastBackupName != "" {
 		lastBackup, err = loadBackup(lastBackupName, volume.Name, bsDriver)
 		if err != nil {
-			deltaOps.CloseSnapshot(snapshot.Name, volume.Name)
-			return "", isIncrementalBackup, err
+			// there are many reasons this could happen, for example:
+			// the user switched backup stores or deleted files manually
+			// another process deleted that backup after we pulled the volume.cfg
+			// therefore we don't care and do a full backup instead
+			log.Infof("Cannot find previous backup: %v for volume: %v in backupstore: %v",
+				volume, lastBackupName, destURL)
+		} else {
+			lastSnapshotName = lastBackup.SnapshotName
 		}
 
-		lastSnapshotName = lastBackup.SnapshotName
 		if lastSnapshotName == snapshot.Name {
 			//Generate full snapshot if the snapshot has been backed up last time
 			lastSnapshotName = ""
 			log.Debug("Would create full snapshot metadata")
-		} else if !deltaOps.HasSnapshot(lastSnapshotName, volume.Name) {
+		} else if lastSnapshotName != "" && !deltaOps.HasSnapshot(lastSnapshotName, volume.Name) {
 			// It's possible that the snapshot in backupstore doesn't exist
 			// in local storage
 			lastSnapshotName = ""
