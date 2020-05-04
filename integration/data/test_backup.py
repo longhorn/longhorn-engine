@@ -1,3 +1,4 @@
+from pathlib import Path
 import common.cmd as cmd
 from common.core import (  # NOQA
     cleanup_controller, cleanup_replica,
@@ -12,7 +13,7 @@ from data.snapshot_tree import (
 )
 from common.constants import (
     VOLUME_NAME, VOLUME_BACKING_NAME, BLOCK_SIZE_STR,
-    ENGINE_NAME, ENGINE_BACKING_NAME,
+    ENGINE_NAME, ENGINE_BACKING_NAME, BACKUP_DIR
 )
 
 
@@ -215,6 +216,76 @@ def test_backup(grpc_replica1, grpc_replica2,  # NOQA
         backup_test(dev, grpc_controller.address,
                     VOLUME_NAME, ENGINE_NAME, backup_target)
         cmd.sync_agent_server_reset(grpc_controller.address)
+        cleanup_controller(grpc_controller)
+        cleanup_replica(grpc_replica1)
+        cleanup_replica(grpc_replica2)
+
+
+def test_backup_S3_latest_unavailable(grpc_replica1, grpc_replica2,  # NOQA
+                grpc_controller, backup_targets):  # NOQA
+    for backup_target in backup_targets:
+        if "s3://" not in backup_target:
+            continue
+        dev = get_dev(grpc_replica1, grpc_replica2,
+                      grpc_controller)
+        address = grpc_controller.address
+        volume_name = VOLUME_NAME
+        engine_name = ENGINE_NAME
+        offset = 0
+        length = 128
+
+        # initial backup
+        snap1_data = random_string(length)
+        verify_data(dev, offset, snap1_data)
+        snap1_checksum = checksum_dev(dev)
+        snap1 = cmd.snapshot_create(address)
+        backup1_info = create_backup(address, snap1, backup_target)
+
+        # backup to be unavailable
+        snap2_data = random_string(length)
+        verify_data(dev, offset, snap2_data)
+        snap2 = cmd.snapshot_create(address)
+        backup2_info = create_backup(address, snap2, backup_target)
+
+        # the gc after the restore will clean up the missing backup
+        for backup2_cfg in Path(BACKUP_DIR).rglob(
+                "backup_" + backup2_info["Name"] + ".cfg"):
+            assert backup2_cfg
+            backup2_cfg.unlink()
+            break
+
+        # final full backup after unavailable backup
+        snap3_data = random_string(length)
+        verify_data(dev, offset, snap3_data)
+        snap3_checksum = checksum_dev(dev)
+        snap3 = cmd.snapshot_create(address)
+        backup3_info = create_backup(address, snap3, backup_target)
+        assert backup3_info["VolumeName"] == volume_name
+        assert backup3_info["Size"] == BLOCK_SIZE_STR
+
+        # write some stuff on head
+        head_data = random_string(length)
+        verify_data(dev, offset, head_data)
+
+        # test restore of the initial backup
+        restore_with_frontend(address, engine_name,
+                              backup1_info["URL"])
+        readed = read_dev(dev, offset, length)
+        assert readed == snap1_data
+        c = checksum_dev(dev)
+        assert c == snap1_checksum
+
+        # test a restore for the final backup
+        restore_with_frontend(address, engine_name,
+                              backup3_info["URL"])
+        readed = read_dev(dev, offset, length)
+        assert readed == snap3_data
+        c = checksum_dev(dev)
+        assert c == snap3_checksum
+
+        rm_backups(address, engine_name, [backup1_info["URL"],
+                                          backup3_info["URL"]])
+        cmd.sync_agent_server_reset(address)
         cleanup_controller(grpc_controller)
         cleanup_replica(grpc_replica1)
         cleanup_replica(grpc_replica2)
