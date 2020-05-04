@@ -314,5 +314,8 @@ func (s *Server) PingResponse() error {
 	if state != Open && state != Dirty && state != Rebuilding {
 		return fmt.Errorf("ping failure: replica state %v", state)
 	}
+	if err := s.r.CheckReplicaDir(); err != nil {
+		return fmt.Errorf("ping failure: replica directory is unavailable: %v", err)
+	}
 	return nil
 }
