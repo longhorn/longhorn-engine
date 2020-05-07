@@ -154,7 +154,7 @@ func (c *Controller) addReplica(address string, snapshot bool) error {
 	c.Lock()
 	defer c.Unlock()
 
-	return c.addReplicaNoLock(newBackend, address, snapshot)
+	return c.addReplicaNoLock(newBackend, address, snapshot, types.WO)
 }
 
 func (c *Controller) Snapshot(name string, labels map[string]string) (string, error) {
@@ -307,12 +307,12 @@ func (c *Controller) GetExpansionErrorInfo() (string, string) {
 	return c.lastExpansionError, c.lastExpansionFailedAt
 }
 
-func (c *Controller) addReplicaNoLock(newBackend types.Backend, address string, snapshot bool) error {
+func (c *Controller) addReplicaNoLock(newBackend types.Backend, address string, snapshot bool, mode types.Mode) error {
 	if ok, err := c.canAdd(address); !ok {
 		return err
 	}
 
-	if snapshot {
+	if snapshot && mode != types.ERR {
 		uuid := util.UUID()
 		created := util.Now()
 
@@ -334,12 +334,14 @@ func (c *Controller) addReplicaNoLock(newBackend types.Backend, address string, 
 
 	c.replicas = append(c.replicas, types.Replica{
 		Address: address,
-		Mode:    types.WO,
+		Mode:    mode,
 	})
 
-	c.backend.AddBackend(address, newBackend)
+	c.backend.AddBackend(address, newBackend, mode)
 
-	go c.monitoring(address, newBackend)
+	if mode != types.ERR {
+		go c.monitoring(address, newBackend)
+	}
 
 	return nil
 }
@@ -468,38 +470,60 @@ func (c *Controller) Start(addresses ...string) error {
 
 	c.reset()
 
+	var fatalErr error
+	availableBackends := map[string]types.Backend{}
 	first := true
 	for _, address := range addresses {
 		newBackend, err := c.factory.Create(address)
 		if err != nil {
-			return err
+			logrus.Warnf("failed to create backend with address %v: %v", address, err)
+			continue
 		}
-
 		newSize, err := newBackend.Size()
 		if err != nil {
-			return err
+			logrus.Warnf("failed to get the size from the backend address %v: %v", address, err)
+			continue
 		}
-
 		newSectorSize, err := newBackend.SectorSize()
 		if err != nil {
-			return err
+			logrus.Warnf("failed to get the sector size from the backend address %v: %v", address, err)
+			continue
 		}
+		availableBackends[address] = newBackend
 
 		if first {
 			first = false
 			c.size = newSize
 			c.sectorSize = newSectorSize
 		} else if c.size != newSize {
-			return fmt.Errorf("Backend sizes do not match %d != %d", c.size, newSize)
+			availableBackends = map[string]types.Backend{}
+			fatalErr = fmt.Errorf("BUG: Backend sizes do not match %d != %d in the engine initiation phase", c.size, newSize)
+			break
 		} else if c.sectorSize != newSectorSize {
-			return fmt.Errorf("Backend sizes do not match %d != %d", c.sectorSize, newSectorSize)
+			availableBackends = map[string]types.Backend{}
+			fatalErr = fmt.Errorf("BUG: Backend sector sizes do not match %d != %d in the engine initiation phase", c.sectorSize, newSectorSize)
+			break
 		}
+	}
 
-		if err := c.addReplicaNoLock(newBackend, address, false); err != nil {
-			return err
+	for _, address := range addresses {
+		if newBackend, exists := availableBackends[address]; exists {
+			// We will validate this later
+			if err := c.addReplicaNoLock(newBackend, address, false, types.RW); err != nil {
+				return err
+			}
+		} else {
+			if err := c.addReplicaNoLock(nil, address, false, types.ERR); err != nil {
+				return err
+			}
 		}
-		// We will validate this later
-		c.setReplicaModeNoLock(address, types.RW)
+	}
+
+	if fatalErr != nil {
+		return fatalErr
+	}
+	if len(availableBackends) == 0 {
+		return fmt.Errorf("cannot create an available backend for the engine from the addresses %+v", addresses)
 	}
 
 	// If the live upgrade is in-progress, the revision counters among replicas can be temporarily
@@ -509,6 +533,10 @@ func (c *Controller) Start(addresses ...string) error {
 	if !c.isUpgrade {
 		revisionCounters := make(map[string]int64)
 		for _, r := range c.replicas {
+			// The related backend is nil if the mode is ERR
+			if r.Mode == types.ERR {
+				continue
+			}
 			counter, err := c.backend.GetRevisionCounter(r.Address)
 			if err != nil {
 				return err

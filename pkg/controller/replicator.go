@@ -49,7 +49,7 @@ func (b *BackendError) Error() string {
 	}
 }
 
-func (r *replicator) AddBackend(address string, backend types.Backend) {
+func (r *replicator) AddBackend(address string, backend types.Backend, mode types.Mode) {
 	if _, ok := r.backends[address]; ok {
 		return
 	}
@@ -62,7 +62,7 @@ func (r *replicator) AddBackend(address string, backend types.Backend) {
 
 	r.backends[address] = backendWrapper{
 		backend: backend,
-		mode:    types.WO,
+		mode:    mode,
 	}
 
 	r.buildReadWriters()
@@ -77,7 +77,10 @@ func (r *replicator) RemoveBackend(address string) {
 	logrus.Infof("Removing backend: %s", address)
 
 	// We cannot wait for it's return because peer may not exists anymore
-	go backend.backend.Close()
+	// The backend may be nil if the mode is ERR
+	if backend.backend != nil {
+		go backend.backend.Close()
+	}
 	delete(r.backends, address)
 	r.buildReadWriters()
 }
