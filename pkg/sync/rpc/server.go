@@ -85,16 +85,14 @@ type PurgeStatus struct {
 	total     int
 }
 
-func NewPurgeStatus() *PurgeStatus {
-	return &PurgeStatus{
-		// avoid possible division by zero
-		total: 1,
-	}
-}
-
 func (ps *PurgeStatus) UpdateFoldFileProgress(progress int, done bool, err error) {
 	ps.Lock()
-	ps.Progress = int((float32(ps.processed)/float32(ps.total) + float32(progress)/(float32(ps.total)*100)) * 100)
+	// Avoid possible division by zero, also total 0 means nothing to be done
+	if ps.total == 0 {
+		ps.Progress = 100
+	} else {
+		ps.Progress = int((float32(ps.processed)/float32(ps.total) + float32(progress)/(float32(ps.total)*100)) * 100)
+	}
 	ps.Unlock()
 }
 
@@ -830,7 +828,7 @@ func (s *SyncAgentServer) postIncrementalRestoreOperations(restoreStatus *replic
 
 	logrus.Infof("Cleaning up incremental restore by Coalescing and removing the file")
 	// coalesce delta file to snapshot/disk file
-	ops := NewPurgeStatus()
+	ops := &PurgeStatus{}
 	if err := sparse.FoldFile(deltaFileName, restoreStatus.SnapshotDiskName, ops); err != nil {
 		logrus.Errorf("Failed to coalesce %s on %s: %v", deltaFileName, restoreStatus.SnapshotDiskName, err)
 		return err
@@ -1000,6 +998,7 @@ func (s *SyncAgentServer) purgeSnapshots() (err error) {
 		s.PurgeStatus.Progress = int(float32(removed) / float32(markedRemoved) * 100)
 		s.PurgeStatus.Unlock()
 	}
+
 	s.PurgeStatus.Lock()
 	s.PurgeStatus.Progress = 100
 	s.PurgeStatus.Unlock()
@@ -1034,6 +1033,8 @@ func (s *SyncAgentServer) PreparePurge() error {
 	s.PurgeStatus.Error = ""
 	s.PurgeStatus.Progress = 0
 	s.PurgeStatus.State = types.ProcessStateInProgress
+	s.PurgeStatus.total = 0
+	s.PurgeStatus.processed = 0
 	s.PurgeStatus.Unlock()
 
 	return nil
