@@ -231,6 +231,7 @@ def wait_for_purge_completion(url):
         completed = 0
         purge_status = cmd.snapshot_purge_status(url)
         for status in purge_status.values():
+            assert status['progress'] <= 100
             assert 'isPurging' in status.keys()
             if not status['isPurging']:
                 assert status['progress'] == 100
