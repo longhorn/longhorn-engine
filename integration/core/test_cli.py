@@ -798,11 +798,73 @@ def backup_core(bin, engine_manager_client,  # NOQA
     assert backup_list[backup2]["Size"] == backup2_info["Size"]
     assert backup_list[backup2]["Created"] == backup2_info["Created"]
 
-    # test backup volume list
-    # https://github.com/rancher/longhorn/issues/399
+    # test that corrupt backups are signaled during a list operation
+    # https://github.com/longhorn/longhorn/issues/1212
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'backup', 'ls', backup_target]
+    data = subprocess.check_output(cmd, env=env)
+    volume_info = json.loads(data)
+
+    assert volume_info
+    assert volume_info[VOLUME_NAME] is not None
+    assert volume_info[VOLUME_NAME]["Backups"] is not None
+    backups = volume_info[VOLUME_NAME]["Backups"]
+    assert len(backups) == 2
+    assert backup1_info["URL"] in backups
+    messages = backups[backup1_info["URL"]]["Messages"]
+    assert messages is None
+    assert backup2_info["URL"] in backups
+    messages = backups[backup2_info["URL"]]["Messages"]
+    assert messages is None
+
     volume_dir = finddir(BACKUP_DEST, VOLUME_NAME)
     assert volume_dir
     assert path.exists(volume_dir)
+    backup_dir = os.path.join(volume_dir, "backups")
+    assert path.exists(backup_dir)
+    backup_cfg_name = "backup_" + backup2_info["Name"] + ".cfg"
+    assert backup_cfg_name
+    backup_cfg_path = findfile(backup_dir, backup_cfg_name)
+    assert path.exists(backup_cfg_path)
+    backup_tmp_cfg_path = os.path.join(volume_dir, backup_cfg_name)
+    os.rename(backup_cfg_path, backup_tmp_cfg_path)
+    assert path.exists(backup_tmp_cfg_path)
+
+    corrupt_backup = open(backup_cfg_path, "w")
+    assert corrupt_backup
+    assert corrupt_backup.write("{corrupt: definitely") > 0
+    corrupt_backup.close()
+
+    # request the new backup list
+    data = subprocess.check_output(cmd, env=env)
+    volume_info = json.loads(data)
+    assert volume_info
+    assert volume_info[VOLUME_NAME] is not None
+    assert volume_info[VOLUME_NAME]["Backups"] is not None
+    backups = volume_info[VOLUME_NAME]["Backups"]
+    assert len(backups) == 2
+    assert backup1_info["URL"] in backups
+    messages = backups[backup1_info["URL"]]["Messages"]
+    assert messages is None
+    assert backup2_info["URL"] in backups
+    messages = backups[backup2_info["URL"]]["Messages"]
+    assert messages is not None
+    assert MESSAGE_TYPE_ERROR in messages
+
+    # we still want to fail inspects, since they operate on urls
+    # with no guarantee of backup existence
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'backup', 'inspect', backup2_info["URL"]]
+    with pytest.raises(subprocess.CalledProcessError):
+        subprocess.check_call(cmd, env=env)
+
+    # switch back to valid cfg
+    os.remove(backup_cfg_path)
+    os.rename(backup_tmp_cfg_path, backup_cfg_path)
+    subprocess.check_call(cmd, env=env)
+
+    # test backup volume list
+    # https://github.com/rancher/longhorn/issues/399
     volume_cfg_path = findfile(volume_dir, VOLUME_CONFIG_FILE)
     assert path.exists(volume_cfg_path)
     volume_tmp_cfg_path = volume_cfg_path.replace(
