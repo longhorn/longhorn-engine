@@ -6,7 +6,7 @@ from common.core import (  # NOQA
     read_from_backing_file,
     random_string, verify_data, checksum_dev,
     create_backup, rm_backups,
-    restore_with_frontend,
+    restore_with_frontend, open_replica,
 )
 from data.snapshot_tree import (
     snapshot_tree_build, snapshot_tree_verify_backup_node
@@ -285,6 +285,84 @@ def test_backup_S3_latest_unavailable(grpc_replica1, grpc_replica2,  # NOQA
 
         rm_backups(address, engine_name, [backup1_info["URL"],
                                           backup3_info["URL"]])
+        cmd.sync_agent_server_reset(address)
+        cleanup_controller(grpc_controller)
+        cleanup_replica(grpc_replica1)
+        cleanup_replica(grpc_replica2)
+
+
+def test_backup_incremental_logic(grpc_replica1, grpc_replica2,  # NOQA
+                                      grpc_controller, backup_targets):  # NOQA
+    for backup_target in backup_targets:
+        dev = get_dev(grpc_replica1, grpc_replica2,
+                      grpc_controller)
+        address = grpc_controller.address
+        volume_name = VOLUME_NAME
+        engine_name = ENGINE_NAME
+        offset = 0
+        length = 128
+
+        # initial backup
+        snap1_data = random_string(length)
+        verify_data(dev, offset, snap1_data)
+        snap1_checksum = checksum_dev(dev)
+        snap1 = cmd.snapshot_create(address)
+        backup1_info = create_backup(address, snap1, backup_target)
+        assert backup1_info["IsIncremental"] is False
+
+        # delta backup on top of initial backup
+        snap2_data = random_string(int(length / 2))
+        verify_data(dev, offset, snap2_data)
+        snap2 = cmd.snapshot_create(address)
+        backup2_info = create_backup(address, snap2, backup_target)
+        assert backup2_info["IsIncremental"] is True
+
+        # delete the volume
+        cmd.sync_agent_server_reset(address)
+        grpc_controller = cleanup_controller(grpc_controller)
+        grpc_replica1 = cleanup_replica(grpc_replica1)
+        grpc_replica2 = cleanup_replica(grpc_replica2)
+
+        # recreate the volume
+        dev = get_dev(grpc_replica1, grpc_replica2,
+                      grpc_controller, clean_backup_dir=False)
+
+        # empty initial backup after volume recreation
+        snap3 = cmd.snapshot_create(address)
+        backup3_info = create_backup(address, snap3, backup_target)
+        assert backup3_info["VolumeName"] == volume_name
+        assert backup3_info["Size"] == '0'
+        assert backup3_info["IsIncremental"] is False
+
+        # write half of snap1 onto head
+        snap4_data = snap1_data[:int(length / 2)]
+        assert len(snap4_data) == int(length / 2)
+        verify_data(dev, offset, snap4_data)
+        snap4_checksum = checksum_dev(dev)
+        assert snap4_checksum != snap1_checksum
+        snap4 = cmd.snapshot_create(address)
+        backup4_info = create_backup(address, snap4, backup_target)
+        assert backup4_info["IsIncremental"] is True
+
+        # restore initial backup
+        restore_with_frontend(address, engine_name,
+                              backup1_info["URL"])
+        assert read_dev(dev, offset, length) == snap1_data
+        assert checksum_dev(dev) == snap1_checksum
+
+        # restore final backup (half of snap1)
+        restore_with_frontend(address, engine_name,
+                              backup4_info["URL"])
+        assert checksum_dev(dev) == snap4_checksum
+        assert snap4_checksum != snap1_checksum
+        data = read_dev(dev, offset, length)
+        assert data[:int(length / 2)] == snap4_data
+        assert data[int(length / 2):] == '\x00' * int(length / 2)
+
+        rm_backups(address, engine_name, [backup1_info["URL"],
+                                          backup2_info["URL"],
+                                          backup3_info["URL"],
+                                          backup4_info["URL"]])
         cmd.sync_agent_server_reset(address)
         cleanup_controller(grpc_controller)
         cleanup_replica(grpc_replica1)
