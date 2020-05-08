@@ -12,6 +12,9 @@ const (
 	LogFieldVolumeName   = "volume_name"
 	LogFieldOrigVolume   = "original_volume"
 	LogFieldSnapshot     = "snapshot"
+	LogFieldBackup       = "backup"
+	LogFieldBackupType   = "backup_type"
+	LogFieldLastBackup   = "last_backup"
 	LogFieldLastSnapshot = "last_snapshot"
 	LogEventBackupURL    = "backup_url"
 	LogFieldDestURL      = "dest_url"
@@ -30,6 +33,7 @@ const (
 	LogReasonFallback = "fallback"
 
 	LogFieldObject    = "object"
+	LogObjectBackup   = "backup"
 	LogObjectSnapshot = "snapshot"
 	LogObjectConfig   = "config"
 )

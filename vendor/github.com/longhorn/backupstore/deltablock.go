@@ -32,6 +32,28 @@ type BlockMapping struct {
 	BlockChecksum string
 }
 
+type backupRequest struct {
+	lastBackup *Backup
+}
+
+func (r backupRequest) isIncrementalBackup() bool {
+	return r.lastBackup != nil
+}
+
+func (r backupRequest) getLastSnapshotName() string {
+	if r.lastBackup == nil {
+		return ""
+	}
+	return r.lastBackup.SnapshotName
+}
+
+func (r backupRequest) getBackupType() string {
+	if r.isIncrementalBackup() {
+		return "incremental"
+	}
+	return "full"
+}
+
 type DeltaBlockBackupOperations interface {
 	HasSnapshot(id, volumeID string) bool
 	CompareSnapshot(id, compareID, volumeID string) (*Mappings, error)
@@ -84,42 +106,41 @@ func CreateDeltaBlockBackup(config *DeltaBackupConfig) (string, bool, error) {
 		return "", false, err
 	}
 
-	lastBackupName := volume.LastBackupName
-
 	if err := deltaOps.OpenSnapshot(snapshot.Name, volume.Name); err != nil {
 		return "", false, err
 	}
 
-	var lastSnapshotName string
-	var lastBackup *Backup
-	isIncrementalBackup := false
-	if lastBackupName != "" {
-		lastBackup, err = loadBackup(lastBackupName, volume.Name, bsDriver)
+	backupRequest := &backupRequest{}
+	if volume.LastBackupName != "" {
+		lastBackupName := volume.LastBackupName
+		var backup, err = loadBackup(lastBackupName, volume.Name, bsDriver)
 		if err != nil {
-			// there are many reasons this could happen, for example:
-			// the user switched backup stores or deleted files manually
-			// another process deleted that backup after we pulled the volume.cfg
-			// therefore we don't care and do a full backup instead
-			log.Infof("Cannot find previous backup: %v for volume: %v in backupstore: %v",
-				volume, lastBackupName, destURL)
-		} else {
-			lastSnapshotName = lastBackup.SnapshotName
-		}
-
-		if lastSnapshotName == snapshot.Name {
+			log.WithFields(logrus.Fields{
+				LogFieldReason:  LogReasonFallback,
+				LogFieldEvent:   LogEventBackup,
+				LogFieldObject:  LogObjectBackup,
+				LogFieldBackup:  lastBackupName,
+				LogFieldVolume:  volume.Name,
+				LogFieldDestURL: destURL,
+			}).Info("Cannot find previous backup in backupstore")
+		} else if backup.SnapshotName == snapshot.Name {
 			//Generate full snapshot if the snapshot has been backed up last time
-			lastSnapshotName = ""
-			log.Debug("Would create full snapshot metadata")
-		} else if lastSnapshotName != "" && !deltaOps.HasSnapshot(lastSnapshotName, volume.Name) {
-			// It's possible that the snapshot in backupstore doesn't exist
-			// in local storage
-			lastSnapshotName = ""
+			log.WithFields(logrus.Fields{
+				LogFieldReason:   LogReasonFallback,
+				LogFieldEvent:    LogEventCompare,
+				LogFieldObject:   LogObjectSnapshot,
+				LogFieldSnapshot: backup.SnapshotName,
+				LogFieldVolume:   volume.Name,
+			}).Debug("Create full snapshot metadata")
+		} else if backup.SnapshotName != "" && !deltaOps.HasSnapshot(backup.SnapshotName, volume.Name) {
 			log.WithFields(logrus.Fields{
 				LogFieldReason:   LogReasonFallback,
 				LogFieldObject:   LogObjectSnapshot,
-				LogFieldSnapshot: lastSnapshotName,
+				LogFieldSnapshot: backup.SnapshotName,
 				LogFieldVolume:   volume.Name,
-			}).Debug("Cannot find last snapshot in local storage, would process with full backup")
+			}).Debug("Cannot find last snapshot in local storage")
+		} else {
+			backupRequest.lastBackup = backup
 		}
 	}
 
@@ -128,34 +149,31 @@ func CreateDeltaBlockBackup(config *DeltaBackupConfig) (string, bool, error) {
 		LogFieldObject:       LogObjectSnapshot,
 		LogFieldEvent:        LogEventCompare,
 		LogFieldSnapshot:     snapshot.Name,
-		LogFieldLastSnapshot: lastSnapshotName,
+		LogFieldLastSnapshot: backupRequest.getLastSnapshotName(),
 	}).Debug("Generating snapshot changed blocks metadata")
-
-	if lastSnapshotName != "" {
-		isIncrementalBackup = true
-	}
-	delta, err := deltaOps.CompareSnapshot(snapshot.Name, lastSnapshotName, volume.Name)
+	delta, err := deltaOps.CompareSnapshot(snapshot.Name, backupRequest.getLastSnapshotName(), volume.Name)
 	if err != nil {
 		deltaOps.CloseSnapshot(snapshot.Name, volume.Name)
-		return "", isIncrementalBackup, err
+		return "", backupRequest.isIncrementalBackup(), err
 	}
 	if delta.BlockSize != DEFAULT_BLOCK_SIZE {
 		deltaOps.CloseSnapshot(snapshot.Name, volume.Name)
-		return "", isIncrementalBackup, fmt.Errorf("currently doesn't support different block sizes driver other than %v", DEFAULT_BLOCK_SIZE)
+		return "", backupRequest.isIncrementalBackup(),
+			fmt.Errorf("driver doesn't support block sizes other than %v", DEFAULT_BLOCK_SIZE)
 	}
 	log.WithFields(logrus.Fields{
 		LogFieldReason:       LogReasonComplete,
 		LogFieldObject:       LogObjectSnapshot,
 		LogFieldEvent:        LogEventCompare,
 		LogFieldSnapshot:     snapshot.Name,
-		LogFieldLastSnapshot: lastSnapshotName,
+		LogFieldLastSnapshot: backupRequest.getLastSnapshotName(),
 	}).Debug("Generated snapshot changed blocks metadata")
 
 	log.WithFields(logrus.Fields{
-		LogFieldReason:   LogReasonStart,
-		LogFieldEvent:    LogEventBackup,
-		LogFieldObject:   LogObjectSnapshot,
-		LogFieldSnapshot: snapshot.Name,
+		LogFieldReason:     LogReasonStart,
+		LogFieldEvent:      LogEventBackup,
+		LogFieldBackupType: backupRequest.getBackupType(),
+		LogFieldSnapshot:   snapshot.Name,
 	}).Debug("Creating backup")
 
 	deltaBackup := &Backup{
@@ -167,18 +185,18 @@ func CreateDeltaBlockBackup(config *DeltaBackupConfig) (string, bool, error) {
 
 	go func() {
 		defer deltaOps.CloseSnapshot(snapshot.Name, volume.Name)
-		if progress, backup, err := performIncrementalBackup(config, delta, deltaBackup, lastBackup, bsDriver,
-			isIncrementalBackup); err != nil {
+		if progress, backup, err := performBackup(config, delta, deltaBackup, backupRequest.lastBackup, bsDriver); err != nil {
 			deltaOps.UpdateBackupStatus(snapshot.Name, volume.Name, progress, "", err.Error())
 		} else {
 			deltaOps.UpdateBackupStatus(snapshot.Name, volume.Name, progress, backup, "")
 		}
 	}()
-	return deltaBackup.Name, isIncrementalBackup, nil
+	return deltaBackup.Name, backupRequest.isIncrementalBackup(), nil
 }
 
-func performIncrementalBackup(config *DeltaBackupConfig, delta *Mappings, deltaBackup *Backup, lastBackup *Backup,
-	bsDriver BackupStoreDriver, isIncrementalBackup bool) (int, string, error) {
+// performBackup if lastBackup is present we will do an incremental backup
+func performBackup(config *DeltaBackupConfig, delta *Mappings, deltaBackup *Backup, lastBackup *Backup,
+	bsDriver BackupStoreDriver) (int, string, error) {
 
 	volume := config.Volume
 	snapshot := config.Snapshot
@@ -248,7 +266,7 @@ func performIncrementalBackup(config *DeltaBackupConfig, delta *Mappings, deltaB
 	backup.CreatedTime = util.Now()
 	backup.Size = int64(len(backup.Blocks)) * DEFAULT_BLOCK_SIZE
 	backup.Labels = config.Labels
-	backup.IsIncremental = isIncrementalBackup
+	backup.IsIncremental = lastBackup != nil
 
 	if err := saveBackup(backup, bsDriver); err != nil {
 		return progress, "", err
@@ -300,6 +318,12 @@ func mergeSnapshotMap(deltaBackup, lastBackup *Backup) *Backup {
 		}
 	}
 
+	log.WithFields(logrus.Fields{
+		LogFieldEvent:      LogEventBackup,
+		LogFieldObject:     LogObjectBackup,
+		LogFieldBackup:     deltaBackup.Name,
+		LogFieldLastBackup: lastBackup.Name,
+	}).Debugf("merge backup blocks")
 	if d == len(deltaBackup.Blocks) {
 		backup.Blocks = append(backup.Blocks, lastBackup.Blocks[l:]...)
 	} else {
