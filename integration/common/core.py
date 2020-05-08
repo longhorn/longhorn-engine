@@ -453,8 +453,10 @@ def verify_async(dev, times, length, count):
         raise Exception("data_verifier thread failed")
 
 
-def get_dev(grpc_replica1, grpc_replica2, grpc_controller):
-    prepare_backup_dir(BACKUP_DIR)
+def get_dev(grpc_replica1, grpc_replica2, grpc_controller,
+            clean_backup_dir=True):
+    if clean_backup_dir:
+        prepare_backup_dir(BACKUP_DIR)
     open_replica(grpc_replica1)
     open_replica(grpc_replica2)
 
