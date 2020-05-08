@@ -141,15 +141,9 @@ func NewSyncAgentServer(startPort, endPort int, replicaAddress string) *SyncAgen
 		processesByPort: map[int]string{},
 		replicaAddress:  replicaAddress,
 
-		BackupList: &BackupList{
-			RWMutex: sync.RWMutex{},
-		},
-		PurgeStatus: &PurgeStatus{
-			RWMutex: sync.RWMutex{},
-		},
-		RebuildStatus: &RebuildStatus{
-			RWMutex: sync.RWMutex{},
-		},
+		BackupList:    &BackupList{},
+		PurgeStatus:   &PurgeStatus{},
+		RebuildStatus: &RebuildStatus{},
 	}
 }
 
@@ -233,9 +227,7 @@ func (s *SyncAgentServer) Reset(ctx context.Context, req *empty.Empty) (*empty.E
 	}
 	s.lastRestored = ""
 	s.isRestoring = false
-	s.BackupList = &BackupList{
-		RWMutex: sync.RWMutex{},
-	}
+	s.BackupList = &BackupList{}
 	return &empty.Empty{}, nil
 }
 
