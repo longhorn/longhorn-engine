@@ -2,7 +2,9 @@ package backupstore
 
 import (
 	"fmt"
+	"github.com/sirupsen/logrus"
 
+	. "github.com/longhorn/backupstore/logging"
 	"github.com/longhorn/backupstore/util"
 )
 
@@ -32,6 +34,8 @@ type BackupInfo struct {
 	VolumeName    string `json:",omitempty"`
 	VolumeSize    int64  `json:",string,omitempty"`
 	VolumeCreated string `json:",omitempty"`
+
+	Messages map[MessageType]string
 }
 
 func addListVolume(volumeName string, driver BackupStoreDriver, volumeOnly bool) (*VolumeInfo, error) {
@@ -63,12 +67,21 @@ func addListVolume(volumeName string, driver BackupStoreDriver, volumeOnly bool)
 	}
 
 	for _, backupName := range backupNames {
+		var info *BackupInfo
 		backup, err := loadBackup(backupName, volumeName, driver)
 		if err != nil {
-			return nil, err
+			log.WithFields(logrus.Fields{
+				LogFieldReason: LogReasonFallback,
+				LogFieldEvent:  LogEventList,
+				LogFieldObject: LogObjectBackup,
+				LogFieldBackup: backupName,
+				LogFieldVolume: volumeName,
+			}).Warn("Failed to load backup in backupstore")
+			info = failedBackupInfo(backupName, volumeName, driver.GetURL(), err)
+		} else {
+			info = fillBackupInfo(backup, driver.GetURL())
 		}
-		r := fillBackupInfo(backup, driver.GetURL())
-		volumeInfo.Backups[r.URL] = r
+		volumeInfo.Backups[info.URL] = info
 	}
 	return volumeInfo, nil
 }
@@ -79,24 +92,20 @@ func List(volumeName, destURL string, volumeOnly bool) (map[string]*VolumeInfo, 
 		return nil, err
 	}
 	resp := make(map[string]*VolumeInfo)
-	if volumeName != "" {
+	volumeNames := []string{volumeName}
+	if volumeName == "" {
+		volumeNames, err = getVolumeNames(driver)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	for _, volumeName := range volumeNames {
 		volumeInfo, err := addListVolume(volumeName, driver, volumeOnly)
 		if err != nil {
 			return nil, err
 		}
 		resp[volumeName] = volumeInfo
-	} else {
-		volumeNames, err := getVolumeNames(driver)
-		if err != nil {
-			return nil, err
-		}
-		for _, volumeName := range volumeNames {
-			volumeInfo, err := addListVolume(volumeName, driver, volumeOnly)
-			if err != nil {
-				return nil, err
-			}
-			resp[volumeName] = volumeInfo
-		}
 	}
 	return resp, nil
 }
@@ -111,6 +120,15 @@ func fillVolumeInfo(volume *Volume) *VolumeInfo {
 		DataStored:     int64(volume.BlockCount * DEFAULT_BLOCK_SIZE),
 		Messages:       make(map[MessageType]string),
 		Backups:        make(map[string]*BackupInfo),
+	}
+}
+
+func failedBackupInfo(backupName string, volumeName string,
+	destURL string, err error) *BackupInfo {
+	return &BackupInfo{
+		Name:     backupName,
+		URL:      encodeBackupURL(backupName, volumeName, destURL),
+		Messages: map[MessageType]string{MessageTypeError: err.Error()},
 	}
 }
 
@@ -152,6 +170,13 @@ func InspectBackup(backupURL string) (*BackupInfo, error) {
 
 	backup, err := loadBackup(backupName, volumeName, driver)
 	if err != nil {
+		log.WithFields(logrus.Fields{
+			LogFieldReason: LogReasonFallback,
+			LogFieldEvent:  LogEventList,
+			LogFieldObject: LogObjectBackup,
+			LogFieldBackup: backupName,
+			LogFieldVolume: volumeName,
+		}).Info("Failed to load backup in backupstore")
 		return nil, err
 	}
 	return fillFullBackupInfo(backup, volume, driver.GetURL()), nil

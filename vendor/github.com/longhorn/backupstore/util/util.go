@@ -76,6 +76,12 @@ func ExtractNames(names []string, prefix, suffix string) ([]string, error) {
 		f := names[i]
 		// Remove additional slash if exists
 		f = strings.TrimLeft(f, "/")
+
+		// Not a backup config file
+		if !strings.HasPrefix(f, prefix) || !strings.HasSuffix(f, suffix) {
+			continue
+		}
+
 		f = strings.TrimPrefix(f, prefix)
 		f = strings.TrimSuffix(f, suffix)
 		if !ValidateName(f) {

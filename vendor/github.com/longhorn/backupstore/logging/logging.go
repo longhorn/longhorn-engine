@@ -23,6 +23,7 @@ const (
 
 	LogFieldEvent        = "event"
 	LogEventBackup       = "backup"
+	LogEventList         = "list"
 	LogEventRestore      = "restore"
 	LogEventRestoreIncre = "restore_incrementally"
 	LogEventCompare      = "compare"

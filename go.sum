@@ -34,8 +34,8 @@ github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af h1:pmfjZENx5i
 github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af/go.mod h1:Nht3zPeWKUH0NzdCt2Blrr5ys8VGpn0CEB0cQHVjt7k=
 github.com/konsorten/go-windows-terminal-sequences v1.0.1 h1:mweAR1A6xJ3oS2pRaGiHgQ4OO8tzTaLawm8vnODuwDk=
 github.com/konsorten/go-windows-terminal-sequences v1.0.1/go.mod h1:T0+1ngSBFLxvqU3pZ+m/2kptfBszLMUkC4ZK/EgS/cQ=
-github.com/longhorn/backupstore v0.0.0-20200508012431-a8c1ad24830b h1:kzuei0iDORbNp3Wfi7CIZ2Jb/r+axXq/M0EOaHH5XIk=
-github.com/longhorn/backupstore v0.0.0-20200508012431-a8c1ad24830b/go.mod h1:TEcXB6izcrf4DMxnAhEKasrrmRq0nK4wlTUVrDIZaYg=
+github.com/longhorn/backupstore v0.0.0-20200509050526-150a317f1405 h1:RTgfE4mD8l4wyWROFPKMFQW72TYytVC9Q3ZF/N7yw6s=
+github.com/longhorn/backupstore v0.0.0-20200509050526-150a317f1405/go.mod h1:TEcXB6izcrf4DMxnAhEKasrrmRq0nK4wlTUVrDIZaYg=
 github.com/longhorn/go-iscsi-helper v0.0.0-20200424013728-e7c199ecb487 h1:ARgyOW/q9zb2MS5EEX3X9frQhBtpeSX4PVf9DJXTUy4=
 github.com/longhorn/go-iscsi-helper v0.0.0-20200424013728-e7c199ecb487/go.mod h1:3RTrAwLd6uaku/4wPE0KkSQI2OmhPgGO1SQ2Hbix5hY=
 github.com/longhorn/sparse-tools v0.0.0-20191231185723-50ffab4d4329 h1:fE6vFueGtkftPlZK85U8dGyoQoSE4/nRRBkOa5I0WFk=
