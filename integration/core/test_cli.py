@@ -6,6 +6,7 @@ import subprocess
 import json
 import datetime
 import pytest
+import tempfile
 
 from urllib.parse import urlparse
 
@@ -33,13 +34,12 @@ from common.constants import (
     SIZE_STR, EXPANDED_SIZE_STR,
 
     INSTANCE_MANAGER_ENGINE, INSTANCE_MANAGER_REPLICA,
-    REPLICA_NAME,
+    REPLICA_NAME, REPLICA_2_NAME,
 )
 
 from rpc.controller.controller_client import ControllerClient
 from rpc.replica.replica_client import ReplicaClient
 from rpc.instance_manager.process_manager_client import ProcessManagerClient
-
 
 BACKUP_DEST = '/data/backupbucket'
 
@@ -1278,3 +1278,150 @@ def test_expand_multiple_times():
 
         cleanup_process(em_client)
         cleanup_process(rm_client)
+
+
+def test_single_replica_failure_during_engine_start(bin):  # NOQA
+    """
+    Test if engine still works fine if there is an invalid
+    replica/backend in the starting phase
+
+    1. Create then initialize 1 engine and 2 replicas.
+    2. Start the engine.
+    3. Create 2 snapshots.
+    4. Mess up the replica1 by manually modifying the snapshot meta file.
+    5. Mock volume detachment by deleting
+       the engine process and replicas processes.
+    6. Mock volume reattachment by recreating processes and
+       re-starting the engine.
+    7. Check if the engine is up and if replica1 is mode ERR
+       in the engine.
+    8. Check if the engine still works fine
+       by creating one more snapshot.
+    9. Remove the ERR replica from the engine
+       then check snapshot remove and snapshot purge work fine.
+    10. Check if the snapshot list is correct.
+    """
+    em_client = ProcessManagerClient(INSTANCE_MANAGER_ENGINE)
+    engine_process = create_engine_process(em_client)
+    grpc_controller_client = ControllerClient(
+        get_process_address(engine_process))
+
+    rm_client = ProcessManagerClient(INSTANCE_MANAGER_REPLICA)
+    replica_dir1 = tempfile.mkdtemp()
+    replica_dir2 = tempfile.mkdtemp()
+    replica_process1 = create_replica_process(rm_client, REPLICA_NAME,
+                                              replica_dir=replica_dir1)
+    grpc_replica_client1 = ReplicaClient(
+        get_process_address(replica_process1))
+    cleanup_replica(grpc_replica_client1)
+    replica_process2 = create_replica_process(rm_client, REPLICA_2_NAME,
+                                              replica_dir=replica_dir2)
+    grpc_replica_client2 = ReplicaClient(
+        get_process_address(replica_process2))
+    cleanup_replica(grpc_replica_client2)
+
+    open_replica(grpc_replica_client1)
+    open_replica(grpc_replica_client2)
+    r1_url = grpc_replica_client1.url
+    r2_url = grpc_replica_client2.url
+    v = grpc_controller_client.volume_start(replicas=[
+        r1_url, r2_url,
+    ])
+    assert v.replicaCount == 2
+
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'snapshot', 'create']
+    snap0 = subprocess.check_output(cmd, encoding='utf-8').strip()
+    expected = grpc_replica_client1.replica_get().chain[1]
+    assert expected == 'volume-snap-{}.img'.format(snap0)
+
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'snapshot', 'create',
+           '--label', 'name=snap1', '--label', 'key=value']
+    snap1 = subprocess.check_output(cmd, encoding='utf-8').strip()
+
+    # Mess up the replica1 by manually modifying the snapshot meta file
+    r1_snap1_meta_path = os.path.join(replica_dir1,
+                                      'volume-snap-{}.img.meta'.format(snap1))
+    with open(r1_snap1_meta_path, 'r') as f:
+        snap1_meta_info = json.load(f)
+    with open(r1_snap1_meta_path, 'w') as f:
+        snap1_meta_info["Parent"] = "invalid-parent.img"
+        json.dump(snap1_meta_info, f)
+
+    # Mock detach:
+    cleanup_process(em_client)
+    cleanup_process(rm_client)
+
+    # Mock reattach:
+    #   1. Directly create replicas processes.
+    #   2. Call replica_create() to init replica servers for replica processes.
+    #   3. Create one engine process and start the engine with replicas.
+    replica_process1 = create_replica_process(rm_client, REPLICA_NAME,
+                                              replica_dir=replica_dir1)
+    grpc_replica_client1 = ReplicaClient(
+        get_process_address(replica_process1))
+    grpc_replica_client1.replica_create(size=SIZE_STR)
+    replica_process2 = create_replica_process(rm_client, REPLICA_2_NAME,
+                                              replica_dir=replica_dir2)
+    grpc_replica_client2 = ReplicaClient(
+        get_process_address(replica_process2))
+    grpc_replica_client2.replica_create(size=SIZE_STR)
+
+    engine_process = create_engine_process(em_client)
+    grpc_controller_client = ControllerClient(
+        get_process_address(engine_process))
+    r1_url = grpc_replica_client1.url
+    r2_url = grpc_replica_client2.url
+    v = grpc_controller_client.volume_start(replicas=[
+        r1_url, r2_url,
+    ])
+    assert v.replicaCount == 2
+
+    # Check if replica1 is mode `ERR`
+    rs = grpc_controller_client.replica_list()
+    assert len(rs) == 2
+    r1_verified = False
+    r2_verified = False
+    for r in rs:
+        if r.address == r1_url:
+            assert r.mode == 'ERR'
+            r1_verified = True
+        if r.address == r2_url:
+            assert r.mode == 'RW'
+            r2_verified = True
+    assert r1_verified
+    assert r2_verified
+
+    # The engine still works fine
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'snapshot', 'create']
+    snap2 = subprocess.check_output(cmd, encoding='utf-8').strip()
+
+    # Remove the ERR replica before removing snapshots
+    grpc_controller_client.replica_delete(r1_url)
+    rs = grpc_controller_client.replica_list()
+    assert len(rs) == 1
+    assert rs[0].address == r2_url
+    assert rs[0].mode == "RW"
+
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'snapshot', 'rm', snap1]
+    subprocess.check_call(cmd)
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'snapshot', 'purge']
+    subprocess.check_call(cmd)
+    wait_for_purge_completion(grpc_controller_client.address)
+
+    cmd = [bin, '--debug',
+           '--url', grpc_controller_client.address,
+           'snapshot', 'ls']
+    ls_output = subprocess.check_output(cmd, encoding='utf-8')
+
+    assert ls_output == '''ID
+{}
+{}
+'''.format(snap2, snap0)
+
+    cleanup_process(em_client)
+    cleanup_process(rm_client)
