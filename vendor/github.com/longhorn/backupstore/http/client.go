@@ -25,7 +25,7 @@ func GetInsecureClient() (*http.Client, error) {
 }
 
 func GetClientWithCustomCerts(certs []byte) (*http.Client, error) {
-	return GetClient(true, certs)
+	return GetClient(false, certs)
 }
 
 func GetClient(insecure bool, customCerts []byte) (*http.Client, error) {
