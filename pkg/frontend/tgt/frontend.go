@@ -33,12 +33,8 @@ func (t *Tgt) FrontendName() string {
 	return t.frontendName
 }
 
-func (t *Tgt) Startup(name string, size, sectorSize int64, rw types.ReaderWriterAt) error {
-	if err := t.Shutdown(); err != nil {
-		return err
-	}
-
-	if err := t.s.Startup(name, size, sectorSize, rw); err != nil {
+func (t *Tgt) Init(name string, size, sectorSize int64) error {
+	if err := t.s.Init(name, size, sectorSize); err != nil {
 		return err
 	}
 
@@ -48,6 +44,19 @@ func (t *Tgt) Startup(name string, size, sectorSize int64, rw types.ReaderWriter
 		return err
 	}
 	t.dev = dev
+	if err := t.dev.InitDevice(); err != nil {
+		return err
+	}
+
+	t.isUp = false
+
+	return nil
+}
+
+func (t *Tgt) Startup(rw types.ReaderWriterAt) error {
+	if err := t.s.Startup(rw); err != nil {
+		return err
+	}
 
 	if err := t.dev.Start(); err != nil {
 		return err
@@ -98,7 +107,10 @@ func (t *Tgt) Upgrade(name string, size, sectorSize int64, rw types.ReaderWriter
 		return err
 	}
 
-	if err := t.s.Startup(name, size, sectorSize, rw); err != nil {
+	if err := t.s.Init(name, size, sectorSize); err != nil {
+		return err
+	}
+	if err := t.s.Startup(rw); err != nil {
 		return err
 	}
 

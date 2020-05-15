@@ -422,7 +422,11 @@ func (c *Controller) startFrontend() error {
 			}
 			return nil
 		}
-		if err := c.frontend.Startup(c.Name, c.size, c.sectorSize, c); err != nil {
+		if err := c.frontend.Init(c.Name, c.size, c.sectorSize); err != nil {
+			logrus.Errorf("Failed to init frontend: %v", err)
+			return errors.Wrap(err, "failed to init frontend")
+		}
+		if err := c.frontend.Startup(c); err != nil {
 			logrus.Errorf("Failed to startup frontend: %v", err)
 			return errors.Wrap(err, "failed to start up frontend")
 		}

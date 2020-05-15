@@ -36,12 +36,15 @@ func (d *Device) FrontendName() string {
 	return frontendName
 }
 
-func (d *Device) Startup(name string, size, sectorSize int64, rw types.ReaderWriterAt) error {
+func (d *Device) Init(name string, size, sectorSize int64) error {
 	d.Name = name
-	d.backend = rw
 	d.Size = size
 	d.SectorSize = sectorSize
+	return nil
+}
 
+func (d *Device) Startup(rw types.ReaderWriterAt) error {
+	d.backend = rw
 	if err := d.start(); err != nil {
 		return err
 	}
