@@ -38,15 +38,15 @@ func (t *Socket) FrontendName() string {
 	return frontendName
 }
 
-func (t *Socket) Startup(name string, size, sectorSize int64, rw types.ReaderWriterAt) error {
+func (t *Socket) Init(name string, size, sectorSize int64) error {
 	t.Volume = name
 	t.Size = size
 	t.SectorSize = int(sectorSize)
 
-	if err := t.Shutdown(); err != nil {
-		return err
-	}
+	return t.Shutdown()
+}
 
+func (t *Socket) Startup(rw types.ReaderWriterAt) error {
 	if err := t.startSocketServer(rw); err != nil {
 		return err
 	}
