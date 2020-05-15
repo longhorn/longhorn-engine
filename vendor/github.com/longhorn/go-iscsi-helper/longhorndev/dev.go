@@ -45,6 +45,7 @@ type DeviceService interface {
 	GetEndpoint() string
 	Enabled() bool
 
+	InitDevice() error
 	Start() error
 	Shutdown() error
 	PrepareUpgrade() error
@@ -73,23 +74,24 @@ func (ldc *LonghornDeviceCreator) NewDevice(name string, size int64, frontend st
 	return dev, nil
 }
 
-func (d *LonghornDevice) Start() error {
+func (d *LonghornDevice) InitDevice() error {
+	d.Lock()
+	defer d.Unlock()
+
 	if d.scsiDevice != nil {
 		return nil
 	}
 
-	stopCh := make(chan struct{})
-	if err := <-d.WaitForSocket(stopCh); err != nil {
+	if err := d.initScsiDevice(); err != nil {
 		return err
 	}
 
-	return d.initDevice(true)
+	// Try to cleanup possible leftovers.
+	return d.shutdownFrontend()
 }
 
-func (d *LonghornDevice) initDevice(startScsiDevice bool) (err error) {
-	d.Lock()
-	defer d.Unlock()
-
+// call with lock hold
+func (d *LonghornDevice) initScsiDevice() error {
 	bsOpts := fmt.Sprintf("size=%v", d.size)
 	scsiDev, err := iscsidev.NewDevice(d.name, d.GetSocketPath(), "longhorn", bsOpts)
 	if err != nil {
@@ -97,11 +99,30 @@ func (d *LonghornDevice) initDevice(startScsiDevice bool) (err error) {
 	}
 	d.scsiDevice = scsiDev
 
+	return nil
+}
+
+func (d *LonghornDevice) Start() error {
+	stopCh := make(chan struct{})
+	if err := <-d.WaitForSocket(stopCh); err != nil {
+		return err
+	}
+
+	return d.startScsiDevice(true)
+}
+
+func (d *LonghornDevice) startScsiDevice(startScsiDevice bool) (err error) {
+	d.Lock()
+	defer d.Unlock()
+
 	switch d.frontend {
 	case types.FrontendTGTBlockDev:
 		// If ISCSI device is not started here, e.g., device upgrade,
 		// d.scsiDevice.KernelDevice is nil.
 		if startScsiDevice {
+			if d.scsiDevice == nil {
+				return fmt.Errorf("There is no iscsi device during the frontend %v starts", d.frontend)
+			}
 			if err := d.scsiDevice.CreateTarget(); err != nil {
 				return err
 			}
@@ -119,6 +140,9 @@ func (d *LonghornDevice) initDevice(startScsiDevice bool) (err error) {
 		break
 	case types.FrontendTGTISCSI:
 		if startScsiDevice {
+			if d.scsiDevice == nil {
+				return fmt.Errorf("There is no iscsi device during the frontend %v starts", d.frontend)
+			}
 			if err := d.scsiDevice.CreateTarget(); err != nil {
 				return err
 			}
@@ -144,6 +168,18 @@ func (d *LonghornDevice) Shutdown() error {
 		return nil
 	}
 
+	if err := d.shutdownFrontend(); err != nil {
+		return err
+	}
+
+	d.scsiDevice = nil
+	d.endpoint = ""
+
+	return nil
+}
+
+// call with lock hold
+func (d *LonghornDevice) shutdownFrontend() error {
 	switch d.frontend {
 	case types.FrontendTGTBlockDev:
 		dev := d.getDev()
@@ -170,9 +206,6 @@ func (d *LonghornDevice) Shutdown() error {
 	default:
 		return fmt.Errorf("device %v: unknown frontend %v", d.name, d.frontend)
 	}
-
-	d.scsiDevice = nil
-	d.endpoint = ""
 
 	return nil
 }
@@ -275,7 +308,14 @@ func (d *LonghornDevice) FinishUpgrade() (err error) {
 		return err
 	}
 
-	return d.initDevice(false)
+	d.Lock()
+	if err := d.initScsiDevice(); err != nil {
+		d.Unlock()
+		return err
+	}
+	d.Unlock()
+
+	return d.startScsiDevice(false)
 }
 
 func (d *LonghornDevice) ReloadSocketConnection() error {
