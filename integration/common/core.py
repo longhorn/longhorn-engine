@@ -26,6 +26,7 @@ from common.constants import (
     RETRY_COUNTS, RETRY_INTERVAL, RETRY_COUNTS2,
     RETRY_COUNTS_SHORT, RETRY_INTERVAL_SHORT,
     PROC_STATE_STARTING, PROC_STATE_RUNNING,
+    PROC_STATE_ERROR,
     ENGINE_NAME, EXPANDED_SIZE_STR,
 )
 
@@ -70,6 +71,17 @@ def wait_for_process_running(client, name):
             assert False
         time.sleep(RETRY_INTERVAL)
     assert healthy
+
+
+def wait_for_process_error(client, name):
+    verified = False
+    for i in range(RETRY_COUNTS):
+        state = client.process_get(name).status.state
+        if state == PROC_STATE_ERROR:
+            verified = True
+            break
+        time.sleep(RETRY_INTERVAL)
+    assert verified
 
 
 def create_replica_process(client, name, replica_dir="",

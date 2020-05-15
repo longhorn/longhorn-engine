@@ -24,6 +24,7 @@ from common.core import (  # NOQA
     create_engine_process, create_replica_process,
     cleanup_process,
     get_process_address,
+    wait_for_process_error
 )
 
 from common.constants import (
@@ -34,7 +35,7 @@ from common.constants import (
     SIZE_STR, EXPANDED_SIZE_STR,
 
     INSTANCE_MANAGER_ENGINE, INSTANCE_MANAGER_REPLICA,
-    REPLICA_NAME, REPLICA_2_NAME,
+    REPLICA_NAME, REPLICA_2_NAME, ENGINE_NAME,
 )
 
 from rpc.controller.controller_client import ControllerClient
@@ -1413,6 +1414,122 @@ def test_single_replica_failure_during_engine_start(bin):  # NOQA
     subprocess.check_call(cmd)
     wait_for_purge_completion(grpc_controller_client.address)
 
+    cmd = [bin, '--debug',
+           '--url', grpc_controller_client.address,
+           'snapshot', 'ls']
+    ls_output = subprocess.check_output(cmd, encoding='utf-8')
+
+    assert ls_output == '''ID
+{}
+{}
+'''.format(snap2, snap0)
+
+    cleanup_process(em_client)
+    cleanup_process(rm_client)
+
+
+def test_engine_restart_after_sigkill(bin):  # NOQA
+    """
+    Test if engine can be restarted after crashing by SIGKILL.
+
+    1. Create then initialize 1 engine and 2 replicas.
+    2. Start the engine.
+    3. Create 2 snapshots.
+    4. Use SIGKILL to kill the engine process.
+    5. Wait for the engine errored.
+    6. Mock volume detachment by deleting
+       the engine process and replicas processes.
+    7. Mock volume reattachment by recreating processes and
+       re-starting the engine.
+    8. Check if the engine is up with 2 replicas.
+    9. Check if the engine still works fine
+       by creating/removing/purging snapshots.
+    """
+    em_client = ProcessManagerClient(INSTANCE_MANAGER_ENGINE)
+    engine_process = create_engine_process(em_client)
+    grpc_controller_client = ControllerClient(
+        get_process_address(engine_process))
+
+    rm_client = ProcessManagerClient(INSTANCE_MANAGER_REPLICA)
+    replica_dir1 = tempfile.mkdtemp()
+    replica_dir2 = tempfile.mkdtemp()
+    replica_process1 = create_replica_process(rm_client, REPLICA_NAME,
+                                              replica_dir=replica_dir1)
+    grpc_replica_client1 = ReplicaClient(
+        get_process_address(replica_process1))
+    cleanup_replica(grpc_replica_client1)
+    replica_process2 = create_replica_process(rm_client, REPLICA_2_NAME,
+                                              replica_dir=replica_dir2)
+    grpc_replica_client2 = ReplicaClient(
+        get_process_address(replica_process2))
+    cleanup_replica(grpc_replica_client2)
+
+    open_replica(grpc_replica_client1)
+    open_replica(grpc_replica_client2)
+    r1_url = grpc_replica_client1.url
+    r2_url = grpc_replica_client2.url
+    v = grpc_controller_client.volume_start(replicas=[
+        r1_url, r2_url,
+    ])
+    assert v.replicaCount == 2
+
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'snapshot', 'create']
+    snap0 = subprocess.check_output(cmd, encoding='utf-8').strip()
+    expected = grpc_replica_client1.replica_get().chain[1]
+    assert expected == 'volume-snap-{}.img'.format(snap0)
+
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'snapshot', 'create',
+           '--label', 'name=snap1', '--label', 'key=value']
+    snap1 = subprocess.check_output(cmd, encoding='utf-8').strip()
+
+    cmd = ["bash", "-c",
+           "kill -9 $(ps aux | grep %s | grep -v grep | awk '{print $2}')" %
+           VOLUME_NAME]
+    subprocess.check_call(cmd)
+    wait_for_process_error(em_client, ENGINE_NAME)
+
+    # Mock detach:
+    cleanup_process(em_client)
+    cleanup_process(rm_client)
+
+    # Mock reattach:
+    #   1. Directly create replicas processes.
+    #   2. Call replica_create() to init replica servers for replica processes.
+    #   3. Create one engine process and start the engine with replicas.
+    replica_process1 = create_replica_process(rm_client, REPLICA_NAME,
+                                              replica_dir=replica_dir1)
+    grpc_replica_client1 = ReplicaClient(
+        get_process_address(replica_process1))
+    grpc_replica_client1.replica_create(size=SIZE_STR)
+    replica_process2 = create_replica_process(rm_client, REPLICA_2_NAME,
+                                              replica_dir=replica_dir2)
+    grpc_replica_client2 = ReplicaClient(
+        get_process_address(replica_process2))
+    grpc_replica_client2.replica_create(size=SIZE_STR)
+
+    engine_process = create_engine_process(em_client)
+    grpc_controller_client = ControllerClient(
+        get_process_address(engine_process))
+    r1_url = grpc_replica_client1.url
+    r2_url = grpc_replica_client2.url
+    v = grpc_controller_client.volume_start(replicas=[
+        r1_url, r2_url,
+    ])
+    assert v.replicaCount == 2
+
+    # Verify the engine still works fine
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'snapshot', 'create']
+    snap2 = subprocess.check_output(cmd, encoding='utf-8').strip()
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'snapshot', 'rm', snap1]
+    subprocess.check_call(cmd)
+    cmd = [bin, '--url', grpc_controller_client.address,
+           'snapshot', 'purge']
+    subprocess.check_call(cmd)
+    wait_for_purge_completion(grpc_controller_client.address)
     cmd = [bin, '--debug',
            '--url', grpc_controller_client.address,
            'snapshot', 'ls']
