@@ -4,7 +4,9 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
+	"time"
 
 	"github.com/longhorn/backupstore"
 	"github.com/longhorn/backupstore/util"
@@ -77,10 +79,8 @@ func (f *FileSystemOperator) Read(src string) (io.ReadCloser, error) {
 }
 
 func (f *FileSystemOperator) Write(dst string, rs io.ReadSeeker) error {
-	tmpFile := dst + ".tmp"
-	if f.FileExists(tmpFile) {
-		f.Remove(tmpFile)
-	}
+	// we append the timestamp to the tmp files so that we should never have 2 backups using the same tmp file
+	tmpFile := dst + ".tmp" + "." + strconv.FormatInt(time.Now().UnixNano(), 10)
 	if err := f.preparePath(dst); err != nil {
 		return err
 	}
@@ -88,15 +88,19 @@ func (f *FileSystemOperator) Write(dst string, rs io.ReadSeeker) error {
 	if err != nil {
 		return err
 	}
-	defer file.Close()
+
 	_, err = io.Copy(file, rs)
+	if err != nil {
+		_ = file.Close()
+		return err
+	}
+
+	// we close the file here to force nfs to sync the data to stable storage
+	err = file.Close()
 	if err != nil {
 		return err
 	}
 
-	if f.FileExists(dst) {
-		f.Remove(dst)
-	}
 	return os.Rename(f.LocalPath(tmpFile), f.LocalPath(dst))
 }
 
@@ -114,7 +118,7 @@ func (f *FileSystemOperator) List(path string) ([]string, error) {
 }
 
 func (f *FileSystemOperator) Upload(src, dst string) error {
-	tmpDst := dst + ".tmp"
+	tmpDst := dst + ".tmp" + "." + strconv.FormatInt(time.Now().UnixNano(), 10)
 	if f.FileExists(tmpDst) {
 		f.Remove(tmpDst)
 	}

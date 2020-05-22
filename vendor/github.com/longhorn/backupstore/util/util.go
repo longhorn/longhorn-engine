@@ -70,6 +70,22 @@ func Now() string {
 	return time.Now().UTC().Format(time.RFC3339)
 }
 
+func UnorderedEqual(x, y []string) bool {
+	if len(x) != len(y) {
+		return false
+	}
+	known := make(map[string]struct{})
+	for _, value := range x {
+		known[value] = struct{}{}
+	}
+	for _, value := range y {
+		if _, present := known[value]; !present {
+			return false
+		}
+	}
+	return true
+}
+
 func ExtractNames(names []string, prefix, suffix string) ([]string, error) {
 	result := []string{}
 	for i := range names {

@@ -29,8 +29,7 @@ func getBackupConfigName(id string) string {
 }
 
 func loadConfigInBackupStore(filePath string, driver BackupStoreDriver, v interface{}) error {
-	size := driver.FileSize(filePath)
-	if size < 0 {
+	if !driver.FileExists(filePath) {
 		return fmt.Errorf("cannot find %v in backupstore", filePath)
 	}
 	rc, err := driver.Read(filePath)
@@ -162,6 +161,10 @@ func getBackupConfigPath(backupName, volumeName string) string {
 	return filepath.Join(path, fileName)
 }
 
+func isBackupInProgress(backup *Backup) bool {
+	return backup != nil && backup.CreatedTime == ""
+}
+
 func backupExists(backupName, volumeName string, bsDriver BackupStoreDriver) bool {
 	return bsDriver.FileExists(getBackupConfigPath(backupName, volumeName))
 }
@@ -176,12 +179,6 @@ func loadBackup(backupName, volumeName string, bsDriver BackupStoreDriver) (*Bac
 
 func saveBackup(backup *Backup, bsDriver BackupStoreDriver) error {
 	filePath := getBackupConfigPath(backup.Name, backup.VolumeName)
-	if bsDriver.FileExists(filePath) {
-		log.Warnf("Snapshot configuration file %v already exists, would remove it\n", filePath)
-		if err := bsDriver.Remove(filePath); err != nil {
-			return err
-		}
-	}
 	if err := saveConfigInBackupStore(filePath, bsDriver, backup); err != nil {
 		return err
 	}
