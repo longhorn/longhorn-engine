@@ -78,6 +78,9 @@ func addListVolume(volumeName string, driver BackupStoreDriver, volumeOnly bool)
 				LogFieldVolume: volumeName,
 			}).Warn("Failed to load backup in backupstore")
 			info = failedBackupInfo(backupName, volumeName, driver.GetURL(), err)
+		} else if isBackupInProgress(backup) {
+			// for now we don't return in progress backups to the ui
+			continue
 		} else {
 			info = fillBackupInfo(backup, driver.GetURL())
 		}
@@ -178,6 +181,10 @@ func InspectBackup(backupURL string) (*BackupInfo, error) {
 			LogFieldVolume: volumeName,
 		}).Info("Failed to load backup in backupstore")
 		return nil, err
+	} else if isBackupInProgress(backup) {
+		// for now we don't return in progress backups to the ui
+		return nil, fmt.Errorf("backup %v is still in progress", backup.Name)
 	}
+
 	return fillFullBackupInfo(backup, volume, driver.GetURL()), nil
 }
