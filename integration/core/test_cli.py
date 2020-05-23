@@ -27,6 +27,10 @@ from common.core import (  # NOQA
     wait_for_process_error
 )
 
+from common.cmd import (   # NOQA
+    backup_volume_rm, backup_rm
+)
+
 from common.constants import (
     VOLUME_NAME,
     RETRY_COUNTS2, FRONTEND_TGT_BLOCKDEV,
@@ -911,12 +915,11 @@ def backup_core(bin, engine_manager_client,  # NOQA
                    bin, grpc_controller_client.address,
                    backup2, env, grpc_controller_client)
 
-    cmd = [bin, '--url', grpc_controller_client.address,
-           'backup', 'rm', backup1]
-    subprocess.check_call(cmd, env=env)
-    cmd = [bin, '--url', grpc_controller_client.address,
-           'backup', 'rm', backup2]
-    subprocess.check_call(cmd, env=env)
+    # remove backups + volume
+    backup_rm(grpc_controller_client.address, backup1)
+    backup_rm(grpc_controller_client.address, backup2)
+    backup_volume_rm(grpc_controller_client.address,
+                     VOLUME_NAME, backup_target)
 
     assert os.path.exists(BACKUP_DEST)
 
@@ -929,8 +932,8 @@ def backup_core(bin, engine_manager_client,  # NOQA
         subprocess.check_call(cmd, env=env)
 
     cmd = [bin, '--url', grpc_controller_client.address,
-           'backup', 'inspect', "xxx"]
-    # cannot find the backup
+           'backup', 'inspect', "bad://xxx"]
+    # this returns unsupported driver since `bad` is not a known scheme
     with pytest.raises(subprocess.CalledProcessError):
         subprocess.check_call(cmd, env=env)
     grpc_controller_client.volume_frontend_start(
