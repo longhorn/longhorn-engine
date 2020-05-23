@@ -178,6 +178,9 @@ func loadBackup(backupName, volumeName string, bsDriver BackupStoreDriver) (*Bac
 }
 
 func saveBackup(backup *Backup, bsDriver BackupStoreDriver) error {
+	if backup.VolumeName == "" {
+		return fmt.Errorf("missing volume specifier for backup: %v", backup.Name)
+	}
 	filePath := getBackupConfigPath(backup.Name, backup.VolumeName)
 	if err := saveConfigInBackupStore(filePath, bsDriver, backup); err != nil {
 		return err

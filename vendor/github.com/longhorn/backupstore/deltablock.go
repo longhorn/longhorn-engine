@@ -199,7 +199,8 @@ func performBackup(config *DeltaBackupConfig, delta *Mappings, deltaBackup *Back
 	bsDriver BackupStoreDriver) (int, string, error) {
 
 	// create an in progress backup metadata file
-	if err := saveBackup(&Backup{Name: deltaBackup.Name, CreatedTime: ""}, bsDriver); err != nil {
+	if err := saveBackup(&Backup{Name: deltaBackup.Name, VolumeName: deltaBackup.VolumeName,
+		CreatedTime: ""}, bsDriver); err != nil {
 		return 0, "", err
 	}
 
