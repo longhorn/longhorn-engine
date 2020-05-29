@@ -631,26 +631,31 @@ func DeleteDeltaBlockBackup(backupURL string) error {
 	for _, blk := range backupToBeDeleted.Blocks {
 		discardBlockSet[blk.BlockChecksum] = true
 	}
-	discardBlockCounts := len(discardBlockSet)
 
 	log.Debug("GC started")
 	backupNames, err := getBackupNamesForVolume(volumeName, bsDriver)
-	for _, backupName := range backupNames {
-		backup, err := loadBackup(backupName, volumeName, bsDriver)
+	for i := 0; len(discardBlockSet) > 0 && i < len(backupNames); i++ {
+		backup, err := loadBackup(backupNames[i], volumeName, bsDriver)
 		if err != nil {
 			return err
 		}
-		for _, blk := range backup.Blocks {
+
+		if isBackupInProgress(backup) {
+			log.Infof("skipping block deletion because of in progress backup %v for volume %v",
+				backup.Name, volumeName)
+			discardBlockSet = make(map[string]bool)
+			break
+		}
+
+		if backup.Name == backupToBeDeleted.Name {
+			continue
+		}
+
+		for j := 0; len(discardBlockSet) > 0 && j < len(backup.Blocks); j++ {
+			blk := backup.Blocks[j]
 			if _, exists := discardBlockSet[blk.BlockChecksum]; exists {
 				delete(discardBlockSet, blk.BlockChecksum)
-				discardBlockCounts--
-				if discardBlockCounts == 0 {
-					break
-				}
 			}
-		}
-		if discardBlockCounts == 0 {
-			break
 		}
 	}
 
@@ -680,9 +685,8 @@ func DeleteDeltaBlockBackup(backupURL string) error {
 	prevBackupNames := backupNames
 	backupNames, err = getBackupNamesForVolume(volumeName, bsDriver)
 	backupNames = append(backupNames, backupToBeDeleted.Name)
-
 	if err != nil || !util.UnorderedEqual(prevBackupNames, backupNames) {
-		log.Debugf("Skipping GC because we potentially found new backups for volume %v", volumeName)
+		log.Infof("Skipping block deletion because we found new backups for volume %v", volumeName)
 		return nil
 	}
 	if err := bsDriver.Remove(blkFileList...); err != nil {
