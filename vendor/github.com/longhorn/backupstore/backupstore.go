@@ -70,14 +70,9 @@ func removeVolume(volumeName string, driver BackupStoreDriver) error {
 		return fmt.Errorf("Invalid volume name %v", volumeName)
 	}
 
-	if !volumeExists(volumeName, driver) {
-		return fmt.Errorf("Volume %v doesn't exist in backupstore", volumeName)
-	}
-
 	volumeDir := getVolumePath(volumeName)
 	volumeBlocksDirectory := getBlockPath(volumeName)
 	volumeBackupsDirectory := getBackupPath(volumeName)
-
 	if err := driver.Remove(volumeBackupsDirectory); err != nil {
 		return fmt.Errorf("failed to remove all the backups for volume %v: %v", volumeName, err)
 	}

@@ -48,23 +48,21 @@ func (f *FileSystemOperator) FileExists(filePath string) bool {
 	return f.FileSize(filePath) >= 0
 }
 
-func (f *FileSystemOperator) Remove(names ...string) error {
-	for _, name := range names {
-		if err := os.RemoveAll(f.LocalPath(name)); err != nil {
-			return err
+func (f *FileSystemOperator) Remove(path string) error {
+	if err := os.RemoveAll(f.LocalPath(path)); err != nil {
+		return err
+	}
+	//Also automatically cleanup upper level directories
+	dir := f.LocalPath(path)
+	for i := 0; i < MaxCleanupLevel; i++ {
+		dir = filepath.Dir(dir)
+		// Don't clean above backupstore base
+		if strings.HasSuffix(dir, backupstore.GetBackupstoreBase()) {
+			break
 		}
-		//Also automatically cleanup upper level directories
-		dir := f.LocalPath(name)
-		for i := 0; i < MaxCleanupLevel; i++ {
-			dir = filepath.Dir(dir)
-			// Don't clean above backupstore base
-			if strings.HasSuffix(dir, backupstore.GetBackupstoreBase()) {
-				break
-			}
-			// If directory is not empty, then we don't need to continue
-			if err := os.Remove(dir); err != nil {
-				break
-			}
+		// If directory is not empty, then we don't need to continue
+		if err := os.Remove(dir); err != nil {
+			break
 		}
 	}
 	return nil

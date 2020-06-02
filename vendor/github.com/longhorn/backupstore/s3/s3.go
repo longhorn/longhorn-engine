@@ -155,15 +155,8 @@ func (s *BackupStoreDriver) FileSize(filePath string) int64 {
 	return *head.ContentLength
 }
 
-func (s *BackupStoreDriver) Remove(names ...string) error {
-	if len(names) == 0 {
-		return nil
-	}
-	paths := make([]string, len(names))
-	for i, name := range names {
-		paths[i] = s.updatePath(name)
-	}
-	return s.service.DeleteObjects(paths)
+func (s *BackupStoreDriver) Remove(path string) error {
+	return s.service.DeleteObjects(s.updatePath(path))
 }
 
 func (s *BackupStoreDriver) Read(src string) (io.ReadCloser, error) {
