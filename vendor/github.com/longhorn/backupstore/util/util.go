@@ -86,6 +86,16 @@ func UnorderedEqual(x, y []string) bool {
 	return true
 }
 
+func Filter(elements []string, predicate func(string) bool) []string {
+	var filtered []string
+	for _, elem := range elements {
+		if predicate(elem) {
+			filtered = append(filtered, elem)
+		}
+	}
+	return filtered
+}
+
 func ExtractNames(names []string, prefix, suffix string) ([]string, error) {
 	result := []string{}
 	for i := range names {

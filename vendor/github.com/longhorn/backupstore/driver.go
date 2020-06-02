@@ -17,7 +17,7 @@ type BackupStoreDriver interface {
 	GetURL() string
 	FileExists(filePath string) bool
 	FileSize(filePath string) int64
-	Remove(names ...string) error           // Bahavior like "rm -rf"
+	Remove(path string) error               // Bahavior like "rm -rf"
 	Read(src string) (io.ReadCloser, error) // Caller needs to close
 	Write(dst string, rs io.ReadSeeker) error
 	List(path string) ([]string, error) // Behavior like "ls", not like "find"

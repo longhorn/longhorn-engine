@@ -133,22 +133,11 @@ func (s *Service) GetObject(key string) (io.ReadCloser, error) {
 	return resp.Body, nil
 }
 
-func (s *Service) DeleteObjects(keys []string) error {
-	var keyList []string
-	totalSize := 0
-	for _, key := range keys {
-		contents, _, err := s.ListObjects(key, "")
-		if err != nil {
-			return fmt.Errorf("failed to list object %v before removing it: %v", key, err)
-		}
-		size := len(contents)
-		if size == 0 {
-			continue
-		}
-		totalSize += size
-		for _, obj := range contents {
-			keyList = append(keyList, *obj.Key)
-		}
+func (s *Service) DeleteObjects(key string) error {
+
+	objects, _, err := s.ListObjects(key, "")
+	if err != nil {
+		return fmt.Errorf("failed to list objects with prefix %v before removing them error: %v", key, err)
 	}
 
 	svc, err := s.New()
@@ -157,27 +146,23 @@ func (s *Service) DeleteObjects(keys []string) error {
 	}
 	defer s.Close()
 
-	identifiers := make([]*s3.ObjectIdentifier, totalSize)
-	for i, k := range keyList {
-		identifiers[i] = &s3.ObjectIdentifier{
-			Key: aws.String(k),
-		}
-	}
-	if len(identifiers) != 0 {
-		quiet := true
-		params := &s3.DeleteObjectsInput{
+	var deletionFailures []string
+	for _, object := range objects {
+		resp, err := svc.DeleteObject(&s3.DeleteObjectInput{
 			Bucket: aws.String(s.Bucket),
-			Delete: &s3.Delete{
-				Objects: identifiers,
-				Quiet:   &quiet,
-			},
-		}
+			Key:    object.Key,
+		})
 
-		resp, err := svc.DeleteObjects(params)
 		if err != nil {
-			return fmt.Errorf("failed to delete objects with param: %+v response: %v error: %v", params,
-				resp.String(), parseAwsError(err))
+			log.Errorf("failed to delete object: %v response: %v error: %v",
+				aws.StringValue(object.Key), resp.String(), parseAwsError(err))
+			deletionFailures = append(deletionFailures, aws.StringValue(object.Key))
 		}
 	}
+
+	if len(deletionFailures) > 0 {
+		return fmt.Errorf("failed to delete objects %v", deletionFailures)
+	}
+
 	return nil
 }

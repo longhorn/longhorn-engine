@@ -32,6 +32,24 @@ type BlockMapping struct {
 	BlockChecksum string
 }
 
+type BlockInfo struct {
+	checksum string
+	path     string
+	refcount int
+}
+
+func isBlockPresent(blk *BlockInfo) bool {
+	return blk != nil && blk.path != ""
+}
+
+func isBlockReferenced(blk *BlockInfo) bool {
+	return blk != nil && blk.refcount > 0
+}
+
+func isBlockSafeToDelete(blk *BlockInfo) bool {
+	return isBlockPresent(blk) && !isBlockReferenced(blk)
+}
+
 type backupRequest struct {
 	lastBackup *Backup
 }
@@ -73,6 +91,7 @@ const (
 	BLOCKS_DIRECTORY      = "blocks"
 	BLOCK_SEPARATE_LAYER1 = 2
 	BLOCK_SEPARATE_LAYER2 = 4
+	BLK_SUFFIX            = ".blk"
 
 	PROGRESS_PERCENTAGE_BACKUP_SNAPSHOT = 95
 	PROGRESS_PERCENTAGE_BACKUP_TOTAL    = 100
@@ -612,6 +631,38 @@ func DeleteBackupVolume(volumeName string, destURL string) error {
 	return nil
 }
 
+func getBlockInfoMap(backups []*Backup, volume string, driver BackupStoreDriver) (map[string]*BlockInfo, error) {
+	blockInfos := make(map[string]*BlockInfo)
+	blockNames, err := getBlockNamesForVolume(volume, driver)
+	if err != nil {
+		return nil, err
+	}
+
+	for _, name := range blockNames {
+		blockInfos[name] = &BlockInfo{
+			checksum: name,
+			path:     getBlockFilePath(volume, name),
+			refcount: 0,
+		}
+	}
+
+	for _, backup := range backups {
+		for _, block := range backup.Blocks {
+			info, known := blockInfos[block.BlockChecksum]
+			if !known {
+				log.Errorf("backup %v of volume %v refers to unknown block %v",
+					backup.Name, volume, block.BlockChecksum)
+				info = &BlockInfo{checksum: block.BlockChecksum}
+				blockInfos[block.BlockChecksum] = info
+			}
+
+			info.refcount += 1
+		}
+	}
+
+	return blockInfos, nil
+}
+
 func DeleteDeltaBlockBackup(backupURL string) error {
 	bsDriver, err := GetBackupStoreDriver(backupURL)
 	if err != nil {
@@ -623,55 +674,61 @@ func DeleteDeltaBlockBackup(backupURL string) error {
 		return err
 	}
 
+	// If we fail to load the backup we still want to proceed with the deletion of the backup file
 	backupToBeDeleted, err := loadBackup(backupName, volumeName, bsDriver)
 	if err != nil {
-		return err
-	}
-	discardBlockSet := make(map[string]bool)
-	for _, blk := range backupToBeDeleted.Blocks {
-		discardBlockSet[blk.BlockChecksum] = true
+		log.Warnf("failed to load to be deleted backup %v for volume %v", backupName, volumeName)
+		backupToBeDeleted = &Backup{
+			Name:       backupName,
+			VolumeName: volumeName,
+		}
 	}
 
 	log.Debug("GC started")
+	var backupsToBeRetained []*Backup
+	deleteBlocks := true
 	backupNames, err := getBackupNamesForVolume(volumeName, bsDriver)
-	for i := 0; len(discardBlockSet) > 0 && i < len(backupNames); i++ {
-		backup, err := loadBackup(backupNames[i], volumeName, bsDriver)
+	if err != nil {
+		log.Warnf("skipping block deletion failed to load backup names for volume %v", volumeName)
+		deleteBlocks = false
+	}
+	backupNames = util.Filter(backupNames, func(name string) bool { return name != backupToBeDeleted.Name })
+	for _, name := range backupNames {
+		backup, err := loadBackup(name, volumeName, bsDriver)
 		if err != nil {
-			return err
+			log.Warnf("skipping block deletion because we failed to load backup %v for volume %v error %v",
+				name, volumeName, err)
+			deleteBlocks = false
+			break
 		}
 
 		if isBackupInProgress(backup) {
 			log.Infof("skipping block deletion because of in progress backup %v for volume %v",
 				backup.Name, volumeName)
-			discardBlockSet = make(map[string]bool)
+			deleteBlocks = false
 			break
 		}
 
-		if backup.Name == backupToBeDeleted.Name {
-			continue
-		}
-
-		for j := 0; len(discardBlockSet) > 0 && j < len(backup.Blocks); j++ {
-			blk := backup.Blocks[j]
-			if _, exists := discardBlockSet[blk.BlockChecksum]; exists {
-				delete(discardBlockSet, blk.BlockChecksum)
-			}
-		}
+		backupsToBeRetained = append(backupsToBeRetained, backup)
 	}
 
-	var blkFileList []string
-	for blk := range discardBlockSet {
-		blkFileList = append(blkFileList, getBlockFilePath(volumeName, blk))
-		log.Debugf("Found unused blocks %v for volume %v", blk, volumeName)
+	blockMap, err := getBlockInfoMap(backupsToBeRetained, volumeName, bsDriver)
+	if err != nil {
+		log.Warnf("skipping block deletion because we failed to get block infos for volume %v error %v",
+			volumeName, err)
+		deleteBlocks = false
 	}
 
 	// we can delete the requested backupToBeDeleted now
+	if err := removeBackup(backupToBeDeleted, bsDriver); err != nil {
+		return err
+	}
+	log.Infof("Removed backup %v for volume %v", backupName, volumeName)
+
+	// update the volume
 	v, err := loadVolume(volumeName, bsDriver)
 	if err != nil {
 		return fmt.Errorf("Cannot find volume %v in backupstore due to: %v", volumeName, err)
-	}
-	if err := removeBackup(backupToBeDeleted, bsDriver); err != nil {
-		return err
 	}
 	if backupToBeDeleted.Name == v.LastBackupName {
 		v.LastBackupName = ""
@@ -684,31 +741,83 @@ func DeleteDeltaBlockBackup(backupURL string) error {
 	// check if there have been new backups created while we where processing
 	prevBackupNames := backupNames
 	backupNames, err = getBackupNamesForVolume(volumeName, bsDriver)
-	backupNames = append(backupNames, backupToBeDeleted.Name)
 	if err != nil || !util.UnorderedEqual(prevBackupNames, backupNames) {
 		log.Infof("Skipping block deletion because we found new backups for volume %v", volumeName)
-		return nil
+		deleteBlocks = false
 	}
-	if err := bsDriver.Remove(blkFileList...); err != nil {
-		return err
-	}
-	log.Debug("Removed unused blocks for volume ", volumeName)
 
+	// only delete the blocks if it is safe to do so
+	if deleteBlocks {
+		if err := cleanupBlocks(blockMap, volumeName, bsDriver); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func cleanupBlocks(blockMap map[string]*BlockInfo, volume string, driver BackupStoreDriver) error {
+	var deletionFailures []string
+	activeBlockCount := int64(0)
+	deletedBlockCount := int64(0)
+	for _, blk := range blockMap {
+		if isBlockSafeToDelete(blk) {
+			if err := driver.Remove(blk.path); err != nil {
+				deletionFailures = append(deletionFailures, blk.checksum)
+				continue
+			}
+			log.Debugf("deleted block %v for volume %v", blk.checksum, volume)
+			deletedBlockCount++
+		} else if isBlockReferenced(blk) && isBlockPresent(blk) {
+			activeBlockCount++
+		}
+	}
+
+	if len(deletionFailures) > 0 {
+		return fmt.Errorf("failed to delete backup blocks: %v", deletionFailures)
+	}
+
+	log.Debugf("Retained %v blocks for volume %v", activeBlockCount, volume)
+	log.Debugf("Removed %v unused blocks for volume %v", deletedBlockCount, volume)
 	log.Debug("GC completed")
-	log.Debug("Removed backupstore backupToBeDeleted ", backupName)
 
-	v, err = loadVolume(volumeName, bsDriver)
+	v, err := loadVolume(volume, driver)
 	if err != nil {
 		return err
 	}
 
-	v.BlockCount -= int64(len(discardBlockSet))
-
-	if err := saveVolume(v, bsDriver); err != nil {
+	// update the block count to what we actually have on disk that is in use
+	v.BlockCount = activeBlockCount
+	if err := saveVolume(v, driver); err != nil {
 		return err
 	}
-
 	return nil
+}
+
+func getBlockNamesForVolume(volumeName string, driver BackupStoreDriver) ([]string, error) {
+	names := []string{}
+	blockPathBase := getBlockPath(volumeName)
+	lv1Dirs, err := driver.List(blockPathBase)
+	// Directory doesn't exist
+	if err != nil {
+		return names, nil
+	}
+	for _, lv1 := range lv1Dirs {
+		lv1Path := filepath.Join(blockPathBase, lv1)
+		lv2Dirs, err := driver.List(lv1Path)
+		if err != nil {
+			return nil, err
+		}
+		for _, lv2 := range lv2Dirs {
+			lv2Path := filepath.Join(lv1Path, lv2)
+			blockNames, err := driver.List(lv2Path)
+			if err != nil {
+				return nil, err
+			}
+			names = append(names, blockNames...)
+		}
+	}
+
+	return util.ExtractNames(names, "", BLK_SUFFIX)
 }
 
 func getBlockPath(volumeName string) string {
@@ -719,7 +828,7 @@ func getBlockFilePath(volumeName, checksum string) string {
 	blockSubDirLayer1 := checksum[0:BLOCK_SEPARATE_LAYER1]
 	blockSubDirLayer2 := checksum[BLOCK_SEPARATE_LAYER1:BLOCK_SEPARATE_LAYER2]
 	path := filepath.Join(getBlockPath(volumeName), blockSubDirLayer1, blockSubDirLayer2)
-	fileName := checksum + ".blk"
+	fileName := checksum + BLK_SUFFIX
 
 	return filepath.Join(path, fileName)
 }
