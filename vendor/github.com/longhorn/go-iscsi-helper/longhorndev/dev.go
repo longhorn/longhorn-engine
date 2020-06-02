@@ -215,7 +215,9 @@ func (d *LonghornDevice) WaitForSocket(stopCh chan struct{}) chan error {
 	go func(errCh chan error, stopCh chan struct{}) {
 		socket := d.GetSocketPath()
 		timeout := time.After(time.Duration(WaitCount) * WaitInterval)
-		tick := time.Tick(WaitInterval)
+		ticker := time.NewTicker(WaitInterval)
+		defer ticker.Stop()
+		tick := ticker.C
 		for {
 			select {
 			case <-timeout:
