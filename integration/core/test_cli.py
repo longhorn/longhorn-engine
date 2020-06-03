@@ -23,11 +23,13 @@ from common.core import (  # NOQA
     create_engine_process, create_replica_process,
     cleanup_process,
     get_process_address,
-    wait_for_process_error
+    wait_for_process_error,
 )
 
 from common.cmd import (   # NOQA
-    backup_volume_rm, backup_rm
+    snapshot_create,
+    backup_rm, backup_inspect, backup_status, backup_create,
+    backup_volume_rm, backup_volume_list,
 )
 
 from common.constants import (
@@ -639,33 +641,6 @@ def test_snapshot_last(bin, grpc_controller_client,  # NOQA
            'snapshot', 'rm', output]
     subprocess.check_call(cmd)
 
-
-def get_backup_url(bin, url, backupID):
-    assert backupID != ""
-    rValue = ""
-    cmd = [bin, '--url', url, 'backup', 'status', backupID]
-    for x in range(RETRY_COUNTS2):
-        output = subprocess.check_output(cmd, encoding='utf-8').strip()
-        backup = json.loads(output)
-        assert 'state' in backup.keys()
-        if backup['state'] == "complete":
-            assert 'backupURL' in backup.keys()
-            assert backup['backupURL'] != ""
-            assert 'progress' in backup.keys()
-            assert backup['progress'] == 100
-            rValue = backup['backupURL']
-            break
-        elif backup['state'] == "error":
-            assert 'error' in backup.keys()
-            assert backup['error'] != ""
-            rValue = backup['error']
-            break
-        else:
-            assert backup['state'] == "in_progress"
-        time.sleep(1)
-    return rValue
-
-
 def restore_backup(engine_manager_client,  # NOQA
                    bin, url, backup_url, env, grpc_c):
     grpc_c.volume_frontend_shutdown()
@@ -724,49 +699,18 @@ def backup_core(bin, engine_manager_client,  # NOQA
 
     env = dict(os.environ)
     backup_type = urlparse(backup_target).scheme
-    cmd = [bin, '--url', grpc_controller_client.address,
-           'snapshot', 'create']
-    snapshot1 = subprocess.check_output(cmd, encoding='utf-8').strip()
-    output = grpc_replica_client.replica_get().chain[1]
 
+    # create & process backup1
+    snapshot1 = snapshot_create(grpc_controller_client.address)
+    output = grpc_replica_client.replica_get().chain[1]
     assert output == 'volume-snap-{}.img'.format(snapshot1)
 
-    cmd = [bin, '--url', grpc_controller_client.address,
-           'backup', 'create', snapshot1,
-           '--dest', backup_target,
-           '--label', 'name=backup1',
-           '--label', 'type=' + backup_type]
-    backup = json.loads(subprocess.
-                        check_output(cmd, env=env, encoding='utf-8').strip())
-    assert "backupID" in backup.keys()
-    assert "isIncremental" in backup.keys()
-    assert backup["isIncremental"] is False
-    backup1 = get_backup_url(bin, grpc_controller_client.address,
-                             backup["backupID"])
-
-    cmd = [bin, '--url', grpc_controller_client.address,
-           'snapshot', 'create']
-    snapshot2 = subprocess.check_output(cmd, encoding='utf-8').strip()
-    output = grpc_replica_client.replica_get().chain[1]
-
-    assert output == 'volume-snap-{}.img'.format(snapshot2)
-
-    cmd = [bin, '--url', grpc_controller_client.address,
-           'backup', 'create', snapshot2,
-           '--dest', backup_target]
-    backup = json.loads(subprocess.
-                        check_output(cmd, env=env, encoding='utf-8').strip())
-    assert "backupID" in backup.keys()
-    assert "isIncremental" in backup.keys()
-    assert backup["isIncremental"] is True
-    backup2 = get_backup_url(bin, grpc_controller_client.address,
-                             backup["backupID"])
-
-    cmd = [bin, '--url', grpc_controller_client.address,
-           'backup', 'inspect', backup1]
-    data = subprocess.check_output(cmd, env=env)
-    backup1_info = json.loads(data)
+    backup1 = backup_create(grpc_controller_client.address,
+                            snapshot1, backup_target,
+                            {'name': 'backup1', 'type': backup_type})
+    backup1_info = backup_inspect(grpc_controller_client.address, backup1)
     assert backup1_info["URL"] == backup1
+    assert backup1_info["IsIncremental"] is False
     assert backup1_info["VolumeName"] == VOLUME_NAME
     assert backup1_info["VolumeSize"] == SIZE_STR
     assert backup1_info["SnapshotName"] == snapshot1
@@ -774,21 +718,27 @@ def backup_core(bin, engine_manager_client,  # NOQA
     assert backup1_info["Labels"]["name"] == "backup1"
     assert backup1_info["Labels"]["type"] == backup_type
 
-    cmd = [bin, '--url', grpc_controller_client.address,
-           'backup', 'inspect', backup2]
-    data = subprocess.check_output(cmd, env=env)
-    backup2_info = json.loads(data)
+    # create & process backup2
+    snapshot2 = snapshot_create(grpc_controller_client.address)
+    output = grpc_replica_client.replica_get().chain[1]
+    assert output == 'volume-snap-{}.img'.format(snapshot2)
+
+    backup2 = backup_create(grpc_controller_client.address,
+                            snapshot2, backup_target)
+
+    backup2_info = backup_inspect(grpc_controller_client.address, backup2)
     assert backup2_info["URL"] == backup2
+    assert backup2_info["IsIncremental"] is True
     assert backup2_info["VolumeName"] == VOLUME_NAME
     assert backup2_info["VolumeSize"] == SIZE_STR
     assert backup2_info["SnapshotName"] == snapshot2
     if backup2_info["Labels"] is not None:
         assert len(backup2_info["Labels"]) == 0
 
-    cmd = [bin, '--url', grpc_controller_client.address,
-           'backup', 'ls', backup_target]
-    data = subprocess.check_output(cmd, env=env, encoding='utf-8').strip()
-    volume_info = json.loads(data)[VOLUME_NAME]
+    # list all known backups for volume
+    volume_info = backup_volume_list(grpc_controller_client.address,
+                                     VOLUME_NAME, backup_target,
+                                     include_backup_details=True)[VOLUME_NAME]
     assert volume_info["Name"] == VOLUME_NAME
     assert volume_info["Size"] == SIZE_STR
     backup_list = volume_info["Backups"]
@@ -796,30 +746,15 @@ def backup_core(bin, engine_manager_client,  # NOQA
     assert backup_list[backup1]["SnapshotName"] == backup1_info["SnapshotName"]
     assert backup_list[backup1]["Size"] == backup1_info["Size"]
     assert backup_list[backup1]["Created"] == backup1_info["Created"]
+    assert backup_list[backup1]["Messages"] is None
     assert backup_list[backup2]["URL"] == backup2_info["URL"]
     assert backup_list[backup2]["SnapshotName"] == backup2_info["SnapshotName"]
     assert backup_list[backup2]["Size"] == backup2_info["Size"]
     assert backup_list[backup2]["Created"] == backup2_info["Created"]
+    assert backup_list[backup2]["Messages"] is None
 
     # test that corrupt backups are signaled during a list operation
     # https://github.com/longhorn/longhorn/issues/1212
-    cmd = [bin, '--url', grpc_controller_client.address,
-           'backup', 'ls', backup_target]
-    data = subprocess.check_output(cmd, env=env)
-    volume_info = json.loads(data)
-
-    assert volume_info
-    assert volume_info[VOLUME_NAME] is not None
-    assert volume_info[VOLUME_NAME]["Backups"] is not None
-    backups = volume_info[VOLUME_NAME]["Backups"]
-    assert len(backups) == 2
-    assert backup1_info["URL"] in backups
-    messages = backups[backup1_info["URL"]]["Messages"]
-    assert messages is None
-    assert backup2_info["URL"] in backups
-    messages = backups[backup2_info["URL"]]["Messages"]
-    assert messages is None
-
     volume_dir = finddir(BACKUP_DIR, VOLUME_NAME)
     assert volume_dir
     assert os.path.exists(volume_dir)
@@ -839,34 +774,27 @@ def backup_core(bin, engine_manager_client,  # NOQA
     corrupt_backup.close()
 
     # request the new backup list
-    data = subprocess.check_output(cmd, env=env)
-    volume_info = json.loads(data)
-    assert volume_info
-    assert volume_info[VOLUME_NAME] is not None
-    assert volume_info[VOLUME_NAME]["Backups"] is not None
-    backups = volume_info[VOLUME_NAME]["Backups"]
-    assert len(backups) == 2
-    assert backup1_info["URL"] in backups
-    messages = backups[backup1_info["URL"]]["Messages"]
-    assert messages is None
-    assert backup2_info["URL"] in backups
-    messages = backups[backup2_info["URL"]]["Messages"]
-    assert messages is not None
-    assert MESSAGE_TYPE_ERROR in messages
+    volume_info = backup_volume_list(grpc_controller_client.address,
+                                     VOLUME_NAME, backup_target,
+                                     include_backup_details=True)[VOLUME_NAME]
+    assert volume_info["Name"] == VOLUME_NAME
+    backup_list = volume_info["Backups"]
+    assert backup_list[backup1]["URL"] == backup1_info["URL"]
+    assert backup_list[backup1]["Messages"] is None
+    assert backup_list[backup2]["URL"] == backup2_info["URL"]
+    assert MESSAGE_TYPE_ERROR in backup_list[backup2]["Messages"]
 
     # we still want to fail inspects, since they operate on urls
     # with no guarantee of backup existence
-    cmd = [bin, '--url', grpc_controller_client.address,
-           'backup', 'inspect', backup2_info["URL"]]
     with pytest.raises(subprocess.CalledProcessError):
-        subprocess.check_call(cmd, env=env)
+        backup_inspect(grpc_controller_client.address, backup2)
 
     # switch back to valid cfg
-    os.remove(backup_cfg_path)
     os.rename(backup_tmp_cfg_path, backup_cfg_path)
-    subprocess.check_call(cmd, env=env)
+    assert backup_inspect(grpc_controller_client.address, backup2)
 
-    # test backup volume list
+    # test that list returns a volume_info with an error message
+    # for a missing volume.cfg instead of failing with an error
     # https://github.com/rancher/longhorn/issues/399
     volume_cfg_path = findfile(volume_dir, VOLUME_CONFIG_FILE)
     assert os.path.exists(volume_cfg_path)
@@ -875,36 +803,26 @@ def backup_core(bin, engine_manager_client,  # NOQA
     os.rename(volume_cfg_path, volume_tmp_cfg_path)
     assert os.path.exists(volume_tmp_cfg_path)
 
-    cmd = [bin, '--url', grpc_controller_client.address,
-           'backup', 'ls', '--volume-only', backup_target]
-    data = subprocess.check_output(cmd, env=env)
-    volume_info = json.loads(data)
-
-    assert volume_info
-    assert volume_info[VOLUME_NAME] is not None
-    assert volume_info[VOLUME_NAME]["Messages"] is not None
+    volume_info = backup_volume_list(grpc_controller_client.address,
+                                     "", backup_target)
     assert MESSAGE_TYPE_ERROR in volume_info[VOLUME_NAME]["Messages"]
 
     os.rename(volume_tmp_cfg_path, volume_cfg_path)
     assert os.path.exists(volume_cfg_path)
 
-    cmd = [bin, '--url', grpc_controller_client.address,
-           'backup', 'ls', '--volume-only', backup_target]
-    data = subprocess.check_output(cmd, env=env)
-    volume_info = json.loads(data)
-
-    assert volume_info
-    assert volume_info[VOLUME_NAME] is not None
+    volume_info = backup_volume_list(grpc_controller_client.address,
+                                     "", backup_target)
     assert volume_info[VOLUME_NAME]["Messages"] is not None
     assert MESSAGE_TYPE_ERROR not in volume_info[VOLUME_NAME]["Messages"]
 
-    cmd = [bin, '--url', grpc_controller_client.address,
-           'backup', 'inspect',
-           backup_target + "?backup=backup-1234"
-           + "&volume=" + VOLUME_NAME]
-    # cannot find the backup
+    # backup doesn't exists so it should error
     with pytest.raises(subprocess.CalledProcessError):
-        subprocess.check_call(cmd, env=env)
+        url = backup_target + "?backup=backup-unk" + "&volume=" + VOLUME_NAME
+        backup_inspect(grpc_controller_client.address, url)
+
+    # this returns unsupported driver since `bad` is not a known scheme
+    with pytest.raises(subprocess.CalledProcessError):
+        backup_inspect(grpc_controller_client.address, "bad://xxx")
 
     restore_backup(engine_manager_client,
                    bin, grpc_controller_client.address,
@@ -921,19 +839,6 @@ def backup_core(bin, engine_manager_client,  # NOQA
 
     assert os.path.exists(BACKUP_DIR)
 
-    cmd = [bin, '--url', grpc_controller_client.address,
-           'backup', 'inspect',
-           backup_target + "?backup=backup-1234"
-           + "&volume=" + VOLUME_NAME]
-    # cannot find the backup
-    with pytest.raises(subprocess.CalledProcessError):
-        subprocess.check_call(cmd, env=env)
-
-    cmd = [bin, '--url', grpc_controller_client.address,
-           'backup', 'inspect', "bad://xxx"]
-    # this returns unsupported driver since `bad` is not a known scheme
-    with pytest.raises(subprocess.CalledProcessError):
-        subprocess.check_call(cmd, env=env)
     grpc_controller_client.volume_frontend_start(
             frontend=FRONTEND_TGT_BLOCKDEV)
     v = grpc_controller_client.volume_get()
