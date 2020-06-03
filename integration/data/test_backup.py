@@ -1,3 +1,5 @@
+import os
+import json
 from pathlib import Path
 import common.cmd as cmd
 from common.core import (  # NOQA
@@ -12,8 +14,12 @@ from data.snapshot_tree import (
     snapshot_tree_build, snapshot_tree_verify_backup_node
 )
 from common.constants import (
-    VOLUME_NAME, VOLUME_BACKING_NAME, BLOCK_SIZE_STR,
-    ENGINE_NAME, ENGINE_BACKING_NAME, BACKUP_DIR
+    VOLUME_NAME, VOLUME_BACKING_NAME,
+    ENGINE_NAME, ENGINE_BACKING_NAME, BACKUP_DIR,
+    BLOCK_SIZE, BLOCK_SIZE_STR,
+)
+from common.util import (
+    finddir
 )
 
 
@@ -405,6 +411,177 @@ def test_backup_hole_with_backing_file(grpc_backing_replica1, grpc_backing_repli
         cleanup_controller(grpc_backing_controller)
         cleanup_replica(grpc_backing_replica1)
         cleanup_replica(grpc_backing_replica2)
+
+
+def check_backup_volume_block_count(address, volume, backup_target, expected):
+    # check the volume block & size
+    info = cmd.backup_volume_list(address, volume,
+                                  backup_target)[volume]
+    assert info["DataStored"] == str(BLOCK_SIZE * expected)
+
+    # check the blocks on disk
+    volume_dir = finddir(BACKUP_DIR, volume)
+    assert os.path.exists(volume_dir)
+    block_count = 0
+    block_dir = os.path.join(volume_dir, "blocks")
+    if os.path.exists(block_dir):
+        for blk in Path(block_dir).rglob("*.blk"):
+            block_count += 1
+    assert block_count == expected
+
+
+def test_backup_block_deletion(grpc_replica1, grpc_replica2,  # NOQA
+                               grpc_controller, backup_targets):  # NOQA
+    address = grpc_controller.address
+    length = 128
+
+    for backup_target in backup_targets:
+        dev = get_dev(grpc_replica1, grpc_replica2,
+                      grpc_controller)
+
+        # write two backup block
+        verify_data(dev, 0, random_string(length))
+        verify_data(dev, BLOCK_SIZE, random_string(length))
+        snap = cmd.snapshot_create(address)
+
+        backup1 = create_backup(address, snap, backup_target)
+        assert backup1["VolumeName"] == VOLUME_NAME
+        assert backup1["Size"] == str(BLOCK_SIZE * 2)
+        assert snap in backup1["SnapshotName"]
+
+        # test block deduplication
+        backup1_duplicate = create_backup(address, snap, backup_target)
+        assert backup1_duplicate["VolumeName"] == VOLUME_NAME
+        assert backup1_duplicate["Size"] == str(BLOCK_SIZE * 2)
+        assert snap in backup1_duplicate["SnapshotName"]
+        check_backup_volume_block_count(address, VOLUME_NAME,
+                                        backup_target, 2)
+
+        # overwrite second backup block
+        verify_data(dev, BLOCK_SIZE, random_string(length))
+        snap = cmd.snapshot_create(address)
+
+        backup2 = create_backup(address, snap, backup_target)
+        assert backup2["VolumeName"] == VOLUME_NAME
+        assert backup2["Size"] == str(BLOCK_SIZE * 2)
+        assert snap in backup2["SnapshotName"]
+
+        # check that the volume now has 3 blocks
+        # backup1 and backup2 share the first block
+        # and have different second blocks
+        check_backup_volume_block_count(address, VOLUME_NAME,
+                                        backup_target, 3)
+
+        # remove backup 1 duplicate
+        # this should not change the blocks on disk
+        # since all blocks are still required
+        cmd.backup_rm(address, backup1_duplicate["URL"])
+        check_backup_volume_block_count(address, VOLUME_NAME,
+                                        backup_target, 3)
+
+        # remove backup 1
+        # the volume should now have 2 blocks
+        # blk1 from backup1 should still be present
+        # since it's required by backup 2
+        cmd.backup_rm(address, backup1["URL"])
+        check_backup_volume_block_count(address, VOLUME_NAME,
+                                        backup_target, 2)
+
+        # remove the last remaining backup 2
+        # this should remove all blocks
+        cmd.backup_rm(address, backup2["URL"])
+        check_backup_volume_block_count(address, VOLUME_NAME,
+                                        backup_target, 0)
+
+        # cleanup the backup volume
+        cmd.backup_volume_rm(address, VOLUME_NAME, backup_target)
+        info = cmd.backup_volume_list(address, VOLUME_NAME,
+                                      backup_target)[VOLUME_NAME]
+        assert "cannot find" in info["Messages"]["error"]
+        cmd.sync_agent_server_reset(address)
+        cleanup_controller(grpc_controller)
+        cleanup_replica(grpc_replica1)
+        cleanup_replica(grpc_replica2)
+
+
+def create_in_progress_backup_file(volume):
+    volume_dir = finddir(BACKUP_DIR, volume)
+    assert os.path.exists(volume_dir)
+    backup_cfg_dir = os.path.join(volume_dir, "backups")
+
+    name = "backup-" + random_string(16)
+    backup_cfg_path = os.path.join(backup_cfg_dir, "backup_" + name + ".cfg")
+    cfg = json.dumps({"Name": name, "VolumeName": volume, "CreatedTime": ""})
+    file = open(backup_cfg_path, "w")
+    file.write(cfg)
+    file.close()
+    return backup_cfg_path
+
+
+def test_backup_block_no_cleanup(grpc_replica1, grpc_replica2,  # NOQA
+                               grpc_controller, backup_targets):  # NOQA
+    address = grpc_controller.address
+    length = 128
+
+    for backup_target in backup_targets:
+        dev = get_dev(grpc_replica1, grpc_replica2,
+                      grpc_controller)
+
+        # write two backup blocks
+        verify_data(dev, 0, random_string(length))
+        verify_data(dev, BLOCK_SIZE, random_string(length))
+        snap = cmd.snapshot_create(address)
+
+        backup1 = create_backup(address, snap, backup_target)
+        assert backup1["VolumeName"] == VOLUME_NAME
+        assert backup1["Size"] == str(BLOCK_SIZE * 2)
+        assert snap in backup1["SnapshotName"]
+        check_backup_volume_block_count(address, VOLUME_NAME,
+                                        backup_target, 2)
+
+        # overwrite second backup block
+        verify_data(dev, BLOCK_SIZE, random_string(length))
+        snap = cmd.snapshot_create(address)
+
+        backup2 = create_backup(address, snap, backup_target)
+        assert backup2["VolumeName"] == VOLUME_NAME
+        assert backup2["Size"] == str(BLOCK_SIZE * 2)
+        assert snap in backup2["SnapshotName"]
+
+        # check that the volume now has 3 blocks
+        # backup1 and backup2 share the first block
+        # and have different second blocks
+        check_backup_volume_block_count(address, VOLUME_NAME,
+                                        backup_target, 3)
+
+        # create an artificial in progress backup
+        # that will stop the gc from removing blocks
+        in_progress_backup_file = create_in_progress_backup_file(VOLUME_NAME)
+
+        # remove backup 1 the volume should still have 3 blocks
+        cmd.backup_rm(address, backup1["URL"])
+        check_backup_volume_block_count(address, VOLUME_NAME,
+                                        backup_target, 3)
+
+        # remove the in progress backup
+        os.remove(in_progress_backup_file)
+
+        # remove the last remaining backup 2
+        # this should remove all blocks
+        # including the orphaned block from backup 1
+        cmd.backup_rm(address, backup2["URL"])
+        check_backup_volume_block_count(address, VOLUME_NAME,
+                                        backup_target, 0)
+
+        # cleanup the backup volume
+        cmd.backup_volume_rm(address, VOLUME_NAME, backup_target)
+        info = cmd.backup_volume_list(address, VOLUME_NAME,
+                                      backup_target)[VOLUME_NAME]
+        assert "cannot find" in info["Messages"]["error"]
+        cmd.sync_agent_server_reset(address)
+        cleanup_controller(grpc_controller)
+        cleanup_replica(grpc_replica1)
+        cleanup_replica(grpc_replica2)
 
 
 def test_backup_volume_deletion(grpc_replica1, grpc_replica2,  # NOQA
