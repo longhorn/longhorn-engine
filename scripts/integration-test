@@ -149,7 +149,7 @@ mkdir -p /data/backupbucket
 # run minio server
 /usr/bin/minio server /data &
 
-export BACKUPTARGETS=s3://backupbucket@us-east-1/backupstore,vfs:///data/backupbucket
+export BACKUPTARGETS=s3://backupbucket@us-east-1/s3-test,vfs:///data/backupbucket
 
 cd integration
 find -depth -name __pycache__ -o -name "*.pyc" -exec rm -rf {} \;
