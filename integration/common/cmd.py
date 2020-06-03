@@ -87,9 +87,15 @@ def backup_status(url, backupID):
     return output
 
 
-def backup_create(url, snapshot, dest):
+def backup_create(url, snapshot, dest, labels=None):
     cmd = [_bin(), '--url', url, '--debug',
            'backup', 'create', snapshot, '--dest', dest]
+
+    if labels is not None:
+        for key in labels:
+            cmd.append('--label')
+            cmd.append(key + '=' + labels[key])
+
     backup = json.loads(subprocess.check_output(cmd, encoding='utf-8').strip())
     assert "backupID" in backup.keys()
     assert "isIncremental" in backup.keys()
@@ -117,9 +123,12 @@ def backup_volume_rm(url, name, dest):
     return subprocess.check_call(cmd)
 
 
-def backup_volume_list(url, name, dest):
+def backup_volume_list(url, name, dest, include_backup_details=False):
     cmd = [_bin(), '--url', url, '--debug', 'backup', 'ls',
-           '--volume', name, '--volume-only', dest]
+           '--volume', name]
+    if not include_backup_details:
+        cmd.append('--volume-only')
+    cmd.append(dest)
     return json.loads(subprocess.check_output(cmd, encoding='utf-8'))
 
 
