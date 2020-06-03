@@ -1,6 +1,5 @@
 import time
 import random
-from os import path
 import os
 import subprocess
 import json
@@ -37,6 +36,7 @@ from common.constants import (
     RETRY_INTERVAL,
     SIZE, EXPANDED_SIZE,
     SIZE_STR, EXPANDED_SIZE_STR,
+    BACKUP_DIR,
 
     INSTANCE_MANAGER_ENGINE, INSTANCE_MANAGER_REPLICA,
     REPLICA_NAME, REPLICA_2_NAME, ENGINE_NAME,
@@ -45,8 +45,6 @@ from common.constants import (
 from rpc.controller.controller_client import ControllerClient
 from rpc.replica.replica_client import ReplicaClient
 from rpc.instance_manager.process_manager_client import ProcessManagerClient
-
-BACKUP_DEST = '/data/backupbucket'
 
 VOLUME_HEAD = "volume-head"
 
@@ -72,17 +70,17 @@ def random_num():
 
 
 def _file(f):
-    return path.join(_base(), '../../{}'.format(f))
+    return os.path.join(_base(), '../../{}'.format(f))
 
 
 def _base():
-    return path.dirname(__file__)
+    return os.path.dirname(__file__)
 
 
 @pytest.fixture(scope='session')
 def bin():
     c = _file('bin/longhorn')
-    assert path.exists(c)
+    assert os.path.exists(c)
     return c
 
 
@@ -103,11 +101,11 @@ def finddir(start, name):
 
 
 def setup_module():
-    if os.path.exists(BACKUP_DEST):
-        subprocess.check_call(["rm", "-rf", BACKUP_DEST])
+    if os.path.exists(BACKUP_DIR):
+        subprocess.check_call(["rm", "-rf", BACKUP_DIR])
 
-    os.makedirs(BACKUP_DEST)
-    assert os.path.exists(BACKUP_DEST)
+    os.makedirs(BACKUP_DIR)
+    assert os.path.exists(BACKUP_DIR)
 
 
 def getNow():
@@ -822,18 +820,18 @@ def backup_core(bin, engine_manager_client,  # NOQA
     messages = backups[backup2_info["URL"]]["Messages"]
     assert messages is None
 
-    volume_dir = finddir(BACKUP_DEST, VOLUME_NAME)
+    volume_dir = finddir(BACKUP_DIR, VOLUME_NAME)
     assert volume_dir
-    assert path.exists(volume_dir)
+    assert os.path.exists(volume_dir)
     backup_dir = os.path.join(volume_dir, "backups")
-    assert path.exists(backup_dir)
+    assert os.path.exists(backup_dir)
     backup_cfg_name = "backup_" + backup2_info["Name"] + ".cfg"
     assert backup_cfg_name
     backup_cfg_path = findfile(backup_dir, backup_cfg_name)
-    assert path.exists(backup_cfg_path)
+    assert os.path.exists(backup_cfg_path)
     backup_tmp_cfg_path = os.path.join(volume_dir, backup_cfg_name)
     os.rename(backup_cfg_path, backup_tmp_cfg_path)
-    assert path.exists(backup_tmp_cfg_path)
+    assert os.path.exists(backup_tmp_cfg_path)
 
     corrupt_backup = open(backup_cfg_path, "w")
     assert corrupt_backup
@@ -871,11 +869,11 @@ def backup_core(bin, engine_manager_client,  # NOQA
     # test backup volume list
     # https://github.com/rancher/longhorn/issues/399
     volume_cfg_path = findfile(volume_dir, VOLUME_CONFIG_FILE)
-    assert path.exists(volume_cfg_path)
+    assert os.path.exists(volume_cfg_path)
     volume_tmp_cfg_path = volume_cfg_path.replace(
         VOLUME_CONFIG_FILE, VOLUME_TMP_CONFIG_FILE)
     os.rename(volume_cfg_path, volume_tmp_cfg_path)
-    assert path.exists(volume_tmp_cfg_path)
+    assert os.path.exists(volume_tmp_cfg_path)
 
     cmd = [bin, '--url', grpc_controller_client.address,
            'backup', 'ls', '--volume-only', backup_target]
@@ -888,7 +886,7 @@ def backup_core(bin, engine_manager_client,  # NOQA
     assert MESSAGE_TYPE_ERROR in volume_info[VOLUME_NAME]["Messages"]
 
     os.rename(volume_tmp_cfg_path, volume_cfg_path)
-    assert path.exists(volume_cfg_path)
+    assert os.path.exists(volume_cfg_path)
 
     cmd = [bin, '--url', grpc_controller_client.address,
            'backup', 'ls', '--volume-only', backup_target]
@@ -921,7 +919,7 @@ def backup_core(bin, engine_manager_client,  # NOQA
     backup_volume_rm(grpc_controller_client.address,
                      VOLUME_NAME, backup_target)
 
-    assert os.path.exists(BACKUP_DEST)
+    assert os.path.exists(BACKUP_DIR)
 
     cmd = [bin, '--url', grpc_controller_client.address,
            'backup', 'inspect',

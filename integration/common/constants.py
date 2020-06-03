@@ -56,7 +56,6 @@ FIXED_REPLICA_PATH1 = '/tmp/replica_fixed_dir_1/'
 FIXED_REPLICA_PATH2 = '/tmp/replica_fixed_dir_2/'
 
 BACKUP_DIR = '/data/backupbucket'
-BACKUP_DEST = 'vfs://' + BACKUP_DIR
 
 BACKING_FILE = 'backing_file.raw'
 BACKING_FILE_QCOW = 'backing_file.qcow2'
