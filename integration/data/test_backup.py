@@ -19,7 +19,7 @@ from common.constants import (
     BLOCK_SIZE, BLOCK_SIZE_STR,
 )
 from common.util import (
-    finddir
+    finddir, findfile
 )
 
 
@@ -254,11 +254,8 @@ def test_backup_S3_latest_unavailable(grpc_replica1, grpc_replica2,  # NOQA
         backup2_info = create_backup(address, snap2, backup_target)
 
         # the gc after the restore will clean up the missing backup
-        for backup2_cfg in Path(BACKUP_DIR).rglob(
-                "backup_" + backup2_info["Name"] + ".cfg"):
-            assert backup2_cfg
-            backup2_cfg.unlink()
-            break
+        cfg = findfile(BACKUP_DIR, "backup_" + backup2_info["Name"] + ".cfg")
+        os.remove(cfg)
 
         # final full backup after unavailable backup
         snap3_data = random_string(length)
@@ -425,7 +422,7 @@ def check_backup_volume_block_count(address, volume, backup_target, expected):
     block_count = 0
     block_dir = os.path.join(volume_dir, "blocks")
     if os.path.exists(block_dir):
-        for blk in Path(block_dir).rglob("*.blk"):
+        for _ in Path(block_dir).rglob("*.blk"):
             block_count += 1
     assert block_count == expected
 
@@ -583,6 +580,62 @@ def test_backup_block_no_cleanup(grpc_replica1, grpc_replica2,  # NOQA
         cleanup_replica(grpc_replica1)
         cleanup_replica(grpc_replica2)
 
+
+def test_backup_corrupt_deletion(grpc_replica1, grpc_replica2,  # NOQA
+                                  grpc_controller, backup_targets):  # NOQA
+    address = grpc_controller.address
+    length = 128
+
+    for backup_target in backup_targets:
+        dev = get_dev(grpc_replica1, grpc_replica2,
+                      grpc_controller)
+
+        # write two backup blocks
+        verify_data(dev, 0, random_string(length))
+        verify_data(dev, BLOCK_SIZE, random_string(length))
+        snap = cmd.snapshot_create(address)
+        backup1 = create_backup(address, snap, backup_target)
+
+        # overwrite second backup block
+        verify_data(dev, BLOCK_SIZE, random_string(length))
+        snap = cmd.snapshot_create(address)
+        backup2 = create_backup(address, snap, backup_target)
+
+        # check that the volume now has 3 blocks
+        # backup1 and backup2 share the first block
+        # and have different second blocks
+        check_backup_volume_block_count(address, VOLUME_NAME,
+                                        backup_target, 3)
+
+        # corrupt backup1 config
+        cfg = findfile(BACKUP_DIR, "backup_" + backup1["Name"] + ".cfg")
+        corrupt_backup = open(cfg, "w")
+        assert corrupt_backup
+        assert corrupt_backup.write("{corrupt: definitely") > 0
+        corrupt_backup.close()
+        cmd.backup_rm(address, backup1["URL"])
+
+        # check that the volume now has 2 blocks
+        # backup2 still relies on the backup1 first block
+        check_backup_volume_block_count(address, VOLUME_NAME,
+                                        backup_target, 2)
+
+        # remove backup 2 and check that all blocks are deleted
+        cmd.backup_rm(address, backup2["URL"])
+        check_backup_volume_block_count(address, VOLUME_NAME,
+                                        backup_target, 0)
+
+        # remove volume.cfg then delete the backup volume
+        cfg = findfile(finddir(BACKUP_DIR, VOLUME_NAME), "volume.cfg")
+        os.remove(cfg)
+        cmd.backup_volume_rm(address, VOLUME_NAME, backup_target)
+        info = cmd.backup_volume_list(address, VOLUME_NAME,
+                                      backup_target)[VOLUME_NAME]
+        assert "cannot find" in info["Messages"]["error"]
+        cmd.sync_agent_server_reset(address)
+        cleanup_controller(grpc_controller)
+        cleanup_replica(grpc_replica1)
+        cleanup_replica(grpc_replica2)
 
 def test_backup_volume_deletion(grpc_replica1, grpc_replica2,  # NOQA
                                 grpc_controller, backup_targets):  # NOQA
