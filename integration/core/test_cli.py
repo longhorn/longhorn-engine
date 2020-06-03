@@ -44,6 +44,10 @@ from common.constants import (
     REPLICA_NAME, REPLICA_2_NAME, ENGINE_NAME,
 )
 
+from common.util import (
+    finddir, findfile
+)
+
 from rpc.controller.controller_client import ControllerClient
 from rpc.replica.replica_client import ReplicaClient
 from rpc.instance_manager.process_manager_client import ProcessManagerClient
@@ -84,22 +88,6 @@ def bin():
     c = _file('bin/longhorn')
     assert os.path.exists(c)
     return c
-
-
-# find the path of the first file
-def findfile(start, name):
-    for relpath, dirs, files in os.walk(start):
-        if name in files:
-            full_path = os.path.join(start, relpath, name)
-            return os.path.normpath(os.path.abspath(full_path))
-
-
-# find the path of the first dir
-def finddir(start, name):
-    for relpath, dirs, files in os.walk(start):
-        if name in dirs:
-            full_path = os.path.join(start, relpath, name)
-            return os.path.normpath(os.path.abspath(full_path))
 
 
 def setup_module():
@@ -838,6 +826,7 @@ def backup_core(bin, engine_manager_client,  # NOQA
                      VOLUME_NAME, backup_target)
 
     assert os.path.exists(BACKUP_DIR)
+    assert not os.path.exists(volume_cfg_path)
 
     grpc_controller_client.volume_frontend_start(
             frontend=FRONTEND_TGT_BLOCKDEV)
