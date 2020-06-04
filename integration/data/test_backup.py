@@ -15,12 +15,15 @@ from data.snapshot_tree import (
 )
 from common.constants import (
     VOLUME_NAME, VOLUME_BACKING_NAME,
+    VOLUME2_NAME, ENGINE2_NAME, REPLICA_2_NAME,
     ENGINE_NAME, ENGINE_BACKING_NAME, BACKUP_DIR,
     BLOCK_SIZE, BLOCK_SIZE_STR,
 )
 from common.util import (
     finddir, findfile
 )
+
+MESSAGE_TYPE_ERROR = "error"
 
 
 def backup_test(dev, address,  # NOQA
@@ -663,6 +666,113 @@ def test_backup_volume_deletion(grpc_replica1, grpc_replica2,  # NOQA
         cleanup_controller(grpc_controller)
         cleanup_replica(grpc_replica1)
         cleanup_replica(grpc_replica2)
+
+def test_backup_volume_list(grpc_replica_client, grpc_controller_client,  # NOQA
+                            grpc_replica1, grpc_replica2,  # NOQA
+                            grpc_controller, backup_targets):  # NOQA
+    """
+    Test backup volume list
+
+    Context:
+
+    We want to make sure that an error when listing a single backup volume
+    does not stop us from listing all the other backup volumes. Otherwise a
+    single faulty backup can block the retrieval of all known backup volumes.
+
+    Steps:
+
+    1.  Create a volume(1) and attach to the current node
+    2.  Create a volume(2) and attach to the current node
+    3.  write some data to volume(1) & volume(2)
+    4.  Create a backup of volume(1) & volume(2)
+    5.  request a backup list
+    6.  verify backup list contains no error messages for volume(1)
+    7.  verify backup list contains no error messages for volume(2)
+    8.  place a file named "backup_1234@failure.cfg"
+        into the backups folder of volume(1)
+    9.  request a backup list
+    10. verify backup list contains `Invalid name` error messages for volume(1)
+    11. verify backup list contains no error messages for volume(2)
+    12. delete backup volumes(1 & 2)
+    13. cleanup
+    """
+
+    # create a second volume
+    grpc2_replica1 = grpc_replica_client(REPLICA_2_NAME + "-1")
+    grpc2_replica2 = grpc_replica_client(REPLICA_2_NAME + "-2")
+    grpc2_controller = grpc_controller_client(ENGINE2_NAME, VOLUME2_NAME)
+
+    offset = 0
+    length = 128
+    address = grpc_controller.address
+    address2 = grpc2_controller.address
+
+    for backup_target in backup_targets:
+        dev = get_dev(grpc_replica1, grpc_replica2,
+                      grpc_controller)
+        dev2 = get_dev(grpc2_replica1, grpc2_replica2,
+                       grpc2_controller)
+
+        # create a regular backup
+        snap_data = random_string(length)
+        verify_data(dev, offset, snap_data)
+        snap = cmd.snapshot_create(address)
+        backup_info = create_backup(address, snap, backup_target)
+        assert backup_info["VolumeName"] == VOLUME_NAME
+        assert backup_info["Size"] == BLOCK_SIZE_STR
+        assert snap in backup_info["SnapshotName"]
+
+        # create a regular backup on volume 2
+        verify_data(dev2, offset, random_string(length))
+        snap = cmd.snapshot_create(address2)
+        backup_info = create_backup(address2, snap, backup_target)
+        assert backup_info["VolumeName"] == VOLUME2_NAME
+        assert backup_info["Size"] == BLOCK_SIZE_STR
+        assert snap in backup_info["SnapshotName"]
+
+        # request a volume list
+        info = cmd.backup_volume_list(address, "", backup_target)
+        assert info[VOLUME_NAME]["Name"] == VOLUME_NAME
+        assert MESSAGE_TYPE_ERROR not in info[VOLUME_NAME]["Messages"]
+        assert info[VOLUME2_NAME]["Name"] == VOLUME2_NAME
+        assert MESSAGE_TYPE_ERROR not in info[VOLUME2_NAME]["Messages"]
+
+        # place badly named backup.cfg file
+        # we want the list call to return correctly and
+        # include an error message otherwise a single volume error
+        # can stop all backup volumes from showing up
+        backup_dir = os.path.join(finddir(BACKUP_DIR, VOLUME_NAME), "backups")
+        cfg = open(os.path.join(backup_dir, "backup_1234@failure.cfg"), "w")
+        cfg.close()
+        info = cmd.backup_volume_list(address, "", backup_target,
+                                      include_backup_details=True)
+        assert "Invalid name" in info[VOLUME_NAME]["Messages"]["error"]
+        assert info[VOLUME2_NAME]["Name"] == VOLUME2_NAME
+        assert MESSAGE_TYPE_ERROR not in info[VOLUME2_NAME]["Messages"]
+
+        # remove the volume with the badly named backup.cfg
+        cmd.backup_volume_rm(address, VOLUME_NAME, backup_target)
+        info = cmd.backup_volume_list(address, VOLUME_NAME, backup_target,
+                                      include_backup_details=True)
+        assert "cannot find" in info[VOLUME_NAME]["Messages"]["error"]
+
+        # remove volume 2 backups
+        cmd.backup_volume_rm(address, VOLUME2_NAME, backup_target)
+        info = cmd.backup_volume_list(address, VOLUME2_NAME, backup_target,
+                                      include_backup_details=True)
+        assert "cannot find" in info[VOLUME2_NAME]["Messages"]["error"]
+
+        # cleanup volume 1
+        cmd.sync_agent_server_reset(address)
+        cleanup_controller(grpc_controller)
+        cleanup_replica(grpc_replica1)
+        cleanup_replica(grpc_replica2)
+
+        # cleanup volume 2
+        cmd.sync_agent_server_reset(address2)
+        cleanup_controller(grpc2_controller)
+        cleanup_replica(grpc2_replica1)
+        cleanup_replica(grpc2_replica2)
 
 
 def test_backup_type(grpc_replica1, grpc_replica2,      # NOQA
