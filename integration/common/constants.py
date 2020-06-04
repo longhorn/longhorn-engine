@@ -34,10 +34,12 @@ PAGE_SIZE = 512
 TEST_PREFIX = dict(os.environ)["TESTPREFIX"]
 
 VOLUME_NAME = TEST_PREFIX + "volume"
+VOLUME2_NAME = TEST_PREFIX + "volume-2"
 VOLUME_BACKING_NAME = TEST_PREFIX + 'volume-backing'
 VOLUME_NO_FRONTEND_NAME = TEST_PREFIX + 'volume-no-frontend'
 
 ENGINE_NAME = TEST_PREFIX + "engine"
+ENGINE2_NAME = TEST_PREFIX + "engine-2"
 ENGINE_BACKING_NAME = TEST_PREFIX + 'engine-backing'
 ENGINE_NO_FRONTEND_NAME = TEST_PREFIX + 'engine-no-frontend'
 
