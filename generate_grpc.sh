@@ -10,7 +10,10 @@ if [ ! -e ./proto/vendor/protobuf/src/google/protobuf ]; then
     wget https://raw.githubusercontent.com/protocolbuffers/protobuf/v3.9.0/src/google/protobuf/empty.proto -P $DIR
 fi
 
-#common
+# proto lint check
+buf check lint
+
+# common
 protoc -I proto/ptypes/ -I proto/vendor/protobuf/src/ proto/ptypes/common.proto --go_out=plugins=grpc:proto/ptypes/
 python3 -m grpc_tools.protoc -I proto/ptypes/ -I proto/vendor/protobuf/src/ --python_out=integration/rpc/controller --grpc_python_out=integration/rpc/controller proto/ptypes/common.proto
 python3 -m grpc_tools.protoc -I proto/ptypes/ -I proto/vendor/protobuf/src/ --python_out=integration/rpc/replica --grpc_python_out=integration/rpc/replica proto/ptypes/common.proto
