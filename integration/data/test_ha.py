@@ -164,7 +164,7 @@ def test_ha_double_replica_rebuild(grpc_controller,  # NOQA
 
     # Close replica2
     r2 = grpc_replica2.replica_get()
-    assert r2.revisionCounter == 1
+    assert r2.revision_counter == 1
     grpc_replica2.replica_close()
 
     verify_async(dev, 10, 128, 1)
@@ -180,7 +180,7 @@ def test_ha_double_replica_rebuild(grpc_controller,  # NOQA
 
     # Close replica1
     r1 = grpc_replica1.replica_get()
-    assert r1.revisionCounter == 12  # 1 + 10 + 1
+    assert r1.revision_counter == 12  # 1 + 10 + 1
     grpc_replica1.replica_close()
 
     # Restart volume
@@ -206,7 +206,7 @@ def test_ha_double_replica_rebuild(grpc_controller,  # NOQA
 
     # Rebuild replica2
     r2 = grpc_replica2.replica_get()
-    assert r2.revisionCounter == 1
+    assert r2.revision_counter == 1
     grpc_replica2.replica_close()
 
     grpc_controller.replica_delete(replicas[0].address)
@@ -224,8 +224,8 @@ def test_ha_double_replica_rebuild(grpc_controller,  # NOQA
 
     r1 = grpc_replica1.replica_get()
     r2 = grpc_replica2.replica_get()
-    assert r1.revisionCounter == 22  # 1 + 10 + 1 + 10
-    assert r2.revisionCounter == 22  # must be in sync with r1
+    assert r1.revision_counter == 22  # 1 + 10 + 1 + 10
+    assert r2.revision_counter == 22  # must be in sync with r1
 
 
 def test_ha_revision_counter_consistency(grpc_controller,  # NOQA
@@ -254,8 +254,8 @@ def test_ha_revision_counter_consistency(grpc_controller,  # NOQA
     r1 = grpc_replica1.replica_get()
     r2 = grpc_replica2.replica_get()
     # kernel can merge requests so backend may not receive 1000 writes
-    assert r1.revisionCounter > 0
-    assert r1.revisionCounter == r2.revisionCounter
+    assert r1.revision_counter > 0
+    assert r1.revision_counter == r2.revision_counter
 
 
 def test_snapshot_tree_rebuild(grpc_controller,  # NOQA

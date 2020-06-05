@@ -204,12 +204,12 @@ func (r *Remote) info() (*types.ReplicaInfo, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), client.GRPCServiceCommonTimeout)
 	defer cancel()
 
-	replica, err := replicaServiceClient.ReplicaGet(ctx, &empty.Empty{})
+	resp, err := replicaServiceClient.ReplicaGet(ctx, &empty.Empty{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get replica %v info from remote: %v", r.replicaServiceURL, err)
 	}
 
-	return replicaClient.GetReplicaInfo(replica), nil
+	return replicaClient.GetReplicaInfo(resp.Replica), nil
 }
 
 func (rf *Factory) Create(address string) (types.Backend, error) {

@@ -126,12 +126,12 @@ func (c *ReplicaClient) GetReplica() (*types.ReplicaInfo, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
 	defer cancel()
 
-	replica, err := replicaServiceClient.ReplicaGet(ctx, &empty.Empty{})
+	resp, err := replicaServiceClient.ReplicaGet(ctx, &empty.Empty{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get replica %v: %v", c.replicaServiceURL, err)
 	}
 
-	return GetReplicaInfo(replica), nil
+	return GetReplicaInfo(resp.Replica), nil
 }
 
 func (c *ReplicaClient) OpenReplica() error {
@@ -181,12 +181,12 @@ func (c *ReplicaClient) ReloadReplica() (*types.ReplicaInfo, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
 	defer cancel()
 
-	replica, err := replicaServiceClient.ReplicaReload(ctx, &empty.Empty{})
+	resp, err := replicaServiceClient.ReplicaReload(ctx, &empty.Empty{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to reload replica %v: %v", c.replicaServiceURL, err)
 	}
 
-	return GetReplicaInfo(replica), nil
+	return GetReplicaInfo(resp.Replica), nil
 }
 
 func (c *ReplicaClient) ExpandReplica(size int64) (r *types.ReplicaInfo, err error) {
@@ -204,14 +204,14 @@ func (c *ReplicaClient) ExpandReplica(size int64) (r *types.ReplicaInfo, err err
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
 	defer cancel()
 
-	replica, err := replicaServiceClient.ReplicaExpand(ctx, &ptypes.ReplicaExpandRequest{
+	resp, err := replicaServiceClient.ReplicaExpand(ctx, &ptypes.ReplicaExpandRequest{
 		Size: size,
 	})
 	if err != nil {
 		return nil, types.UnmarshalGRPCError(err)
 	}
 
-	return GetReplicaInfo(replica), nil
+	return GetReplicaInfo(resp.Replica), nil
 }
 
 func (c *ReplicaClient) Revert(name, created string) error {
@@ -454,7 +454,7 @@ func (c *ReplicaClient) SyncFiles(fromAddress string, list []types.SyncFileInfo)
 	return nil
 }
 
-func (c *ReplicaClient) CreateBackup(snapshot, dest, volume string, labels []string, credential map[string]string) (*ptypes.BackupCreateReply, error) {
+func (c *ReplicaClient) CreateBackup(snapshot, dest, volume string, labels []string, credential map[string]string) (*ptypes.BackupCreateResponse, error) {
 	conn, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure())
 	if err != nil {
 		return nil, fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
@@ -465,7 +465,7 @@ func (c *ReplicaClient) CreateBackup(snapshot, dest, volume string, labels []str
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
 	defer cancel()
 
-	reply, err := syncAgentServiceClient.BackupCreate(ctx, &ptypes.BackupCreateRequest{
+	resp, err := syncAgentServiceClient.BackupCreate(ctx, &ptypes.BackupCreateRequest{
 		SnapshotFileName: snapshot,
 		BackupTarget:     dest,
 		VolumeName:       volume,
@@ -476,10 +476,10 @@ func (c *ReplicaClient) CreateBackup(snapshot, dest, volume string, labels []str
 		return nil, fmt.Errorf("failed to create backup to %v for volume %v: %v", dest, volume, err)
 	}
 
-	return reply, nil
+	return resp, nil
 }
 
-func (c *ReplicaClient) GetBackupStatus(backupName string) (*ptypes.BackupStatusReply, error) {
+func (c *ReplicaClient) BackupStatus(backupName string) (*ptypes.BackupStatusResponse, error) {
 	conn, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure())
 	if err != nil {
 		return nil, fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
@@ -490,7 +490,7 @@ func (c *ReplicaClient) GetBackupStatus(backupName string) (*ptypes.BackupStatus
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
 	defer cancel()
 
-	reply, err := syncAgentServiceClient.BackupGetStatus(ctx, &ptypes.BackupProgressRequest{
+	resp, err := syncAgentServiceClient.BackupStatus(ctx, &ptypes.BackupStatusRequest{
 		Backup: backupName,
 	})
 
@@ -498,7 +498,7 @@ func (c *ReplicaClient) GetBackupStatus(backupName string) (*ptypes.BackupStatus
 		return nil, err
 	}
 
-	return reply, nil
+	return resp, nil
 }
 
 func (c *ReplicaClient) RmBackup(backup string) error {
@@ -585,7 +585,7 @@ func (c *ReplicaClient) Reset() error {
 	return nil
 }
 
-func (c *ReplicaClient) RestoreStatus() (*ptypes.RestoreStatusReply, error) {
+func (c *ReplicaClient) RestoreStatus() (*ptypes.RestoreStatusResponse, error) {
 	conn, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure())
 	if err != nil {
 		return nil, fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
@@ -596,12 +596,12 @@ func (c *ReplicaClient) RestoreStatus() (*ptypes.RestoreStatusReply, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
 	defer cancel()
 
-	reply, err := syncAgentServiceClient.RestoreStatus(ctx, &empty.Empty{})
+	resp, err := syncAgentServiceClient.RestoreStatus(ctx, &empty.Empty{})
 	if err != nil {
 		return nil, fmt.Errorf("failed to get restore status: %v", err)
 	}
 
-	return reply, nil
+	return resp, nil
 }
 
 func (c *ReplicaClient) SnapshotPurge() error {
@@ -622,7 +622,7 @@ func (c *ReplicaClient) SnapshotPurge() error {
 	return nil
 }
 
-func (c *ReplicaClient) SnapshotPurgeStatus() (*ptypes.SnapshotPurgeStatusReply, error) {
+func (c *ReplicaClient) SnapshotPurgeStatus() (*ptypes.SnapshotPurgeStatusResponse, error) {
 	conn, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure())
 	if err != nil {
 		return nil, fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
@@ -641,7 +641,7 @@ func (c *ReplicaClient) SnapshotPurgeStatus() (*ptypes.SnapshotPurgeStatusReply,
 	return status, nil
 }
 
-func (c *ReplicaClient) ReplicaRebuildStatus() (*ptypes.ReplicaRebuildStatusReply, error) {
+func (c *ReplicaClient) ReplicaRebuildStatus() (*ptypes.ReplicaRebuildStatusResponse, error) {
 	conn, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure())
 	if err != nil {
 		return nil, fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)

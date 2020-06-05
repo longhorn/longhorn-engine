@@ -121,7 +121,7 @@ func (t *Task) FetchBackupStatus(backupID string, replicaAddr string) (*BackupSt
 		return nil, err
 	}
 
-	bs, err := repClient.GetBackupStatus(backupID)
+	bs, err := repClient.BackupStatus(backupID)
 	if err != nil {
 		return &BackupStatusInfo{
 			Error: fmt.Sprintf("Failed to get backup status on %s for %v: %v", replicaAddr, backupID, err),
@@ -130,7 +130,7 @@ func (t *Task) FetchBackupStatus(backupID string, replicaAddr string) (*BackupSt
 
 	info := &BackupStatusInfo{
 		Progress:       int(bs.Progress),
-		BackupURL:      bs.BackupURL,
+		BackupURL:      bs.BackupUrl,
 		Error:          bs.Error,
 		SnapshotName:   bs.SnapshotName,
 		State:          bs.State,
@@ -409,7 +409,7 @@ func (t *Task) RestoreStatus() (map[string]*RestoreStatus, error) {
 			Error:        rs.Error,
 			Filename:     rs.DestFileName,
 			State:        rs.State,
-			BackupURL:    rs.BackupURL,
+			BackupURL:    rs.BackupUrl,
 		}
 	}
 
