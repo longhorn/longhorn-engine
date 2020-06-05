@@ -21,7 +21,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='ptypes',
   syntax='proto3',
   serialized_options=None,
-  serialized_pb=_b('\n\rreplica.proto\x12\x06ptypes\x1a\x1bgoogle/protobuf/empty.proto\"$\n\x14ReplicaCreateRequest\x12\x0c\n\x04size\x18\x01 \x01(\t\"5\n\x14ReplicaRevertRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0f\n\x07\x63reated\x18\x02 \x01(\t\"\xb7\x01\n\x16ReplicaSnapshotRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x13\n\x0buserCreated\x18\x02 \x01(\x08\x12\x0f\n\x07\x63reated\x18\x03 \x01(\t\x12:\n\x06labels\x18\x04 \x03(\x0b\x32*.ptypes.ReplicaSnapshotRequest.LabelsEntry\x1a-\n\x0bLabelsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"$\n\x14ReplicaExpandRequest\x12\x0c\n\x04size\x18\x01 \x01(\x03\"0\n\x11\x44iskRemoveRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\r\n\x05\x66orce\x18\x02 \x01(\x08\"4\n\x12\x44iskReplaceRequest\x12\x0e\n\x06target\x18\x01 \x01(\t\x12\x0e\n\x06source\x18\x02 \x01(\t\"(\n\x18\x44iskPrepareRemoveRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\"I\n\x16\x44iskPrepareRemoveReply\x12/\n\noperations\x18\x01 \x03(\x0b\x32\x1b.ptypes.PrepareRemoveAction\"(\n\x18\x44iskMarkAsRemovedRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\"*\n\x14RebuildingSetRequest\x12\x12\n\nrebuilding\x18\x01 \x01(\x08\",\n\x19RevisionCounterSetRequest\x12\x0f\n\x07\x63ounter\x18\x01 \x01(\x03\"\xad\x02\n\x08\x44iskInfo\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0e\n\x06parent\x18\x02 \x01(\t\x12\x30\n\x08\x63hildren\x18\x03 \x03(\x0b\x32\x1e.ptypes.DiskInfo.ChildrenEntry\x12\x0f\n\x07removed\x18\x04 \x01(\x08\x12\x13\n\x0buserCreated\x18\x05 \x01(\x08\x12\x0f\n\x07\x63reated\x18\x06 \x01(\t\x12\x0c\n\x04size\x18\x07 \x01(\t\x12,\n\x06labels\x18\x08 \x03(\x0b\x32\x1c.ptypes.DiskInfo.LabelsEntry\x1a/\n\rChildrenEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x08:\x02\x38\x01\x1a-\n\x0bLabelsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xbc\x02\n\x07Replica\x12\r\n\x05\x64irty\x18\x01 \x01(\x08\x12\x12\n\nrebuilding\x18\x02 \x01(\x08\x12\x0c\n\x04head\x18\x03 \x01(\t\x12\x0e\n\x06parent\x18\x04 \x01(\t\x12\x0c\n\x04size\x18\x05 \x01(\t\x12\x12\n\nsectorSize\x18\x06 \x01(\x03\x12\x13\n\x0b\x62\x61\x63kingFile\x18\x07 \x01(\t\x12\r\n\x05state\x18\x08 \x01(\t\x12\r\n\x05\x63hain\x18\t \x03(\t\x12)\n\x05\x64isks\x18\n \x03(\x0b\x32\x1a.ptypes.Replica.DisksEntry\x12\x17\n\x0fremainSnapshots\x18\x0b \x01(\x05\x12\x17\n\x0frevisionCounter\x18\x0c \x01(\x03\x1a>\n\nDisksEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x1f\n\x05value\x18\x02 \x01(\x0b\x32\x10.ptypes.DiskInfo:\x02\x38\x01\"E\n\x13PrepareRemoveAction\x12\x0e\n\x06\x61\x63tion\x18\x01 \x01(\t\x12\x0e\n\x06source\x18\x02 \x01(\t\x12\x0e\n\x06target\x18\x03 \x01(\t2\xf4\x07\n\x0eReplicaService\x12@\n\rReplicaCreate\x12\x1c.ptypes.ReplicaCreateRequest\x1a\x0f.ptypes.Replica\"\x00\x12\x41\n\rReplicaDelete\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.Empty\"\x00\x12\x37\n\nReplicaGet\x12\x16.google.protobuf.Empty\x1a\x0f.ptypes.Replica\"\x00\x12\x38\n\x0bReplicaOpen\x12\x16.google.protobuf.Empty\x1a\x0f.ptypes.Replica\"\x00\x12\x39\n\x0cReplicaClose\x12\x16.google.protobuf.Empty\x1a\x0f.ptypes.Replica\"\x00\x12:\n\rReplicaReload\x12\x16.google.protobuf.Empty\x1a\x0f.ptypes.Replica\"\x00\x12@\n\rReplicaRevert\x12\x1c.ptypes.ReplicaRevertRequest\x1a\x0f.ptypes.Replica\"\x00\x12\x44\n\x0fReplicaSnapshot\x12\x1e.ptypes.ReplicaSnapshotRequest\x1a\x0f.ptypes.Replica\"\x00\x12@\n\rReplicaExpand\x12\x1c.ptypes.ReplicaExpandRequest\x1a\x0f.ptypes.Replica\"\x00\x12:\n\nDiskRemove\x12\x19.ptypes.DiskRemoveRequest\x1a\x0f.ptypes.Replica\"\x00\x12<\n\x0b\x44iskReplace\x12\x1a.ptypes.DiskReplaceRequest\x1a\x0f.ptypes.Replica\"\x00\x12W\n\x11\x44iskPrepareRemove\x12 .ptypes.DiskPrepareRemoveRequest\x1a\x1e.ptypes.DiskPrepareRemoveReply\"\x00\x12H\n\x11\x44iskMarkAsRemoved\x12 .ptypes.DiskMarkAsRemovedRequest\x1a\x0f.ptypes.Replica\"\x00\x12@\n\rRebuildingSet\x12\x1c.ptypes.RebuildingSetRequest\x1a\x0f.ptypes.Replica\"\x00\x12J\n\x12RevisionCounterSet\x12!.ptypes.RevisionCounterSetRequest\x1a\x0f.ptypes.Replica\"\x00\x62\x06proto3')
+  serialized_pb=_b('\n\rreplica.proto\x12\x06ptypes\x1a\x1bgoogle/protobuf/empty.proto\"$\n\x14ReplicaCreateRequest\x12\x0c\n\x04size\x18\x01 \x01(\t\"9\n\x15ReplicaCreateResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\"6\n\x12ReplicaGetResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\"7\n\x13ReplicaOpenResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\"8\n\x14ReplicaCloseResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\"9\n\x15ReplicaReloadResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\"5\n\x14ReplicaRevertRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0f\n\x07\x63reated\x18\x02 \x01(\t\"9\n\x15ReplicaRevertResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\"\xb8\x01\n\x16ReplicaSnapshotRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x14\n\x0cuser_created\x18\x02 \x01(\x08\x12\x0f\n\x07\x63reated\x18\x03 \x01(\t\x12:\n\x06labels\x18\x04 \x03(\x0b\x32*.ptypes.ReplicaSnapshotRequest.LabelsEntry\x1a-\n\x0bLabelsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\";\n\x17ReplicaSnapshotResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\"$\n\x14ReplicaExpandRequest\x12\x0c\n\x04size\x18\x01 \x01(\x03\"9\n\x15ReplicaExpandResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\"0\n\x11\x44iskRemoveRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\r\n\x05\x66orce\x18\x02 \x01(\x08\"6\n\x12\x44iskRemoveResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\"4\n\x12\x44iskReplaceRequest\x12\x0e\n\x06target\x18\x01 \x01(\t\x12\x0e\n\x06source\x18\x02 \x01(\t\"7\n\x13\x44iskReplaceResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\"(\n\x18\x44iskPrepareRemoveRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\"L\n\x19\x44iskPrepareRemoveResponse\x12/\n\noperations\x18\x01 \x03(\x0b\x32\x1b.ptypes.PrepareRemoveAction\"(\n\x18\x44iskMarkAsRemovedRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\"=\n\x19\x44iskMarkAsRemovedResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\"*\n\x14RebuildingSetRequest\x12\x12\n\nrebuilding\x18\x01 \x01(\x08\"9\n\x15RebuildingSetResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\",\n\x19RevisionCounterSetRequest\x12\x0f\n\x07\x63ounter\x18\x01 \x01(\x03\">\n\x1aRevisionCounterSetResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\"\xae\x02\n\x08\x44iskInfo\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0e\n\x06parent\x18\x02 \x01(\t\x12\x30\n\x08\x63hildren\x18\x03 \x03(\x0b\x32\x1e.ptypes.DiskInfo.ChildrenEntry\x12\x0f\n\x07removed\x18\x04 \x01(\x08\x12\x14\n\x0cuser_created\x18\x05 \x01(\x08\x12\x0f\n\x07\x63reated\x18\x06 \x01(\t\x12\x0c\n\x04size\x18\x07 \x01(\t\x12,\n\x06labels\x18\x08 \x03(\x0b\x32\x1c.ptypes.DiskInfo.LabelsEntry\x1a/\n\rChildrenEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x08:\x02\x38\x01\x1a-\n\x0bLabelsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xc0\x02\n\x07Replica\x12\r\n\x05\x64irty\x18\x01 \x01(\x08\x12\x12\n\nrebuilding\x18\x02 \x01(\x08\x12\x0c\n\x04head\x18\x03 \x01(\t\x12\x0e\n\x06parent\x18\x04 \x01(\t\x12\x0c\n\x04size\x18\x05 \x01(\t\x12\x13\n\x0bsector_size\x18\x06 \x01(\x03\x12\x14\n\x0c\x62\x61\x63king_file\x18\x07 \x01(\t\x12\r\n\x05state\x18\x08 \x01(\t\x12\r\n\x05\x63hain\x18\t \x03(\t\x12)\n\x05\x64isks\x18\n \x03(\x0b\x32\x1a.ptypes.Replica.DisksEntry\x12\x18\n\x10remain_snapshots\x18\x0b \x01(\x05\x12\x18\n\x10revision_counter\x18\x0c \x01(\x03\x1a>\n\nDisksEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x1f\n\x05value\x18\x02 \x01(\x0b\x32\x10.ptypes.DiskInfo:\x02\x38\x01\"E\n\x13PrepareRemoveAction\x12\x0e\n\x06\x61\x63tion\x18\x01 \x01(\t\x12\x0e\n\x06source\x18\x02 \x01(\t\x12\x0e\n\x06target\x18\x03 \x01(\t2\xad\t\n\x0eReplicaService\x12N\n\rReplicaCreate\x12\x1c.ptypes.ReplicaCreateRequest\x1a\x1d.ptypes.ReplicaCreateResponse\"\x00\x12\x41\n\rReplicaDelete\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.Empty\"\x00\x12\x42\n\nReplicaGet\x12\x16.google.protobuf.Empty\x1a\x1a.ptypes.ReplicaGetResponse\"\x00\x12\x44\n\x0bReplicaOpen\x12\x16.google.protobuf.Empty\x1a\x1b.ptypes.ReplicaOpenResponse\"\x00\x12\x46\n\x0cReplicaClose\x12\x16.google.protobuf.Empty\x1a\x1c.ptypes.ReplicaCloseResponse\"\x00\x12H\n\rReplicaReload\x12\x16.google.protobuf.Empty\x1a\x1d.ptypes.ReplicaReloadResponse\"\x00\x12N\n\rReplicaRevert\x12\x1c.ptypes.ReplicaRevertRequest\x1a\x1d.ptypes.ReplicaRevertResponse\"\x00\x12T\n\x0fReplicaSnapshot\x12\x1e.ptypes.ReplicaSnapshotRequest\x1a\x1f.ptypes.ReplicaSnapshotResponse\"\x00\x12N\n\rReplicaExpand\x12\x1c.ptypes.ReplicaExpandRequest\x1a\x1d.ptypes.ReplicaExpandResponse\"\x00\x12\x45\n\nDiskRemove\x12\x19.ptypes.DiskRemoveRequest\x1a\x1a.ptypes.DiskRemoveResponse\"\x00\x12H\n\x0b\x44iskReplace\x12\x1a.ptypes.DiskReplaceRequest\x1a\x1b.ptypes.DiskReplaceResponse\"\x00\x12Z\n\x11\x44iskPrepareRemove\x12 .ptypes.DiskPrepareRemoveRequest\x1a!.ptypes.DiskPrepareRemoveResponse\"\x00\x12Z\n\x11\x44iskMarkAsRemoved\x12 .ptypes.DiskMarkAsRemovedRequest\x1a!.ptypes.DiskMarkAsRemovedResponse\"\x00\x12N\n\rRebuildingSet\x12\x1c.ptypes.RebuildingSetRequest\x1a\x1d.ptypes.RebuildingSetResponse\"\x00\x12]\n\x12RevisionCounterSet\x12!.ptypes.RevisionCounterSetRequest\x1a\".ptypes.RevisionCounterSetResponse\"\x00\x62\x06proto3')
   ,
   dependencies=[google_dot_protobuf_dot_empty__pb2.DESCRIPTOR,])
 
@@ -59,6 +59,161 @@ _REPLICACREATEREQUEST = _descriptor.Descriptor(
 )
 
 
+_REPLICACREATERESPONSE = _descriptor.Descriptor(
+  name='ReplicaCreateResponse',
+  full_name='ptypes.ReplicaCreateResponse',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='replica', full_name='ptypes.ReplicaCreateResponse.replica', index=0,
+      number=1, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=92,
+  serialized_end=149,
+)
+
+
+_REPLICAGETRESPONSE = _descriptor.Descriptor(
+  name='ReplicaGetResponse',
+  full_name='ptypes.ReplicaGetResponse',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='replica', full_name='ptypes.ReplicaGetResponse.replica', index=0,
+      number=1, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=151,
+  serialized_end=205,
+)
+
+
+_REPLICAOPENRESPONSE = _descriptor.Descriptor(
+  name='ReplicaOpenResponse',
+  full_name='ptypes.ReplicaOpenResponse',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='replica', full_name='ptypes.ReplicaOpenResponse.replica', index=0,
+      number=1, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=207,
+  serialized_end=262,
+)
+
+
+_REPLICACLOSERESPONSE = _descriptor.Descriptor(
+  name='ReplicaCloseResponse',
+  full_name='ptypes.ReplicaCloseResponse',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='replica', full_name='ptypes.ReplicaCloseResponse.replica', index=0,
+      number=1, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=264,
+  serialized_end=320,
+)
+
+
+_REPLICARELOADRESPONSE = _descriptor.Descriptor(
+  name='ReplicaReloadResponse',
+  full_name='ptypes.ReplicaReloadResponse',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='replica', full_name='ptypes.ReplicaReloadResponse.replica', index=0,
+      number=1, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=322,
+  serialized_end=379,
+)
+
+
 _REPLICAREVERTREQUEST = _descriptor.Descriptor(
   name='ReplicaRevertRequest',
   full_name='ptypes.ReplicaRevertRequest',
@@ -92,8 +247,39 @@ _REPLICAREVERTREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=92,
-  serialized_end=145,
+  serialized_start=381,
+  serialized_end=434,
+)
+
+
+_REPLICAREVERTRESPONSE = _descriptor.Descriptor(
+  name='ReplicaRevertResponse',
+  full_name='ptypes.ReplicaRevertResponse',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='replica', full_name='ptypes.ReplicaRevertResponse.replica', index=0,
+      number=1, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=436,
+  serialized_end=493,
 )
 
 
@@ -130,8 +316,8 @@ _REPLICASNAPSHOTREQUEST_LABELSENTRY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=286,
-  serialized_end=331,
+  serialized_start=635,
+  serialized_end=680,
 )
 
 _REPLICASNAPSHOTREQUEST = _descriptor.Descriptor(
@@ -149,7 +335,7 @@ _REPLICASNAPSHOTREQUEST = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='userCreated', full_name='ptypes.ReplicaSnapshotRequest.userCreated', index=1,
+      name='user_created', full_name='ptypes.ReplicaSnapshotRequest.user_created', index=1,
       number=2, type=8, cpp_type=7, label=1,
       has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
@@ -181,8 +367,39 @@ _REPLICASNAPSHOTREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=148,
-  serialized_end=331,
+  serialized_start=496,
+  serialized_end=680,
+)
+
+
+_REPLICASNAPSHOTRESPONSE = _descriptor.Descriptor(
+  name='ReplicaSnapshotResponse',
+  full_name='ptypes.ReplicaSnapshotResponse',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='replica', full_name='ptypes.ReplicaSnapshotResponse.replica', index=0,
+      number=1, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=682,
+  serialized_end=741,
 )
 
 
@@ -212,8 +429,39 @@ _REPLICAEXPANDREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=333,
-  serialized_end=369,
+  serialized_start=743,
+  serialized_end=779,
+)
+
+
+_REPLICAEXPANDRESPONSE = _descriptor.Descriptor(
+  name='ReplicaExpandResponse',
+  full_name='ptypes.ReplicaExpandResponse',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='replica', full_name='ptypes.ReplicaExpandResponse.replica', index=0,
+      number=1, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=781,
+  serialized_end=838,
 )
 
 
@@ -250,8 +498,39 @@ _DISKREMOVEREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=371,
-  serialized_end=419,
+  serialized_start=840,
+  serialized_end=888,
+)
+
+
+_DISKREMOVERESPONSE = _descriptor.Descriptor(
+  name='DiskRemoveResponse',
+  full_name='ptypes.DiskRemoveResponse',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='replica', full_name='ptypes.DiskRemoveResponse.replica', index=0,
+      number=1, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=890,
+  serialized_end=944,
 )
 
 
@@ -288,8 +567,39 @@ _DISKREPLACEREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=421,
-  serialized_end=473,
+  serialized_start=946,
+  serialized_end=998,
+)
+
+
+_DISKREPLACERESPONSE = _descriptor.Descriptor(
+  name='DiskReplaceResponse',
+  full_name='ptypes.DiskReplaceResponse',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='replica', full_name='ptypes.DiskReplaceResponse.replica', index=0,
+      number=1, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1000,
+  serialized_end=1055,
 )
 
 
@@ -319,20 +629,20 @@ _DISKPREPAREREMOVEREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=475,
-  serialized_end=515,
+  serialized_start=1057,
+  serialized_end=1097,
 )
 
 
-_DISKPREPAREREMOVEREPLY = _descriptor.Descriptor(
-  name='DiskPrepareRemoveReply',
-  full_name='ptypes.DiskPrepareRemoveReply',
+_DISKPREPAREREMOVERESPONSE = _descriptor.Descriptor(
+  name='DiskPrepareRemoveResponse',
+  full_name='ptypes.DiskPrepareRemoveResponse',
   filename=None,
   file=DESCRIPTOR,
   containing_type=None,
   fields=[
     _descriptor.FieldDescriptor(
-      name='operations', full_name='ptypes.DiskPrepareRemoveReply.operations', index=0,
+      name='operations', full_name='ptypes.DiskPrepareRemoveResponse.operations', index=0,
       number=1, type=11, cpp_type=10, label=3,
       has_default_value=False, default_value=[],
       message_type=None, enum_type=None, containing_type=None,
@@ -350,8 +660,8 @@ _DISKPREPAREREMOVEREPLY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=517,
-  serialized_end=590,
+  serialized_start=1099,
+  serialized_end=1175,
 )
 
 
@@ -381,8 +691,39 @@ _DISKMARKASREMOVEDREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=592,
-  serialized_end=632,
+  serialized_start=1177,
+  serialized_end=1217,
+)
+
+
+_DISKMARKASREMOVEDRESPONSE = _descriptor.Descriptor(
+  name='DiskMarkAsRemovedResponse',
+  full_name='ptypes.DiskMarkAsRemovedResponse',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='replica', full_name='ptypes.DiskMarkAsRemovedResponse.replica', index=0,
+      number=1, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1219,
+  serialized_end=1280,
 )
 
 
@@ -412,8 +753,39 @@ _REBUILDINGSETREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=634,
-  serialized_end=676,
+  serialized_start=1282,
+  serialized_end=1324,
+)
+
+
+_REBUILDINGSETRESPONSE = _descriptor.Descriptor(
+  name='RebuildingSetResponse',
+  full_name='ptypes.RebuildingSetResponse',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='replica', full_name='ptypes.RebuildingSetResponse.replica', index=0,
+      number=1, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1326,
+  serialized_end=1383,
 )
 
 
@@ -443,8 +815,39 @@ _REVISIONCOUNTERSETREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=678,
-  serialized_end=722,
+  serialized_start=1385,
+  serialized_end=1429,
+)
+
+
+_REVISIONCOUNTERSETRESPONSE = _descriptor.Descriptor(
+  name='RevisionCounterSetResponse',
+  full_name='ptypes.RevisionCounterSetResponse',
+  filename=None,
+  file=DESCRIPTOR,
+  containing_type=None,
+  fields=[
+    _descriptor.FieldDescriptor(
+      name='replica', full_name='ptypes.RevisionCounterSetResponse.replica', index=0,
+      number=1, type=11, cpp_type=10, label=1,
+      has_default_value=False, default_value=None,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+  ],
+  extensions=[
+  ],
+  nested_types=[],
+  enum_types=[
+  ],
+  serialized_options=None,
+  is_extendable=False,
+  syntax='proto3',
+  extension_ranges=[],
+  oneofs=[
+  ],
+  serialized_start=1431,
+  serialized_end=1493,
 )
 
 
@@ -481,8 +884,8 @@ _DISKINFO_CHILDRENENTRY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=932,
-  serialized_end=979,
+  serialized_start=1704,
+  serialized_end=1751,
 )
 
 _DISKINFO_LABELSENTRY = _descriptor.Descriptor(
@@ -518,8 +921,8 @@ _DISKINFO_LABELSENTRY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=286,
-  serialized_end=331,
+  serialized_start=635,
+  serialized_end=680,
 )
 
 _DISKINFO = _descriptor.Descriptor(
@@ -558,7 +961,7 @@ _DISKINFO = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='userCreated', full_name='ptypes.DiskInfo.userCreated', index=4,
+      name='user_created', full_name='ptypes.DiskInfo.user_created', index=4,
       number=5, type=8, cpp_type=7, label=1,
       has_default_value=False, default_value=False,
       message_type=None, enum_type=None, containing_type=None,
@@ -597,8 +1000,8 @@ _DISKINFO = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=725,
-  serialized_end=1026,
+  serialized_start=1496,
+  serialized_end=1798,
 )
 
 
@@ -635,8 +1038,8 @@ _REPLICA_DISKSENTRY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1283,
-  serialized_end=1345,
+  serialized_start=2059,
+  serialized_end=2121,
 )
 
 _REPLICA = _descriptor.Descriptor(
@@ -682,14 +1085,14 @@ _REPLICA = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='sectorSize', full_name='ptypes.Replica.sectorSize', index=5,
+      name='sector_size', full_name='ptypes.Replica.sector_size', index=5,
       number=6, type=3, cpp_type=2, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='backingFile', full_name='ptypes.Replica.backingFile', index=6,
+      name='backing_file', full_name='ptypes.Replica.backing_file', index=6,
       number=7, type=9, cpp_type=9, label=1,
       has_default_value=False, default_value=_b("").decode('utf-8'),
       message_type=None, enum_type=None, containing_type=None,
@@ -717,14 +1120,14 @@ _REPLICA = _descriptor.Descriptor(
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='remainSnapshots', full_name='ptypes.Replica.remainSnapshots', index=10,
+      name='remain_snapshots', full_name='ptypes.Replica.remain_snapshots', index=10,
       number=11, type=5, cpp_type=1, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
     _descriptor.FieldDescriptor(
-      name='revisionCounter', full_name='ptypes.Replica.revisionCounter', index=11,
+      name='revision_counter', full_name='ptypes.Replica.revision_counter', index=11,
       number=12, type=3, cpp_type=2, label=1,
       has_default_value=False, default_value=0,
       message_type=None, enum_type=None, containing_type=None,
@@ -742,8 +1145,8 @@ _REPLICA = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1029,
-  serialized_end=1345,
+  serialized_start=1801,
+  serialized_end=2121,
 )
 
 
@@ -787,13 +1190,26 @@ _PREPAREREMOVEACTION = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1347,
-  serialized_end=1416,
+  serialized_start=2123,
+  serialized_end=2192,
 )
 
+_REPLICACREATERESPONSE.fields_by_name['replica'].message_type = _REPLICA
+_REPLICAGETRESPONSE.fields_by_name['replica'].message_type = _REPLICA
+_REPLICAOPENRESPONSE.fields_by_name['replica'].message_type = _REPLICA
+_REPLICACLOSERESPONSE.fields_by_name['replica'].message_type = _REPLICA
+_REPLICARELOADRESPONSE.fields_by_name['replica'].message_type = _REPLICA
+_REPLICAREVERTRESPONSE.fields_by_name['replica'].message_type = _REPLICA
 _REPLICASNAPSHOTREQUEST_LABELSENTRY.containing_type = _REPLICASNAPSHOTREQUEST
 _REPLICASNAPSHOTREQUEST.fields_by_name['labels'].message_type = _REPLICASNAPSHOTREQUEST_LABELSENTRY
-_DISKPREPAREREMOVEREPLY.fields_by_name['operations'].message_type = _PREPAREREMOVEACTION
+_REPLICASNAPSHOTRESPONSE.fields_by_name['replica'].message_type = _REPLICA
+_REPLICAEXPANDRESPONSE.fields_by_name['replica'].message_type = _REPLICA
+_DISKREMOVERESPONSE.fields_by_name['replica'].message_type = _REPLICA
+_DISKREPLACERESPONSE.fields_by_name['replica'].message_type = _REPLICA
+_DISKPREPAREREMOVERESPONSE.fields_by_name['operations'].message_type = _PREPAREREMOVEACTION
+_DISKMARKASREMOVEDRESPONSE.fields_by_name['replica'].message_type = _REPLICA
+_REBUILDINGSETRESPONSE.fields_by_name['replica'].message_type = _REPLICA
+_REVISIONCOUNTERSETRESPONSE.fields_by_name['replica'].message_type = _REPLICA
 _DISKINFO_CHILDRENENTRY.containing_type = _DISKINFO
 _DISKINFO_LABELSENTRY.containing_type = _DISKINFO
 _DISKINFO.fields_by_name['children'].message_type = _DISKINFO_CHILDRENENTRY
@@ -802,16 +1218,29 @@ _REPLICA_DISKSENTRY.fields_by_name['value'].message_type = _DISKINFO
 _REPLICA_DISKSENTRY.containing_type = _REPLICA
 _REPLICA.fields_by_name['disks'].message_type = _REPLICA_DISKSENTRY
 DESCRIPTOR.message_types_by_name['ReplicaCreateRequest'] = _REPLICACREATEREQUEST
+DESCRIPTOR.message_types_by_name['ReplicaCreateResponse'] = _REPLICACREATERESPONSE
+DESCRIPTOR.message_types_by_name['ReplicaGetResponse'] = _REPLICAGETRESPONSE
+DESCRIPTOR.message_types_by_name['ReplicaOpenResponse'] = _REPLICAOPENRESPONSE
+DESCRIPTOR.message_types_by_name['ReplicaCloseResponse'] = _REPLICACLOSERESPONSE
+DESCRIPTOR.message_types_by_name['ReplicaReloadResponse'] = _REPLICARELOADRESPONSE
 DESCRIPTOR.message_types_by_name['ReplicaRevertRequest'] = _REPLICAREVERTREQUEST
+DESCRIPTOR.message_types_by_name['ReplicaRevertResponse'] = _REPLICAREVERTRESPONSE
 DESCRIPTOR.message_types_by_name['ReplicaSnapshotRequest'] = _REPLICASNAPSHOTREQUEST
+DESCRIPTOR.message_types_by_name['ReplicaSnapshotResponse'] = _REPLICASNAPSHOTRESPONSE
 DESCRIPTOR.message_types_by_name['ReplicaExpandRequest'] = _REPLICAEXPANDREQUEST
+DESCRIPTOR.message_types_by_name['ReplicaExpandResponse'] = _REPLICAEXPANDRESPONSE
 DESCRIPTOR.message_types_by_name['DiskRemoveRequest'] = _DISKREMOVEREQUEST
+DESCRIPTOR.message_types_by_name['DiskRemoveResponse'] = _DISKREMOVERESPONSE
 DESCRIPTOR.message_types_by_name['DiskReplaceRequest'] = _DISKREPLACEREQUEST
+DESCRIPTOR.message_types_by_name['DiskReplaceResponse'] = _DISKREPLACERESPONSE
 DESCRIPTOR.message_types_by_name['DiskPrepareRemoveRequest'] = _DISKPREPAREREMOVEREQUEST
-DESCRIPTOR.message_types_by_name['DiskPrepareRemoveReply'] = _DISKPREPAREREMOVEREPLY
+DESCRIPTOR.message_types_by_name['DiskPrepareRemoveResponse'] = _DISKPREPAREREMOVERESPONSE
 DESCRIPTOR.message_types_by_name['DiskMarkAsRemovedRequest'] = _DISKMARKASREMOVEDREQUEST
+DESCRIPTOR.message_types_by_name['DiskMarkAsRemovedResponse'] = _DISKMARKASREMOVEDRESPONSE
 DESCRIPTOR.message_types_by_name['RebuildingSetRequest'] = _REBUILDINGSETREQUEST
+DESCRIPTOR.message_types_by_name['RebuildingSetResponse'] = _REBUILDINGSETRESPONSE
 DESCRIPTOR.message_types_by_name['RevisionCounterSetRequest'] = _REVISIONCOUNTERSETREQUEST
+DESCRIPTOR.message_types_by_name['RevisionCounterSetResponse'] = _REVISIONCOUNTERSETRESPONSE
 DESCRIPTOR.message_types_by_name['DiskInfo'] = _DISKINFO
 DESCRIPTOR.message_types_by_name['Replica'] = _REPLICA
 DESCRIPTOR.message_types_by_name['PrepareRemoveAction'] = _PREPAREREMOVEACTION
@@ -824,12 +1253,54 @@ ReplicaCreateRequest = _reflection.GeneratedProtocolMessageType('ReplicaCreateRe
   })
 _sym_db.RegisterMessage(ReplicaCreateRequest)
 
+ReplicaCreateResponse = _reflection.GeneratedProtocolMessageType('ReplicaCreateResponse', (_message.Message,), {
+  'DESCRIPTOR' : _REPLICACREATERESPONSE,
+  '__module__' : 'replica_pb2'
+  # @@protoc_insertion_point(class_scope:ptypes.ReplicaCreateResponse)
+  })
+_sym_db.RegisterMessage(ReplicaCreateResponse)
+
+ReplicaGetResponse = _reflection.GeneratedProtocolMessageType('ReplicaGetResponse', (_message.Message,), {
+  'DESCRIPTOR' : _REPLICAGETRESPONSE,
+  '__module__' : 'replica_pb2'
+  # @@protoc_insertion_point(class_scope:ptypes.ReplicaGetResponse)
+  })
+_sym_db.RegisterMessage(ReplicaGetResponse)
+
+ReplicaOpenResponse = _reflection.GeneratedProtocolMessageType('ReplicaOpenResponse', (_message.Message,), {
+  'DESCRIPTOR' : _REPLICAOPENRESPONSE,
+  '__module__' : 'replica_pb2'
+  # @@protoc_insertion_point(class_scope:ptypes.ReplicaOpenResponse)
+  })
+_sym_db.RegisterMessage(ReplicaOpenResponse)
+
+ReplicaCloseResponse = _reflection.GeneratedProtocolMessageType('ReplicaCloseResponse', (_message.Message,), {
+  'DESCRIPTOR' : _REPLICACLOSERESPONSE,
+  '__module__' : 'replica_pb2'
+  # @@protoc_insertion_point(class_scope:ptypes.ReplicaCloseResponse)
+  })
+_sym_db.RegisterMessage(ReplicaCloseResponse)
+
+ReplicaReloadResponse = _reflection.GeneratedProtocolMessageType('ReplicaReloadResponse', (_message.Message,), {
+  'DESCRIPTOR' : _REPLICARELOADRESPONSE,
+  '__module__' : 'replica_pb2'
+  # @@protoc_insertion_point(class_scope:ptypes.ReplicaReloadResponse)
+  })
+_sym_db.RegisterMessage(ReplicaReloadResponse)
+
 ReplicaRevertRequest = _reflection.GeneratedProtocolMessageType('ReplicaRevertRequest', (_message.Message,), {
   'DESCRIPTOR' : _REPLICAREVERTREQUEST,
   '__module__' : 'replica_pb2'
   # @@protoc_insertion_point(class_scope:ptypes.ReplicaRevertRequest)
   })
 _sym_db.RegisterMessage(ReplicaRevertRequest)
+
+ReplicaRevertResponse = _reflection.GeneratedProtocolMessageType('ReplicaRevertResponse', (_message.Message,), {
+  'DESCRIPTOR' : _REPLICAREVERTRESPONSE,
+  '__module__' : 'replica_pb2'
+  # @@protoc_insertion_point(class_scope:ptypes.ReplicaRevertResponse)
+  })
+_sym_db.RegisterMessage(ReplicaRevertResponse)
 
 ReplicaSnapshotRequest = _reflection.GeneratedProtocolMessageType('ReplicaSnapshotRequest', (_message.Message,), {
 
@@ -846,12 +1317,26 @@ ReplicaSnapshotRequest = _reflection.GeneratedProtocolMessageType('ReplicaSnapsh
 _sym_db.RegisterMessage(ReplicaSnapshotRequest)
 _sym_db.RegisterMessage(ReplicaSnapshotRequest.LabelsEntry)
 
+ReplicaSnapshotResponse = _reflection.GeneratedProtocolMessageType('ReplicaSnapshotResponse', (_message.Message,), {
+  'DESCRIPTOR' : _REPLICASNAPSHOTRESPONSE,
+  '__module__' : 'replica_pb2'
+  # @@protoc_insertion_point(class_scope:ptypes.ReplicaSnapshotResponse)
+  })
+_sym_db.RegisterMessage(ReplicaSnapshotResponse)
+
 ReplicaExpandRequest = _reflection.GeneratedProtocolMessageType('ReplicaExpandRequest', (_message.Message,), {
   'DESCRIPTOR' : _REPLICAEXPANDREQUEST,
   '__module__' : 'replica_pb2'
   # @@protoc_insertion_point(class_scope:ptypes.ReplicaExpandRequest)
   })
 _sym_db.RegisterMessage(ReplicaExpandRequest)
+
+ReplicaExpandResponse = _reflection.GeneratedProtocolMessageType('ReplicaExpandResponse', (_message.Message,), {
+  'DESCRIPTOR' : _REPLICAEXPANDRESPONSE,
+  '__module__' : 'replica_pb2'
+  # @@protoc_insertion_point(class_scope:ptypes.ReplicaExpandResponse)
+  })
+_sym_db.RegisterMessage(ReplicaExpandResponse)
 
 DiskRemoveRequest = _reflection.GeneratedProtocolMessageType('DiskRemoveRequest', (_message.Message,), {
   'DESCRIPTOR' : _DISKREMOVEREQUEST,
@@ -860,12 +1345,26 @@ DiskRemoveRequest = _reflection.GeneratedProtocolMessageType('DiskRemoveRequest'
   })
 _sym_db.RegisterMessage(DiskRemoveRequest)
 
+DiskRemoveResponse = _reflection.GeneratedProtocolMessageType('DiskRemoveResponse', (_message.Message,), {
+  'DESCRIPTOR' : _DISKREMOVERESPONSE,
+  '__module__' : 'replica_pb2'
+  # @@protoc_insertion_point(class_scope:ptypes.DiskRemoveResponse)
+  })
+_sym_db.RegisterMessage(DiskRemoveResponse)
+
 DiskReplaceRequest = _reflection.GeneratedProtocolMessageType('DiskReplaceRequest', (_message.Message,), {
   'DESCRIPTOR' : _DISKREPLACEREQUEST,
   '__module__' : 'replica_pb2'
   # @@protoc_insertion_point(class_scope:ptypes.DiskReplaceRequest)
   })
 _sym_db.RegisterMessage(DiskReplaceRequest)
+
+DiskReplaceResponse = _reflection.GeneratedProtocolMessageType('DiskReplaceResponse', (_message.Message,), {
+  'DESCRIPTOR' : _DISKREPLACERESPONSE,
+  '__module__' : 'replica_pb2'
+  # @@protoc_insertion_point(class_scope:ptypes.DiskReplaceResponse)
+  })
+_sym_db.RegisterMessage(DiskReplaceResponse)
 
 DiskPrepareRemoveRequest = _reflection.GeneratedProtocolMessageType('DiskPrepareRemoveRequest', (_message.Message,), {
   'DESCRIPTOR' : _DISKPREPAREREMOVEREQUEST,
@@ -874,12 +1373,12 @@ DiskPrepareRemoveRequest = _reflection.GeneratedProtocolMessageType('DiskPrepare
   })
 _sym_db.RegisterMessage(DiskPrepareRemoveRequest)
 
-DiskPrepareRemoveReply = _reflection.GeneratedProtocolMessageType('DiskPrepareRemoveReply', (_message.Message,), {
-  'DESCRIPTOR' : _DISKPREPAREREMOVEREPLY,
+DiskPrepareRemoveResponse = _reflection.GeneratedProtocolMessageType('DiskPrepareRemoveResponse', (_message.Message,), {
+  'DESCRIPTOR' : _DISKPREPAREREMOVERESPONSE,
   '__module__' : 'replica_pb2'
-  # @@protoc_insertion_point(class_scope:ptypes.DiskPrepareRemoveReply)
+  # @@protoc_insertion_point(class_scope:ptypes.DiskPrepareRemoveResponse)
   })
-_sym_db.RegisterMessage(DiskPrepareRemoveReply)
+_sym_db.RegisterMessage(DiskPrepareRemoveResponse)
 
 DiskMarkAsRemovedRequest = _reflection.GeneratedProtocolMessageType('DiskMarkAsRemovedRequest', (_message.Message,), {
   'DESCRIPTOR' : _DISKMARKASREMOVEDREQUEST,
@@ -888,6 +1387,13 @@ DiskMarkAsRemovedRequest = _reflection.GeneratedProtocolMessageType('DiskMarkAsR
   })
 _sym_db.RegisterMessage(DiskMarkAsRemovedRequest)
 
+DiskMarkAsRemovedResponse = _reflection.GeneratedProtocolMessageType('DiskMarkAsRemovedResponse', (_message.Message,), {
+  'DESCRIPTOR' : _DISKMARKASREMOVEDRESPONSE,
+  '__module__' : 'replica_pb2'
+  # @@protoc_insertion_point(class_scope:ptypes.DiskMarkAsRemovedResponse)
+  })
+_sym_db.RegisterMessage(DiskMarkAsRemovedResponse)
+
 RebuildingSetRequest = _reflection.GeneratedProtocolMessageType('RebuildingSetRequest', (_message.Message,), {
   'DESCRIPTOR' : _REBUILDINGSETREQUEST,
   '__module__' : 'replica_pb2'
@@ -895,12 +1401,26 @@ RebuildingSetRequest = _reflection.GeneratedProtocolMessageType('RebuildingSetRe
   })
 _sym_db.RegisterMessage(RebuildingSetRequest)
 
+RebuildingSetResponse = _reflection.GeneratedProtocolMessageType('RebuildingSetResponse', (_message.Message,), {
+  'DESCRIPTOR' : _REBUILDINGSETRESPONSE,
+  '__module__' : 'replica_pb2'
+  # @@protoc_insertion_point(class_scope:ptypes.RebuildingSetResponse)
+  })
+_sym_db.RegisterMessage(RebuildingSetResponse)
+
 RevisionCounterSetRequest = _reflection.GeneratedProtocolMessageType('RevisionCounterSetRequest', (_message.Message,), {
   'DESCRIPTOR' : _REVISIONCOUNTERSETREQUEST,
   '__module__' : 'replica_pb2'
   # @@protoc_insertion_point(class_scope:ptypes.RevisionCounterSetRequest)
   })
 _sym_db.RegisterMessage(RevisionCounterSetRequest)
+
+RevisionCounterSetResponse = _reflection.GeneratedProtocolMessageType('RevisionCounterSetResponse', (_message.Message,), {
+  'DESCRIPTOR' : _REVISIONCOUNTERSETRESPONSE,
+  '__module__' : 'replica_pb2'
+  # @@protoc_insertion_point(class_scope:ptypes.RevisionCounterSetResponse)
+  })
+_sym_db.RegisterMessage(RevisionCounterSetResponse)
 
 DiskInfo = _reflection.GeneratedProtocolMessageType('DiskInfo', (_message.Message,), {
 
@@ -959,8 +1479,8 @@ _REPLICASERVICE = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=0,
   serialized_options=None,
-  serialized_start=1419,
-  serialized_end=2431,
+  serialized_start=2195,
+  serialized_end=3392,
   methods=[
   _descriptor.MethodDescriptor(
     name='ReplicaCreate',
@@ -968,7 +1488,7 @@ _REPLICASERVICE = _descriptor.ServiceDescriptor(
     index=0,
     containing_service=None,
     input_type=_REPLICACREATEREQUEST,
-    output_type=_REPLICA,
+    output_type=_REPLICACREATERESPONSE,
     serialized_options=None,
   ),
   _descriptor.MethodDescriptor(
@@ -986,7 +1506,7 @@ _REPLICASERVICE = _descriptor.ServiceDescriptor(
     index=2,
     containing_service=None,
     input_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
-    output_type=_REPLICA,
+    output_type=_REPLICAGETRESPONSE,
     serialized_options=None,
   ),
   _descriptor.MethodDescriptor(
@@ -995,7 +1515,7 @@ _REPLICASERVICE = _descriptor.ServiceDescriptor(
     index=3,
     containing_service=None,
     input_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
-    output_type=_REPLICA,
+    output_type=_REPLICAOPENRESPONSE,
     serialized_options=None,
   ),
   _descriptor.MethodDescriptor(
@@ -1004,7 +1524,7 @@ _REPLICASERVICE = _descriptor.ServiceDescriptor(
     index=4,
     containing_service=None,
     input_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
-    output_type=_REPLICA,
+    output_type=_REPLICACLOSERESPONSE,
     serialized_options=None,
   ),
   _descriptor.MethodDescriptor(
@@ -1013,7 +1533,7 @@ _REPLICASERVICE = _descriptor.ServiceDescriptor(
     index=5,
     containing_service=None,
     input_type=google_dot_protobuf_dot_empty__pb2._EMPTY,
-    output_type=_REPLICA,
+    output_type=_REPLICARELOADRESPONSE,
     serialized_options=None,
   ),
   _descriptor.MethodDescriptor(
@@ -1022,7 +1542,7 @@ _REPLICASERVICE = _descriptor.ServiceDescriptor(
     index=6,
     containing_service=None,
     input_type=_REPLICAREVERTREQUEST,
-    output_type=_REPLICA,
+    output_type=_REPLICAREVERTRESPONSE,
     serialized_options=None,
   ),
   _descriptor.MethodDescriptor(
@@ -1031,7 +1551,7 @@ _REPLICASERVICE = _descriptor.ServiceDescriptor(
     index=7,
     containing_service=None,
     input_type=_REPLICASNAPSHOTREQUEST,
-    output_type=_REPLICA,
+    output_type=_REPLICASNAPSHOTRESPONSE,
     serialized_options=None,
   ),
   _descriptor.MethodDescriptor(
@@ -1040,7 +1560,7 @@ _REPLICASERVICE = _descriptor.ServiceDescriptor(
     index=8,
     containing_service=None,
     input_type=_REPLICAEXPANDREQUEST,
-    output_type=_REPLICA,
+    output_type=_REPLICAEXPANDRESPONSE,
     serialized_options=None,
   ),
   _descriptor.MethodDescriptor(
@@ -1049,7 +1569,7 @@ _REPLICASERVICE = _descriptor.ServiceDescriptor(
     index=9,
     containing_service=None,
     input_type=_DISKREMOVEREQUEST,
-    output_type=_REPLICA,
+    output_type=_DISKREMOVERESPONSE,
     serialized_options=None,
   ),
   _descriptor.MethodDescriptor(
@@ -1058,7 +1578,7 @@ _REPLICASERVICE = _descriptor.ServiceDescriptor(
     index=10,
     containing_service=None,
     input_type=_DISKREPLACEREQUEST,
-    output_type=_REPLICA,
+    output_type=_DISKREPLACERESPONSE,
     serialized_options=None,
   ),
   _descriptor.MethodDescriptor(
@@ -1067,7 +1587,7 @@ _REPLICASERVICE = _descriptor.ServiceDescriptor(
     index=11,
     containing_service=None,
     input_type=_DISKPREPAREREMOVEREQUEST,
-    output_type=_DISKPREPAREREMOVEREPLY,
+    output_type=_DISKPREPAREREMOVERESPONSE,
     serialized_options=None,
   ),
   _descriptor.MethodDescriptor(
@@ -1076,7 +1596,7 @@ _REPLICASERVICE = _descriptor.ServiceDescriptor(
     index=12,
     containing_service=None,
     input_type=_DISKMARKASREMOVEDREQUEST,
-    output_type=_REPLICA,
+    output_type=_DISKMARKASREMOVEDRESPONSE,
     serialized_options=None,
   ),
   _descriptor.MethodDescriptor(
@@ -1085,7 +1605,7 @@ _REPLICASERVICE = _descriptor.ServiceDescriptor(
     index=13,
     containing_service=None,
     input_type=_REBUILDINGSETREQUEST,
-    output_type=_REPLICA,
+    output_type=_REBUILDINGSETRESPONSE,
     serialized_options=None,
   ),
   _descriptor.MethodDescriptor(
@@ -1094,7 +1614,7 @@ _REPLICASERVICE = _descriptor.ServiceDescriptor(
     index=14,
     containing_service=None,
     input_type=_REVISIONCOUNTERSETREQUEST,
-    output_type=_REPLICA,
+    output_type=_REVISIONCOUNTERSETRESPONSE,
     serialized_options=None,
   ),
 ])

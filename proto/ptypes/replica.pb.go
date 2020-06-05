@@ -64,6 +64,201 @@ func (m *ReplicaCreateRequest) GetSize() string {
 	return ""
 }
 
+type ReplicaCreateResponse struct {
+	Replica              *Replica `protobuf:"bytes,1,opt,name=replica,proto3" json:"replica,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ReplicaCreateResponse) Reset()         { *m = ReplicaCreateResponse{} }
+func (m *ReplicaCreateResponse) String() string { return proto.CompactTextString(m) }
+func (*ReplicaCreateResponse) ProtoMessage()    {}
+func (*ReplicaCreateResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_1e84aa831fb48ea1, []int{1}
+}
+
+func (m *ReplicaCreateResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ReplicaCreateResponse.Unmarshal(m, b)
+}
+func (m *ReplicaCreateResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ReplicaCreateResponse.Marshal(b, m, deterministic)
+}
+func (m *ReplicaCreateResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ReplicaCreateResponse.Merge(m, src)
+}
+func (m *ReplicaCreateResponse) XXX_Size() int {
+	return xxx_messageInfo_ReplicaCreateResponse.Size(m)
+}
+func (m *ReplicaCreateResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_ReplicaCreateResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ReplicaCreateResponse proto.InternalMessageInfo
+
+func (m *ReplicaCreateResponse) GetReplica() *Replica {
+	if m != nil {
+		return m.Replica
+	}
+	return nil
+}
+
+type ReplicaGetResponse struct {
+	Replica              *Replica `protobuf:"bytes,1,opt,name=replica,proto3" json:"replica,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ReplicaGetResponse) Reset()         { *m = ReplicaGetResponse{} }
+func (m *ReplicaGetResponse) String() string { return proto.CompactTextString(m) }
+func (*ReplicaGetResponse) ProtoMessage()    {}
+func (*ReplicaGetResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_1e84aa831fb48ea1, []int{2}
+}
+
+func (m *ReplicaGetResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ReplicaGetResponse.Unmarshal(m, b)
+}
+func (m *ReplicaGetResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ReplicaGetResponse.Marshal(b, m, deterministic)
+}
+func (m *ReplicaGetResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ReplicaGetResponse.Merge(m, src)
+}
+func (m *ReplicaGetResponse) XXX_Size() int {
+	return xxx_messageInfo_ReplicaGetResponse.Size(m)
+}
+func (m *ReplicaGetResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_ReplicaGetResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ReplicaGetResponse proto.InternalMessageInfo
+
+func (m *ReplicaGetResponse) GetReplica() *Replica {
+	if m != nil {
+		return m.Replica
+	}
+	return nil
+}
+
+type ReplicaOpenResponse struct {
+	Replica              *Replica `protobuf:"bytes,1,opt,name=replica,proto3" json:"replica,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ReplicaOpenResponse) Reset()         { *m = ReplicaOpenResponse{} }
+func (m *ReplicaOpenResponse) String() string { return proto.CompactTextString(m) }
+func (*ReplicaOpenResponse) ProtoMessage()    {}
+func (*ReplicaOpenResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_1e84aa831fb48ea1, []int{3}
+}
+
+func (m *ReplicaOpenResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ReplicaOpenResponse.Unmarshal(m, b)
+}
+func (m *ReplicaOpenResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ReplicaOpenResponse.Marshal(b, m, deterministic)
+}
+func (m *ReplicaOpenResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ReplicaOpenResponse.Merge(m, src)
+}
+func (m *ReplicaOpenResponse) XXX_Size() int {
+	return xxx_messageInfo_ReplicaOpenResponse.Size(m)
+}
+func (m *ReplicaOpenResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_ReplicaOpenResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ReplicaOpenResponse proto.InternalMessageInfo
+
+func (m *ReplicaOpenResponse) GetReplica() *Replica {
+	if m != nil {
+		return m.Replica
+	}
+	return nil
+}
+
+type ReplicaCloseResponse struct {
+	Replica              *Replica `protobuf:"bytes,1,opt,name=replica,proto3" json:"replica,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ReplicaCloseResponse) Reset()         { *m = ReplicaCloseResponse{} }
+func (m *ReplicaCloseResponse) String() string { return proto.CompactTextString(m) }
+func (*ReplicaCloseResponse) ProtoMessage()    {}
+func (*ReplicaCloseResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_1e84aa831fb48ea1, []int{4}
+}
+
+func (m *ReplicaCloseResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ReplicaCloseResponse.Unmarshal(m, b)
+}
+func (m *ReplicaCloseResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ReplicaCloseResponse.Marshal(b, m, deterministic)
+}
+func (m *ReplicaCloseResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ReplicaCloseResponse.Merge(m, src)
+}
+func (m *ReplicaCloseResponse) XXX_Size() int {
+	return xxx_messageInfo_ReplicaCloseResponse.Size(m)
+}
+func (m *ReplicaCloseResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_ReplicaCloseResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ReplicaCloseResponse proto.InternalMessageInfo
+
+func (m *ReplicaCloseResponse) GetReplica() *Replica {
+	if m != nil {
+		return m.Replica
+	}
+	return nil
+}
+
+type ReplicaReloadResponse struct {
+	Replica              *Replica `protobuf:"bytes,1,opt,name=replica,proto3" json:"replica,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ReplicaReloadResponse) Reset()         { *m = ReplicaReloadResponse{} }
+func (m *ReplicaReloadResponse) String() string { return proto.CompactTextString(m) }
+func (*ReplicaReloadResponse) ProtoMessage()    {}
+func (*ReplicaReloadResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_1e84aa831fb48ea1, []int{5}
+}
+
+func (m *ReplicaReloadResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ReplicaReloadResponse.Unmarshal(m, b)
+}
+func (m *ReplicaReloadResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ReplicaReloadResponse.Marshal(b, m, deterministic)
+}
+func (m *ReplicaReloadResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ReplicaReloadResponse.Merge(m, src)
+}
+func (m *ReplicaReloadResponse) XXX_Size() int {
+	return xxx_messageInfo_ReplicaReloadResponse.Size(m)
+}
+func (m *ReplicaReloadResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_ReplicaReloadResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ReplicaReloadResponse proto.InternalMessageInfo
+
+func (m *ReplicaReloadResponse) GetReplica() *Replica {
+	if m != nil {
+		return m.Replica
+	}
+	return nil
+}
+
 type ReplicaRevertRequest struct {
 	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	Created              string   `protobuf:"bytes,2,opt,name=created,proto3" json:"created,omitempty"`
@@ -76,7 +271,7 @@ func (m *ReplicaRevertRequest) Reset()         { *m = ReplicaRevertRequest{} }
 func (m *ReplicaRevertRequest) String() string { return proto.CompactTextString(m) }
 func (*ReplicaRevertRequest) ProtoMessage()    {}
 func (*ReplicaRevertRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_1e84aa831fb48ea1, []int{1}
+	return fileDescriptor_1e84aa831fb48ea1, []int{6}
 }
 
 func (m *ReplicaRevertRequest) XXX_Unmarshal(b []byte) error {
@@ -111,9 +306,48 @@ func (m *ReplicaRevertRequest) GetCreated() string {
 	return ""
 }
 
+type ReplicaRevertResponse struct {
+	Replica              *Replica `protobuf:"bytes,1,opt,name=replica,proto3" json:"replica,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ReplicaRevertResponse) Reset()         { *m = ReplicaRevertResponse{} }
+func (m *ReplicaRevertResponse) String() string { return proto.CompactTextString(m) }
+func (*ReplicaRevertResponse) ProtoMessage()    {}
+func (*ReplicaRevertResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_1e84aa831fb48ea1, []int{7}
+}
+
+func (m *ReplicaRevertResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ReplicaRevertResponse.Unmarshal(m, b)
+}
+func (m *ReplicaRevertResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ReplicaRevertResponse.Marshal(b, m, deterministic)
+}
+func (m *ReplicaRevertResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ReplicaRevertResponse.Merge(m, src)
+}
+func (m *ReplicaRevertResponse) XXX_Size() int {
+	return xxx_messageInfo_ReplicaRevertResponse.Size(m)
+}
+func (m *ReplicaRevertResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_ReplicaRevertResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ReplicaRevertResponse proto.InternalMessageInfo
+
+func (m *ReplicaRevertResponse) GetReplica() *Replica {
+	if m != nil {
+		return m.Replica
+	}
+	return nil
+}
+
 type ReplicaSnapshotRequest struct {
 	Name                 string            `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
-	UserCreated          bool              `protobuf:"varint,2,opt,name=userCreated,proto3" json:"userCreated,omitempty"`
+	UserCreated          bool              `protobuf:"varint,2,opt,name=user_created,json=userCreated,proto3" json:"user_created,omitempty"`
 	Created              string            `protobuf:"bytes,3,opt,name=created,proto3" json:"created,omitempty"`
 	Labels               map[string]string `protobuf:"bytes,4,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	XXX_NoUnkeyedLiteral struct{}          `json:"-"`
@@ -125,7 +359,7 @@ func (m *ReplicaSnapshotRequest) Reset()         { *m = ReplicaSnapshotRequest{}
 func (m *ReplicaSnapshotRequest) String() string { return proto.CompactTextString(m) }
 func (*ReplicaSnapshotRequest) ProtoMessage()    {}
 func (*ReplicaSnapshotRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_1e84aa831fb48ea1, []int{2}
+	return fileDescriptor_1e84aa831fb48ea1, []int{8}
 }
 
 func (m *ReplicaSnapshotRequest) XXX_Unmarshal(b []byte) error {
@@ -174,6 +408,45 @@ func (m *ReplicaSnapshotRequest) GetLabels() map[string]string {
 	return nil
 }
 
+type ReplicaSnapshotResponse struct {
+	Replica              *Replica `protobuf:"bytes,1,opt,name=replica,proto3" json:"replica,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ReplicaSnapshotResponse) Reset()         { *m = ReplicaSnapshotResponse{} }
+func (m *ReplicaSnapshotResponse) String() string { return proto.CompactTextString(m) }
+func (*ReplicaSnapshotResponse) ProtoMessage()    {}
+func (*ReplicaSnapshotResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_1e84aa831fb48ea1, []int{9}
+}
+
+func (m *ReplicaSnapshotResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ReplicaSnapshotResponse.Unmarshal(m, b)
+}
+func (m *ReplicaSnapshotResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ReplicaSnapshotResponse.Marshal(b, m, deterministic)
+}
+func (m *ReplicaSnapshotResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ReplicaSnapshotResponse.Merge(m, src)
+}
+func (m *ReplicaSnapshotResponse) XXX_Size() int {
+	return xxx_messageInfo_ReplicaSnapshotResponse.Size(m)
+}
+func (m *ReplicaSnapshotResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_ReplicaSnapshotResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ReplicaSnapshotResponse proto.InternalMessageInfo
+
+func (m *ReplicaSnapshotResponse) GetReplica() *Replica {
+	if m != nil {
+		return m.Replica
+	}
+	return nil
+}
+
 type ReplicaExpandRequest struct {
 	Size                 int64    `protobuf:"varint,1,opt,name=size,proto3" json:"size,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -185,7 +458,7 @@ func (m *ReplicaExpandRequest) Reset()         { *m = ReplicaExpandRequest{} }
 func (m *ReplicaExpandRequest) String() string { return proto.CompactTextString(m) }
 func (*ReplicaExpandRequest) ProtoMessage()    {}
 func (*ReplicaExpandRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_1e84aa831fb48ea1, []int{3}
+	return fileDescriptor_1e84aa831fb48ea1, []int{10}
 }
 
 func (m *ReplicaExpandRequest) XXX_Unmarshal(b []byte) error {
@@ -213,6 +486,45 @@ func (m *ReplicaExpandRequest) GetSize() int64 {
 	return 0
 }
 
+type ReplicaExpandResponse struct {
+	Replica              *Replica `protobuf:"bytes,1,opt,name=replica,proto3" json:"replica,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *ReplicaExpandResponse) Reset()         { *m = ReplicaExpandResponse{} }
+func (m *ReplicaExpandResponse) String() string { return proto.CompactTextString(m) }
+func (*ReplicaExpandResponse) ProtoMessage()    {}
+func (*ReplicaExpandResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_1e84aa831fb48ea1, []int{11}
+}
+
+func (m *ReplicaExpandResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ReplicaExpandResponse.Unmarshal(m, b)
+}
+func (m *ReplicaExpandResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ReplicaExpandResponse.Marshal(b, m, deterministic)
+}
+func (m *ReplicaExpandResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ReplicaExpandResponse.Merge(m, src)
+}
+func (m *ReplicaExpandResponse) XXX_Size() int {
+	return xxx_messageInfo_ReplicaExpandResponse.Size(m)
+}
+func (m *ReplicaExpandResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_ReplicaExpandResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_ReplicaExpandResponse proto.InternalMessageInfo
+
+func (m *ReplicaExpandResponse) GetReplica() *Replica {
+	if m != nil {
+		return m.Replica
+	}
+	return nil
+}
+
 type DiskRemoveRequest struct {
 	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	Force                bool     `protobuf:"varint,2,opt,name=force,proto3" json:"force,omitempty"`
@@ -225,7 +537,7 @@ func (m *DiskRemoveRequest) Reset()         { *m = DiskRemoveRequest{} }
 func (m *DiskRemoveRequest) String() string { return proto.CompactTextString(m) }
 func (*DiskRemoveRequest) ProtoMessage()    {}
 func (*DiskRemoveRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_1e84aa831fb48ea1, []int{4}
+	return fileDescriptor_1e84aa831fb48ea1, []int{12}
 }
 
 func (m *DiskRemoveRequest) XXX_Unmarshal(b []byte) error {
@@ -260,6 +572,45 @@ func (m *DiskRemoveRequest) GetForce() bool {
 	return false
 }
 
+type DiskRemoveResponse struct {
+	Replica              *Replica `protobuf:"bytes,1,opt,name=replica,proto3" json:"replica,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *DiskRemoveResponse) Reset()         { *m = DiskRemoveResponse{} }
+func (m *DiskRemoveResponse) String() string { return proto.CompactTextString(m) }
+func (*DiskRemoveResponse) ProtoMessage()    {}
+func (*DiskRemoveResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_1e84aa831fb48ea1, []int{13}
+}
+
+func (m *DiskRemoveResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_DiskRemoveResponse.Unmarshal(m, b)
+}
+func (m *DiskRemoveResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_DiskRemoveResponse.Marshal(b, m, deterministic)
+}
+func (m *DiskRemoveResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_DiskRemoveResponse.Merge(m, src)
+}
+func (m *DiskRemoveResponse) XXX_Size() int {
+	return xxx_messageInfo_DiskRemoveResponse.Size(m)
+}
+func (m *DiskRemoveResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_DiskRemoveResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_DiskRemoveResponse proto.InternalMessageInfo
+
+func (m *DiskRemoveResponse) GetReplica() *Replica {
+	if m != nil {
+		return m.Replica
+	}
+	return nil
+}
+
 type DiskReplaceRequest struct {
 	Target               string   `protobuf:"bytes,1,opt,name=target,proto3" json:"target,omitempty"`
 	Source               string   `protobuf:"bytes,2,opt,name=source,proto3" json:"source,omitempty"`
@@ -272,7 +623,7 @@ func (m *DiskReplaceRequest) Reset()         { *m = DiskReplaceRequest{} }
 func (m *DiskReplaceRequest) String() string { return proto.CompactTextString(m) }
 func (*DiskReplaceRequest) ProtoMessage()    {}
 func (*DiskReplaceRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_1e84aa831fb48ea1, []int{5}
+	return fileDescriptor_1e84aa831fb48ea1, []int{14}
 }
 
 func (m *DiskReplaceRequest) XXX_Unmarshal(b []byte) error {
@@ -307,6 +658,45 @@ func (m *DiskReplaceRequest) GetSource() string {
 	return ""
 }
 
+type DiskReplaceResponse struct {
+	Replica              *Replica `protobuf:"bytes,1,opt,name=replica,proto3" json:"replica,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *DiskReplaceResponse) Reset()         { *m = DiskReplaceResponse{} }
+func (m *DiskReplaceResponse) String() string { return proto.CompactTextString(m) }
+func (*DiskReplaceResponse) ProtoMessage()    {}
+func (*DiskReplaceResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_1e84aa831fb48ea1, []int{15}
+}
+
+func (m *DiskReplaceResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_DiskReplaceResponse.Unmarshal(m, b)
+}
+func (m *DiskReplaceResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_DiskReplaceResponse.Marshal(b, m, deterministic)
+}
+func (m *DiskReplaceResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_DiskReplaceResponse.Merge(m, src)
+}
+func (m *DiskReplaceResponse) XXX_Size() int {
+	return xxx_messageInfo_DiskReplaceResponse.Size(m)
+}
+func (m *DiskReplaceResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_DiskReplaceResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_DiskReplaceResponse proto.InternalMessageInfo
+
+func (m *DiskReplaceResponse) GetReplica() *Replica {
+	if m != nil {
+		return m.Replica
+	}
+	return nil
+}
+
 type DiskPrepareRemoveRequest struct {
 	Name                 string   `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -318,7 +708,7 @@ func (m *DiskPrepareRemoveRequest) Reset()         { *m = DiskPrepareRemoveReque
 func (m *DiskPrepareRemoveRequest) String() string { return proto.CompactTextString(m) }
 func (*DiskPrepareRemoveRequest) ProtoMessage()    {}
 func (*DiskPrepareRemoveRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_1e84aa831fb48ea1, []int{6}
+	return fileDescriptor_1e84aa831fb48ea1, []int{16}
 }
 
 func (m *DiskPrepareRemoveRequest) XXX_Unmarshal(b []byte) error {
@@ -346,39 +736,39 @@ func (m *DiskPrepareRemoveRequest) GetName() string {
 	return ""
 }
 
-type DiskPrepareRemoveReply struct {
+type DiskPrepareRemoveResponse struct {
 	Operations           []*PrepareRemoveAction `protobuf:"bytes,1,rep,name=operations,proto3" json:"operations,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}               `json:"-"`
 	XXX_unrecognized     []byte                 `json:"-"`
 	XXX_sizecache        int32                  `json:"-"`
 }
 
-func (m *DiskPrepareRemoveReply) Reset()         { *m = DiskPrepareRemoveReply{} }
-func (m *DiskPrepareRemoveReply) String() string { return proto.CompactTextString(m) }
-func (*DiskPrepareRemoveReply) ProtoMessage()    {}
-func (*DiskPrepareRemoveReply) Descriptor() ([]byte, []int) {
-	return fileDescriptor_1e84aa831fb48ea1, []int{7}
+func (m *DiskPrepareRemoveResponse) Reset()         { *m = DiskPrepareRemoveResponse{} }
+func (m *DiskPrepareRemoveResponse) String() string { return proto.CompactTextString(m) }
+func (*DiskPrepareRemoveResponse) ProtoMessage()    {}
+func (*DiskPrepareRemoveResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_1e84aa831fb48ea1, []int{17}
 }
 
-func (m *DiskPrepareRemoveReply) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_DiskPrepareRemoveReply.Unmarshal(m, b)
+func (m *DiskPrepareRemoveResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_DiskPrepareRemoveResponse.Unmarshal(m, b)
 }
-func (m *DiskPrepareRemoveReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_DiskPrepareRemoveReply.Marshal(b, m, deterministic)
+func (m *DiskPrepareRemoveResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_DiskPrepareRemoveResponse.Marshal(b, m, deterministic)
 }
-func (m *DiskPrepareRemoveReply) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_DiskPrepareRemoveReply.Merge(m, src)
+func (m *DiskPrepareRemoveResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_DiskPrepareRemoveResponse.Merge(m, src)
 }
-func (m *DiskPrepareRemoveReply) XXX_Size() int {
-	return xxx_messageInfo_DiskPrepareRemoveReply.Size(m)
+func (m *DiskPrepareRemoveResponse) XXX_Size() int {
+	return xxx_messageInfo_DiskPrepareRemoveResponse.Size(m)
 }
-func (m *DiskPrepareRemoveReply) XXX_DiscardUnknown() {
-	xxx_messageInfo_DiskPrepareRemoveReply.DiscardUnknown(m)
+func (m *DiskPrepareRemoveResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_DiskPrepareRemoveResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_DiskPrepareRemoveReply proto.InternalMessageInfo
+var xxx_messageInfo_DiskPrepareRemoveResponse proto.InternalMessageInfo
 
-func (m *DiskPrepareRemoveReply) GetOperations() []*PrepareRemoveAction {
+func (m *DiskPrepareRemoveResponse) GetOperations() []*PrepareRemoveAction {
 	if m != nil {
 		return m.Operations
 	}
@@ -396,7 +786,7 @@ func (m *DiskMarkAsRemovedRequest) Reset()         { *m = DiskMarkAsRemovedReque
 func (m *DiskMarkAsRemovedRequest) String() string { return proto.CompactTextString(m) }
 func (*DiskMarkAsRemovedRequest) ProtoMessage()    {}
 func (*DiskMarkAsRemovedRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_1e84aa831fb48ea1, []int{8}
+	return fileDescriptor_1e84aa831fb48ea1, []int{18}
 }
 
 func (m *DiskMarkAsRemovedRequest) XXX_Unmarshal(b []byte) error {
@@ -424,6 +814,45 @@ func (m *DiskMarkAsRemovedRequest) GetName() string {
 	return ""
 }
 
+type DiskMarkAsRemovedResponse struct {
+	Replica              *Replica `protobuf:"bytes,1,opt,name=replica,proto3" json:"replica,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *DiskMarkAsRemovedResponse) Reset()         { *m = DiskMarkAsRemovedResponse{} }
+func (m *DiskMarkAsRemovedResponse) String() string { return proto.CompactTextString(m) }
+func (*DiskMarkAsRemovedResponse) ProtoMessage()    {}
+func (*DiskMarkAsRemovedResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_1e84aa831fb48ea1, []int{19}
+}
+
+func (m *DiskMarkAsRemovedResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_DiskMarkAsRemovedResponse.Unmarshal(m, b)
+}
+func (m *DiskMarkAsRemovedResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_DiskMarkAsRemovedResponse.Marshal(b, m, deterministic)
+}
+func (m *DiskMarkAsRemovedResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_DiskMarkAsRemovedResponse.Merge(m, src)
+}
+func (m *DiskMarkAsRemovedResponse) XXX_Size() int {
+	return xxx_messageInfo_DiskMarkAsRemovedResponse.Size(m)
+}
+func (m *DiskMarkAsRemovedResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_DiskMarkAsRemovedResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_DiskMarkAsRemovedResponse proto.InternalMessageInfo
+
+func (m *DiskMarkAsRemovedResponse) GetReplica() *Replica {
+	if m != nil {
+		return m.Replica
+	}
+	return nil
+}
+
 type RebuildingSetRequest struct {
 	Rebuilding           bool     `protobuf:"varint,1,opt,name=rebuilding,proto3" json:"rebuilding,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -435,7 +864,7 @@ func (m *RebuildingSetRequest) Reset()         { *m = RebuildingSetRequest{} }
 func (m *RebuildingSetRequest) String() string { return proto.CompactTextString(m) }
 func (*RebuildingSetRequest) ProtoMessage()    {}
 func (*RebuildingSetRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_1e84aa831fb48ea1, []int{9}
+	return fileDescriptor_1e84aa831fb48ea1, []int{20}
 }
 
 func (m *RebuildingSetRequest) XXX_Unmarshal(b []byte) error {
@@ -463,6 +892,45 @@ func (m *RebuildingSetRequest) GetRebuilding() bool {
 	return false
 }
 
+type RebuildingSetResponse struct {
+	Replica              *Replica `protobuf:"bytes,1,opt,name=replica,proto3" json:"replica,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *RebuildingSetResponse) Reset()         { *m = RebuildingSetResponse{} }
+func (m *RebuildingSetResponse) String() string { return proto.CompactTextString(m) }
+func (*RebuildingSetResponse) ProtoMessage()    {}
+func (*RebuildingSetResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_1e84aa831fb48ea1, []int{21}
+}
+
+func (m *RebuildingSetResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_RebuildingSetResponse.Unmarshal(m, b)
+}
+func (m *RebuildingSetResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_RebuildingSetResponse.Marshal(b, m, deterministic)
+}
+func (m *RebuildingSetResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RebuildingSetResponse.Merge(m, src)
+}
+func (m *RebuildingSetResponse) XXX_Size() int {
+	return xxx_messageInfo_RebuildingSetResponse.Size(m)
+}
+func (m *RebuildingSetResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_RebuildingSetResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RebuildingSetResponse proto.InternalMessageInfo
+
+func (m *RebuildingSetResponse) GetReplica() *Replica {
+	if m != nil {
+		return m.Replica
+	}
+	return nil
+}
+
 type RevisionCounterSetRequest struct {
 	Counter              int64    `protobuf:"varint,1,opt,name=counter,proto3" json:"counter,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -474,7 +942,7 @@ func (m *RevisionCounterSetRequest) Reset()         { *m = RevisionCounterSetReq
 func (m *RevisionCounterSetRequest) String() string { return proto.CompactTextString(m) }
 func (*RevisionCounterSetRequest) ProtoMessage()    {}
 func (*RevisionCounterSetRequest) Descriptor() ([]byte, []int) {
-	return fileDescriptor_1e84aa831fb48ea1, []int{10}
+	return fileDescriptor_1e84aa831fb48ea1, []int{22}
 }
 
 func (m *RevisionCounterSetRequest) XXX_Unmarshal(b []byte) error {
@@ -502,12 +970,51 @@ func (m *RevisionCounterSetRequest) GetCounter() int64 {
 	return 0
 }
 
+type RevisionCounterSetResponse struct {
+	Replica              *Replica `protobuf:"bytes,1,opt,name=replica,proto3" json:"replica,omitempty"`
+	XXX_NoUnkeyedLiteral struct{} `json:"-"`
+	XXX_unrecognized     []byte   `json:"-"`
+	XXX_sizecache        int32    `json:"-"`
+}
+
+func (m *RevisionCounterSetResponse) Reset()         { *m = RevisionCounterSetResponse{} }
+func (m *RevisionCounterSetResponse) String() string { return proto.CompactTextString(m) }
+func (*RevisionCounterSetResponse) ProtoMessage()    {}
+func (*RevisionCounterSetResponse) Descriptor() ([]byte, []int) {
+	return fileDescriptor_1e84aa831fb48ea1, []int{23}
+}
+
+func (m *RevisionCounterSetResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_RevisionCounterSetResponse.Unmarshal(m, b)
+}
+func (m *RevisionCounterSetResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_RevisionCounterSetResponse.Marshal(b, m, deterministic)
+}
+func (m *RevisionCounterSetResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RevisionCounterSetResponse.Merge(m, src)
+}
+func (m *RevisionCounterSetResponse) XXX_Size() int {
+	return xxx_messageInfo_RevisionCounterSetResponse.Size(m)
+}
+func (m *RevisionCounterSetResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_RevisionCounterSetResponse.DiscardUnknown(m)
+}
+
+var xxx_messageInfo_RevisionCounterSetResponse proto.InternalMessageInfo
+
+func (m *RevisionCounterSetResponse) GetReplica() *Replica {
+	if m != nil {
+		return m.Replica
+	}
+	return nil
+}
+
 type DiskInfo struct {
 	Name                 string            `protobuf:"bytes,1,opt,name=name,proto3" json:"name,omitempty"`
 	Parent               string            `protobuf:"bytes,2,opt,name=parent,proto3" json:"parent,omitempty"`
 	Children             map[string]bool   `protobuf:"bytes,3,rep,name=children,proto3" json:"children,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"varint,2,opt,name=value,proto3"`
 	Removed              bool              `protobuf:"varint,4,opt,name=removed,proto3" json:"removed,omitempty"`
-	UserCreated          bool              `protobuf:"varint,5,opt,name=userCreated,proto3" json:"userCreated,omitempty"`
+	UserCreated          bool              `protobuf:"varint,5,opt,name=user_created,json=userCreated,proto3" json:"user_created,omitempty"`
 	Created              string            `protobuf:"bytes,6,opt,name=created,proto3" json:"created,omitempty"`
 	Size                 string            `protobuf:"bytes,7,opt,name=size,proto3" json:"size,omitempty"`
 	Labels               map[string]string `protobuf:"bytes,8,rep,name=labels,proto3" json:"labels,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
@@ -520,7 +1027,7 @@ func (m *DiskInfo) Reset()         { *m = DiskInfo{} }
 func (m *DiskInfo) String() string { return proto.CompactTextString(m) }
 func (*DiskInfo) ProtoMessage()    {}
 func (*DiskInfo) Descriptor() ([]byte, []int) {
-	return fileDescriptor_1e84aa831fb48ea1, []int{11}
+	return fileDescriptor_1e84aa831fb48ea1, []int{24}
 }
 
 func (m *DiskInfo) XXX_Unmarshal(b []byte) error {
@@ -603,13 +1110,13 @@ type Replica struct {
 	Head                 string               `protobuf:"bytes,3,opt,name=head,proto3" json:"head,omitempty"`
 	Parent               string               `protobuf:"bytes,4,opt,name=parent,proto3" json:"parent,omitempty"`
 	Size                 string               `protobuf:"bytes,5,opt,name=size,proto3" json:"size,omitempty"`
-	SectorSize           int64                `protobuf:"varint,6,opt,name=sectorSize,proto3" json:"sectorSize,omitempty"`
-	BackingFile          string               `protobuf:"bytes,7,opt,name=backingFile,proto3" json:"backingFile,omitempty"`
+	SectorSize           int64                `protobuf:"varint,6,opt,name=sector_size,json=sectorSize,proto3" json:"sector_size,omitempty"`
+	BackingFile          string               `protobuf:"bytes,7,opt,name=backing_file,json=backingFile,proto3" json:"backing_file,omitempty"`
 	State                string               `protobuf:"bytes,8,opt,name=state,proto3" json:"state,omitempty"`
 	Chain                []string             `protobuf:"bytes,9,rep,name=chain,proto3" json:"chain,omitempty"`
 	Disks                map[string]*DiskInfo `protobuf:"bytes,10,rep,name=disks,proto3" json:"disks,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
-	RemainSnapshots      int32                `protobuf:"varint,11,opt,name=remainSnapshots,proto3" json:"remainSnapshots,omitempty"`
-	RevisionCounter      int64                `protobuf:"varint,12,opt,name=revisionCounter,proto3" json:"revisionCounter,omitempty"`
+	RemainSnapshots      int32                `protobuf:"varint,11,opt,name=remain_snapshots,json=remainSnapshots,proto3" json:"remain_snapshots,omitempty"`
+	RevisionCounter      int64                `protobuf:"varint,12,opt,name=revision_counter,json=revisionCounter,proto3" json:"revision_counter,omitempty"`
 	XXX_NoUnkeyedLiteral struct{}             `json:"-"`
 	XXX_unrecognized     []byte               `json:"-"`
 	XXX_sizecache        int32                `json:"-"`
@@ -619,7 +1126,7 @@ func (m *Replica) Reset()         { *m = Replica{} }
 func (m *Replica) String() string { return proto.CompactTextString(m) }
 func (*Replica) ProtoMessage()    {}
 func (*Replica) Descriptor() ([]byte, []int) {
-	return fileDescriptor_1e84aa831fb48ea1, []int{12}
+	return fileDescriptor_1e84aa831fb48ea1, []int{25}
 }
 
 func (m *Replica) XXX_Unmarshal(b []byte) error {
@@ -737,7 +1244,7 @@ func (m *PrepareRemoveAction) Reset()         { *m = PrepareRemoveAction{} }
 func (m *PrepareRemoveAction) String() string { return proto.CompactTextString(m) }
 func (*PrepareRemoveAction) ProtoMessage()    {}
 func (*PrepareRemoveAction) Descriptor() ([]byte, []int) {
-	return fileDescriptor_1e84aa831fb48ea1, []int{13}
+	return fileDescriptor_1e84aa831fb48ea1, []int{26}
 }
 
 func (m *PrepareRemoveAction) XXX_Unmarshal(b []byte) error {
@@ -781,17 +1288,30 @@ func (m *PrepareRemoveAction) GetTarget() string {
 
 func init() {
 	proto.RegisterType((*ReplicaCreateRequest)(nil), "ptypes.ReplicaCreateRequest")
+	proto.RegisterType((*ReplicaCreateResponse)(nil), "ptypes.ReplicaCreateResponse")
+	proto.RegisterType((*ReplicaGetResponse)(nil), "ptypes.ReplicaGetResponse")
+	proto.RegisterType((*ReplicaOpenResponse)(nil), "ptypes.ReplicaOpenResponse")
+	proto.RegisterType((*ReplicaCloseResponse)(nil), "ptypes.ReplicaCloseResponse")
+	proto.RegisterType((*ReplicaReloadResponse)(nil), "ptypes.ReplicaReloadResponse")
 	proto.RegisterType((*ReplicaRevertRequest)(nil), "ptypes.ReplicaRevertRequest")
+	proto.RegisterType((*ReplicaRevertResponse)(nil), "ptypes.ReplicaRevertResponse")
 	proto.RegisterType((*ReplicaSnapshotRequest)(nil), "ptypes.ReplicaSnapshotRequest")
 	proto.RegisterMapType((map[string]string)(nil), "ptypes.ReplicaSnapshotRequest.LabelsEntry")
+	proto.RegisterType((*ReplicaSnapshotResponse)(nil), "ptypes.ReplicaSnapshotResponse")
 	proto.RegisterType((*ReplicaExpandRequest)(nil), "ptypes.ReplicaExpandRequest")
+	proto.RegisterType((*ReplicaExpandResponse)(nil), "ptypes.ReplicaExpandResponse")
 	proto.RegisterType((*DiskRemoveRequest)(nil), "ptypes.DiskRemoveRequest")
+	proto.RegisterType((*DiskRemoveResponse)(nil), "ptypes.DiskRemoveResponse")
 	proto.RegisterType((*DiskReplaceRequest)(nil), "ptypes.DiskReplaceRequest")
+	proto.RegisterType((*DiskReplaceResponse)(nil), "ptypes.DiskReplaceResponse")
 	proto.RegisterType((*DiskPrepareRemoveRequest)(nil), "ptypes.DiskPrepareRemoveRequest")
-	proto.RegisterType((*DiskPrepareRemoveReply)(nil), "ptypes.DiskPrepareRemoveReply")
+	proto.RegisterType((*DiskPrepareRemoveResponse)(nil), "ptypes.DiskPrepareRemoveResponse")
 	proto.RegisterType((*DiskMarkAsRemovedRequest)(nil), "ptypes.DiskMarkAsRemovedRequest")
+	proto.RegisterType((*DiskMarkAsRemovedResponse)(nil), "ptypes.DiskMarkAsRemovedResponse")
 	proto.RegisterType((*RebuildingSetRequest)(nil), "ptypes.RebuildingSetRequest")
+	proto.RegisterType((*RebuildingSetResponse)(nil), "ptypes.RebuildingSetResponse")
 	proto.RegisterType((*RevisionCounterSetRequest)(nil), "ptypes.RevisionCounterSetRequest")
+	proto.RegisterType((*RevisionCounterSetResponse)(nil), "ptypes.RevisionCounterSetResponse")
 	proto.RegisterType((*DiskInfo)(nil), "ptypes.DiskInfo")
 	proto.RegisterMapType((map[string]bool)(nil), "ptypes.DiskInfo.ChildrenEntry")
 	proto.RegisterMapType((map[string]string)(nil), "ptypes.DiskInfo.LabelsEntry")
@@ -803,65 +1323,77 @@ func init() {
 func init() { proto.RegisterFile("replica.proto", fileDescriptor_1e84aa831fb48ea1) }
 
 var fileDescriptor_1e84aa831fb48ea1 = []byte{
-	// 919 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xa4, 0x56, 0xdd, 0x6e, 0xdb, 0x36,
-	0x14, 0xae, 0xa3, 0xd8, 0x71, 0x8e, 0x9b, 0xa5, 0xe3, 0x02, 0x43, 0x55, 0x0b, 0xc3, 0xd3, 0xc5,
-	0x10, 0xf4, 0x42, 0x1d, 0xb2, 0xbf, 0x36, 0xdd, 0x80, 0x66, 0x71, 0xf6, 0x53, 0x6c, 0xd8, 0xa0,
-	0x60, 0xd8, 0xd5, 0x2e, 0x68, 0xf9, 0xc4, 0x11, 0xac, 0x48, 0x1a, 0x49, 0x1b, 0xf3, 0x1e, 0x61,
-	0x2f, 0xb5, 0xc7, 0xd9, 0x0b, 0xec, 0x01, 0x06, 0x92, 0xa2, 0x42, 0xc9, 0x8c, 0xbb, 0xa0, 0x77,
-	0x3c, 0x47, 0xe7, 0x1c, 0x1e, 0x7e, 0xe7, 0xe7, 0x13, 0x1c, 0x30, 0x2c, 0xb3, 0x34, 0xa1, 0x51,
-	0xc9, 0x0a, 0x51, 0x90, 0x5e, 0x29, 0xd6, 0x25, 0xf2, 0xe0, 0xc9, 0xbc, 0x28, 0xe6, 0x19, 0x3e,
-	0x57, 0xda, 0xe9, 0xf2, 0xea, 0x39, 0xde, 0x94, 0x62, 0xad, 0x8d, 0xc2, 0x67, 0x70, 0x14, 0x6b,
-	0xaf, 0x73, 0x86, 0x54, 0x60, 0x8c, 0xbf, 0x2f, 0x91, 0x0b, 0x42, 0x60, 0x97, 0xa7, 0x7f, 0xa2,
-	0xdf, 0x19, 0x77, 0x8e, 0xf7, 0x63, 0x75, 0x0e, 0x27, 0xb5, 0x6d, 0x8c, 0x2b, 0x64, 0xc2, 0xb2,
-	0xcd, 0xe9, 0x4d, 0x6d, 0x2b, 0xcf, 0xc4, 0x87, 0xbd, 0x44, 0x05, 0x9c, 0xf9, 0x3b, 0x4a, 0x6d,
-	0xc4, 0xf0, 0x9f, 0x0e, 0x0c, 0xab, 0x30, 0x97, 0x39, 0x2d, 0xf9, 0x75, 0xb1, 0x35, 0xd0, 0x18,
-	0x06, 0x4b, 0x8e, 0xec, 0xdc, 0x0a, 0xd6, 0x8f, 0x6d, 0x95, 0x7d, 0x95, 0xd7, 0xb8, 0x8a, 0x7c,
-	0x0d, 0xbd, 0x8c, 0x4e, 0x31, 0xe3, 0xfe, 0xee, 0xd8, 0x3b, 0x1e, 0x9c, 0x3c, 0x8b, 0x34, 0x24,
-	0x91, 0xfb, 0xfe, 0xe8, 0x07, 0x65, 0x7c, 0x91, 0x0b, 0xb6, 0x8e, 0x2b, 0xcf, 0xe0, 0x25, 0x0c,
-	0x2c, 0x35, 0x79, 0x04, 0xde, 0x02, 0xd7, 0x55, 0x86, 0xf2, 0x48, 0x8e, 0xa0, 0xbb, 0xa2, 0xd9,
-	0x12, 0xab, 0x77, 0x6a, 0xe1, 0x74, 0xe7, 0x45, 0xc7, 0xc2, 0xf6, 0xe2, 0x8f, 0x92, 0xe6, 0x33,
-	0x17, 0xb6, 0x5e, 0x85, 0xed, 0x57, 0xf0, 0xfe, 0x24, 0xe5, 0x8b, 0x18, 0x6f, 0x8a, 0x15, 0x6e,
-	0xc3, 0xe3, 0x08, 0xba, 0x57, 0x05, 0x4b, 0xb0, 0x42, 0x42, 0x0b, 0xe1, 0x04, 0x88, 0x76, 0x2f,
-	0x33, 0x9a, 0xd4, 0xfe, 0x43, 0xe8, 0x09, 0xca, 0xe6, 0x28, 0xaa, 0x08, 0x95, 0x24, 0xf5, 0xbc,
-	0x58, 0x9a, 0x20, 0xfb, 0x71, 0x25, 0x85, 0x11, 0xf8, 0x32, 0xca, 0xcf, 0x0c, 0x4b, 0xca, 0xf0,
-	0xad, 0xb9, 0x84, 0xbf, 0xc0, 0xd0, 0x61, 0x5f, 0x66, 0x6b, 0xf2, 0x0a, 0xa0, 0x28, 0x91, 0x51,
-	0x91, 0x16, 0x39, 0xf7, 0x3b, 0x0a, 0xfd, 0x27, 0x06, 0xfd, 0x86, 0xfd, 0x59, 0x22, 0x6d, 0x62,
-	0xcb, 0xdc, 0xa4, 0xf1, 0x23, 0x65, 0x8b, 0x33, 0xae, 0xad, 0x66, 0xdb, 0xd2, 0xf8, 0x5c, 0xe2,
-	0x3c, 0x5d, 0xa6, 0xd9, 0x2c, 0xcd, 0xe7, 0x97, 0x58, 0xb7, 0xd3, 0x08, 0x80, 0xd5, 0x7a, 0xe5,
-	0xd1, 0x8f, 0x2d, 0x4d, 0xf8, 0x19, 0x3c, 0x8e, 0x71, 0x95, 0xf2, 0xb4, 0xc8, 0xcf, 0x8b, 0x65,
-	0x2e, 0x90, 0x59, 0xce, 0xb2, 0xab, 0xb4, 0xb2, 0xaa, 0x93, 0x11, 0xc3, 0xbf, 0x3c, 0xe8, 0xcb,
-	0xfc, 0xbe, 0xcf, 0xaf, 0x0a, 0x67, 0x89, 0x86, 0xd0, 0x93, 0xef, 0xcb, 0x85, 0x81, 0x57, 0x4b,
-	0xe4, 0x14, 0xfa, 0xc9, 0x75, 0x9a, 0xcd, 0x18, 0xe6, 0xbe, 0xa7, 0x20, 0x19, 0x19, 0x48, 0x4c,
-	0xbc, 0xe8, 0xbc, 0x32, 0xd0, 0x4d, 0x58, 0xdb, 0xcb, 0x74, 0x98, 0x46, 0xc2, 0xdf, 0x55, 0x0f,
-	0x31, 0x62, 0x7b, 0x40, 0xba, 0x5b, 0x07, 0xa4, 0xd7, 0x1c, 0x10, 0xd3, 0x89, 0x7b, 0xb7, 0x53,
-	0x4e, 0x3e, 0xad, 0x87, 0xa6, 0xaf, 0x72, 0x7c, 0xba, 0x91, 0xa3, 0x6b, 0x4c, 0x5e, 0xc1, 0x41,
-	0x23, 0xf5, 0xb7, 0x0d, 0x4a, 0xdf, 0x1a, 0x94, 0x77, 0x99, 0xb1, 0xbf, 0x3d, 0xd8, 0xab, 0x86,
-	0x4c, 0x5a, 0xcd, 0x52, 0x26, 0xd6, 0x55, 0xa9, 0xb5, 0xd0, 0xea, 0x82, 0x9d, 0x76, 0x17, 0x48,
-	0x0c, 0xae, 0x91, 0x9a, 0xdd, 0xa1, 0xce, 0x56, 0x05, 0x77, 0x1b, 0x15, 0x34, 0x78, 0x75, 0x2d,
-	0xbc, 0x46, 0x00, 0x1c, 0x13, 0x51, 0xb0, 0x4b, 0xf9, 0xa5, 0xa7, 0x7a, 0xc5, 0xd2, 0xc8, 0xfa,
-	0x4c, 0x69, 0xb2, 0x48, 0xf3, 0xf9, 0x37, 0x69, 0x66, 0xa0, 0xb6, 0x55, 0x32, 0x6f, 0x2e, 0xa8,
-	0x40, 0xbf, 0xaf, 0x5f, 0xa7, 0x04, 0xa9, 0x4d, 0xae, 0x69, 0x9a, 0xfb, 0xfb, 0x63, 0x4f, 0x6a,
-	0x95, 0x40, 0x3e, 0x96, 0x6f, 0xe4, 0x0b, 0xee, 0x83, 0x2a, 0x4e, 0xd0, 0xda, 0x68, 0xaa, 0x48,
-	0x55, 0x69, 0xb4, 0x21, 0x39, 0x86, 0x43, 0x86, 0x37, 0x34, 0xcd, 0xcd, 0xb6, 0xe3, 0xfe, 0x60,
-	0xdc, 0x39, 0xee, 0xc6, 0x6d, 0xb5, 0xb6, 0x6c, 0xcc, 0x83, 0xff, 0x50, 0x3d, 0xa7, 0xad, 0x0e,
-	0xde, 0x00, 0xdc, 0x5e, 0xe4, 0xa8, 0xd7, 0x47, 0x76, 0xbd, 0x06, 0x27, 0x8f, 0xda, 0x2d, 0x64,
-	0x57, 0xf0, 0x37, 0xf8, 0xc0, 0xb1, 0x10, 0x64, 0x09, 0xa8, 0x3a, 0x99, 0xdd, 0x45, 0x6b, 0xbd,
-	0x6b, 0x77, 0x59, 0xbb, 0xce, 0xb3, 0x77, 0xdd, 0xc9, 0xbf, 0x7b, 0xf0, 0x9e, 0x59, 0xf7, 0xc8,
-	0x56, 0x69, 0x82, 0xe4, 0x35, 0x1c, 0x34, 0x38, 0x8f, 0x3c, 0x6d, 0xa1, 0xd8, 0xa0, 0xc2, 0xe0,
-	0xb0, 0xf5, 0x35, 0x7c, 0x40, 0xce, 0xea, 0x08, 0x13, 0xcc, 0x50, 0x20, 0x19, 0x46, 0x9a, 0x64,
-	0x23, 0x43, 0xb2, 0xd1, 0x85, 0x24, 0xd9, 0xe0, 0x0e, 0x7d, 0xf8, 0x80, 0x7c, 0x01, 0x50, 0x85,
-	0xf8, 0x56, 0x6e, 0xe4, 0x3b, 0xfc, 0x1d, 0x77, 0xbf, 0x80, 0x41, 0x25, 0xfc, 0x54, 0x62, 0x7e,
-	0x1f, 0xcf, 0x97, 0xf0, 0xd0, 0x3c, 0x30, 0x2b, 0x38, 0xde, 0xc7, 0xf5, 0xb4, 0x7e, 0x70, 0x8c,
-	0x59, 0x21, 0x27, 0xe4, 0xff, 0xfb, 0xbe, 0xb6, 0x7c, 0xe5, 0x6f, 0xc3, 0x06, 0xdc, 0x8d, 0xbf,
-	0x09, 0x57, 0x84, 0x09, 0x1c, 0xb6, 0x18, 0x9b, 0x8c, 0xb6, 0x53, 0xf9, 0xf6, 0x3c, 0x34, 0x1d,
-	0x6f, 0xe4, 0xd1, 0x60, 0x69, 0x37, 0x0a, 0x70, 0x4b, 0xd2, 0xe4, 0xb1, 0xdd, 0xd5, 0x0d, 0xb2,
-	0x74, 0xf9, 0x7e, 0x09, 0x03, 0x8b, 0xa1, 0x49, 0xd0, 0x74, 0xb6, 0x69, 0xdb, 0xe5, 0xfd, 0xab,
-	0xfe, 0x3d, 0x68, 0x0c, 0x0a, 0x19, 0xdb, 0x31, 0x5c, 0xa4, 0x1d, 0x8c, 0xb6, 0x58, 0x94, 0x99,
-	0x6c, 0xc3, 0xef, 0x74, 0xe0, 0x06, 0xd7, 0x36, 0x03, 0xbb, 0x68, 0xf8, 0x4e, 0x78, 0x2d, 0x16,
-	0xb6, 0xe1, 0xdd, 0x24, 0x67, 0x57, 0x84, 0x37, 0x40, 0x36, 0xf9, 0x98, 0x7c, 0x78, 0x6b, 0x78,
-	0x07, 0x57, 0x3b, 0x62, 0x4d, 0x7b, 0xaa, 0x2f, 0x3f, 0xf9, 0x2f, 0x00, 0x00, 0xff, 0xff, 0x93,
-	0xb2, 0x23, 0xa1, 0x14, 0x0b, 0x00, 0x00,
+	// 1110 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xa4, 0x57, 0xdd, 0x6e, 0xe3, 0x44,
+	0x14, 0x76, 0x36, 0x6d, 0x9a, 0x1e, 0xb7, 0xb4, 0xcc, 0x96, 0xe2, 0xba, 0x4b, 0xb7, 0xf5, 0x05,
+	0xea, 0xee, 0x45, 0x16, 0x95, 0x1f, 0xc1, 0xae, 0x10, 0xf4, 0x77, 0x01, 0xf1, 0x27, 0x97, 0x0b,
+	0x84, 0xb4, 0xaa, 0xa6, 0xce, 0x34, 0xb5, 0xe2, 0xda, 0x66, 0xc6, 0x89, 0x08, 0xaf, 0xc0, 0xb3,
+	0xf0, 0x14, 0xbc, 0x0c, 0x8f, 0x81, 0xe6, 0xcf, 0x99, 0xb1, 0x9d, 0xac, 0x12, 0xee, 0x3c, 0x27,
+	0x67, 0xce, 0x7c, 0x73, 0xbe, 0x73, 0xce, 0x7c, 0x81, 0x4d, 0x4a, 0xf2, 0x24, 0x8e, 0x70, 0x2f,
+	0xa7, 0x59, 0x91, 0xa1, 0x4e, 0x5e, 0x4c, 0x72, 0xc2, 0xfc, 0xfd, 0x41, 0x96, 0x0d, 0x12, 0xf2,
+	0x42, 0x58, 0x6f, 0x47, 0x77, 0x2f, 0xc8, 0x43, 0x5e, 0x4c, 0xa4, 0x53, 0xf0, 0x1c, 0x76, 0x42,
+	0xb9, 0xeb, 0x9c, 0x12, 0x5c, 0x90, 0x90, 0xfc, 0x3e, 0x22, 0xac, 0x40, 0x08, 0x56, 0x58, 0xfc,
+	0x27, 0xf1, 0x5a, 0x87, 0xad, 0xe3, 0xf5, 0x50, 0x7c, 0x07, 0x67, 0xf0, 0x5e, 0xc5, 0x97, 0xe5,
+	0x59, 0xca, 0x08, 0x7a, 0x06, 0x6b, 0xea, 0x68, 0xe1, 0xef, 0x9e, 0x6c, 0xf5, 0xe4, 0xd9, 0x3d,
+	0xe5, 0x1f, 0xea, 0xdf, 0x83, 0xaf, 0x00, 0x29, 0xdb, 0x6b, 0x52, 0x2c, 0x13, 0xe0, 0x6b, 0x78,
+	0xac, 0x6c, 0x3f, 0xe5, 0x24, 0x5d, 0x26, 0xc2, 0xe9, 0xf4, 0xca, 0x49, 0xc6, 0x96, 0xba, 0xc5,
+	0x34, 0x13, 0x21, 0x49, 0x32, 0xdc, 0x5f, 0x26, 0xc6, 0x45, 0x09, 0x23, 0x24, 0x63, 0x42, 0x0b,
+	0x23, 0xf3, 0x29, 0x7e, 0x28, 0x33, 0xcf, 0xbf, 0x91, 0x07, 0x6b, 0x91, 0x48, 0x79, 0xdf, 0x7b,
+	0x24, 0xcc, 0x7a, 0x69, 0x21, 0x91, 0x51, 0x16, 0x47, 0xf2, 0x6f, 0x0b, 0x76, 0x95, 0xf1, 0x3a,
+	0xc5, 0x39, 0xbb, 0xcf, 0xe6, 0x82, 0x39, 0x82, 0x8d, 0x11, 0x23, 0xf4, 0xc6, 0x44, 0xd4, 0x0d,
+	0x5d, 0x6e, 0x93, 0x75, 0xd1, 0x37, 0xf1, 0xb6, 0x2d, 0xbc, 0xe8, 0x0c, 0x3a, 0x09, 0xbe, 0x25,
+	0x09, 0xf3, 0x56, 0x0e, 0xdb, 0xc7, 0xee, 0xc9, 0xf3, 0x0a, 0xaa, 0x0a, 0x80, 0xde, 0xf7, 0xc2,
+	0xf9, 0x32, 0x2d, 0xe8, 0x24, 0x54, 0x3b, 0xfd, 0x2f, 0xc0, 0x35, 0xcc, 0x68, 0x1b, 0xda, 0x43,
+	0x32, 0x51, 0x10, 0xf9, 0x27, 0xda, 0x81, 0xd5, 0x31, 0x4e, 0x46, 0x44, 0x25, 0x4b, 0x2e, 0x5e,
+	0x3e, 0xfa, 0xbc, 0x15, 0x5c, 0xc0, 0xfb, 0xb5, 0x83, 0x16, 0x4f, 0xd8, 0xb4, 0x69, 0x2e, 0xff,
+	0xc8, 0x71, 0xda, 0x6f, 0x6a, 0x9a, 0x76, 0xad, 0x69, 0xb4, 0xef, 0xe2, 0xe7, 0x7d, 0x09, 0xef,
+	0x5e, 0xc4, 0x6c, 0x18, 0x92, 0x87, 0x6c, 0x4c, 0xe6, 0x51, 0xb3, 0x03, 0xab, 0x77, 0x19, 0x8d,
+	0x88, 0xe2, 0x44, 0x2e, 0x78, 0xcf, 0x99, 0xdb, 0x97, 0x29, 0x55, 0x15, 0x20, 0x4f, 0x70, 0x54,
+	0x02, 0xd8, 0x85, 0x4e, 0x81, 0xe9, 0x80, 0x14, 0x0a, 0x82, 0x5a, 0x71, 0x3b, 0xcb, 0x46, 0x1a,
+	0xc5, 0x7a, 0xa8, 0x56, 0xbc, 0x73, 0xad, 0x28, 0x8b, 0xe3, 0xe8, 0x81, 0xc7, 0x23, 0xfc, 0x4c,
+	0x49, 0x8e, 0x29, 0x79, 0x6b, 0x3a, 0x82, 0x5f, 0x61, 0xaf, 0xc1, 0x5f, 0x9d, 0xfb, 0x0a, 0x20,
+	0xcb, 0x09, 0xc5, 0x45, 0x9c, 0xa5, 0xcc, 0x6b, 0x89, 0x6a, 0xdc, 0xd7, 0x47, 0x5b, 0x5b, 0x4e,
+	0x23, 0xee, 0x13, 0x1a, 0xee, 0x1a, 0xc9, 0x0f, 0x98, 0x0e, 0x4f, 0x99, 0xf4, 0xea, 0xcf, 0x43,
+	0x72, 0x25, 0x91, 0x54, 0xfc, 0x17, 0xcf, 0xc0, 0x67, 0xbc, 0xf2, 0x6e, 0x47, 0x71, 0xd2, 0x8f,
+	0xd3, 0xc1, 0x35, 0x29, 0xfb, 0xf4, 0x00, 0x80, 0x96, 0x76, 0x11, 0xa5, 0x1b, 0x1a, 0x16, 0x59,
+	0x85, 0xd6, 0xbe, 0xc5, 0xcf, 0xfe, 0x14, 0xf6, 0x42, 0x32, 0x8e, 0x59, 0x9c, 0xa5, 0xe7, 0xd9,
+	0x28, 0x2d, 0x08, 0x35, 0x00, 0xf0, 0x8e, 0x97, 0x46, 0x55, 0xfd, 0x7a, 0x19, 0xbc, 0x06, 0xbf,
+	0x69, 0xdb, 0xe2, 0xe7, 0xff, 0xd5, 0x86, 0x2e, 0x4f, 0xe2, 0xb7, 0xe9, 0x5d, 0xd6, 0x58, 0xfd,
+	0xbb, 0xd0, 0xe1, 0xa4, 0xa5, 0x85, 0x2e, 0x3c, 0xb9, 0x42, 0x2f, 0xa1, 0x1b, 0xdd, 0xc7, 0x49,
+	0x9f, 0x92, 0xd4, 0x6b, 0x0b, 0x9e, 0x0f, 0xf4, 0x21, 0x3a, 0x5e, 0xef, 0x5c, 0x39, 0xc8, 0x49,
+	0x53, 0xfa, 0xf3, 0x7b, 0x51, 0x49, 0x97, 0xb7, 0x22, 0xb2, 0xaa, 0x97, 0xb5, 0x31, 0xb8, 0x3a,
+	0x77, 0x0c, 0x76, 0xec, 0x31, 0xa8, 0x27, 0xc5, 0xda, 0xf4, 0x79, 0x45, 0x9f, 0x94, 0xa3, 0xb1,
+	0x2b, 0x40, 0x3e, 0xa9, 0x81, 0x6c, 0x1a, 0x86, 0xaf, 0x60, 0xd3, 0xc2, 0xfe, 0xb6, 0x71, 0xd8,
+	0x35, 0xc6, 0xe1, 0xff, 0x99, 0xa4, 0xff, 0xb4, 0x61, 0x4d, 0x51, 0xc4, 0xbd, 0xfa, 0x31, 0x2d,
+	0x26, 0xaa, 0xf0, 0xe4, 0xa2, 0x52, 0x93, 0x8f, 0xaa, 0x35, 0xc9, 0x73, 0x70, 0x4f, 0xb0, 0x7e,
+	0x21, 0xc4, 0xb7, 0x41, 0xe1, 0x8a, 0x45, 0xa1, 0xce, 0xd7, 0xaa, 0x91, 0xaf, 0xa7, 0xe0, 0x32,
+	0x12, 0x15, 0x19, 0xbd, 0x11, 0x3f, 0x75, 0x44, 0xd9, 0x81, 0x34, 0x5d, 0x73, 0x87, 0x23, 0xd8,
+	0xb8, 0xc5, 0xd1, 0x30, 0x4e, 0x07, 0x37, 0x77, 0x71, 0xa2, 0x93, 0xed, 0x2a, 0xdb, 0x55, 0x9c,
+	0x88, 0x81, 0xc9, 0x0a, 0x5c, 0x10, 0xaf, 0x2b, 0xef, 0x27, 0x16, 0xdc, 0x1a, 0xdd, 0xe3, 0x38,
+	0xf5, 0xd6, 0x0f, 0xdb, 0xdc, 0x2a, 0x16, 0xe8, 0x23, 0x7e, 0x4b, 0x36, 0x64, 0x1e, 0x08, 0x7a,
+	0xfc, 0x4a, 0xa1, 0x0a, 0x9a, 0x14, 0x39, 0xd2, 0x11, 0x3d, 0x83, 0x6d, 0x4a, 0x1e, 0x70, 0x9c,
+	0xde, 0x30, 0xf5, 0xda, 0x30, 0xcf, 0x3d, 0x6c, 0x1d, 0xaf, 0x86, 0x5b, 0xd2, 0xae, 0x1f, 0x21,
+	0xe5, 0x2a, 0xbb, 0xe4, 0x46, 0x37, 0xd2, 0x86, 0xb8, 0xd1, 0x16, 0xb5, 0xbb, 0xc7, 0xff, 0x0e,
+	0x60, 0x7a, 0x54, 0x03, 0x67, 0x1f, 0x9a, 0x9c, 0xb9, 0x27, 0xdb, 0xd5, 0x32, 0x32, 0x59, 0x7c,
+	0x03, 0x8f, 0x1b, 0x46, 0x1d, 0xa7, 0x01, 0x8b, 0x2f, 0x3d, 0xda, 0x71, 0x69, 0x6f, 0x1a, 0xed,
+	0xc6, 0x53, 0xd0, 0x36, 0x9f, 0x82, 0x93, 0xbf, 0xd7, 0xe1, 0x1d, 0xfd, 0xde, 0x12, 0x3a, 0x8e,
+	0x23, 0x82, 0x7e, 0x84, 0x4d, 0x4b, 0x44, 0xa2, 0x27, 0x95, 0x3c, 0x5a, 0x3a, 0xd4, 0xff, 0x60,
+	0xc6, 0xaf, 0x72, 0x7c, 0x04, 0x0e, 0x3a, 0x2d, 0xe3, 0x5d, 0x90, 0x84, 0x14, 0x04, 0xed, 0xf6,
+	0xa4, 0xde, 0xed, 0x69, 0xbd, 0xdb, 0xbb, 0xe4, 0x7a, 0xd7, 0x9f, 0x61, 0x0f, 0x1c, 0x74, 0x06,
+	0x30, 0xd5, 0xa4, 0x33, 0xf7, 0x57, 0xf9, 0x36, 0xf4, 0x6b, 0xe0, 0xa0, 0x0b, 0x70, 0x0d, 0x59,
+	0x3a, 0x33, 0xc8, 0x7e, 0x25, 0x88, 0xa9, 0x61, 0x03, 0x07, 0x5d, 0xc1, 0x86, 0x29, 0x4d, 0x67,
+	0x86, 0xa9, 0xe5, 0xcc, 0x14, 0xb2, 0x81, 0x83, 0xbe, 0x29, 0x93, 0x22, 0xf5, 0xe9, 0xcc, 0x40,
+	0xd5, 0xf4, 0xda, 0x72, 0x36, 0x70, 0x0c, 0xba, 0xa4, 0xbe, 0xac, 0xd1, 0x65, 0x89, 0xd7, 0x86,
+	0x78, 0xa6, 0x28, 0x0d, 0x1c, 0xf4, 0x0b, 0x6c, 0x55, 0x04, 0x18, 0x3a, 0x98, 0x2f, 0x01, 0xfd,
+	0xa7, 0x33, 0x7f, 0x6f, 0x40, 0x29, 0x45, 0x56, 0x0d, 0xa5, 0xa5, 0xd3, 0x6a, 0x28, 0x6d, 0x65,
+	0x16, 0x38, 0xe8, 0x52, 0xb6, 0x98, 0xec, 0x09, 0xb4, 0x67, 0x76, 0x90, 0xa5, 0x3a, 0xa6, 0x45,
+	0x51, 0x17, 0x58, 0x82, 0x06, 0xd7, 0x50, 0x3c, 0xa8, 0xe2, 0x6c, 0x8a, 0xa9, 0x69, 0x61, 0x34,
+	0x48, 0xa4, 0xc0, 0x41, 0xbf, 0x49, 0x05, 0x68, 0xf5, 0x2a, 0x3a, 0x34, 0xf7, 0x34, 0x89, 0x22,
+	0xff, 0x68, 0x8e, 0x47, 0x35, 0xb6, 0xa5, 0x4d, 0xec, 0xd8, 0x4d, 0x32, 0xc7, 0x8e, 0xdd, 0x28,
+	0x6c, 0x34, 0x31, 0x86, 0xee, 0x30, 0x89, 0xa9, 0xcb, 0x18, 0x93, 0x98, 0x06, 0xb1, 0x12, 0x38,
+	0xe8, 0x0d, 0xff, 0xfb, 0x58, 0x15, 0x13, 0xe8, 0x68, 0xba, 0x6d, 0x86, 0x3e, 0xf1, 0x83, 0x79,
+	0x2e, 0x3a, 0xfc, 0x6d, 0x47, 0xb4, 0xc7, 0xc7, 0xff, 0x05, 0x00, 0x00, 0xff, 0xff, 0x55, 0x77,
+	0xb9, 0x3a, 0x4a, 0x0f, 0x00, 0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -876,21 +1408,21 @@ const _ = grpc.SupportPackageIsVersion4
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://godoc.org/google.golang.org/grpc#ClientConn.NewStream.
 type ReplicaServiceClient interface {
-	ReplicaCreate(ctx context.Context, in *ReplicaCreateRequest, opts ...grpc.CallOption) (*Replica, error)
+	ReplicaCreate(ctx context.Context, in *ReplicaCreateRequest, opts ...grpc.CallOption) (*ReplicaCreateResponse, error)
 	ReplicaDelete(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*empty.Empty, error)
-	ReplicaGet(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*Replica, error)
-	ReplicaOpen(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*Replica, error)
-	ReplicaClose(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*Replica, error)
-	ReplicaReload(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*Replica, error)
-	ReplicaRevert(ctx context.Context, in *ReplicaRevertRequest, opts ...grpc.CallOption) (*Replica, error)
-	ReplicaSnapshot(ctx context.Context, in *ReplicaSnapshotRequest, opts ...grpc.CallOption) (*Replica, error)
-	ReplicaExpand(ctx context.Context, in *ReplicaExpandRequest, opts ...grpc.CallOption) (*Replica, error)
-	DiskRemove(ctx context.Context, in *DiskRemoveRequest, opts ...grpc.CallOption) (*Replica, error)
-	DiskReplace(ctx context.Context, in *DiskReplaceRequest, opts ...grpc.CallOption) (*Replica, error)
-	DiskPrepareRemove(ctx context.Context, in *DiskPrepareRemoveRequest, opts ...grpc.CallOption) (*DiskPrepareRemoveReply, error)
-	DiskMarkAsRemoved(ctx context.Context, in *DiskMarkAsRemovedRequest, opts ...grpc.CallOption) (*Replica, error)
-	RebuildingSet(ctx context.Context, in *RebuildingSetRequest, opts ...grpc.CallOption) (*Replica, error)
-	RevisionCounterSet(ctx context.Context, in *RevisionCounterSetRequest, opts ...grpc.CallOption) (*Replica, error)
+	ReplicaGet(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*ReplicaGetResponse, error)
+	ReplicaOpen(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*ReplicaOpenResponse, error)
+	ReplicaClose(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*ReplicaCloseResponse, error)
+	ReplicaReload(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*ReplicaReloadResponse, error)
+	ReplicaRevert(ctx context.Context, in *ReplicaRevertRequest, opts ...grpc.CallOption) (*ReplicaRevertResponse, error)
+	ReplicaSnapshot(ctx context.Context, in *ReplicaSnapshotRequest, opts ...grpc.CallOption) (*ReplicaSnapshotResponse, error)
+	ReplicaExpand(ctx context.Context, in *ReplicaExpandRequest, opts ...grpc.CallOption) (*ReplicaExpandResponse, error)
+	DiskRemove(ctx context.Context, in *DiskRemoveRequest, opts ...grpc.CallOption) (*DiskRemoveResponse, error)
+	DiskReplace(ctx context.Context, in *DiskReplaceRequest, opts ...grpc.CallOption) (*DiskReplaceResponse, error)
+	DiskPrepareRemove(ctx context.Context, in *DiskPrepareRemoveRequest, opts ...grpc.CallOption) (*DiskPrepareRemoveResponse, error)
+	DiskMarkAsRemoved(ctx context.Context, in *DiskMarkAsRemovedRequest, opts ...grpc.CallOption) (*DiskMarkAsRemovedResponse, error)
+	RebuildingSet(ctx context.Context, in *RebuildingSetRequest, opts ...grpc.CallOption) (*RebuildingSetResponse, error)
+	RevisionCounterSet(ctx context.Context, in *RevisionCounterSetRequest, opts ...grpc.CallOption) (*RevisionCounterSetResponse, error)
 }
 
 type replicaServiceClient struct {
@@ -901,8 +1433,8 @@ func NewReplicaServiceClient(cc *grpc.ClientConn) ReplicaServiceClient {
 	return &replicaServiceClient{cc}
 }
 
-func (c *replicaServiceClient) ReplicaCreate(ctx context.Context, in *ReplicaCreateRequest, opts ...grpc.CallOption) (*Replica, error) {
-	out := new(Replica)
+func (c *replicaServiceClient) ReplicaCreate(ctx context.Context, in *ReplicaCreateRequest, opts ...grpc.CallOption) (*ReplicaCreateResponse, error) {
+	out := new(ReplicaCreateResponse)
 	err := c.cc.Invoke(ctx, "/ptypes.ReplicaService/ReplicaCreate", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -919,8 +1451,8 @@ func (c *replicaServiceClient) ReplicaDelete(ctx context.Context, in *empty.Empt
 	return out, nil
 }
 
-func (c *replicaServiceClient) ReplicaGet(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*Replica, error) {
-	out := new(Replica)
+func (c *replicaServiceClient) ReplicaGet(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*ReplicaGetResponse, error) {
+	out := new(ReplicaGetResponse)
 	err := c.cc.Invoke(ctx, "/ptypes.ReplicaService/ReplicaGet", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -928,8 +1460,8 @@ func (c *replicaServiceClient) ReplicaGet(ctx context.Context, in *empty.Empty, 
 	return out, nil
 }
 
-func (c *replicaServiceClient) ReplicaOpen(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*Replica, error) {
-	out := new(Replica)
+func (c *replicaServiceClient) ReplicaOpen(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*ReplicaOpenResponse, error) {
+	out := new(ReplicaOpenResponse)
 	err := c.cc.Invoke(ctx, "/ptypes.ReplicaService/ReplicaOpen", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -937,8 +1469,8 @@ func (c *replicaServiceClient) ReplicaOpen(ctx context.Context, in *empty.Empty,
 	return out, nil
 }
 
-func (c *replicaServiceClient) ReplicaClose(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*Replica, error) {
-	out := new(Replica)
+func (c *replicaServiceClient) ReplicaClose(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*ReplicaCloseResponse, error) {
+	out := new(ReplicaCloseResponse)
 	err := c.cc.Invoke(ctx, "/ptypes.ReplicaService/ReplicaClose", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -946,8 +1478,8 @@ func (c *replicaServiceClient) ReplicaClose(ctx context.Context, in *empty.Empty
 	return out, nil
 }
 
-func (c *replicaServiceClient) ReplicaReload(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*Replica, error) {
-	out := new(Replica)
+func (c *replicaServiceClient) ReplicaReload(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*ReplicaReloadResponse, error) {
+	out := new(ReplicaReloadResponse)
 	err := c.cc.Invoke(ctx, "/ptypes.ReplicaService/ReplicaReload", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -955,8 +1487,8 @@ func (c *replicaServiceClient) ReplicaReload(ctx context.Context, in *empty.Empt
 	return out, nil
 }
 
-func (c *replicaServiceClient) ReplicaRevert(ctx context.Context, in *ReplicaRevertRequest, opts ...grpc.CallOption) (*Replica, error) {
-	out := new(Replica)
+func (c *replicaServiceClient) ReplicaRevert(ctx context.Context, in *ReplicaRevertRequest, opts ...grpc.CallOption) (*ReplicaRevertResponse, error) {
+	out := new(ReplicaRevertResponse)
 	err := c.cc.Invoke(ctx, "/ptypes.ReplicaService/ReplicaRevert", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -964,8 +1496,8 @@ func (c *replicaServiceClient) ReplicaRevert(ctx context.Context, in *ReplicaRev
 	return out, nil
 }
 
-func (c *replicaServiceClient) ReplicaSnapshot(ctx context.Context, in *ReplicaSnapshotRequest, opts ...grpc.CallOption) (*Replica, error) {
-	out := new(Replica)
+func (c *replicaServiceClient) ReplicaSnapshot(ctx context.Context, in *ReplicaSnapshotRequest, opts ...grpc.CallOption) (*ReplicaSnapshotResponse, error) {
+	out := new(ReplicaSnapshotResponse)
 	err := c.cc.Invoke(ctx, "/ptypes.ReplicaService/ReplicaSnapshot", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -973,8 +1505,8 @@ func (c *replicaServiceClient) ReplicaSnapshot(ctx context.Context, in *ReplicaS
 	return out, nil
 }
 
-func (c *replicaServiceClient) ReplicaExpand(ctx context.Context, in *ReplicaExpandRequest, opts ...grpc.CallOption) (*Replica, error) {
-	out := new(Replica)
+func (c *replicaServiceClient) ReplicaExpand(ctx context.Context, in *ReplicaExpandRequest, opts ...grpc.CallOption) (*ReplicaExpandResponse, error) {
+	out := new(ReplicaExpandResponse)
 	err := c.cc.Invoke(ctx, "/ptypes.ReplicaService/ReplicaExpand", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -982,8 +1514,8 @@ func (c *replicaServiceClient) ReplicaExpand(ctx context.Context, in *ReplicaExp
 	return out, nil
 }
 
-func (c *replicaServiceClient) DiskRemove(ctx context.Context, in *DiskRemoveRequest, opts ...grpc.CallOption) (*Replica, error) {
-	out := new(Replica)
+func (c *replicaServiceClient) DiskRemove(ctx context.Context, in *DiskRemoveRequest, opts ...grpc.CallOption) (*DiskRemoveResponse, error) {
+	out := new(DiskRemoveResponse)
 	err := c.cc.Invoke(ctx, "/ptypes.ReplicaService/DiskRemove", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -991,8 +1523,8 @@ func (c *replicaServiceClient) DiskRemove(ctx context.Context, in *DiskRemoveReq
 	return out, nil
 }
 
-func (c *replicaServiceClient) DiskReplace(ctx context.Context, in *DiskReplaceRequest, opts ...grpc.CallOption) (*Replica, error) {
-	out := new(Replica)
+func (c *replicaServiceClient) DiskReplace(ctx context.Context, in *DiskReplaceRequest, opts ...grpc.CallOption) (*DiskReplaceResponse, error) {
+	out := new(DiskReplaceResponse)
 	err := c.cc.Invoke(ctx, "/ptypes.ReplicaService/DiskReplace", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -1000,8 +1532,8 @@ func (c *replicaServiceClient) DiskReplace(ctx context.Context, in *DiskReplaceR
 	return out, nil
 }
 
-func (c *replicaServiceClient) DiskPrepareRemove(ctx context.Context, in *DiskPrepareRemoveRequest, opts ...grpc.CallOption) (*DiskPrepareRemoveReply, error) {
-	out := new(DiskPrepareRemoveReply)
+func (c *replicaServiceClient) DiskPrepareRemove(ctx context.Context, in *DiskPrepareRemoveRequest, opts ...grpc.CallOption) (*DiskPrepareRemoveResponse, error) {
+	out := new(DiskPrepareRemoveResponse)
 	err := c.cc.Invoke(ctx, "/ptypes.ReplicaService/DiskPrepareRemove", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -1009,8 +1541,8 @@ func (c *replicaServiceClient) DiskPrepareRemove(ctx context.Context, in *DiskPr
 	return out, nil
 }
 
-func (c *replicaServiceClient) DiskMarkAsRemoved(ctx context.Context, in *DiskMarkAsRemovedRequest, opts ...grpc.CallOption) (*Replica, error) {
-	out := new(Replica)
+func (c *replicaServiceClient) DiskMarkAsRemoved(ctx context.Context, in *DiskMarkAsRemovedRequest, opts ...grpc.CallOption) (*DiskMarkAsRemovedResponse, error) {
+	out := new(DiskMarkAsRemovedResponse)
 	err := c.cc.Invoke(ctx, "/ptypes.ReplicaService/DiskMarkAsRemoved", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -1018,8 +1550,8 @@ func (c *replicaServiceClient) DiskMarkAsRemoved(ctx context.Context, in *DiskMa
 	return out, nil
 }
 
-func (c *replicaServiceClient) RebuildingSet(ctx context.Context, in *RebuildingSetRequest, opts ...grpc.CallOption) (*Replica, error) {
-	out := new(Replica)
+func (c *replicaServiceClient) RebuildingSet(ctx context.Context, in *RebuildingSetRequest, opts ...grpc.CallOption) (*RebuildingSetResponse, error) {
+	out := new(RebuildingSetResponse)
 	err := c.cc.Invoke(ctx, "/ptypes.ReplicaService/RebuildingSet", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -1027,8 +1559,8 @@ func (c *replicaServiceClient) RebuildingSet(ctx context.Context, in *Rebuilding
 	return out, nil
 }
 
-func (c *replicaServiceClient) RevisionCounterSet(ctx context.Context, in *RevisionCounterSetRequest, opts ...grpc.CallOption) (*Replica, error) {
-	out := new(Replica)
+func (c *replicaServiceClient) RevisionCounterSet(ctx context.Context, in *RevisionCounterSetRequest, opts ...grpc.CallOption) (*RevisionCounterSetResponse, error) {
+	out := new(RevisionCounterSetResponse)
 	err := c.cc.Invoke(ctx, "/ptypes.ReplicaService/RevisionCounterSet", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -1038,70 +1570,70 @@ func (c *replicaServiceClient) RevisionCounterSet(ctx context.Context, in *Revis
 
 // ReplicaServiceServer is the server API for ReplicaService service.
 type ReplicaServiceServer interface {
-	ReplicaCreate(context.Context, *ReplicaCreateRequest) (*Replica, error)
+	ReplicaCreate(context.Context, *ReplicaCreateRequest) (*ReplicaCreateResponse, error)
 	ReplicaDelete(context.Context, *empty.Empty) (*empty.Empty, error)
-	ReplicaGet(context.Context, *empty.Empty) (*Replica, error)
-	ReplicaOpen(context.Context, *empty.Empty) (*Replica, error)
-	ReplicaClose(context.Context, *empty.Empty) (*Replica, error)
-	ReplicaReload(context.Context, *empty.Empty) (*Replica, error)
-	ReplicaRevert(context.Context, *ReplicaRevertRequest) (*Replica, error)
-	ReplicaSnapshot(context.Context, *ReplicaSnapshotRequest) (*Replica, error)
-	ReplicaExpand(context.Context, *ReplicaExpandRequest) (*Replica, error)
-	DiskRemove(context.Context, *DiskRemoveRequest) (*Replica, error)
-	DiskReplace(context.Context, *DiskReplaceRequest) (*Replica, error)
-	DiskPrepareRemove(context.Context, *DiskPrepareRemoveRequest) (*DiskPrepareRemoveReply, error)
-	DiskMarkAsRemoved(context.Context, *DiskMarkAsRemovedRequest) (*Replica, error)
-	RebuildingSet(context.Context, *RebuildingSetRequest) (*Replica, error)
-	RevisionCounterSet(context.Context, *RevisionCounterSetRequest) (*Replica, error)
+	ReplicaGet(context.Context, *empty.Empty) (*ReplicaGetResponse, error)
+	ReplicaOpen(context.Context, *empty.Empty) (*ReplicaOpenResponse, error)
+	ReplicaClose(context.Context, *empty.Empty) (*ReplicaCloseResponse, error)
+	ReplicaReload(context.Context, *empty.Empty) (*ReplicaReloadResponse, error)
+	ReplicaRevert(context.Context, *ReplicaRevertRequest) (*ReplicaRevertResponse, error)
+	ReplicaSnapshot(context.Context, *ReplicaSnapshotRequest) (*ReplicaSnapshotResponse, error)
+	ReplicaExpand(context.Context, *ReplicaExpandRequest) (*ReplicaExpandResponse, error)
+	DiskRemove(context.Context, *DiskRemoveRequest) (*DiskRemoveResponse, error)
+	DiskReplace(context.Context, *DiskReplaceRequest) (*DiskReplaceResponse, error)
+	DiskPrepareRemove(context.Context, *DiskPrepareRemoveRequest) (*DiskPrepareRemoveResponse, error)
+	DiskMarkAsRemoved(context.Context, *DiskMarkAsRemovedRequest) (*DiskMarkAsRemovedResponse, error)
+	RebuildingSet(context.Context, *RebuildingSetRequest) (*RebuildingSetResponse, error)
+	RevisionCounterSet(context.Context, *RevisionCounterSetRequest) (*RevisionCounterSetResponse, error)
 }
 
 // UnimplementedReplicaServiceServer can be embedded to have forward compatible implementations.
 type UnimplementedReplicaServiceServer struct {
 }
 
-func (*UnimplementedReplicaServiceServer) ReplicaCreate(ctx context.Context, req *ReplicaCreateRequest) (*Replica, error) {
+func (*UnimplementedReplicaServiceServer) ReplicaCreate(ctx context.Context, req *ReplicaCreateRequest) (*ReplicaCreateResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReplicaCreate not implemented")
 }
 func (*UnimplementedReplicaServiceServer) ReplicaDelete(ctx context.Context, req *empty.Empty) (*empty.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReplicaDelete not implemented")
 }
-func (*UnimplementedReplicaServiceServer) ReplicaGet(ctx context.Context, req *empty.Empty) (*Replica, error) {
+func (*UnimplementedReplicaServiceServer) ReplicaGet(ctx context.Context, req *empty.Empty) (*ReplicaGetResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReplicaGet not implemented")
 }
-func (*UnimplementedReplicaServiceServer) ReplicaOpen(ctx context.Context, req *empty.Empty) (*Replica, error) {
+func (*UnimplementedReplicaServiceServer) ReplicaOpen(ctx context.Context, req *empty.Empty) (*ReplicaOpenResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReplicaOpen not implemented")
 }
-func (*UnimplementedReplicaServiceServer) ReplicaClose(ctx context.Context, req *empty.Empty) (*Replica, error) {
+func (*UnimplementedReplicaServiceServer) ReplicaClose(ctx context.Context, req *empty.Empty) (*ReplicaCloseResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReplicaClose not implemented")
 }
-func (*UnimplementedReplicaServiceServer) ReplicaReload(ctx context.Context, req *empty.Empty) (*Replica, error) {
+func (*UnimplementedReplicaServiceServer) ReplicaReload(ctx context.Context, req *empty.Empty) (*ReplicaReloadResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReplicaReload not implemented")
 }
-func (*UnimplementedReplicaServiceServer) ReplicaRevert(ctx context.Context, req *ReplicaRevertRequest) (*Replica, error) {
+func (*UnimplementedReplicaServiceServer) ReplicaRevert(ctx context.Context, req *ReplicaRevertRequest) (*ReplicaRevertResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReplicaRevert not implemented")
 }
-func (*UnimplementedReplicaServiceServer) ReplicaSnapshot(ctx context.Context, req *ReplicaSnapshotRequest) (*Replica, error) {
+func (*UnimplementedReplicaServiceServer) ReplicaSnapshot(ctx context.Context, req *ReplicaSnapshotRequest) (*ReplicaSnapshotResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReplicaSnapshot not implemented")
 }
-func (*UnimplementedReplicaServiceServer) ReplicaExpand(ctx context.Context, req *ReplicaExpandRequest) (*Replica, error) {
+func (*UnimplementedReplicaServiceServer) ReplicaExpand(ctx context.Context, req *ReplicaExpandRequest) (*ReplicaExpandResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReplicaExpand not implemented")
 }
-func (*UnimplementedReplicaServiceServer) DiskRemove(ctx context.Context, req *DiskRemoveRequest) (*Replica, error) {
+func (*UnimplementedReplicaServiceServer) DiskRemove(ctx context.Context, req *DiskRemoveRequest) (*DiskRemoveResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DiskRemove not implemented")
 }
-func (*UnimplementedReplicaServiceServer) DiskReplace(ctx context.Context, req *DiskReplaceRequest) (*Replica, error) {
+func (*UnimplementedReplicaServiceServer) DiskReplace(ctx context.Context, req *DiskReplaceRequest) (*DiskReplaceResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DiskReplace not implemented")
 }
-func (*UnimplementedReplicaServiceServer) DiskPrepareRemove(ctx context.Context, req *DiskPrepareRemoveRequest) (*DiskPrepareRemoveReply, error) {
+func (*UnimplementedReplicaServiceServer) DiskPrepareRemove(ctx context.Context, req *DiskPrepareRemoveRequest) (*DiskPrepareRemoveResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DiskPrepareRemove not implemented")
 }
-func (*UnimplementedReplicaServiceServer) DiskMarkAsRemoved(ctx context.Context, req *DiskMarkAsRemovedRequest) (*Replica, error) {
+func (*UnimplementedReplicaServiceServer) DiskMarkAsRemoved(ctx context.Context, req *DiskMarkAsRemovedRequest) (*DiskMarkAsRemovedResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DiskMarkAsRemoved not implemented")
 }
-func (*UnimplementedReplicaServiceServer) RebuildingSet(ctx context.Context, req *RebuildingSetRequest) (*Replica, error) {
+func (*UnimplementedReplicaServiceServer) RebuildingSet(ctx context.Context, req *RebuildingSetRequest) (*RebuildingSetResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RebuildingSet not implemented")
 }
-func (*UnimplementedReplicaServiceServer) RevisionCounterSet(ctx context.Context, req *RevisionCounterSetRequest) (*Replica, error) {
+func (*UnimplementedReplicaServiceServer) RevisionCounterSet(ctx context.Context, req *RevisionCounterSetRequest) (*RevisionCounterSetResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RevisionCounterSet not implemented")
 }
 

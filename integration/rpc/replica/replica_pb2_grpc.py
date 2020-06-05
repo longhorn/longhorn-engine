@@ -18,7 +18,7 @@ class ReplicaServiceStub(object):
     self.ReplicaCreate = channel.unary_unary(
         '/ptypes.ReplicaService/ReplicaCreate',
         request_serializer=replica__pb2.ReplicaCreateRequest.SerializeToString,
-        response_deserializer=replica__pb2.Replica.FromString,
+        response_deserializer=replica__pb2.ReplicaCreateResponse.FromString,
         )
     self.ReplicaDelete = channel.unary_unary(
         '/ptypes.ReplicaService/ReplicaDelete',
@@ -28,67 +28,67 @@ class ReplicaServiceStub(object):
     self.ReplicaGet = channel.unary_unary(
         '/ptypes.ReplicaService/ReplicaGet',
         request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
-        response_deserializer=replica__pb2.Replica.FromString,
+        response_deserializer=replica__pb2.ReplicaGetResponse.FromString,
         )
     self.ReplicaOpen = channel.unary_unary(
         '/ptypes.ReplicaService/ReplicaOpen',
         request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
-        response_deserializer=replica__pb2.Replica.FromString,
+        response_deserializer=replica__pb2.ReplicaOpenResponse.FromString,
         )
     self.ReplicaClose = channel.unary_unary(
         '/ptypes.ReplicaService/ReplicaClose',
         request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
-        response_deserializer=replica__pb2.Replica.FromString,
+        response_deserializer=replica__pb2.ReplicaCloseResponse.FromString,
         )
     self.ReplicaReload = channel.unary_unary(
         '/ptypes.ReplicaService/ReplicaReload',
         request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
-        response_deserializer=replica__pb2.Replica.FromString,
+        response_deserializer=replica__pb2.ReplicaReloadResponse.FromString,
         )
     self.ReplicaRevert = channel.unary_unary(
         '/ptypes.ReplicaService/ReplicaRevert',
         request_serializer=replica__pb2.ReplicaRevertRequest.SerializeToString,
-        response_deserializer=replica__pb2.Replica.FromString,
+        response_deserializer=replica__pb2.ReplicaRevertResponse.FromString,
         )
     self.ReplicaSnapshot = channel.unary_unary(
         '/ptypes.ReplicaService/ReplicaSnapshot',
         request_serializer=replica__pb2.ReplicaSnapshotRequest.SerializeToString,
-        response_deserializer=replica__pb2.Replica.FromString,
+        response_deserializer=replica__pb2.ReplicaSnapshotResponse.FromString,
         )
     self.ReplicaExpand = channel.unary_unary(
         '/ptypes.ReplicaService/ReplicaExpand',
         request_serializer=replica__pb2.ReplicaExpandRequest.SerializeToString,
-        response_deserializer=replica__pb2.Replica.FromString,
+        response_deserializer=replica__pb2.ReplicaExpandResponse.FromString,
         )
     self.DiskRemove = channel.unary_unary(
         '/ptypes.ReplicaService/DiskRemove',
         request_serializer=replica__pb2.DiskRemoveRequest.SerializeToString,
-        response_deserializer=replica__pb2.Replica.FromString,
+        response_deserializer=replica__pb2.DiskRemoveResponse.FromString,
         )
     self.DiskReplace = channel.unary_unary(
         '/ptypes.ReplicaService/DiskReplace',
         request_serializer=replica__pb2.DiskReplaceRequest.SerializeToString,
-        response_deserializer=replica__pb2.Replica.FromString,
+        response_deserializer=replica__pb2.DiskReplaceResponse.FromString,
         )
     self.DiskPrepareRemove = channel.unary_unary(
         '/ptypes.ReplicaService/DiskPrepareRemove',
         request_serializer=replica__pb2.DiskPrepareRemoveRequest.SerializeToString,
-        response_deserializer=replica__pb2.DiskPrepareRemoveReply.FromString,
+        response_deserializer=replica__pb2.DiskPrepareRemoveResponse.FromString,
         )
     self.DiskMarkAsRemoved = channel.unary_unary(
         '/ptypes.ReplicaService/DiskMarkAsRemoved',
         request_serializer=replica__pb2.DiskMarkAsRemovedRequest.SerializeToString,
-        response_deserializer=replica__pb2.Replica.FromString,
+        response_deserializer=replica__pb2.DiskMarkAsRemovedResponse.FromString,
         )
     self.RebuildingSet = channel.unary_unary(
         '/ptypes.ReplicaService/RebuildingSet',
         request_serializer=replica__pb2.RebuildingSetRequest.SerializeToString,
-        response_deserializer=replica__pb2.Replica.FromString,
+        response_deserializer=replica__pb2.RebuildingSetResponse.FromString,
         )
     self.RevisionCounterSet = channel.unary_unary(
         '/ptypes.ReplicaService/RevisionCounterSet',
         request_serializer=replica__pb2.RevisionCounterSetRequest.SerializeToString,
-        response_deserializer=replica__pb2.Replica.FromString,
+        response_deserializer=replica__pb2.RevisionCounterSetResponse.FromString,
         )
 
 
@@ -207,7 +207,7 @@ def add_ReplicaServiceServicer_to_server(servicer, server):
       'ReplicaCreate': grpc.unary_unary_rpc_method_handler(
           servicer.ReplicaCreate,
           request_deserializer=replica__pb2.ReplicaCreateRequest.FromString,
-          response_serializer=replica__pb2.Replica.SerializeToString,
+          response_serializer=replica__pb2.ReplicaCreateResponse.SerializeToString,
       ),
       'ReplicaDelete': grpc.unary_unary_rpc_method_handler(
           servicer.ReplicaDelete,
@@ -217,67 +217,67 @@ def add_ReplicaServiceServicer_to_server(servicer, server):
       'ReplicaGet': grpc.unary_unary_rpc_method_handler(
           servicer.ReplicaGet,
           request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
-          response_serializer=replica__pb2.Replica.SerializeToString,
+          response_serializer=replica__pb2.ReplicaGetResponse.SerializeToString,
       ),
       'ReplicaOpen': grpc.unary_unary_rpc_method_handler(
           servicer.ReplicaOpen,
           request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
-          response_serializer=replica__pb2.Replica.SerializeToString,
+          response_serializer=replica__pb2.ReplicaOpenResponse.SerializeToString,
       ),
       'ReplicaClose': grpc.unary_unary_rpc_method_handler(
           servicer.ReplicaClose,
           request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
-          response_serializer=replica__pb2.Replica.SerializeToString,
+          response_serializer=replica__pb2.ReplicaCloseResponse.SerializeToString,
       ),
       'ReplicaReload': grpc.unary_unary_rpc_method_handler(
           servicer.ReplicaReload,
           request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
-          response_serializer=replica__pb2.Replica.SerializeToString,
+          response_serializer=replica__pb2.ReplicaReloadResponse.SerializeToString,
       ),
       'ReplicaRevert': grpc.unary_unary_rpc_method_handler(
           servicer.ReplicaRevert,
           request_deserializer=replica__pb2.ReplicaRevertRequest.FromString,
-          response_serializer=replica__pb2.Replica.SerializeToString,
+          response_serializer=replica__pb2.ReplicaRevertResponse.SerializeToString,
       ),
       'ReplicaSnapshot': grpc.unary_unary_rpc_method_handler(
           servicer.ReplicaSnapshot,
           request_deserializer=replica__pb2.ReplicaSnapshotRequest.FromString,
-          response_serializer=replica__pb2.Replica.SerializeToString,
+          response_serializer=replica__pb2.ReplicaSnapshotResponse.SerializeToString,
       ),
       'ReplicaExpand': grpc.unary_unary_rpc_method_handler(
           servicer.ReplicaExpand,
           request_deserializer=replica__pb2.ReplicaExpandRequest.FromString,
-          response_serializer=replica__pb2.Replica.SerializeToString,
+          response_serializer=replica__pb2.ReplicaExpandResponse.SerializeToString,
       ),
       'DiskRemove': grpc.unary_unary_rpc_method_handler(
           servicer.DiskRemove,
           request_deserializer=replica__pb2.DiskRemoveRequest.FromString,
-          response_serializer=replica__pb2.Replica.SerializeToString,
+          response_serializer=replica__pb2.DiskRemoveResponse.SerializeToString,
       ),
       'DiskReplace': grpc.unary_unary_rpc_method_handler(
           servicer.DiskReplace,
           request_deserializer=replica__pb2.DiskReplaceRequest.FromString,
-          response_serializer=replica__pb2.Replica.SerializeToString,
+          response_serializer=replica__pb2.DiskReplaceResponse.SerializeToString,
       ),
       'DiskPrepareRemove': grpc.unary_unary_rpc_method_handler(
           servicer.DiskPrepareRemove,
           request_deserializer=replica__pb2.DiskPrepareRemoveRequest.FromString,
-          response_serializer=replica__pb2.DiskPrepareRemoveReply.SerializeToString,
+          response_serializer=replica__pb2.DiskPrepareRemoveResponse.SerializeToString,
       ),
       'DiskMarkAsRemoved': grpc.unary_unary_rpc_method_handler(
           servicer.DiskMarkAsRemoved,
           request_deserializer=replica__pb2.DiskMarkAsRemovedRequest.FromString,
-          response_serializer=replica__pb2.Replica.SerializeToString,
+          response_serializer=replica__pb2.DiskMarkAsRemovedResponse.SerializeToString,
       ),
       'RebuildingSet': grpc.unary_unary_rpc_method_handler(
           servicer.RebuildingSet,
           request_deserializer=replica__pb2.RebuildingSetRequest.FromString,
-          response_serializer=replica__pb2.Replica.SerializeToString,
+          response_serializer=replica__pb2.RebuildingSetResponse.SerializeToString,
       ),
       'RevisionCounterSet': grpc.unary_unary_rpc_method_handler(
           servicer.RevisionCounterSet,
           request_deserializer=replica__pb2.RevisionCounterSetRequest.FromString,
-          response_serializer=replica__pb2.Replica.SerializeToString,
+          response_serializer=replica__pb2.RevisionCounterSetResponse.SerializeToString,
       ),
   }
   generic_handler = grpc.method_handlers_generic_handler(
