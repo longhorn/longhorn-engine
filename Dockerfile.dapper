@@ -73,6 +73,9 @@ RUN cd /go/src/github.com/ && \
 # python grpc-tools
 RUN pip3 install grpcio==1.22.0 grpcio_tools==1.22.0
 
+# buf
+RUN wget -O /usr/bin/buf https://github.com/bufbuild/buf/releases/download/v0.16.0/buf-Linux-x86_64 && chmod +x /usr/bin/buf
+
 # Build liblonghorn
 RUN cd /usr/src && \
     git clone https://github.com/rancher/liblonghorn.git && \
