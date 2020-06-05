@@ -107,7 +107,7 @@ def open_replica(grpc_client):
     r = grpc_client.replica_get()
     assert r.state == 'initial'
     assert r.size == '0'
-    assert r.sectorSize == 0
+    assert r.sector_size == 0
     assert r.parent == ''
     assert r.head == ''
 
@@ -115,7 +115,7 @@ def open_replica(grpc_client):
 
     assert r.state == 'closed'
     assert r.size == SIZE_STR
-    assert r.sectorSize == 512
+    assert r.sector_size == 512
     assert r.parent == ''
     assert r.head == 'volume-head-000.img'
 

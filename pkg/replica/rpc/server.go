@@ -79,7 +79,7 @@ func (rs *ReplicaServer) getReplica() (replica *ptypes.Replica) {
 	return replica
 }
 
-func (rs *ReplicaServer) ReplicaCreate(ctx context.Context, req *ptypes.ReplicaCreateRequest) (*ptypes.Replica, error) {
+func (rs *ReplicaServer) ReplicaCreate(ctx context.Context, req *ptypes.ReplicaCreateRequest) (*ptypes.ReplicaCreateResponse, error) {
 	size := int64(0)
 	if req.Size != "" {
 		var err error
@@ -93,42 +93,42 @@ func (rs *ReplicaServer) ReplicaCreate(ctx context.Context, req *ptypes.ReplicaC
 		return nil, err
 	}
 
-	return rs.getReplica(), nil
+	return &ptypes.ReplicaCreateResponse{Replica: rs.getReplica()}, nil
 }
 
 func (rs *ReplicaServer) ReplicaDelete(ctx context.Context, req *empty.Empty) (*empty.Empty, error) {
 	return &empty.Empty{}, rs.s.Delete()
 }
 
-func (rs *ReplicaServer) ReplicaGet(ctx context.Context, req *empty.Empty) (*ptypes.Replica, error) {
-	return rs.getReplica(), nil
+func (rs *ReplicaServer) ReplicaGet(ctx context.Context, req *empty.Empty) (*ptypes.ReplicaGetResponse, error) {
+	return &ptypes.ReplicaGetResponse{Replica: rs.getReplica()}, nil
 }
 
-func (rs *ReplicaServer) ReplicaOpen(ctx context.Context, req *empty.Empty) (*ptypes.Replica, error) {
+func (rs *ReplicaServer) ReplicaOpen(ctx context.Context, req *empty.Empty) (*ptypes.ReplicaOpenResponse, error) {
 	if err := rs.s.Open(); err != nil {
 		return nil, err
 	}
 
-	return rs.getReplica(), nil
+	return &ptypes.ReplicaOpenResponse{Replica: rs.getReplica()}, nil
 }
 
-func (rs *ReplicaServer) ReplicaClose(ctx context.Context, req *empty.Empty) (*ptypes.Replica, error) {
+func (rs *ReplicaServer) ReplicaClose(ctx context.Context, req *empty.Empty) (*ptypes.ReplicaCloseResponse, error) {
 	if err := rs.s.Close(); err != nil {
 		return nil, err
 	}
 
-	return rs.getReplica(), nil
+	return &ptypes.ReplicaCloseResponse{Replica: rs.getReplica()}, nil
 }
 
-func (rs *ReplicaServer) ReplicaReload(ctx context.Context, req *empty.Empty) (*ptypes.Replica, error) {
+func (rs *ReplicaServer) ReplicaReload(ctx context.Context, req *empty.Empty) (*ptypes.ReplicaReloadResponse, error) {
 	if err := rs.s.Reload(); err != nil {
 		return nil, err
 	}
 
-	return rs.getReplica(), nil
+	return &ptypes.ReplicaReloadResponse{Replica: rs.getReplica()}, nil
 }
 
-func (rs *ReplicaServer) ReplicaRevert(ctx context.Context, req *ptypes.ReplicaRevertRequest) (*ptypes.Replica, error) {
+func (rs *ReplicaServer) ReplicaRevert(ctx context.Context, req *ptypes.ReplicaRevertRequest) (*ptypes.ReplicaRevertResponse, error) {
 	if req.Name == "" {
 		return nil, fmt.Errorf("Cannot accept empty snapshot name")
 	}
@@ -140,10 +140,10 @@ func (rs *ReplicaServer) ReplicaRevert(ctx context.Context, req *ptypes.ReplicaR
 		return nil, err
 	}
 
-	return rs.getReplica(), nil
+	return &ptypes.ReplicaRevertResponse{Replica: rs.getReplica()}, nil
 }
 
-func (rs *ReplicaServer) ReplicaSnapshot(ctx context.Context, req *ptypes.ReplicaSnapshotRequest) (*ptypes.Replica, error) {
+func (rs *ReplicaServer) ReplicaSnapshot(ctx context.Context, req *ptypes.ReplicaSnapshotRequest) (*ptypes.ReplicaSnapshotResponse, error) {
 	if req.Name == "" {
 		return nil, fmt.Errorf("Cannot accept empty snapshot name")
 	}
@@ -155,10 +155,10 @@ func (rs *ReplicaServer) ReplicaSnapshot(ctx context.Context, req *ptypes.Replic
 		return nil, err
 	}
 
-	return rs.getReplica(), nil
+	return &ptypes.ReplicaSnapshotResponse{Replica: rs.getReplica()}, nil
 }
 
-func (rs *ReplicaServer) ReplicaExpand(ctx context.Context, req *ptypes.ReplicaExpandRequest) (*ptypes.Replica, error) {
+func (rs *ReplicaServer) ReplicaExpand(ctx context.Context, req *ptypes.ReplicaExpandRequest) (*ptypes.ReplicaExpandResponse, error) {
 	if err := rs.s.Expand(req.Size); err != nil {
 		errWithCode, ok := err.(*types.Error)
 		if !ok {
@@ -168,63 +168,63 @@ func (rs *ReplicaServer) ReplicaExpand(ctx context.Context, req *ptypes.ReplicaE
 		return nil, status.Errorf(codes.Internal, errWithCode.ToJSONString())
 	}
 
-	return rs.getReplica(), nil
+	return &ptypes.ReplicaExpandResponse{Replica: rs.getReplica()}, nil
 }
 
-func (rs *ReplicaServer) DiskRemove(ctx context.Context, req *ptypes.DiskRemoveRequest) (*ptypes.Replica, error) {
+func (rs *ReplicaServer) DiskRemove(ctx context.Context, req *ptypes.DiskRemoveRequest) (*ptypes.DiskRemoveResponse, error) {
 	if err := rs.s.RemoveDiffDisk(req.Name, req.Force); err != nil {
 		return nil, err
 	}
 
-	return rs.getReplica(), nil
+	return &ptypes.DiskRemoveResponse{Replica: rs.getReplica()}, nil
 }
 
-func (rs *ReplicaServer) DiskReplace(ctx context.Context, req *ptypes.DiskReplaceRequest) (*ptypes.Replica, error) {
+func (rs *ReplicaServer) DiskReplace(ctx context.Context, req *ptypes.DiskReplaceRequest) (*ptypes.DiskReplaceResponse, error) {
 	if err := rs.s.ReplaceDisk(req.Target, req.Source); err != nil {
 		return nil, err
 	}
 
-	return rs.getReplica(), nil
+	return &ptypes.DiskReplaceResponse{Replica: rs.getReplica()}, nil
 }
 
-func (rs *ReplicaServer) DiskPrepareRemove(ctx context.Context, req *ptypes.DiskPrepareRemoveRequest) (*ptypes.DiskPrepareRemoveReply, error) {
+func (rs *ReplicaServer) DiskPrepareRemove(ctx context.Context, req *ptypes.DiskPrepareRemoveRequest) (*ptypes.DiskPrepareRemoveResponse, error) {
 	operations, err := rs.s.PrepareRemoveDisk(req.Name)
 	if err != nil {
 		return nil, err
 	}
 
-	reply := &ptypes.DiskPrepareRemoveReply{}
+	resp := &ptypes.DiskPrepareRemoveResponse{}
 	for _, op := range operations {
-		reply.Operations = append(reply.Operations, &ptypes.PrepareRemoveAction{
+		resp.Operations = append(resp.Operations, &ptypes.PrepareRemoveAction{
 			Action: op.Action,
 			Source: op.Source,
 			Target: op.Target,
 		})
 	}
-	return reply, err
+	return resp, err
 }
 
-func (rs *ReplicaServer) DiskMarkAsRemoved(ctx context.Context, req *ptypes.DiskMarkAsRemovedRequest) (*ptypes.Replica, error) {
+func (rs *ReplicaServer) DiskMarkAsRemoved(ctx context.Context, req *ptypes.DiskMarkAsRemovedRequest) (*ptypes.DiskMarkAsRemovedResponse, error) {
 	if err := rs.s.MarkDiskAsRemoved(req.Name); err != nil {
 		return nil, err
 	}
 
-	return rs.getReplica(), nil
+	return &ptypes.DiskMarkAsRemovedResponse{Replica: rs.getReplica()}, nil
 }
 
-func (rs *ReplicaServer) RebuildingSet(ctx context.Context, req *ptypes.RebuildingSetRequest) (*ptypes.Replica, error) {
+func (rs *ReplicaServer) RebuildingSet(ctx context.Context, req *ptypes.RebuildingSetRequest) (*ptypes.RebuildingSetResponse, error) {
 	if err := rs.s.SetRebuilding(req.Rebuilding); err != nil {
 		return nil, err
 	}
 
-	return rs.getReplica(), nil
+	return &ptypes.RebuildingSetResponse{Replica: rs.getReplica()}, nil
 }
 
-func (rs *ReplicaServer) RevisionCounterSet(ctx context.Context, req *ptypes.RevisionCounterSetRequest) (*ptypes.Replica, error) {
+func (rs *ReplicaServer) RevisionCounterSet(ctx context.Context, req *ptypes.RevisionCounterSetRequest) (*ptypes.RevisionCounterSetResponse, error) {
 	if err := rs.s.SetRevisionCounter(req.Counter); err != nil {
 		return nil, err
 	}
-	return rs.getReplica(), nil
+	return &ptypes.RevisionCounterSetResponse{Replica: rs.getReplica()}, nil
 }
 
 func (hc *ReplicaHealthCheckServer) Check(context.Context, *healthpb.HealthCheckRequest) (*healthpb.HealthCheckResponse, error) {

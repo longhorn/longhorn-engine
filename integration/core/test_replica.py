@@ -20,7 +20,7 @@ def test_create(grpc_replica_client):  # NOQA
     r = grpc_replica_client.replica_get()
     assert r.state == 'initial'
     assert r.size == '0'
-    assert r.sectorSize == 0
+    assert r.sector_size == 0
     assert r.parent == ''
     assert r.head == ''
 
@@ -28,7 +28,7 @@ def test_create(grpc_replica_client):  # NOQA
 
     assert r.state == 'closed'
     assert r.size == SIZE_STR
-    assert r.sectorSize == 512
+    assert r.sector_size == 512
     assert r.parent == ''
     assert r.head == 'volume-head-000.img'
 
@@ -37,7 +37,7 @@ def test_open(grpc_replica_client):  # NOQA
     r = grpc_replica_client.replica_get()
     assert r.state == 'initial'
     assert r.size == '0'
-    assert r.sectorSize == 0
+    assert r.sector_size == 0
     assert r.parent == ''
     assert r.head == ''
 
@@ -47,7 +47,7 @@ def test_open(grpc_replica_client):  # NOQA
     assert not r.dirty
     assert not r.rebuilding
     assert r.size == SIZE_STR
-    assert r.sectorSize == 512
+    assert r.sector_size == 512
     assert r.parent == ''
     assert r.head == 'volume-head-000.img'
 
@@ -57,7 +57,7 @@ def test_open(grpc_replica_client):  # NOQA
     assert not r.dirty
     assert not r.rebuilding
     assert r.size == SIZE_STR
-    assert r.sectorSize == 512
+    assert r.sector_size == 512
     assert r.parent == ''
     assert r.head == 'volume-head-000.img'
 
@@ -71,7 +71,7 @@ def test_close(grpc_replica_client):  # NOQA
     assert not r.dirty
     assert not r.rebuilding
     assert r.size == SIZE_STR
-    assert r.sectorSize == 512
+    assert r.sector_size == 512
     assert r.parent == ''
     assert r.head == 'volume-head-000.img'
 
@@ -81,7 +81,7 @@ def test_close(grpc_replica_client):  # NOQA
     assert not r.dirty
     assert not r.rebuilding
     assert r.size == SIZE_STR
-    assert r.sectorSize == 512
+    assert r.sector_size == 512
     assert r.parent == ''
     assert r.head == 'volume-head-000.img'
 
@@ -95,7 +95,7 @@ def test_snapshot(grpc_replica_client):  # NOQA
     assert not r.dirty
     assert not r.rebuilding
     assert r.size == SIZE_STR
-    assert r.sectorSize == 512
+    assert r.sector_size == 512
     assert r.parent == ''
     assert r.head == 'volume-head-000.img'
 
@@ -106,7 +106,7 @@ def test_snapshot(grpc_replica_client):  # NOQA
     assert r.dirty
     assert not r.rebuilding
     assert r.size == SIZE_STR
-    assert r.sectorSize == 512
+    assert r.sector_size == 512
     assert r.disks["volume-snap-000.img"].labels["name"] == "000"
     assert r.disks["volume-snap-000.img"].labels["key"] == "value"
 
@@ -117,7 +117,7 @@ def test_snapshot(grpc_replica_client):  # NOQA
     assert r.dirty
     assert not r.rebuilding
     assert r.size == SIZE_STR
-    assert r.sectorSize == 512
+    assert r.sector_size == 512
     assert r.head == 'volume-head-002.img'
     assert r.parent == 'volume-snap-001.img'
     assert r.chain == ['volume-head-002.img', 'volume-snap-001.img',
@@ -155,7 +155,7 @@ def test_remove_disk(grpc_replica_client):  # NOQA
     assert r.state == 'dirty'
     assert not r.rebuilding
     assert r.size == SIZE_STR
-    assert r.sectorSize == 512
+    assert r.sector_size == 512
     assert r.head == 'volume-head-002.img'
     assert r.parent == 'volume-snap-000.img'
     assert r.chain == ['volume-head-002.img', 'volume-snap-000.img']
@@ -188,7 +188,7 @@ def test_remove_last_disk(grpc_replica_client):  # NOQA
     assert r.state == 'dirty'
     assert not r.rebuilding
     assert r.size == SIZE_STR
-    assert r.sectorSize == 512
+    assert r.sector_size == 512
     assert r.head == 'volume-head-002.img'
     assert r.parent == 'volume-snap-001.img'
     assert r.chain == ['volume-head-002.img', 'volume-snap-001.img']
@@ -212,7 +212,7 @@ def test_reload(grpc_replica_client):  # NOQA
     r = grpc_replica_client.disk_remove(name='volume-snap-000.img')
     assert r.state == 'dirty'
     assert r.size == SIZE_STR
-    assert r.sectorSize == 512
+    assert r.sector_size == 512
     assert r.head == 'volume-head-002.img'
     assert r.parent == 'volume-snap-001.img'
     assert r.chain == ['volume-head-002.img', 'volume-snap-001.img']
@@ -220,7 +220,7 @@ def test_reload(grpc_replica_client):  # NOQA
     r = grpc_replica_client.replica_reload()
     assert r.state == 'dirty'
     assert r.size == SIZE_STR
-    assert r.sectorSize == 512
+    assert r.sector_size == 512
     assert r.chain == ['volume-head-002.img', 'volume-snap-001.img']
     assert r.head == 'volume-head-002.img'
     assert r.parent == 'volume-snap-001.img'
@@ -229,7 +229,7 @@ def test_reload(grpc_replica_client):  # NOQA
     r = grpc_replica_client.replica_open()
     assert r.state == 'open'
     assert r.size == SIZE_STR
-    assert r.sectorSize == 512
+    assert r.sector_size == 512
     assert r.chain == ['volume-head-002.img', 'volume-snap-001.img']
     assert r.head == 'volume-head-002.img'
     assert r.parent == 'volume-snap-001.img'
@@ -242,14 +242,14 @@ def test_reload_simple(grpc_replica_client):  # NOQA
     assert r.state == 'open'
     assert not r.rebuilding
     assert r.size == SIZE_STR
-    assert r.sectorSize == 512
+    assert r.sector_size == 512
     assert r.parent == ''
     assert r.head == 'volume-head-000.img'
 
     r = grpc_replica_client.replica_reload()
     assert r.state == 'open'
     assert r.size == SIZE_STR
-    assert r.sectorSize == 512
+    assert r.sector_size == 512
     assert r.parent == ''
     assert r.head == 'volume-head-000.img'
 
@@ -263,7 +263,7 @@ def test_rebuilding(grpc_replica_client):  # NOQA
     assert r.state == 'dirty'
     assert not r.rebuilding
     assert r.size == SIZE_STR
-    assert r.sectorSize == 512
+    assert r.sector_size == 512
     assert r.parent == 'volume-snap-001.img'
     assert r.head == 'volume-head-001.img'
     assert r.chain == ['volume-head-001.img', 'volume-snap-001.img']
@@ -272,7 +272,7 @@ def test_rebuilding(grpc_replica_client):  # NOQA
     assert r.state == 'rebuilding'
     assert r.rebuilding
     assert r.size == SIZE_STR
-    assert r.sectorSize == 512
+    assert r.sector_size == 512
     assert r.parent == 'volume-snap-001.img'
     assert r.head == 'volume-head-001.img'
     assert r.chain == ['volume-head-001.img', 'volume-snap-001.img']
@@ -282,7 +282,7 @@ def test_rebuilding(grpc_replica_client):  # NOQA
     assert r.state == 'rebuilding'
     assert r.rebuilding
     assert r.size == SIZE_STR
-    assert r.sectorSize == 512
+    assert r.sector_size == 512
     assert r.parent == 'volume-snap-001.img'
     assert r.head == 'volume-head-001.img'
     assert r.chain == ['volume-head-001.img', 'volume-snap-001.img']
@@ -291,7 +291,7 @@ def test_rebuilding(grpc_replica_client):  # NOQA
     assert r.state == 'rebuilding'
     assert r.rebuilding
     assert r.size == SIZE_STR
-    assert r.sectorSize == 512
+    assert r.sector_size == 512
     assert r.parent == 'volume-snap-001.img'
     assert r.head == 'volume-head-001.img'
     assert r.chain == ['volume-head-001.img', 'volume-snap-001.img']
@@ -306,7 +306,7 @@ def test_not_rebuilding(grpc_replica_client):  # NOQA
     assert r.state == 'dirty'
     assert not r.rebuilding
     assert r.size == SIZE_STR
-    assert r.sectorSize == 512
+    assert r.sector_size == 512
     assert r.parent == 'volume-snap-001.img'
     assert r.head == 'volume-head-001.img'
     assert r.chain == ['volume-head-001.img', 'volume-snap-001.img']
@@ -315,7 +315,7 @@ def test_not_rebuilding(grpc_replica_client):  # NOQA
     assert r.state == 'rebuilding'
     assert r.rebuilding
     assert r.size == SIZE_STR
-    assert r.sectorSize == 512
+    assert r.sector_size == 512
     assert r.parent == 'volume-snap-001.img'
     assert r.head == 'volume-head-001.img'
     assert r.chain == ['volume-head-001.img', 'volume-snap-001.img']
@@ -324,7 +324,7 @@ def test_not_rebuilding(grpc_replica_client):  # NOQA
     assert r.state == 'dirty'
     assert not r.rebuilding
     assert r.size == SIZE_STR
-    assert r.sectorSize == 512
+    assert r.sector_size == 512
     assert r.parent == 'volume-snap-001.img'
     assert r.head == 'volume-head-001.img'
     assert r.chain == ['volume-head-001.img', 'volume-snap-001.img']
