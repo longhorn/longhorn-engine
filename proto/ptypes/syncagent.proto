@@ -6,116 +6,119 @@ import "google/protobuf/empty.proto";
 import "common.proto";
 
 service SyncAgentService {
-    rpc FileRemove(FileRemoveRequest) returns (google.protobuf.Empty) {}
-    rpc FileRename(FileRenameRequest) returns (google.protobuf.Empty) {}
-    rpc FileSend(FileSendRequest) returns (google.protobuf.Empty) {}
-    rpc FilesSync(FilesSyncRequest) returns (google.protobuf.Empty) {}
-    rpc ReceiverLaunch(ReceiverLaunchRequest) returns (ReceiverLaunchReply) {}
-    rpc BackupCreate(BackupCreateRequest) returns (BackupCreateReply) {}
-    rpc BackupRemove(BackupRemoveRequest) returns (google.protobuf.Empty) {}
-    rpc BackupRestore(BackupRestoreRequest) returns (google.protobuf.Empty) {}
-    rpc BackupRestoreIncrementally(BackupRestoreIncrementallyRequest) returns (google.protobuf.Empty) {}
-    rpc BackupGetStatus(BackupProgressRequest) returns (BackupStatusReply) {}
-    rpc Reset(google.protobuf.Empty) returns (google.protobuf.Empty) {}
-    rpc RestoreStatus(google.protobuf.Empty) returns (RestoreStatusReply) {}
-    rpc SnapshotPurge(google.protobuf.Empty) returns (google.protobuf.Empty) {}
-    rpc SnapshotPurgeStatus(google.protobuf.Empty) returns (SnapshotPurgeStatusReply) {}
-    rpc ReplicaRebuildStatus(google.protobuf.Empty) returns (ReplicaRebuildStatusReply) {}
+  rpc FileRemove(FileRemoveRequest) returns (google.protobuf.Empty) {}
+  rpc FileRename(FileRenameRequest) returns (google.protobuf.Empty) {}
+  rpc FileSend(FileSendRequest) returns (google.protobuf.Empty) {}
+  rpc FilesSync(FilesSyncRequest) returns (google.protobuf.Empty) {}
+  rpc ReceiverLaunch(ReceiverLaunchRequest) returns (ReceiverLaunchResponse) {}
+  rpc BackupCreate(BackupCreateRequest) returns (BackupCreateResponse) {}
+  rpc BackupRemove(BackupRemoveRequest) returns (google.protobuf.Empty) {}
+  rpc BackupRestore(BackupRestoreRequest) returns (google.protobuf.Empty) {}
+  rpc BackupRestoreIncrementally(BackupRestoreIncrementallyRequest) returns
+    (google.protobuf.Empty) {}
+  rpc BackupStatus(BackupStatusRequest) returns (BackupStatusResponse) {}
+  rpc Reset(google.protobuf.Empty) returns (google.protobuf.Empty) {}
+  rpc RestoreStatus(google.protobuf.Empty) returns (RestoreStatusResponse) {}
+  rpc SnapshotPurge(google.protobuf.Empty) returns (google.protobuf.Empty) {}
+  rpc SnapshotPurgeStatus(google.protobuf.Empty) returns
+    (SnapshotPurgeStatusResponse) {}
+  rpc ReplicaRebuildStatus(google.protobuf.Empty) returns
+    (ReplicaRebuildStatusResponse) {}
 }
 
 message FileRemoveRequest {
-    string fileName = 1;
+  string file_name = 1;
 }
 
 message FileRenameRequest {
-    string oldFileName = 1;
-    string newFileName = 2;
+  string old_file_name = 1;
+  string new_file_name = 2;
 }
 
 message ReceiverLaunchRequest {
-    string toFileName = 1;
+  string to_file_name = 1;
 }
 
-message ReceiverLaunchReply {
-    int32 port = 1;
+message ReceiverLaunchResponse {
+  int32 port = 1;
 }
 
 message FileSendRequest {
-    string fromFileName = 1;
-    string host = 2;
-    int32 port =3;
+  string from_file_name = 1;
+  string host = 2;
+  int32 port =3;
 }
 
 message FilesSyncRequest {
-    string from_address = 1;
-    string to_host = 2;
-    repeated SyncFileInfo sync_file_info_list = 3;
+  string from_address = 1;
+  string to_host = 2;
+  repeated SyncFileInfo sync_file_info_list = 3;
 }
 
 message BackupCreateRequest {
-    string snapshotFileName = 1;
-    string backupTarget = 2;
-    string volumeName = 3;
-    repeated string labels = 4;
-    map<string, string> credential = 5;
+  string snapshot_file_name = 1;
+  string backup_target = 2;
+  string volume_name = 3;
+  repeated string labels = 4;
+  map<string, string> credential = 5;
 }
 
-message BackupCreateReply {
-    string backup = 1;
-    bool isIncremental = 2;
+message BackupCreateResponse {
+  string backup = 1;
+  bool is_incremental = 2;
 }
 
 message BackupRemoveRequest {
-    string backup = 1;
+  string backup = 1;
 };
 
-message BackupProgressRequest {
-    string backup = 1;
+message BackupStatusRequest {
+  string backup = 1;
 }
 
-message BackupStatusReply {
-    int32 progress = 1;
-    string backupURL = 2;
-    string error = 3;
-    string snapshotName = 4;
-    string state = 5;
+message BackupStatusResponse {
+  int32 progress = 1;
+  string backup_url = 2;
+  string error = 3;
+  string snapshot_name = 4;
+  string state = 5;
 }
 
 message BackupRestoreRequest {
-    string backup = 1;
-    string snapshotFileName = 2;
-    map<string, string> credential = 3;
+  string backup = 1;
+  string snapshot_file_name = 2;
+  map<string, string> credential = 3;
 }
 
 message BackupRestoreIncrementallyRequest {
-    string backup = 1;
-    string deltaFileName = 2;
-    string lastRestoredBackupName = 3;
-    string snapshotDiskName = 4;
-    map<string, string> credential = 5;
+  string backup = 1;
+  string delta_file_name = 2;
+  string last_restored_backup_name = 3;
+  string snapshot_disk_name = 4;
+  map<string, string> credential = 5;
 }
 
-message RestoreStatusReply {
-    bool isRestoring = 1;
-    string lastRestored = 2;
-    int32 progress = 3;
-    string error = 4;
-    string destFileName = 5;
-    string state = 6;
-    string backupURL = 7;
+message RestoreStatusResponse {
+  bool is_restoring = 1;
+  string last_restored = 2;
+  int32 progress = 3;
+  string error = 4;
+  string dest_file_name = 5;
+  string state = 6;
+  string backup_url = 7;
 }
 
-message SnapshotPurgeStatusReply {
-    bool isPurging = 1;
-    string error = 2;
-    int32 progress = 3;
-    string state = 4;
+message SnapshotPurgeStatusResponse {
+  bool is_purging = 1;
+  string error = 2;
+  int32 progress = 3;
+  string state = 4;
 }
 
-message ReplicaRebuildStatusReply {
-    bool is_rebuilding = 1;
-    string error = 2;
-    int32 progress = 3;
-    string state = 4;
-    string from_replica_address = 5;
+message ReplicaRebuildStatusResponse {
+  bool is_rebuilding = 1;
+  string error = 2;
+  int32 progress = 3;
+  string state = 4;
+  string from_replica_address = 5;
 }
