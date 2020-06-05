@@ -26,7 +26,7 @@ var _ = math.Inf
 const _ = proto.ProtoPackageIsVersion3 // please upgrade the proto package
 
 type FileRemoveRequest struct {
-	FileName             string   `protobuf:"bytes,1,opt,name=fileName,proto3" json:"fileName,omitempty"`
+	FileName             string   `protobuf:"bytes,1,opt,name=file_name,json=fileName,proto3" json:"file_name,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -65,8 +65,8 @@ func (m *FileRemoveRequest) GetFileName() string {
 }
 
 type FileRenameRequest struct {
-	OldFileName          string   `protobuf:"bytes,1,opt,name=oldFileName,proto3" json:"oldFileName,omitempty"`
-	NewFileName          string   `protobuf:"bytes,2,opt,name=newFileName,proto3" json:"newFileName,omitempty"`
+	OldFileName          string   `protobuf:"bytes,1,opt,name=old_file_name,json=oldFileName,proto3" json:"old_file_name,omitempty"`
+	NewFileName          string   `protobuf:"bytes,2,opt,name=new_file_name,json=newFileName,proto3" json:"new_file_name,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -112,7 +112,7 @@ func (m *FileRenameRequest) GetNewFileName() string {
 }
 
 type ReceiverLaunchRequest struct {
-	ToFileName           string   `protobuf:"bytes,1,opt,name=toFileName,proto3" json:"toFileName,omitempty"`
+	ToFileName           string   `protobuf:"bytes,1,opt,name=to_file_name,json=toFileName,proto3" json:"to_file_name,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
@@ -150,39 +150,39 @@ func (m *ReceiverLaunchRequest) GetToFileName() string {
 	return ""
 }
 
-type ReceiverLaunchReply struct {
+type ReceiverLaunchResponse struct {
 	Port                 int32    `protobuf:"varint,1,opt,name=port,proto3" json:"port,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *ReceiverLaunchReply) Reset()         { *m = ReceiverLaunchReply{} }
-func (m *ReceiverLaunchReply) String() string { return proto.CompactTextString(m) }
-func (*ReceiverLaunchReply) ProtoMessage()    {}
-func (*ReceiverLaunchReply) Descriptor() ([]byte, []int) {
+func (m *ReceiverLaunchResponse) Reset()         { *m = ReceiverLaunchResponse{} }
+func (m *ReceiverLaunchResponse) String() string { return proto.CompactTextString(m) }
+func (*ReceiverLaunchResponse) ProtoMessage()    {}
+func (*ReceiverLaunchResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_68e10ca3dfff6283, []int{3}
 }
 
-func (m *ReceiverLaunchReply) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_ReceiverLaunchReply.Unmarshal(m, b)
+func (m *ReceiverLaunchResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ReceiverLaunchResponse.Unmarshal(m, b)
 }
-func (m *ReceiverLaunchReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_ReceiverLaunchReply.Marshal(b, m, deterministic)
+func (m *ReceiverLaunchResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ReceiverLaunchResponse.Marshal(b, m, deterministic)
 }
-func (m *ReceiverLaunchReply) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ReceiverLaunchReply.Merge(m, src)
+func (m *ReceiverLaunchResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ReceiverLaunchResponse.Merge(m, src)
 }
-func (m *ReceiverLaunchReply) XXX_Size() int {
-	return xxx_messageInfo_ReceiverLaunchReply.Size(m)
+func (m *ReceiverLaunchResponse) XXX_Size() int {
+	return xxx_messageInfo_ReceiverLaunchResponse.Size(m)
 }
-func (m *ReceiverLaunchReply) XXX_DiscardUnknown() {
-	xxx_messageInfo_ReceiverLaunchReply.DiscardUnknown(m)
+func (m *ReceiverLaunchResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_ReceiverLaunchResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_ReceiverLaunchReply proto.InternalMessageInfo
+var xxx_messageInfo_ReceiverLaunchResponse proto.InternalMessageInfo
 
-func (m *ReceiverLaunchReply) GetPort() int32 {
+func (m *ReceiverLaunchResponse) GetPort() int32 {
 	if m != nil {
 		return m.Port
 	}
@@ -190,7 +190,7 @@ func (m *ReceiverLaunchReply) GetPort() int32 {
 }
 
 type FileSendRequest struct {
-	FromFileName         string   `protobuf:"bytes,1,opt,name=fromFileName,proto3" json:"fromFileName,omitempty"`
+	FromFileName         string   `protobuf:"bytes,1,opt,name=from_file_name,json=fromFileName,proto3" json:"from_file_name,omitempty"`
 	Host                 string   `protobuf:"bytes,2,opt,name=host,proto3" json:"host,omitempty"`
 	Port                 int32    `protobuf:"varint,3,opt,name=port,proto3" json:"port,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
@@ -300,9 +300,9 @@ func (m *FilesSyncRequest) GetSyncFileInfoList() []*SyncFileInfo {
 }
 
 type BackupCreateRequest struct {
-	SnapshotFileName     string            `protobuf:"bytes,1,opt,name=snapshotFileName,proto3" json:"snapshotFileName,omitempty"`
-	BackupTarget         string            `protobuf:"bytes,2,opt,name=backupTarget,proto3" json:"backupTarget,omitempty"`
-	VolumeName           string            `protobuf:"bytes,3,opt,name=volumeName,proto3" json:"volumeName,omitempty"`
+	SnapshotFileName     string            `protobuf:"bytes,1,opt,name=snapshot_file_name,json=snapshotFileName,proto3" json:"snapshot_file_name,omitempty"`
+	BackupTarget         string            `protobuf:"bytes,2,opt,name=backup_target,json=backupTarget,proto3" json:"backup_target,omitempty"`
+	VolumeName           string            `protobuf:"bytes,3,opt,name=volume_name,json=volumeName,proto3" json:"volume_name,omitempty"`
 	Labels               []string          `protobuf:"bytes,4,rep,name=labels,proto3" json:"labels,omitempty"`
 	Credential           map[string]string `protobuf:"bytes,5,rep,name=credential,proto3" json:"credential,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	XXX_NoUnkeyedLiteral struct{}          `json:"-"`
@@ -370,47 +370,47 @@ func (m *BackupCreateRequest) GetCredential() map[string]string {
 	return nil
 }
 
-type BackupCreateReply struct {
+type BackupCreateResponse struct {
 	Backup               string   `protobuf:"bytes,1,opt,name=backup,proto3" json:"backup,omitempty"`
-	IsIncremental        bool     `protobuf:"varint,2,opt,name=isIncremental,proto3" json:"isIncremental,omitempty"`
+	IsIncremental        bool     `protobuf:"varint,2,opt,name=is_incremental,json=isIncremental,proto3" json:"is_incremental,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *BackupCreateReply) Reset()         { *m = BackupCreateReply{} }
-func (m *BackupCreateReply) String() string { return proto.CompactTextString(m) }
-func (*BackupCreateReply) ProtoMessage()    {}
-func (*BackupCreateReply) Descriptor() ([]byte, []int) {
+func (m *BackupCreateResponse) Reset()         { *m = BackupCreateResponse{} }
+func (m *BackupCreateResponse) String() string { return proto.CompactTextString(m) }
+func (*BackupCreateResponse) ProtoMessage()    {}
+func (*BackupCreateResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_68e10ca3dfff6283, []int{7}
 }
 
-func (m *BackupCreateReply) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_BackupCreateReply.Unmarshal(m, b)
+func (m *BackupCreateResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_BackupCreateResponse.Unmarshal(m, b)
 }
-func (m *BackupCreateReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_BackupCreateReply.Marshal(b, m, deterministic)
+func (m *BackupCreateResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_BackupCreateResponse.Marshal(b, m, deterministic)
 }
-func (m *BackupCreateReply) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BackupCreateReply.Merge(m, src)
+func (m *BackupCreateResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_BackupCreateResponse.Merge(m, src)
 }
-func (m *BackupCreateReply) XXX_Size() int {
-	return xxx_messageInfo_BackupCreateReply.Size(m)
+func (m *BackupCreateResponse) XXX_Size() int {
+	return xxx_messageInfo_BackupCreateResponse.Size(m)
 }
-func (m *BackupCreateReply) XXX_DiscardUnknown() {
-	xxx_messageInfo_BackupCreateReply.DiscardUnknown(m)
+func (m *BackupCreateResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_BackupCreateResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_BackupCreateReply proto.InternalMessageInfo
+var xxx_messageInfo_BackupCreateResponse proto.InternalMessageInfo
 
-func (m *BackupCreateReply) GetBackup() string {
+func (m *BackupCreateResponse) GetBackup() string {
 	if m != nil {
 		return m.Backup
 	}
 	return ""
 }
 
-func (m *BackupCreateReply) GetIsIncremental() bool {
+func (m *BackupCreateResponse) GetIsIncremental() bool {
 	if m != nil {
 		return m.IsIncremental
 	}
@@ -456,110 +456,110 @@ func (m *BackupRemoveRequest) GetBackup() string {
 	return ""
 }
 
-type BackupProgressRequest struct {
+type BackupStatusRequest struct {
 	Backup               string   `protobuf:"bytes,1,opt,name=backup,proto3" json:"backup,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *BackupProgressRequest) Reset()         { *m = BackupProgressRequest{} }
-func (m *BackupProgressRequest) String() string { return proto.CompactTextString(m) }
-func (*BackupProgressRequest) ProtoMessage()    {}
-func (*BackupProgressRequest) Descriptor() ([]byte, []int) {
+func (m *BackupStatusRequest) Reset()         { *m = BackupStatusRequest{} }
+func (m *BackupStatusRequest) String() string { return proto.CompactTextString(m) }
+func (*BackupStatusRequest) ProtoMessage()    {}
+func (*BackupStatusRequest) Descriptor() ([]byte, []int) {
 	return fileDescriptor_68e10ca3dfff6283, []int{9}
 }
 
-func (m *BackupProgressRequest) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_BackupProgressRequest.Unmarshal(m, b)
+func (m *BackupStatusRequest) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_BackupStatusRequest.Unmarshal(m, b)
 }
-func (m *BackupProgressRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_BackupProgressRequest.Marshal(b, m, deterministic)
+func (m *BackupStatusRequest) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_BackupStatusRequest.Marshal(b, m, deterministic)
 }
-func (m *BackupProgressRequest) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BackupProgressRequest.Merge(m, src)
+func (m *BackupStatusRequest) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_BackupStatusRequest.Merge(m, src)
 }
-func (m *BackupProgressRequest) XXX_Size() int {
-	return xxx_messageInfo_BackupProgressRequest.Size(m)
+func (m *BackupStatusRequest) XXX_Size() int {
+	return xxx_messageInfo_BackupStatusRequest.Size(m)
 }
-func (m *BackupProgressRequest) XXX_DiscardUnknown() {
-	xxx_messageInfo_BackupProgressRequest.DiscardUnknown(m)
+func (m *BackupStatusRequest) XXX_DiscardUnknown() {
+	xxx_messageInfo_BackupStatusRequest.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_BackupProgressRequest proto.InternalMessageInfo
+var xxx_messageInfo_BackupStatusRequest proto.InternalMessageInfo
 
-func (m *BackupProgressRequest) GetBackup() string {
+func (m *BackupStatusRequest) GetBackup() string {
 	if m != nil {
 		return m.Backup
 	}
 	return ""
 }
 
-type BackupStatusReply struct {
+type BackupStatusResponse struct {
 	Progress             int32    `protobuf:"varint,1,opt,name=progress,proto3" json:"progress,omitempty"`
-	BackupURL            string   `protobuf:"bytes,2,opt,name=backupURL,proto3" json:"backupURL,omitempty"`
+	BackupUrl            string   `protobuf:"bytes,2,opt,name=backup_url,json=backupUrl,proto3" json:"backup_url,omitempty"`
 	Error                string   `protobuf:"bytes,3,opt,name=error,proto3" json:"error,omitempty"`
-	SnapshotName         string   `protobuf:"bytes,4,opt,name=snapshotName,proto3" json:"snapshotName,omitempty"`
+	SnapshotName         string   `protobuf:"bytes,4,opt,name=snapshot_name,json=snapshotName,proto3" json:"snapshot_name,omitempty"`
 	State                string   `protobuf:"bytes,5,opt,name=state,proto3" json:"state,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *BackupStatusReply) Reset()         { *m = BackupStatusReply{} }
-func (m *BackupStatusReply) String() string { return proto.CompactTextString(m) }
-func (*BackupStatusReply) ProtoMessage()    {}
-func (*BackupStatusReply) Descriptor() ([]byte, []int) {
+func (m *BackupStatusResponse) Reset()         { *m = BackupStatusResponse{} }
+func (m *BackupStatusResponse) String() string { return proto.CompactTextString(m) }
+func (*BackupStatusResponse) ProtoMessage()    {}
+func (*BackupStatusResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_68e10ca3dfff6283, []int{10}
 }
 
-func (m *BackupStatusReply) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_BackupStatusReply.Unmarshal(m, b)
+func (m *BackupStatusResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_BackupStatusResponse.Unmarshal(m, b)
 }
-func (m *BackupStatusReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_BackupStatusReply.Marshal(b, m, deterministic)
+func (m *BackupStatusResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_BackupStatusResponse.Marshal(b, m, deterministic)
 }
-func (m *BackupStatusReply) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_BackupStatusReply.Merge(m, src)
+func (m *BackupStatusResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_BackupStatusResponse.Merge(m, src)
 }
-func (m *BackupStatusReply) XXX_Size() int {
-	return xxx_messageInfo_BackupStatusReply.Size(m)
+func (m *BackupStatusResponse) XXX_Size() int {
+	return xxx_messageInfo_BackupStatusResponse.Size(m)
 }
-func (m *BackupStatusReply) XXX_DiscardUnknown() {
-	xxx_messageInfo_BackupStatusReply.DiscardUnknown(m)
+func (m *BackupStatusResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_BackupStatusResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_BackupStatusReply proto.InternalMessageInfo
+var xxx_messageInfo_BackupStatusResponse proto.InternalMessageInfo
 
-func (m *BackupStatusReply) GetProgress() int32 {
+func (m *BackupStatusResponse) GetProgress() int32 {
 	if m != nil {
 		return m.Progress
 	}
 	return 0
 }
 
-func (m *BackupStatusReply) GetBackupURL() string {
+func (m *BackupStatusResponse) GetBackupUrl() string {
 	if m != nil {
-		return m.BackupURL
+		return m.BackupUrl
 	}
 	return ""
 }
 
-func (m *BackupStatusReply) GetError() string {
+func (m *BackupStatusResponse) GetError() string {
 	if m != nil {
 		return m.Error
 	}
 	return ""
 }
 
-func (m *BackupStatusReply) GetSnapshotName() string {
+func (m *BackupStatusResponse) GetSnapshotName() string {
 	if m != nil {
 		return m.SnapshotName
 	}
 	return ""
 }
 
-func (m *BackupStatusReply) GetState() string {
+func (m *BackupStatusResponse) GetState() string {
 	if m != nil {
 		return m.State
 	}
@@ -568,7 +568,7 @@ func (m *BackupStatusReply) GetState() string {
 
 type BackupRestoreRequest struct {
 	Backup               string            `protobuf:"bytes,1,opt,name=backup,proto3" json:"backup,omitempty"`
-	SnapshotFileName     string            `protobuf:"bytes,2,opt,name=snapshotFileName,proto3" json:"snapshotFileName,omitempty"`
+	SnapshotFileName     string            `protobuf:"bytes,2,opt,name=snapshot_file_name,json=snapshotFileName,proto3" json:"snapshot_file_name,omitempty"`
 	Credential           map[string]string `protobuf:"bytes,3,rep,name=credential,proto3" json:"credential,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	XXX_NoUnkeyedLiteral struct{}          `json:"-"`
 	XXX_unrecognized     []byte            `json:"-"`
@@ -623,9 +623,9 @@ func (m *BackupRestoreRequest) GetCredential() map[string]string {
 
 type BackupRestoreIncrementallyRequest struct {
 	Backup                 string            `protobuf:"bytes,1,opt,name=backup,proto3" json:"backup,omitempty"`
-	DeltaFileName          string            `protobuf:"bytes,2,opt,name=deltaFileName,proto3" json:"deltaFileName,omitempty"`
-	LastRestoredBackupName string            `protobuf:"bytes,3,opt,name=lastRestoredBackupName,proto3" json:"lastRestoredBackupName,omitempty"`
-	SnapshotDiskName       string            `protobuf:"bytes,4,opt,name=snapshotDiskName,proto3" json:"snapshotDiskName,omitempty"`
+	DeltaFileName          string            `protobuf:"bytes,2,opt,name=delta_file_name,json=deltaFileName,proto3" json:"delta_file_name,omitempty"`
+	LastRestoredBackupName string            `protobuf:"bytes,3,opt,name=last_restored_backup_name,json=lastRestoredBackupName,proto3" json:"last_restored_backup_name,omitempty"`
+	SnapshotDiskName       string            `protobuf:"bytes,4,opt,name=snapshot_disk_name,json=snapshotDiskName,proto3" json:"snapshot_disk_name,omitempty"`
 	Credential             map[string]string `protobuf:"bytes,5,rep,name=credential,proto3" json:"credential,omitempty" protobuf_key:"bytes,1,opt,name=key,proto3" protobuf_val:"bytes,2,opt,name=value,proto3"`
 	XXX_NoUnkeyedLiteral   struct{}          `json:"-"`
 	XXX_unrecognized       []byte            `json:"-"`
@@ -692,95 +692,95 @@ func (m *BackupRestoreIncrementallyRequest) GetCredential() map[string]string {
 	return nil
 }
 
-type RestoreStatusReply struct {
-	IsRestoring          bool     `protobuf:"varint,1,opt,name=isRestoring,proto3" json:"isRestoring,omitempty"`
-	LastRestored         string   `protobuf:"bytes,2,opt,name=lastRestored,proto3" json:"lastRestored,omitempty"`
+type RestoreStatusResponse struct {
+	IsRestoring          bool     `protobuf:"varint,1,opt,name=is_restoring,json=isRestoring,proto3" json:"is_restoring,omitempty"`
+	LastRestored         string   `protobuf:"bytes,2,opt,name=last_restored,json=lastRestored,proto3" json:"last_restored,omitempty"`
 	Progress             int32    `protobuf:"varint,3,opt,name=progress,proto3" json:"progress,omitempty"`
 	Error                string   `protobuf:"bytes,4,opt,name=error,proto3" json:"error,omitempty"`
-	DestFileName         string   `protobuf:"bytes,5,opt,name=destFileName,proto3" json:"destFileName,omitempty"`
+	DestFileName         string   `protobuf:"bytes,5,opt,name=dest_file_name,json=destFileName,proto3" json:"dest_file_name,omitempty"`
 	State                string   `protobuf:"bytes,6,opt,name=state,proto3" json:"state,omitempty"`
-	BackupURL            string   `protobuf:"bytes,7,opt,name=backupURL,proto3" json:"backupURL,omitempty"`
+	BackupUrl            string   `protobuf:"bytes,7,opt,name=backup_url,json=backupUrl,proto3" json:"backup_url,omitempty"`
 	XXX_NoUnkeyedLiteral struct{} `json:"-"`
 	XXX_unrecognized     []byte   `json:"-"`
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *RestoreStatusReply) Reset()         { *m = RestoreStatusReply{} }
-func (m *RestoreStatusReply) String() string { return proto.CompactTextString(m) }
-func (*RestoreStatusReply) ProtoMessage()    {}
-func (*RestoreStatusReply) Descriptor() ([]byte, []int) {
+func (m *RestoreStatusResponse) Reset()         { *m = RestoreStatusResponse{} }
+func (m *RestoreStatusResponse) String() string { return proto.CompactTextString(m) }
+func (*RestoreStatusResponse) ProtoMessage()    {}
+func (*RestoreStatusResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_68e10ca3dfff6283, []int{13}
 }
 
-func (m *RestoreStatusReply) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_RestoreStatusReply.Unmarshal(m, b)
+func (m *RestoreStatusResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_RestoreStatusResponse.Unmarshal(m, b)
 }
-func (m *RestoreStatusReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_RestoreStatusReply.Marshal(b, m, deterministic)
+func (m *RestoreStatusResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_RestoreStatusResponse.Marshal(b, m, deterministic)
 }
-func (m *RestoreStatusReply) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_RestoreStatusReply.Merge(m, src)
+func (m *RestoreStatusResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_RestoreStatusResponse.Merge(m, src)
 }
-func (m *RestoreStatusReply) XXX_Size() int {
-	return xxx_messageInfo_RestoreStatusReply.Size(m)
+func (m *RestoreStatusResponse) XXX_Size() int {
+	return xxx_messageInfo_RestoreStatusResponse.Size(m)
 }
-func (m *RestoreStatusReply) XXX_DiscardUnknown() {
-	xxx_messageInfo_RestoreStatusReply.DiscardUnknown(m)
+func (m *RestoreStatusResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_RestoreStatusResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_RestoreStatusReply proto.InternalMessageInfo
+var xxx_messageInfo_RestoreStatusResponse proto.InternalMessageInfo
 
-func (m *RestoreStatusReply) GetIsRestoring() bool {
+func (m *RestoreStatusResponse) GetIsRestoring() bool {
 	if m != nil {
 		return m.IsRestoring
 	}
 	return false
 }
 
-func (m *RestoreStatusReply) GetLastRestored() string {
+func (m *RestoreStatusResponse) GetLastRestored() string {
 	if m != nil {
 		return m.LastRestored
 	}
 	return ""
 }
 
-func (m *RestoreStatusReply) GetProgress() int32 {
+func (m *RestoreStatusResponse) GetProgress() int32 {
 	if m != nil {
 		return m.Progress
 	}
 	return 0
 }
 
-func (m *RestoreStatusReply) GetError() string {
+func (m *RestoreStatusResponse) GetError() string {
 	if m != nil {
 		return m.Error
 	}
 	return ""
 }
 
-func (m *RestoreStatusReply) GetDestFileName() string {
+func (m *RestoreStatusResponse) GetDestFileName() string {
 	if m != nil {
 		return m.DestFileName
 	}
 	return ""
 }
 
-func (m *RestoreStatusReply) GetState() string {
+func (m *RestoreStatusResponse) GetState() string {
 	if m != nil {
 		return m.State
 	}
 	return ""
 }
 
-func (m *RestoreStatusReply) GetBackupURL() string {
+func (m *RestoreStatusResponse) GetBackupUrl() string {
 	if m != nil {
-		return m.BackupURL
+		return m.BackupUrl
 	}
 	return ""
 }
 
-type SnapshotPurgeStatusReply struct {
-	IsPurging            bool     `protobuf:"varint,1,opt,name=isPurging,proto3" json:"isPurging,omitempty"`
+type SnapshotPurgeStatusResponse struct {
+	IsPurging            bool     `protobuf:"varint,1,opt,name=is_purging,json=isPurging,proto3" json:"is_purging,omitempty"`
 	Error                string   `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
 	Progress             int32    `protobuf:"varint,3,opt,name=progress,proto3" json:"progress,omitempty"`
 	State                string   `protobuf:"bytes,4,opt,name=state,proto3" json:"state,omitempty"`
@@ -789,60 +789,60 @@ type SnapshotPurgeStatusReply struct {
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *SnapshotPurgeStatusReply) Reset()         { *m = SnapshotPurgeStatusReply{} }
-func (m *SnapshotPurgeStatusReply) String() string { return proto.CompactTextString(m) }
-func (*SnapshotPurgeStatusReply) ProtoMessage()    {}
-func (*SnapshotPurgeStatusReply) Descriptor() ([]byte, []int) {
+func (m *SnapshotPurgeStatusResponse) Reset()         { *m = SnapshotPurgeStatusResponse{} }
+func (m *SnapshotPurgeStatusResponse) String() string { return proto.CompactTextString(m) }
+func (*SnapshotPurgeStatusResponse) ProtoMessage()    {}
+func (*SnapshotPurgeStatusResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_68e10ca3dfff6283, []int{14}
 }
 
-func (m *SnapshotPurgeStatusReply) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_SnapshotPurgeStatusReply.Unmarshal(m, b)
+func (m *SnapshotPurgeStatusResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_SnapshotPurgeStatusResponse.Unmarshal(m, b)
 }
-func (m *SnapshotPurgeStatusReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_SnapshotPurgeStatusReply.Marshal(b, m, deterministic)
+func (m *SnapshotPurgeStatusResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_SnapshotPurgeStatusResponse.Marshal(b, m, deterministic)
 }
-func (m *SnapshotPurgeStatusReply) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_SnapshotPurgeStatusReply.Merge(m, src)
+func (m *SnapshotPurgeStatusResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_SnapshotPurgeStatusResponse.Merge(m, src)
 }
-func (m *SnapshotPurgeStatusReply) XXX_Size() int {
-	return xxx_messageInfo_SnapshotPurgeStatusReply.Size(m)
+func (m *SnapshotPurgeStatusResponse) XXX_Size() int {
+	return xxx_messageInfo_SnapshotPurgeStatusResponse.Size(m)
 }
-func (m *SnapshotPurgeStatusReply) XXX_DiscardUnknown() {
-	xxx_messageInfo_SnapshotPurgeStatusReply.DiscardUnknown(m)
+func (m *SnapshotPurgeStatusResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_SnapshotPurgeStatusResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_SnapshotPurgeStatusReply proto.InternalMessageInfo
+var xxx_messageInfo_SnapshotPurgeStatusResponse proto.InternalMessageInfo
 
-func (m *SnapshotPurgeStatusReply) GetIsPurging() bool {
+func (m *SnapshotPurgeStatusResponse) GetIsPurging() bool {
 	if m != nil {
 		return m.IsPurging
 	}
 	return false
 }
 
-func (m *SnapshotPurgeStatusReply) GetError() string {
+func (m *SnapshotPurgeStatusResponse) GetError() string {
 	if m != nil {
 		return m.Error
 	}
 	return ""
 }
 
-func (m *SnapshotPurgeStatusReply) GetProgress() int32 {
+func (m *SnapshotPurgeStatusResponse) GetProgress() int32 {
 	if m != nil {
 		return m.Progress
 	}
 	return 0
 }
 
-func (m *SnapshotPurgeStatusReply) GetState() string {
+func (m *SnapshotPurgeStatusResponse) GetState() string {
 	if m != nil {
 		return m.State
 	}
 	return ""
 }
 
-type ReplicaRebuildStatusReply struct {
+type ReplicaRebuildStatusResponse struct {
 	IsRebuilding         bool     `protobuf:"varint,1,opt,name=is_rebuilding,json=isRebuilding,proto3" json:"is_rebuilding,omitempty"`
 	Error                string   `protobuf:"bytes,2,opt,name=error,proto3" json:"error,omitempty"`
 	Progress             int32    `protobuf:"varint,3,opt,name=progress,proto3" json:"progress,omitempty"`
@@ -853,60 +853,60 @@ type ReplicaRebuildStatusReply struct {
 	XXX_sizecache        int32    `json:"-"`
 }
 
-func (m *ReplicaRebuildStatusReply) Reset()         { *m = ReplicaRebuildStatusReply{} }
-func (m *ReplicaRebuildStatusReply) String() string { return proto.CompactTextString(m) }
-func (*ReplicaRebuildStatusReply) ProtoMessage()    {}
-func (*ReplicaRebuildStatusReply) Descriptor() ([]byte, []int) {
+func (m *ReplicaRebuildStatusResponse) Reset()         { *m = ReplicaRebuildStatusResponse{} }
+func (m *ReplicaRebuildStatusResponse) String() string { return proto.CompactTextString(m) }
+func (*ReplicaRebuildStatusResponse) ProtoMessage()    {}
+func (*ReplicaRebuildStatusResponse) Descriptor() ([]byte, []int) {
 	return fileDescriptor_68e10ca3dfff6283, []int{15}
 }
 
-func (m *ReplicaRebuildStatusReply) XXX_Unmarshal(b []byte) error {
-	return xxx_messageInfo_ReplicaRebuildStatusReply.Unmarshal(m, b)
+func (m *ReplicaRebuildStatusResponse) XXX_Unmarshal(b []byte) error {
+	return xxx_messageInfo_ReplicaRebuildStatusResponse.Unmarshal(m, b)
 }
-func (m *ReplicaRebuildStatusReply) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
-	return xxx_messageInfo_ReplicaRebuildStatusReply.Marshal(b, m, deterministic)
+func (m *ReplicaRebuildStatusResponse) XXX_Marshal(b []byte, deterministic bool) ([]byte, error) {
+	return xxx_messageInfo_ReplicaRebuildStatusResponse.Marshal(b, m, deterministic)
 }
-func (m *ReplicaRebuildStatusReply) XXX_Merge(src proto.Message) {
-	xxx_messageInfo_ReplicaRebuildStatusReply.Merge(m, src)
+func (m *ReplicaRebuildStatusResponse) XXX_Merge(src proto.Message) {
+	xxx_messageInfo_ReplicaRebuildStatusResponse.Merge(m, src)
 }
-func (m *ReplicaRebuildStatusReply) XXX_Size() int {
-	return xxx_messageInfo_ReplicaRebuildStatusReply.Size(m)
+func (m *ReplicaRebuildStatusResponse) XXX_Size() int {
+	return xxx_messageInfo_ReplicaRebuildStatusResponse.Size(m)
 }
-func (m *ReplicaRebuildStatusReply) XXX_DiscardUnknown() {
-	xxx_messageInfo_ReplicaRebuildStatusReply.DiscardUnknown(m)
+func (m *ReplicaRebuildStatusResponse) XXX_DiscardUnknown() {
+	xxx_messageInfo_ReplicaRebuildStatusResponse.DiscardUnknown(m)
 }
 
-var xxx_messageInfo_ReplicaRebuildStatusReply proto.InternalMessageInfo
+var xxx_messageInfo_ReplicaRebuildStatusResponse proto.InternalMessageInfo
 
-func (m *ReplicaRebuildStatusReply) GetIsRebuilding() bool {
+func (m *ReplicaRebuildStatusResponse) GetIsRebuilding() bool {
 	if m != nil {
 		return m.IsRebuilding
 	}
 	return false
 }
 
-func (m *ReplicaRebuildStatusReply) GetError() string {
+func (m *ReplicaRebuildStatusResponse) GetError() string {
 	if m != nil {
 		return m.Error
 	}
 	return ""
 }
 
-func (m *ReplicaRebuildStatusReply) GetProgress() int32 {
+func (m *ReplicaRebuildStatusResponse) GetProgress() int32 {
 	if m != nil {
 		return m.Progress
 	}
 	return 0
 }
 
-func (m *ReplicaRebuildStatusReply) GetState() string {
+func (m *ReplicaRebuildStatusResponse) GetState() string {
 	if m != nil {
 		return m.State
 	}
 	return ""
 }
 
-func (m *ReplicaRebuildStatusReply) GetFromReplicaAddress() string {
+func (m *ReplicaRebuildStatusResponse) GetFromReplicaAddress() string {
 	if m != nil {
 		return m.FromReplicaAddress
 	}
@@ -917,95 +917,99 @@ func init() {
 	proto.RegisterType((*FileRemoveRequest)(nil), "ptypes.FileRemoveRequest")
 	proto.RegisterType((*FileRenameRequest)(nil), "ptypes.FileRenameRequest")
 	proto.RegisterType((*ReceiverLaunchRequest)(nil), "ptypes.ReceiverLaunchRequest")
-	proto.RegisterType((*ReceiverLaunchReply)(nil), "ptypes.ReceiverLaunchReply")
+	proto.RegisterType((*ReceiverLaunchResponse)(nil), "ptypes.ReceiverLaunchResponse")
 	proto.RegisterType((*FileSendRequest)(nil), "ptypes.FileSendRequest")
 	proto.RegisterType((*FilesSyncRequest)(nil), "ptypes.FilesSyncRequest")
 	proto.RegisterType((*BackupCreateRequest)(nil), "ptypes.BackupCreateRequest")
 	proto.RegisterMapType((map[string]string)(nil), "ptypes.BackupCreateRequest.CredentialEntry")
-	proto.RegisterType((*BackupCreateReply)(nil), "ptypes.BackupCreateReply")
+	proto.RegisterType((*BackupCreateResponse)(nil), "ptypes.BackupCreateResponse")
 	proto.RegisterType((*BackupRemoveRequest)(nil), "ptypes.BackupRemoveRequest")
-	proto.RegisterType((*BackupProgressRequest)(nil), "ptypes.BackupProgressRequest")
-	proto.RegisterType((*BackupStatusReply)(nil), "ptypes.BackupStatusReply")
+	proto.RegisterType((*BackupStatusRequest)(nil), "ptypes.BackupStatusRequest")
+	proto.RegisterType((*BackupStatusResponse)(nil), "ptypes.BackupStatusResponse")
 	proto.RegisterType((*BackupRestoreRequest)(nil), "ptypes.BackupRestoreRequest")
 	proto.RegisterMapType((map[string]string)(nil), "ptypes.BackupRestoreRequest.CredentialEntry")
 	proto.RegisterType((*BackupRestoreIncrementallyRequest)(nil), "ptypes.BackupRestoreIncrementallyRequest")
 	proto.RegisterMapType((map[string]string)(nil), "ptypes.BackupRestoreIncrementallyRequest.CredentialEntry")
-	proto.RegisterType((*RestoreStatusReply)(nil), "ptypes.RestoreStatusReply")
-	proto.RegisterType((*SnapshotPurgeStatusReply)(nil), "ptypes.SnapshotPurgeStatusReply")
-	proto.RegisterType((*ReplicaRebuildStatusReply)(nil), "ptypes.ReplicaRebuildStatusReply")
+	proto.RegisterType((*RestoreStatusResponse)(nil), "ptypes.RestoreStatusResponse")
+	proto.RegisterType((*SnapshotPurgeStatusResponse)(nil), "ptypes.SnapshotPurgeStatusResponse")
+	proto.RegisterType((*ReplicaRebuildStatusResponse)(nil), "ptypes.ReplicaRebuildStatusResponse")
 }
 
 func init() { proto.RegisterFile("syncagent.proto", fileDescriptor_68e10ca3dfff6283) }
 
 var fileDescriptor_68e10ca3dfff6283 = []byte{
-	// 1063 bytes of a gzipped FileDescriptorProto
-	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xb4, 0x56, 0xdd, 0x6e, 0xe3, 0x44,
-	0x14, 0x6e, 0x92, 0x36, 0x9b, 0x9e, 0xb6, 0x34, 0x3b, 0xcd, 0x76, 0x53, 0xb7, 0xa0, 0xd4, 0xec,
-	0xc5, 0x2e, 0x3f, 0x29, 0x5a, 0x24, 0x60, 0x91, 0x56, 0xa8, 0x94, 0xee, 0x8f, 0x28, 0xab, 0x5d,
-	0x07, 0x84, 0xb8, 0x40, 0xd1, 0xc4, 0x99, 0xa4, 0x56, 0x1d, 0x8f, 0x99, 0x99, 0x04, 0xe5, 0x8e,
-	0x77, 0xe0, 0x9a, 0x07, 0xe0, 0x15, 0x78, 0x19, 0x84, 0x84, 0xc4, 0x6b, 0xa0, 0xf1, 0x78, 0xec,
-	0x19, 0xd7, 0x4e, 0x57, 0x88, 0xbd, 0xf3, 0x7c, 0x9e, 0xf3, 0x9d, 0xff, 0x33, 0x07, 0x76, 0xf9,
-	0x32, 0xf2, 0xf1, 0x94, 0x44, 0xa2, 0x1f, 0x33, 0x2a, 0x28, 0x6a, 0xc6, 0x62, 0x19, 0x13, 0xee,
-	0x1c, 0x4e, 0x29, 0x9d, 0x86, 0xe4, 0x24, 0x41, 0x47, 0xf3, 0xc9, 0x09, 0x99, 0xc5, 0x62, 0xa9,
-	0x2e, 0x39, 0xdb, 0x3e, 0x9d, 0xcd, 0x68, 0xa4, 0x4e, 0xee, 0x09, 0xdc, 0x7e, 0x12, 0x84, 0xc4,
-	0x23, 0x33, 0xba, 0x20, 0x1e, 0xf9, 0x69, 0x4e, 0xb8, 0x40, 0x0e, 0xb4, 0x26, 0x41, 0x48, 0x5e,
-	0xe0, 0x19, 0xe9, 0xd6, 0x7a, 0xb5, 0xfb, 0x9b, 0x5e, 0x76, 0x76, 0xbf, 0xd7, 0x02, 0x11, 0x9e,
-	0x65, 0x02, 0x3d, 0xd8, 0xa2, 0xe1, 0xf8, 0x89, 0x2d, 0x63, 0x42, 0xf2, 0x46, 0x44, 0x7e, 0xce,
-	0x6e, 0xd4, 0xd5, 0x0d, 0x03, 0x72, 0x3f, 0x85, 0x3b, 0x1e, 0xf1, 0x49, 0xb0, 0x20, 0xec, 0x02,
-	0xcf, 0x23, 0xff, 0x52, 0x93, 0xbf, 0x03, 0x20, 0x68, 0x81, 0xdb, 0x40, 0xdc, 0x07, 0xb0, 0x57,
-	0x14, 0x8c, 0xc3, 0x25, 0x42, 0xb0, 0x1e, 0x53, 0x26, 0x12, 0x81, 0x0d, 0x2f, 0xf9, 0x76, 0x7f,
-	0x84, 0x5d, 0x29, 0x36, 0x20, 0xd1, 0x58, 0xb3, 0xbb, 0xb0, 0x3d, 0x61, 0x74, 0x56, 0xe0, 0xb7,
-	0x30, 0x49, 0x75, 0x49, 0xb9, 0x48, 0xad, 0x4e, 0xbe, 0x33, 0xfa, 0x86, 0x41, 0xff, 0x6b, 0x0d,
-	0xda, 0x52, 0x88, 0x0f, 0x96, 0x91, 0xaf, 0x15, 0x1c, 0x2b, 0x05, 0x43, 0x3c, 0x1e, 0x33, 0xc2,
-	0xb9, 0x0e, 0x8e, 0xc4, 0x4e, 0x15, 0x84, 0xee, 0xc2, 0x2d, 0x41, 0x87, 0x86, 0x8a, 0xa6, 0xa0,
-	0xcf, 0xa4, 0x92, 0x33, 0xd8, 0x93, 0x39, 0x1e, 0xca, 0xe8, 0x0f, 0x83, 0x68, 0x42, 0x87, 0x61,
-	0xc0, 0xa5, 0xce, 0xc6, 0xfd, 0xad, 0x87, 0x9d, 0xbe, 0x4a, 0x77, 0x5f, 0x6a, 0x93, 0x6a, 0x9f,
-	0x47, 0x13, 0xea, 0xb5, 0xb9, 0x71, 0xba, 0x08, 0xb8, 0x70, 0x7f, 0xaf, 0xc3, 0xde, 0x97, 0xd8,
-	0xbf, 0x9a, 0xc7, 0x67, 0x8c, 0x60, 0x91, 0x25, 0xed, 0x3d, 0x68, 0xf3, 0x08, 0xc7, 0xfc, 0x92,
-	0x8a, 0x82, 0xf7, 0xd7, 0x70, 0x19, 0xa5, 0x51, 0x42, 0xf1, 0x2d, 0x66, 0x53, 0xa2, 0xcd, 0xb4,
-	0x30, 0x99, 0xa7, 0x05, 0x0d, 0xe7, 0x33, 0xc5, 0xd4, 0x50, 0x79, 0xca, 0x11, 0xb4, 0x0f, 0xcd,
-	0x10, 0x8f, 0x48, 0xc8, 0xbb, 0xeb, 0xbd, 0x86, 0x74, 0x52, 0x9d, 0xd0, 0xd7, 0x00, 0x3e, 0x23,
-	0x63, 0x12, 0x89, 0x00, 0x87, 0xdd, 0x8d, 0xc4, 0xb7, 0xf7, 0xb5, 0x6f, 0x25, 0x86, 0xf7, 0xcf,
-	0xb2, 0xdb, 0xe7, 0x91, 0x60, 0x4b, 0xcf, 0x10, 0x77, 0x1e, 0xc3, 0x6e, 0xe1, 0x37, 0x6a, 0x43,
-	0xe3, 0x8a, 0x2c, 0x53, 0xd7, 0xe4, 0x27, 0xea, 0xc0, 0xc6, 0x02, 0x87, 0x73, 0x5d, 0x86, 0xea,
-	0xf0, 0x79, 0xfd, 0xb3, 0x9a, 0xfb, 0x0a, 0x6e, 0xdb, 0x1a, 0x65, 0x25, 0xed, 0x43, 0x53, 0x39,
-	0x9a, 0x72, 0xa4, 0x27, 0x74, 0x0f, 0x76, 0x02, 0xfe, 0x3c, 0xf2, 0x19, 0x99, 0x91, 0x48, 0xe0,
-	0x30, 0xa1, 0x6b, 0x79, 0x36, 0xe8, 0x7e, 0xa8, 0xa3, 0x6f, 0xf7, 0x58, 0x05, 0xa9, 0x7b, 0x02,
-	0x77, 0xd4, 0xf5, 0x97, 0x8c, 0x4e, 0x65, 0x75, 0xdc, 0x24, 0xf0, 0x5b, 0x4d, 0xdb, 0x3c, 0x10,
-	0x58, 0xcc, 0xb9, 0xb2, 0xd9, 0x81, 0x56, 0x9c, 0x12, 0xa4, 0x1d, 0x90, 0x9d, 0xd1, 0x11, 0x6c,
-	0x2a, 0xd9, 0xef, 0xbc, 0x8b, 0x34, 0x04, 0x39, 0x20, 0x83, 0x43, 0x18, 0xa3, 0x2c, 0xcd, 0xa0,
-	0x3a, 0xc8, 0x02, 0xd0, 0x45, 0x91, 0xa4, 0x77, 0x5d, 0x15, 0x80, 0x89, 0x49, 0x49, 0x2e, 0xb0,
-	0x20, 0xdd, 0x0d, 0x25, 0x99, 0x1c, 0xdc, 0x7f, 0x6a, 0xd0, 0xd1, 0x01, 0xe0, 0x82, 0xb2, 0x9b,
-	0x22, 0x50, 0x5a, 0x97, 0xf5, 0x8a, 0xba, 0xbc, 0xb0, 0x6a, 0x47, 0xf5, 0xc5, 0x07, 0x76, 0xed,
-	0xd8, 0x5a, 0xdf, 0x64, 0xf1, 0xfc, 0x59, 0x87, 0x63, 0x4b, 0xa7, 0x51, 0x06, 0xe1, 0xf2, 0x26,
-	0xb7, 0xef, 0xc1, 0xce, 0x98, 0x84, 0x02, 0x17, 0x7c, 0xb6, 0x41, 0xf4, 0x09, 0xec, 0x87, 0x98,
-	0x8b, 0x54, 0xc1, 0x58, 0xa9, 0x33, 0x1a, 0xae, 0xe2, 0xaf, 0x19, 0xd4, 0xaf, 0x02, 0x7e, 0x65,
-	0xe4, 0xf0, 0x1a, 0x8e, 0x7e, 0x28, 0x69, 0xc8, 0x47, 0xa5, 0x41, 0x2d, 0x73, 0xf0, 0x4d, 0x46,
-	0xf8, 0xef, 0x1a, 0xa0, 0x54, 0xb5, 0x59, 0xec, 0x3d, 0xd8, 0x0a, 0xb8, 0xc2, 0x83, 0x68, 0x9a,
-	0x50, 0xb5, 0x3c, 0x13, 0x92, 0xe5, 0x6b, 0x06, 0x46, 0xcf, 0x2f, 0x13, 0xb3, 0x5a, 0xa6, 0x51,
-	0x68, 0x99, 0xac, 0x29, 0xd6, 0x0b, 0x4d, 0x31, 0x26, 0x3c, 0xaf, 0x52, 0x55, 0xf7, 0x16, 0x96,
-	0x37, 0x45, 0xd3, 0x68, 0x0a, 0xbb, 0x05, 0x6f, 0x15, 0x5a, 0xd0, 0xfd, 0xa5, 0x06, 0xdd, 0x41,
-	0x9a, 0x95, 0x97, 0x73, 0x36, 0xb5, 0x9c, 0x3d, 0x82, 0xcd, 0x80, 0x4b, 0x34, 0x77, 0x35, 0x07,
-	0x72, 0x43, 0xeb, 0xa6, 0xa1, 0x37, 0xb8, 0xa6, 0x0c, 0x5c, 0x37, 0xbb, 0xf6, 0x8f, 0x1a, 0x1c,
-	0x48, 0x7d, 0x81, 0x8f, 0x3d, 0x32, 0x9a, 0x07, 0xe1, 0xd8, 0xb4, 0xe1, 0x5d, 0x39, 0xf9, 0x86,
-	0x4c, 0xfd, 0xc8, 0xed, 0xd8, 0x96, 0x21, 0xd7, 0xd8, 0xff, 0x65, 0x0a, 0xfa, 0x08, 0x3a, 0xc9,
-	0x03, 0xca, 0x94, 0x39, 0xd9, 0x43, 0xaa, 0xa2, 0x8d, 0xe4, 0xbf, 0xd4, 0xd2, 0xf4, 0x3d, 0x7d,
-	0xf8, 0x57, 0x0b, 0xda, 0xf2, 0x51, 0x3c, 0x95, 0xbb, 0xd1, 0x80, 0xb0, 0x45, 0xe0, 0x13, 0x74,
-	0x0a, 0x90, 0x6f, 0x3a, 0xe8, 0x40, 0xd7, 0xf3, 0xb5, 0xed, 0xc7, 0xd9, 0xef, 0xab, 0xf5, 0xa9,
-	0xaf, 0xd7, 0xa7, 0xfe, 0xb9, 0x5c, 0x9f, 0xdc, 0xb5, 0x9c, 0x42, 0xee, 0x3e, 0x45, 0x0a, 0x63,
-	0x1f, 0x5a, 0x41, 0xf1, 0x18, 0x5a, 0x7a, 0x03, 0x41, 0x77, 0x4d, 0x02, 0x63, 0x27, 0x59, 0x21,
-	0xfe, 0x05, 0x6c, 0x66, 0x0b, 0x06, 0xea, 0x9a, 0xf2, 0xe6, 0xce, 0xb1, 0x82, 0xe0, 0x05, 0xbc,
-	0x65, 0x2f, 0x4b, 0xe8, 0x6d, 0xcd, 0x52, 0xba, 0x7d, 0x39, 0x87, 0x55, 0xbf, 0xe3, 0x50, 0xf2,
-	0x3d, 0x83, 0x6d, 0xf3, 0xc1, 0x44, 0x87, 0x2b, 0x1e, 0x6e, 0xe7, 0xa0, 0xfc, 0xa7, 0x62, 0x3a,
-	0xd7, 0x4c, 0x69, 0x86, 0x0e, 0x8b, 0x13, 0xe7, 0xf5, 0x72, 0xf4, 0x14, 0x76, 0xac, 0x11, 0x85,
-	0x8e, 0x56, 0x3d, 0x07, 0x2b, 0x88, 0x30, 0x38, 0xd5, 0xb3, 0x0e, 0x3d, 0x78, 0xed, 0x79, 0xb8,
-	0x42, 0xc5, 0x37, 0xb0, 0xab, 0xc4, 0x9f, 0x12, 0xa1, 0xda, 0x2b, 0xcf, 0x46, 0xe9, 0x12, 0x50,
-	0x8c, 0xa0, 0xd1, 0x93, 0xee, 0x1a, 0x7a, 0x04, 0x1b, 0x1e, 0xe1, 0x44, 0xa0, 0x0a, 0x8d, 0x2b,
-	0x2c, 0x39, 0x87, 0x1d, 0x6b, 0xae, 0x56, 0x52, 0x38, 0x79, 0x39, 0x14, 0xc7, 0x70, 0xd2, 0x20,
-	0x3b, 0xd6, 0xdc, 0xfa, 0x0f, 0x96, 0xbc, 0x82, 0xbd, 0x92, 0xd1, 0x57, 0x49, 0xd4, 0xcb, 0x96,
-	0xe0, 0x8a, 0x79, 0xe9, 0xae, 0xa1, 0x01, 0x74, 0xca, 0x46, 0x59, 0x25, 0xe7, 0x71, 0xee, 0x63,
-	0xc5, 0x00, 0x74, 0xd7, 0x46, 0xcd, 0x44, 0xe8, 0xe3, 0x7f, 0x03, 0x00, 0x00, 0xff, 0xff, 0x67,
-	0xe1, 0x86, 0x15, 0x85, 0x0d, 0x00, 0x00,
+	// 1121 bytes of a gzipped FileDescriptorProto
+	0x1f, 0x8b, 0x08, 0x00, 0x00, 0x00, 0x00, 0x00, 0x02, 0xff, 0xb4, 0x56, 0xdd, 0x6e, 0x1c, 0x35,
+	0x14, 0xce, 0xfe, 0x76, 0x73, 0xb2, 0x9b, 0x04, 0x77, 0x49, 0xd3, 0x4d, 0x02, 0xc9, 0x24, 0xa0,
+	0x22, 0xc2, 0xb6, 0x2a, 0x37, 0x04, 0xa9, 0x42, 0x21, 0xa4, 0xb4, 0x6a, 0x84, 0xca, 0xa4, 0x45,
+	0x42, 0x5c, 0x8c, 0x26, 0x33, 0xce, 0x66, 0x94, 0xd9, 0xf1, 0x60, 0x7b, 0x52, 0xed, 0x3d, 0x6f,
+	0xc0, 0x1b, 0x70, 0xcf, 0x23, 0xf0, 0x3a, 0x48, 0x48, 0x88, 0x67, 0x40, 0xb6, 0xc7, 0x5e, 0xcf,
+	0xec, 0xce, 0xa6, 0x42, 0xf4, 0xce, 0x3e, 0x3e, 0xe7, 0x3b, 0xff, 0xc7, 0x07, 0xd6, 0xd8, 0x24,
+	0x09, 0xfc, 0x11, 0x4e, 0xf8, 0x30, 0xa5, 0x84, 0x13, 0xd4, 0x4e, 0xf9, 0x24, 0xc5, 0x6c, 0xb0,
+	0x35, 0x22, 0x64, 0x14, 0xe3, 0x87, 0x92, 0x7a, 0x91, 0x5d, 0x3e, 0xc4, 0xe3, 0x94, 0x4f, 0x14,
+	0xd3, 0xa0, 0x1b, 0x90, 0xf1, 0x98, 0x24, 0xea, 0xe6, 0x3c, 0x82, 0xf7, 0x9e, 0x46, 0x31, 0x76,
+	0xf1, 0x98, 0xdc, 0x60, 0x17, 0xff, 0x9c, 0x61, 0xc6, 0xd1, 0x16, 0x2c, 0x5f, 0x46, 0x31, 0xf6,
+	0x12, 0x7f, 0x8c, 0x37, 0x6b, 0xbb, 0xb5, 0x07, 0xcb, 0x6e, 0x47, 0x10, 0xbe, 0xf3, 0xc7, 0xd8,
+	0xf9, 0x49, 0x4b, 0x88, 0x57, 0x2d, 0xe1, 0x40, 0x8f, 0xc4, 0xa1, 0x57, 0x96, 0x5a, 0x21, 0x71,
+	0xf8, 0x34, 0x17, 0x14, 0x3c, 0x09, 0x7e, 0x63, 0xf1, 0xd4, 0x15, 0x4f, 0x82, 0xdf, 0x68, 0x1e,
+	0xe7, 0x08, 0xde, 0x77, 0x71, 0x80, 0xa3, 0x1b, 0x4c, 0xcf, 0xfc, 0x2c, 0x09, 0xae, 0xb4, 0x82,
+	0x5d, 0xe8, 0x72, 0x32, 0x83, 0x0f, 0x9c, 0x18, 0xd1, 0x43, 0xd8, 0x28, 0x8b, 0xb2, 0x94, 0x24,
+	0x0c, 0x23, 0x04, 0xcd, 0x94, 0x50, 0x2e, 0x65, 0x5a, 0xae, 0x3c, 0x3b, 0x1e, 0xac, 0x09, 0xc9,
+	0x73, 0x9c, 0x84, 0x5a, 0xc5, 0x01, 0xac, 0x5e, 0x52, 0x32, 0x9e, 0x51, 0xd2, 0x15, 0x54, 0xe3,
+	0x05, 0x82, 0xe6, 0x15, 0x61, 0x3c, 0x37, 0x5e, 0x9e, 0x8d, 0x82, 0x86, 0xa5, 0xe0, 0xd7, 0x1a,
+	0xac, 0x0b, 0x21, 0x76, 0x3e, 0x49, 0x02, 0xad, 0x62, 0x0f, 0x24, 0x98, 0xe7, 0x87, 0x21, 0xc5,
+	0x8c, 0xe9, 0x28, 0x09, 0xda, 0xb1, 0x22, 0xa1, 0x7b, 0x70, 0x87, 0x13, 0xcf, 0x52, 0xd1, 0xe6,
+	0xe4, 0x99, 0x50, 0x72, 0x02, 0x77, 0x45, 0xbe, 0x95, 0x79, 0x51, 0x72, 0x49, 0xbc, 0x38, 0x62,
+	0x42, 0x67, 0xe3, 0xc1, 0xca, 0xe3, 0xfe, 0x50, 0xa5, 0x7e, 0x28, 0xb4, 0x09, 0xb5, 0xcf, 0x93,
+	0x4b, 0xe2, 0xae, 0x33, 0xeb, 0x76, 0x16, 0x31, 0xee, 0xfc, 0x5e, 0x87, 0xbb, 0x5f, 0xfb, 0xc1,
+	0x75, 0x96, 0x9e, 0x50, 0xec, 0x73, 0x93, 0xbf, 0x43, 0x40, 0x2c, 0xf1, 0x53, 0x76, 0x45, 0xf8,
+	0x8c, 0xff, 0xeb, 0xfa, 0xc5, 0xc4, 0x60, 0x1f, 0x7a, 0x17, 0x12, 0xc4, 0xe3, 0x3e, 0x1d, 0x61,
+	0x6d, 0x69, 0x57, 0x11, 0x5f, 0x49, 0x1a, 0xfa, 0x10, 0x56, 0x6e, 0x48, 0x9c, 0x8d, 0x73, 0xac,
+	0x86, 0x4a, 0x98, 0x22, 0x49, 0x94, 0x0d, 0x68, 0xc7, 0xfe, 0x05, 0x8e, 0xd9, 0x66, 0x73, 0xb7,
+	0x21, 0x1c, 0x55, 0x37, 0xf4, 0x02, 0x20, 0xa0, 0x38, 0xc4, 0x09, 0x8f, 0xfc, 0x78, 0xb3, 0x25,
+	0xfd, 0xfb, 0x54, 0xfb, 0x37, 0xc7, 0xf8, 0xe1, 0x89, 0xe1, 0x3e, 0x4d, 0x38, 0x9d, 0xb8, 0x96,
+	0xf8, 0xe0, 0x09, 0xac, 0x95, 0x9e, 0xd1, 0x3a, 0x34, 0xae, 0xf1, 0x24, 0x77, 0x4e, 0x1c, 0x51,
+	0x1f, 0x5a, 0x37, 0x7e, 0x9c, 0xe9, 0x8a, 0x54, 0x97, 0x2f, 0xeb, 0x5f, 0xd4, 0x9c, 0xd7, 0xd0,
+	0x2f, 0x6a, 0xcc, 0x4b, 0x6a, 0x03, 0xda, 0xca, 0xd9, 0x1c, 0x26, 0xbf, 0xa1, 0x8f, 0x60, 0x35,
+	0x62, 0x5e, 0x94, 0x04, 0x14, 0x8f, 0x71, 0xc2, 0xfd, 0x58, 0x42, 0x76, 0xdc, 0x5e, 0xc4, 0x9e,
+	0x4f, 0x89, 0xce, 0x67, 0x3a, 0x0b, 0xc5, 0xbe, 0xab, 0x40, 0x9d, 0xb2, 0x9f, 0x73, 0x9f, 0x67,
+	0xec, 0x36, 0xf6, 0xdf, 0x6a, 0xda, 0x6a, 0xcd, 0x9f, 0x5b, 0x3d, 0x80, 0x4e, 0x4a, 0xc9, 0xc8,
+	0x94, 0x5e, 0xcb, 0x35, 0x77, 0xb4, 0x03, 0x90, 0xe7, 0x34, 0xa3, 0x71, 0x1e, 0x88, 0x65, 0x45,
+	0x79, 0x4d, 0x63, 0x11, 0x22, 0x4c, 0x29, 0xa1, 0x79, 0x1e, 0xd5, 0x45, 0x14, 0x82, 0x29, 0x1b,
+	0x99, 0xe5, 0xa6, 0x2a, 0x04, 0x4d, 0x94, 0x79, 0xee, 0x43, 0x8b, 0x71, 0x9f, 0xe3, 0xcd, 0x96,
+	0x12, 0x95, 0x17, 0xe7, 0x2f, 0x63, 0xa4, 0x8b, 0x19, 0x27, 0xf4, 0xb6, 0x20, 0x54, 0x94, 0x68,
+	0xbd, 0xa2, 0x44, 0xcf, 0x0a, 0x45, 0xa4, 0x9a, 0xe4, 0xb0, 0x58, 0x44, 0x45, 0xbd, 0xef, 0xb2,
+	0x8a, 0xfe, 0xac, 0xc3, 0x5e, 0x41, 0xa7, 0x55, 0x0b, 0xf1, 0xe4, 0x36, 0xc7, 0x3f, 0x86, 0xb5,
+	0x10, 0xc7, 0xdc, 0x9f, 0xf1, 0xba, 0x27, 0xc9, 0xc6, 0xe5, 0x23, 0xb8, 0x1f, 0xfb, 0x8c, 0x7b,
+	0x54, 0xe9, 0x08, 0xbd, 0x3c, 0x9f, 0x56, 0xfb, 0x6d, 0x08, 0x86, 0xdc, 0x86, 0x50, 0x59, 0x24,
+	0x45, 0xed, 0xd8, 0x86, 0x11, 0xbb, 0xb6, 0x93, 0x69, 0x62, 0xfb, 0x4d, 0xc4, 0xae, 0x25, 0xf7,
+	0x8f, 0x73, 0x1a, 0xf4, 0x68, 0x6e, 0x6c, 0xe7, 0xf9, 0xf9, 0x2e, 0x03, 0xfd, 0x77, 0x4d, 0xfc,
+	0x1f, 0x52, 0x75, 0xa9, 0xf4, 0xf7, 0xa0, 0x1b, 0xb1, 0x3c, 0x34, 0x51, 0x32, 0x92, 0x70, 0x1d,
+	0x77, 0x25, 0x62, 0xae, 0x26, 0x89, 0x62, 0x2e, 0xc4, 0x4f, 0x4f, 0x35, 0x3b, 0x66, 0x85, 0x16,
+	0x6a, 0x94, 0x5a, 0xc8, 0xf4, 0x48, 0xd3, 0xee, 0x91, 0x03, 0x58, 0x0d, 0x31, 0xb3, 0x6b, 0x56,
+	0xf5, 0x41, 0x57, 0x50, 0x4d, 0xf2, 0x4c, 0x93, 0xb4, 0xad, 0x26, 0x29, 0x35, 0xe5, 0x9d, 0x52,
+	0x53, 0x3a, 0xbf, 0xd4, 0x60, 0xeb, 0x3c, 0xcf, 0xce, 0xcb, 0x8c, 0x8e, 0xca, 0x4e, 0xef, 0x00,
+	0x44, 0xcc, 0x4b, 0x33, 0x3a, 0x9a, 0xba, 0xbc, 0x1c, 0xb1, 0x97, 0x8a, 0x30, 0xb5, 0xb7, 0x6e,
+	0xdb, 0x7b, 0x8b, 0x87, 0xca, 0xca, 0xa6, 0xdd, 0xca, 0x7f, 0xd4, 0x60, 0xdb, 0xc5, 0x69, 0x1c,
+	0x05, 0xbe, 0x8b, 0x2f, 0xb2, 0x28, 0x0e, 0x4b, 0x76, 0xec, 0x43, 0x4f, 0x06, 0x5f, 0xbe, 0x4d,
+	0x4d, 0xe9, 0x8a, 0xe8, 0x6b, 0xda, 0xff, 0x65, 0x0d, 0x7a, 0x04, 0x7d, 0xf9, 0xc7, 0x52, 0x65,
+	0x91, 0xf9, 0x6b, 0x55, 0xd4, 0x91, 0x78, 0xcb, 0x8d, 0xcd, 0xbf, 0xdc, 0xc7, 0xff, 0x74, 0x60,
+	0x5d, 0xfc, 0x9b, 0xc7, 0x62, 0x95, 0x3a, 0xc7, 0xf4, 0x26, 0x0a, 0x30, 0x3a, 0x06, 0x98, 0x2e,
+	0x46, 0xe8, 0xbe, 0x2e, 0xef, 0x99, 0x65, 0x69, 0xb0, 0x31, 0x54, 0xdb, 0xd6, 0x50, 0x6f, 0x5b,
+	0xc3, 0x53, 0xb1, 0x6d, 0x39, 0x4b, 0x53, 0x08, 0x91, 0xf5, 0x32, 0x84, 0xb5, 0x3d, 0x2d, 0x80,
+	0x78, 0x02, 0x1d, 0xbd, 0xa6, 0xa0, 0x7b, 0x36, 0x80, 0xb5, 0xb8, 0x2c, 0x10, 0xff, 0x0a, 0x96,
+	0xcd, 0x0e, 0x82, 0x36, 0x6d, 0x79, 0x7b, 0x2d, 0x59, 0x00, 0xf0, 0x3d, 0xac, 0x16, 0x97, 0x2a,
+	0xb4, 0xa3, 0x51, 0xe6, 0xee, 0x69, 0x83, 0x0f, 0xaa, 0x9e, 0x55, 0x29, 0x38, 0x4b, 0xe8, 0x05,
+	0x74, 0xed, 0x2f, 0x15, 0x6d, 0x2d, 0xf8, 0xda, 0x07, 0xdb, 0xf3, 0x1f, 0x0d, 0xd8, 0xa9, 0x06,
+	0xcb, 0xf3, 0xb4, 0x55, 0x1e, 0x43, 0x6f, 0x97, 0xa9, 0x6f, 0xa1, 0x57, 0x98, 0x5b, 0x68, 0x7b,
+	0xd1, 0x57, 0xb1, 0x00, 0xc8, 0x87, 0x41, 0xf5, 0x00, 0x44, 0x9f, 0xbc, 0xf5, 0x90, 0x5c, 0xa0,
+	0xc2, 0xc4, 0x4f, 0x35, 0x59, 0xd9, 0xe5, 0xc2, 0x8a, 0x50, 0x8e, 0x5f, 0xb1, 0x2f, 0x9d, 0x25,
+	0x74, 0x04, 0x2d, 0x17, 0x33, 0xcc, 0x51, 0x85, 0xbe, 0x05, 0x76, 0x3c, 0x83, 0x5e, 0x61, 0xd4,
+	0x56, 0x42, 0x58, 0x15, 0x33, 0x67, 0x32, 0xcb, 0x3e, 0xe9, 0x15, 0xa6, 0xd8, 0x7f, 0x30, 0xe6,
+	0x15, 0xdc, 0x9d, 0x33, 0x08, 0x2b, 0x81, 0xf6, 0xcd, 0xba, 0x5c, 0x3d, 0x3d, 0x9d, 0x25, 0xf4,
+	0x03, 0xf4, 0xe7, 0xcd, 0xb5, 0x4a, 0xd8, 0x83, 0xa9, 0xa7, 0xd5, 0xd3, 0xd0, 0x59, 0xba, 0x68,
+	0x4b, 0xb9, 0xcf, 0xff, 0x0d, 0x00, 0x00, 0xff, 0xff, 0x8e, 0xd1, 0x6d, 0x13, 0xc1, 0x0d, 0x00,
+	0x00,
 }
 
 // Reference imports to suppress errors if they are not otherwise used.
@@ -1024,17 +1028,17 @@ type SyncAgentServiceClient interface {
 	FileRename(ctx context.Context, in *FileRenameRequest, opts ...grpc.CallOption) (*empty.Empty, error)
 	FileSend(ctx context.Context, in *FileSendRequest, opts ...grpc.CallOption) (*empty.Empty, error)
 	FilesSync(ctx context.Context, in *FilesSyncRequest, opts ...grpc.CallOption) (*empty.Empty, error)
-	ReceiverLaunch(ctx context.Context, in *ReceiverLaunchRequest, opts ...grpc.CallOption) (*ReceiverLaunchReply, error)
-	BackupCreate(ctx context.Context, in *BackupCreateRequest, opts ...grpc.CallOption) (*BackupCreateReply, error)
+	ReceiverLaunch(ctx context.Context, in *ReceiverLaunchRequest, opts ...grpc.CallOption) (*ReceiverLaunchResponse, error)
+	BackupCreate(ctx context.Context, in *BackupCreateRequest, opts ...grpc.CallOption) (*BackupCreateResponse, error)
 	BackupRemove(ctx context.Context, in *BackupRemoveRequest, opts ...grpc.CallOption) (*empty.Empty, error)
 	BackupRestore(ctx context.Context, in *BackupRestoreRequest, opts ...grpc.CallOption) (*empty.Empty, error)
 	BackupRestoreIncrementally(ctx context.Context, in *BackupRestoreIncrementallyRequest, opts ...grpc.CallOption) (*empty.Empty, error)
-	BackupGetStatus(ctx context.Context, in *BackupProgressRequest, opts ...grpc.CallOption) (*BackupStatusReply, error)
+	BackupStatus(ctx context.Context, in *BackupStatusRequest, opts ...grpc.CallOption) (*BackupStatusResponse, error)
 	Reset(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*empty.Empty, error)
-	RestoreStatus(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*RestoreStatusReply, error)
+	RestoreStatus(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*RestoreStatusResponse, error)
 	SnapshotPurge(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*empty.Empty, error)
-	SnapshotPurgeStatus(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*SnapshotPurgeStatusReply, error)
-	ReplicaRebuildStatus(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*ReplicaRebuildStatusReply, error)
+	SnapshotPurgeStatus(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*SnapshotPurgeStatusResponse, error)
+	ReplicaRebuildStatus(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*ReplicaRebuildStatusResponse, error)
 }
 
 type syncAgentServiceClient struct {
@@ -1081,8 +1085,8 @@ func (c *syncAgentServiceClient) FilesSync(ctx context.Context, in *FilesSyncReq
 	return out, nil
 }
 
-func (c *syncAgentServiceClient) ReceiverLaunch(ctx context.Context, in *ReceiverLaunchRequest, opts ...grpc.CallOption) (*ReceiverLaunchReply, error) {
-	out := new(ReceiverLaunchReply)
+func (c *syncAgentServiceClient) ReceiverLaunch(ctx context.Context, in *ReceiverLaunchRequest, opts ...grpc.CallOption) (*ReceiverLaunchResponse, error) {
+	out := new(ReceiverLaunchResponse)
 	err := c.cc.Invoke(ctx, "/ptypes.SyncAgentService/ReceiverLaunch", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -1090,8 +1094,8 @@ func (c *syncAgentServiceClient) ReceiverLaunch(ctx context.Context, in *Receive
 	return out, nil
 }
 
-func (c *syncAgentServiceClient) BackupCreate(ctx context.Context, in *BackupCreateRequest, opts ...grpc.CallOption) (*BackupCreateReply, error) {
-	out := new(BackupCreateReply)
+func (c *syncAgentServiceClient) BackupCreate(ctx context.Context, in *BackupCreateRequest, opts ...grpc.CallOption) (*BackupCreateResponse, error) {
+	out := new(BackupCreateResponse)
 	err := c.cc.Invoke(ctx, "/ptypes.SyncAgentService/BackupCreate", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -1126,9 +1130,9 @@ func (c *syncAgentServiceClient) BackupRestoreIncrementally(ctx context.Context,
 	return out, nil
 }
 
-func (c *syncAgentServiceClient) BackupGetStatus(ctx context.Context, in *BackupProgressRequest, opts ...grpc.CallOption) (*BackupStatusReply, error) {
-	out := new(BackupStatusReply)
-	err := c.cc.Invoke(ctx, "/ptypes.SyncAgentService/BackupGetStatus", in, out, opts...)
+func (c *syncAgentServiceClient) BackupStatus(ctx context.Context, in *BackupStatusRequest, opts ...grpc.CallOption) (*BackupStatusResponse, error) {
+	out := new(BackupStatusResponse)
+	err := c.cc.Invoke(ctx, "/ptypes.SyncAgentService/BackupStatus", in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -1144,8 +1148,8 @@ func (c *syncAgentServiceClient) Reset(ctx context.Context, in *empty.Empty, opt
 	return out, nil
 }
 
-func (c *syncAgentServiceClient) RestoreStatus(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*RestoreStatusReply, error) {
-	out := new(RestoreStatusReply)
+func (c *syncAgentServiceClient) RestoreStatus(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*RestoreStatusResponse, error) {
+	out := new(RestoreStatusResponse)
 	err := c.cc.Invoke(ctx, "/ptypes.SyncAgentService/RestoreStatus", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -1162,8 +1166,8 @@ func (c *syncAgentServiceClient) SnapshotPurge(ctx context.Context, in *empty.Em
 	return out, nil
 }
 
-func (c *syncAgentServiceClient) SnapshotPurgeStatus(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*SnapshotPurgeStatusReply, error) {
-	out := new(SnapshotPurgeStatusReply)
+func (c *syncAgentServiceClient) SnapshotPurgeStatus(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*SnapshotPurgeStatusResponse, error) {
+	out := new(SnapshotPurgeStatusResponse)
 	err := c.cc.Invoke(ctx, "/ptypes.SyncAgentService/SnapshotPurgeStatus", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -1171,8 +1175,8 @@ func (c *syncAgentServiceClient) SnapshotPurgeStatus(ctx context.Context, in *em
 	return out, nil
 }
 
-func (c *syncAgentServiceClient) ReplicaRebuildStatus(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*ReplicaRebuildStatusReply, error) {
-	out := new(ReplicaRebuildStatusReply)
+func (c *syncAgentServiceClient) ReplicaRebuildStatus(ctx context.Context, in *empty.Empty, opts ...grpc.CallOption) (*ReplicaRebuildStatusResponse, error) {
+	out := new(ReplicaRebuildStatusResponse)
 	err := c.cc.Invoke(ctx, "/ptypes.SyncAgentService/ReplicaRebuildStatus", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -1186,17 +1190,17 @@ type SyncAgentServiceServer interface {
 	FileRename(context.Context, *FileRenameRequest) (*empty.Empty, error)
 	FileSend(context.Context, *FileSendRequest) (*empty.Empty, error)
 	FilesSync(context.Context, *FilesSyncRequest) (*empty.Empty, error)
-	ReceiverLaunch(context.Context, *ReceiverLaunchRequest) (*ReceiverLaunchReply, error)
-	BackupCreate(context.Context, *BackupCreateRequest) (*BackupCreateReply, error)
+	ReceiverLaunch(context.Context, *ReceiverLaunchRequest) (*ReceiverLaunchResponse, error)
+	BackupCreate(context.Context, *BackupCreateRequest) (*BackupCreateResponse, error)
 	BackupRemove(context.Context, *BackupRemoveRequest) (*empty.Empty, error)
 	BackupRestore(context.Context, *BackupRestoreRequest) (*empty.Empty, error)
 	BackupRestoreIncrementally(context.Context, *BackupRestoreIncrementallyRequest) (*empty.Empty, error)
-	BackupGetStatus(context.Context, *BackupProgressRequest) (*BackupStatusReply, error)
+	BackupStatus(context.Context, *BackupStatusRequest) (*BackupStatusResponse, error)
 	Reset(context.Context, *empty.Empty) (*empty.Empty, error)
-	RestoreStatus(context.Context, *empty.Empty) (*RestoreStatusReply, error)
+	RestoreStatus(context.Context, *empty.Empty) (*RestoreStatusResponse, error)
 	SnapshotPurge(context.Context, *empty.Empty) (*empty.Empty, error)
-	SnapshotPurgeStatus(context.Context, *empty.Empty) (*SnapshotPurgeStatusReply, error)
-	ReplicaRebuildStatus(context.Context, *empty.Empty) (*ReplicaRebuildStatusReply, error)
+	SnapshotPurgeStatus(context.Context, *empty.Empty) (*SnapshotPurgeStatusResponse, error)
+	ReplicaRebuildStatus(context.Context, *empty.Empty) (*ReplicaRebuildStatusResponse, error)
 }
 
 // UnimplementedSyncAgentServiceServer can be embedded to have forward compatible implementations.
@@ -1215,10 +1219,10 @@ func (*UnimplementedSyncAgentServiceServer) FileSend(ctx context.Context, req *F
 func (*UnimplementedSyncAgentServiceServer) FilesSync(ctx context.Context, req *FilesSyncRequest) (*empty.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method FilesSync not implemented")
 }
-func (*UnimplementedSyncAgentServiceServer) ReceiverLaunch(ctx context.Context, req *ReceiverLaunchRequest) (*ReceiverLaunchReply, error) {
+func (*UnimplementedSyncAgentServiceServer) ReceiverLaunch(ctx context.Context, req *ReceiverLaunchRequest) (*ReceiverLaunchResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReceiverLaunch not implemented")
 }
-func (*UnimplementedSyncAgentServiceServer) BackupCreate(ctx context.Context, req *BackupCreateRequest) (*BackupCreateReply, error) {
+func (*UnimplementedSyncAgentServiceServer) BackupCreate(ctx context.Context, req *BackupCreateRequest) (*BackupCreateResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method BackupCreate not implemented")
 }
 func (*UnimplementedSyncAgentServiceServer) BackupRemove(ctx context.Context, req *BackupRemoveRequest) (*empty.Empty, error) {
@@ -1230,22 +1234,22 @@ func (*UnimplementedSyncAgentServiceServer) BackupRestore(ctx context.Context, r
 func (*UnimplementedSyncAgentServiceServer) BackupRestoreIncrementally(ctx context.Context, req *BackupRestoreIncrementallyRequest) (*empty.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method BackupRestoreIncrementally not implemented")
 }
-func (*UnimplementedSyncAgentServiceServer) BackupGetStatus(ctx context.Context, req *BackupProgressRequest) (*BackupStatusReply, error) {
-	return nil, status.Errorf(codes.Unimplemented, "method BackupGetStatus not implemented")
+func (*UnimplementedSyncAgentServiceServer) BackupStatus(ctx context.Context, req *BackupStatusRequest) (*BackupStatusResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method BackupStatus not implemented")
 }
 func (*UnimplementedSyncAgentServiceServer) Reset(ctx context.Context, req *empty.Empty) (*empty.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method Reset not implemented")
 }
-func (*UnimplementedSyncAgentServiceServer) RestoreStatus(ctx context.Context, req *empty.Empty) (*RestoreStatusReply, error) {
+func (*UnimplementedSyncAgentServiceServer) RestoreStatus(ctx context.Context, req *empty.Empty) (*RestoreStatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RestoreStatus not implemented")
 }
 func (*UnimplementedSyncAgentServiceServer) SnapshotPurge(ctx context.Context, req *empty.Empty) (*empty.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SnapshotPurge not implemented")
 }
-func (*UnimplementedSyncAgentServiceServer) SnapshotPurgeStatus(ctx context.Context, req *empty.Empty) (*SnapshotPurgeStatusReply, error) {
+func (*UnimplementedSyncAgentServiceServer) SnapshotPurgeStatus(ctx context.Context, req *empty.Empty) (*SnapshotPurgeStatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SnapshotPurgeStatus not implemented")
 }
-func (*UnimplementedSyncAgentServiceServer) ReplicaRebuildStatus(ctx context.Context, req *empty.Empty) (*ReplicaRebuildStatusReply, error) {
+func (*UnimplementedSyncAgentServiceServer) ReplicaRebuildStatus(ctx context.Context, req *empty.Empty) (*ReplicaRebuildStatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReplicaRebuildStatus not implemented")
 }
 
@@ -1415,20 +1419,20 @@ func _SyncAgentService_BackupRestoreIncrementally_Handler(srv interface{}, ctx c
 	return interceptor(ctx, in, info, handler)
 }
 
-func _SyncAgentService_BackupGetStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(BackupProgressRequest)
+func _SyncAgentService_BackupStatus_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(BackupStatusRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
 	if interceptor == nil {
-		return srv.(SyncAgentServiceServer).BackupGetStatus(ctx, in)
+		return srv.(SyncAgentServiceServer).BackupStatus(ctx, in)
 	}
 	info := &grpc.UnaryServerInfo{
 		Server:     srv,
-		FullMethod: "/ptypes.SyncAgentService/BackupGetStatus",
+		FullMethod: "/ptypes.SyncAgentService/BackupStatus",
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(SyncAgentServiceServer).BackupGetStatus(ctx, req.(*BackupProgressRequest))
+		return srv.(SyncAgentServiceServer).BackupStatus(ctx, req.(*BackupStatusRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -1564,8 +1568,8 @@ var _SyncAgentService_serviceDesc = grpc.ServiceDesc{
 			Handler:    _SyncAgentService_BackupRestoreIncrementally_Handler,
 		},
 		{
-			MethodName: "BackupGetStatus",
-			Handler:    _SyncAgentService_BackupGetStatus_Handler,
+			MethodName: "BackupStatus",
+			Handler:    _SyncAgentService_BackupStatus_Handler,
 		},
 		{
 			MethodName: "Reset",
