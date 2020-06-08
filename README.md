@@ -65,7 +65,7 @@ docker run --net longhorn-net --ip 172.18.0.3 -v /volume \
 ##### 3. Start the controller. Take TGT for example:
 ```
 docker run --net longhorn-net --privileged -v /dev:/host/dev -v /proc:/host/proc \
-    rancher/longhorn-engine launch controller --frontend tgt \
+    rancher/longhorn-engine launch controller --frontend tgt-blockdev \ 
     --replica tcp://172.18.0.2:9502 --replica tcp://172.18.0.3:9502 vol-name
 ```
 Now you will have device `/dev/longhorn/vol-name`.
