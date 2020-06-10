@@ -222,6 +222,12 @@ func BackupRestoreCmd() cli.Command {
 		},
 		Action: func(c *cli.Context) {
 			if err := restoreBackup(c); err != nil {
+				errInfo, jsonErr := json.MarshalIndent(err, "", "\t")
+				if jsonErr != nil {
+					logrus.Errorf("Cannot marshal err [%v] to json: %v", err, jsonErr)
+				} else {
+					fmt.Println(string(errInfo))
+				}
 				logrus.Fatalf("Error running restore backup command: %v", err)
 			}
 		},
@@ -336,7 +342,6 @@ func doRestoreBackupIncrementally(c *cli.Context) error {
 	lastRestored := c.String("last-restored")
 
 	if err := task.RestoreBackupIncrementally(backupURL, backupName, lastRestored, credential); err != nil {
-		logrus.Errorf("failed to perform incremental restore: %v", err)
 		return err
 	}
 	return nil

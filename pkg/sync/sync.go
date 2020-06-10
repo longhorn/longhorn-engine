@@ -15,10 +15,21 @@ import (
 	"github.com/longhorn/longhorn-engine/pkg/types"
 )
 
-const VolumeHeadName = "volume-head"
+const (
+	VolumeHeadName = "volume-head"
+)
 
 type Task struct {
 	client *client.ControllerClient
+}
+
+type TaskError struct {
+	ReplicaErrors []ReplicaError
+}
+
+type ReplicaError struct {
+	Address string
+	Message string
 }
 
 type SnapshotPurgeStatus struct {
@@ -34,6 +45,46 @@ type ReplicaRebuildStatus struct {
 	Progress           int    `json:"progress"`
 	State              string `json:"state"`
 	FromReplicaAddress string `json:"fromReplicaAddress"`
+}
+
+func NewTaskError(res ...ReplicaError) *TaskError {
+	return &TaskError{
+		ReplicaErrors: append([]ReplicaError{}, res...),
+	}
+}
+
+func (e *TaskError) Error() string {
+	var errs []string
+	for _, re := range e.ReplicaErrors {
+		errs = append(errs, re.Error())
+	}
+
+	if errs == nil {
+		return "Unknown"
+	}
+	if len(errs) == 1 {
+		return errs[0]
+	}
+	return strings.Join(errs, "; ")
+}
+
+func (e *TaskError) Append(re ReplicaError) {
+	e.ReplicaErrors = append(e.ReplicaErrors, re)
+}
+
+func (e *TaskError) HasError() bool {
+	return len(e.ReplicaErrors) != 0
+}
+
+func NewReplicaError(address string, err error) ReplicaError {
+	return ReplicaError{
+		Address: address,
+		Message: err.Error(),
+	}
+}
+
+func (e ReplicaError) Error() string {
+	return fmt.Sprintf("%v: %v", e.Address, e.Message)
 }
 
 func NewTask(controller string) *Task {

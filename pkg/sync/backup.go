@@ -143,7 +143,7 @@ func (t *Task) FetchBackupStatus(backupID string, replicaAddr string) (*BackupSt
 func (t *Task) RestoreBackup(backup string, credential map[string]string) error {
 	volume, err := t.client.VolumeGet()
 	if err != nil {
-		return fmt.Errorf("failed to get volume")
+		return errors.Wrapf(err, "failed to get volume")
 	}
 	if volume.FrontendState == "up" {
 		return fmt.Errorf("volume frontend enabled, cannot perform restore")
@@ -151,22 +151,26 @@ func (t *Task) RestoreBackup(backup string, credential map[string]string) error 
 
 	replicas, err := t.client.ReplicaList()
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failed to list replicas before the restore")
 	}
 
+	taskErr := NewTaskError()
 	for _, r := range replicas {
-		if ok, err := t.isRebuilding(r); err != nil {
-			return err
-		} else if ok {
-			return fmt.Errorf("Can not restore from backup because %s is rebuilding", r.Address)
+		if isRebuilding, err := t.isRebuilding(r); err != nil {
+			taskErr.Append(NewReplicaError(r.Address, err))
+		} else if isRebuilding {
+			taskErr.Append(NewReplicaError(r.Address, fmt.Errorf("can not do restore for rebuilding replica")))
 		}
+	}
+	if taskErr.HasError() {
+		return taskErr
 	}
 
 	// generate new snapshot and metafile as base for new volume
 	snapshotID := util.UUID()
 	snapshotFile := replica.GenerateSnapshotDiskName(snapshotID)
 
-	errorMap := sync.Map{}
+	syncErrorMap := sync.Map{}
 	var wg sync.WaitGroup
 	wg.Add(len(replicas))
 
@@ -175,25 +179,28 @@ func (t *Task) RestoreBackup(backup string, credential map[string]string) error 
 			defer wg.Done()
 			err := t.restoreBackup(replica, backup, snapshotFile, credential)
 			if err != nil {
-				errorMap.Store(replica.Address, err)
+				syncErrorMap.Store(replica.Address, err)
 			}
 		}(r)
 	}
-
 	wg.Wait()
+
 	for _, r := range replicas {
-		if v, ok := errorMap.Load(r.Address); ok {
+		if v, ok := syncErrorMap.Load(r.Address); ok {
 			err = v.(error)
-			return err
+			taskErr.Append(NewReplicaError(r.Address, err))
 		}
 	}
 
+	if len(taskErr.ReplicaErrors) != 0 {
+		return taskErr
+	}
 	return nil
 }
 
 func (t *Task) restoreBackup(replicaInController *types.ControllerReplicaInfo, backup string, snapshotFile string, credential map[string]string) error {
 	if replicaInController.Mode != types.RW {
-		return fmt.Errorf("Can only restore backup from replica in mode RW, got %s", replicaInController.Mode)
+		return fmt.Errorf("can only restore backup from replica in mode RW, got %s", replicaInController.Mode)
 	}
 
 	repClient, err := replicaClient.NewReplicaClient(replicaInController.Address)
@@ -201,10 +208,7 @@ func (t *Task) restoreBackup(replicaInController *types.ControllerReplicaInfo, b
 		return err
 	}
 
-	logrus.Infof("Restoring backup %s on %s", backup, replicaInController.Address)
-
 	if err := repClient.RestoreBackup(backup, snapshotFile, credential); err != nil {
-		logrus.Errorf("Failed restoring backup %s on %s", backup, replicaInController.Address)
 		return err
 	}
 	return nil
@@ -213,7 +217,7 @@ func (t *Task) restoreBackup(replicaInController *types.ControllerReplicaInfo, b
 func (t *Task) RestoreBackupIncrementally(backup, backupName, lastRestored string, credential map[string]string) error {
 	volume, err := t.client.VolumeGet()
 	if err != nil {
-		return fmt.Errorf("failed to get volume")
+		return errors.Wrapf(err, "failed to get volume")
 	}
 	if volume.FrontendState == "up" {
 		return fmt.Errorf("volume frontend enabled, cannot perform restore")
@@ -221,15 +225,19 @@ func (t *Task) RestoreBackupIncrementally(backup, backupName, lastRestored strin
 
 	replicas, err := t.client.ReplicaList()
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failed to list replicas before the incremental restore")
 	}
 
+	taskErr := NewTaskError()
 	for _, r := range replicas {
-		if ok, err := t.isRebuilding(r); err != nil {
-			return err
-		} else if ok {
-			return fmt.Errorf("can not incrementally restore from backup because %s is rebuilding", r.Address)
+		if isRebuilding, err := t.isRebuilding(r); err != nil {
+			taskErr.Append(NewReplicaError(r.Address, err))
+		} else if isRebuilding {
+			taskErr.Append(NewReplicaError(r.Address, fmt.Errorf("can not do incrementalrestore for rebuilding replica")))
 		}
+	}
+	if len(taskErr.ReplicaErrors) != 0 {
+		return taskErr
 	}
 
 	isValidLastRestored := true
@@ -240,21 +248,21 @@ func (t *Task) RestoreBackupIncrementally(backup, backupName, lastRestored strin
 
 	backupInfo, err := backupstore.InspectBackup(backup)
 	if err != nil {
-		return errors.Wrapf(err, "Failed to get the current restoring backup info")
+		return errors.Wrapf(err, "failed to get the current restoring backup info")
 	}
 	if backupInfo.VolumeSize < volume.Size {
 		return fmt.Errorf("BUG: The size %v of backup volume %v smaller than the size %v of DR volume %v", backupInfo.VolumeName, backupInfo.VolumeSize, volume.Size, volume.Name)
 	} else if backupInfo.VolumeSize > volume.Size {
 		logrus.Infof("The DR volume %v needs to be expanded to size %v before incremental restoration", volume.Name, backupInfo.VolumeSize)
 		if err := t.client.VolumeExpand(backupInfo.VolumeSize); err != nil {
-			return errors.Wrapf(err, "Failed to expand the DR volume %v to size %v before incremental restoration", volume.Name, backupInfo.VolumeSize)
+			return errors.Wrapf(err, "failed to expand the DR volume %v to size %v before incremental restoration", volume.Name, backupInfo.VolumeSize)
 		}
 
 		expanded := false
 		for i := 0; i < types.RetryCounts; i++ {
 			volume, err = t.client.VolumeGet()
 			if err != nil {
-				return err
+				return errors.Wrapf(err, "failed to get volume")
 			}
 			if volume.Size == backupInfo.VolumeSize && !volume.IsExpanding {
 				expanded = true
@@ -269,7 +277,7 @@ func (t *Task) RestoreBackupIncrementally(backup, backupName, lastRestored strin
 
 	snapshots, err := GetSnapshotsInfo(replicas)
 	if err != nil {
-		return err
+		return errors.Wrapf(err, "failed to get snapshot info before the incremental restore")
 	}
 	// There will be more than 1 snapshot if the DR volume is expanded
 	if len(snapshots) < 2 {
@@ -283,7 +291,7 @@ func (t *Task) RestoreBackupIncrementally(backup, backupName, lastRestored strin
 	}
 	snapshotDiskName := replica.GenerateSnapshotDiskName(snapshotName)
 
-	errorMap := sync.Map{}
+	syncErrorMap := sync.Map{}
 	var wg sync.WaitGroup
 	wg.Add(len(replicas))
 
@@ -292,33 +300,34 @@ func (t *Task) RestoreBackupIncrementally(backup, backupName, lastRestored strin
 			defer wg.Done()
 			err := t.restoreBackupIncrementally(replica, snapshotDiskName, backup, lastRestored, isValidLastRestored, credential)
 			if err != nil {
-				errorMap.Store(replica.Address, err)
+				syncErrorMap.Store(replica.Address, err)
 			}
 		}(r)
 	}
 
 	wg.Wait()
 	for _, r := range replicas {
-		if v, ok := errorMap.Load(r.Address); ok {
+		if v, ok := syncErrorMap.Load(r.Address); ok {
 			err = v.(error)
-			logrus.Errorf("replica %v failed to incrementally restore: %v", r.Address, err)
+			taskErr.Append(NewReplicaError(r.Address, err))
 		}
 	}
 
-	return err
+	if taskErr.HasError() {
+		return taskErr
+	}
+	return nil
 }
 
 func (t *Task) restoreBackupIncrementally(replicaInController *types.ControllerReplicaInfo, snapshotDiskName, backup, lastRestored string, isValidLastRestored bool, credential map[string]string) error {
 	if replicaInController.Mode != types.RW {
-		return fmt.Errorf("can only incrementally restore backup from replica in mode RW, got mode %s", replicaInController.Mode)
+		return fmt.Errorf("can only incrementally restore backup from replica in mode RW, got %s", replicaInController.Mode)
 	}
 
 	repClient, err := replicaClient.NewReplicaClient(replicaInController.Address)
 	if err != nil {
 		return err
 	}
-
-	logrus.Infof("Incrementally restoring backup %s on %s", backup, replicaInController.Address)
 
 	if isValidLastRestored {
 		// may need to generate a temporary delta file for incrementally restore.
@@ -327,16 +336,14 @@ func (t *Task) restoreBackupIncrementally(replicaInController *types.ControllerR
 
 		// incrementally restore to delta file
 		if err := repClient.RestoreBackupIncrementally(backup, deltaFileName, lastRestored, snapshotDiskName, credential); err != nil {
-			logrus.Errorf("Failed to incrementally restore backup %s on %s", backup, replicaInController.Address)
 			return err
 		}
 	} else {
 		// cannot restore backup incrementally, do full restoration instead
-
 		tmpSnapshotDiskName := replica.GenerateSnapTempFileName(snapshotDiskName)
 
 		if err = t.restoreBackup(replicaInController, backup, tmpSnapshotDiskName, credential); err != nil {
-			return fmt.Errorf("failed to do full restoration in RestoreBackupIncrementally: %v", err)
+			return errors.Wrapf(err, "failed to do full restoration in RestoreBackupIncrementally")
 		}
 	}
 
