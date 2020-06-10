@@ -59,7 +59,11 @@ func (rr *RestoreStatus) UpdateRestoreStatus(snapshot string, rp int, re error) 
 	rr.SnapshotName = snapshot
 	rr.Progress = rp
 	if re != nil {
-		rr.Error = re.Error()
+		if rr.Error != "" {
+			rr.Error = fmt.Sprintf("%v: %v", re.Error(), rr.Error)
+		} else {
+			rr.Error = re.Error()
+		}
 		rr.State = ProgressStateError
 	}
 }
@@ -67,7 +71,9 @@ func (rr *RestoreStatus) UpdateRestoreStatus(snapshot string, rp int, re error) 
 func (rr *RestoreStatus) FinishRestore() {
 	rr.Lock()
 	defer rr.Unlock()
-	rr.State = ProgressStateComplete
+	if rr.State != ProgressStateError {
+		rr.State = ProgressStateComplete
+	}
 }
 
 type BackupStatus struct {

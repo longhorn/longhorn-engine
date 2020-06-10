@@ -201,23 +201,38 @@ func (s *SyncAgentServer) PrepareRestore(backupURL, toFile, snapshotDiskName, la
 	return s.RestoreInfo, nil
 }
 
-func (s *SyncAgentServer) FinishRestore(currentRestored string) error {
+func (s *SyncAgentServer) FinishRestore(currentRestored string, err error) error {
 	s.Lock()
 	defer s.Unlock()
-	return s.finishRestoreNoLock(currentRestored)
+	return s.finishRestoreNoLock(currentRestored, err)
 }
 
-func (s *SyncAgentServer) finishRestoreNoLock(currentRestored string) error {
+func (s *SyncAgentServer) finishRestoreNoLock(currentRestored string, restoreErr error) (err error) {
+	defer func() {
+		if s.RestoreInfo != nil {
+			if restoreErr != nil {
+				s.RestoreInfo.UpdateRestoreStatus(s.RestoreInfo.SnapshotName, 0, restoreErr)
+			} else {
+				s.RestoreInfo.FinishRestore()
+			}
+		}
+	}()
+
 	if !s.isRestoring {
-		return fmt.Errorf("BUG: volume is not restoring")
+		err = fmt.Errorf("BUG: volume is not restoring")
+		if restoreErr != nil {
+			restoreErr = types.CombineErrors(err, restoreErr)
+		} else {
+			restoreErr = err
+		}
+		return err
 	}
-	if currentRestored != "" {
+
+	s.isRestoring = false
+	if currentRestored != "" && restoreErr == nil {
 		s.lastRestored = currentRestored
 	}
-	s.isRestoring = false
-	if s.RestoreInfo != nil {
-		s.RestoreInfo.FinishRestore()
-	}
+
 	return nil
 }
 
@@ -561,15 +576,11 @@ func (s *SyncAgentServer) BackupRestore(ctx context.Context, req *ptypes.BackupR
 		return nil, errors.Wrapf(err, "error preparing backup restore")
 	}
 
-	s.Lock()
-	defer s.Unlock()
-
 	if err := backup.DoBackupRestore(req.Backup, req.SnapshotFileName, restoreInfo); err != nil {
-		// Reset the isRestoring flag to false
-		if extraErr := s.finishRestoreNoLock(""); extraErr != nil {
-			return nil, fmt.Errorf("%v: %v", extraErr, err)
+		if extraErr := s.FinishRestore("", err); extraErr != nil {
+			return nil, fmt.Errorf("error finishing restore after backup restore initialization failure: [%v]", err)
 		}
-		return nil, fmt.Errorf("error initiating backup restore [%v]", err)
+		return nil, errors.Wrapf(err, "error initiating backup restore")
 	}
 	logrus.Infof("Successfully initiated restore for %v to [%v]", req.Backup, req.SnapshotFileName)
 
@@ -582,7 +593,7 @@ func (s *SyncAgentServer) completeBackupRestore() (err error) {
 	defer func() {
 		if err != nil {
 			// Reset the isRestoring flag to false
-			if err := s.FinishRestore(""); err != nil {
+			if err := s.FinishRestore("", err); err != nil {
 				logrus.Errorf("failed to finish backup restore: %v", err)
 				return
 			}
@@ -641,7 +652,7 @@ func (s *SyncAgentServer) completeBackupRestore() (err error) {
 	if backupName, err = backupstore.GetBackupFromBackupURL(util.UnescapeURL(restoreStatus.BackupURL)); err != nil {
 		return err
 	}
-	if err = s.FinishRestore(backupName); err != nil {
+	if err = s.FinishRestore(backupName, nil); err != nil {
 		return err
 	}
 
@@ -703,7 +714,7 @@ func (s *SyncAgentServer) postIncrementalFullRestoreOperations(restoreStatus *re
 	if backupName, err = backupstore.GetBackupFromBackupURL(util.UnescapeURL(restoreStatus.BackupURL)); err != nil {
 		return err
 	}
-	if err = s.FinishRestore(backupName); err != nil {
+	if err = s.FinishRestore(backupName, nil); err != nil {
 		return err
 	}
 	return nil
@@ -768,16 +779,11 @@ func (s *SyncAgentServer) BackupRestoreIncrementally(ctx context.Context,
 		return nil, errors.Wrapf(err, "error preparing incremental backup restore")
 	}
 
-	s.Lock()
-	defer s.Unlock()
-
-	logrus.Infof("Running incremental restore %v to %s with lastRestoredBackup %s", req.Backup,
-		req.DeltaFileName, req.LastRestoredBackupName)
 	if err := backup.DoBackupRestoreIncrementally(req.Backup, req.DeltaFileName, req.LastRestoredBackupName, restoreInfo); err != nil {
-		if extraErr := s.finishRestoreNoLock(""); extraErr != nil {
-			return nil, fmt.Errorf("%v: %v", extraErr, err)
+		if extraErr := s.FinishRestore("", err); extraErr != nil {
+			return nil, fmt.Errorf("error finishing incremental restore after restore initialization failure: [%v]", extraErr)
 		}
-		return nil, fmt.Errorf("error initiating incremental restore [%v]", err)
+		return nil, errors.Wrapf(err, "error initiating incremental backup restore")
 	}
 
 	go s.completeIncrementalBackupRestore()
@@ -788,7 +794,7 @@ func (s *SyncAgentServer) BackupRestoreIncrementally(ctx context.Context,
 func (s *SyncAgentServer) completeIncrementalBackupRestore() (err error) {
 	defer func() {
 		if err != nil {
-			if err := s.FinishRestore(""); err != nil {
+			if err := s.FinishRestore("", err); err != nil {
 				logrus.Errorf("failed to finish incremental restore: %v", err)
 				return
 			}
@@ -855,7 +861,7 @@ func (s *SyncAgentServer) postIncrementalRestoreOperations(restoreStatus *replic
 	if err != nil {
 		return err
 	}
-	if err := s.FinishRestore(backupName); err != nil {
+	if err := s.FinishRestore(backupName, nil); err != nil {
 		return err
 	}
 
