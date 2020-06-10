@@ -31,7 +31,7 @@ type DeltaBlockBackupOperations interface {
 */
 
 type RestoreStatus struct {
-	sync.Mutex
+	sync.RWMutex
 	replicaAddress string
 	SnapshotName   string //This will be deltaFileName in case of Incremental Restore
 	Progress       int
@@ -73,6 +73,19 @@ func (rr *RestoreStatus) FinishRestore() {
 	defer rr.Unlock()
 	if rr.State != ProgressStateError {
 		rr.State = ProgressStateComplete
+	}
+}
+
+func (rr *RestoreStatus) DeepCopy() *RestoreStatus {
+	rr.RLock()
+	defer rr.RUnlock()
+	return &RestoreStatus{
+		SnapshotName:     rr.SnapshotName,
+		Progress:         rr.Progress,
+		Error:            rr.Error,
+		LastRestored:     rr.LastRestored,
+		SnapshotDiskName: rr.SnapshotDiskName,
+		BackupURL:        rr.BackupURL,
 	}
 }
 
