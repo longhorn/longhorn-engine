@@ -183,19 +183,22 @@ func (s *SyncAgentServer) GetLastRestored() string {
 	return s.lastRestored
 }
 
-func (s *SyncAgentServer) PrepareRestore(lastRestored string) error {
+func (s *SyncAgentServer) PrepareRestore(backupURL, toFile, snapshotDiskName, lastRestored string) (*replica.RestoreStatus, error) {
 	s.Lock()
 	defer s.Unlock()
 	if s.isRestoring {
-		return fmt.Errorf("cannot initate backup restore as there is one already in progress")
+		return nil, fmt.Errorf("cannot initiate backup restore as there is one already in progress")
+	}
+	if s.lastRestored != "" && lastRestored != "" && s.lastRestored != lastRestored {
+		return nil, fmt.Errorf("field lastRestored %v in the request doesn't match field LastRestored %v in the server", lastRestored, s.lastRestored)
 	}
 
-	if s.lastRestored != "" && lastRestored != "" && s.lastRestored != lastRestored {
-		return fmt.Errorf("flag lastRestored %v in command doesn't match field LastRestored %v in engine",
-			lastRestored, s.lastRestored)
-	}
+	restoreInfo := replica.NewRestore(toFile, s.replicaAddress)
+	restoreInfo.BackupURL = backupURL
+	restoreInfo.SnapshotDiskName = snapshotDiskName
+	s.RestoreInfo = restoreInfo
 	s.isRestoring = true
-	return nil
+	return s.RestoreInfo, nil
 }
 
 func (s *SyncAgentServer) FinishRestore(currentRestored string) error {
@@ -552,24 +555,22 @@ func (s *SyncAgentServer) BackupRestore(ctx context.Context, req *ptypes.BackupR
 			return nil, fmt.Errorf("could not do backup restore from s3 without setting credential secret")
 		}
 	}
-	if err := s.PrepareRestore(""); err != nil {
-		logrus.Errorf("failed to prepare backup restore: %v", err)
-		return nil, err
+
+	restoreInfo, err := s.PrepareRestore(req.Backup, req.SnapshotFileName, "", "")
+	if err != nil {
+		return nil, errors.Wrapf(err, "error preparing backup restore")
 	}
 
 	s.Lock()
 	defer s.Unlock()
-	restoreObj := replica.NewRestore(req.SnapshotFileName, s.replicaAddress)
-	restoreObj.BackupURL = req.Backup
 
-	if err := backup.DoBackupRestore(req.Backup, req.SnapshotFileName, restoreObj); err != nil {
+	if err := backup.DoBackupRestore(req.Backup, req.SnapshotFileName, restoreInfo); err != nil {
 		// Reset the isRestoring flag to false
 		if extraErr := s.finishRestoreNoLock(""); extraErr != nil {
 			return nil, fmt.Errorf("%v: %v", extraErr, err)
 		}
 		return nil, fmt.Errorf("error initiating backup restore [%v]", err)
 	}
-	s.RestoreInfo = restoreObj
 	logrus.Infof("Successfully initiated restore for %v to [%v]", req.Backup, req.SnapshotFileName)
 
 	go s.completeBackupRestore()
@@ -761,30 +762,23 @@ func (s *SyncAgentServer) BackupRestoreIncrementally(ctx context.Context,
 			return nil, fmt.Errorf("could not do incremental backup restore from s3 without setting credential secret")
 		}
 	}
-	if err := s.PrepareRestore(req.LastRestoredBackupName); err != nil {
-		logrus.Errorf("failed to prepare incremental restore: %v", err)
-		return nil, err
+
+	restoreInfo, err := s.PrepareRestore(req.Backup, req.DeltaFileName, req.SnapshotDiskName, req.LastRestoredBackupName)
+	if err != nil {
+		return nil, errors.Wrapf(err, "error preparing incremental backup restore")
 	}
 
 	s.Lock()
 	defer s.Unlock()
-	restoreObj := replica.NewRestore(req.DeltaFileName, s.replicaAddress)
-	restoreObj.LastRestored = req.LastRestoredBackupName
-	restoreObj.SnapshotDiskName = req.SnapshotDiskName
-	restoreObj.BackupURL = req.Backup
 
 	logrus.Infof("Running incremental restore %v to %s with lastRestoredBackup %s", req.Backup,
 		req.DeltaFileName, req.LastRestoredBackupName)
-	if err := backup.DoBackupRestoreIncrementally(req.Backup, req.DeltaFileName, req.LastRestoredBackupName,
-		restoreObj); err != nil {
+	if err := backup.DoBackupRestoreIncrementally(req.Backup, req.DeltaFileName, req.LastRestoredBackupName, restoreInfo); err != nil {
 		if extraErr := s.finishRestoreNoLock(""); extraErr != nil {
 			return nil, fmt.Errorf("%v: %v", extraErr, err)
 		}
 		return nil, fmt.Errorf("error initiating incremental restore [%v]", err)
 	}
-
-	s.RestoreInfo = restoreObj
-	logrus.Infof("Successfully initiated incremental restore for %v to %v", req.Backup, req.DeltaFileName)
 
 	go s.completeIncrementalBackupRestore()
 
