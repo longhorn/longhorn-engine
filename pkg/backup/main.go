@@ -128,15 +128,7 @@ func DoBackupCreate(volumeName string, snapshotName string, destURL string,
 }
 
 func DoBackupRestore(backupURL string, toFile string, restoreObj *replica.RestoreStatus) error {
-	if backupURL == "" {
-		return RequiredMissingError("backup URL")
-	}
 	backupURL = util.UnescapeURL(backupURL)
-
-	if toFile == "" {
-		return RequiredMissingError("snapshot")
-	}
-
 	log.Debugf("Start restoring from %v into snapshot %v", backupURL, toFile)
 
 	config := &backupstore.DeltaRestoreConfig{
@@ -154,27 +146,8 @@ func DoBackupRestore(backupURL string, toFile string, restoreObj *replica.Restor
 
 func DoBackupRestoreIncrementally(url string, deltaFile string, lastRestored string,
 	restoreObj *replica.RestoreStatus) error {
-	if url == "" {
-		return RequiredMissingError("backup URL")
-	}
 	backupURL := util.UnescapeURL(url)
-
-	if deltaFile == "" {
-		return RequiredMissingError("delta file")
-	}
-
-	if lastRestored == "" {
-		return RequiredMissingError("last-restored")
-	}
-
-	// check delta file
-	if _, err := os.Stat(deltaFile); err == nil {
-		logrus.Warnf("delta file %s for incremental restoring exists, will remove and re-create it", deltaFile)
-		err = os.Remove(deltaFile)
-		if err != nil {
-			return err
-		}
-	}
+	log.Debugf("Start incremental restoring from %v into delta file %v", backupURL, deltaFile)
 
 	config := &backupstore.DeltaRestoreConfig{
 		BackupURL:      backupURL,

@@ -524,11 +524,18 @@ func (s *SyncAgentServer) waitForRestoreComplete() error {
 }
 
 func (s *SyncAgentServer) BackupRestore(ctx context.Context, req *ptypes.BackupRestoreRequest) (e *empty.Empty, err error) {
+	// Check request
+	if req.SnapshotFileName == "" {
+		return nil, fmt.Errorf("empty snapshot file name for the restore")
+	}
+	if req.Backup == "" {
+		return nil, fmt.Errorf("empty backup URL for the restore")
+	}
 	backupType, err := util.CheckBackupType(req.Backup)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to check the type for backup %v: %v", req.Backup, err)
 	}
-	// set aws credential
+	// Check/Set AWS credential
 	if backupType == "s3" {
 		credential := req.Credential
 		// validate environment variable first, since CronJob has set credential to environment variable.
@@ -542,7 +549,7 @@ func (s *SyncAgentServer) BackupRestore(ctx context.Context, req *ptypes.BackupR
 				os.Setenv(types.AWSCert, credential[types.AWSCert])
 			}
 		} else if os.Getenv(types.AWSAccessKey) == "" || os.Getenv(types.AWSSecretKey) == "" {
-			return nil, errors.New("Could not backup to s3 without setting credential secret")
+			return nil, fmt.Errorf("could not do backup restore from s3 without setting credential secret")
 		}
 	}
 	if err := s.PrepareRestore(""); err != nil {
@@ -724,11 +731,20 @@ func (s *SyncAgentServer) replicaRevert(name, created string) error {
 
 func (s *SyncAgentServer) BackupRestoreIncrementally(ctx context.Context,
 	req *ptypes.BackupRestoreIncrementallyRequest) (e *empty.Empty, err error) {
+	// Check request
+	if req.DeltaFileName == "" {
+		return nil, fmt.Errorf("empty DeltaFileName for the incremental restore")
+	}
+	if req.LastRestoredBackupName == "" {
+		return nil, fmt.Errorf("empty LastRestoredBackupName for the incremental restore")
+	}
+	if req.Backup == "" {
+		return nil, fmt.Errorf("empty Backup URL for the incremental restore")
+	}
 	backupType, err := util.CheckBackupType(req.Backup)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to check the type for backup %v: %v", req.Backup, err)
 	}
-	// set aws credential
 	if backupType == "s3" {
 		credential := req.Credential
 		// validate environment variable first, since CronJob has set credential to environment variable.
@@ -742,7 +758,7 @@ func (s *SyncAgentServer) BackupRestoreIncrementally(ctx context.Context,
 				os.Setenv(types.AWSCert, credential[types.AWSCert])
 			}
 		} else if os.Getenv(types.AWSAccessKey) == "" || os.Getenv(types.AWSSecretKey) == "" {
-			return nil, errors.New("Could not backup to s3 without setting credential secret")
+			return nil, fmt.Errorf("could not do incremental backup restore from s3 without setting credential secret")
 		}
 	}
 	if err := s.PrepareRestore(req.LastRestoredBackupName); err != nil {
