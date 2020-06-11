@@ -96,14 +96,13 @@ func Filter(elements []string, predicate func(string) bool) []string {
 	return filtered
 }
 
-func ExtractNames(names []string, prefix, suffix string) ([]string, error) {
+func ExtractNames(names []string, prefix, suffix string) []string {
 	result := []string{}
-	for i := range names {
-		f := names[i]
+	for _, f := range names {
 		// Remove additional slash if exists
 		f = strings.TrimLeft(f, "/")
 
-		// Not a backup config file
+		// missing prefix or suffix
 		if !strings.HasPrefix(f, prefix) || !strings.HasSuffix(f, suffix) {
 			continue
 		}
@@ -111,11 +110,13 @@ func ExtractNames(names []string, prefix, suffix string) ([]string, error) {
 		f = strings.TrimPrefix(f, prefix)
 		f = strings.TrimSuffix(f, suffix)
 		if !ValidateName(f) {
-			return nil, fmt.Errorf("Invalid name %v was processed to extract name with prefix %v surfix %v", names[i], prefix, suffix)
+			logrus.Errorf("Invalid name %v was processed to extract name with prefix %v suffix %v",
+				f, prefix, suffix)
+			continue
 		}
 		result = append(result, f)
 	}
-	return result, nil
+	return result
 }
 
 func ValidateName(name string) bool {
