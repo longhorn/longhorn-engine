@@ -681,20 +681,19 @@ def test_backup_volume_list(grpc_replica_client, grpc_controller_client,  # NOQA
 
     Steps:
 
-    1.  Create a volume(1) and attach to the current node
-    2.  Create a volume(2) and attach to the current node
-    3.  write some data to volume(1) & volume(2)
-    4.  Create a backup of volume(1) & volume(2)
-    5.  request a backup list
-    6.  verify backup list contains no error messages for volume(1)
-    7.  verify backup list contains no error messages for volume(2)
-    8.  place a file named "backup_1234@failure.cfg"
+    1.  Create a volume(1,2) and attach to the current node
+    2.  write some data to volume(1,2)
+    3.  Create a backup(1) of volume(1,2)
+    4.  request a backup list
+    5.  verify backup list contains no error messages for volume(1,2)
+    6.  verify backup list contains backup(1) for volume(1,2)
+    7.  place a file named "backup_1234@failure.cfg"
         into the backups folder of volume(1)
-    9.  request a backup list
-    10. verify backup list contains `Invalid name` error messages for volume(1)
-    11. verify backup list contains no error messages for volume(2)
-    12. delete backup volumes(1 & 2)
-    13. cleanup
+    8.  request a backup list
+    9.  verify backup list contains no error messages for volume(1,2)
+    10. verify backup list contains backup(1) for volume(1,2)
+    11. delete backup volumes(1 & 2)
+    12. cleanup
     """
 
     # create a second volume
@@ -731,23 +730,27 @@ def test_backup_volume_list(grpc_replica_client, grpc_controller_client,  # NOQA
         assert snap in backup_info["SnapshotName"]
 
         # request a volume list
-        info = cmd.backup_volume_list(address, "", backup_target)
+        info = cmd.backup_volume_list(address, "", backup_target,
+                                      include_backup_details=True)
         assert info[VOLUME_NAME]["Name"] == VOLUME_NAME
+        assert len(info[VOLUME_NAME]["Backups"]) == 1
         assert MESSAGE_TYPE_ERROR not in info[VOLUME_NAME]["Messages"]
         assert info[VOLUME2_NAME]["Name"] == VOLUME2_NAME
+        assert len(info[VOLUME2_NAME]["Backups"]) == 1
         assert MESSAGE_TYPE_ERROR not in info[VOLUME2_NAME]["Messages"]
 
         # place badly named backup.cfg file
-        # we want the list call to return correctly and
-        # include an error message otherwise a single volume error
-        # can stop all backup volumes from showing up
+        # we want the list call to return all valid files correctly
         backup_dir = os.path.join(finddir(BACKUP_DIR, VOLUME_NAME), "backups")
         cfg = open(os.path.join(backup_dir, "backup_1234@failure.cfg"), "w")
         cfg.close()
         info = cmd.backup_volume_list(address, "", backup_target,
                                       include_backup_details=True)
-        assert "Invalid name" in info[VOLUME_NAME]["Messages"]["error"]
+        assert info[VOLUME_NAME]["Name"] == VOLUME_NAME
+        assert len(info[VOLUME_NAME]["Backups"]) == 1
+        assert MESSAGE_TYPE_ERROR not in info[VOLUME_NAME]["Messages"]
         assert info[VOLUME2_NAME]["Name"] == VOLUME2_NAME
+        assert len(info[VOLUME2_NAME]["Backups"]) == 1
         assert MESSAGE_TYPE_ERROR not in info[VOLUME2_NAME]["Messages"]
 
         # remove the volume with the badly named backup.cfg
