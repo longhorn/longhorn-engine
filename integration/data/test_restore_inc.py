@@ -110,15 +110,62 @@ def restore_inc_test(grpc_engine_manager,  # NOQA
     start_no_frontend_volume(grpc_engine_manager,
                              grpc_dr_controller,
                              grpc_dr_replica1, grpc_dr_replica2)
+    # mock restore crash/error:
+    # By adding attribute `immutable`, Longhorn cannot create a file
+    # for the restore. Then the following restore command will fail.
+    command = ["chattr", "+i", FIXED_REPLICA_PATH1]
+    subprocess.check_output(command).strip()
+    command = ["chattr", "+i", FIXED_REPLICA_PATH2]
+    subprocess.check_output(command).strip()
+    with pytest.raises(subprocess.CalledProcessError) as e:
+        cmd.backup_restore(dr_address, backup0)
+    assert "operation not permitted" in e.value.stdout
+    command = ["chattr", "-i", FIXED_REPLICA_PATH1]
+    subprocess.check_output(command).strip()
+    command = ["chattr", "-i", FIXED_REPLICA_PATH2]
+    subprocess.check_output(command).strip()
 
     cmd.backup_restore(dr_address, backup0)
     wait_for_restore_completion(dr_address, backup0)
     verify_no_frontend_data(grpc_engine_manager,
                             0, snap0_data, grpc_dr_controller)
 
-    # mock restore crash/error
     delta_file1 = "volume-delta-" + backup0_name + ".img"
+
+    # mock inc restore crash/error: cannot clean up the delta file path
+    command = ["mkdir", "-p", FIXED_REPLICA_PATH1 + delta_file1 + "/dir"]
+    subprocess.check_output(command).strip()
+    command = ["mkdir", "-p", FIXED_REPLICA_PATH2 + delta_file1 + "/dir"]
+    subprocess.check_output(command).strip()
+    with pytest.raises(subprocess.CalledProcessError):
+        cmd.restore_inc(dr_address, backup1, backup0_name)
+    command = ["rm", "-r", FIXED_REPLICA_PATH1 + delta_file1]
+    subprocess.check_output(command).strip()
+    command = ["rm", "-r", FIXED_REPLICA_PATH2 + delta_file1]
+    subprocess.check_output(command).strip()
+
     if "vfs" in backup_target:
+        # restore status should contain the error info
+        failed_restore, finished_restore = 0, 0
+        for i in range(RETRY_COUNTS):
+            failed_restore, finished_restore = 0, 0
+            rs = cmd.restore_status(dr_address)
+            for status in rs.values():
+                if status['backupURL'] != backup1:
+                    break
+                if 'error' in status.keys():
+                    if status['error'] != "":
+                        assert 'failed to clean up the existing file' in\
+                               status['error']
+                        failed_restore += 1
+                if not status["isRestoring"]:
+                    finished_restore += 1
+            if failed_restore == 2 and finished_restore == 2:
+                break
+            time.sleep(RETRY_INTERVAL)
+        assert failed_restore == 2 and finished_restore == 2
+
+        # mock inc restore error: invalid block
         command = ["find", VFS_DIR, "-type", "d", "-name", VOLUME_NAME]
         backup_volume_path = subprocess.check_output(command).strip()
         command = ["find", backup_volume_path, "-name", "*blk"]
@@ -127,10 +174,11 @@ def restore_inc_test(grpc_engine_manager,  # NOQA
         for blk in blocks:
             command = ["mv", blk, blk+".tmp".encode('utf-8')]
             subprocess.check_output(command).strip()
-        # should fail
-        is_failed = False
         cmd.restore_inc(dr_address, backup1, backup0_name)
+        # restore status should contain the error info
+        failed_restore, finished_restore = 0, 0
         for i in range(RETRY_COUNTS):
+            failed_restore, finished_restore = 0, 0
             rs = cmd.restore_status(dr_address)
             for status in rs.values():
                 if status['backupURL'] != backup1:
@@ -139,11 +187,13 @@ def restore_inc_test(grpc_engine_manager,  # NOQA
                     if status['error'] != "":
                         assert 'no such file or directory' in \
                                status['error']
-                        is_failed = True
-            if is_failed:
+                        failed_restore += 1
+                if not status["isRestoring"]:
+                    finished_restore += 1
+            if failed_restore == 2 and finished_restore == 2:
                 break
             time.sleep(RETRY_INTERVAL)
-        assert is_failed
+        assert failed_restore == 2 and finished_restore == 2
 
         assert path.exists(FIXED_REPLICA_PATH1 + delta_file1)
         assert path.exists(FIXED_REPLICA_PATH2 + delta_file1)
@@ -154,17 +204,7 @@ def restore_inc_test(grpc_engine_manager,  # NOQA
     data1 = \
         snap0_data[0:offset1] + snap1_data + \
         snap0_data[offset1+length1:]
-    # race condition: last restoration has failed
-    # but `isRestoring` hasn't been cleanup
-    for i in range(RETRY_COUNTS):
-        try:
-            restore_incrementally(dr_address, backup1, backup0_name)
-            break
-        except subprocess.CalledProcessError as e:
-            if "already in progress" not in e.output:
-                time.sleep(RETRY_INTERVAL)
-            else:
-                raise e
+    restore_incrementally(dr_address, backup1, backup0_name)
 
     verify_no_frontend_data(grpc_engine_manager,
                             0, data1, grpc_dr_controller)
@@ -192,7 +232,7 @@ def restore_inc_test(grpc_engine_manager,  # NOQA
     # mock race condition
     with pytest.raises(subprocess.CalledProcessError) as e:
         restore_incrementally(dr_address, backup1, backup0_name)
-        assert "doesn't match lastRestored" in e
+    assert "doesn't match field LastRestored" in e.value.stdout
 
     data3 = zero_string * length3 + data2[length3:length2]
     restore_incrementally(dr_address, backup3, backup2_name)
