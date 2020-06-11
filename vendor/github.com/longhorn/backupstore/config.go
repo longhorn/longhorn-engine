@@ -148,7 +148,7 @@ func getBackupNamesForVolume(volumeName string, driver BackupStoreDriver) ([]str
 		// path doesn't exist
 		return result, nil
 	}
-	return util.ExtractNames(fileList, BACKUP_CONFIG_PREFIX, CFG_SUFFIX)
+	return util.ExtractNames(fileList, BACKUP_CONFIG_PREFIX, CFG_SUFFIX), nil
 }
 
 func getBackupPath(volumeName string) string {

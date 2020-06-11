@@ -817,7 +817,7 @@ func getBlockNamesForVolume(volumeName string, driver BackupStoreDriver) ([]stri
 		}
 	}
 
-	return util.ExtractNames(names, "", BLK_SUFFIX)
+	return util.ExtractNames(names, "", BLK_SUFFIX), nil
 }
 
 func getBlockPath(volumeName string) string {
