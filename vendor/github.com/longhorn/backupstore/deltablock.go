@@ -392,6 +392,13 @@ func RestoreDeltaBlockBackup(config *DeltaRestoreConfig) error {
 		return fmt.Errorf("Read invalid volume size %v", vol.Size)
 	}
 
+	if _, err := os.Stat(volDevName); err == nil {
+		logrus.Warnf("File %s for the restore exists, will remove and re-create it", volDevName)
+		if err := os.Remove(volDevName); err != nil {
+			return fmt.Errorf("failed to clean up the existing file %v before restore: %v", volDevName, err)
+		}
+	}
+
 	volDev, err := os.Create(volDevName)
 	if err != nil {
 		return err
@@ -502,20 +509,17 @@ func RestoreDeltaBlockBackupIncrementally(config *DeltaRestoreConfig) error {
 		return fmt.Errorf("invalid parameter lastBackupName %v", lastBackupName)
 	}
 
-	// check volDev
-	var volDev *os.File
-	if _, err := os.Stat(volDevName); os.IsNotExist(err) {
-		volDev, err = os.Create(volDevName)
-		if err != nil {
-			return err
+	// check the file. do not reuse if the file exists
+	if _, err := os.Stat(volDevName); err == nil {
+		logrus.Warnf("File %s for the incremental restore exists, will remove and re-create it", volDevName)
+		if err := os.Remove(volDevName); err != nil {
+			return fmt.Errorf("failed to clean up the existing file %v before incremental restore: %v", volDevName, err)
 		}
-		logrus.Debugf("Created new file %v", volDevName)
-	} else {
-		volDev, err = os.OpenFile(volDevName, os.O_RDWR, 0600)
-		if err != nil {
-			return err
-		}
-		logrus.Debugf("File %v existed\n", volDevName)
+	}
+
+	volDev, err := os.Create(volDevName)
+	if err != nil {
+		return err
 	}
 
 	stat, err := volDev.Stat()
