@@ -47,7 +47,7 @@ const (
 )
 
 type SyncAgentServer struct {
-	sync.Mutex
+	sync.RWMutex
 
 	currentPort     int
 	startPort       int
@@ -172,14 +172,14 @@ func (s *SyncAgentServer) nextPort(processName string) (int, error) {
 }
 
 func (s *SyncAgentServer) IsRestoring() bool {
-	s.Lock()
-	defer s.Unlock()
+	s.RLock()
+	defer s.RUnlock()
 	return s.isRestoring
 }
 
 func (s *SyncAgentServer) GetLastRestored() string {
-	s.Lock()
-	defer s.Unlock()
+	s.RLock()
+	defer s.RUnlock()
 	return s.lastRestored
 }
 
@@ -406,8 +406,8 @@ func (s *SyncAgentServer) FinishRebuild() error {
 }
 
 func (s *SyncAgentServer) IsRebuilding() bool {
-	s.Lock()
-	defer s.Unlock()
+	s.RLock()
+	defer s.RUnlock()
 
 	return s.isRebuilding
 }
@@ -1061,8 +1061,8 @@ func (s *SyncAgentServer) FinishPurge() error {
 }
 
 func (s *SyncAgentServer) IsPurging() bool {
-	s.Lock()
-	defer s.Unlock()
+	s.RLock()
+	defer s.RUnlock()
 
 	return s.isPurging
 }
