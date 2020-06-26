@@ -1,5 +1,5 @@
 FROM ubuntu:18.04
-# FROM arm=armhf/ubuntu:16.04
+# FROM arm=arm64/ubuntu:18.04
 
 ARG DAPPER_HOST_ARCH=amd64
 ARG http_proxy
@@ -26,20 +26,24 @@ RUN apt-get update && \
 RUN rm -f /bin/sh && ln -s /bin/bash /bin/sh
 
 # Install Go & tools
-ENV GOLANG_ARCH_amd64=amd64 GOLANG_ARCH_arm=armv6l GOLANG_ARCH=GOLANG_ARCH_${ARCH} \
+ENV GOLANG_ARCH_amd64=amd64 GOLANG_ARCH_arm64=arm64 GOLANG_ARCH=GOLANG_ARCH_${ARCH} \
     GOPATH=/go PATH=/go/bin:/usr/local/go/bin:${PATH} SHELL=/bin/bash
-RUN wget -O - https://storage.googleapis.com/golang/go1.13.3.linux-${!GOLANG_ARCH}.tar.gz | tar -xzf - -C /usr/local && \
+RUN wget -O - https://storage.googleapis.com/golang/go1.14.4.linux-${!GOLANG_ARCH}.tar.gz | tar -xzf - -C /usr/local && \
     go get github.com/rancher/trash && go get -u golang.org/x/lint/golint
 
 # Docker
 ENV DOCKER_URL_amd64=https://download.docker.com/linux/ubuntu/dists/bionic/pool/stable/amd64/docker-ce_18.06.3~ce~3-0~ubuntu_amd64.deb \
-    DOCKER_URL_arm=https://download.docker.com/linux/ubuntu/dists/bionic/pool/stable/arm64/docker-ce_18.06.3~ce~3-0~ubuntu_arm64.deb \
+	DOCKER_URL_arm64=https://download.docker.com/linux/ubuntu/dists/bionic/pool/stable/arm64/docker-ce_18.06.3~ce~3-0~ubuntu_arm64.deb \
     DOCKER_URL=DOCKER_URL_${ARCH}
 
 RUN wget ${!DOCKER_URL} -O docker_ce_${ARCH} && dpkg -i docker_ce_${ARCH}
 
 # Minio
-RUN wget -O /usr/bin/minio https://dl.minio.io/server/minio/release/linux-amd64/archive/minio.RELEASE.2018-05-25T19-49-13Z && chmod +x /usr/bin/minio
+ENV MINIO_URL_amd64=https://dl.minio.io/server/minio/release/linux-amd64/archive/minio.RELEASE.2020-06-22T03-12-50Z \
+    MINIO_URL_arm64=https://dl.minio.io/server/minio/release/linux-arm64/archive/minio.RELEASE.2020-06-22T03-12-50Z \
+		MINIO_URL=MINIO_URL_${ARCH}
+
+RUN wget ${!MINIO_URL} -O /usr/bin/minio && chmod +x /usr/bin/minio
 
 # Install libqcow
 RUN wget -O - https://s3-us-west-1.amazonaws.com/rancher-longhorn/libqcow-alpha-20181117.tar.gz | tar xvzf - -C /usr/src
@@ -51,13 +55,21 @@ RUN cd /usr/src/libqcow-20181117 && \
 
 # GRPC dependencies
 # GRPC health probe
-RUN wget -O /usr/local/bin/grpc_health_probe https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/v0.3.0/grpc_health_probe-linux-amd64 && \
+ENV GRPC_HEALTH_PROBE_amd64=https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/v0.3.2/grpc_health_probe-linux-amd64 \
+    GRPC_HEALTH_PROBE_arm64=https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/v0.3.2/grpc_health_probe-linux-arm64 \
+		GRPC_HEALTH_PROBE=GRPC_HEALTH_PROBE_${ARCH}
+
+RUN wget ${!GRPC_HEALTH_PROBE} -O /usr/local/bin/grpc_health_probe && \
     chmod +x /usr/local/bin/grpc_health_probe
 
 # protoc
+ENV PROTOC_amd64=https://github.com/protocolbuffers/protobuf/releases/download/v3.7.1/protoc-3.7.1-linux-x86_64.zip \
+	PROTOC_arm64=https://github.com/protocolbuffers/protobuf/releases/download/v3.7.1/protoc-3.7.1-linux-aarch_64.zip \
+		PROTOC=PROTOC_${ARCH}
+
 RUN cd /usr/src && \
-    wget https://github.com/protocolbuffers/protobuf/releases/download/v3.7.1/protoc-3.7.1-linux-x86_64.zip && \
-    unzip protoc-3.7.1-linux-x86_64.zip -d /usr/local/
+	wget ${!PROTOC} -O protoc_${ARCH}.zip && \
+    unzip protoc_${ARCH}.zip -d /usr/local/
 
 # protoc-gen-go
 RUN cd /go/src/github.com/ && \
@@ -74,7 +86,11 @@ RUN cd /go/src/github.com/ && \
 RUN pip3 install grpcio==1.22.0 grpcio_tools==1.22.0
 
 # buf
-RUN wget -O /usr/bin/buf https://github.com/bufbuild/buf/releases/download/v0.16.0/buf-Linux-x86_64 && chmod +x /usr/bin/buf
+ENV GO111MODULE=on
+RUN go get \
+  github.com/bufbuild/buf/cmd/buf@v0.26.0 \
+  github.com/bufbuild/buf/cmd/protoc-gen-buf-check-breaking@v0.26.0 \
+  github.com/bufbuild/buf/cmd/protoc-gen-buf-check-lint@v0.26.0
 
 # Build liblonghorn
 RUN cd /usr/src && \
@@ -101,7 +117,6 @@ RUN cd integration && tox --notest
 RUN cd /go/src/github.com/longhorn && \
     git clone https://github.com/longhorn/longhorn-instance-manager.git && \
     cd longhorn-instance-manager && \
-    git checkout 18575f76d074bf287030d9ccdd68e8c4c1fdc3fb && \
     go build -o ./longhorn-instance-manager && \
     cp -r integration/rpc/ ${DAPPER_SOURCE}/integration/rpc/ && \
     cp longhorn-instance-manager /usr/local/bin
