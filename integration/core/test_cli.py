@@ -1158,6 +1158,7 @@ def test_expand_multiple_times():
         replica_process = create_replica_process(rm_client, REPLICA_NAME)
         grpc_replica_client = ReplicaClient(
             get_process_address(replica_process))
+        time.sleep(3)
         cleanup_replica(grpc_replica_client)
 
         open_replica(grpc_replica_client)
@@ -1209,11 +1210,13 @@ def test_single_replica_failure_during_engine_start(bin):  # NOQA
                                               replica_dir=replica_dir1)
     grpc_replica_client1 = ReplicaClient(
         get_process_address(replica_process1))
+    time.sleep(3)
     cleanup_replica(grpc_replica_client1)
     replica_process2 = create_replica_process(rm_client, REPLICA_2_NAME,
                                               replica_dir=replica_dir2)
     grpc_replica_client2 = ReplicaClient(
         get_process_address(replica_process2))
+    time.sleep(3)
     cleanup_replica(grpc_replica_client2)
 
     open_replica(grpc_replica_client1)
@@ -1257,11 +1260,13 @@ def test_single_replica_failure_during_engine_start(bin):  # NOQA
                                               replica_dir=replica_dir1)
     grpc_replica_client1 = ReplicaClient(
         get_process_address(replica_process1))
+    time.sleep(3)
     grpc_replica_client1.replica_create(size=SIZE_STR)
     replica_process2 = create_replica_process(rm_client, REPLICA_2_NAME,
                                               replica_dir=replica_dir2)
     grpc_replica_client2 = ReplicaClient(
         get_process_address(replica_process2))
+    time.sleep(3)
     grpc_replica_client2.replica_create(size=SIZE_STR)
 
     engine_process = create_engine_process(em_client)
@@ -1352,11 +1357,13 @@ def test_engine_restart_after_sigkill(bin):  # NOQA
                                               replica_dir=replica_dir1)
     grpc_replica_client1 = ReplicaClient(
         get_process_address(replica_process1))
+    time.sleep(3)
     cleanup_replica(grpc_replica_client1)
     replica_process2 = create_replica_process(rm_client, REPLICA_2_NAME,
                                               replica_dir=replica_dir2)
     grpc_replica_client2 = ReplicaClient(
         get_process_address(replica_process2))
+    time.sleep(3)
     cleanup_replica(grpc_replica_client2)
 
     open_replica(grpc_replica_client1)
@@ -1397,11 +1404,13 @@ def test_engine_restart_after_sigkill(bin):  # NOQA
                                               replica_dir=replica_dir1)
     grpc_replica_client1 = ReplicaClient(
         get_process_address(replica_process1))
+    time.sleep(3)
     grpc_replica_client1.replica_create(size=SIZE_STR)
     replica_process2 = create_replica_process(rm_client, REPLICA_2_NAME,
                                               replica_dir=replica_dir2)
     grpc_replica_client2 = ReplicaClient(
         get_process_address(replica_process2))
+    time.sleep(3)
     grpc_replica_client2.replica_create(size=SIZE_STR)
 
     engine_process = create_engine_process(em_client)

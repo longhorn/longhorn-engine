@@ -1,4 +1,5 @@
 import pytest
+import time
 
 from common.core import cleanup_process
 from common.core import cleanup_replica
@@ -39,6 +40,7 @@ def grpc_controller_client(request, engine_manager_client):
 
 @pytest.fixture
 def grpc_replica_client(process_manager_client):
+    time.sleep(3)
     r = create_replica_process(process_manager_client, REPLICA_NAME)
 
     listen = get_process_address(r)
@@ -48,6 +50,7 @@ def grpc_replica_client(process_manager_client):
 
 @pytest.fixture
 def grpc_replica_client2(process_manager_client):
+    time.sleep(3)
     r = create_replica_process(process_manager_client, REPLICA_2_NAME)
 
     listen = get_process_address(r)

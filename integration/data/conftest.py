@@ -2,6 +2,7 @@ import pytest
 import os
 import string
 import tempfile
+import time
 
 from common.constants import INSTANCE_MANAGER_REPLICA
 from common.constants import INSTANCE_MANAGER_ENGINE
@@ -171,6 +172,7 @@ def grpc_replica_client(request, process_manager_client):
         listen = get_process_address(r)
 
         c = ReplicaClient(listen)
+        time.sleep(3)
         grpc_replica_client.replica_client = cleanup_replica(c)
         return grpc_replica_client.replica_client
 
