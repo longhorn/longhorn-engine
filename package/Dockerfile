@@ -5,7 +5,11 @@ RUN apt-get update && apt-get install -y kmod curl nfs-common fuse \
         iputils-ping telnet iperf qemu-utils wget iproute2
 
 # Install grpc_health_probe
-RUN wget -O /usr/local/bin/grpc_health_probe https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/v0.3.0/grpc_health_probe-linux-amd64 && \
+ENV GRPC_HEALTH_PROBE_amd64=https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/v0.3.0/grpc_health_probe-linux-amd64 \
+    GRPC_HEALTH_PROBE_arm64=https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/v0.3.0/grpc_health_probe-linux-arm64 \
+    GRPC_HEALTH_PROBE=GRPC_HEALTH_PROBE_${ARCH}
+
+RUN wget ${!GRPC_HEALTH_PROBE} -O /usr/local/bin/grpc_health_probe && \
     chmod +x /usr/local/bin/grpc_health_probe
 
 COPY bin/longhorn bin/longhorn-instance-manager /usr/local/bin/
