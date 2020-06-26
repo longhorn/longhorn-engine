@@ -11,6 +11,18 @@ TAG=${TAG:-${VERSION}}
 REPO=${REPO:-longhornio}
 IMAGE=${REPO}/${PROJECT}:${TAG}
 
+case $(uname -m) in
+	aarch64 | arm64)
+		ARCH=arm64
+		;;
+	x86_64)
+		ARCH=amd64
+		;;
+	*)
+		echo "$(uname -a): unsupported architecture"
+		exit 1
+esac
+
 if [ ! -x ./bin/longhorn ]; then
     ./scripts/build
 fi
@@ -18,7 +30,7 @@ fi
 cp /usr/src/tgt/pkg/tgt_*.deb ./bin/
 cp /usr/local/bin/longhorn-instance-manager ./bin/
 
-docker build -t ${IMAGE} -f package/Dockerfile .
+docker build --build-arg ARCH=${ARCH} -t ${IMAGE} -f package/Dockerfile .
 
 echo Built ${IMAGE}
 
