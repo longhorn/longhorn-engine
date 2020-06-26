@@ -199,6 +199,7 @@ def grpc_controller_client(request, engine_manager_client):
 
         grpc_controller_client.process_client = \
             ControllerClient(get_process_address(e))
+        time.sleep(3)
         return grpc_controller_client.process_client
 
     yield generate_grpc_controller_client

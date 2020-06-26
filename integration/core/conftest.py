@@ -34,6 +34,7 @@ def engine_manager_client(request, address=INSTANCE_MANAGER_ENGINE):
 
 @pytest.fixture
 def grpc_controller_client(request, engine_manager_client):
+    time.sleep(3)
     e = create_engine_process(engine_manager_client)
     return ControllerClient(get_process_address(e))
 

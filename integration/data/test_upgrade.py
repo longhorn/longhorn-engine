@@ -2,6 +2,7 @@ import grpc
 from os import path
 
 import pytest
+import time
 
 from common.core import (  # NOQA
     get_dev, read_dev, write_dev,
@@ -84,5 +85,6 @@ def test_upgrade(grpc_engine_manager,  # NOQA
     grpc_controller.client_upgrade(get_process_address(e))
     wait_for_process_running(grpc_engine_manager, ENGINE_NAME)
 
+    time.sleep(3)
     info = grpc_controller.volume_get()
     assert info.endpoint == path.join(LONGHORN_DEV_DIR, VOLUME_NAME)
