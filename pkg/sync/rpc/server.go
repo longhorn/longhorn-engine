@@ -722,9 +722,6 @@ func (s *SyncAgentServer) BackupRestoreIncrementally(ctx context.Context,
 	if req.DeltaFileName == "" {
 		return nil, fmt.Errorf("empty DeltaFileName for the incremental restore")
 	}
-	if req.LastRestoredBackupName == "" {
-		return nil, fmt.Errorf("empty LastRestoredBackupName for the incremental restore")
-	}
 	if req.Backup == "" {
 		return nil, fmt.Errorf("empty Backup URL for the incremental restore")
 	}
@@ -845,29 +842,22 @@ func (s *SyncAgentServer) reloadReplica() error {
 }
 
 func (s *SyncAgentServer) RestoreStatus(ctx context.Context, req *empty.Empty) (*ptypes.RestoreStatusResponse, error) {
-	rs := &ptypes.RestoreStatusResponse{
+	resp := ptypes.RestoreStatusResponse{
 		IsRestoring:  s.IsRestoring(),
 		LastRestored: s.GetLastRestored(),
 	}
 
 	if s.RestoreInfo == nil {
-		return rs, nil
+		return &resp, nil
 	}
-	s.RestoreInfo.Lock()
-	defer s.RestoreInfo.Unlock()
-	restoreStatus := &replica.RestoreStatus{
-		SnapshotName: s.RestoreInfo.SnapshotName,
-		Progress:     s.RestoreInfo.Progress,
-		Error:        s.RestoreInfo.Error,
-		State:        s.RestoreInfo.State,
-		BackupURL:    s.RestoreInfo.BackupURL,
-	}
-	rs.Progress = int32(restoreStatus.Progress)
-	rs.DestFileName = restoreStatus.SnapshotName
-	rs.State = string(restoreStatus.State)
-	rs.Error = restoreStatus.Error
-	rs.BackupUrl = restoreStatus.BackupURL
-	return rs, nil
+
+	restoreStatus := s.RestoreInfo.DeepCopy()
+	resp.Progress = int32(restoreStatus.Progress)
+	resp.DestFileName = restoreStatus.SnapshotName
+	resp.State = string(restoreStatus.State)
+	resp.Error = restoreStatus.Error
+	resp.BackupUrl = restoreStatus.BackupURL
+	return &resp, nil
 }
 
 func (s *SyncAgentServer) SnapshotPurge(ctx context.Context, req *empty.Empty) (*empty.Empty, error) {
