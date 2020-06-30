@@ -44,6 +44,16 @@ func (f *FileSystemOperator) FileSize(filePath string) int64 {
 	return st.Size()
 }
 
+func (f *FileSystemOperator) FileTime(filePath string) time.Time {
+	file := f.LocalPath(filePath)
+	st, err := os.Stat(file)
+	if err != nil || st.IsDir() {
+		return time.Time{}
+	}
+
+	return st.ModTime()
+}
+
 func (f *FileSystemOperator) FileExists(filePath string) bool {
 	return f.FileSize(filePath) >= 0
 }
