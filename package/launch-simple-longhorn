@@ -46,6 +46,9 @@ function start() {
 
     longhorn-instance-manager process create --name "$volume-r" --binary /usr/local/bin/longhorn --port-count 15 --port-args "--listen,localhost:" -- replica /volume/ "--size" $size
 
+    # wait for the replica to be started
+    sleep 5
+
     longhorn-instance-manager process create --name "$volume-e" --binary /usr/local/bin/longhorn --port-count 1 --port-args "--listen,localhost:" -- controller $volume --frontend $frontend --replica tcp://localhost:10000
 }
 
