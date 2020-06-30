@@ -73,11 +73,15 @@ func removeVolume(volumeName string, driver BackupStoreDriver) error {
 	volumeDir := getVolumePath(volumeName)
 	volumeBlocksDirectory := getBlockPath(volumeName)
 	volumeBackupsDirectory := getBackupPath(volumeName)
+	volumeLocksDirectory := getLockPath(volumeName)
 	if err := driver.Remove(volumeBackupsDirectory); err != nil {
 		return fmt.Errorf("failed to remove all the backups for volume %v: %v", volumeName, err)
 	}
 	if err := driver.Remove(volumeBlocksDirectory); err != nil {
 		return fmt.Errorf("failed to remove all the blocks for volume %v: %v", volumeName, err)
+	}
+	if err := driver.Remove(volumeLocksDirectory); err != nil {
+		return fmt.Errorf("failed to remove all the locks for volume %v: %v", volumeName, err)
 	}
 	if err := driver.Remove(volumeDir); err != nil {
 		return fmt.Errorf("failed to remove backup volume %v directory in backupstore: %v", volumeName, err)
