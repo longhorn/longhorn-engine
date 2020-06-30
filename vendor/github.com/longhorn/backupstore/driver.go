@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 	"net/url"
+	"time"
 
 	"github.com/sirupsen/logrus"
 
@@ -17,6 +18,7 @@ type BackupStoreDriver interface {
 	GetURL() string
 	FileExists(filePath string) bool
 	FileSize(filePath string) int64
+	FileTime(filePath string) time.Time
 	Remove(path string) error               // Bahavior like "rm -rf"
 	Read(src string) (io.ReadCloser, error) // Caller needs to close
 	Write(dst string, rs io.ReadSeeker) error
