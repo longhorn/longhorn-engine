@@ -15,6 +15,7 @@ import (
 
 var (
 	log = logrus.WithFields(logrus.Fields{"pkg": "nfs"})
+	MinorVersions = []string{"4.2", "4.1", "4.0"}
 )
 
 type BackupStoreDriver struct {
@@ -31,6 +32,8 @@ const (
 	MountDir = "/var/lib/longhorn-backupstore-mounts"
 
 	MaxCleanupLevel = 10
+
+	UnsupportedProtocolError = "Protocol not supported"
 )
 
 func init() {
@@ -79,7 +82,13 @@ func initFunc(destURL string) (backupstore.BackupStoreDriver, error) {
 func (b *BackupStoreDriver) mount() error {
 	var err error
 	if !util.IsMounted(b.mountDir) {
-		_, err = util.Execute("mount", []string{"-t", "nfs4", b.serverPath, b.mountDir})
+		for _, version := range MinorVersions {
+			log.Debugf("attempting mount for nfs path %v with nfsvers %v", b.serverPath, version)
+			_, err = util.Execute("mount", []string{"-t", "nfs4", "-o", fmt.Sprintf("nfsvers=%v", version), b.serverPath, b.mountDir})
+			if err == nil || !strings.Contains(err.Error(), UnsupportedProtocolError) {
+				break
+			}
+		}
 	}
 	return err
 }
