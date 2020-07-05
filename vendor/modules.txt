@@ -62,7 +62,7 @@ github.com/gorilla/websocket
 github.com/jmespath/go-jmespath
 # github.com/konsorten/go-windows-terminal-sequences v1.0.1
 github.com/konsorten/go-windows-terminal-sequences
-# github.com/longhorn/backupstore v0.0.0-20200702175921-2458fbe42697
+# github.com/longhorn/backupstore v0.0.0-20200707024652-0c3469599873
 github.com/longhorn/backupstore
 github.com/longhorn/backupstore/cmd
 github.com/longhorn/backupstore/fsops
