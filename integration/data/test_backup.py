@@ -831,6 +831,11 @@ def test_backup_type(grpc_replica1, grpc_replica2,      # NOQA
         snap3 = cmd.snapshot_create(address)
         backup3 = create_backup(address, snap3, backup_target)
         backup3_url = backup3["URL"]
+        assert backup3['IsIncremental'] is True
+
+        # full backup: backup the same snapshot twice
+        backup3 = create_backup(address, snap3, backup_target)
+        backup3_url = backup3["URL"]
         assert backup3['IsIncremental'] is False
 
         # backup4: 256 random data in 1st block
