@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/sirupsen/logrus"
 
@@ -667,6 +668,39 @@ func getBlockInfoMap(backups []*Backup, volume string, driver BackupStoreDriver)
 	return blockInfos, nil
 }
 
+// This function will get the last backup from the remaining backups
+func GetLatestBackup(backupsToBeRetained []*Backup, vol *Volume) error {
+	var lastBackupName string
+	var lastBackupAt string
+
+	for _, backup := range backupsToBeRetained {
+		if lastBackupName == "" || lastBackupAt == "" {
+			lastBackupName = backup.Name
+			lastBackupAt = backup.SnapshotCreatedAt
+		}
+
+		backupTime, err := time.Parse(time.RFC3339, backup.SnapshotCreatedAt)
+		if err != nil {
+			return fmt.Errorf("Cannot parse backup %v time %v due to %v", backup.Name, backup.SnapshotCreatedAt, err)
+		}
+
+		lastBackupTime, err := time.Parse(time.RFC3339, lastBackupAt)
+		if err != nil {
+			return fmt.Errorf("Cannot parse  last backup %v time %v due to %v", lastBackupName, lastBackupAt, err)
+		}
+
+		if backupTime.After(lastBackupTime) {
+			lastBackupName = backup.Name
+			lastBackupAt = backup.SnapshotCreatedAt
+		}
+	}
+
+	vol.LastBackupName = lastBackupName
+	vol.LastBackupAt = lastBackupAt
+
+	return nil
+}
+
 func DeleteDeltaBlockBackup(backupURL string) error {
 	bsDriver, err := GetBackupStoreDriver(backupURL)
 	if err != nil {
@@ -694,20 +728,6 @@ func DeleteDeltaBlockBackup(backupURL string) error {
 	}
 	log.Infof("Removed backup %v for volume %v", backupName, volumeName)
 
-	// update the volume
-	v, err := loadVolume(volumeName, bsDriver)
-	if err != nil {
-		return fmt.Errorf("Cannot find volume %v in backupstore due to: %v", volumeName, err)
-	}
-
-	if backupToBeDeleted.Name == v.LastBackupName {
-		v.LastBackupName = ""
-		v.LastBackupAt = ""
-		if err := saveVolume(v, bsDriver); err != nil {
-			return err
-		}
-	}
-
 	log.Debug("GC started")
 	var backupsToBeRetained []*Backup
 	deleteBlocks := true
@@ -734,6 +754,24 @@ func DeleteDeltaBlockBackup(backupURL string) error {
 		}
 
 		backupsToBeRetained = append(backupsToBeRetained, backup)
+	}
+
+	// update the volume
+	v, err := loadVolume(volumeName, bsDriver)
+	if err != nil {
+		return fmt.Errorf("Cannot find volume %v in backupstore due to: %v", volumeName, err)
+	}
+
+	if backupToBeDeleted.Name == v.LastBackupName {
+		v.LastBackupName = ""
+		v.LastBackupAt = ""
+		err := GetLatestBackup(backupsToBeRetained, v)
+		if err != nil {
+			return fmt.Errorf("Failed to get last backup creation time due to %v", err)
+		}
+		if err := saveVolume(v, bsDriver); err != nil {
+			return err
+		}
 	}
 
 	blockMap, err := getBlockInfoMap(backupsToBeRetained, volumeName, bsDriver)
