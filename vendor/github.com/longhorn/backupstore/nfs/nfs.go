@@ -10,6 +10,7 @@ import (
 	"github.com/longhorn/backupstore"
 	"github.com/longhorn/backupstore/fsops"
 	"github.com/longhorn/backupstore/util"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -79,8 +80,19 @@ func initFunc(destURL string) (backupstore.BackupStoreDriver, error) {
 	return b, nil
 }
 
-func (b *BackupStoreDriver) mount() error {
-	var err error
+func (b *BackupStoreDriver) mount() (err error) {
+	defer func() {
+		if err != nil {
+			if _, err := util.Execute("mount", []string{"-t", "nfs", "-o", "nfsvers=3", "-o", "nolock", b.serverPath, b.mountDir}); err != nil {
+				return
+			}
+			err = errors.Wrapf(err, "nfsv4 mount failed but nfsv3 mount succeeded, may be due to server only supporting nfsv3")
+			if err := b.unmount(); err != nil {
+				log.Errorf("failed to clean up nfsv3 test mount: %v", err)
+			}
+		}
+	}()
+
 	if !util.IsMounted(b.mountDir) {
 		for _, version := range MinorVersions {
 			log.Debugf("attempting mount for nfs path %v with nfsvers %v", b.serverPath, version)
@@ -89,6 +101,14 @@ func (b *BackupStoreDriver) mount() error {
 				break
 			}
 		}
+	}
+	return err
+}
+
+func (b *BackupStoreDriver) unmount() error {
+	var err error
+	if util.IsMounted(b.mountDir) {
+		_, err = util.Execute("umount", []string{b.mountDir})
 	}
 	return err
 }
