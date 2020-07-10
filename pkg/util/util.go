@@ -271,6 +271,9 @@ func GetBackupCredential(backupURL string) (map[string]string, error) {
 		credential[types.AWSSecretKey] = secretKey
 		credential[types.AWSEndPoint] = os.Getenv(types.AWSEndPoint)
 		credential[types.AWSCert] = os.Getenv(types.AWSCert)
+		credential[types.HTTPSProxy] = os.Getenv(types.HTTPSProxy)
+		credential[types.HTTPProxy] = os.Getenv(types.HTTPProxy)
+		credential[types.NOProxy] = os.Getenv(types.NOProxy)
 	}
 	return credential, nil
 }

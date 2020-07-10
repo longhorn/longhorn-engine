@@ -439,6 +439,9 @@ func (s *SyncAgentServer) BackupCreate(ctx context.Context, req *ptypes.BackupCr
 			os.Setenv(types.AWSAccessKey, credential[types.AWSAccessKey])
 			os.Setenv(types.AWSSecretKey, credential[types.AWSSecretKey])
 			os.Setenv(types.AWSEndPoint, credential[types.AWSEndPoint])
+			os.Setenv(types.HTTPSProxy, credential[types.HTTPSProxy])
+			os.Setenv(types.HTTPProxy, credential[types.HTTPProxy])
+			os.Setenv(types.NOProxy, credential[types.NOProxy])
 
 			// set a custom ca cert if available
 			if credential[types.AWSCert] != "" {
