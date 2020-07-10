@@ -15,7 +15,7 @@ import (
 )
 
 var (
-	log = logrus.WithFields(logrus.Fields{"pkg": "nfs"})
+	log           = logrus.WithFields(logrus.Fields{"pkg": "nfs"})
 	MinorVersions = []string{"4.2", "4.1", "4.0"}
 )
 
