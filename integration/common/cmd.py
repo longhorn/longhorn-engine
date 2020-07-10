@@ -64,7 +64,7 @@ def snapshot_purge_status(url):
 
 def backup_status(url, backupID):
     output = ""
-    cmd = [_bin(), '--url', url, 'backup', 'status', backupID]
+    cmd = [_bin(), '--url', url, '--debug', 'backup', 'status', backupID]
     for x in range(RETRY_COUNTS):
         backup = json.loads(subprocess.
                             check_output(cmd, encoding='utf-8').strip())
