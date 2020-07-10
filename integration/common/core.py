@@ -289,6 +289,8 @@ def restore_with_frontend(url, engine_name, backup):
     cmd.backup_restore(url, backup)
     wait_for_restore_completion(url, backup)
     client.volume_frontend_start(FRONTEND_TGT_BLOCKDEV)
+    v = client.volume_get()
+    assert v.frontendState == "up"
     return
 
 
