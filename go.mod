@@ -11,13 +11,13 @@ require (
 	github.com/gorilla/handlers v1.4.2
 	github.com/gorilla/mux v1.7.3
 	github.com/gorilla/websocket v1.4.0 // indirect
-	github.com/longhorn/backupstore v0.0.0-20200612163229-31a628633b8f
+	github.com/longhorn/backupstore v0.0.0-20200709195833-7392333d6d22
 	github.com/longhorn/go-iscsi-helper v0.0.0-20200601183015-ca8b762c2f38
 	github.com/longhorn/sparse-tools v0.0.0-20191231185723-50ffab4d4329
 	github.com/mattn/go-colorable v0.1.4 // indirect
 	github.com/mattn/go-runewidth v0.0.5-0.20181218000649-703b5e6b11ae // indirect
 	github.com/moby/moby v1.11.1
-	github.com/pkg/errors v0.8.1
+	github.com/pkg/errors v0.9.1
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
 	github.com/rancher/go-rancher v0.1.1-0.20190307222549-9756097e5e4c
 	github.com/satori/go.uuid v1.0.0
