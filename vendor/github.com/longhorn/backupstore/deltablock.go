@@ -116,16 +116,6 @@ func CreateDeltaBlockBackup(config *DeltaBackupConfig) (string, bool, error) {
 		return "", false, err
 	}
 
-	lock, err := New(bsDriver, volume.Name, BACKUP_LOCK)
-	if err != nil {
-		return "", false, err
-	}
-
-	if err := lock.Lock(); err != nil {
-		return "", false, err
-	}
-	defer lock.Unlock()
-
 	if err := addVolume(volume, bsDriver); err != nil {
 		return "", false, err
 	}
@@ -213,15 +203,8 @@ func CreateDeltaBlockBackup(config *DeltaBackupConfig) (string, bool, error) {
 		Blocks:       []BlockMapping{},
 	}
 
-	// keep lock alive for async go routine.
-	if err := lock.Lock(); err != nil {
-		deltaOps.CloseSnapshot(snapshot.Name, volume.Name)
-		return "", backupRequest.isIncrementalBackup(), err
-	}
 	go func() {
 		defer deltaOps.CloseSnapshot(snapshot.Name, volume.Name)
-		defer lock.Unlock()
-
 		if progress, backup, err := performBackup(config, delta, deltaBackup, backupRequest.lastBackup, bsDriver); err != nil {
 			deltaOps.UpdateBackupStatus(snapshot.Name, volume.Name, progress, "", err.Error())
 		} else {
@@ -398,16 +381,6 @@ func RestoreDeltaBlockBackup(config *DeltaRestoreConfig) error {
 		return err
 	}
 
-	lock, err := New(bsDriver, srcVolumeName, RESTORE_LOCK)
-	if err != nil {
-		return err
-	}
-
-	if err := lock.Lock(); err != nil {
-		return err
-	}
-	defer lock.Unlock()
-
 	vol, err := loadVolume(srcVolumeName, bsDriver)
 	if err != nil {
 		return generateError(logrus.Fields{
@@ -431,12 +404,6 @@ func RestoreDeltaBlockBackup(config *DeltaRestoreConfig) error {
 	if err != nil {
 		return err
 	}
-	defer func() {
-		// make sure to close the device
-		if err != nil {
-			_ = volDev.Close()
-		}
-	}()
 
 	stat, err := volDev.Stat()
 	if err != nil {
@@ -458,14 +425,8 @@ func RestoreDeltaBlockBackup(config *DeltaRestoreConfig) error {
 		LogEventBackupURL:  backupURL,
 	}).Debug()
 
-	// keep lock alive for async go routine.
-	if err := lock.Lock(); err != nil {
-		return err
-	}
 	go func() {
 		defer volDev.Close()
-		defer lock.Unlock()
-
 		blkCounts := len(backup.Blocks)
 		var progress int
 		for i, block := range backup.Blocks {
@@ -532,16 +493,6 @@ func RestoreDeltaBlockBackupIncrementally(config *DeltaRestoreConfig) error {
 		return err
 	}
 
-	lock, err := New(bsDriver, srcVolumeName, RESTORE_LOCK)
-	if err != nil {
-		return err
-	}
-
-	if err := lock.Lock(); err != nil {
-		return err
-	}
-	defer lock.Unlock()
-
 	vol, err := loadVolume(srcVolumeName, bsDriver)
 	if err != nil {
 		return generateError(logrus.Fields{
@@ -571,12 +522,6 @@ func RestoreDeltaBlockBackupIncrementally(config *DeltaRestoreConfig) error {
 	if err != nil {
 		return err
 	}
-	defer func() {
-		// make sure to close the device
-		if err != nil {
-			_ = volDev.Close()
-		}
-	}()
 
 	stat, err := volDev.Stat()
 	if err != nil {
@@ -601,13 +546,8 @@ func RestoreDeltaBlockBackupIncrementally(config *DeltaRestoreConfig) error {
 		LogFieldVolumeDev:  volDevName,
 		LogEventBackupURL:  backupURL,
 	}).Debugf("Started incrementally restoring from %v to %v", lastBackup, backup)
-	// keep lock alive for async go routine.
-	if err := lock.Lock(); err != nil {
-		return err
-	}
 	go func() {
 		defer volDev.Close()
-		defer lock.Unlock()
 
 		if err := performIncrementalRestore(srcVolumeName, volDev, lastBackup, backup, bsDriver, config); err != nil {
 			deltaOps.UpdateRestoreStatus(volDevName, 0, err)
@@ -690,15 +630,6 @@ func DeleteBackupVolume(volumeName string, destURL string) error {
 	if err != nil {
 		return err
 	}
-	lock, err := New(bsDriver, volumeName, DELETION_LOCK)
-	if err != nil {
-		return err
-	}
-
-	if err := lock.Lock(); err != nil {
-		return err
-	}
-	defer lock.Unlock()
 	if err := removeVolume(volumeName, bsDriver); err != nil {
 		return err
 	}
@@ -780,16 +711,6 @@ func DeleteDeltaBlockBackup(backupURL string) error {
 	if err != nil {
 		return err
 	}
-
-	lock, err := New(bsDriver, volumeName, DELETION_LOCK)
-	if err != nil {
-		return err
-	}
-
-	if err := lock.Lock(); err != nil {
-		return err
-	}
-	defer lock.Unlock()
 
 	// If we fail to load the backup we still want to proceed with the deletion of the backup file
 	backupToBeDeleted, err := loadBackup(backupName, volumeName, bsDriver)
