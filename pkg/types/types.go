@@ -23,6 +23,10 @@ const (
 	AWSEndPoint  = "AWS_ENDPOINTS"
 	AWSCert      = "AWS_CERT"
 
+	HTTPSProxy = "HTTPS_PROXY"
+	HTTPProxy  = "HTTP_PROXY"
+	NOProxy    = "NO_PROXY"
+
 	RetryCounts   = 30
 	RetryInterval = 1 * time.Second
 
