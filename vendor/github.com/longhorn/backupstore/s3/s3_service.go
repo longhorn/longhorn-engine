@@ -18,13 +18,27 @@ type Service struct {
 	Client *http.Client
 }
 
+const (
+	VirtualHostedStyle = "VIRTUAL_HOSTED_STYLE"
+)
+
 func (s *Service) New() (*s3.S3, error) {
 	// get custom endpoint
 	endpoints := os.Getenv("AWS_ENDPOINTS")
 	config := &aws.Config{Region: &s.Region}
+
+	virtualHostedStyleEnabled := os.Getenv(VirtualHostedStyle)
+	if virtualHostedStyleEnabled == "true" {
+		config.S3ForcePathStyle = aws.Bool(false)
+	} else if virtualHostedStyleEnabled == "false" {
+		config.S3ForcePathStyle = aws.Bool(true)
+	}
+
 	if endpoints != "" {
 		config.Endpoint = aws.String(endpoints)
-		config.S3ForcePathStyle = aws.Bool(true)
+		if config.S3ForcePathStyle == nil {
+			config.S3ForcePathStyle = aws.Bool(true)
+		}
 	}
 
 	if s.Client != nil {
