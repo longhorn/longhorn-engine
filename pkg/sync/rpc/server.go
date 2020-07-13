@@ -442,6 +442,7 @@ func (s *SyncAgentServer) BackupCreate(ctx context.Context, req *ptypes.BackupCr
 			os.Setenv(types.HTTPSProxy, credential[types.HTTPSProxy])
 			os.Setenv(types.HTTPProxy, credential[types.HTTPProxy])
 			os.Setenv(types.NOProxy, credential[types.NOProxy])
+			os.Setenv(types.VirtualHostedStyle, credential[types.VirtualHostedStyle])
 
 			// set a custom ca cert if available
 			if credential[types.AWSCert] != "" {
@@ -567,6 +568,7 @@ func (s *SyncAgentServer) BackupRestore(ctx context.Context, req *ptypes.BackupR
 			os.Setenv(types.HTTPSProxy, credential[types.HTTPSProxy])
 			os.Setenv(types.HTTPProxy, credential[types.HTTPProxy])
 			os.Setenv(types.NOProxy, credential[types.NOProxy])
+			os.Setenv(types.VirtualHostedStyle, credential[types.VirtualHostedStyle])
 
 			// set a custom ca cert if available
 			if credential[types.AWSCert] != "" {
@@ -740,6 +742,7 @@ func (s *SyncAgentServer) BackupRestoreIncrementally(ctx context.Context,
 			os.Setenv(types.HTTPSProxy, credential[types.HTTPSProxy])
 			os.Setenv(types.HTTPProxy, credential[types.HTTPProxy])
 			os.Setenv(types.NOProxy, credential[types.NOProxy])
+			os.Setenv(types.VirtualHostedStyle, credential[types.VirtualHostedStyle])
 
 			// set a custom ca cert if available
 			if credential[types.AWSCert] != "" {
