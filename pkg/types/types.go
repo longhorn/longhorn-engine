@@ -27,6 +27,8 @@ const (
 	HTTPProxy  = "HTTP_PROXY"
 	NOProxy    = "NO_PROXY"
 
+	VirtualHostedStyle = "VIRTUAL_HOSTED_STYLE"
+
 	RetryCounts   = 30
 	RetryInterval = 1 * time.Second
 

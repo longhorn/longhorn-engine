@@ -274,6 +274,7 @@ func GetBackupCredential(backupURL string) (map[string]string, error) {
 		credential[types.HTTPSProxy] = os.Getenv(types.HTTPSProxy)
 		credential[types.HTTPProxy] = os.Getenv(types.HTTPProxy)
 		credential[types.NOProxy] = os.Getenv(types.NOProxy)
+		credential[types.VirtualHostedStyle] = os.Getenv(types.VirtualHostedStyle)
 	}
 	return credential, nil
 }
