@@ -97,31 +97,29 @@ func getVolumeFilePath(volumeName string) string {
 	return filepath.Join(volumePath, volumeCfg)
 }
 
-func getVolumeNames(driver BackupStoreDriver) ([]string, error) {
+// getVolumeNames returns all volume names based on the folders on the backupstore
+func getVolumeNames(driver BackupStoreDriver) []string {
 	names := []string{}
-
 	volumePathBase := filepath.Join(backupstoreBase, VOLUME_DIRECTORY)
-	lv1Dirs, err := driver.List(volumePathBase)
-	// Directory doesn't exist
-	if err != nil {
-		return names, nil
-	}
+	lv1Dirs, _ := driver.List(volumePathBase)
 	for _, lv1 := range lv1Dirs {
 		lv1Path := filepath.Join(volumePathBase, lv1)
 		lv2Dirs, err := driver.List(lv1Path)
 		if err != nil {
-			return nil, err
+			log.Warnf("failed to list second level dirs for path: %v reason: %v", lv1Path, err)
+			continue
 		}
 		for _, lv2 := range lv2Dirs {
 			lv2Path := filepath.Join(lv1Path, lv2)
 			volumeNames, err := driver.List(lv2Path)
 			if err != nil {
-				return nil, err
+				log.Warnf("failed to list volume names for path: %v reason: %v", lv2Path, err)
+				continue
 			}
 			names = append(names, volumeNames...)
 		}
 	}
-	return names, nil
+	return names
 }
 
 func loadVolume(volumeName string, driver BackupStoreDriver) (*Volume, error) {
