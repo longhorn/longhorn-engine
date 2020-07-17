@@ -99,10 +99,7 @@ func List(volumeName, destURL string, volumeOnly bool) (map[string]*VolumeInfo, 
 	resp := make(map[string]*VolumeInfo)
 	volumeNames := []string{volumeName}
 	if volumeName == "" {
-		volumeNames, err = getVolumeNames(driver)
-		if err != nil {
-			return nil, err
-		}
+		volumeNames = getVolumeNames(driver)
 	}
 
 	for _, volumeName := range volumeNames {
