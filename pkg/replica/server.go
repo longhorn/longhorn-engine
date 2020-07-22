@@ -123,6 +123,8 @@ func (s *Server) Status() (State, Info) {
 	}
 	info := s.r.Info()
 	switch {
+	case info.Error != "":
+		return Error, info
 	case info.Rebuilding:
 		return Rebuilding, info
 	case info.Dirty:
@@ -310,7 +312,10 @@ func (s *Server) SetRevisionCounter(counter int64) error {
 }
 
 func (s *Server) PingResponse() error {
-	state, _ := s.Status()
+	state, info := s.Status()
+	if state == Error {
+		return fmt.Errorf("ping failure due to %v", info.Error)
+	}
 	if state != Open && state != Dirty && state != Rebuilding {
 		return fmt.Errorf("ping failure: replica state %v", state)
 	}

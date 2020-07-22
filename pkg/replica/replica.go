@@ -74,6 +74,7 @@ type Info struct {
 	Head            string
 	Dirty           bool
 	Rebuilding      bool
+	Error           string
 	Parent          string
 	SectorSize      int64
 	BackingFileName string
@@ -1118,5 +1119,13 @@ func (r *Replica) GetRemainSnapshotCounts() int {
 }
 
 func (r *Replica) getDiskSize(disk string) int64 {
-	return util.GetFileActualSize(r.diskPath(disk))
+	ret := util.GetFileActualSize(r.diskPath(disk))
+	if ret == -1 {
+		errMessage := fmt.Sprintf("Fail to getfile %v size", r.diskPath(disk))
+		if r.info.Error == "" {
+			r.info.Error = errMessage
+			logrus.Error(errMessage)
+		}
+	}
+	return ret
 }
