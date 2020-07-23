@@ -59,6 +59,22 @@ func NewRestore(snapshotName, replicaAddress, backupURL, currentRestoringBackup 
 	}
 }
 
+func (rr *RestoreStatus) StartNewRestore(backupURL, currentRestoringBackup, toFileName, snapshotDiskName string, validLastRestoredBackup bool) {
+	rr.Lock()
+	defer rr.Unlock()
+	rr.ToFileName = toFileName
+
+	rr.Progress = 0
+	rr.Error = ""
+	rr.BackupURL = backupURL
+	rr.State = ProgressStateInProgress
+	rr.SnapshotDiskName = snapshotDiskName
+	if !validLastRestoredBackup {
+		rr.LastRestored = ""
+	}
+	rr.CurrentRestoringBackup = currentRestoringBackup
+}
+
 func (rr *RestoreStatus) UpdateRestoreStatus(snapshot string, rp int, re error) {
 	rr.Lock()
 	defer rr.Unlock()
