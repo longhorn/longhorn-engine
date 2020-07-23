@@ -67,16 +67,19 @@ func RestoreToFileCmd() cli.Command {
 }
 
 func restore(url string) error {
-	restoreObj := replica.NewRestore(BackupFilePath, "")
 	backupURL := util.UnescapeURL(url)
+	requestedBackupName, err := backupstore.GetBackupFromBackupURL(backupURL)
+	if err != nil {
+		return err
+	}
+	restoreObj := replica.NewRestore(BackupFilePath, "", backupURL, requestedBackupName)
 	config := &backupstore.DeltaRestoreConfig{
 		BackupURL: backupURL,
 		DeltaOps:  restoreObj,
 		Filename:  BackupFilePath,
 	}
 
-	err := backupstore.RestoreDeltaBlockBackup(config)
-	if err != nil {
+	if err := backupstore.RestoreDeltaBlockBackup(config); err != nil {
 		return err
 	}
 

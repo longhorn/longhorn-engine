@@ -193,7 +193,11 @@ func (s *SyncAgentServer) PrepareRestore(backupURL, toFile, snapshotDiskName, la
 		return nil, fmt.Errorf("field lastRestored %v in the request doesn't match field LastRestored %v in the server", lastRestored, s.lastRestored)
 	}
 
-	restoreInfo := replica.NewRestore(toFile, s.replicaAddress)
+	requestedBackupName, err := backupstore.GetBackupFromBackupURL(util.UnescapeURL(backupURL))
+	if err != nil {
+		return nil, err
+	}
+	restoreInfo := replica.NewRestore(toFile, s.replicaAddress, backupURL, requestedBackupName)
 	restoreInfo.BackupURL = backupURL
 	restoreInfo.SnapshotDiskName = snapshotDiskName
 	s.RestoreInfo = restoreInfo
@@ -211,7 +215,7 @@ func (s *SyncAgentServer) finishRestoreNoLock(currentRestored string, restoreErr
 	defer func() {
 		if s.RestoreInfo != nil {
 			if restoreErr != nil {
-				s.RestoreInfo.UpdateRestoreStatus(s.RestoreInfo.SnapshotName, 0, restoreErr)
+				s.RestoreInfo.UpdateRestoreStatus(s.RestoreInfo.ToFileName, 0, restoreErr)
 			} else {
 				s.RestoreInfo.FinishRestore()
 			}
@@ -614,37 +618,37 @@ func (s *SyncAgentServer) completeBackupRestore() (err error) {
 	restoreStatus := s.RestoreInfo.DeepCopy()
 	s.RUnlock()
 
-	if err := backup.CreateNewSnapshotMetafile(restoreStatus.SnapshotName + ".meta"); err != nil {
+	if err := backup.CreateNewSnapshotMetafile(restoreStatus.ToFileName + ".meta"); err != nil {
 		logrus.Errorf("failed creating meta snapshot file: %v", err)
 		return err
 	}
 
 	// Check if this full restore is the fallback of the incremental restore
-	if strings.HasSuffix(restoreStatus.SnapshotName, ".snap_tmp") {
+	if strings.HasSuffix(restoreStatus.ToFileName, ".snap_tmp") {
 		if err := s.postIncrementalFullRestoreOperations(restoreStatus); err != nil {
 			logrus.Errorf("failed to complete incremental fallback full restore: %v", err)
 			return err
 		}
 		logrus.Infof("Done running full restore %v to %v as the fallback of the incremental restore",
-			restoreStatus.BackupURL, restoreStatus.SnapshotName)
+			restoreStatus.BackupURL, restoreStatus.ToFileName)
 	} else {
-		if err := s.replicaRevert(restoreStatus.SnapshotName, time.Now().UTC().Format(time.RFC3339)); err != nil {
-			logrus.Errorf("Error on reverting to %s on %s: %v", restoreStatus.SnapshotName, s.replicaAddress, err)
+		if err := s.replicaRevert(restoreStatus.ToFileName, time.Now().UTC().Format(time.RFC3339)); err != nil {
+			logrus.Errorf("Error on reverting to %s on %s: %v", restoreStatus.ToFileName, s.replicaAddress, err)
 			return err
 		}
-		logrus.Infof("Reverting to snapshot %s on %s successful", restoreStatus.SnapshotName, s.replicaAddress)
+		logrus.Infof("Reverting to snapshot %s on %s successful", restoreStatus.ToFileName, s.replicaAddress)
 	}
 
 	if currentRestoredBackupName, err = backupstore.GetBackupFromBackupURL(util.UnescapeURL(restoreStatus.BackupURL)); err != nil {
 		return err
 	}
 
-	logrus.Infof("Done running restore %v to %v", restoreStatus.BackupURL, restoreStatus.SnapshotName)
+	logrus.Infof("Done running restore %v to %v", restoreStatus.BackupURL, restoreStatus.ToFileName)
 	return nil
 }
 
 func (s *SyncAgentServer) postIncrementalFullRestoreOperations(restoreStatus *replica.RestoreStatus) error {
-	tmpSnapshotDiskName := restoreStatus.SnapshotName
+	tmpSnapshotDiskName := restoreStatus.ToFileName
 	snapshotDiskName, err := replica.GetSnapshotNameFromTempFileName(tmpSnapshotDiskName)
 	if err != nil {
 		logrus.Errorf("failed to get snapshotName from tempFileName: %v", err)
@@ -793,12 +797,12 @@ func (s *SyncAgentServer) completeIncrementalBackupRestore() (err error) {
 		return err
 	}
 
-	logrus.Infof("Done running incremental restore %v to %v", restoreStatus.BackupURL, restoreStatus.SnapshotName)
+	logrus.Infof("Done running incremental restore %v to %v", restoreStatus.BackupURL, restoreStatus.ToFileName)
 	return nil
 }
 
 func (s *SyncAgentServer) postIncrementalRestoreOperations(restoreStatus *replica.RestoreStatus) error {
-	deltaFileName := restoreStatus.SnapshotName
+	deltaFileName := restoreStatus.ToFileName
 	logrus.Infof("Cleaning up incremental restore by Coalescing and removing the delta file")
 	defer func() {
 		if _, err := s.FileRemove(nil, &ptypes.FileRemoveRequest{
@@ -853,10 +857,11 @@ func (s *SyncAgentServer) RestoreStatus(ctx context.Context, req *empty.Empty) (
 
 	restoreStatus := s.RestoreInfo.DeepCopy()
 	resp.Progress = int32(restoreStatus.Progress)
-	resp.DestFileName = restoreStatus.SnapshotName
+	resp.DestFileName = restoreStatus.SnapshotDiskName
 	resp.State = string(restoreStatus.State)
 	resp.Error = restoreStatus.Error
 	resp.BackupUrl = restoreStatus.BackupURL
+	resp.CurrentRestoringBackup = restoreStatus.CurrentRestoringBackup
 	return &resp, nil
 }
 
