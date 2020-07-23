@@ -263,6 +263,9 @@ func (s *SyncAgentServer) Reset(ctx context.Context, req *empty.Empty) (*empty.E
 	}
 	s.isRestoring = false
 	s.BackupList = &BackupList{}
+	s.RestoreInfo = &replica.RestoreStatus{}
+	s.RebuildStatus = &RebuildStatus{}
+	s.PurgeStatus = &PurgeStatus{}
 	return &empty.Empty{}, nil
 }
 
