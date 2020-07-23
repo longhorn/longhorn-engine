@@ -33,22 +33,29 @@ type DeltaBlockBackupOperations interface {
 type RestoreStatus struct {
 	sync.RWMutex
 	replicaAddress string
-	SnapshotName   string //This will be deltaFileName in case of Incremental Restore
 	Progress       int
 	Error          string
 	BackupURL      string
 	State          ProgressState
 
-	//Incremental Restore fields
-	LastRestored     string
+	// The file that (temporarily) stores the data during the restoring.
+	ToFileName string
+	// The snapshot file that stores the restored data in the end.
 	SnapshotDiskName string
+
+	LastRestored           string
+	CurrentRestoringBackup string
 }
 
-func NewRestore(snapshotName, replicaAddress string) *RestoreStatus {
+func NewRestore(snapshotName, replicaAddress, backupURL, currentRestoringBackup string) *RestoreStatus {
 	return &RestoreStatus{
-		replicaAddress: replicaAddress,
-		SnapshotName:   snapshotName,
-		State:          ProgressStateInProgress,
+		replicaAddress:         replicaAddress,
+		ToFileName:             snapshotName,
+		SnapshotDiskName:       snapshotName,
+		State:                  ProgressStateInProgress,
+		Progress:               0,
+		BackupURL:              backupURL,
+		CurrentRestoringBackup: currentRestoringBackup,
 	}
 }
 
@@ -56,7 +63,7 @@ func (rr *RestoreStatus) UpdateRestoreStatus(snapshot string, rp int, re error) 
 	rr.Lock()
 	defer rr.Unlock()
 
-	rr.SnapshotName = snapshot
+	rr.ToFileName = snapshot
 	rr.Progress = rp
 	if re != nil {
 		if rr.Error != "" {
@@ -65,6 +72,7 @@ func (rr *RestoreStatus) UpdateRestoreStatus(snapshot string, rp int, re error) 
 			rr.Error = re.Error()
 		}
 		rr.State = ProgressStateError
+		rr.CurrentRestoringBackup = ""
 	}
 }
 
@@ -73,6 +81,8 @@ func (rr *RestoreStatus) FinishRestore() {
 	defer rr.Unlock()
 	if rr.State != ProgressStateError {
 		rr.State = ProgressStateComplete
+		rr.LastRestored = rr.CurrentRestoringBackup
+		rr.CurrentRestoringBackup = ""
 	}
 }
 
@@ -80,12 +90,14 @@ func (rr *RestoreStatus) DeepCopy() *RestoreStatus {
 	rr.RLock()
 	defer rr.RUnlock()
 	return &RestoreStatus{
-		SnapshotName:     rr.SnapshotName,
-		Progress:         rr.Progress,
-		Error:            rr.Error,
-		LastRestored:     rr.LastRestored,
-		SnapshotDiskName: rr.SnapshotDiskName,
-		BackupURL:        rr.BackupURL,
+		ToFileName:             rr.ToFileName,
+		Progress:               rr.Progress,
+		Error:                  rr.Error,
+		LastRestored:           rr.LastRestored,
+		SnapshotDiskName:       rr.SnapshotDiskName,
+		BackupURL:              rr.BackupURL,
+		State:                  rr.State,
+		CurrentRestoringBackup: rr.CurrentRestoringBackup,
 	}
 }
 
