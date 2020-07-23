@@ -521,7 +521,7 @@ func (c *ReplicaClient) RmBackup(backup string) error {
 	return nil
 }
 
-func (c *ReplicaClient) RestoreBackup(backup, snapshotFile string, credential map[string]string) error {
+func (c *ReplicaClient) RestoreBackup(backup, snapshotDiskName string, credential map[string]string) error {
 	conn, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure())
 	if err != nil {
 		return fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
@@ -534,39 +534,15 @@ func (c *ReplicaClient) RestoreBackup(backup, snapshotFile string, credential ma
 
 	if _, err := syncAgentServiceClient.BackupRestore(ctx, &ptypes.BackupRestoreRequest{
 		Backup:           backup,
-		SnapshotFileName: snapshotFile,
+		SnapshotDiskName: snapshotDiskName,
 		Credential:       credential,
 	}); err != nil {
-		return fmt.Errorf("failed to restore backup %v to snapshot %v: %v", backup, snapshotFile, err)
+		return fmt.Errorf("failed to restore backup data %v to snapshot file %v: %v", backup, snapshotDiskName, err)
 	}
 
 	return nil
 }
 
-func (c *ReplicaClient) RestoreBackupIncrementally(backup, deltaFile, lastRestored,
-	snapshotDiskName string, credential map[string]string) error {
-	conn, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure())
-	if err != nil {
-		return fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
-	}
-	defer conn.Close()
-	syncAgentServiceClient := ptypes.NewSyncAgentServiceClient(conn)
-
-	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
-	defer cancel()
-
-	if _, err := syncAgentServiceClient.BackupRestoreIncrementally(ctx, &ptypes.BackupRestoreIncrementallyRequest{
-		Backup:                 backup,
-		DeltaFileName:          deltaFile,
-		LastRestoredBackupName: lastRestored,
-		Credential:             credential,
-		SnapshotDiskName:       snapshotDiskName,
-	}); err != nil {
-		return fmt.Errorf("failed to incrementally restore backup %v to file %v: %v", backup, deltaFile, err)
-	}
-
-	return nil
-}
 func (c *ReplicaClient) Reset() error {
 	conn, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure())
 	if err != nil {

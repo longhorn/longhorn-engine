@@ -31,13 +31,14 @@ type BackupStatusInfo struct {
 }
 
 type RestoreStatus struct {
-	IsRestoring  bool   `json:"isRestoring"`
-	LastRestored string `json:"lastRestored"`
-	Progress     int    `json:"progress,omitempty"`
-	Error        string `json:"error,omitempty"`
-	Filename     string `json:"filename,omitempty"`
-	State        string `json:"state"`
-	BackupURL    string `json:"backupURL"`
+	IsRestoring            bool   `json:"isRestoring"`
+	Progress               int    `json:"progress,omitempty"`
+	Error                  string `json:"error,omitempty"`
+	Filename               string `json:"filename,omitempty"`
+	State                  string `json:"state"`
+	BackupURL              string `json:"backupURL"`
+	LastRestored           string `json:"lastRestored"`
+	CurrentRestoringBackup string `json:"currentRestoringBackup"`
 }
 
 func (t *Task) CreateBackup(snapshot, dest string, labels []string, credential map[string]string) (*BackupCreateInfo, error) {
@@ -330,12 +331,8 @@ func (t *Task) restoreBackupIncrementally(replicaInController *types.ControllerR
 	}
 
 	if isValidLastRestored {
-		// may need to generate a temporary delta file for incrementally restore.
-		// we won't directly restore to the snapshot since a crashed restoring will mess up the snapshot
-		deltaFileName := replica.GenerateDeltaFileName(lastRestored)
-
-		// incrementally restore to delta file
-		if err := repClient.RestoreBackupIncrementally(backup, deltaFileName, lastRestored, snapshotDiskName, credential); err != nil {
+		// incrementally restore
+		if err := repClient.RestoreBackup(backup, snapshotDiskName, credential); err != nil {
 			return err
 		}
 	} else {
@@ -410,13 +407,14 @@ func (t *Task) RestoreStatus() (map[string]*RestoreStatus, error) {
 			continue
 		}
 		replicaStatusMap[replica.Address] = &RestoreStatus{
-			IsRestoring:  rs.IsRestoring,
-			LastRestored: rs.LastRestored,
-			Progress:     int(rs.Progress),
-			Error:        rs.Error,
-			Filename:     rs.DestFileName,
-			State:        rs.State,
-			BackupURL:    rs.BackupUrl,
+			IsRestoring:            rs.IsRestoring,
+			Progress:               int(rs.Progress),
+			Error:                  rs.Error,
+			Filename:               rs.DestFileName,
+			State:                  rs.State,
+			BackupURL:              rs.BackupUrl,
+			LastRestored:           rs.LastRestored,
+			CurrentRestoringBackup: rs.CurrentRestoringBackup,
 		}
 	}
 

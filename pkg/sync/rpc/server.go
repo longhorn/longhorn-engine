@@ -551,7 +551,7 @@ func (s *SyncAgentServer) waitForRestoreComplete() error {
 
 func (s *SyncAgentServer) BackupRestore(ctx context.Context, req *ptypes.BackupRestoreRequest) (e *empty.Empty, err error) {
 	// Check request
-	if req.SnapshotFileName == "" {
+	if req.SnapshotDiskName == "" {
 		return nil, fmt.Errorf("empty snapshot file name for the restore")
 	}
 	if req.Backup == "" {
@@ -583,18 +583,18 @@ func (s *SyncAgentServer) BackupRestore(ctx context.Context, req *ptypes.BackupR
 		}
 	}
 
-	restoreInfo, err := s.PrepareRestore(req.Backup, req.SnapshotFileName, "", "")
+	restoreInfo, err := s.PrepareRestore(req.Backup, req.SnapshotDiskName, "", "")
 	if err != nil {
 		return nil, errors.Wrapf(err, "error preparing backup restore")
 	}
 
-	if err := backup.DoBackupRestore(req.Backup, req.SnapshotFileName, restoreInfo); err != nil {
+	if err := backup.DoBackupRestore(req.Backup, req.SnapshotDiskName, restoreInfo); err != nil {
 		if extraErr := s.FinishRestore("", err); extraErr != nil {
 			return nil, fmt.Errorf("error finishing restore after backup restore initialization failure: [%v]", err)
 		}
 		return nil, errors.Wrapf(err, "error initiating backup restore")
 	}
-	logrus.Infof("Successfully initiated restore for %v to [%v]", req.Backup, req.SnapshotFileName)
+	logrus.Infof("Successfully initiated restore for %v to [%v]", req.Backup, req.SnapshotDiskName)
 
 	go s.completeBackupRestore()
 
@@ -718,57 +718,6 @@ func (s *SyncAgentServer) replicaRevert(name, created string) error {
 	}
 
 	return nil
-}
-
-func (s *SyncAgentServer) BackupRestoreIncrementally(ctx context.Context,
-	req *ptypes.BackupRestoreIncrementallyRequest) (e *empty.Empty, err error) {
-	// Check request
-	if req.DeltaFileName == "" {
-		return nil, fmt.Errorf("empty DeltaFileName for the incremental restore")
-	}
-	if req.Backup == "" {
-		return nil, fmt.Errorf("empty Backup URL for the incremental restore")
-	}
-	backupType, err := util.CheckBackupType(req.Backup)
-	if err != nil {
-		return nil, fmt.Errorf("failed to check the type for backup %v: %v", req.Backup, err)
-	}
-	if backupType == "s3" {
-		credential := req.Credential
-		// validate environment variable first, since CronJob has set credential to environment variable.
-		if credential != nil && credential[types.AWSAccessKey] != "" && credential[types.AWSSecretKey] != "" {
-			os.Setenv(types.AWSAccessKey, credential[types.AWSAccessKey])
-			os.Setenv(types.AWSSecretKey, credential[types.AWSSecretKey])
-			os.Setenv(types.AWSEndPoint, credential[types.AWSEndPoint])
-			os.Setenv(types.HTTPSProxy, credential[types.HTTPSProxy])
-			os.Setenv(types.HTTPProxy, credential[types.HTTPProxy])
-			os.Setenv(types.NOProxy, credential[types.NOProxy])
-			os.Setenv(types.VirtualHostedStyle, credential[types.VirtualHostedStyle])
-
-			// set a custom ca cert if available
-			if credential[types.AWSCert] != "" {
-				os.Setenv(types.AWSCert, credential[types.AWSCert])
-			}
-		} else if os.Getenv(types.AWSAccessKey) == "" || os.Getenv(types.AWSSecretKey) == "" {
-			return nil, fmt.Errorf("could not do incremental backup restore from s3 without setting credential secret")
-		}
-	}
-
-	restoreInfo, err := s.PrepareRestore(req.Backup, req.DeltaFileName, req.SnapshotDiskName, req.LastRestoredBackupName)
-	if err != nil {
-		return nil, errors.Wrapf(err, "error preparing incremental backup restore")
-	}
-
-	if err := backup.DoBackupRestoreIncrementally(req.Backup, req.DeltaFileName, req.LastRestoredBackupName, restoreInfo); err != nil {
-		if extraErr := s.FinishRestore("", err); extraErr != nil {
-			return nil, fmt.Errorf("error finishing incremental restore after restore initialization failure: [%v]", extraErr)
-		}
-		return nil, errors.Wrapf(err, "error initiating incremental backup restore")
-	}
-
-	go s.completeIncrementalBackupRestore()
-
-	return &empty.Empty{}, nil
 }
 
 func (s *SyncAgentServer) completeIncrementalBackupRestore() (err error) {

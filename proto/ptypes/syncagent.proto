@@ -14,8 +14,6 @@ service SyncAgentService {
   rpc BackupCreate(BackupCreateRequest) returns (BackupCreateResponse) {}
   rpc BackupRemove(BackupRemoveRequest) returns (google.protobuf.Empty) {}
   rpc BackupRestore(BackupRestoreRequest) returns (google.protobuf.Empty) {}
-  rpc BackupRestoreIncrementally(BackupRestoreIncrementallyRequest) returns
-    (google.protobuf.Empty) {}
   rpc BackupStatus(BackupStatusRequest) returns (BackupStatusResponse) {}
   rpc Reset(google.protobuf.Empty) returns (google.protobuf.Empty) {}
   rpc RestoreStatus(google.protobuf.Empty) returns (RestoreStatusResponse) {}
@@ -86,7 +84,7 @@ message BackupStatusResponse {
 
 message BackupRestoreRequest {
   string backup = 1;
-  string snapshot_file_name = 2;
+  string snapshot_disk_name = 2;
   map<string, string> credential = 3;
 }
 
@@ -106,6 +104,7 @@ message RestoreStatusResponse {
   string dest_file_name = 5;
   string state = 6;
   string backup_url = 7;
+  string current_restoring_backup = 8;
 }
 
 message SnapshotPurgeStatusResponse {
