@@ -56,7 +56,6 @@ type SyncAgentServer struct {
 	isPurging       bool
 	isRestoring     bool
 	isRebuilding    bool
-	lastRestored    string
 	replicaAddress  string
 
 	BackupList    *BackupList
@@ -142,6 +141,7 @@ func NewSyncAgentServer(startPort, endPort int, replicaAddress string) *SyncAgen
 		replicaAddress:  replicaAddress,
 
 		BackupList:    &BackupList{},
+		RestoreInfo:   &replica.RestoreStatus{},
 		PurgeStatus:   &PurgeStatus{},
 		RebuildStatus: &RebuildStatus{},
 	}
@@ -177,41 +177,58 @@ func (s *SyncAgentServer) IsRestoring() bool {
 	return s.isRestoring
 }
 
-func (s *SyncAgentServer) GetLastRestored() string {
-	s.RLock()
-	defer s.RUnlock()
-	return s.lastRestored
-}
-
-func (s *SyncAgentServer) PrepareRestore(backupURL, toFile, snapshotDiskName, lastRestored string) (*replica.RestoreStatus, error) {
+func (s *SyncAgentServer) PrepareRestore(backupURL, requestedBackupName, snapshotDiskName string) (err error) {
 	s.Lock()
 	defer s.Unlock()
+
+	defer func() {
+		if err == nil {
+			s.isRestoring = true
+		}
+	}()
 	if s.isRestoring {
-		return nil, fmt.Errorf("cannot initiate backup restore as there is one already in progress")
-	}
-	if s.lastRestored != "" && lastRestored != "" && s.lastRestored != lastRestored {
-		return nil, fmt.Errorf("field lastRestored %v in the request doesn't match field LastRestored %v in the server", lastRestored, s.lastRestored)
+		return fmt.Errorf("cannot initiate backup restore as there is one already in progress")
 	}
 
-	requestedBackupName, err := backupstore.GetBackupFromBackupURL(util.UnescapeURL(backupURL))
-	if err != nil {
-		return nil, err
+	if s.RestoreInfo == nil {
+		return fmt.Errorf("BUG: the restore status is not initialized in the sync agent server")
 	}
-	restoreInfo := replica.NewRestore(toFile, s.replicaAddress, backupURL, requestedBackupName)
-	restoreInfo.BackupURL = backupURL
-	restoreInfo.SnapshotDiskName = snapshotDiskName
-	s.RestoreInfo = restoreInfo
-	s.isRestoring = true
-	return s.RestoreInfo, nil
+
+	restoreStatus := s.RestoreInfo.DeepCopy()
+	if restoreStatus.State == replica.ProgressStateError {
+		return fmt.Errorf("cannot start backup restore of the previous restore fails")
+	}
+	if restoreStatus.LastRestored == requestedBackupName {
+		return fmt.Errorf("already restored backup %v", requestedBackupName)
+	}
+
+	// First restore request. It must be a normal full restore.
+	if restoreStatus.LastRestored == "" && restoreStatus.State == "" {
+		s.RestoreInfo = replica.NewRestore(snapshotDiskName, s.replicaAddress, backupURL, requestedBackupName)
+		return nil
+	}
+
+	// Fall back to full restore.
+	if restoreStatus.LastRestored == "" {
+		logrus.Warnf("There is a restore record in the server but last restored backup is empty with restore state is %v, will do full restore instead", restoreStatus.State)
+		s.RestoreInfo.StartNewRestore(backupURL, requestedBackupName, replica.GenerateSnapTempFileName(snapshotDiskName), snapshotDiskName, false)
+		return nil
+	}
+	if _, err := backupstore.InspectBackup(strings.Replace(backupURL, requestedBackupName, restoreStatus.LastRestored, 1)); err != nil {
+		logrus.Warnf("The last restored backup %v becomes invalid for incremental restore, will do full restore instead, err: %v", restoreStatus.LastRestored, err)
+		s.RestoreInfo.StartNewRestore(backupURL, requestedBackupName, replica.GenerateSnapTempFileName(snapshotDiskName), snapshotDiskName, false)
+		return nil
+	}
+
+	// Normal incremental restore.
+	s.RestoreInfo.StartNewRestore(backupURL, requestedBackupName, replica.GenerateDeltaFileName(restoreStatus.LastRestored), snapshotDiskName, true)
+	return nil
 }
 
-func (s *SyncAgentServer) FinishRestore(currentRestored string, err error) error {
+func (s *SyncAgentServer) FinishRestore(restoreErr error) (err error) {
 	s.Lock()
 	defer s.Unlock()
-	return s.finishRestoreNoLock(currentRestored, err)
-}
 
-func (s *SyncAgentServer) finishRestoreNoLock(currentRestored string, restoreErr error) (err error) {
 	defer func() {
 		if s.RestoreInfo != nil {
 			if restoreErr != nil {
@@ -233,9 +250,6 @@ func (s *SyncAgentServer) finishRestoreNoLock(currentRestored string, restoreErr
 	}
 
 	s.isRestoring = false
-	if currentRestored != "" && restoreErr == nil {
-		s.lastRestored = currentRestored
-	}
 
 	return nil
 }
@@ -247,7 +261,6 @@ func (s *SyncAgentServer) Reset(ctx context.Context, req *empty.Empty) (*empty.E
 		logrus.Errorf("replica is currently restoring, cannot reset")
 		return nil, fmt.Errorf("replica is currently restoring, cannot reset")
 	}
-	s.lastRestored = ""
 	s.isRestoring = false
 	s.BackupList = &BackupList{}
 	return &empty.Empty{}, nil
@@ -552,7 +565,7 @@ func (s *SyncAgentServer) waitForRestoreComplete() error {
 func (s *SyncAgentServer) BackupRestore(ctx context.Context, req *ptypes.BackupRestoreRequest) (e *empty.Empty, err error) {
 	// Check request
 	if req.SnapshotDiskName == "" {
-		return nil, fmt.Errorf("empty snapshot file name for the restore")
+		return nil, fmt.Errorf("empty snapshot disk name for the restore")
 	}
 	if req.Backup == "" {
 		return nil, fmt.Errorf("empty backup URL for the restore")
@@ -582,29 +595,46 @@ func (s *SyncAgentServer) BackupRestore(ctx context.Context, req *ptypes.BackupR
 			return nil, fmt.Errorf("could not do backup restore from s3 without setting credential secret")
 		}
 	}
-
-	restoreInfo, err := s.PrepareRestore(req.Backup, req.SnapshotDiskName, "", "")
+	requestedBackupName, err := backupstore.GetBackupFromBackupURL(util.UnescapeURL(req.Backup))
 	if err != nil {
+		return nil, err
+	}
+
+	if err := s.PrepareRestore(req.Backup, requestedBackupName, req.SnapshotDiskName); err != nil {
 		return nil, errors.Wrapf(err, "error preparing backup restore")
 	}
 
-	if err := backup.DoBackupRestore(req.Backup, req.SnapshotDiskName, restoreInfo); err != nil {
-		if extraErr := s.FinishRestore("", err); extraErr != nil {
-			return nil, fmt.Errorf("error finishing restore after backup restore initialization failure: [%v]", err)
-		}
-		return nil, errors.Wrapf(err, "error initiating backup restore")
-	}
-	logrus.Infof("Successfully initiated restore for %v to [%v]", req.Backup, req.SnapshotDiskName)
+	s.RLock()
+	restoreInfo := s.RestoreInfo
+	restoreStatus := s.RestoreInfo.DeepCopy()
+	s.RUnlock()
 
-	go s.completeBackupRestore()
+	if restoreStatus.LastRestored == "" {
+		if err := backup.DoBackupRestore(req.Backup, restoreStatus.ToFileName, restoreInfo); err != nil {
+			if extraErr := s.FinishRestore(err); extraErr != nil {
+				return nil, fmt.Errorf("error finishing full restore after backup restore initialization failure: [%v]", err)
+			}
+			return nil, errors.Wrapf(err, "error initiating full backup restore")
+		}
+		logrus.Infof("Successfully initiated full restore for %v to [%v]", req.Backup, restoreStatus.ToFileName)
+	} else {
+		if err := backup.DoBackupRestoreIncrementally(req.Backup, restoreStatus.ToFileName, restoreStatus.LastRestored, restoreInfo); err != nil {
+			if extraErr := s.FinishRestore(err); extraErr != nil {
+				return nil, fmt.Errorf("error finishing incremental restore after restore initialization failure: [%v]", extraErr)
+			}
+			return nil, errors.Wrapf(err, "error initiating incremental backup restore")
+		}
+		logrus.Infof("Successfully initiated incremental restore for %v to [%v]", req.Backup, restoreStatus.ToFileName)
+	}
+
+	go s.completeBackupRestore(restoreStatus)
 
 	return &empty.Empty{}, nil
 }
 
-func (s *SyncAgentServer) completeBackupRestore() (err error) {
-	currentRestoredBackupName := ""
+func (s *SyncAgentServer) completeBackupRestore(restoreStatus *replica.RestoreStatus) (err error) {
 	defer func() {
-		if extraErr := s.FinishRestore(currentRestoredBackupName, err); extraErr != nil {
+		if extraErr := s.FinishRestore(err); extraErr != nil {
 			logrus.Errorf("failed to finish backup restore: %v", extraErr)
 			return
 		}
@@ -614,10 +644,13 @@ func (s *SyncAgentServer) completeBackupRestore() (err error) {
 		return errors.Wrapf(err, "failed to wait for restore complete")
 	}
 
-	s.RLock()
-	restoreStatus := s.RestoreInfo.DeepCopy()
-	s.RUnlock()
+	if restoreStatus.LastRestored != "" {
+		return s.postIncrementalRestoreOperations(restoreStatus)
+	}
+	return s.postFullRestoreOperations(restoreStatus)
+}
 
+func (s *SyncAgentServer) postFullRestoreOperations(restoreStatus *replica.RestoreStatus) error {
 	if err := backup.CreateNewSnapshotMetafile(restoreStatus.ToFileName + ".meta"); err != nil {
 		logrus.Errorf("failed creating meta snapshot file: %v", err)
 		return err
@@ -625,7 +658,7 @@ func (s *SyncAgentServer) completeBackupRestore() (err error) {
 
 	// Check if this full restore is the fallback of the incremental restore
 	if strings.HasSuffix(restoreStatus.ToFileName, ".snap_tmp") {
-		if err := s.postIncrementalFullRestoreOperations(restoreStatus); err != nil {
+		if err := s.extraIncrementalFullRestoreOperations(restoreStatus); err != nil {
 			logrus.Errorf("failed to complete incremental fallback full restore: %v", err)
 			return err
 		}
@@ -639,15 +672,11 @@ func (s *SyncAgentServer) completeBackupRestore() (err error) {
 		logrus.Infof("Reverting to snapshot %s on %s successful", restoreStatus.ToFileName, s.replicaAddress)
 	}
 
-	if currentRestoredBackupName, err = backupstore.GetBackupFromBackupURL(util.UnescapeURL(restoreStatus.BackupURL)); err != nil {
-		return err
-	}
-
-	logrus.Infof("Done running restore %v to %v", restoreStatus.BackupURL, restoreStatus.ToFileName)
+	logrus.Infof("Done running full restore %v to %v", restoreStatus.BackupURL, restoreStatus.ToFileName)
 	return nil
 }
 
-func (s *SyncAgentServer) postIncrementalFullRestoreOperations(restoreStatus *replica.RestoreStatus) error {
+func (s *SyncAgentServer) extraIncrementalFullRestoreOperations(restoreStatus *replica.RestoreStatus) error {
 	tmpSnapshotDiskName := restoreStatus.ToFileName
 	snapshotDiskName, err := replica.GetSnapshotNameFromTempFileName(tmpSnapshotDiskName)
 	if err != nil {
@@ -672,81 +701,21 @@ func (s *SyncAgentServer) postIncrementalFullRestoreOperations(restoreStatus *re
 		}
 	}()
 
-	// replace old snapshot
-	fileRenameReq := &ptypes.FileRenameRequest{
-		OldFileName: tmpSnapshotDiskName,
-		NewFileName: snapshotDiskName,
+	// Replace old snapshot and the related meta file
+	if err := os.Rename(tmpSnapshotDiskName, snapshotDiskName); err != nil {
+		return errors.Wrapf(err, "failed to replace old snapshot %v with the new fully restored file %v",
+			snapshotDiskName, tmpSnapshotDiskName)
 	}
-	if _, err = s.FileRename(nil, fileRenameReq); err != nil {
-		logrus.Errorf("failed to replace old snapshot %v with the fully restored file %v: %v",
-			snapshotDiskName, tmpSnapshotDiskName, err)
-		return err
-	}
-	fileRenameReq.OldFileName = tmpSnapshotDiskMetaName
-	fileRenameReq.NewFileName = snapshotDiskMetaName
-	if _, err = s.FileRename(nil, fileRenameReq); err != nil {
-		logrus.Errorf("failed to replace old snapshot meta %v with the fully restored meta file %v: %v",
-			snapshotDiskMetaName, tmpSnapshotDiskMetaName, err)
-		return err
+	if err := os.Rename(tmpSnapshotDiskMetaName, snapshotDiskMetaName); err != nil {
+		return errors.Wrapf(err, "failed to replace old snapshot meta file %v with the new restored meta file %v",
+			snapshotDiskMetaName, tmpSnapshotDiskMetaName)
 	}
 
 	// Reload the replica as snapshot files got changed
 	if err := s.reloadReplica(); err != nil {
-		logrus.Errorf("failed to reload replica: %v", err)
-		return err
+		return errors.Wrapf(err, "failed to reload replica after the full restore")
 	}
 
-	return nil
-}
-
-func (s *SyncAgentServer) replicaRevert(name, created string) error {
-	conn, err := grpc.Dial(s.replicaAddress, grpc.WithInsecure())
-	if err != nil {
-		return fmt.Errorf("cannot connect to ReplicaService %v: %v", s.replicaAddress, err)
-	}
-	defer conn.Close()
-	replicaServiceClient := ptypes.NewReplicaServiceClient(conn)
-
-	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
-	defer cancel()
-
-	if _, err := replicaServiceClient.ReplicaRevert(ctx, &ptypes.ReplicaRevertRequest{
-		Name:    name,
-		Created: created,
-	}); err != nil {
-		return fmt.Errorf("failed to revert replica %v: %v", s.replicaAddress, err)
-	}
-
-	return nil
-}
-
-func (s *SyncAgentServer) completeIncrementalBackupRestore() (err error) {
-	currentRestoredBackupName := ""
-	defer func() {
-		if extraErr := s.FinishRestore(currentRestoredBackupName, err); extraErr != nil {
-			logrus.Errorf("failed to finish incremental restore: %v", extraErr)
-			return
-		}
-	}()
-
-	if err := s.waitForRestoreComplete(); err != nil {
-		return errors.Wrapf(err, "failed to wait for incremental restore complete")
-	}
-
-	s.RLock()
-	restoreStatus := s.RestoreInfo.DeepCopy()
-	s.RUnlock()
-
-	if err := s.postIncrementalRestoreOperations(restoreStatus); err != nil {
-		logrus.Errorf("failed to complete incremental restore: %v", err)
-		return err
-	}
-
-	if currentRestoredBackupName, err = backupstore.GetBackupFromBackupURL(util.UnescapeURL(restoreStatus.BackupURL)); err != nil {
-		return err
-	}
-
-	logrus.Infof("Done running incremental restore %v to %v", restoreStatus.BackupURL, restoreStatus.ToFileName)
 	return nil
 }
 
@@ -761,7 +730,7 @@ func (s *SyncAgentServer) postIncrementalRestoreOperations(restoreStatus *replic
 		}
 	}()
 
-	// coalesce delta file to snapshot/disk file
+	// Coalesce delta file to snapshot/disk file
 	if err := sparse.FoldFile(deltaFileName, restoreStatus.SnapshotDiskName, &PurgeStatus{}); err != nil {
 		logrus.Errorf("Failed to coalesce %s on %s: %v", deltaFileName, restoreStatus.SnapshotDiskName, err)
 		return err
@@ -794,10 +763,30 @@ func (s *SyncAgentServer) reloadReplica() error {
 	return nil
 }
 
+func (s *SyncAgentServer) replicaRevert(name, created string) error {
+	conn, err := grpc.Dial(s.replicaAddress, grpc.WithInsecure())
+	if err != nil {
+		return fmt.Errorf("cannot connect to ReplicaService %v: %v", s.replicaAddress, err)
+	}
+	defer conn.Close()
+	replicaServiceClient := ptypes.NewReplicaServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
+	defer cancel()
+
+	if _, err := replicaServiceClient.ReplicaRevert(ctx, &ptypes.ReplicaRevertRequest{
+		Name:    name,
+		Created: created,
+	}); err != nil {
+		return fmt.Errorf("failed to revert replica %v: %v", s.replicaAddress, err)
+	}
+
+	return nil
+}
+
 func (s *SyncAgentServer) RestoreStatus(ctx context.Context, req *empty.Empty) (*ptypes.RestoreStatusResponse, error) {
 	resp := ptypes.RestoreStatusResponse{
-		IsRestoring:  s.IsRestoring(),
-		LastRestored: s.GetLastRestored(),
+		IsRestoring: s.IsRestoring(),
 	}
 
 	if s.RestoreInfo == nil {
@@ -810,6 +799,7 @@ func (s *SyncAgentServer) RestoreStatus(ctx context.Context, req *empty.Empty) (
 	resp.State = string(restoreStatus.State)
 	resp.Error = restoreStatus.Error
 	resp.BackupUrl = restoreStatus.BackupURL
+	resp.LastRestored = restoreStatus.LastRestored
 	resp.CurrentRestoringBackup = restoreStatus.CurrentRestoringBackup
 	return &resp, nil
 }
