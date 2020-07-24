@@ -112,8 +112,8 @@ func (c *Controller) WaitForShutdown() error {
 	return c.lastError
 }
 
-func (c *Controller) AddReplica(address string) error {
-	return c.addReplica(address, true)
+func (c *Controller) AddReplica(address string, snapshotRequired bool, mode types.Mode) error {
+	return c.addReplica(address, snapshotRequired, mode)
 }
 
 func (c *Controller) hasWOReplica() bool {
@@ -138,23 +138,27 @@ func (c *Controller) canAdd(address string) (bool, error) {
 	return true, nil
 }
 
-func (c *Controller) addReplica(address string, snapshot bool) error {
+func (c *Controller) addReplica(address string, snapshotRequired bool, mode types.Mode) error {
 	c.Lock()
+	defer c.Unlock()
 	if ok, err := c.canAdd(address); !ok {
-		c.Unlock()
 		return err
 	}
-	c.Unlock()
 
 	newBackend, err := c.factory.Create(address)
 	if err != nil {
 		return err
 	}
 
-	c.Lock()
-	defer c.Unlock()
+	replicaSize, err := newBackend.Size()
+	if err != nil {
+		return errors.Wrapf(err, "failed to get the size before adding a replica")
+	}
+	if c.size == 0 && len(c.replicas) == 0 {
+		c.size = replicaSize
+	}
 
-	return c.addReplicaNoLock(newBackend, address, snapshot, types.WO)
+	return c.addReplicaNoLock(newBackend, address, snapshotRequired, mode)
 }
 
 func (c *Controller) Snapshot(name string, labels map[string]string) (string, error) {

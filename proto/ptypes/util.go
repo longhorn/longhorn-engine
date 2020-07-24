@@ -15,3 +15,15 @@ func ReplicaModeToGRPCReplicaMode(mode types.Mode) ReplicaMode {
 	}
 	return ReplicaMode_ERR
 }
+
+func GRPCReplicaModeToReplicaMode(replicaMode ReplicaMode) types.Mode {
+	switch replicaMode {
+	case ReplicaMode_WO:
+		return types.WO
+	case ReplicaMode_RW:
+		return types.RW
+	case ReplicaMode_ERR:
+		return types.ERR
+	}
+	return types.ERR
+}
