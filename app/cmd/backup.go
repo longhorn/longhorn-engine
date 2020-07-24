@@ -9,7 +9,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 
-	"github.com/longhorn/backupstore"
 	"github.com/longhorn/backupstore/cmd"
 
 	"github.com/longhorn/longhorn-engine/pkg/sync"
@@ -209,17 +208,7 @@ func checkBackupStatus(c *cli.Context) error {
 func BackupRestoreCmd() cli.Command {
 	return cli.Command{
 		Name:  "restore",
-		Usage: "restore a backup to current volume: restore <backup>  or  restore <backup> --incrementally --last-restored <last-restored>",
-		Flags: []cli.Flag{
-			cli.BoolFlag{
-				Name:  "incrementally, I",
-				Usage: "Whether do incremental restore",
-			},
-			cli.StringFlag{
-				Name:  "last-restored",
-				Usage: "Last restored backup name",
-			},
-		},
+		Usage: "restore a backup to current volume: restore <backup>  or  restore <backup>",
 		Action: func(c *cli.Context) {
 			if err := restoreBackup(c); err != nil {
 				errInfo, jsonErr := json.MarshalIndent(err, "", "\t")
@@ -288,13 +277,6 @@ func createBackup(c *cli.Context) error {
 }
 
 func restoreBackup(c *cli.Context) error {
-	if c.Bool("incrementally") {
-		return doRestoreBackupIncrementally(c)
-	}
-	return doRestoreBackup(c)
-}
-
-func doRestoreBackup(c *cli.Context) error {
 	url := c.GlobalString("url")
 	task := sync.NewTask(url)
 
@@ -302,48 +284,17 @@ func doRestoreBackup(c *cli.Context) error {
 	if backup == "" {
 		return fmt.Errorf("Missing required parameter backup")
 	}
+	backupURL := util.UnescapeURL(backup)
 
 	credential, err := util.GetBackupCredential(backup)
 	if err != nil {
 		return err
-	}
-
-	backupURL := util.UnescapeURL(backup)
-	if backup, err := backupstore.InspectBackup(backupURL); err != nil || backup == nil {
-		return errors.Wrapf(err, "no backups found with url %v", backupURL)
 	}
 
 	if err := task.RestoreBackup(backupURL, credential); err != nil {
 		return err
 	}
 
-	return nil
-}
-
-func doRestoreBackupIncrementally(c *cli.Context) error {
-	url := c.GlobalString("url")
-	task := sync.NewTask(url)
-
-	backup := c.Args().First()
-	if backup == "" {
-		return fmt.Errorf("Missing required parameter backup")
-	}
-	backupURL := util.UnescapeURL(backup)
-	backupName, err := backupstore.GetBackupFromBackupURL(backupURL)
-	if err != nil {
-		return err
-	}
-
-	credential, err := util.GetBackupCredential(backup)
-	if err != nil {
-		return err
-	}
-
-	lastRestored := c.String("last-restored")
-
-	if err := task.RestoreBackupIncrementally(backupURL, backupName, lastRestored, credential); err != nil {
-		return err
-	}
 	return nil
 }
 
