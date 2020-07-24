@@ -293,6 +293,52 @@ func find(list []string, item string) int {
 	return -1
 }
 
+func (t *Task) AddRestoreReplica(replica string) error {
+	volume, err := t.client.VolumeGet()
+	if err != nil {
+		return err
+	}
+
+	if volume.ReplicaCount == 0 {
+		return t.client.VolumeStart(replica)
+	}
+
+	if err := t.checkRestoreReplicaSize(replica, volume.Size); err != nil {
+		return err
+	}
+
+	logrus.Infof("Adding restore replica %s in WO mode", replica)
+
+	// The replica mode will become RW after the first restoration complete.
+	// And the rebuilding flag in the replica server won't be set since this is not normal rebuilding.
+	if _, err = t.client.ReplicaCreate(replica, false, types.WO); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (t *Task) checkRestoreReplicaSize(address string, volumeSize int64) error {
+	replicaCli, err := replicaClient.NewReplicaClient(address)
+	if err != nil {
+		return err
+	}
+
+	replicaInfo, err := replicaCli.GetReplica()
+	if err != nil {
+		return err
+	}
+	replicaSize, err := strconv.ParseInt(replicaInfo.Size, 10, 64)
+	if err != nil {
+		return err
+	}
+	if replicaSize != volumeSize {
+		return fmt.Errorf("rebuilding replica size %v is not the same as volume size %v", replicaSize, volumeSize)
+	}
+
+	return nil
+}
+
 func (t *Task) AddReplica(replica string) error {
 	volume, err := t.client.VolumeGet()
 	if err != nil {
