@@ -15,6 +15,12 @@ func AddReplicaCmd() cli.Command {
 	return cli.Command{
 		Name:      "add-replica",
 		ShortName: "add",
+		Flags: []cli.Flag{
+			cli.BoolFlag{
+				Name:  "restore",
+				Usage: "Set this flag if the replica is being added to a restore/DR volume",
+			},
+		},
 		Action: func(c *cli.Context) {
 			if err := addReplica(c); err != nil {
 				logrus.Fatalf("Error running add replica command: %v", err)
@@ -31,6 +37,10 @@ func addReplica(c *cli.Context) error {
 
 	url := c.GlobalString("url")
 	task := sync.NewTask(url)
+
+	if c.Bool("restore") {
+		return task.AddRestoreReplica(replica)
+	}
 	return task.AddReplica(replica)
 }
 
