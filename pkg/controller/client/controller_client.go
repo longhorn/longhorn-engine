@@ -51,24 +51,12 @@ func GetControllerReplicaInfo(cr *ptypes.ControllerReplica) *types.ControllerRep
 }
 
 func GetControllerReplica(r *types.ControllerReplicaInfo) *ptypes.ControllerReplica {
-	cr := &ptypes.ControllerReplica{
+	return &ptypes.ControllerReplica{
 		Address: &ptypes.ReplicaAddress{
 			Address: r.Address,
 		},
+		Mode: ptypes.ReplicaModeToGRPCReplicaMode(r.Mode),
 	}
-
-	switch r.Mode {
-	case types.WO:
-		cr.Mode = ptypes.ReplicaMode_WO
-	case types.RW:
-		cr.Mode = ptypes.ReplicaMode_RW
-	case types.ERR:
-		cr.Mode = ptypes.ReplicaMode_ERR
-	default:
-		return nil
-	}
-
-	return cr
 }
 
 func GetSyncFileInfoList(list []*ptypes.SyncFileInfo) []types.SyncFileInfo {
@@ -271,7 +259,7 @@ func (c *ControllerClient) ReplicaGet(address string) (*types.ControllerReplicaI
 	return GetControllerReplicaInfo(cr), nil
 }
 
-func (c *ControllerClient) ReplicaCreate(address string) (*types.ControllerReplicaInfo, error) {
+func (c *ControllerClient) ReplicaCreate(address string, snapshotRequired bool, mode types.Mode) (*types.ControllerReplicaInfo, error) {
 	conn, err := grpc.Dial(c.grpcAddress, grpc.WithInsecure())
 	if err != nil {
 		return nil, fmt.Errorf("cannot connect to ControllerService %v: %v", c.grpcAddress, err)
@@ -282,8 +270,10 @@ func (c *ControllerClient) ReplicaCreate(address string) (*types.ControllerRepli
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
 	defer cancel()
 
-	cr, err := controllerServiceClient.ReplicaCreate(ctx, &ptypes.ReplicaAddress{
-		Address: address,
+	cr, err := controllerServiceClient.ControllerReplicaCreate(ctx, &ptypes.ControllerReplicaCreateRequest{
+		Address:          address,
+		SnapshotRequired: snapshotRequired,
+		Mode:             ptypes.ReplicaModeToGRPCReplicaMode(mode),
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create replica %v for volume %v: %v", address, c.grpcAddress, err)
