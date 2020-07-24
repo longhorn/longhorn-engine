@@ -46,10 +46,12 @@ class ControllerClient(object):
         return ControllerReplicaInfo(self.stub.ReplicaGet(
             controller_pb2.ReplicaAddress(address=address)))
 
-    def replica_create(self, address):
+    def replica_create(self, address, snapshot_required=True, mode='WO'):
         return ControllerReplicaInfo(
-            self.stub.ReplicaCreate(
-                controller_pb2.ReplicaAddress(address=address)))
+            self.stub.ControllerReplicaCreate(
+                controller_pb2.ControllerReplicaCreateRequest(
+                    address=address, snapshot_required=snapshot_required, mode=mode)
+            ))
 
     def replica_delete(self, address):
         return self.stub.ReplicaDelete(controller_pb2.ReplicaAddress(
