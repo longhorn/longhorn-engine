@@ -17,7 +17,7 @@ service ControllerService {
 
     rpc ReplicaList(google.protobuf.Empty) returns (ReplicaListReply);
     rpc ReplicaGet(ReplicaAddress) returns (ControllerReplica);
-    rpc ReplicaCreate(ReplicaAddress) returns (ControllerReplica);
+    rpc ControllerReplicaCreate(ControllerReplicaCreateRequest) returns (ControllerReplica);
     rpc ReplicaDelete(ReplicaAddress) returns (google.protobuf.Empty);
     rpc ReplicaUpdate(ControllerReplica) returns (ControllerReplica);
     rpc ReplicaPrepareRebuild(ReplicaAddress) returns (ReplicaPrepareRebuildReply);
@@ -97,6 +97,12 @@ message VolumeFinishRestoreRequest {
 
 message ReplicaListReply {
     repeated ControllerReplica replicas = 1;
+}
+
+message ControllerReplicaCreateRequest {
+    string address = 1;
+    bool snapshot_required = 2;
+    ReplicaMode mode = 3;
 }
 
 message ReplicaPrepareRebuildReply {

@@ -65,9 +65,9 @@ class ControllerServiceStub(object):
         request_serializer=controller__pb2.ReplicaAddress.SerializeToString,
         response_deserializer=controller__pb2.ControllerReplica.FromString,
         )
-    self.ReplicaCreate = channel.unary_unary(
-        '/ptypes.ControllerService/ReplicaCreate',
-        request_serializer=controller__pb2.ReplicaAddress.SerializeToString,
+    self.ControllerReplicaCreate = channel.unary_unary(
+        '/ptypes.ControllerService/ControllerReplicaCreate',
+        request_serializer=controller__pb2.ControllerReplicaCreateRequest.SerializeToString,
         response_deserializer=controller__pb2.ControllerReplica.FromString,
         )
     self.ReplicaDelete = channel.unary_unary(
@@ -196,7 +196,7 @@ class ControllerServiceServicer(object):
     context.set_details('Method not implemented!')
     raise NotImplementedError('Method not implemented!')
 
-  def ReplicaCreate(self, request, context):
+  def ControllerReplicaCreate(self, request, context):
     # missing associated documentation comment in .proto file
     pass
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -326,9 +326,9 @@ def add_ControllerServiceServicer_to_server(servicer, server):
           request_deserializer=controller__pb2.ReplicaAddress.FromString,
           response_serializer=controller__pb2.ControllerReplica.SerializeToString,
       ),
-      'ReplicaCreate': grpc.unary_unary_rpc_method_handler(
-          servicer.ReplicaCreate,
-          request_deserializer=controller__pb2.ReplicaAddress.FromString,
+      'ControllerReplicaCreate': grpc.unary_unary_rpc_method_handler(
+          servicer.ControllerReplicaCreate,
+          request_deserializer=controller__pb2.ControllerReplicaCreateRequest.FromString,
           response_serializer=controller__pb2.ControllerReplica.SerializeToString,
       ),
       'ReplicaDelete': grpc.unary_unary_rpc_method_handler(

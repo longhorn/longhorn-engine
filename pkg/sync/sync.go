@@ -312,7 +312,7 @@ func (t *Task) AddReplica(replica string) error {
 	}
 
 	logrus.Infof("Adding replica %s in WO mode", replica)
-	_, err = t.client.ReplicaCreate(replica)
+	_, err = t.client.ReplicaCreate(replica, true, types.WO)
 	if err != nil {
 		return err
 	}

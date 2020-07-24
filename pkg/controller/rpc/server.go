@@ -55,23 +55,12 @@ func GetControllerGRPCServer(c *controller.Controller) *grpc.Server {
 }
 
 func (cs *ControllerServer) replicaToControllerReplica(r *types.Replica) *ptypes.ControllerReplica {
-	cr := &ptypes.ControllerReplica{
+	return &ptypes.ControllerReplica{
 		Address: &ptypes.ReplicaAddress{
 			Address: r.Address,
-		}}
-
-	switch r.Mode {
-	case types.WO:
-		cr.Mode = ptypes.ReplicaMode_WO
-	case types.RW:
-		cr.Mode = ptypes.ReplicaMode_RW
-	case types.ERR:
-		cr.Mode = ptypes.ReplicaMode_ERR
-	default:
-		return nil
+		},
+		Mode: ptypes.ReplicaModeToGRPCReplicaMode(r.Mode),
 	}
-
-	return cr
 }
 
 func (cs *ControllerServer) syncFileInfoListToControllerFormat(list []types.SyncFileInfo) []*ptypes.SyncFileInfo {
@@ -194,8 +183,8 @@ func (cs *ControllerServer) ReplicaGet(ctx context.Context, req *ptypes.ReplicaA
 	return cs.getControllerReplica(req.Address), nil
 }
 
-func (cs *ControllerServer) ReplicaCreate(ctx context.Context, req *ptypes.ReplicaAddress) (*ptypes.ControllerReplica, error) {
-	if err := cs.c.AddReplica(req.Address); err != nil {
+func (cs *ControllerServer) ControllerReplicaCreate(ctx context.Context, req *ptypes.ControllerReplicaCreateRequest) (*ptypes.ControllerReplica, error) {
+	if err := cs.c.AddReplica(req.Address, req.SnapshotRequired, ptypes.GRPCReplicaModeToReplicaMode(req.Mode)); err != nil {
 		return nil, err
 	}
 
