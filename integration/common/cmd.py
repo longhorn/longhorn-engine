@@ -132,8 +132,10 @@ def backup_volume_list(url, name, dest, include_backup_details=False):
     return json.loads(subprocess.check_output(cmd, encoding='utf-8'))
 
 
-def add_replica(url, replica_url):
+def add_replica(url, replica_url, restore=False):
     cmd = [_bin(), '--url', url, '--debug', 'add', replica_url]
+    if restore:
+        cmd.append("--restore")
     return subprocess.check_output(cmd, encoding='utf-8').strip()
 
 
@@ -158,12 +160,6 @@ def restore_to_file(url, backup_url,
     return subprocess.check_output(cmd, encoding='utf-8')
 
 
-def restore_inc(url, backup_url, last_restored):
-    cmd = [_bin(), '--url', url, '--debug', 'backup', 'restore',
-           backup_url, '--incrementally', '--last-restored', last_restored]
-    return subprocess.check_output(cmd, encoding='utf-8')
-
-
 def sync_agent_server_reset(url):
     cmd = [_bin(), '--url', url, '--debug', 'sync-agent-server-reset']
     return subprocess.check_output(cmd, encoding='utf-8')
@@ -172,3 +168,9 @@ def sync_agent_server_reset(url):
 def restore_status(url):
     cmd = [_bin(), '--url', url, '--debug', 'backup', 'restore-status']
     return json.loads(subprocess.check_output(cmd, encoding='utf-8'))
+
+
+def verify_rebuild_replica(url, replica_url):
+    cmd = [_bin(), '--url', url, '--debug', 'verify-rebuild-replica',
+           replica_url]
+    return subprocess.check_output(cmd, encoding='utf-8')

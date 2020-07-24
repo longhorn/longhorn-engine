@@ -39,6 +39,10 @@ class ReplicaClient(object):
                 created=created, labels=labels,
             )).replica
 
+    def replica_expand(self, size):
+        return self.stub.ReplicaExpand(
+            replica_pb2.ReplicaExpandRequest(size=size)).replica
+
     def disk_remove(self, name, force=False):
         return self.stub.DiskRemove(
             replica_pb2.DiskRemoveRequest(name=name, force=force)).replica

@@ -28,6 +28,8 @@ from common.constants import (
     PROC_STATE_STARTING, PROC_STATE_RUNNING,
     PROC_STATE_ERROR,
     ENGINE_NAME, EXPANDED_SIZE_STR,
+    VOLUME_NO_FRONTEND_NAME,
+    FIXED_REPLICA_PATH1, FIXED_REPLICA_PATH2,
 )
 
 thread_failed = False
@@ -290,10 +292,56 @@ def restore_with_frontend(url, engine_name, backup):
     return
 
 
-def restore_incrementally(url, backup_url, last_restored):
-    cmd.restore_inc(url, backup_url, last_restored)
-    wait_for_restore_completion(url, backup_url)
-    return
+def verify_no_frontend_data(data_offset, data, grpc_c):
+    grpc_c.volume_frontend_start(FRONTEND_TGT_BLOCKDEV)
+    v = grpc_c.volume_get()
+    assert v.frontendState == "up"
+
+    dev = get_blockdev(volume=VOLUME_NO_FRONTEND_NAME)
+    verify_read(dev, data_offset, data)
+
+    grpc_c.volume_frontend_shutdown()
+    v = grpc_c.volume_get()
+    assert v.frontendState == "down"
+
+
+def start_no_frontend_volume(grpc_c, *grpc_r_list):
+    assert len(grpc_r_list) > 0
+
+    grpc_c.volume_frontend_start(FRONTEND_TGT_BLOCKDEV)
+
+    for grpc_r in grpc_r_list:
+        open_replica(grpc_r)
+
+    v = grpc_c.volume_start(
+        replicas=[grpc_r.url for grpc_r in grpc_r_list])
+    assert v.replicaCount == len(grpc_r_list)
+
+    dr_replicas = grpc_c.replica_list()
+    assert len(dr_replicas) == len(grpc_r_list)
+
+    grpc_c.volume_frontend_shutdown()
+    v = grpc_c.volume_get()
+    assert v.frontendState == "down"
+
+
+def cleanup_no_frontend_volume(grpc_c, *grpc_r_list):
+    grpc_c.volume_frontend_start(FRONTEND_TGT_BLOCKDEV)
+    v = grpc_c.volume_get()
+    assert v.frontendState == "up"
+
+    cmd.sync_agent_server_reset(grpc_c.address)
+
+    grpc_c.volume_frontend_shutdown()
+    v = grpc_c.volume_get()
+    assert v.frontendState == "down"
+
+    cleanup_controller(grpc_c)
+    for grpc_r in grpc_r_list:
+        cleanup_replica(grpc_r)
+
+    cleanup_replica_dir(FIXED_REPLICA_PATH1)
+    cleanup_replica_dir(FIXED_REPLICA_PATH2)
 
 
 def create_backup(url, snap, backup_target, volume_size=SIZE_STR):
