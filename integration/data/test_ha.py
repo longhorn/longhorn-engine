@@ -13,7 +13,7 @@ from common.core import (  # NOQA
     expand_volume_with_frontend,
     wait_and_check_volume_expansion,
     wait_for_volume_expansion,
-    wait_for_rebuild_complete,
+    wait_for_rebuild_complete, verify_replica_mode,
 
 )
 
@@ -797,3 +797,51 @@ def test_single_replica_expansion_failed(
     assert \
         dev.readat(SIZE, SIZE) == zero_char*(data3.offset-SIZE) + \
         data3.content + zero_char*(EXPANDED_SIZE-data3.offset-data3.length)
+
+
+def test_replica_crashed_update_state_error(grpc_controller,
+        grpc_fixed_dir_replica1):  # NOQA
+    """
+    The test flow:
+    1. Create a fixed directory replica1, since we need to remove a file
+    manually.
+    2. Remove file 'volume-head-000.img' manually from fixed directory
+    replica1.
+    3. Check this fixed diretory replica1 should be in 'ERR' state.
+    4. Clean up created replica.
+    """
+    # Create a fixed directory replica1
+    open_replica(grpc_fixed_dir_replica1)
+
+    # Before created a volume, the engine controller should have no replica.
+    replicas = grpc_controller.replica_list()
+    assert len(replicas) == 0
+
+    # Create a volume on this engine controller with fixed_dir_replica1.
+    r1_url = grpc_fixed_dir_replica1.url
+    v = grpc_controller.volume_start(replicas=[r1_url])
+    assert v.replicaCount == 1
+
+    # Check engine controller should have 1 replica in 'RW' mode.
+    replicas = grpc_controller.replica_list()
+    assert len(replicas) == 1
+    assert replicas[0].mode == "RW"
+
+    # Get the replica object
+    r = grpc_fixed_dir_replica1.replica_get()
+    assert r.chain == ['volume-head-000.img']
+    assert r.state == 'open'
+    assert r.sector_size == 512
+
+    # Removing a file from this replica directory
+    remove_file = os.path.join(
+            FIXED_REPLICA_PATH1, "volume-head-000.img")
+
+    assert os.path.exists(remove_file)
+    os.remove(remove_file)
+
+    # After removing the file, the replica should be in 'ERR' mode.
+    verify_replica_mode(grpc_controller, r1_url, "ERR")
+
+    # Cleanup created replica.
+    cleanup_replica(grpc_fixed_dir_replica1)

@@ -441,6 +441,25 @@ def verify_replica_state(grpc_c, addr, state):
     assert verified
 
 
+def verify_replica_mode(grpc_c, addr, mode):
+    if not addr.startswith("tcp://"):
+        addr = "tcp://" + addr
+
+    verified = False
+    for i in range(RETRY_COUNTS_SHORT):
+        replicas = grpc_c.replica_list()
+        snapList = cmd.snapshot_ls(grpc_c.address)
+        for r in replicas:
+            if r.address == addr and r.mode == mode:
+                verified = True
+                break
+        if verified:
+            break
+
+        time.sleep(RETRY_INTERVAL_SHORT)
+    assert verified
+
+
 def verify_read(dev, offset, data):
     for i in range(10):
         readed = read_dev(dev, offset, len(data))
