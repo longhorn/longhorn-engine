@@ -8,6 +8,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
+
 	"github.com/longhorn/go-iscsi-helper/util"
 )
 
@@ -22,7 +25,10 @@ var (
 )
 
 const (
-	iscsiBinary = "iscsiadm"
+	iscsiBinary    = "iscsiadm"
+	scanModeManual = "manual"
+	scanModeAuto   = "auto"
+	ScanTimeout    = 10 * time.Second
 )
 
 func CheckForInitiatorExistence(ne *util.NamespaceExecutor) error {
@@ -99,6 +105,21 @@ func LoginTarget(ip, target string, ne *util.NamespaceExecutor) error {
 	if err != nil {
 		return err
 	}
+
+	scanMode, err := getIscsiNodeSessionScanMode(ip, target, ne)
+	if err != nil {
+		return errors.Wrap(err, "Failed to get node.session.scan mode")
+	}
+
+	if scanMode == scanModeManual {
+		logrus.Infof("manually rescan LUNs of the target %v:%v", target, ip)
+		if err := manualScanSession(ip, target, ne); err != nil {
+			return errors.Wrapf(err, "Failed to manually rescan iscsi session of target %v:%v", target, ip)
+		}
+	} else {
+		logrus.Infof("default: automatically rescan all LUNs of all iscis sessions")
+	}
+
 	return nil
 }
 
@@ -164,6 +185,34 @@ func IsTargetLoggedIn(ip, target string, ne *util.NamespaceExecutor) bool {
 	}
 
 	return found
+}
+
+func manualScanSession(ip, target string, ne *util.NamespaceExecutor) error {
+	opts := []string{
+		"-m", "node",
+		"-T", target,
+		"-p", ip,
+		"--rescan",
+	}
+	_, err := ne.ExecuteWithTimeout(ScanTimeout, iscsiBinary, opts)
+	return err
+}
+
+func getIscsiNodeSessionScanMode(ip, target string, ne *util.NamespaceExecutor) (string, error) {
+	opts := []string{
+		"-m", "node",
+		"-T", target,
+		"-p", ip,
+		"-o", "show",
+	}
+	output, err := ne.ExecuteWithTimeout(ScanTimeout, iscsiBinary, opts)
+	if err != nil {
+		return "", err
+	}
+	if strings.Contains(output, "node.session.scan = manual") {
+		return scanModeManual, nil
+	}
+	return scanModeAuto, nil
 }
 
 func findScsiDevice(ip, target string, lun int, ne *util.NamespaceExecutor) (*util.KernelDevice, error) {
