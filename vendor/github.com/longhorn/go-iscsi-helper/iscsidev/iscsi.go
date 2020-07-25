@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/longhorn/nsfilelock"
 	"github.com/sirupsen/logrus"
-	"github.com/yasker/nsfilelock"
 
 	"github.com/longhorn/go-iscsi-helper/iscsi"
 	"github.com/longhorn/go-iscsi-helper/util"

@@ -72,12 +72,14 @@ github.com/longhorn/backupstore/nfs
 github.com/longhorn/backupstore/s3
 github.com/longhorn/backupstore/util
 github.com/longhorn/backupstore/vfs
-# github.com/longhorn/go-iscsi-helper v0.0.0-20200601183015-ca8b762c2f38
+# github.com/longhorn/go-iscsi-helper v0.0.0-20200724233216-c35d2e7ee6b6
 github.com/longhorn/go-iscsi-helper/iscsi
 github.com/longhorn/go-iscsi-helper/iscsidev
 github.com/longhorn/go-iscsi-helper/longhorndev
 github.com/longhorn/go-iscsi-helper/types
 github.com/longhorn/go-iscsi-helper/util
+# github.com/longhorn/nsfilelock v0.0.0-20200723175406-fa7c83ad0003
+github.com/longhorn/nsfilelock
 # github.com/longhorn/sparse-tools v0.0.0-20191231185723-50ffab4d4329
 github.com/longhorn/sparse-tools/cli/ssync
 github.com/longhorn/sparse-tools/sparse
@@ -104,8 +106,6 @@ github.com/shurcooL/sanitized_anchor_name
 github.com/sirupsen/logrus
 # github.com/urfave/cli v1.22.1
 github.com/urfave/cli
-# github.com/yasker/nsfilelock v0.0.0-20161215025017-90eff0ebb9e2
-github.com/yasker/nsfilelock
 # golang.org/x/net v0.0.0-20190522155817-f3200d17e092
 golang.org/x/net/context
 golang.org/x/net/http/httpguts

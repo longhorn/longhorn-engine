@@ -6,7 +6,7 @@ ENV DAPPER_DOCKER_SOCKET true
 ENV DAPPER_ENV TAG REPO
 ENV DAPPER_OUTPUT bin
 ENV DAPPER_RUN_ARGS --privileged -v /proc:/host/proc
-ENV DAPPER_SOURCE /go/src/github.com/yasker/nsfilelock
+ENV DAPPER_SOURCE /go/src/github.com/longhorn/nsfilelock
 ENV TRASH_CACHE ${DAPPER_SOURCE}/.trash-cache
 WORKDIR ${DAPPER_SOURCE}
 
@@ -20,8 +20,8 @@ RUN sed -i "s/http:\/\/archive.ubuntu.com\/ubuntu\//mirror:\/\/mirrors.ubuntu.co
    #     libconfig-general-perl libaio-dev libc6-dev
 
 # Install Go
-RUN curl -o go.tar.gz https://storage.googleapis.com/golang/go1.7.linux-amd64.tar.gz
-RUN echo '702ad90f705365227e902b42d91dd1a40e48ca7f67a2f4b2fd052aaa4295cd95 go.tar.gz' | sha256sum -c && \
+RUN curl -Lo go.tar.gz https://golang.org/dl/go1.14.6.linux-amd64.tar.gz
+RUN echo '5c566ddc2e0bcfc25c26a5dc44a440fcc0177f7350c1f01952b34d5989a0d287 go.tar.gz' | sha256sum -c && \
     tar xzf go.tar.gz -C /usr/local && \
     rm go.tar.gz
 RUN mkdir -p /go
@@ -30,7 +30,7 @@ ENV GOPATH=/go
 
 # Go tools
 RUN go get github.com/rancher/trash
-RUN go get github.com/golang/lint/golint
+RUN go get golang.org/x/lint/golint
 
 # Docker
 RUN curl -sL https://get.docker.com/builds/Linux/x86_64/docker-1.9.1 > /usr/bin/docker && \

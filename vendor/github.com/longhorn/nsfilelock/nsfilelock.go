@@ -130,6 +130,7 @@ func (l *NSFileLock) Lock() error {
 		select {
 		case <-l.done:
 			syscall.Kill(cmd.Process.Pid, syscall.SIGTERM)
+			cmd.Wait()
 			return
 		}
 	}()
