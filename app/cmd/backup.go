@@ -215,7 +215,12 @@ func BackupRestoreCmd() cli.Command {
 				if jsonErr != nil {
 					logrus.Errorf("Cannot marshal err [%v] to json: %v", err, jsonErr)
 				} else {
-					fmt.Println(string(errInfo))
+					// If the error is not `TaskError`, the marshaled result is an empty json string.
+					if string(errInfo) != "{}" {
+						fmt.Println(string(errInfo))
+					} else {
+						fmt.Println(err.Error())
+					}
 				}
 				logrus.Fatalf("Error running restore backup command: %v", err)
 			}
