@@ -567,27 +567,6 @@ def get_dev(grpc_replica1, grpc_replica2, grpc_controller,
     return d
 
 
-def get_backing_dev(grpc_backing_replica1, grpc_backing_replica2,
-                    grpc_backing_controller, clean_backup_dir=True):
-    if clean_backup_dir:
-        prepare_backup_dir(BACKUP_DIR)
-    open_replica(grpc_backing_replica1)
-    open_replica(grpc_backing_replica2)
-
-    replicas = grpc_backing_controller.replica_list()
-    assert len(replicas) == 0
-
-    r1_url = grpc_backing_replica1.url
-    r2_url = grpc_backing_replica2.url
-    v = grpc_backing_controller.volume_start(
-        replicas=[r1_url, r2_url])
-    assert v.name == VOLUME_BACKING_NAME
-    assert v.replicaCount == 2
-    d = get_blockdev(v.name)
-
-    return d
-
-
 def random_offset(size, existings={}):
     assert size < PAGE_SIZE
     for i in range(RETRY_COUNTS):

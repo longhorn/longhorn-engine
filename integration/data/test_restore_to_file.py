@@ -4,7 +4,7 @@ import pyqcow
 import common.cmd as cmd
 from common.core import (  # NOQA
     cleanup_controller, cleanup_replica,
-    get_dev, get_backing_dev, read_dev, checksum_dev,
+    get_dev, read_dev, checksum_dev,
     random_string, verify_data,
     read_file, read_from_backing_file,
     create_backup, rm_backups, rm_snaps,
@@ -59,9 +59,8 @@ def restore_to_file_with_backing_file_test(backup_target,  # NOQA
                                            grpc_backing_replica2):  # NOQA
     address = grpc_backing_controller.address
 
-    backing_dev = get_backing_dev(grpc_backing_replica1,
-                                  grpc_backing_replica2,
-                                  grpc_backing_controller)
+    backing_dev = get_dev(grpc_backing_replica1, grpc_backing_replica2,
+                          grpc_backing_controller)
 
     length0 = 4 * 1024
     length1 = 256
