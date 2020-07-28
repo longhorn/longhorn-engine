@@ -4,11 +4,12 @@ from pathlib import Path
 import common.cmd as cmd
 from common.core import (  # NOQA
     cleanup_controller, cleanup_replica,
-    get_dev, get_backing_dev, read_dev,
+    get_blockdev, get_dev, read_dev,
     read_from_backing_file,
     random_string, verify_data, checksum_dev,
     create_backup, rm_backups,
     restore_with_frontend, open_replica,
+    reset_volume,
 )
 from data.snapshot_tree import (
     snapshot_tree_build, snapshot_tree_verify_backup_node
@@ -26,8 +27,12 @@ from common.util import (
 MESSAGE_TYPE_ERROR = "error"
 
 
-def backup_test(dev, address,  # NOQA
-                volume_name, engine_name, backup_target):
+def backup_test(
+        grpc_r1, grpc_r2, grpc_c,
+        volume_name, engine_name, backup_target):
+    address = grpc_c.address
+    dev = get_blockdev(volume_name)
+
     offset = 0
     length = 128
 
@@ -58,6 +63,8 @@ def backup_test(dev, address,  # NOQA
     assert backup3_info["VolumeName"] == volume_name
     assert backup3_info["Size"] == BLOCK_SIZE_STR
 
+    reset_volume(grpc_c, grpc_r1, grpc_r2)
+    dev = get_blockdev(volume_name)
     restore_with_frontend(address, engine_name,
                           backup3_info["URL"])
 
@@ -68,6 +75,8 @@ def backup_test(dev, address,  # NOQA
 
     rm_backups(address, engine_name, [backup3_info["URL"]])
 
+    reset_volume(grpc_c, grpc_r1, grpc_r2)
+    dev = get_blockdev(volume_name)
     restore_with_frontend(address, engine_name,
                           backup1_info["URL"])
     readed = read_dev(dev, offset, length)
@@ -77,6 +86,8 @@ def backup_test(dev, address,  # NOQA
 
     rm_backups(address, engine_name, [backup1_info["URL"]])
 
+    reset_volume(grpc_c, grpc_r1, grpc_r2)
+    dev = get_blockdev(volume_name)
     restore_with_frontend(address, engine_name,
                           backup2_info["URL"])
     readed = read_dev(dev, offset, length)
@@ -86,16 +97,14 @@ def backup_test(dev, address,  # NOQA
 
     rm_backups(address, engine_name, [backup2_info["URL"]])
 
-
 def backup_with_backing_file_test(backup_target,  # NOQA
                                   grpc_backing_controller,  # NOQA
                                   grpc_backing_replica1,  # NOQA
                                   grpc_backing_replica2):  # NOQA
     address = grpc_backing_controller.address
 
-    dev = get_backing_dev(grpc_backing_replica1,
-                          grpc_backing_replica2,
-                          grpc_backing_controller)
+    dev = get_dev(grpc_backing_replica1, grpc_backing_replica2,
+                  grpc_backing_controller)
 
     offset = 0
     length = 256
@@ -111,9 +120,14 @@ def backup_with_backing_file_test(backup_target,  # NOQA
     backup0_info = create_backup(address, snap0, backup_target)
     assert backup0_info["VolumeName"] == VOLUME_BACKING_NAME
 
-    backup_test(dev, address, VOLUME_BACKING_NAME,
-                ENGINE_BACKING_NAME, backup_target)
+    backup_test(
+        grpc_backing_replica1, grpc_backing_replica2,
+        grpc_backing_controller,
+        VOLUME_BACKING_NAME, ENGINE_BACKING_NAME, backup_target)
 
+    reset_volume(grpc_backing_controller,
+                 grpc_backing_replica1, grpc_backing_replica2)
+    dev = get_blockdev(VOLUME_BACKING_NAME)
     restore_with_frontend(address, ENGINE_BACKING_NAME,
                           backup0_info["URL"])
     after = read_dev(dev, offset, length)
@@ -129,10 +143,10 @@ def backup_hole_with_backing_file_test(backup_target,  # NOQA
                                        grpc_backing_replica1,  # NOQA
                                        grpc_backing_replica2):  # NOQA
     address = grpc_backing_controller.address
-
-    dev = get_backing_dev(grpc_backing_replica1,
-                          grpc_backing_replica2,
-                          grpc_backing_controller)
+    dev = get_dev(grpc_backing_replica1, grpc_backing_replica2,
+                  grpc_backing_controller)
+    volume_name = grpc_backing_controller.volume_get().name
+    assert volume_name == VOLUME_BACKING_NAME
 
     offset1 = 512
     length1 = 256
@@ -164,6 +178,9 @@ def backup_hole_with_backing_file_test(backup_target,  # NOQA
     hole_data_backup2 = read_dev(dev, hole_offset, hole_length)
     backup2_info = create_backup(address, snap2, backup_target)
 
+    reset_volume(grpc_backing_controller,
+                 grpc_backing_replica1, grpc_backing_replica2)
+    dev = get_blockdev(volume_name)
     restore_with_frontend(address, ENGINE_BACKING_NAME,
                           backup1_info["URL"])
     readed = read_dev(dev, boundary_offset, boundary_length)
@@ -173,6 +190,9 @@ def backup_hole_with_backing_file_test(backup_target,  # NOQA
     c = checksum_dev(dev)
     assert c == snap1_checksum
 
+    reset_volume(grpc_backing_controller,
+                 grpc_backing_replica1, grpc_backing_replica2)
+    dev = get_blockdev(volume_name)
     restore_with_frontend(address, ENGINE_BACKING_NAME,
                           backup2_info["URL"])
     readed = read_dev(dev, boundary_offset, boundary_length)
@@ -203,27 +223,39 @@ def snapshot_tree_backup_test(backup_target, engine_name,  # NOQA
     backup["2c"] = create_backup(address, snap["2c"], backup_target)["URL"]
     backup["3c"] = create_backup(address, snap["3c"], backup_target)["URL"]
 
-    snapshot_tree_verify_backup_node(dev, address, engine_name,
+    snapshot_tree_verify_backup_node(grpc_controller,
+                                     grpc_replica1, grpc_replica2,
+                                     address, engine_name,
                                      offset, length, backup, data, "0b")
-    snapshot_tree_verify_backup_node(dev, address, engine_name,
+    snapshot_tree_verify_backup_node(grpc_controller,
+                                     grpc_replica1, grpc_replica2,
+                                     address, engine_name,
                                      offset, length, backup, data, "0c")
-    snapshot_tree_verify_backup_node(dev, address, engine_name,
+    snapshot_tree_verify_backup_node(grpc_controller,
+                                     grpc_replica1, grpc_replica2,
+                                     address, engine_name,
                                      offset, length, backup, data, "1c")
-    snapshot_tree_verify_backup_node(dev, address, engine_name,
+    snapshot_tree_verify_backup_node(grpc_controller,
+                                     grpc_replica1, grpc_replica2,
+                                     address, engine_name,
                                      offset, length, backup, data, "2b")
-    snapshot_tree_verify_backup_node(dev, address, engine_name,
+    snapshot_tree_verify_backup_node(grpc_controller,
+                                     grpc_replica1, grpc_replica2,
+                                     address, engine_name,
                                      offset, length, backup, data, "2c")
-    snapshot_tree_verify_backup_node(dev, address, engine_name,
+    snapshot_tree_verify_backup_node(grpc_controller,
+                                     grpc_replica1, grpc_replica2,
+                                     address, engine_name,
                                      offset, length, backup, data, "3c")
 
 
 def test_backup(grpc_replica1, grpc_replica2,  # NOQA
                 grpc_controller, backup_targets):  # NOQA
     for backup_target in backup_targets:
-        dev = get_dev(grpc_replica1, grpc_replica2,
-                      grpc_controller)
-        backup_test(dev, grpc_controller.address,
-                    VOLUME_NAME, ENGINE_NAME, backup_target)
+        get_dev(grpc_replica1, grpc_replica2, grpc_controller)
+        backup_test(
+            grpc_replica1, grpc_replica2, grpc_controller,
+            VOLUME_NAME, ENGINE_NAME, backup_target)
         cmd.sync_agent_server_reset(grpc_controller.address)
         cleanup_controller(grpc_controller)
         cleanup_replica(grpc_replica1)
@@ -274,6 +306,9 @@ def test_backup_S3_latest_unavailable(grpc_replica1, grpc_replica2,  # NOQA
         verify_data(dev, offset, head_data)
 
         # test restore of the initial backup
+        reset_volume(grpc_controller,
+                     grpc_replica1, grpc_replica2)
+        dev = get_blockdev(volume_name)
         restore_with_frontend(address, engine_name,
                               backup1_info["URL"])
         readed = read_dev(dev, offset, length)
@@ -282,6 +317,9 @@ def test_backup_S3_latest_unavailable(grpc_replica1, grpc_replica2,  # NOQA
         assert c == snap1_checksum
 
         # test a restore for the final backup
+        reset_volume(grpc_controller,
+                     grpc_replica1, grpc_replica2)
+        dev = get_blockdev(volume_name)
         restore_with_frontend(address, engine_name,
                               backup3_info["URL"])
         readed = read_dev(dev, offset, length)
@@ -297,8 +335,8 @@ def test_backup_S3_latest_unavailable(grpc_replica1, grpc_replica2,  # NOQA
         cleanup_replica(grpc_replica2)
 
 
-def test_backup_incremental_logic(grpc_replica1, grpc_replica2,  # NOQA
-                                      grpc_controller, backup_targets):  # NOQA
+def test_backup_incremental_logic(grpc_replica1, grpc_replica2,
+                                  grpc_controller, backup_targets):  # NOQA
     for backup_target in backup_targets:
         dev = get_dev(grpc_replica1, grpc_replica2,
                       grpc_controller)
@@ -351,12 +389,18 @@ def test_backup_incremental_logic(grpc_replica1, grpc_replica2,  # NOQA
         assert backup4_info["IsIncremental"] is True
 
         # restore initial backup
+        reset_volume(grpc_controller,
+                     grpc_replica1, grpc_replica2)
+        dev = get_blockdev(volume_name)
         restore_with_frontend(address, engine_name,
                               backup1_info["URL"])
         assert read_dev(dev, offset, length) == snap1_data
         assert checksum_dev(dev) == snap1_checksum
 
         # restore final backup (half of snap1)
+        reset_volume(grpc_controller,
+                     grpc_replica1, grpc_replica2)
+        dev = get_blockdev(volume_name)
         restore_with_frontend(address, engine_name,
                               backup4_info["URL"])
         assert checksum_dev(dev) == snap4_checksum

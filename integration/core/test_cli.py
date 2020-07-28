@@ -24,6 +24,7 @@ from common.core import (  # NOQA
     cleanup_process,
     get_process_address,
     wait_for_process_error,
+    reset_volume,
 )
 
 from common.cmd import (   # NOQA
@@ -812,6 +813,8 @@ def backup_core(bin, engine_manager_client,  # NOQA
     with pytest.raises(subprocess.CalledProcessError):
         backup_inspect(grpc_controller_client.address, "bad://xxx")
 
+    reset_volume(grpc_controller_client,
+                 grpc_replica_client, grpc_replica_client2)
     restore_backup(engine_manager_client,
                    bin, grpc_controller_client.address,
                    backup1, env, grpc_controller_client)
@@ -827,11 +830,6 @@ def backup_core(bin, engine_manager_client,  # NOQA
 
     assert os.path.exists(BACKUP_DIR)
     assert not os.path.exists(volume_cfg_path)
-
-    grpc_controller_client.volume_frontend_start(
-            frontend=FRONTEND_TGT_BLOCKDEV)
-    v = grpc_controller_client.volume_get()
-    assert v.frontendState == "up"
 
 
 def test_snapshot_purge_basic(bin, grpc_controller_client,  # NOQA
