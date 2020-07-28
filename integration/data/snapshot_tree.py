@@ -3,6 +3,7 @@ from common.core import (  # NOQA
     read_dev, random_string, verify_data,
     snapshot_revert_with_frontend,
     restore_with_frontend,
+    reset_volume, get_blockdev,
 )
 from common.constants import VOLUME_HEAD
 
@@ -168,8 +169,12 @@ def snapshot_tree_verify_node(dev, address, engine_name,
     assert readed == data[name]
 
 
-def snapshot_tree_verify_backup_node(dev, address, engine_name,
-                                     offset, length, backup, data, name):
+def snapshot_tree_verify_backup_node(
+        grpc_controller, grpc_replica1, grpc_replica2,
+        address, engine_name, offset, length, backup, data, name):  # NOQA
+    reset_volume(grpc_controller,
+                 grpc_replica1, grpc_replica2)
+    dev = get_blockdev(grpc_controller.volume_get().name)
     restore_with_frontend(address, engine_name, backup[name])
     readed = read_dev(dev, offset, length)
     assert readed == data[name]

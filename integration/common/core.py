@@ -344,6 +344,21 @@ def cleanup_no_frontend_volume(grpc_c, *grpc_r_list):
     cleanup_replica_dir(FIXED_REPLICA_PATH2)
 
 
+def reset_volume(grpc_c, *grpc_r_list):
+    cmd.sync_agent_server_reset(grpc_c.address)
+    cleanup_controller(grpc_c)
+    for grpc_r in grpc_r_list:
+        cleanup_replica(grpc_r)
+        open_replica(grpc_r)
+    # TODO: A simple workaround of race condition.
+    #  See https://github.com/longhorn/longhorn/issues/1628 for details.
+    time.sleep(1)
+    v = grpc_c.volume_start(
+        replicas=[grpc_r.url for grpc_r in grpc_r_list])
+    assert v.replicaCount == len(grpc_r_list)
+    return v
+
+
 def create_backup(url, snap, backup_target, volume_size=SIZE_STR):
     backup = cmd.backup_create(url, snap, backup_target)
     backup_info = cmd.backup_inspect(url, backup)
@@ -553,8 +568,9 @@ def get_dev(grpc_replica1, grpc_replica2, grpc_controller,
 
 
 def get_backing_dev(grpc_backing_replica1, grpc_backing_replica2,
-                    grpc_backing_controller):
-    prepare_backup_dir(BACKUP_DIR)
+                    grpc_backing_controller, clean_backup_dir=True):
+    if clean_backup_dir:
+        prepare_backup_dir(BACKUP_DIR)
     open_replica(grpc_backing_replica1)
     open_replica(grpc_backing_replica2)
 
