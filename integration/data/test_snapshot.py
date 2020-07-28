@@ -3,7 +3,7 @@ import random
 import common.cmd as cmd
 
 from common.core import (  # NOQA
-    get_dev, get_backing_dev, read_dev,
+    get_dev, read_dev,
     generate_random_data, read_from_backing_file,
     Snapshot, snapshot_revert_with_frontend, wait_for_purge_completion,
     Data, random_length, random_string,
@@ -100,8 +100,8 @@ def test_snapshot_revert_with_backing_file(grpc_backing_controller,  # NOQA
                                            grpc_backing_replica2):  # NOQA
     address = grpc_backing_controller.address
 
-    dev = get_backing_dev(grpc_backing_replica1, grpc_backing_replica2,
-                          grpc_backing_controller)
+    dev = get_dev(grpc_backing_replica1, grpc_backing_replica2,
+                  grpc_backing_controller)
 
     offset = 0
     length = 256
@@ -360,8 +360,8 @@ def test_expansion_without_backing_file(grpc_controller,  # NOQA
 
 def test_expansion_with_backing_file(grpc_backing_controller,  # NOQA
                                      grpc_backing_replica1, grpc_backing_replica2):  # NOQA
-    dev = get_backing_dev(grpc_backing_replica1, grpc_backing_replica2,
-                          grpc_backing_controller)
+    dev = get_dev(grpc_backing_replica1, grpc_backing_replica2,
+                  grpc_backing_controller)
     volume_expansion_with_snapshots_test(dev, grpc_backing_controller,
                                          VOLUME_BACKING_NAME,
                                          ENGINE_BACKING_NAME,
