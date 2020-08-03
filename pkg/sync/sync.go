@@ -668,6 +668,15 @@ func (t *Task) RebuildStatus() (map[string]*ReplicaRebuildStatus, error) {
 			return nil, err
 		}
 
+		restoreStatus, err := repClient.RestoreStatus()
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to check the restore status before fetching the rebuild status")
+		}
+		if restoreStatus.DestFileName != "" {
+			logrus.Debugf("Skip checking rebuild status since the volume is a restore/DR volume")
+			return replicaStatusMap, nil
+		}
+
 		status, err := repClient.ReplicaRebuildStatus()
 		if err != nil {
 			replicaStatusMap[r.Address] = &ReplicaRebuildStatus{
