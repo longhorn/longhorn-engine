@@ -339,6 +339,13 @@ func (t *Task) checkRestoreReplicaSize(address string, volumeSize int64) error {
 	return nil
 }
 
+func (t *Task) VerifyRebuildReplica(address string) error {
+	if err := t.client.ReplicaVerifyRebuild(address); err != nil {
+		return err
+	}
+	return nil
+}
+
 func (t *Task) AddReplica(replica string) error {
 	volume, err := t.client.VolumeGet()
 	if err != nil {
