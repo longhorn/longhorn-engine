@@ -94,3 +94,28 @@ func rebuildStatus(c *cli.Context) error {
 	fmt.Println(string(output))
 	return nil
 }
+
+func VerifyRebuildReplicaCmd() cli.Command {
+	return cli.Command{
+		Name:      "verify-rebuild-replica",
+		ShortName: "verify-rebuild",
+		Action: func(c *cli.Context) {
+			if err := verifyRebuildReplica(c); err != nil {
+				logrus.Fatalf("Error running verify rebuild replica command: %v", err)
+			}
+		},
+	}
+}
+
+func verifyRebuildReplica(c *cli.Context) error {
+	if c.NArg() == 0 {
+		return errors.New("replica address is required")
+	}
+	address := c.Args()[0]
+
+	task := sync.NewTask(c.GlobalString("url"))
+	if err := task.VerifyRebuildReplica(address); err != nil {
+		return err
+	}
+	return nil
+}
