@@ -1121,7 +1121,7 @@ func (r *Replica) GetRemainSnapshotCounts() int {
 func (r *Replica) getDiskSize(disk string) int64 {
 	ret := util.GetFileActualSize(r.diskPath(disk))
 	if ret == -1 {
-		errMessage := fmt.Sprintf("Fail to getfile %v size", r.diskPath(disk))
+		errMessage := fmt.Sprintf("Fail to get file %v size", r.diskPath(disk))
 		if r.info.Error == "" {
 			r.info.Error = errMessage
 			logrus.Error(errMessage)
