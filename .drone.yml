@@ -69,7 +69,7 @@ steps:
       - pull_request
     instance:
       include:
-      - drone-publish.rancher.io
+      - drone-publish.longhorn.io
     status:
       - failure
 
