@@ -345,17 +345,31 @@ def cleanup_no_frontend_volume(grpc_c, *grpc_r_list):
 
 
 def reset_volume(grpc_c, *grpc_r_list):
-    cmd.sync_agent_server_reset(grpc_c.address)
-    cleanup_controller(grpc_c)
-    for grpc_r in grpc_r_list:
-        cleanup_replica(grpc_r)
-        open_replica(grpc_r)
-    # TODO: A simple workaround of race condition.
-    #  See https://github.com/longhorn/longhorn/issues/1628 for details.
-    time.sleep(1)
-    v = grpc_c.volume_start(
-        replicas=[grpc_r.url for grpc_r in grpc_r_list])
-    assert v.replicaCount == len(grpc_r_list)
+    complete = True
+    for i in range(RETRY_COUNTS_SHORT):
+        complete = True
+        cmd.sync_agent_server_reset(grpc_c.address)
+        cleanup_controller(grpc_c)
+        for grpc_r in grpc_r_list:
+            cleanup_replica(grpc_r)
+            open_replica(grpc_r)
+        # TODO: A simple workaround of race condition.
+        #  See https://github.com/longhorn/longhorn/issues/1628 for details.
+        time.sleep(1)
+        v = grpc_c.volume_start(
+            replicas=[grpc_r.url for grpc_r in grpc_r_list])
+        rs = grpc_c.replica_list()
+        if len(rs) != len(grpc_r_list):
+            complete = False
+        else:
+            for r_info in rs:
+                if r_info.mode != 'RW':
+                    complete = False
+                    break
+        if complete:
+            break
+        time.sleep(RETRY_INTERVAL)
+    assert complete
     return v
 
 
@@ -552,19 +566,10 @@ def get_dev(grpc_replica1, grpc_replica2, grpc_controller,
             clean_backup_dir=True):
     if clean_backup_dir:
         prepare_backup_dir(BACKUP_DIR)
-    open_replica(grpc_replica1)
-    open_replica(grpc_replica2)
 
-    replicas = grpc_controller.replica_list()
-    assert len(replicas) == 0
+    v = reset_volume(grpc_controller, grpc_replica1, grpc_replica2)
 
-    r1_url = grpc_replica1.url
-    r2_url = grpc_replica2.url
-    v = grpc_controller.volume_start(replicas=[r1_url, r2_url])
-    assert v.replicaCount == 2
-    d = get_blockdev(v.name)
-
-    return d
+    return get_blockdev(v.name)
 
 
 def random_offset(size, existings={}):
