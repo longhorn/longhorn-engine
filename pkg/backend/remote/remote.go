@@ -176,10 +176,11 @@ func (r *Remote) RemainSnapshots() (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	if replicaInfo.State != "open" && replicaInfo.State != "dirty" && replicaInfo.State != "rebuilding" {
-		return 0, fmt.Errorf("Invalid state %v for counting snapshots", replicaInfo.State)
+	switch replicaInfo.State {
+	case "open", "dirty", "rebuilding":
+		return replicaInfo.RemainSnapshots, nil
 	}
-	return replicaInfo.RemainSnapshots, nil
+	return 0, fmt.Errorf("Invalid state %v for counting snapshots", replicaInfo.State)
 }
 
 func (r *Remote) GetRevisionCounter() (int64, error) {
@@ -187,10 +188,11 @@ func (r *Remote) GetRevisionCounter() (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	if replicaInfo.State != "open" && replicaInfo.State != "dirty" {
-		return 0, fmt.Errorf("Invalid state %v for getting revision counter", replicaInfo.State)
+	switch replicaInfo.State {
+	case "open", "dirty":
+		return replicaInfo.RevisionCounter, nil
 	}
-	return replicaInfo.RevisionCounter, nil
+	return 0, fmt.Errorf("Invalid state %v for getting revision counter", replicaInfo.State)
 }
 
 func (r *Remote) info() (*types.ReplicaInfo, error) {
