@@ -177,7 +177,7 @@ func (s *SyncAgentServer) IsRestoring() bool {
 	return s.isRestoring
 }
 
-func (s *SyncAgentServer) PrepareRestore(backupURL, requestedBackupName, snapshotDiskName string) (err error) {
+func (s *SyncAgentServer) StartRestore(backupURL, requestedBackupName, snapshotDiskName string) (err error) {
 	s.Lock()
 	defer s.Unlock()
 
@@ -202,27 +202,58 @@ func (s *SyncAgentServer) PrepareRestore(backupURL, requestedBackupName, snapsho
 		return fmt.Errorf("already restored backup %v", requestedBackupName)
 	}
 
+	// Initialize `s.RestoreInfo`
 	// First restore request. It must be a normal full restore.
 	if restoreStatus.LastRestored == "" && restoreStatus.State == "" {
 		s.RestoreInfo = replica.NewRestore(snapshotDiskName, s.replicaAddress, backupURL, requestedBackupName)
-		return nil
+	} else {
+		var toFileName string
+		validLastRestoredBackup := s.canDoIncrementalRestore(restoreStatus, backupURL, requestedBackupName)
+		if validLastRestoredBackup {
+			toFileName = replica.GenerateDeltaFileName(restoreStatus.LastRestored)
+		} else {
+			toFileName = replica.GenerateSnapTempFileName(snapshotDiskName)
+		}
+		s.RestoreInfo.StartNewRestore(backupURL, requestedBackupName, toFileName, snapshotDiskName, validLastRestoredBackup)
 	}
 
-	// Fall back to full restore.
+	// Initiate restore
+	newRestoreStatus := s.RestoreInfo.DeepCopy()
+	defer func() {
+		if err != nil {
+			logrus.Warnf("Failed to initiate the backup restore, will do revert and cleanup then.")
+			if newRestoreStatus.ToFileName != newRestoreStatus.SnapshotDiskName {
+				os.Remove(newRestoreStatus.ToFileName)
+			}
+			s.RestoreInfo.Revert(restoreStatus)
+		}
+	}()
+
+	if newRestoreStatus.LastRestored == "" {
+		if err := backup.DoBackupRestore(backupURL, newRestoreStatus.ToFileName, s.RestoreInfo); err != nil {
+			return errors.Wrapf(err, "error initiating full backup restore")
+		}
+		logrus.Infof("Successfully initiated full restore for %v to [%v]", backupURL, newRestoreStatus.ToFileName)
+	} else {
+		if err := backup.DoBackupRestoreIncrementally(backupURL, newRestoreStatus.ToFileName, newRestoreStatus.LastRestored, s.RestoreInfo); err != nil {
+			return errors.Wrapf(err, "error initiating incremental backup restore")
+		}
+		logrus.Infof("Successfully initiated incremental restore for %v to [%v]", backupURL, newRestoreStatus.ToFileName)
+	}
+
+	return nil
+}
+
+func (s *SyncAgentServer) canDoIncrementalRestore(restoreStatus *replica.RestoreStatus, backupURL, requestedBackupName string) bool {
 	if restoreStatus.LastRestored == "" {
 		logrus.Warnf("There is a restore record in the server but last restored backup is empty with restore state is %v, will do full restore instead", restoreStatus.State)
-		s.RestoreInfo.StartNewRestore(backupURL, requestedBackupName, replica.GenerateSnapTempFileName(snapshotDiskName), snapshotDiskName, false)
-		return nil
+		return false
 	}
 	if _, err := backupstore.InspectBackup(strings.Replace(backupURL, requestedBackupName, restoreStatus.LastRestored, 1)); err != nil {
 		logrus.Warnf("The last restored backup %v becomes invalid for incremental restore, will do full restore instead, err: %v", restoreStatus.LastRestored, err)
-		s.RestoreInfo.StartNewRestore(backupURL, requestedBackupName, replica.GenerateSnapTempFileName(snapshotDiskName), snapshotDiskName, false)
-		return nil
+		return false
 	}
-
-	// Normal incremental restore.
-	s.RestoreInfo.StartNewRestore(backupURL, requestedBackupName, replica.GenerateDeltaFileName(restoreStatus.LastRestored), snapshotDiskName, true)
-	return nil
+	return true
 }
 
 func (s *SyncAgentServer) FinishRestore(restoreErr error) (err error) {
@@ -603,39 +634,16 @@ func (s *SyncAgentServer) BackupRestore(ctx context.Context, req *ptypes.BackupR
 		return nil, err
 	}
 
-	if err := s.PrepareRestore(req.Backup, requestedBackupName, req.SnapshotDiskName); err != nil {
-		return nil, errors.Wrapf(err, "error preparing backup restore")
+	if err := s.StartRestore(req.Backup, requestedBackupName, req.SnapshotDiskName); err != nil {
+		return nil, errors.Wrapf(err, "error starting backup restore")
 	}
 
-	s.RLock()
-	restoreInfo := s.RestoreInfo
-	restoreStatus := s.RestoreInfo.DeepCopy()
-	s.RUnlock()
-
-	if restoreStatus.LastRestored == "" {
-		if err := backup.DoBackupRestore(req.Backup, restoreStatus.ToFileName, restoreInfo); err != nil {
-			if extraErr := s.FinishRestore(err); extraErr != nil {
-				return nil, fmt.Errorf("error finishing full restore after backup restore initialization failure: [%v]", err)
-			}
-			return nil, errors.Wrapf(err, "error initiating full backup restore")
-		}
-		logrus.Infof("Successfully initiated full restore for %v to [%v]", req.Backup, restoreStatus.ToFileName)
-	} else {
-		if err := backup.DoBackupRestoreIncrementally(req.Backup, restoreStatus.ToFileName, restoreStatus.LastRestored, restoreInfo); err != nil {
-			if extraErr := s.FinishRestore(err); extraErr != nil {
-				return nil, fmt.Errorf("error finishing incremental restore after restore initialization failure: [%v]", extraErr)
-			}
-			return nil, errors.Wrapf(err, "error initiating incremental backup restore")
-		}
-		logrus.Infof("Successfully initiated incremental restore for %v to [%v]", req.Backup, restoreStatus.ToFileName)
-	}
-
-	go s.completeBackupRestore(restoreStatus)
+	go s.completeBackupRestore()
 
 	return &empty.Empty{}, nil
 }
 
-func (s *SyncAgentServer) completeBackupRestore(restoreStatus *replica.RestoreStatus) (err error) {
+func (s *SyncAgentServer) completeBackupRestore() (err error) {
 	defer func() {
 		if extraErr := s.FinishRestore(err); extraErr != nil {
 			logrus.Errorf("failed to finish backup restore: %v", extraErr)
@@ -646,6 +654,10 @@ func (s *SyncAgentServer) completeBackupRestore(restoreStatus *replica.RestoreSt
 	if err := s.waitForRestoreComplete(); err != nil {
 		return errors.Wrapf(err, "failed to wait for restore complete")
 	}
+
+	s.RLock()
+	restoreStatus := s.RestoreInfo.DeepCopy()
+	s.RUnlock()
 
 	if restoreStatus.LastRestored != "" {
 		return s.postIncrementalRestoreOperations(restoreStatus)

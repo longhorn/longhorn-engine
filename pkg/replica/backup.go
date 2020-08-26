@@ -59,61 +59,83 @@ func NewRestore(snapshotName, replicaAddress, backupURL, currentRestoringBackup 
 	}
 }
 
-func (rr *RestoreStatus) StartNewRestore(backupURL, currentRestoringBackup, toFileName, snapshotDiskName string, validLastRestoredBackup bool) {
-	rr.Lock()
-	defer rr.Unlock()
-	rr.ToFileName = toFileName
+func (status *RestoreStatus) StartNewRestore(backupURL, currentRestoringBackup, toFileName, snapshotDiskName string, validLastRestoredBackup bool) {
+	status.Lock()
+	defer status.Unlock()
+	status.ToFileName = toFileName
 
-	rr.Progress = 0
-	rr.Error = ""
-	rr.BackupURL = backupURL
-	rr.State = ProgressStateInProgress
-	rr.SnapshotDiskName = snapshotDiskName
+	status.Progress = 0
+	status.Error = ""
+	status.BackupURL = backupURL
+	status.State = ProgressStateInProgress
+	status.SnapshotDiskName = snapshotDiskName
 	if !validLastRestoredBackup {
-		rr.LastRestored = ""
+		status.LastRestored = ""
 	}
-	rr.CurrentRestoringBackup = currentRestoringBackup
+	status.CurrentRestoringBackup = currentRestoringBackup
 }
 
-func (rr *RestoreStatus) UpdateRestoreStatus(snapshot string, rp int, re error) {
-	rr.Lock()
-	defer rr.Unlock()
+func (status *RestoreStatus) UpdateRestoreStatus(snapshot string, rp int, re error) {
+	status.Lock()
+	defer status.Unlock()
 
-	rr.ToFileName = snapshot
-	rr.Progress = rp
+	status.ToFileName = snapshot
+	status.Progress = rp
 	if re != nil {
-		if rr.Error != "" {
-			rr.Error = fmt.Sprintf("%v: %v", re.Error(), rr.Error)
+		if status.Error != "" {
+			status.Error = fmt.Sprintf("%v: %v", re.Error(), status.Error)
 		} else {
-			rr.Error = re.Error()
+			status.Error = re.Error()
 		}
-		rr.State = ProgressStateError
-		rr.CurrentRestoringBackup = ""
+		status.State = ProgressStateError
+		status.CurrentRestoringBackup = ""
 	}
 }
 
-func (rr *RestoreStatus) FinishRestore() {
-	rr.Lock()
-	defer rr.Unlock()
-	if rr.State != ProgressStateError {
-		rr.State = ProgressStateComplete
-		rr.LastRestored = rr.CurrentRestoringBackup
-		rr.CurrentRestoringBackup = ""
+func (status *RestoreStatus) FinishRestore() {
+	status.Lock()
+	defer status.Unlock()
+	if status.State != ProgressStateError {
+		status.State = ProgressStateComplete
+		status.LastRestored = status.CurrentRestoringBackup
+		status.CurrentRestoringBackup = ""
 	}
 }
 
-func (rr *RestoreStatus) DeepCopy() *RestoreStatus {
-	rr.RLock()
-	defer rr.RUnlock()
+// Revert is used for reverting the current restore status to the previous status.
+// This function will be invoked when:
+//     1. The new restore is failed before the actual restore is preformed.
+//     2. The existing files are not modified.
+//     3. The current status has been updated/initialized for the new restore.
+// If there is no modification applied on the existing replica disk files after the restore failure,
+// it means the replica is still available. In order to make sure the replica work fine
+// for the next restore and the status is not messed up, the revert is indispensable.
+func (status *RestoreStatus) Revert(previousStatus *RestoreStatus) {
+	status.Lock()
+	defer status.Unlock()
+
+	status.BackupURL = previousStatus.BackupURL
+	status.Progress = previousStatus.Progress
+	status.State = previousStatus.State
+	status.Error = previousStatus.Error
+	status.ToFileName = previousStatus.ToFileName
+	status.SnapshotDiskName = previousStatus.SnapshotDiskName
+	status.LastRestored = previousStatus.LastRestored
+	status.CurrentRestoringBackup = previousStatus.CurrentRestoringBackup
+}
+
+func (status *RestoreStatus) DeepCopy() *RestoreStatus {
+	status.RLock()
+	defer status.RUnlock()
 	return &RestoreStatus{
-		ToFileName:             rr.ToFileName,
-		Progress:               rr.Progress,
-		Error:                  rr.Error,
-		LastRestored:           rr.LastRestored,
-		SnapshotDiskName:       rr.SnapshotDiskName,
-		BackupURL:              rr.BackupURL,
-		State:                  rr.State,
-		CurrentRestoringBackup: rr.CurrentRestoringBackup,
+		ToFileName:             status.ToFileName,
+		Progress:               status.Progress,
+		Error:                  status.Error,
+		LastRestored:           status.LastRestored,
+		SnapshotDiskName:       status.SnapshotDiskName,
+		BackupURL:              status.BackupURL,
+		State:                  status.State,
+		CurrentRestoringBackup: status.CurrentRestoringBackup,
 	}
 }
 
