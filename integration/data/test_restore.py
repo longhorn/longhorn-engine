@@ -189,22 +189,16 @@ def restore_inc_test(
     with pytest.raises(subprocess.CalledProcessError) as e:
         cmd.backup_restore(dr_address, backup0)
     assert "operation not permitted" in e.value.stdout
-    failed_restore = 0
-    for i in range(RETRY_COUNTS):
-        failed_restore = 0
-        rs = cmd.restore_status(dr_address)
-        for status in rs.values():
-            if status['backupURL'] != backup0:
-                break
-            if 'error' in status.keys():
-                if status['error'] != "":
-                    assert 'operation not permitted' in \
-                           status['error']
-                    failed_restore += 1
-        if failed_restore == 2:
-            break
-        time.sleep(RETRY_INTERVAL)
-    assert failed_restore == 2
+
+    # the restore status will be reverted/keep unchanged
+    # if an error is triggered before the actual restore is performed
+    rs = cmd.restore_status(dr_address)
+    for status in rs.values():
+        assert not status["isRestoring"]
+        assert not status['backupURL']
+        assert 'error' not in status
+        assert 'progress' not in status
+        assert not status['state']
 
     command = ["chattr", "-i", FIXED_REPLICA_PATH1]
     subprocess.check_output(command).strip()
@@ -490,24 +484,16 @@ def inc_restore_failure_cleanup_error_test(
     subprocess.check_output(command).strip()
     command = ["rm", "-r", FIXED_REPLICA_PATH2 + delta_file]
     subprocess.check_output(command).strip()
-    failed_restore, finished_restore = 0, 0
-    for i in range(RETRY_COUNTS):
-        failed_restore, finished_restore = 0, 0
-        rs = cmd.restore_status(dr_address)
-        for status in rs.values():
-            if status['backupURL'] != backup1:
-                break
-            if 'error' in status.keys():
-                if status['error'] != "":
-                    assert 'failed to clean up the existing file' in \
-                           status['error']
-                    failed_restore += 1
-            if not status["isRestoring"]:
-                finished_restore += 1
-        if failed_restore == 2 and finished_restore == 2:
-            break
-        time.sleep(RETRY_INTERVAL)
-    assert failed_restore == 2 and finished_restore == 2
+
+    # the restore status will be reverted/keep unchanged
+    # if an error is triggered before the actual restore is performed
+    rs = cmd.restore_status(dr_address)
+    for status in rs.values():
+        assert not status["isRestoring"]
+        assert status['backupURL'] == backup0
+        assert 'error' not in status
+        assert status['progress'] == 100
+        assert status['state'] == "complete"
 
     cleanup_no_frontend_volume(grpc_dr_controller,
                                grpc_dr_replica1, grpc_dr_replica2)
