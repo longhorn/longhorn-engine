@@ -2,6 +2,7 @@ package rpc
 
 import (
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"strconv"
@@ -325,7 +326,7 @@ func (*SyncAgentServer) FileRename(ctx context.Context, req *ptypes.FileRenameRe
 }
 
 func (s *SyncAgentServer) FileSend(ctx context.Context, req *ptypes.FileSendRequest) (*empty.Empty, error) {
-	address := fmt.Sprintf("%s:%d", req.Host, req.Port)
+	address := net.JoinHostPort(req.Host, strconv.Itoa(int(req.Port)))
 	logrus.Infof("Sending file %v to %v", req.FromFileName, address)
 	if err := sparse.SyncFile(req.FromFileName, address, FileSyncTimeout); err != nil {
 		return nil, err

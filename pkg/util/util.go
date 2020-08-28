@@ -3,6 +3,7 @@ package util
 import (
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"os"
@@ -26,7 +27,6 @@ import (
 
 var (
 	MaximumVolumeNameSize = 64
-	parsePattern          = regexp.MustCompile(`(.*):(\d+)`)
 	validVolumeName       = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.-]+$`)
 
 	cmdTimeout = time.Minute // one minute by default
@@ -39,17 +39,16 @@ const (
 )
 
 func ParseAddresses(name string) (string, string, string, int, error) {
-	matches := parsePattern.FindStringSubmatch(name)
-	if matches == nil {
-		return "", "", "", 0, fmt.Errorf("Invalid address %s does not match pattern: %v", name, parsePattern)
+	host, strPort, err := net.SplitHostPort(name)
+	if err != nil {
+		return "", "", "", 0, fmt.Errorf("Invalid address %s : couldn't find host and port", name)
 	}
 
-	host := matches[1]
-	port, _ := strconv.Atoi(matches[2])
+	port, _ := strconv.Atoi(strPort)
 
-	return fmt.Sprintf("%s:%d", host, port),
-		fmt.Sprintf("%s:%d", host, port+1),
-		fmt.Sprintf("%s:%d", host, port+2),
+	return net.JoinHostPort(host, strconv.Itoa(port)),
+		net.JoinHostPort(host, strconv.Itoa(port+1)),
+		net.JoinHostPort(host, strconv.Itoa(port+2)),
 		port + 2, nil
 }
 
@@ -74,12 +73,12 @@ func GetPortFromAddress(address string) (int, error) {
 		address = strings.TrimSuffix(address, "/v1")
 	}
 
-	parts := strings.Split(address, ":")
-	if len(parts) < 2 {
+	_, strPort, err := net.SplitHostPort(address)
+	if err != nil {
 		return 0, fmt.Errorf("Invalid address %s, must have a port in it", address)
 	}
 
-	port, err := strconv.Atoi(parts[1])
+	port, err := strconv.Atoi(strPort)
 	if err != nil {
 		return 0, err
 	}

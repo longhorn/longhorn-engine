@@ -2,6 +2,7 @@ package client
 
 import (
 	"fmt"
+	"net"
 	"strconv"
 	"strings"
 	"time"
@@ -38,20 +39,20 @@ func NewReplicaClient(address string) (*ReplicaClient, error) {
 		address = strings.TrimSuffix(address, "/v1")
 	}
 
-	parts := strings.Split(address, ":")
-	if len(parts) < 2 {
+	host, strPort, err := net.SplitHostPort(address)
+	if err != nil {
 		return nil, fmt.Errorf("Invalid address %s, must have a port in it", address)
 	}
 
-	port, err := strconv.Atoi(parts[1])
+	port, err := strconv.Atoi(strPort)
 	if err != nil {
 		return nil, err
 	}
 
-	syncAgentServiceURL := strings.Replace(address, fmt.Sprintf(":%d", port), fmt.Sprintf(":%d", port+2), -1)
+	syncAgentServiceURL := net.JoinHostPort(host, strconv.Itoa(port+2))
 
 	return &ReplicaClient{
-		host:                parts[0],
+		host:                host,
 		replicaServiceURL:   address,
 		syncAgentServiceURL: syncAgentServiceURL,
 	}, nil
