@@ -2,6 +2,7 @@ package controller
 
 import (
 	"fmt"
+	"net"
 	"strconv"
 
 	"github.com/pkg/errors"
@@ -144,12 +145,14 @@ func syncFile(from, to string, fromReplica, toReplica *types.Replica) error {
 		return err
 	}
 
-	logrus.Infof("Synchronizing %s to %s@%s:%d", from, to, host, port)
+	strHostPort := net.JoinHostPort(host, strconv.Itoa(int(port)))
+
+	logrus.Infof("Synchronizing %s to %s@%s", from, to, strHostPort)
 	err = fromClient.SendFile(from, host, port)
 	if err != nil {
-		logrus.Infof("Failed synchronizing %s to %s@%s:%d: %v", from, to, host, port, err)
+		logrus.Infof("Failed synchronizing %s to %s@%s: %v", from, to, strHostPort, err)
 	} else {
-		logrus.Infof("Done synchronizing %s to %s@%s:%d", from, to, host, port)
+		logrus.Infof("Done synchronizing %s to %s@%s", from, to, strHostPort)
 	}
 
 	return err
