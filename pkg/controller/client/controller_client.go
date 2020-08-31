@@ -427,7 +427,7 @@ func (c *ControllerClient) Check() error {
 		Service: "",
 	})
 	if err != nil {
-		return fmt.Errorf("failed to list journal for volume %v: %v", c.grpcAddress, err)
+		return fmt.Errorf("failed to check health for gRPC controller server %v: %v", c.grpcAddress, err)
 	}
 
 	if reply.Status != healthpb.HealthCheckResponse_SERVING {
