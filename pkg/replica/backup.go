@@ -237,9 +237,6 @@ func (rb *BackupStatus) ReadSnapshot(snapID, volumeID string, start int64, data 
 	if err := rb.assertOpen(id, volumeID); err != nil {
 		return err
 	}
-	if rb.SnapshotID != id && rb.volumeID != volumeID {
-		return fmt.Errorf("Snapshot %s and volume %s are not open", id, volumeID)
-	}
 
 	_, err := rb.replica.ReadAt(data, start)
 	return err
