@@ -12,7 +12,7 @@ require (
 	github.com/gorilla/mux v1.7.3
 	github.com/gorilla/websocket v1.4.0 // indirect
 	github.com/longhorn/backupstore v0.0.0-20200819202924-268d5de4d5b2
-	github.com/longhorn/go-iscsi-helper v0.0.0-20200724233216-c35d2e7ee6b6
+	github.com/longhorn/go-iscsi-helper v0.0.0-20200828201603-25a5b19aab2c
 	github.com/longhorn/sparse-tools v0.0.0-20191231185723-50ffab4d4329
 	github.com/mattn/go-colorable v0.1.4 // indirect
 	github.com/mattn/go-runewidth v0.0.5-0.20181218000649-703b5e6b11ae // indirect
