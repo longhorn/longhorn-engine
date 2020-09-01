@@ -123,7 +123,7 @@ func (c *Client) operation(op uint32, buf []byte, offset int64) (int, error) {
 		case <-timeout:
 			switch msg.Type {
 			case TypeRead:
-				logrus.Errorln("Read timeout on replcia", c.TargetID(), "seq=", msg.Seq, "size=", msg.Size/1024, "(kB)")
+				logrus.Errorln("Read timeout on replica", c.TargetID(), "seq=", msg.Seq, "size=", msg.Size/1024, "(kB)")
 			case TypeWrite:
 				logrus.Errorln("Write timeout on replica", c.TargetID(), "seq=", msg.Seq, "size=", msg.Size/1024, "(kB)")
 			case TypePing:
