@@ -216,7 +216,7 @@ func (s *Server) ReplaceDisk(target, source string) error {
 		return nil
 	}
 
-	logrus.Infof("Replacing disk %v with %v", target, source)
+	logrus.Infof("Replacing disk %v with %v", source, target)
 	return s.r.ReplaceDisk(target, source)
 }
 
