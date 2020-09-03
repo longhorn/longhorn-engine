@@ -87,13 +87,14 @@ type PurgeStatus struct {
 
 func (ps *PurgeStatus) UpdateFoldFileProgress(progress int, done bool, err error) {
 	ps.Lock()
+	defer ps.Unlock()
+
 	// Avoid possible division by zero, also total 0 means nothing to be done
 	if ps.total == 0 {
 		ps.Progress = 100
 	} else {
 		ps.Progress = int((float32(ps.processed)/float32(ps.total) + float32(progress)/(float32(ps.total)*100)) * 100)
 	}
-	ps.Unlock()
 }
 
 type RebuildStatus struct {
@@ -109,9 +110,10 @@ type RebuildStatus struct {
 
 func (rs *RebuildStatus) UpdateSyncFileProgress(size int64) {
 	rs.Lock()
+	defer rs.Unlock()
+
 	rs.processedSize = rs.processedSize + size
 	rs.Progress = int((float32(rs.processedSize) / float32(rs.totalSize)) * 100)
-	rs.Unlock()
 }
 
 func GetDiskInfo(info *ptypes.DiskInfo) *types.DiskInfo {
