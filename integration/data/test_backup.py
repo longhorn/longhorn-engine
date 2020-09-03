@@ -1,7 +1,5 @@
 import os
 import json
-import pytest
-import subprocess
 from pathlib import Path
 import common.cmd as cmd
 from common.core import (  # NOQA
@@ -27,11 +25,6 @@ from common.util import (
 )
 
 MESSAGE_TYPE_ERROR = "error"
-LOCK_REFRESH_INTERVAL = 60
-LOCK_MAX_WAIT_TIME = 30
-DELETE_LOCK = "lock_delete"
-BACKUP_LOCK = "lock_backup"
-RESTORE_LOCK = "lock_restore"
 
 
 def backup_test(
@@ -827,132 +820,6 @@ def test_backup_volume_list(grpc_replica_client, grpc_controller_client,  # NOQA
         cleanup_controller(grpc2_controller)
         cleanup_replica(grpc2_replica1)
         cleanup_replica(grpc2_replica2)
-
-def test_backup_lock(grpc_replica1, grpc_replica2,  # NOQA
-                            grpc_controller, backup_targets):  # NOQA
-    """
-    Test backup locks
-
-    Context:
-
-    The idea is to implement a locking mechanism that utilizes the backupstore,
-    to prevent the following dangerous cases of concurrent operations.
-    - prevent backup deletion during backup restoration
-    - prevent backup deletion while a backup is in progress
-    - prevent backup creation during backup deletion
-    - prevent backup restoration during backup deletion
-
-    Steps:
-
-    1.  Create a volume(1) and attach to the current node
-    2.  create a backup(1) of volume(1)
-    3.  verify backup(1) creation completed
-    4.  write some data to volume(1)
-    5.  create an active lock of type Delete
-    6.  create a backup(2) of volume(1)
-    7.  verify backup(2) creation timed out
-    8.  delete active lock of type Delete
-    9.  create an active lock of type Delete
-    10. restore backup(1)
-    11. verify backup(1) restore timed out
-    12. delete active lock of type Delete
-    13. restore backup(1)
-    14. verify backup(1) restore completed
-    15. create an active lock of type Restore
-    16. delete backup(1)
-    17. verify backup(1) deletion timed out
-    18. delete active lock of type Restore
-    19. delete backup(1)
-    20. verify backup(1) deletion completed
-    21. cleanup
-    """
-    for backup_target in backup_targets:
-        dev = get_dev(grpc_replica1, grpc_replica2,
-                      grpc_controller)
-
-        # create a regular backup
-        address = grpc_controller.address
-        offset = 0
-        length = 128
-
-        snap1_data = random_string(length)
-        verify_data(dev, offset, snap1_data)
-        snap1_checksum = checksum_dev(dev)
-        snap1 = cmd.snapshot_create(address)
-
-        # create a backup to create the volume
-        info = create_backup(address, snap1, backup_target)
-        assert info["VolumeName"] == VOLUME_NAME
-        assert info["Size"] == BLOCK_SIZE_STR
-        assert snap1 in info["SnapshotName"]
-
-        # backup should error out with timeout
-        # because of delete lock
-        create_delete_lock(True)
-        with pytest.raises(subprocess.CalledProcessError):
-            create_backup(address, snap1, backup_target)
-        remove_lock_file(DELETE_LOCK)
-
-        # restore should error out with timeout
-        # because of delete lock
-        create_delete_lock(True)
-        with pytest.raises(subprocess.CalledProcessError):
-            restore_with_frontend(address, ENGINE_NAME, info["URL"])
-        remove_lock_file(DELETE_LOCK)
-
-        # restore should succeed now, that there is no active delete lock
-        restore_with_frontend(address, ENGINE_NAME, info["URL"])
-        readed = read_dev(dev, offset, length)
-        assert readed == snap1_data
-        c = checksum_dev(dev)
-        assert c == snap1_checksum
-
-        # delete should error out with timeout
-        # because of restore lock
-        create_restore_lock(True)
-        with pytest.raises(subprocess.CalledProcessError):
-            rm_backups(address, ENGINE_NAME, [info["URL"]])
-        remove_lock_file(RESTORE_LOCK)
-
-        # delete should succeed now, that there is no active restore lock
-        rm_backups(address, ENGINE_NAME, [info["URL"]])
-
-        # cleanup volume 1
-        cmd.sync_agent_server_reset(address)
-        cleanup_controller(grpc_controller)
-        cleanup_replica(grpc_replica1)
-        cleanup_replica(grpc_replica2)
-
-
-def remove_lock_file(name):
-    locks_dir = os.path.join(finddir(BACKUP_DIR, VOLUME_NAME), "locks")
-    lock = os.path.join(locks_dir, name + ".lck")
-    os.remove(lock)
-
-
-def create_restore_lock(acquired):
-    data = json.dumps({"Name": RESTORE_LOCK, "Type": 1, "Acquired": acquired})
-    create_lock_file(RESTORE_LOCK, data)
-
-
-def create_backup_lock(acquired):
-    data = json.dumps({"Name": BACKUP_LOCK, "Type": 1, "Acquired": acquired})
-    create_lock_file(BACKUP_LOCK, data)
-
-
-def create_delete_lock(acquired):
-    data = json.dumps({"Name": DELETE_LOCK, "Type": 2, "Acquired": acquired})
-    create_lock_file(DELETE_LOCK, data)
-
-
-def create_lock_file(name, data):
-    locks_dir = os.path.join(finddir(BACKUP_DIR, VOLUME_NAME), "locks")
-    tmp = os.path.join(locks_dir, name + ".lck" + ".tmp")
-    os.makedirs(locks_dir, exist_ok=True)
-    cfg = open(tmp, "w")
-    cfg.write(data)
-    cfg.close()
-    os.rename(tmp, os.path.join(locks_dir, name + ".lck"))
 
 
 def test_backup_type(grpc_replica1, grpc_replica2,      # NOQA
