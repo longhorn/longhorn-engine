@@ -33,10 +33,8 @@ type KernelDevice struct {
 
 func getIPFromAddrs(addrs []net.Addr) string {
 	for _, addr := range addrs {
-		if ip, ok := addr.(*net.IPNet); ok && !ip.IP.IsLoopback() {
-			if ip.IP.To4() != nil {
-				return strings.Split(ip.IP.String(), "/")[0]
-			}
+		if ip, ok := addr.(*net.IPNet); ok && ip.IP.IsGlobalUnicast() {
+			return strings.Split(ip.IP.String(), "/")[0]
 		}
 	}
 	return ""
