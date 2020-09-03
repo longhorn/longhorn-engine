@@ -1,6 +1,6 @@
-# Backupstore [![Build Status](https://drone-publish.longhorn.io/api/badges/longhorn/backupstore/status.svg)](https://drone-publish.longhorn.io/longhorn/backupstore)
+# Backupstore
+
 ## Build
 
-Run `make`.
-
-This repo is using https://github.com/longhorn/docker-nfs-ganesha to create the NFS server.
+1. Install `nfs-kernel-server` (in Ubuntu's case).
+2. Run `make`.
