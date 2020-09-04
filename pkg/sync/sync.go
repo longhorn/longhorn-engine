@@ -441,7 +441,7 @@ func (t *Task) checkAndExpandReplica(address string, size int64) error {
 		return err
 	}
 	if replicaSize > size {
-		return fmt.Errorf("cannot add a larger replica to the engine")
+		return fmt.Errorf("cannot add new replica larger than size %v", size)
 	} else if replicaSize < size {
 		logrus.Infof("Prepare to expand new replica to size %v", size)
 		needClose := false
