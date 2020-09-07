@@ -83,8 +83,8 @@ func getBackupStatus(c *cli.Context, backupID string, replicaAddress string) (*s
 }
 
 func getReplicaModeMap(c *cli.Context) (map[string]types.Mode, error) {
-	cli := getCli(c)
-	replicas, err := cli.ReplicaList()
+	controllerClient := getControllerClient(c)
+	replicas, err := controllerClient.ReplicaList()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get replica list: %v", err)
 	}
@@ -100,8 +100,8 @@ func getReplicaModeMap(c *cli.Context) (map[string]types.Mode, error) {
 func fetchAllBackups(c *cli.Context) error {
 	backupProgressList := make(map[string]*sync.BackupStatusInfo)
 
-	cli := getCli(c)
-	backupReplicaMap, err := cli.BackupReplicaMappingGet()
+	controllerClient := getControllerClient(c)
+	backupReplicaMap, err := controllerClient.BackupReplicaMappingGet()
 	if err != nil {
 		return fmt.Errorf("failed to get list of backupIDs: %v", err)
 	}
@@ -114,7 +114,7 @@ func fetchAllBackups(c *cli.Context) error {
 	for backupID, replicaAddress := range backupReplicaMap {
 		// Only a replica in RW mode can create backups.
 		if mode := replicaModeMap[replicaAddress]; mode != types.RW {
-			err := cli.BackupReplicaMappingDelete(backupID)
+			err := controllerClient.BackupReplicaMappingDelete(backupID)
 			if err != nil {
 				return err
 			}
@@ -136,7 +136,7 @@ func fetchAllBackups(c *cli.Context) error {
 			continue
 		}
 		if strings.Contains(status.Error, "backup not found") {
-			err := cli.BackupReplicaMappingDelete(backupID)
+			err := controllerClient.BackupReplicaMappingDelete(backupID)
 			if err != nil {
 				return err
 			}
@@ -171,8 +171,8 @@ func checkBackupStatus(c *cli.Context) error {
 		return fetchAllBackups(c)
 	}
 
-	client := getCli(c)
-	br, err := client.BackupReplicaMappingGet()
+	controllerClient := getControllerClient(c)
+	br, err := controllerClient.BackupReplicaMappingGet()
 	if err != nil {
 		return err
 	}
@@ -187,7 +187,7 @@ func checkBackupStatus(c *cli.Context) error {
 		return err
 	}
 	if mode := replicaModeMap[replicaAddress]; mode != types.RW {
-		_ = client.BackupReplicaMappingDelete(backupID)
+		_ = controllerClient.BackupReplicaMappingDelete(backupID)
 		return fmt.Errorf("Failed to get backup status on %s for %v: %v",
 			replicaAddress, backupID, "unknown replica")
 	}

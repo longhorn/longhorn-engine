@@ -8,7 +8,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 
-	"github.com/longhorn/longhorn-engine/pkg/controller/client"
 	replicaClient "github.com/longhorn/longhorn-engine/pkg/replica/client"
 	"github.com/longhorn/longhorn-engine/pkg/types"
 )
@@ -25,15 +24,8 @@ func LsReplicaCmd() cli.Command {
 	}
 }
 
-func getCli(c *cli.Context) *client.ControllerClient {
-	url := c.GlobalString("url")
-	return client.NewControllerClient(url)
-
-}
-
 func lsReplica(c *cli.Context) error {
-	controllerClient := getCli(c)
-
+	controllerClient := getControllerClient(c)
 	reps, err := controllerClient.ReplicaList()
 	if err != nil {
 		return err
