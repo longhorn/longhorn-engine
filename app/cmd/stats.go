@@ -16,7 +16,7 @@ func Journal() cli.Command {
 			},
 		},
 		Action: func(c *cli.Context) {
-			controllerClient := getCli(c)
+			controllerClient := getControllerClient(c)
 			err := controllerClient.JournalList(c.Int("limit"))
 			if err != nil {
 				logrus.Fatalln("Error running journal command:", err)

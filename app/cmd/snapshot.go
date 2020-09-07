@@ -131,7 +131,6 @@ func createSnapshot(c *cli.Context) error {
 		labelMap map[string]string
 		err      error
 	)
-	cli := getCli(c)
 
 	var name string
 	if len(c.Args()) > 0 {
@@ -146,7 +145,8 @@ func createSnapshot(c *cli.Context) error {
 		}
 	}
 
-	id, err := cli.VolumeSnapshot(name, labelMap)
+	controllerClient := getControllerClient(c)
+	id, err := controllerClient.VolumeSnapshot(name, labelMap)
 	if err != nil {
 		return err
 	}
@@ -156,14 +156,13 @@ func createSnapshot(c *cli.Context) error {
 }
 
 func revertSnapshot(c *cli.Context) error {
-	cli := getCli(c)
-
 	name := c.Args()[0]
 	if name == "" {
 		return fmt.Errorf("Missing parameter for snapshot")
 	}
 
-	err := cli.VolumeRevert(name)
+	controllerClient := getControllerClient(c)
+	err := controllerClient.VolumeRevert(name)
 	if err != nil {
 		return err
 	}
@@ -215,9 +214,8 @@ func purgeSnapshotStatus(c *cli.Context) error {
 }
 
 func lsSnapshot(c *cli.Context) error {
-	cli := getCli(c)
-
-	replicas, err := cli.ReplicaList()
+	controllerClient := getControllerClient(c)
+	replicas, err := controllerClient.ReplicaList()
 	if err != nil {
 		return err
 	}
@@ -269,9 +267,8 @@ func lsSnapshot(c *cli.Context) error {
 func infoSnapshot(c *cli.Context) error {
 	var output []byte
 
-	cli := getCli(c)
-
-	replicas, err := cli.ReplicaList()
+	controllerClient := getControllerClient(c)
+	replicas, err := controllerClient.ReplicaList()
 	if err != nil {
 		return err
 	}

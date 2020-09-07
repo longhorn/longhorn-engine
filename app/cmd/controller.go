@@ -12,6 +12,7 @@ import (
 	"github.com/longhorn/longhorn-engine/pkg/backend/file"
 	"github.com/longhorn/longhorn-engine/pkg/backend/remote"
 	"github.com/longhorn/longhorn-engine/pkg/controller"
+	"github.com/longhorn/longhorn-engine/pkg/controller/client"
 	controllerrpc "github.com/longhorn/longhorn-engine/pkg/controller/rpc"
 	"github.com/longhorn/longhorn-engine/pkg/types"
 	"github.com/longhorn/longhorn-engine/pkg/util"
@@ -107,4 +108,9 @@ func startController(c *cli.Context) error {
 
 	control.StartGRPCServer()
 	return control.WaitForShutdown()
+}
+
+func getControllerClient(c *cli.Context) *client.ControllerClient {
+	url := c.GlobalString("url")
+	return client.NewControllerClient(url)
 }
