@@ -44,11 +44,11 @@ func ReplicaCmd() cli.Command {
 			},
 			cli.StringFlag{
 				Name:  "restore-from",
-				Usage: "specify backup to be restored, must be used with --restore-name",
+				Usage: "specify backup to be restored, must use with --restore-name",
 			},
 			cli.StringFlag{
 				Name:  "restore-name",
-				Usage: "specify the snapshot name for restore, must be used with --restore-from",
+				Usage: "specify the snapshot name for restore, must use with --restore-from",
 			},
 			cli.IntFlag{
 				Name:  "sync-agent-port-count",
