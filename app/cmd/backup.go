@@ -208,7 +208,7 @@ func checkBackupStatus(c *cli.Context) error {
 func BackupRestoreCmd() cli.Command {
 	return cli.Command{
 		Name:  "restore",
-		Usage: "restore a backup to current volume: restore <backup>  or  restore <backup>",
+		Usage: "restore a backup to current volume: restore <backup>",
 		Action: func(c *cli.Context) {
 			if err := restoreBackup(c); err != nil {
 				errInfo, jsonErr := json.MarshalIndent(err, "", "\t")
