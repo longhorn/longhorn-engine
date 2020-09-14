@@ -57,6 +57,7 @@ func DecompressAndVerify(src io.Reader, checksum string) (io.Reader, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer r.Close()
 	block, err := ioutil.ReadAll(r)
 	if err != nil {
 		return nil, err

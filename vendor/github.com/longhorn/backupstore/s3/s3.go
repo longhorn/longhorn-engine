@@ -7,7 +7,9 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
+	"github.com/aws/aws-sdk-go/aws"
 	"github.com/longhorn/backupstore"
 	"github.com/longhorn/backupstore/http"
 	"github.com/sirupsen/logrus"
@@ -146,13 +148,19 @@ func (s *BackupStoreDriver) FileExists(filePath string) bool {
 func (s *BackupStoreDriver) FileSize(filePath string) int64 {
 	path := s.updatePath(filePath)
 	head, err := s.service.HeadObject(path)
-	if err != nil {
-		return -1
-	}
-	if head.ContentLength == nil {
+	if err != nil || head.ContentLength == nil {
 		return -1
 	}
 	return *head.ContentLength
+}
+
+func (s *BackupStoreDriver) FileTime(filePath string) time.Time {
+	path := s.updatePath(filePath)
+	head, err := s.service.HeadObject(path)
+	if err != nil || head.ContentLength == nil {
+		return time.Time{}
+	}
+	return aws.TimeValue(head.LastModified).UTC()
 }
 
 func (s *BackupStoreDriver) Remove(path string) error {
