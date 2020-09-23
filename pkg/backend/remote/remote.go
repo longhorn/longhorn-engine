@@ -163,6 +163,31 @@ func (r *Remote) Size() (int64, error) {
 	return strconv.ParseInt(replicaInfo.Size, 10, 0)
 }
 
+func (r *Remote) IsRevisionCounterDisabled() (bool, error) {
+	replicaInfo, err := r.info()
+	if err != nil {
+		return false, err
+	}
+
+	return replicaInfo.RevisionCounterDisabled, nil
+}
+
+func (r *Remote) GetLastModifyTime() (int64, error) {
+	replicaInfo, err := r.info()
+	if err != nil {
+		return 0, err
+	}
+	return replicaInfo.LastModifyTime, nil
+}
+
+func (r *Remote) GetHeadFileSize() (int64, error) {
+	replicaInfo, err := r.info()
+	if err != nil {
+		return 0, err
+	}
+	return replicaInfo.HeadFileSize, nil
+}
+
 func (r *Remote) SectorSize() (int64, error) {
 	replicaInfo, err := r.info()
 	if err != nil {

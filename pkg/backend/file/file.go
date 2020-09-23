@@ -67,6 +67,29 @@ func (f *Wrapper) Size() (int64, error) {
 	return stat.Size(), nil
 }
 
+func (f *Wrapper) IsRevisionCounterDisabled() (bool, error) {
+	return false, nil
+}
+
+func (f *Wrapper) GetLastModifyTime() (int64, error) {
+	stat, err := f.Stat()
+	if err != nil {
+		return 0, err
+	}
+
+	return stat.ModTime().Unix(), nil
+}
+
+// GetHeadFileSize uses dummy head file size for file backend
+func (f *Wrapper) GetHeadFileSize() (int64, error) {
+	stat, err := f.Stat()
+	if err != nil {
+		return 0, err
+	}
+
+	return stat.Size(), nil
+}
+
 func (f *Wrapper) SectorSize() (int64, error) {
 	return 4096, nil
 }
