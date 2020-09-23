@@ -21,7 +21,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='ptypes',
   syntax='proto3',
   serialized_options=None,
-  serialized_pb=_b('\n\rreplica.proto\x12\x06ptypes\x1a\x1bgoogle/protobuf/empty.proto\"$\n\x14ReplicaCreateRequest\x12\x0c\n\x04size\x18\x01 \x01(\t\"9\n\x15ReplicaCreateResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\"6\n\x12ReplicaGetResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\"7\n\x13ReplicaOpenResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\"8\n\x14ReplicaCloseResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\"9\n\x15ReplicaReloadResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\"5\n\x14ReplicaRevertRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0f\n\x07\x63reated\x18\x02 \x01(\t\"9\n\x15ReplicaRevertResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\"\xb8\x01\n\x16ReplicaSnapshotRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x14\n\x0cuser_created\x18\x02 \x01(\x08\x12\x0f\n\x07\x63reated\x18\x03 \x01(\t\x12:\n\x06labels\x18\x04 \x03(\x0b\x32*.ptypes.ReplicaSnapshotRequest.LabelsEntry\x1a-\n\x0bLabelsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\";\n\x17ReplicaSnapshotResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\"$\n\x14ReplicaExpandRequest\x12\x0c\n\x04size\x18\x01 \x01(\x03\"9\n\x15ReplicaExpandResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\"0\n\x11\x44iskRemoveRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\r\n\x05\x66orce\x18\x02 \x01(\x08\"6\n\x12\x44iskRemoveResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\"4\n\x12\x44iskReplaceRequest\x12\x0e\n\x06target\x18\x01 \x01(\t\x12\x0e\n\x06source\x18\x02 \x01(\t\"7\n\x13\x44iskReplaceResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\"(\n\x18\x44iskPrepareRemoveRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\"L\n\x19\x44iskPrepareRemoveResponse\x12/\n\noperations\x18\x01 \x03(\x0b\x32\x1b.ptypes.PrepareRemoveAction\"(\n\x18\x44iskMarkAsRemovedRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\"=\n\x19\x44iskMarkAsRemovedResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\"*\n\x14RebuildingSetRequest\x12\x12\n\nrebuilding\x18\x01 \x01(\x08\"9\n\x15RebuildingSetResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\",\n\x19RevisionCounterSetRequest\x12\x0f\n\x07\x63ounter\x18\x01 \x01(\x03\">\n\x1aRevisionCounterSetResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\"\xae\x02\n\x08\x44iskInfo\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0e\n\x06parent\x18\x02 \x01(\t\x12\x30\n\x08\x63hildren\x18\x03 \x03(\x0b\x32\x1e.ptypes.DiskInfo.ChildrenEntry\x12\x0f\n\x07removed\x18\x04 \x01(\x08\x12\x14\n\x0cuser_created\x18\x05 \x01(\x08\x12\x0f\n\x07\x63reated\x18\x06 \x01(\t\x12\x0c\n\x04size\x18\x07 \x01(\t\x12,\n\x06labels\x18\x08 \x03(\x0b\x32\x1c.ptypes.DiskInfo.LabelsEntry\x1a/\n\rChildrenEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x08:\x02\x38\x01\x1a-\n\x0bLabelsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xc0\x02\n\x07Replica\x12\r\n\x05\x64irty\x18\x01 \x01(\x08\x12\x12\n\nrebuilding\x18\x02 \x01(\x08\x12\x0c\n\x04head\x18\x03 \x01(\t\x12\x0e\n\x06parent\x18\x04 \x01(\t\x12\x0c\n\x04size\x18\x05 \x01(\t\x12\x13\n\x0bsector_size\x18\x06 \x01(\x03\x12\x14\n\x0c\x62\x61\x63king_file\x18\x07 \x01(\t\x12\r\n\x05state\x18\x08 \x01(\t\x12\r\n\x05\x63hain\x18\t \x03(\t\x12)\n\x05\x64isks\x18\n \x03(\x0b\x32\x1a.ptypes.Replica.DisksEntry\x12\x18\n\x10remain_snapshots\x18\x0b \x01(\x05\x12\x18\n\x10revision_counter\x18\x0c \x01(\x03\x1a>\n\nDisksEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x1f\n\x05value\x18\x02 \x01(\x0b\x32\x10.ptypes.DiskInfo:\x02\x38\x01\"E\n\x13PrepareRemoveAction\x12\x0e\n\x06\x61\x63tion\x18\x01 \x01(\t\x12\x0e\n\x06source\x18\x02 \x01(\t\x12\x0e\n\x06target\x18\x03 \x01(\t2\xad\t\n\x0eReplicaService\x12N\n\rReplicaCreate\x12\x1c.ptypes.ReplicaCreateRequest\x1a\x1d.ptypes.ReplicaCreateResponse\"\x00\x12\x41\n\rReplicaDelete\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.Empty\"\x00\x12\x42\n\nReplicaGet\x12\x16.google.protobuf.Empty\x1a\x1a.ptypes.ReplicaGetResponse\"\x00\x12\x44\n\x0bReplicaOpen\x12\x16.google.protobuf.Empty\x1a\x1b.ptypes.ReplicaOpenResponse\"\x00\x12\x46\n\x0cReplicaClose\x12\x16.google.protobuf.Empty\x1a\x1c.ptypes.ReplicaCloseResponse\"\x00\x12H\n\rReplicaReload\x12\x16.google.protobuf.Empty\x1a\x1d.ptypes.ReplicaReloadResponse\"\x00\x12N\n\rReplicaRevert\x12\x1c.ptypes.ReplicaRevertRequest\x1a\x1d.ptypes.ReplicaRevertResponse\"\x00\x12T\n\x0fReplicaSnapshot\x12\x1e.ptypes.ReplicaSnapshotRequest\x1a\x1f.ptypes.ReplicaSnapshotResponse\"\x00\x12N\n\rReplicaExpand\x12\x1c.ptypes.ReplicaExpandRequest\x1a\x1d.ptypes.ReplicaExpandResponse\"\x00\x12\x45\n\nDiskRemove\x12\x19.ptypes.DiskRemoveRequest\x1a\x1a.ptypes.DiskRemoveResponse\"\x00\x12H\n\x0b\x44iskReplace\x12\x1a.ptypes.DiskReplaceRequest\x1a\x1b.ptypes.DiskReplaceResponse\"\x00\x12Z\n\x11\x44iskPrepareRemove\x12 .ptypes.DiskPrepareRemoveRequest\x1a!.ptypes.DiskPrepareRemoveResponse\"\x00\x12Z\n\x11\x44iskMarkAsRemoved\x12 .ptypes.DiskMarkAsRemovedRequest\x1a!.ptypes.DiskMarkAsRemovedResponse\"\x00\x12N\n\rRebuildingSet\x12\x1c.ptypes.RebuildingSetRequest\x1a\x1d.ptypes.RebuildingSetResponse\"\x00\x12]\n\x12RevisionCounterSet\x12!.ptypes.RevisionCounterSetRequest\x1a\".ptypes.RevisionCounterSetResponse\"\x00\x62\x06proto3')
+  serialized_pb=_b('\n\rreplica.proto\x12\x06ptypes\x1a\x1bgoogle/protobuf/empty.proto\"$\n\x14ReplicaCreateRequest\x12\x0c\n\x04size\x18\x01 \x01(\t\"9\n\x15ReplicaCreateResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\"6\n\x12ReplicaGetResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\"7\n\x13ReplicaOpenResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\"8\n\x14ReplicaCloseResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\"9\n\x15ReplicaReloadResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\"5\n\x14ReplicaRevertRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0f\n\x07\x63reated\x18\x02 \x01(\t\"9\n\x15ReplicaRevertResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\"\xb8\x01\n\x16ReplicaSnapshotRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x14\n\x0cuser_created\x18\x02 \x01(\x08\x12\x0f\n\x07\x63reated\x18\x03 \x01(\t\x12:\n\x06labels\x18\x04 \x03(\x0b\x32*.ptypes.ReplicaSnapshotRequest.LabelsEntry\x1a-\n\x0bLabelsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\";\n\x17ReplicaSnapshotResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\"$\n\x14ReplicaExpandRequest\x12\x0c\n\x04size\x18\x01 \x01(\x03\"9\n\x15ReplicaExpandResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\"0\n\x11\x44iskRemoveRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\r\n\x05\x66orce\x18\x02 \x01(\x08\"6\n\x12\x44iskRemoveResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\"4\n\x12\x44iskReplaceRequest\x12\x0e\n\x06target\x18\x01 \x01(\t\x12\x0e\n\x06source\x18\x02 \x01(\t\"7\n\x13\x44iskReplaceResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\"(\n\x18\x44iskPrepareRemoveRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\"L\n\x19\x44iskPrepareRemoveResponse\x12/\n\noperations\x18\x01 \x03(\x0b\x32\x1b.ptypes.PrepareRemoveAction\"(\n\x18\x44iskMarkAsRemovedRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\"=\n\x19\x44iskMarkAsRemovedResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\"*\n\x14RebuildingSetRequest\x12\x12\n\nrebuilding\x18\x01 \x01(\x08\"9\n\x15RebuildingSetResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\",\n\x19RevisionCounterSetRequest\x12\x0f\n\x07\x63ounter\x18\x01 \x01(\x03\">\n\x1aRevisionCounterSetResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\"\xae\x02\n\x08\x44iskInfo\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0e\n\x06parent\x18\x02 \x01(\t\x12\x30\n\x08\x63hildren\x18\x03 \x03(\x0b\x32\x1e.ptypes.DiskInfo.ChildrenEntry\x12\x0f\n\x07removed\x18\x04 \x01(\x08\x12\x14\n\x0cuser_created\x18\x05 \x01(\x08\x12\x0f\n\x07\x63reated\x18\x06 \x01(\t\x12\x0c\n\x04size\x18\x07 \x01(\t\x12,\n\x06labels\x18\x08 \x03(\x0b\x32\x1c.ptypes.DiskInfo.LabelsEntry\x1a/\n\rChildrenEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x08:\x02\x38\x01\x1a-\n\x0bLabelsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\x95\x03\n\x07Replica\x12\r\n\x05\x64irty\x18\x01 \x01(\x08\x12\x12\n\nrebuilding\x18\x02 \x01(\x08\x12\x0c\n\x04head\x18\x03 \x01(\t\x12\x0e\n\x06parent\x18\x04 \x01(\t\x12\x0c\n\x04size\x18\x05 \x01(\t\x12\x13\n\x0bsector_size\x18\x06 \x01(\x03\x12\x14\n\x0c\x62\x61\x63king_file\x18\x07 \x01(\t\x12\r\n\x05state\x18\x08 \x01(\t\x12\r\n\x05\x63hain\x18\t \x03(\t\x12)\n\x05\x64isks\x18\n \x03(\x0b\x32\x1a.ptypes.Replica.DisksEntry\x12\x18\n\x10remain_snapshots\x18\x0b \x01(\x05\x12\x18\n\x10revision_counter\x18\x0c \x01(\x03\x12\x18\n\x10last_modify_time\x18\r \x01(\x03\x12\x16\n\x0ehead_file_size\x18\x0e \x01(\x03\x12!\n\x19revision_counter_disabled\x18\x0f \x01(\x08\x1a>\n\nDisksEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x1f\n\x05value\x18\x02 \x01(\x0b\x32\x10.ptypes.DiskInfo:\x02\x38\x01\"E\n\x13PrepareRemoveAction\x12\x0e\n\x06\x61\x63tion\x18\x01 \x01(\t\x12\x0e\n\x06source\x18\x02 \x01(\t\x12\x0e\n\x06target\x18\x03 \x01(\t2\xad\t\n\x0eReplicaService\x12N\n\rReplicaCreate\x12\x1c.ptypes.ReplicaCreateRequest\x1a\x1d.ptypes.ReplicaCreateResponse\"\x00\x12\x41\n\rReplicaDelete\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.Empty\"\x00\x12\x42\n\nReplicaGet\x12\x16.google.protobuf.Empty\x1a\x1a.ptypes.ReplicaGetResponse\"\x00\x12\x44\n\x0bReplicaOpen\x12\x16.google.protobuf.Empty\x1a\x1b.ptypes.ReplicaOpenResponse\"\x00\x12\x46\n\x0cReplicaClose\x12\x16.google.protobuf.Empty\x1a\x1c.ptypes.ReplicaCloseResponse\"\x00\x12H\n\rReplicaReload\x12\x16.google.protobuf.Empty\x1a\x1d.ptypes.ReplicaReloadResponse\"\x00\x12N\n\rReplicaRevert\x12\x1c.ptypes.ReplicaRevertRequest\x1a\x1d.ptypes.ReplicaRevertResponse\"\x00\x12T\n\x0fReplicaSnapshot\x12\x1e.ptypes.ReplicaSnapshotRequest\x1a\x1f.ptypes.ReplicaSnapshotResponse\"\x00\x12N\n\rReplicaExpand\x12\x1c.ptypes.ReplicaExpandRequest\x1a\x1d.ptypes.ReplicaExpandResponse\"\x00\x12\x45\n\nDiskRemove\x12\x19.ptypes.DiskRemoveRequest\x1a\x1a.ptypes.DiskRemoveResponse\"\x00\x12H\n\x0b\x44iskReplace\x12\x1a.ptypes.DiskReplaceRequest\x1a\x1b.ptypes.DiskReplaceResponse\"\x00\x12Z\n\x11\x44iskPrepareRemove\x12 .ptypes.DiskPrepareRemoveRequest\x1a!.ptypes.DiskPrepareRemoveResponse\"\x00\x12Z\n\x11\x44iskMarkAsRemoved\x12 .ptypes.DiskMarkAsRemovedRequest\x1a!.ptypes.DiskMarkAsRemovedResponse\"\x00\x12N\n\rRebuildingSet\x12\x1c.ptypes.RebuildingSetRequest\x1a\x1d.ptypes.RebuildingSetResponse\"\x00\x12]\n\x12RevisionCounterSet\x12!.ptypes.RevisionCounterSetRequest\x1a\".ptypes.RevisionCounterSetResponse\"\x00\x62\x06proto3')
   ,
   dependencies=[google_dot_protobuf_dot_empty__pb2.DESCRIPTOR,])
 
@@ -1038,8 +1038,8 @@ _REPLICA_DISKSENTRY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2059,
-  serialized_end=2121,
+  serialized_start=2144,
+  serialized_end=2206,
 )
 
 _REPLICA = _descriptor.Descriptor(
@@ -1133,6 +1133,27 @@ _REPLICA = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='last_modify_time', full_name='ptypes.Replica.last_modify_time', index=12,
+      number=13, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='head_file_size', full_name='ptypes.Replica.head_file_size', index=13,
+      number=14, type=3, cpp_type=2, label=1,
+      has_default_value=False, default_value=0,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='revision_counter_disabled', full_name='ptypes.Replica.revision_counter_disabled', index=14,
+      number=15, type=8, cpp_type=7, label=1,
+      has_default_value=False, default_value=False,
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -1146,7 +1167,7 @@ _REPLICA = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=1801,
-  serialized_end=2121,
+  serialized_end=2206,
 )
 
 
@@ -1190,8 +1211,8 @@ _PREPAREREMOVEACTION = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2123,
-  serialized_end=2192,
+  serialized_start=2208,
+  serialized_end=2277,
 )
 
 _REPLICACREATERESPONSE.fields_by_name['replica'].message_type = _REPLICA
@@ -1479,8 +1500,8 @@ _REPLICASERVICE = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=0,
   serialized_options=None,
-  serialized_start=2195,
-  serialized_end=3392,
+  serialized_start=2280,
+  serialized_end=3477,
   methods=[
   _descriptor.MethodDescriptor(
     name='ReplicaCreate',
