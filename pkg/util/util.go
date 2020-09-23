@@ -211,6 +211,17 @@ func GetFileActualSize(file string) int64 {
 	return st.Blocks * BlockSizeLinux
 }
 
+func GetHeadFileModifyTimeAndSize(file string) (int64, int64, error) {
+	var st syscall.Stat_t
+
+	if err := syscall.Stat(file, &st); err != nil {
+		logrus.Errorf("Fail to head file %v stat, err %v", file, err)
+		return 0, 0, err
+	}
+
+	return st.Mtim.Nano(), st.Blocks * BlockSizeLinux, nil
+}
+
 func ParseLabels(labels []string) (map[string]string, error) {
 	result := map[string]string{}
 	for _, label := range labels {

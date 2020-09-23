@@ -11,18 +11,19 @@ import (
 
 type Replica struct {
 	client.Resource
-	Dirty           bool                        `json:"dirty"`
-	Rebuilding      bool                        `json:"rebuilding"`
-	Head            string                      `json:"head"`
-	Parent          string                      `json:"parent"`
-	Size            string                      `json:"size"`
-	SectorSize      int64                       `json:"sectorSize,string"`
-	BackingFile     string                      `json:"backingFile"`
-	State           string                      `json:"state"`
-	Chain           []string                    `json:"chain"`
-	Disks           map[string]replica.DiskInfo `json:"disks"`
-	RemainSnapshots int                         `json:"remainsnapshots"`
-	RevisionCounter int64                       `json:"revisioncounter,string"`
+	Dirty                   bool                        `json:"dirty"`
+	Rebuilding              bool                        `json:"rebuilding"`
+	Head                    string                      `json:"head"`
+	Parent                  string                      `json:"parent"`
+	Size                    string                      `json:"size"`
+	SectorSize              int64                       `json:"sectorSize,string"`
+	BackingFile             string                      `json:"backingFile"`
+	State                   string                      `json:"state"`
+	Chain                   []string                    `json:"chain"`
+	Disks                   map[string]replica.DiskInfo `json:"disks"`
+	RemainSnapshots         int                         `json:"remainsnapshots"`
+	RevisionCounter         int64                       `json:"revisioncounter,string"`
+	RevisionCounterDisabled bool                        `json:"revisioncounterdisabled"`
 }
 
 func NewReplica(context *api.ApiContext, state replica.State, info replica.Info, rep *replica.Replica) *Replica {
@@ -63,7 +64,12 @@ func NewReplica(context *api.ApiContext, state replica.State, info replica.Info,
 		r.Chain, _ = rep.DisplayChain()
 		r.Disks = rep.ListDisks()
 		r.RemainSnapshots = rep.GetRemainSnapshotCounts()
-		r.RevisionCounter = rep.GetRevisionCounter()
+		if !rep.IsRevCounterDisabled() {
+			r.RevisionCounter = rep.GetRevisionCounter()
+			r.RevisionCounterDisabled = false
+		} else {
+			r.RevisionCounterDisabled = true
+		}
 	}
 
 	return r

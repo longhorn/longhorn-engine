@@ -63,10 +63,11 @@ type Replica struct {
 	activeDiskData []*disk
 	readOnly       bool
 
-	revisionLock      sync.Mutex
-	revisionCache     int64
-	revisionFile      *sparse.DirectFileIoProcessor
-	revisionRefreshed bool
+	revisionLock            sync.Mutex
+	revisionCache           int64
+	revisionFile            *sparse.DirectFileIoProcessor
+	revisionRefreshed       bool
+	revisionCounterDisabled bool
 }
 
 type Info struct {
@@ -126,16 +127,16 @@ func ReadInfo(dir string) (Info, error) {
 	return info, err
 }
 
-func New(size, sectorSize int64, dir string, backingFile *BackingFile) (*Replica, error) {
-	return construct(false, size, sectorSize, dir, "", backingFile)
+func New(size, sectorSize int64, dir string, backingFile *BackingFile, disableRevCounter bool) (*Replica, error) {
+	return construct(false, size, sectorSize, dir, "", backingFile, disableRevCounter)
 }
 
 func NewReadOnly(dir, head string, backingFile *BackingFile) (*Replica, error) {
 	// size and sectorSize don't matter because they will be read from metadata
-	return construct(true, 0, 512, dir, head, backingFile)
+	return construct(true, 0, 512, dir, head, backingFile, false)
 }
 
-func construct(readonly bool, size, sectorSize int64, dir, head string, backingFile *BackingFile) (*Replica, error) {
+func construct(readonly bool, size, sectorSize int64, dir, head string, backingFile *BackingFile, disableRevCounter bool) (*Replica, error) {
 	if size%sectorSize != 0 {
 		return nil, fmt.Errorf("Size %d not a multiple of sector size %d", size, sectorSize)
 	}
@@ -145,11 +146,12 @@ func construct(readonly bool, size, sectorSize int64, dir, head string, backingF
 	}
 
 	r := &Replica{
-		dir:             dir,
-		activeDiskData:  make([]*disk, 1),
-		diskData:        make(map[string]*disk),
-		diskChildrenMap: map[string]map[string]bool{},
-		readOnly:        readonly,
+		dir:                     dir,
+		activeDiskData:          make([]*disk, 1),
+		diskData:                make(map[string]*disk),
+		diskChildrenMap:         map[string]map[string]bool{},
+		readOnly:                readonly,
+		revisionCounterDisabled: disableRevCounter,
 	}
 	r.info.Size = size
 	r.info.SectorSize = sectorSize
@@ -165,8 +167,10 @@ func construct(readonly bool, size, sectorSize int64, dir, head string, backingF
 		return nil, err
 	}
 
-	if err := r.initRevisionCounter(); err != nil {
-		return nil, err
+	if !r.revisionCounterDisabled {
+		if err := r.initRevisionCounter(); err != nil {
+			return nil, err
+		}
 	}
 
 	// Reference r.info.Size because it may have changed from reading
@@ -307,7 +311,7 @@ func (r *Replica) SetRebuilding(rebuilding bool) error {
 }
 
 func (r *Replica) Reload() (*Replica, error) {
-	newReplica, err := New(r.info.Size, r.info.SectorSize, r.dir, r.info.BackingFile)
+	newReplica, err := New(r.info.Size, r.info.SectorSize, r.dir, r.info.BackingFile, r.revisionCounterDisabled)
 	if err != nil {
 		return nil, err
 	}
@@ -1071,9 +1075,13 @@ func (r *Replica) WriteAt(buf []byte, offset int64) (int, error) {
 	if err != nil {
 		return c, err
 	}
-	if err := r.increaseRevisionCounter(); err != nil {
-		return c, err
+
+	if !r.revisionCounterDisabled {
+		if err := r.increaseRevisionCounter(); err != nil {
+			return c, err
+		}
 	}
+
 	return c, nil
 }
 
@@ -1128,4 +1136,17 @@ func (r *Replica) getDiskSize(disk string) int64 {
 		}
 	}
 	return ret
+}
+
+func (r *Replica) GetReplicaStat() (int64, int64) {
+	lastModifyTime, headFileSize, err :=
+		util.GetHeadFileModifyTimeAndSize(r.diskPath(r.info.Head))
+	if err != nil {
+		if r.info.Error == "" {
+			r.info.Error = err.Error()
+			logrus.Error(err)
+		}
+	}
+
+	return lastModifyTime, headFileSize
 }

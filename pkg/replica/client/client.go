@@ -79,18 +79,21 @@ func GetDiskInfo(info *ptypes.DiskInfo) *types.DiskInfo {
 
 func GetReplicaInfo(r *ptypes.Replica) *types.ReplicaInfo {
 	replicaInfo := &types.ReplicaInfo{
-		Dirty:           r.Dirty,
-		Rebuilding:      r.Rebuilding,
-		Head:            r.Head,
-		Parent:          r.Parent,
-		Size:            r.Size,
-		SectorSize:      r.SectorSize,
-		BackingFile:     r.BackingFile,
-		State:           r.State,
-		Chain:           r.Chain,
-		Disks:           map[string]types.DiskInfo{},
-		RemainSnapshots: int(r.RemainSnapshots),
-		RevisionCounter: r.RevisionCounter,
+		Dirty:                   r.Dirty,
+		Rebuilding:              r.Rebuilding,
+		Head:                    r.Head,
+		Parent:                  r.Parent,
+		Size:                    r.Size,
+		SectorSize:              r.SectorSize,
+		BackingFile:             r.BackingFile,
+		State:                   r.State,
+		Chain:                   r.Chain,
+		Disks:                   map[string]types.DiskInfo{},
+		RemainSnapshots:         int(r.RemainSnapshots),
+		RevisionCounter:         r.RevisionCounter,
+		LastModifyTime:          r.LastModifyTime,
+		HeadFileSize:            r.HeadFileSize,
+		RevisionCounterDisabled: r.RevisionCounterDisabled,
 	}
 
 	for diskName, diskInfo := range r.Disks {

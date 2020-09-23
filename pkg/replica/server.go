@@ -21,17 +21,19 @@ type State string
 
 type Server struct {
 	sync.RWMutex
-	r                 *Replica
-	dir               string
-	defaultSectorSize int64
-	backing           *BackingFile
+	r                       *Replica
+	dir                     string
+	defaultSectorSize       int64
+	backing                 *BackingFile
+	revisionCounterDisabled bool
 }
 
-func NewServer(dir string, backing *BackingFile, sectorSize int64) *Server {
+func NewServer(dir string, backing *BackingFile, sectorSize int64, disableRevCounter bool) *Server {
 	return &Server{
-		dir:               dir,
-		backing:           backing,
-		defaultSectorSize: sectorSize,
+		dir:                     dir,
+		backing:                 backing,
+		defaultSectorSize:       sectorSize,
+		revisionCounterDisabled: disableRevCounter,
 	}
 }
 
@@ -62,7 +64,7 @@ func (s *Server) Create(size int64) error {
 	sectorSize := s.getSectorSize()
 
 	logrus.Infof("Creating volume %s, size %d/%d", s.dir, size, sectorSize)
-	r, err := New(size, sectorSize, s.dir, s.backing)
+	r, err := New(size, sectorSize, s.dir, s.backing, s.revisionCounterDisabled)
 	if err != nil {
 		return err
 	}
@@ -83,7 +85,7 @@ func (s *Server) Open() error {
 	sectorSize := s.getSectorSize()
 
 	logrus.Infof("Opening volume %s, size %d/%d", s.dir, size, sectorSize)
-	r, err := New(size, sectorSize, s.dir, s.backing)
+	r, err := New(size, sectorSize, s.dir, s.backing, s.revisionCounterDisabled)
 	if err != nil {
 		return err
 	}
