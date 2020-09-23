@@ -108,14 +108,16 @@ func (c *Controller) VerifyRebuildReplica(address string) error {
 		}
 	}
 
-	counter, err := c.backend.GetRevisionCounter(rwReplica.Address)
-	if err != nil || counter == -1 {
-		return fmt.Errorf("Failed to get revision counter of RW Replica %v: counter %v, err %v",
-			rwReplica.Address, counter, err)
+	if !c.revisionCounterDisabled {
+		counter, err := c.backend.GetRevisionCounter(rwReplica.Address)
+		if err != nil || counter == -1 {
+			return fmt.Errorf("Failed to get revision counter of RW Replica %v: counter %v, err %v",
+				rwReplica.Address, counter, err)
 
-	}
-	if err := c.backend.SetRevisionCounter(address, counter); err != nil {
-		return fmt.Errorf("Fail to set revision counter for %v: %v", address, err)
+		}
+		if err := c.backend.SetRevisionCounter(address, counter); err != nil {
+			return fmt.Errorf("Fail to set revision counter for %v: %v", address, err)
+		}
 	}
 
 	logrus.Infof("WO replica %v's chain verified, update mode to RW", address)
@@ -162,8 +164,10 @@ func (c *Controller) PrepareRebuildReplica(address string) ([]types.SyncFileInfo
 	c.Lock()
 	defer c.Unlock()
 
-	if err := c.backend.SetRevisionCounter(address, 0); err != nil {
-		return nil, fmt.Errorf("Fail to set revision counter for %v: %v", address, err)
+	if !c.revisionCounterDisabled {
+		if err := c.backend.SetRevisionCounter(address, 0); err != nil {
+			return nil, fmt.Errorf("Fail to set revision counter for %v: %v", address, err)
+		}
 	}
 
 	replica, rwReplica, err := c.getCurrentAndRWReplica(address)

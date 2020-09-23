@@ -28,7 +28,9 @@ type Controller struct {
 	frontend   types.Frontend
 	isUpgrade  bool
 
-	isExpanding bool
+	isExpanding             bool
+	revisionCounterDisabled bool
+	salvageRequested        bool
 
 	listenAddr string
 	listenPort string
@@ -50,10 +52,11 @@ type Controller struct {
 }
 
 const (
-	syncTimeout = 60 * time.Minute
+	syncTimeout           = 60 * time.Minute
+	lastModifyCheckPeriod = 5 * time.Second
 )
 
-func NewController(name string, factory types.BackendFactory, frontend types.Frontend, isUpgrade bool) *Controller {
+func NewController(name string, factory types.BackendFactory, frontend types.Frontend, isUpgrade bool, disableRevCounter bool, salvageRequested bool) *Controller {
 	c := &Controller{
 		factory:       factory,
 		Name:          name,
@@ -64,7 +67,9 @@ func NewController(name string, factory types.BackendFactory, frontend types.Fro
 		backupList:      map[string]string{},
 		backupListMutex: &sync.RWMutex{},
 
-		isUpgrade: isUpgrade,
+		isUpgrade:               isUpgrade,
+		revisionCounterDisabled: disableRevCounter,
+		salvageRequested:        salvageRequested,
 	}
 	c.reset()
 	c.metricsStart()
@@ -462,9 +467,123 @@ func (c *Controller) StartFrontend(frontend string) error {
 	return c.startFrontend()
 }
 
-func (c *Controller) Start(addresses ...string) error {
+// Check if all replica revision counter setting match with engine
+// controller, and mark unmatch replica to ERR.
+func (c *Controller) checkReplicaRevCounterSettingMatch() error {
+	for _, r := range c.replicas {
+		if r.Mode == "ERR" {
+			continue
+		}
+		revCounterDisabled, err := c.backend.backends[r.Address].backend.IsRevisionCounterDisabled()
+		if err != nil {
+			return err
+		}
+
+		if c.revisionCounterDisabled != revCounterDisabled {
+			logrus.Errorf("Revision Counter Disabled setting mismatch at engine %v, replica %v: %v, mark this replica as ERR.", c.revisionCounterDisabled, r.Address, revCounterDisabled)
+			c.setReplicaModeNoLock(r.Address, types.ERR)
+		}
+	}
+
+	return nil
+}
+
+// salvageRevisionCounterDisabledReplicas will find best replica
+// for salvage recovering, based on lastModifyTime and HeadFileSize.
+func (c *Controller) salvageRevisionCounterDisabledReplicas() error {
+	replicaCandidates := make(map[types.Replica]types.ReplicaSalvageInfo)
+	var lastModifyTime int64
+	for _, r := range c.replicas {
+		if r.Mode == "ERR" {
+			continue
+		}
+		repLastModifyTime, err := c.backend.backends[r.Address].backend.GetLastModifyTime()
+		if err != nil {
+			return err
+		}
+
+		repHeadFileSize, err := c.backend.backends[r.Address].backend.GetLastModifyTime()
+		if err != nil {
+			return err
+		}
+
+		replicaCandidates[r] = types.ReplicaSalvageInfo{
+			LastModifyTime: repLastModifyTime,
+			HeadFileSize:   repHeadFileSize,
+		}
+		if lastModifyTime == 0 ||
+			repLastModifyTime > lastModifyTime {
+			lastModifyTime = repLastModifyTime
+		}
+	}
+
+	if len(replicaCandidates) == 0 {
+		return fmt.Errorf("Can not find any replica for salvage")
+	}
+	var bestCandidate types.Replica
+	lastTime := time.Unix(0, lastModifyTime)
+	var largestSize int64
+	for r, salvageReplica := range replicaCandidates {
+		t := time.Unix(0, salvageReplica.LastModifyTime)
+		// Any replica within 5 seconds before lastModifyTime
+		// can be good replica.
+		if t.Add(lastModifyCheckPeriod).After(lastTime) {
+			if salvageReplica.HeadFileSize >= largestSize {
+				bestCandidate = r
+			}
+		}
+	}
+
+	if bestCandidate == (types.Replica{}) {
+		return fmt.Errorf("BUG: Should find one candidate for salvage")
+	}
+
+	// Only leave bestCandidate replica as good, mark others as ERR.
+	for _, r := range c.replicas {
+		if r.Address != bestCandidate.Address {
+			logrus.Infof("salvageRequested set and mark %v as ERR", r.Address)
+			c.setReplicaModeNoLock(r.Address, types.ERR)
+		} else {
+			logrus.Infof("salvageRequested set and mark %v as RW", r.Address)
+			c.setReplicaModeNoLock(r.Address, types.RW)
+		}
+	}
+	return nil
+}
+
+// checkReplicasRevisionCounter will check if any replica has unmatched
+// revision counter, and mark unmatched replica as 'ERR' state.
+func (c *Controller) checkReplicasRevisionCounter() error {
 	var expectedRevision int64
 
+	revisionCounters := make(map[string]int64)
+	for _, r := range c.replicas {
+		// The related backend is nil if the mode is ERR
+		if r.Mode == types.ERR {
+			continue
+		}
+		counter, err := c.backend.GetRevisionCounter(r.Address)
+		if err != nil {
+			return err
+		}
+		if counter > expectedRevision {
+			expectedRevision = counter
+		}
+		revisionCounters[r.Address] = counter
+	}
+
+	for address, counter := range revisionCounters {
+		if counter != expectedRevision {
+			logrus.Errorf("Revision conflict detected! Expect %v, got %v in replica %v. Mark as ERR",
+				expectedRevision, counter, address)
+			c.setReplicaModeNoLock(address, types.ERR)
+		}
+	}
+
+	return nil
+}
+
+func (c *Controller) Start(addresses ...string) error {
 	c.Lock()
 	defer c.Unlock()
 
@@ -539,27 +658,21 @@ func (c *Controller) Start(addresses ...string) error {
 	// For more details, see the following url:
 	// https://github.com/longhorn/longhorn/issues/1235
 	if !c.isUpgrade {
-		revisionCounters := make(map[string]int64)
-		for _, r := range c.replicas {
-			// The related backend is nil if the mode is ERR
-			if r.Mode == types.ERR {
-				continue
-			}
-			counter, err := c.backend.GetRevisionCounter(r.Address)
-			if err != nil {
-				return err
-			}
-			if counter > expectedRevision {
-				expectedRevision = counter
-			}
-			revisionCounters[r.Address] = counter
+		if err := c.checkReplicaRevCounterSettingMatch(); err != nil {
+			return err
 		}
 
-		for address, counter := range revisionCounters {
-			if counter != expectedRevision {
-				logrus.Errorf("Revision conflict detected! Expect %v, got %v in replica %v. Mark as ERR",
-					expectedRevision, counter, address)
-				c.setReplicaModeNoLock(address, types.ERR)
+		if c.revisionCounterDisabled {
+			if c.salvageRequested {
+				if err := c.salvageRevisionCounterDisabledReplicas(); err != nil {
+					return err
+				}
+			}
+		} else {
+			// For revision counter enabled case, no matter salvageRequested
+			// alway check the revision counter.
+			if err := c.checkReplicasRevisionCounter(); err != nil {
+				return err
 			}
 		}
 	}
