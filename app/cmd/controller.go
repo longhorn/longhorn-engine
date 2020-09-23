@@ -40,6 +40,16 @@ func ControllerCmd() cli.Command {
 			cli.BoolFlag{
 				Name: "upgrade",
 			},
+			cli.BoolFlag{
+				Name:   "disableRevCounter",
+				Hidden: false,
+				Usage:  "To disable revision counter checking",
+			},
+			cli.BoolFlag{
+				Name:   "salvageRequested",
+				Hidden: false,
+				Usage:  "Start engine controller in a special mode only to get best replica candidate for salvage",
+			},
 		},
 		Action: func(c *cli.Context) {
 			if err := startController(c); err != nil {
@@ -64,6 +74,8 @@ func startController(c *cli.Context) error {
 	replicas := c.StringSlice("replica")
 	frontendName := c.String("frontend")
 	isUpgrade := c.Bool("upgrade")
+	disableRevCounter := c.Bool("disableRevCounter")
+	salvageRequested := c.Bool("salvageRequested")
 
 	factories := map[string]types.BackendFactory{}
 	for _, backend := range backends {
@@ -86,7 +98,7 @@ func startController(c *cli.Context) error {
 		frontend = f
 	}
 
-	control := controller.NewController(name, dynamic.New(factories), frontend, isUpgrade)
+	control := controller.NewController(name, dynamic.New(factories), frontend, isUpgrade, disableRevCounter, salvageRequested)
 
 	// need to wait for Shutdown() completion
 	control.ShutdownWG.Add(1)
