@@ -74,7 +74,16 @@ func (rs *ReplicaServer) getReplica() (replica *ptypes.Replica) {
 		chain, _ := r.DisplayChain()
 		replica.Chain = chain
 		replica.RemainSnapshots = int32(r.GetRemainSnapshotCounts())
-		replica.RevisionCounter = r.GetRevisionCounter()
+		if !r.IsRevCounterDisabled() {
+			replica.RevisionCounter = r.GetRevisionCounter()
+			replica.RevisionCounterDisabled = false
+		} else {
+			replica.RevisionCounterDisabled = true
+		}
+
+		modifyTime, headFileSize := r.GetReplicaStat()
+		replica.LastModifyTime = modifyTime
+		replica.HeadFileSize = headFileSize
 	}
 	return replica
 }

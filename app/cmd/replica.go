@@ -54,6 +54,11 @@ func ReplicaCmd() cli.Command {
 				Name:  "sync-agent-port-count",
 				Value: 10,
 			},
+			cli.BoolFlag{
+				Name:   "disableRevCounter",
+				Hidden: false,
+				Usage:  "To disable revision counter for every write",
+			},
 		},
 		Action: func(c *cli.Context) {
 			if err := startReplica(c); err != nil {
@@ -74,7 +79,9 @@ func startReplica(c *cli.Context) error {
 		return err
 	}
 
-	s := replica.NewServer(dir, backingFile, 512)
+	disableRevCounter := c.Bool("disableRevCounter")
+
+	s := replica.NewServer(dir, backingFile, 512, disableRevCounter)
 
 	address := c.String("listen")
 

@@ -90,6 +90,10 @@ func (r *Replica) initRevisionCounter() error {
 	return nil
 }
 
+func (r *Replica) IsRevCounterDisabled() bool {
+	return r.revisionCounterDisabled
+}
+
 func (r *Replica) GetRevisionCounter() int64 {
 	r.revisionLock.Lock()
 	defer r.revisionLock.Unlock()

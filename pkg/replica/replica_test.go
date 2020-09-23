@@ -52,7 +52,7 @@ func (s *TestSuite) TestCreate(c *C) {
 	c.Assert(err, IsNil)
 	defer os.RemoveAll(dir)
 
-	r, err := New(9, 3, dir, nil)
+	r, err := New(9, 3, dir, nil, false)
 	c.Assert(err, IsNil)
 	defer r.Close()
 }
@@ -68,7 +68,7 @@ func (s *TestSuite) TestSnapshot(c *C) {
 	c.Assert(err, IsNil)
 	defer os.RemoveAll(dir)
 
-	r, err := New(9, 3, dir, nil)
+	r, err := New(9, 3, dir, nil, false)
 	c.Assert(err, IsNil)
 	defer r.Close()
 
@@ -153,7 +153,7 @@ func (s *TestSuite) TestRevert(c *C) {
 	c.Assert(err, IsNil)
 	defer os.RemoveAll(dir)
 
-	r, err := New(9, 3, dir, nil)
+	r, err := New(9, 3, dir, nil, false)
 	c.Assert(err, IsNil)
 	defer r.Close()
 
@@ -265,7 +265,7 @@ func (s *TestSuite) TestRemoveLeafNode(c *C) {
 	c.Assert(err, IsNil)
 	defer os.RemoveAll(dir)
 
-	r, err := New(9, 3, dir, nil)
+	r, err := New(9, 3, dir, nil, false)
 	c.Assert(err, IsNil)
 	defer r.Close()
 
@@ -340,7 +340,7 @@ func (s *TestSuite) TestRemoveLast(c *C) {
 	c.Assert(err, IsNil)
 	defer os.RemoveAll(dir)
 
-	r, err := New(9, 3, dir, nil)
+	r, err := New(9, 3, dir, nil, false)
 	c.Assert(err, IsNil)
 	defer r.Close()
 
@@ -386,7 +386,7 @@ func (s *TestSuite) TestRemoveMiddle(c *C) {
 	c.Assert(err, IsNil)
 	defer os.RemoveAll(dir)
 
-	r, err := New(9, 3, dir, nil)
+	r, err := New(9, 3, dir, nil, false)
 	c.Assert(err, IsNil)
 	defer r.Close()
 
@@ -432,7 +432,7 @@ func (s *TestSuite) TestRemoveFirst(c *C) {
 	c.Assert(err, IsNil)
 	defer os.RemoveAll(dir)
 
-	r, err := New(9, 3, dir, nil)
+	r, err := New(9, 3, dir, nil, false)
 	c.Assert(err, IsNil)
 	defer r.Close()
 
@@ -463,7 +463,7 @@ func (s *TestSuite) TestRemoveOutOfChain(c *C) {
 	c.Assert(err, IsNil)
 	defer os.RemoveAll(dir)
 
-	r, err := New(9, 3, dir, nil)
+	r, err := New(9, 3, dir, nil, false)
 	c.Assert(err, IsNil)
 	defer r.Close()
 
@@ -539,7 +539,7 @@ func (s *TestSuite) TestPrepareRemove(c *C) {
 	c.Assert(err, IsNil)
 	defer os.RemoveAll(dir)
 
-	r, err := New(9, 3, dir, nil)
+	r, err := New(9, 3, dir, nil, false)
 	c.Assert(err, IsNil)
 	defer r.Close()
 
@@ -679,7 +679,7 @@ func (s *TestSuite) TestRead(c *C) {
 	c.Assert(err, IsNil)
 	defer os.RemoveAll(dir)
 
-	r, err := New(9*b, b, dir, nil)
+	r, err := New(9*b, b, dir, nil, false)
 	c.Assert(err, IsNil)
 	defer r.Close()
 
@@ -694,7 +694,7 @@ func (s *TestSuite) TestWrite(c *C) {
 	c.Assert(err, IsNil)
 	defer os.RemoveAll(dir)
 
-	r, err := New(9*b, b, dir, nil)
+	r, err := New(9*b, b, dir, nil, false)
 	c.Assert(err, IsNil)
 	defer r.Close()
 
@@ -716,7 +716,7 @@ func (s *TestSuite) TestSnapshotReadWrite(c *C) {
 	c.Assert(err, IsNil)
 	defer os.RemoveAll(dir)
 
-	r, err := New(3*b, b, dir, nil)
+	r, err := New(3*b, b, dir, nil, false)
 	c.Assert(err, IsNil)
 	defer r.Close()
 
@@ -776,7 +776,7 @@ func (s *TestSuite) TestBackingFile(c *C) {
 		Disk: f,
 	}
 
-	r, err := New(3*b, b, dir, backing)
+	r, err := New(3*b, b, dir, backing, false)
 	c.Assert(err, IsNil)
 	defer r.Close()
 
@@ -809,7 +809,7 @@ func (s *TestSuite) partialWriteRead(c *C, totalLength, writeLength, writeOffset
 	buf := make([]byte, totalLength)
 	fill(buf, 3)
 
-	r, err := New(totalLength, b, dir, nil)
+	r, err := New(totalLength, b, dir, nil, false)
 	c.Assert(err, IsNil)
 	defer r.Close()
 
@@ -857,7 +857,7 @@ func (s *TestSuite) testPartialRead(c *C, totalLength int64, readBuf []byte, off
 	buf := make([]byte, totalLength)
 	fill(buf, 3)
 
-	r, err := New(totalLength, b, dir, nil)
+	r, err := New(totalLength, b, dir, nil, false)
 	c.Assert(err, IsNil)
 	defer r.Close()
 
@@ -928,7 +928,7 @@ func (s *TestSuite) TestForceRemoveDiffDisk(c *C) {
 	c.Assert(err, IsNil)
 	defer os.RemoveAll(dir)
 
-	r, err := New(9, 3, dir, nil)
+	r, err := New(9, 3, dir, nil, false)
 	c.Assert(err, IsNil)
 	defer r.Close()
 
