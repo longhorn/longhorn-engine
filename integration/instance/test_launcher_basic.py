@@ -9,6 +9,8 @@ from common.core import (
     wait_for_process_deletion,
     check_dev_existence, wait_for_dev_deletion,
     upgrade_engine,
+    get_process_address,
+    cleanup_process,
 )
 
 from common.constants import (
@@ -16,11 +18,17 @@ from common.constants import (
     PROC_STATE_RUNNING, PROC_STATE_STOPPING, PROC_STATE_STOPPED,
     PROC_STATE_ERROR,
     VOLUME_NAME_BASE, ENGINE_NAME_BASE, REPLICA_NAME_BASE,
+    REPLICA_NAME, REPLICA_2_NAME, SIZE_STR,
+    INSTANCE_MANAGER_REPLICA,
 )
 
 from common.cli import (  # NOQA
     em_client, pm_client,  # NOQA
 )
+
+from rpc.controller.controller_client import ControllerClient
+from rpc.replica.replica_client import ReplicaClient
+from rpc.instance_manager.process_manager_client import ProcessManagerClient
 
 
 def test_start_stop_replicas(pm_client):  # NOQA
@@ -310,3 +318,78 @@ def test_engine_upgrade(pm_client, em_client):  # NOQA
     delete_process(em_client, engine_name)
     wait_for_process_deletion(em_client, engine_name)
     wait_for_dev_deletion(volume_name)
+
+
+def test_engine_replica_revision_counter_mismatch(em_client): # NOQA
+    """
+    Test engine replica revision counter mismatch
+
+    Case 1: engine has revision counter enabled.
+        1. Start two replica processes, one is revision counter enabled,
+        one is revision counter disabled.
+        2. Start engine with revision counter enabled.
+        3. The mismtached replica should be marked as 'ERR' state.
+
+    Case 2: engine has revision counter disabled.
+        1. Start two replica processes, one is revision counter enabled,
+        one is revision counter disabled.
+        2. Start engine with revision counter disabled.
+        3. The mismtached replica should be marked as 'ERR' state.
+    """
+
+    # revision counter enabled case
+    engine_replica_mismatch(em_client, False)
+
+    # revision counter disabled case
+    engine_replica_mismatch(em_client, True)
+
+
+def engine_replica_mismatch(em_client, engine_rev_counter_disabled): # NOQA
+    rm_client = ProcessManagerClient(INSTANCE_MANAGER_REPLICA)
+    replica_dir1 = tempfile.mkdtemp()
+    replica_dir2 = tempfile.mkdtemp()
+
+    replica_process1 = create_replica_process(
+                        rm_client, REPLICA_NAME,
+                        replica_dir=replica_dir1,
+                        disable_revision_counter=engine_rev_counter_disabled)
+    grpc_replica_client1 = ReplicaClient(
+        get_process_address(replica_process1))
+    grpc_replica_client1.replica_create(size=SIZE_STR)
+    replica_process2 = create_replica_process(
+                    rm_client, REPLICA_2_NAME,
+                    replica_dir=replica_dir2,
+                    disable_revision_counter=not engine_rev_counter_disabled)
+    grpc_replica_client2 = ReplicaClient(
+        get_process_address(replica_process2))
+    grpc_replica_client2.replica_create(size=SIZE_STR)
+
+    engine_process = create_engine_process(
+                        em_client,
+                        disable_revision_counter=engine_rev_counter_disabled)
+    grpc_controller_client = ControllerClient(
+        get_process_address(engine_process))
+    r1_url = grpc_replica_client1.url
+    r2_url = grpc_replica_client2.url
+    v = grpc_controller_client.volume_start(replicas=[
+        r1_url, r2_url,
+    ])
+    assert v.replicaCount == 2
+
+    # Check if replica1 is mode `ERR`
+    rs = grpc_controller_client.replica_list()
+    assert len(rs) == 2
+    r1_verified = False
+    r2_verified = False
+    for r in rs:
+        if r.address == r1_url:
+            assert r.mode == 'RW'
+            r1_verified = True
+        if r.address == r2_url:
+            assert r.mode == 'ERR'
+            r2_verified = True
+    assert r1_verified
+    assert r2_verified
+
+    cleanup_process(em_client)
+    cleanup_process(rm_client)
