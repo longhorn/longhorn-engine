@@ -89,11 +89,14 @@ def wait_for_process_error(client, name):
 def create_replica_process(client, name, replica_dir="",
                            args=[], binary=LONGHORN_BINARY,
                            size=SIZE, port_count=15,
-                           port_args=["--listen,localhost:"]):
+                           port_args=["--listen,localhost:"],
+                           disable_revision_counter=False):
     if not replica_dir:
         replica_dir = tempfile.mkdtemp()
     if not args:
         args = ["replica", replica_dir, "--size", str(size)]
+    if disable_revision_counter == True:
+        args += ["--disableRevCounter"]
     client.process_create(
         name=name, binary=binary, args=args,
         port_count=port_count, port_args=port_args)
@@ -107,10 +110,13 @@ def create_engine_process(client, name=ENGINE_NAME,
                           binary=LONGHORN_BINARY,
                           listen="", listen_ip="localhost",
                           size=SIZE, frontend=FRONTEND_TGT_BLOCKDEV,
-                          replicas=[], backends=["file"]):
+                          replicas=[], backends=["file"],
+                          disable_revision_counter=False):
     args = ["controller", volume_name]
     if frontend != "":
         args += ["--frontend", frontend]
+    if disable_revision_counter == True:
+        args += ["--disableRevCounter"]
     for r in replicas:
         args += ["--replica", r]
     for b in backends:
