@@ -9,6 +9,7 @@ from common.core import (  # NOQA
     wait_for_process_running,
     open_replica, cleanup_replica,
     upgrade_engine, get_process_address,
+    get_controller_version_detail,
 )
 from common.constants import (
     ENGINE_NAME, VOLUME_NAME,
@@ -50,6 +51,7 @@ def test_upgrade(grpc_engine_manager,  # NOQA
 
     grpc_controller.client_upgrade(get_process_address(upgrade_e))
     wait_for_process_running(grpc_engine_manager, ENGINE_NAME)
+    get_controller_version_detail(grpc_controller)
 
     info = grpc_controller.volume_get()
     assert info.endpoint == path.join(LONGHORN_DEV_DIR, VOLUME_NAME)
@@ -83,6 +85,7 @@ def test_upgrade(grpc_engine_manager,  # NOQA
 
     grpc_controller.client_upgrade(get_process_address(e))
     wait_for_process_running(grpc_engine_manager, ENGINE_NAME)
+    get_controller_version_detail(grpc_controller)
 
     info = grpc_controller.volume_get()
     assert info.endpoint == path.join(LONGHORN_DEV_DIR, VOLUME_NAME)

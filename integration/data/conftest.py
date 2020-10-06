@@ -26,6 +26,7 @@ from common.core import create_engine_process
 from common.core import cleanup_replica_dir
 from common.core import get_process_address
 from common.core import get_dev
+from common.core import get_controller_version_detail
 
 
 from rpc.instance_manager.process_manager_client import ProcessManagerClient
@@ -40,7 +41,9 @@ def grpc_engine_manager(request, engine_manager_client):
 
 @pytest.fixture
 def grpc_controller(request, grpc_controller_client):
-    return grpc_controller_client(ENGINE_NAME, VOLUME_NAME)
+    grpc_controller_client = grpc_controller_client(ENGINE_NAME, VOLUME_NAME)
+    get_controller_version_detail(grpc_controller_client)
+    return grpc_controller_client
 
 
 @pytest.fixture

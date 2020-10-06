@@ -11,6 +11,7 @@ from common.core import (
     upgrade_engine,
     get_process_address,
     cleanup_process,
+    get_replica_client_with_delay,
 )
 
 from common.constants import (
@@ -353,15 +354,15 @@ def engine_replica_mismatch(em_client, engine_rev_counter_disabled): # NOQA
                         rm_client, REPLICA_NAME,
                         replica_dir=replica_dir1,
                         disable_revision_counter=engine_rev_counter_disabled)
-    grpc_replica_client1 = ReplicaClient(
-        get_process_address(replica_process1))
+    grpc_replica_client1 = get_replica_client_with_delay(ReplicaClient(
+        get_process_address(replica_process1)))
     grpc_replica_client1.replica_create(size=SIZE_STR)
     replica_process2 = create_replica_process(
                     rm_client, REPLICA_2_NAME,
                     replica_dir=replica_dir2,
                     disable_revision_counter=not engine_rev_counter_disabled)
-    grpc_replica_client2 = ReplicaClient(
-        get_process_address(replica_process2))
+    grpc_replica_client2 = get_replica_client_with_delay(ReplicaClient(
+        get_process_address(replica_process2)))
     grpc_replica_client2.replica_create(size=SIZE_STR)
 
     engine_process = create_engine_process(

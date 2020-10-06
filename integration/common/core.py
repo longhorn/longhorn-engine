@@ -150,8 +150,37 @@ def cleanup_controller(grpc_client):
     return grpc_client
 
 
+# TODO: https://github.com/longhorn/longhorn/issues/1857
+# For some cases, we can not use get_replica to add the retry,
+# Because the grpc_client.replica_get() will error out.
+def get_replica_client_with_delay(grpc_client):
+    time.sleep(3)
+    return grpc_client
+
+
+# TODO: https://github.com/longhorn/longhorn/issues/1857
+def get_replica(grpc_client):
+    retry_cnt = 3
+    while retry_cnt != 0:
+        try:
+            r = grpc_client.replica_get()
+        except grpc.RpcError as grpc_err:
+            if "Socket closed" not in grpc_err.details():
+                raise(grpc_err)
+            print("wait for sometime, and try again")
+            time.sleep(1)
+            retry_cnt -= 1
+        else:
+            break
+    if retry_cnt == 0:
+        print("Failed to run grpc_client with e", grpc_err)
+        raise(grpc_err)
+
+    return r
+
+
 def cleanup_replica(grpc_client):
-    r = grpc_client.replica_get()
+    r = get_replica(grpc_client)
     if r.state == 'initial':
         return grpc_client
     if r.state == 'closed':
@@ -160,6 +189,26 @@ def cleanup_replica(grpc_client):
     r = grpc_client.replica_reload()
     assert r.state == 'initial'
     return grpc_client
+
+
+# TODO: https://github.com/longhorn/longhorn/issues/1857
+def get_controller_version_detail(grpc_controller_client):
+    retry_cnt = 3
+    while retry_cnt != 0:
+        try:
+            c = grpc_controller_client.version_detail_get()
+        except grpc.RpcError as grpc_err:
+            if "Socket closed" not in grpc_err.details():
+                raise(grpc_err)
+            print("wait for sometime, and try again")
+            time.sleep(1)
+            retry_cnt -= 1
+        else:
+            break
+
+    if retry_cnt == 0:
+        print("Failed to run grpc_client with e", grpc_err)
+        raise(grpc_err)
 
 
 def random_str():
