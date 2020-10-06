@@ -5,6 +5,7 @@ from common.core import cleanup_replica
 from common.core import create_engine_process
 from common.core import create_replica_process
 from common.core import get_process_address
+from common.core import get_controller_version_detail
 
 from common.constants import (
     REPLICA_NAME, REPLICA_2_NAME,
@@ -34,7 +35,10 @@ def engine_manager_client(request, address=INSTANCE_MANAGER_ENGINE):
 @pytest.fixture
 def grpc_controller_client(request, engine_manager_client):
     e = create_engine_process(engine_manager_client)
-    return ControllerClient(get_process_address(e))
+    grpc_controller_client = ControllerClient(get_process_address(e))
+    get_controller_version_detail(grpc_controller_client)
+
+    return grpc_controller_client
 
 
 @pytest.fixture

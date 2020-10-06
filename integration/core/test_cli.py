@@ -26,6 +26,8 @@ from common.core import (  # NOQA
     wait_for_process_error,
     restore_with_frontend,
     reset_volume,
+    get_replica_client_with_delay,
+    get_controller_version_detail,
 )
 
 import common.cmd as cmd
@@ -1107,6 +1109,7 @@ def test_expand_multiple_times():
         engine_process = create_engine_process(em_client)
         grpc_controller_client = ControllerClient(
             get_process_address(engine_process))
+        get_controller_version_detail(grpc_controller_client)
         rm_client = ProcessManagerClient(INSTANCE_MANAGER_REPLICA)
         replica_process = create_replica_process(rm_client, REPLICA_NAME)
         grpc_replica_client = ReplicaClient(
@@ -1154,6 +1157,7 @@ def test_single_replica_failure_during_engine_start(bin):  # NOQA
     engine_process = create_engine_process(em_client)
     grpc_controller_client = ControllerClient(
         get_process_address(engine_process))
+    get_controller_version_detail(grpc_controller_client)
 
     rm_client = ProcessManagerClient(INSTANCE_MANAGER_REPLICA)
     replica_dir1 = tempfile.mkdtemp()
@@ -1208,18 +1212,19 @@ def test_single_replica_failure_during_engine_start(bin):  # NOQA
     #   3. Create one engine process and start the engine with replicas.
     replica_process1 = create_replica_process(rm_client, REPLICA_NAME,
                                               replica_dir=replica_dir1)
-    grpc_replica_client1 = ReplicaClient(
-        get_process_address(replica_process1))
+    grpc_replica_client1 = get_replica_client_with_delay(ReplicaClient(
+        get_process_address(replica_process1)))
     grpc_replica_client1.replica_create(size=SIZE_STR)
     replica_process2 = create_replica_process(rm_client, REPLICA_2_NAME,
                                               replica_dir=replica_dir2)
-    grpc_replica_client2 = ReplicaClient(
-        get_process_address(replica_process2))
+    grpc_replica_client2 = get_replica_client_with_delay(ReplicaClient(
+        get_process_address(replica_process2)))
     grpc_replica_client2.replica_create(size=SIZE_STR)
 
     engine_process = create_engine_process(em_client)
     grpc_controller_client = ControllerClient(
         get_process_address(engine_process))
+    get_controller_version_detail(grpc_controller_client)
     r1_url = grpc_replica_client1.url
     r2_url = grpc_replica_client2.url
     v = grpc_controller_client.volume_start(replicas=[
@@ -1297,6 +1302,7 @@ def test_engine_restart_after_sigkill(bin):  # NOQA
     engine_process = create_engine_process(em_client)
     grpc_controller_client = ControllerClient(
         get_process_address(engine_process))
+    get_controller_version_detail(grpc_controller_client)
 
     rm_client = ProcessManagerClient(INSTANCE_MANAGER_REPLICA)
     replica_dir1 = tempfile.mkdtemp()
@@ -1348,18 +1354,19 @@ def test_engine_restart_after_sigkill(bin):  # NOQA
     #   3. Create one engine process and start the engine with replicas.
     replica_process1 = create_replica_process(rm_client, REPLICA_NAME,
                                               replica_dir=replica_dir1)
-    grpc_replica_client1 = ReplicaClient(
-        get_process_address(replica_process1))
+    grpc_replica_client1 = get_replica_client_with_delay(ReplicaClient(
+        get_process_address(replica_process1)))
     grpc_replica_client1.replica_create(size=SIZE_STR)
     replica_process2 = create_replica_process(rm_client, REPLICA_2_NAME,
                                               replica_dir=replica_dir2)
-    grpc_replica_client2 = ReplicaClient(
-        get_process_address(replica_process2))
+    grpc_replica_client2 = get_replica_client_with_delay(ReplicaClient(
+        get_process_address(replica_process2)))
     grpc_replica_client2.replica_create(size=SIZE_STR)
 
     engine_process = create_engine_process(em_client)
     grpc_controller_client = ControllerClient(
         get_process_address(engine_process))
+    get_controller_version_detail(grpc_controller_client)
     r1_url = grpc_replica_client1.url
     r2_url = grpc_replica_client2.url
     v = grpc_controller_client.volume_start(replicas=[

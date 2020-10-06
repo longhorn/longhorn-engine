@@ -78,6 +78,9 @@ class ControllerClient(object):
     def volume_frontend_shutdown(self):
         return self.stub.VolumeFrontendShutdown(empty_pb2.Empty())
 
+    def version_detail_get(self):
+        return self.stub.VersionDetailGet(empty_pb2.Empty())
+
 
 class ControllerReplicaInfo(object):
     def __init__(self, cr):
