@@ -1,6 +1,6 @@
 ---
 kind: pipeline
-name: default
+name: default-amd64
 
 platform:
   os: linux
@@ -14,7 +14,7 @@ steps:
 
 - name: build
   pull: default
-  image: rancher/dapper:1.10.3
+  image: rancher/dapper:v0.5.3
   commands:
   - dapper ci
   privileged: true
@@ -25,12 +25,14 @@ steps:
 - name: publish-master-image
   image: plugins/docker
   settings:
+    build_args:
+    - ARCH=amd64
     custom_dns: 1.1.1.1
     dockerfile: package/Dockerfile
     password:
       from_secret: docker_password
     repo: longhornio/longhorn-engine
-    tag: master
+    tag: "master-amd64"
     username:
       from_secret: docker_username
   when:
@@ -42,12 +44,14 @@ steps:
 - name: publish-tagged-image
   image: plugins/docker
   settings:
+    build_args:
+    - ARCH=amd64
     custom_dns: 1.1.1.1
     dockerfile: package/Dockerfile
     password:
       from_secret: docker_password
     repo: longhornio/longhorn-engine
-    tag: "${DRONE_TAG}"
+    tag: "${DRONE_TAG}-amd64"
     username:
       from_secret: docker_username
   when:
@@ -77,3 +81,141 @@ volumes:
 - name: socket
   host:
     path: /var/run/docker.sock
+
+---
+kind: pipeline
+name: default-arm64
+
+platform:
+  os: linux
+  arch: arm64
+
+steps:
+- name: fetch
+  image: arm64v8/alpine
+  commands:
+  - apk add git
+  - git fetch --tags
+
+- name: build
+  pull: default
+  image: rancher/dapper:v0.5.3
+  commands:
+  - dapper ci
+  privileged: true
+  volumes:
+  - name: socket
+    path: /var/run/docker.sock
+
+- name: publish-master-image
+  image: plugins/docker
+  settings:
+    build_args:
+    - ARCH=arm64
+    custom_dns: 1.1.1.1
+    dockerfile: package/Dockerfile
+    password:
+      from_secret: docker_password
+    repo: longhornio/longhorn-engine
+    tag: "master-arm64"
+    username:
+      from_secret: docker_username
+  when:
+    branch:
+    - master
+    event:
+    - push
+
+- name: publish-tagged-image
+  image: plugins/docker
+  settings:
+    build_args:
+    - ARCH=arm64
+    custom_dns: 1.1.1.1
+    dockerfile: package/Dockerfile
+    password:
+      from_secret: docker_password
+    repo: longhornio/longhorn-engine
+    tag: "${DRONE_TAG}-arm64"
+    username:
+      from_secret: docker_username
+  when:
+    branch:
+    - master
+    event:
+    - tag
+
+- name: slack_notify
+  image: plugins/slack
+  settings:
+    template: "Build {{build.link}} failed.\n"
+    username: Drone_Publish
+    webhook:
+      from_secret: slack_webhook
+  when:
+    event:
+      exclude:
+      - pull_request
+    instance:
+      include:
+      - drone-publish.longhorn.io
+    status:
+      - failure
+
+volumes:
+- name: socket
+  host:
+    path: /var/run/docker.sock
+
+---
+kind: pipeline
+name: manifest
+
+platform:
+  os: linux
+  arch: amd64
+
+steps:
+- name: manifest-master
+  image: plugins/manifest:1
+  settings:
+    username:
+      from_secret: docker_username
+    password:
+      from_secret: docker_password
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    target: "longhornio/longhorn-engine:master"
+    template: "longhornio/longhorn-engine:master-ARCH"
+  when:
+    instance:
+    - drone-publish.longhorn.io
+    branch:
+    - master
+    event:
+    - push
+
+- name: manifest-tag
+  image: plugins/manifest:1
+  settings:
+    username:
+      from_secret: docker_username
+    password:
+      from_secret: docker_password
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    target: "longhornio/longhorn-engine:${DRONE_TAG}"
+    template: "longhornio/longhorn-engine:${DRONE_TAG}-ARCH"
+  when:
+    instance:
+    - drone-publish.longhorn.io
+    branch:
+    - master
+    event:
+    - tag
+
+depends_on:
+- default-amd64
+- default-arm64
