@@ -8,8 +8,10 @@ platform:
 
 steps:
 - name: fetch
-  image: alpine/git
+  image: ubuntu:18.04
   commands:
+  - apt-get update
+  - apt-get install -y git
   - git fetch --tags
 
 - name: build
@@ -92,9 +94,10 @@ platform:
 
 steps:
 - name: fetch
-  image: arm64v8/alpine
+  image: ubuntu:18.04
   commands:
-  - apk add git
+  - apt-get update
+  - apt-get install -y git
   - git fetch --tags
 
 - name: build
