@@ -94,7 +94,7 @@ func NewDirectFileIoProcessorByFP(fp *os.File) *DirectFileIoProcessor {
 }
 
 // ReadAt read into unaligned data buffer via direct I/O
-// Use AllocateAligned to avoid extra data fuffer copy
+// Use AllocateAligned to avoid extra data buffer copy
 func (file *DirectFileIoProcessor) ReadAt(data []byte, offset int64) (int, error) {
 	if alignmentShift(data) == 0 {
 		return file.File.ReadAt(data, offset)
@@ -106,7 +106,7 @@ func (file *DirectFileIoProcessor) ReadAt(data []byte, offset int64) (int, error
 }
 
 // WriteAt write from unaligned data buffer via direct I/O
-// Use AllocateAligned to avoid extra data fuffer copy
+// Use AllocateAligned to avoid extra data buffer copy
 func (file *DirectFileIoProcessor) WriteAt(data []byte, offset int64) (int, error) {
 	if alignmentShift(data) == 0 {
 		return file.File.WriteAt(data, offset)

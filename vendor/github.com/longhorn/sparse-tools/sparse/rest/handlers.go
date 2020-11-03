@@ -158,6 +158,7 @@ func (server *SyncServer) doGetChecksum(writer http.ResponseWriter, request *htt
 
 	writer.Header().Set("Content-Type", "application/json")
 	fmt.Fprint(writer, string(outgoingJSON))
+	server.syncFileOps.UpdateSyncFileProgress(remoteDataInterval.Len())
 
 	return nil
 }
@@ -187,7 +188,6 @@ func (server *SyncServer) doWriteData(request *http.Request) error {
 	if err != nil {
 		return fmt.Errorf("WriteDataInterval to file error: %s", err)
 	}
-	server.syncFileOps.UpdateSyncFileProgress(remoteDataInterval.Len())
 
 	return nil
 }
