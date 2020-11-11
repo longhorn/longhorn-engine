@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"os"
 	"strconv"
+	"sync"
 	"time"
 
 	log "github.com/sirupsen/logrus"
@@ -241,45 +242,53 @@ func (client *syncClient) syncDataInterval(file FileIoProcessor, dataInterval In
 		/*
 			sync the batch data interval:
 
-			1. ask server for checksum
-			2. if server send back non-zero length checksum, then calculate local checksum and compare
-			3. if server checksum sent back is zero length or comparison results differences, send data
+			1. Launch 2 goroutines to ask server for checksum and calculate local checksum simultaneously.
+			2. Wait for checksum calculation complete then compare the checksums.
+			3. Send data if the checksums are different.
 		*/
-		body, err := client.getServerChecksum(batchInterval)
-		if err != nil {
-			log.Errorf("getServerChecksum batchInterval:%s failed, err: %s", batchInterval, err)
-			return err
-		}
-		var serverCheckSum []byte
-		if err := json.Unmarshal(body, &serverCheckSum); err != nil {
-			log.Errorf("json.Unmarshal serverCheckSum failed, err: %s", err)
-			return err
+		var dataBuffer, serverCheckSum, localCheckSum []byte
+		var serverCksumErr, cliCksumErr error
+		wg := sync.WaitGroup{}
+		wg.Add(2)
+		go func() {
+			defer wg.Done()
+			var body []byte
+			if body, serverCksumErr = client.getServerChecksum(batchInterval); serverCksumErr != nil {
+				log.Errorf("getServerChecksum batchInterval:%s failed, err: %s", batchInterval, serverCksumErr)
+				return
+			}
+			if serverCksumErr = json.Unmarshal(body, &serverCheckSum); serverCksumErr != nil {
+				log.Errorf("json.Unmarshal serverCheckSum failed, err: %s", serverCksumErr)
+				return
+			}
+		}()
+		go func() {
+			defer wg.Done()
+			// read data for checksum and sending
+			if dataBuffer, cliCksumErr = ReadDataInterval(file, batchInterval); cliCksumErr != nil {
+				log.Errorf("ReadDataInterval for batchInterval: %s failed, err: %s", batchInterval, cliCksumErr)
+				return
+			}
+			// calculate local checksum for the data batch interval
+			if localCheckSum, cliCksumErr = HashData(dataBuffer); cliCksumErr != nil {
+				log.Errorf("HashData locally: %s failed, err: %s", batchInterval, cliCksumErr)
+				return
+			}
+		}()
+		wg.Wait()
+		if serverCksumErr != nil || cliCksumErr != nil {
+			return fmt.Errorf("failed to get checksums for client and server, server checksum error: %v, client checksum error: %v", serverCksumErr, cliCksumErr)
 		}
 
 		serverNeedData := true
-
-		// read data either for checksum, sending, or both
-		dataBuffer, err := ReadDataInterval(file, batchInterval)
-		if err != nil {
-			log.Errorf("ReadDataInterval for batchInterval: %s failed, err: %s", batchInterval, err)
-			return err
-		}
 		if len(serverCheckSum) != 0 {
-			// calculate local checksum for the data batch interval
-			localCheckSum, err := HashData(dataBuffer)
-			if err != nil {
-				log.Errorf("HashData locally: %s failed, err: %s", batchInterval, err)
-				return err
-			}
-
 			// compare server checksum with localCheckSum
 			serverNeedData = !bytes.Equal(serverCheckSum, localCheckSum)
 		}
 		if serverNeedData {
 			// send data buffer
 			log.Debugf("sending dataBuffer size: %d", len(dataBuffer))
-			err = client.writeData(batchInterval, dataBuffer)
-			if err != nil {
+			if err := client.writeData(batchInterval, dataBuffer); err != nil {
 				log.Errorf("writeData for batchInterval: %s failed, err: %s", batchInterval, err)
 				return err
 			}
