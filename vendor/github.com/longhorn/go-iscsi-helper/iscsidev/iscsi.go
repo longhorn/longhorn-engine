@@ -109,9 +109,8 @@ func (dev *Device) StartInitator() error {
 	}
 
 	// Setup initiator
-	err = nil
 	for i := 0; i < RetryCounts; i++ {
-		err = iscsi.DiscoverTarget(localIP, dev.Target, ne)
+		err := iscsi.DiscoverTarget(localIP, dev.Target, ne)
 		if iscsi.IsTargetDiscovered(localIP, dev.Target, ne) {
 			break
 		}
@@ -156,21 +155,19 @@ func LogoutTarget(target string) error {
 	if err != nil {
 		return err
 	}
-	ip, err := util.GetIPToHost()
-	if err != nil {
-		return err
-	}
 
 	if err := iscsi.CheckForInitiatorExistence(ne); err != nil {
 		return err
 	}
-	if iscsi.IsTargetLoggedIn(ip, target, ne) {
+	if iscsi.IsTargetLoggedIn("", target, ne) {
 		var err error
 		loggingOut := false
 
-		logrus.Infof("Shutdown SCSI device for %v:%v", ip, target)
+		logrus.Infof("Shutdown SCSI device for target %v", target)
 		for i := 0; i < RetryCounts; i++ {
-			err = iscsi.LogoutTarget(ip, target, ne)
+			// New IP may be different from the IP in the previous record.
+			// https://github.com/longhorn/longhorn/issues/1920
+			err = iscsi.LogoutTarget("", target, ne)
 			// Ignore Not Found error
 			if err == nil || strings.Contains(err.Error(), "exit status 21") {
 				err = nil
@@ -188,7 +185,7 @@ func LogoutTarget(target string) error {
 		if loggingOut {
 			logrus.Infof("Logout SCSI device timeout, waiting for logout complete")
 			for i := 0; i < RetryCounts; i++ {
-				if !iscsi.IsTargetLoggedIn(ip, target, ne) {
+				if !iscsi.IsTargetLoggedIn("", target, ne) {
 					err = nil
 					break
 				}
@@ -210,12 +207,12 @@ func LogoutTarget(target string) error {
 		 * 21"(no record found) as valid result
 		 */
 		for i := 0; i < RetryCounts; i++ {
-			if !iscsi.IsTargetDiscovered(ip, target, ne) {
+			if !iscsi.IsTargetDiscovered("", target, ne) {
 				err = nil
 				break
 			}
 
-			err = iscsi.DeleteDiscoveredTarget(ip, target, ne)
+			err = iscsi.DeleteDiscoveredTarget("", target, ne)
 			// Ignore Not Found error
 			if err == nil || strings.Contains(err.Error(), "exit status 21") {
 				err = nil
