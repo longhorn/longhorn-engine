@@ -2,6 +2,8 @@ module github.com/longhorn/longhorn-engine
 
 go 1.13
 
+replace github.com/longhorn/backupstore => github.com/phanle1010/backupstore v0.0.0-20201114013313-e96afb41d4a9
+
 require (
 	github.com/c9s/goprocinfo v0.0.0-20190309065803-0b2ad9ac246b // indirect
 	github.com/docker/go-units v0.3.3
