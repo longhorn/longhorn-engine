@@ -25,7 +25,7 @@ const (
 func (s *Service) New() (*s3.S3, error) {
 	// get custom endpoint
 	endpoints := os.Getenv("AWS_ENDPOINTS")
-	config := &aws.Config{Region: &s.Region}
+	config := &aws.Config{Region: &s.Region, MaxRetries: aws.Int(3)}
 
 	virtualHostedStyleEnabled := os.Getenv(VirtualHostedStyle)
 	if virtualHostedStyleEnabled == "true" {
