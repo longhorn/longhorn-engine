@@ -30,7 +30,7 @@ fi
 cp /usr/src/tgt/pkg/tgt_*.deb ./bin/
 cp /usr/local/bin/longhorn-instance-manager ./bin/
 
-docker build --build-arg ARCH=${ARCH} -t ${IMAGE} -f package/Dockerfile .
+docker build --build-arg ARCH=${ARCH} --no-cache -t ${IMAGE} -f package/Dockerfile .
 
 echo Built ${IMAGE}
 
