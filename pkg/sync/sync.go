@@ -124,21 +124,26 @@ func (t *Task) PurgeSnapshots(skip bool) error {
 		return err
 	}
 
+	taskErr := NewTaskError()
 	for _, r := range replicas {
 		if ok, err := t.isRebuilding(r); err != nil {
-			return err
+			taskErr.Append(NewReplicaError(r.Address, err))
 		} else if ok {
-			return fmt.Errorf("cannot purge snapshots because %s is rebuilding", r.Address)
+			taskErr.Append(NewReplicaError(r.Address, fmt.Errorf("cannot purge snapshots because %s is rebuilding", r.Address)))
 		}
 
 		if ok, err := t.isPurging(r); err != nil {
-			return err
+			taskErr.Append(NewReplicaError(r.Address, err))
 		} else if ok {
 			if skip {
 				return nil
 			}
-			return fmt.Errorf("cannot purge snapshots because %s is already purging snapshots", r.Address)
+			taskErr.Append(NewReplicaError(r.Address, fmt.Errorf("cannot purge snapshots because %s is already purging snapshots", r.Address)))
 		}
+	}
+
+	if taskErr.HasError() {
+		return taskErr
 	}
 
 	errorMap := sync.Map{}
@@ -163,16 +168,20 @@ func (t *Task) PurgeSnapshots(skip bool) error {
 	}
 
 	wg.Wait()
+
 	for _, r := range replicas {
 		if v, ok := errorMap.Load(r.Address); ok {
 			err = v.(error)
 			if skip && types.IsAlreadyPurgingError(err) {
 				continue
 			}
-			logrus.Errorf("replica %v failed to start snapshot purge: %v", r.Address, err)
+			taskErr.Append(NewReplicaError(r.Address, err))
 		}
 	}
 
+	if taskErr.HasError() {
+		return taskErr
+	}
 	return nil
 }
 
