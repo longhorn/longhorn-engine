@@ -19,6 +19,9 @@ type VolumeInfo struct {
 	Messages map[MessageType]string
 
 	Backups map[string]*BackupInfo `json:",omitempty"`
+
+	BackingImageName string
+	BackingImageURL  string
 }
 
 type BackupInfo struct {
@@ -31,9 +34,11 @@ type BackupInfo struct {
 	Labels          map[string]string
 	IsIncremental   bool
 
-	VolumeName    string `json:",omitempty"`
-	VolumeSize    int64  `json:",string,omitempty"`
-	VolumeCreated string `json:",omitempty"`
+	VolumeName             string `json:",omitempty"`
+	VolumeSize             int64  `json:",string,omitempty"`
+	VolumeCreated          string `json:",omitempty"`
+	VolumeBackingImageName string `json:",omitempty"`
+	VolumeBackingImageURL  string `json:",omitempty"`
 
 	Messages map[MessageType]string
 }
@@ -114,14 +119,16 @@ func List(volumeName, destURL string, volumeOnly bool) (map[string]*VolumeInfo, 
 
 func fillVolumeInfo(volume *Volume) *VolumeInfo {
 	return &VolumeInfo{
-		Name:           volume.Name,
-		Size:           volume.Size,
-		Created:        volume.CreatedTime,
-		LastBackupName: volume.LastBackupName,
-		LastBackupAt:   volume.LastBackupAt,
-		DataStored:     int64(volume.BlockCount * DEFAULT_BLOCK_SIZE),
-		Messages:       make(map[MessageType]string),
-		Backups:        make(map[string]*BackupInfo),
+		Name:             volume.Name,
+		Size:             volume.Size,
+		Created:          volume.CreatedTime,
+		LastBackupName:   volume.LastBackupName,
+		LastBackupAt:     volume.LastBackupAt,
+		DataStored:       int64(volume.BlockCount * DEFAULT_BLOCK_SIZE),
+		Messages:         make(map[MessageType]string),
+		Backups:          make(map[string]*BackupInfo),
+		BackingImageName: volume.BackingImageName,
+		BackingImageURL:  volume.BackingImageURL,
 	}
 }
 
@@ -153,6 +160,8 @@ func fillFullBackupInfo(backup *Backup, volume *Volume, destURL string) *BackupI
 	info.VolumeName = volume.Name
 	info.VolumeSize = volume.Size
 	info.VolumeCreated = volume.CreatedTime
+	info.VolumeBackingImageName = volume.BackingImageName
+	info.VolumeBackingImageURL = volume.BackingImageURL
 	return info
 }
 
