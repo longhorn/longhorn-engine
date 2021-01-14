@@ -42,6 +42,14 @@ func BackupCreateCmd() cli.Command {
 				Name:  "dest",
 				Usage: "destination of backup if driver supports, would be url like s3://bucket@region/path/ or vfs:///path/",
 			},
+			cli.StringFlag{
+				Name:  "backing-image-name",
+				Usage: "specify backing image name of the volume for backup",
+			},
+			cli.StringFlag{
+				Name:  "backing-image-url",
+				Usage: "specify backing image URL of the volume for backup",
+			},
 			cli.StringSliceFlag{
 				Name:  "label",
 				Usage: "specify labels for backup, in the format of `--label key1=value1 --label key2=value2`",
@@ -255,6 +263,9 @@ func createBackup(c *cli.Context) error {
 		return fmt.Errorf("Missing required parameter snapshot")
 	}
 
+	biName := c.String("backing-image-name")
+	biURL := c.String("backing-image-url")
+
 	labels := c.StringSlice("label")
 	if labels != nil {
 		// Only validate it here, the real parse is done at backend
@@ -268,7 +279,7 @@ func createBackup(c *cli.Context) error {
 		return err
 	}
 
-	backup, err := task.CreateBackup(snapshot, dest, labels, credential)
+	backup, err := task.CreateBackup(snapshot, dest, biName, biURL, labels, credential)
 	if err != nil {
 		return err
 	}
