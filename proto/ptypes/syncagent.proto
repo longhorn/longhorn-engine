@@ -59,6 +59,8 @@ message BackupCreateRequest {
   string volume_name = 3;
   repeated string labels = 4;
   map<string, string> credential = 5;
+  string backing_image_name = 6;
+  string backing_image_url = 7;
 }
 
 message BackupCreateResponse {
