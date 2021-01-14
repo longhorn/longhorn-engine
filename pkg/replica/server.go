@@ -44,13 +44,6 @@ func (s *Server) getSectorSize() int64 {
 	return s.defaultSectorSize
 }
 
-func (s *Server) getSize(size int64) int64 {
-	if s.backing != nil && s.backing.Size > 0 {
-		return s.backing.Size
-	}
-	return size
-}
-
 func (s *Server) Create(size int64) error {
 	s.Lock()
 	defer s.Unlock()
@@ -60,7 +53,6 @@ func (s *Server) Create(size int64) error {
 		return nil
 	}
 
-	size = s.getSize(size)
 	sectorSize := s.getSectorSize()
 
 	logrus.Infof("Creating volume %s, size %d/%d", s.dir, size, sectorSize)
@@ -81,11 +73,10 @@ func (s *Server) Open() error {
 	}
 
 	_, info := s.Status()
-	size := s.getSize(info.Size)
 	sectorSize := s.getSectorSize()
 
-	logrus.Infof("Opening volume %s, size %d/%d", s.dir, size, sectorSize)
-	r, err := New(size, sectorSize, s.dir, s.backing, s.revisionCounterDisabled)
+	logrus.Infof("Opening volume %s, size %d/%d", s.dir, info.Size, sectorSize)
+	r, err := New(info.Size, sectorSize, s.dir, s.backing, s.revisionCounterDisabled)
 	if err != nil {
 		return err
 	}
