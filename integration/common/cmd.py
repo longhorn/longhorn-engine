@@ -87,9 +87,15 @@ def backup_status(url, backupID):
     return output
 
 
-def backup_create(url, snapshot, dest, labels=None):
+def backup_create(url, snapshot, dest, labels=None, bi_name="", bi_url=""):
     cmd = [_bin(), '--url', url, '--debug',
            'backup', 'create', snapshot, '--dest', dest]
+    if bi_name != "":
+        cmd.append('--backing-image-name')
+        cmd.append(bi_name)
+    if bi_url != "":
+        cmd.append('--backing-image-url')
+        cmd.append(bi_url)
 
     if labels is not None:
         for key in labels:
