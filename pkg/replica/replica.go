@@ -1099,7 +1099,7 @@ func (r *Replica) ListDisks() map[string]DiskInfo {
 			Size:        diskSize,
 			Labels:      disk.Labels,
 		}
-		// Avoid inconsisent entry
+		// Avoid inconsistent entry
 		if disk.Labels == nil {
 			diskInfo.Labels = map[string]string{}
 		}
