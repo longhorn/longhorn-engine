@@ -11,6 +11,7 @@ import (
 
 	"github.com/longhorn/backupstore"
 
+	"github.com/longhorn/longhorn-engine/pkg/backing"
 	"github.com/longhorn/longhorn-engine/pkg/replica"
 	"github.com/longhorn/longhorn-engine/pkg/util"
 )
@@ -97,7 +98,7 @@ func DoBackupCreate(volumeName, snapshotName, destURL, backingImageName, backing
 			return "", nil, err
 		}
 
-		backingFile, err = openBackingFile(backingFileName)
+		backingFile, err = backing.OpenBackingFile(backingFileName)
 		if err != nil {
 			return "", nil, err
 		}

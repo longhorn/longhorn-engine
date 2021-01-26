@@ -16,6 +16,7 @@ import (
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 
+	"github.com/longhorn/longhorn-engine/pkg/backing"
 	"github.com/longhorn/longhorn-engine/pkg/replica"
 	replicarpc "github.com/longhorn/longhorn-engine/pkg/replica/rpc"
 	"github.com/longhorn/longhorn-engine/pkg/util"
@@ -74,7 +75,7 @@ func startReplica(c *cli.Context) error {
 	}
 
 	dir := c.Args()[0]
-	backingFile, err := openBackingFile(c.String("backing-file"))
+	backingFile, err := backing.OpenBackingFile(c.String("backing-file"))
 	if err != nil {
 		return err
 	}
