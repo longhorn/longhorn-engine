@@ -1,8 +1,6 @@
-// +build qcow
-
 package qcow
 
-// #cgo LDFLAGS: -lqcow -lz
+// #cgo LDFLAGS: -lqcow -lz -pthread
 // #include <zlib.h>
 // #include <stdlib.h>
 // #include <libqcow.h>
