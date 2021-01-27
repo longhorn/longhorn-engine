@@ -4,12 +4,12 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 
 	"github.com/aws/aws-sdk-go/aws"
 	"github.com/aws/aws-sdk-go/aws/awserr"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"os"
 )
 
 type Service struct {
@@ -79,12 +79,21 @@ func (s *Service) ListObjects(key, delimiter string) ([]*s3.Object, []*s3.Common
 		Prefix:    aws.String(key),
 		Delimiter: aws.String(delimiter),
 	}
-	resp, err := svc.ListObjects(params)
+
+	var (
+		objects       []*s3.Object
+		commonPrefixs []*s3.CommonPrefix
+	)
+	err = svc.ListObjectsPages(params, func(page *s3.ListObjectsOutput, lastPage bool) bool {
+		objects = append(objects, page.Contents...)
+		commonPrefixs = append(commonPrefixs, page.CommonPrefixes...)
+		return !lastPage
+	})
 	if err != nil {
-		return nil, nil, fmt.Errorf("failed to list objects with param: %+v response: %v error: %v",
-			params, resp.String(), parseAwsError(err))
+		return nil, nil, fmt.Errorf("failed to list objects with param: %+v error: %v",
+			params, parseAwsError(err))
 	}
-	return resp.Contents, resp.CommonPrefixes, nil
+	return objects, commonPrefixs, nil
 }
 
 func (s *Service) HeadObject(key string) (*s3.HeadObjectOutput, error) {
