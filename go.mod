@@ -11,7 +11,7 @@ require (
 	github.com/gorilla/handlers v1.4.2
 	github.com/gorilla/mux v1.7.3
 	github.com/gorilla/websocket v1.4.0 // indirect
-	github.com/longhorn/backupstore v0.0.0-20201203004625-fdbdd88b09d6
+	github.com/longhorn/backupstore v0.0.0-20210129022100-0d3b318cbc8c
 	github.com/longhorn/go-iscsi-helper v0.0.0-20201111045018-ee87992ec536
 	github.com/longhorn/sparse-tools v0.0.0-20201111045115-7a3bbbb6f408
 	github.com/mattn/go-colorable v0.1.4 // indirect
