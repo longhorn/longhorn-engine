@@ -96,11 +96,11 @@ def test_snapshot_rm_basic(grpc_controller,  # NOQA
 
 
 def test_snapshot_revert_with_backing_file(grpc_backing_controller,  # NOQA
-                                           grpc_backing_replica1,  # NOQA
-                                           grpc_backing_replica2):  # NOQA
+                                           grpc_backing_qcow2_replica1,  # NOQA
+                                           grpc_backing_qcow2_replica2):  # NOQA
     address = grpc_backing_controller.address
 
-    dev = get_dev(grpc_backing_replica1, grpc_backing_replica2,
+    dev = get_dev(grpc_backing_qcow2_replica1, grpc_backing_qcow2_replica2,
                   grpc_backing_controller)
 
     offset = 0
@@ -359,8 +359,8 @@ def test_expansion_without_backing_file(grpc_controller,  # NOQA
 
 
 def test_expansion_with_backing_file(grpc_backing_controller,  # NOQA
-                                     grpc_backing_replica1, grpc_backing_replica2):  # NOQA
-    dev = get_dev(grpc_backing_replica1, grpc_backing_replica2,
+                                     grpc_backing_qcow2_replica1, grpc_backing_qcow2_replica2):  # NOQA
+    dev = get_dev(grpc_backing_qcow2_replica1, grpc_backing_qcow2_replica2,
                   grpc_backing_controller)
     volume_expansion_with_snapshots_test(dev, grpc_backing_controller,
                                          VOLUME_BACKING_NAME,

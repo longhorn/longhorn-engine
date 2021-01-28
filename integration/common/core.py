@@ -21,7 +21,7 @@ from common.constants import (
     LONGHORN_BINARY, LONGHORN_UPGRADE_BINARY, LONGHORN_DEV_DIR,
     VOLUME_NAME, VOLUME_BACKING_NAME,
     SIZE, PAGE_SIZE, SIZE_STR,
-    BACKUP_DIR, BACKING_FILE,
+    BACKUP_DIR, BACKING_FILE_RAW,
     FRONTEND_TGT_BLOCKDEV,
     RETRY_COUNTS, RETRY_INTERVAL, RETRY_COUNTS2,
     RETRY_COUNTS_SHORT, RETRY_INTERVAL_SHORT,
@@ -539,7 +539,7 @@ def prepare_backup_dir(backup_dir):
 
 
 def read_from_backing_file(offset, length):
-    p = _file(BACKING_FILE)
+    p = _file(BACKING_FILE_RAW)
     return read_file(p, offset, length)
 
 
