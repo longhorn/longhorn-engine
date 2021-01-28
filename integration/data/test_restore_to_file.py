@@ -14,7 +14,7 @@ from common.util import (
     file, checksum_data,
 )
 from common.constants import (
-    SIZE, BACKING_FILE_QCOW,
+    SIZE, BACKING_FILE_QCOW2,
     ENGINE_NAME, ENGINE_BACKING_NAME,
 )
 
@@ -42,7 +42,7 @@ def read_qcow2_file_without_backing_file(file, offset, length):
 def check_backing(offset=0, length=4*1024):
     backing_data_raw = read_from_backing_file(offset, length)
     backing_data_qcow2 = read_qcow2_file_without_backing_file(
-        file(BACKING_FILE_QCOW), offset, length)
+        file(BACKING_FILE_QCOW2), offset, length)
     assert backing_data_raw == backing_data_qcow2.decode('utf-8')
 
 
@@ -85,7 +85,7 @@ def restore_to_file_with_backing_file_test(backup_target,  # NOQA
     assert volume_data != ""
     assert volume_data == backing_data
 
-    cmd.restore_to_file(address, backup, file(BACKING_FILE_QCOW),
+    cmd.restore_to_file(address, backup, file(BACKING_FILE_QCOW2),
                         output_raw_path, IMAGE_FORMAT_RAW)
     output0_raw = read_file(output_raw_path, offset0, length0)
     output0_checksum = checksum_data(
@@ -95,7 +95,7 @@ def restore_to_file_with_backing_file_test(backup_target,  # NOQA
     os.remove(output_raw_path)
     assert not os.path.exists(output_raw_path)
 
-    cmd.restore_to_file(address, backup, file(BACKING_FILE_QCOW),
+    cmd.restore_to_file(address, backup, file(BACKING_FILE_QCOW2),
                         output_qcow2_path, IMAGE_FORMAT_QCOW2)
     output0_qcow2 = read_qcow2_file_without_backing_file(
         output_qcow2_path, offset0, length0)
@@ -121,7 +121,7 @@ def restore_to_file_with_backing_file_test(backup_target,  # NOQA
         offset1, length0 - offset1)
     dev_checksum = checksum_dev(backing_dev)
 
-    cmd.restore_to_file(address, backup, file(BACKING_FILE_QCOW),
+    cmd.restore_to_file(address, backup, file(BACKING_FILE_QCOW2),
                         output_raw_path, IMAGE_FORMAT_RAW)
     output1_raw_snap1 = read_file(
         output_raw_path, offset0, length1)
@@ -136,7 +136,7 @@ def restore_to_file_with_backing_file_test(backup_target,  # NOQA
     os.remove(output_raw_path)
     assert not os.path.exists(output_raw_path)
 
-    cmd.restore_to_file(address, backup, file(BACKING_FILE_QCOW),
+    cmd.restore_to_file(address, backup, file(BACKING_FILE_QCOW2),
                         output_qcow2_path, IMAGE_FORMAT_QCOW2)
     output1_qcow2_snap1 = read_qcow2_file_without_backing_file(
         output_qcow2_path, offset0, length1)
@@ -174,7 +174,7 @@ def restore_to_file_with_backing_file_test(backup_target,  # NOQA
         offset1, length0 - offset1)
     dev_checksum = checksum_dev(backing_dev)
 
-    cmd.restore_to_file(address, backup, file(BACKING_FILE_QCOW),
+    cmd.restore_to_file(address, backup, file(BACKING_FILE_QCOW2),
                         output_raw_path, IMAGE_FORMAT_RAW)
     output2_raw_snap2 = read_file(
         output_raw_path, offset0, length2)
@@ -194,7 +194,7 @@ def restore_to_file_with_backing_file_test(backup_target,  # NOQA
     os.remove(output_raw_path)
     assert not os.path.exists(output_raw_path)
 
-    cmd.restore_to_file(address, backup, file(BACKING_FILE_QCOW),
+    cmd.restore_to_file(address, backup, file(BACKING_FILE_QCOW2),
                         output_qcow2_path, IMAGE_FORMAT_QCOW2)
     output2_qcow2_snap2 = read_qcow2_file_without_backing_file(
         output_qcow2_path, offset0, length2)
@@ -306,17 +306,17 @@ def restore_to_file_without_backing_file_test(backup_target,  # NOQA
 
 def test_restore_to_file_with_backing_file(backup_targets,  # NOQA
                                            grpc_backing_controller,  # NOQA
-                                           grpc_backing_replica1,  # NOQA
-                                           grpc_backing_replica2):  # NOQA
+                                           grpc_backing_qcow2_replica1,  # NOQA
+                                           grpc_backing_qcow2_replica2):  # NOQA
     for backup_target in backup_targets:
         restore_to_file_with_backing_file_test(backup_target,
                                                grpc_backing_controller,
-                                               grpc_backing_replica1,
-                                               grpc_backing_replica2,)
+                                               grpc_backing_qcow2_replica1,
+                                               grpc_backing_qcow2_replica2,)
         cmd.sync_agent_server_reset(grpc_backing_controller.address)
         cleanup_controller(grpc_backing_controller)
-        cleanup_replica(grpc_backing_replica1)
-        cleanup_replica(grpc_backing_replica2)
+        cleanup_replica(grpc_backing_qcow2_replica1)
+        cleanup_replica(grpc_backing_qcow2_replica2)
 
 
 def test_restore_to_file_without_backing_file(backup_targets,  # NOQA

@@ -59,10 +59,12 @@ FIXED_REPLICA_PATH2 = '/tmp/replica_fixed_dir_2/'
 
 BACKUP_DIR = '/data/backupbucket'
 
-BACKING_FILE = 'backing_file.raw'
-BACKING_FILE_QCOW = 'backing_file.qcow2'
-BACKING_FILE_PATH1 = '/tmp/replica_backing_dir_1/' + BACKING_FILE_QCOW
-BACKING_FILE_PATH2 = '/tmp/replica_backing_dir_2/' + BACKING_FILE_QCOW
+BACKING_FILE_RAW = 'backing_file.raw'
+BACKING_FILE_RAW_PATH1 = '/tmp/replica_backing_dir_1/' + BACKING_FILE_RAW
+BACKING_FILE_RAW_PATH2 = '/tmp/replica_backing_dir_2/' + BACKING_FILE_RAW
+BACKING_FILE_QCOW2 = 'backing_file.qcow2'
+BACKING_FILE_QCOW2_PATH1 = '/tmp/replica_backing_dir_1/' + BACKING_FILE_QCOW2
+BACKING_FILE_QCOW2_PATH2 = '/tmp/replica_backing_dir_2/' + BACKING_FILE_QCOW2
 
 VFS_DIR = "/data/backupbucket/"
 

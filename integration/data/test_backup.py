@@ -449,30 +449,52 @@ def test_snapshot_tree_backup(grpc_replica1, grpc_replica2,  # NOQA
         cleanup_replica(grpc_replica2)
 
 
-def test_backup_with_backing_file(grpc_backing_replica1, grpc_backing_replica2,  # NOQA
-                                  grpc_backing_controller, backup_targets):  # NOQA
+def test_backup_with_backing_file_qcow2(grpc_backing_qcow2_replica1, grpc_backing_qcow2_replica2, grpc_backing_controller, backup_targets):  # NOQA
     for backup_target in backup_targets:
         backup_with_backing_file_test(backup_target,
                                       grpc_backing_controller,
-                                      grpc_backing_replica1,
-                                      grpc_backing_replica2)
+                                      grpc_backing_qcow2_replica1,
+                                      grpc_backing_qcow2_replica2)
         cmd.sync_agent_server_reset(grpc_backing_controller.address)
         cleanup_controller(grpc_backing_controller)
-        cleanup_replica(grpc_backing_replica1)
-        cleanup_replica(grpc_backing_replica2)
+        cleanup_replica(grpc_backing_qcow2_replica1)
+        cleanup_replica(grpc_backing_qcow2_replica2)
 
 
-def test_backup_hole_with_backing_file(grpc_backing_replica1, grpc_backing_replica2,  # NOQA
-                                       grpc_backing_controller, backup_targets):  # NOQA
+def test_backup_with_backing_file_raw(grpc_backing_raw_replica1, grpc_backing_raw_replica2, grpc_backing_controller, backup_targets):  # NOQA
+    for backup_target in backup_targets:
+        backup_with_backing_file_test(backup_target,
+                                      grpc_backing_controller,
+                                      grpc_backing_raw_replica1,
+                                      grpc_backing_raw_replica2)
+        cmd.sync_agent_server_reset(grpc_backing_controller.address)
+        cleanup_controller(grpc_backing_controller)
+        cleanup_replica(grpc_backing_raw_replica1)
+        cleanup_replica(grpc_backing_raw_replica2)
+
+
+def test_backup_hole_with_backing_file_qcow2(grpc_backing_qcow2_replica1, grpc_backing_qcow2_replica2, grpc_backing_controller, backup_targets):  # NOQA
     for backup_target in backup_targets:
         backup_hole_with_backing_file_test(backup_target,
                                            grpc_backing_controller,
-                                           grpc_backing_replica1,
-                                           grpc_backing_replica2)
+                                           grpc_backing_qcow2_replica1,
+                                           grpc_backing_qcow2_replica2)
         cmd.sync_agent_server_reset(grpc_backing_controller.address)
         cleanup_controller(grpc_backing_controller)
-        cleanup_replica(grpc_backing_replica1)
-        cleanup_replica(grpc_backing_replica2)
+        cleanup_replica(grpc_backing_qcow2_replica1)
+        cleanup_replica(grpc_backing_qcow2_replica2)
+
+
+def test_backup_hole_with_backing_file_raw(grpc_backing_raw_replica1, grpc_backing_raw_replica2, grpc_backing_controller, backup_targets):  # NOQA
+    for backup_target in backup_targets:
+        backup_hole_with_backing_file_test(backup_target,
+                                           grpc_backing_controller,
+                                           grpc_backing_raw_replica1,
+                                           grpc_backing_raw_replica2)
+        cmd.sync_agent_server_reset(grpc_backing_controller.address)
+        cleanup_controller(grpc_backing_controller)
+        cleanup_replica(grpc_backing_raw_replica1)
+        cleanup_replica(grpc_backing_raw_replica2)
 
 
 def check_backup_volume_block_count(address, volume, backup_target, expected):

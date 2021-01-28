@@ -16,8 +16,9 @@ from common.constants import SIZE
 from common.constants import FRONTEND_TGT_BLOCKDEV
 from common.constants import FIXED_REPLICA_PATH1
 from common.constants import FIXED_REPLICA_PATH2
-from common.constants import BACKING_FILE_PATH1
-from common.constants import BACKING_FILE_PATH2
+from common.constants import \
+    BACKING_FILE_QCOW2_PATH1, BACKING_FILE_QCOW2_PATH2,\
+    BACKING_FILE_RAW_PATH1, BACKING_FILE_RAW_PATH2
 
 from common.core import cleanup_replica
 from common.core import cleanup_process
@@ -109,20 +110,38 @@ def grpc_replica2(request, grpc_replica_client):
 
 
 @pytest.fixture
-def grpc_backing_replica1(request, grpc_replica_client):
+def grpc_backing_qcow2_replica1(request, grpc_replica_client):
     return grpc_replica_client(
-        REPLICA_NAME + "-backing-1",
+        REPLICA_NAME + "-backing-qcow2-1",
         args=["replica", tempfile.mkdtemp(),
-              "--backing-file", BACKING_FILE_PATH1,
+              "--backing-file", BACKING_FILE_QCOW2_PATH1,
               "--size", str(SIZE)])
 
 
 @pytest.fixture
-def grpc_backing_replica2(request, grpc_replica_client):
+def grpc_backing_qcow2_replica2(request, grpc_replica_client):
     return grpc_replica_client(
-        REPLICA_NAME + "-backing-2",
+        REPLICA_NAME + "-backing-qcow2-2",
         args=["replica", tempfile.mkdtemp(),
-              "--backing-file", BACKING_FILE_PATH2,
+              "--backing-file", BACKING_FILE_QCOW2_PATH2,
+              "--size", str(SIZE)])
+
+
+@pytest.fixture
+def grpc_backing_raw_replica1(request, grpc_replica_client):
+    return grpc_replica_client(
+        REPLICA_NAME + "-backing-raw-1",
+        args=["replica", tempfile.mkdtemp(),
+              "--backing-file", BACKING_FILE_RAW_PATH1,
+              "--size", str(SIZE)])
+
+
+@pytest.fixture
+def grpc_backing_raw_replica2(request, grpc_replica_client):
+    return grpc_replica_client(
+        REPLICA_NAME + "-backing-raw-2",
+        args=["replica", tempfile.mkdtemp(),
+              "--backing-file", BACKING_FILE_RAW_PATH2,
               "--size", str(SIZE)])
 
 

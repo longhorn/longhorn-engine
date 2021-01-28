@@ -317,9 +317,19 @@ def test_snapshot_tree_rebuild(grpc_controller,  # NOQA
                          offset, length, snap, snap_data)
 
 
-def test_ha_single_backing_replica_rebuild(grpc_backing_controller,  # NOQA
-                                           grpc_backing_replica1,  # NOQA
-                                           grpc_backing_replica2):  # NOQA
+def test_ha_single_backing_qcow2_replica_rebuild(grpc_backing_controller, grpc_backing_qcow2_replica1, grpc_backing_qcow2_replica2):  # NOQA
+    ha_single_backing_replica_rebuild_test(grpc_backing_controller,
+                                           grpc_backing_qcow2_replica1,
+                                           grpc_backing_qcow2_replica2)
+
+
+def test_ha_single_backing_raw_replica_rebuild(grpc_backing_controller, grpc_backing_raw_replica1, grpc_backing_raw_replica2):  # NOQA
+    ha_single_backing_replica_rebuild_test(grpc_backing_controller,
+                                           grpc_backing_raw_replica1,
+                                           grpc_backing_raw_replica2)
+
+
+def ha_single_backing_replica_rebuild_test(grpc_backing_controller, grpc_backing_replica1, grpc_backing_replica2):  # NOQA
     address = grpc_backing_controller.address
 
     prepare_backup_dir(BACKUP_DIR)

@@ -83,12 +83,14 @@ zQZtrR0mmtur3DnEm2bi4NKHAQHpW9Mu16GQjE1NbXqQtTB88jK76ctH934Cal6V
 -----END CERTIFICATE-----"
 
 # replica with 4MB backing file
-backing_file='backing_file.raw'
+backing_raw='backing_file.raw'
 backing_qcow2='backing_file.qcow2'
-cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w $((1024 * 4096)) | head -n 1 > $backing_file
-truncate -s 4M $backing_file
+cat /dev/urandom | tr -dc 'a-zA-Z0-9' | fold -w $((1024 * 4096)) | head -n 1 > $backing_raw
+truncate -s 4M $backing_raw
 
-qemu-img convert -f raw -O qcow2 $backing_file $backing_qcow2
+cp $backing_raw $backing_dir1
+cp $backing_raw $backing_dir2
+qemu-img convert -f raw -O qcow2 $backing_raw $backing_qcow2
 cp $backing_qcow2 $backing_dir1
 cp $backing_qcow2 $backing_dir2
 
