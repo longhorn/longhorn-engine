@@ -101,7 +101,7 @@ func OpenBackingFile(file string) (*replica.BackingFile, error) {
 	}
 
 	return &replica.BackingFile{
-		Name:       file,
+		Path:       file,
 		Disk:       f,
 		Size:       size,
 		SectorSize: defaultSectorSize,

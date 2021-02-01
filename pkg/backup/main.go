@@ -92,13 +92,13 @@ func DoBackupCreate(volumeName, snapshotName, destURL, backingImageName, backing
 	if err != nil {
 		return "", nil, err
 	}
-	if volumeInfo.BackingFileName != "" {
-		backingFileName := volumeInfo.BackingFileName
-		if _, err := os.Stat(backingFileName); err != nil {
+	if volumeInfo.BackingFilePath != "" {
+		backingFilePath := volumeInfo.BackingFilePath
+		if _, err := os.Stat(backingFilePath); err != nil {
 			return "", nil, err
 		}
 
-		backingFile, err = backing.OpenBackingFile(backingFileName)
+		backingFile, err = backing.OpenBackingFile(backingFilePath)
 		if err != nil {
 			return "", nil, err
 		}
