@@ -772,7 +772,7 @@ func (s *TestSuite) TestBackingFile(c *C) {
 	c.Assert(err, IsNil)
 
 	backing := &BackingFile{
-		Name: "backing",
+		Path: "backing",
 		Disk: f,
 	}
 

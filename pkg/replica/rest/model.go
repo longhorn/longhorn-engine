@@ -58,7 +58,7 @@ func NewReplica(context *api.ApiContext, state replica.State, info replica.Info,
 	r.Parent = info.Parent
 	r.SectorSize = info.SectorSize
 	r.Size = strconv.FormatInt(info.Size, 10)
-	r.BackingFile = info.BackingFileName
+	r.BackingFile = info.BackingFilePath
 
 	if rep != nil {
 		r.Chain, _ = rep.DisplayChain()

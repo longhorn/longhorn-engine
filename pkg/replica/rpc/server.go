@@ -65,7 +65,7 @@ func (rs *ReplicaServer) getReplica() (replica *ptypes.Replica) {
 		Parent:      info.Parent,
 		Size:        strconv.FormatInt(info.Size, 10),
 		SectorSize:  info.SectorSize,
-		BackingFile: info.BackingFileName,
+		BackingFile: info.BackingFilePath,
 		State:       string(state),
 		Disks:       rs.listReplicaDisks(),
 	}
