@@ -155,16 +155,19 @@ func construct(readonly bool, size, sectorSize int64, dir, head string, backingF
 	}
 	r.info.Size = size
 	r.info.SectorSize = sectorSize
-	r.info.BackingFile = backingFile
-	if backingFile != nil {
-		r.info.BackingFilePath = backingFile.Path
-	}
 	r.volume.sectorSize = defaultSectorSize
 
 	// Scan all the disks to build the disk map
 	exists, err := r.readMetadata()
 	if err != nil {
 		return nil, err
+	}
+
+	// The backing file path can be changed, need to update it after loading
+	// the meta data.
+	r.info.BackingFile = backingFile
+	if backingFile != nil {
+		r.info.BackingFilePath = backingFile.Path
 	}
 
 	if !r.revisionCounterDisabled {
