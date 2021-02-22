@@ -108,6 +108,7 @@ func DoBackupCreate(volumeName, snapshotName, destURL, backingImageName, backing
 	volume := &backupstore.Volume{
 		Name:             volumeName,
 		Size:             volumeInfo.Size,
+		Labels:           labelMap,
 		BackingImageName: backingImageName,
 		BackingImageURL:  backingImageURL,
 		CreatedTime:      util.Now(),
