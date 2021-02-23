@@ -325,6 +325,7 @@ func performBackup(config *DeltaBackupConfig, delta *Mappings, deltaBackup *Back
 	volume.BlockCount = volume.BlockCount + newBlocks
 	// The volume may be expanded
 	volume.Size = config.Volume.Size
+	volume.Labels = config.Labels
 	volume.BackingImageName = config.Volume.BackingImageName
 	volume.BackingImageURL = config.Volume.BackingImageURL
 
