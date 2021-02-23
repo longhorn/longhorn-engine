@@ -10,6 +10,7 @@ import (
 type Volume struct {
 	Name             string
 	Size             int64 `json:",string"`
+	Labels           map[string]string
 	CreatedTime      string
 	LastBackupName   string
 	LastBackupAt     string

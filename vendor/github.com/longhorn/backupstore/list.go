@@ -2,6 +2,7 @@ package backupstore
 
 import (
 	"fmt"
+
 	"github.com/sirupsen/logrus"
 
 	. "github.com/longhorn/backupstore/logging"
@@ -11,6 +12,7 @@ import (
 type VolumeInfo struct {
 	Name           string
 	Size           int64 `json:",string"`
+	Labels         map[string]string
 	Created        string
 	LastBackupName string
 	LastBackupAt   string
@@ -121,6 +123,7 @@ func fillVolumeInfo(volume *Volume) *VolumeInfo {
 	return &VolumeInfo{
 		Name:             volume.Name,
 		Size:             volume.Size,
+		Labels:           volume.Labels,
 		Created:          volume.CreatedTime,
 		LastBackupName:   volume.LastBackupName,
 		LastBackupAt:     volume.LastBackupAt,

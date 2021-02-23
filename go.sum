@@ -34,8 +34,8 @@ github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af h1:pmfjZENx5i
 github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af/go.mod h1:Nht3zPeWKUH0NzdCt2Blrr5ys8VGpn0CEB0cQHVjt7k=
 github.com/konsorten/go-windows-terminal-sequences v1.0.1 h1:mweAR1A6xJ3oS2pRaGiHgQ4OO8tzTaLawm8vnODuwDk=
 github.com/konsorten/go-windows-terminal-sequences v1.0.1/go.mod h1:T0+1ngSBFLxvqU3pZ+m/2kptfBszLMUkC4ZK/EgS/cQ=
-github.com/longhorn/backupstore v0.0.0-20210202195444-e3b5c5a6d3ae h1:UL9KjJB5GqC4b83rbPZukW+vP+2b/NNF7pLU+L4J2jI=
-github.com/longhorn/backupstore v0.0.0-20210202195444-e3b5c5a6d3ae/go.mod h1:9O5tXHnI0KfLXHl+YVey17h9DNq6EIJmBCnNfZH1e18=
+github.com/longhorn/backupstore v0.0.0-20210226025431-845d80a9292c h1:rWPYE7lzP0n1fj9/vuQxnz9t6hrki+Tc7VCMelugCOI=
+github.com/longhorn/backupstore v0.0.0-20210226025431-845d80a9292c/go.mod h1:9O5tXHnI0KfLXHl+YVey17h9DNq6EIJmBCnNfZH1e18=
 github.com/longhorn/go-iscsi-helper v0.0.0-20201111045018-ee87992ec536 h1:+Z/mGnoCdY+YCX+y4X19E2YT4FsVA3aVm7uLj1tg/wM=
 github.com/longhorn/go-iscsi-helper v0.0.0-20201111045018-ee87992ec536/go.mod h1:9z/y9glKmWEdV50tjlUPxFwi1goQfIrrsoZbnMyIZbY=
 github.com/longhorn/nsfilelock v0.0.0-20200723175406-fa7c83ad0003 h1:Jw9uANsGcHTxp6HcC++/vN17LfeuDmozHI2j6DoZf5E=
