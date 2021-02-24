@@ -41,7 +41,7 @@ iscsiadm --version
 To start Longhorn Engine with an single replica, run following command:
 ```
 docker run --privileged -v /dev:/host/dev -v /proc:/host/proc -v /volume \
-    rancher/longhorn-engine launch-simple-longhorn vol-name 10g tgt
+    longhornio/longhorn-engine launch-simple-longhorn vol-name 10g tgt
 ```
 
 That will create the device `/dev/longhorn/vol-name`
@@ -57,15 +57,15 @@ docker network create --subnet=172.18.0.0/16 longhorn-net
 ##### 2. Add two replicas to the network, and set their IPs to `172.18.0.2` and `172.18.0.3`:
 ```
 docker run --net longhorn-net --ip 172.18.0.2 -v /volume \
-    rancher/longhorn-engine launch replica --listen 172.18.0.2:9502 --size 10g /volume
+    longhornio/longhorn-engine longhorn replica --listen 172.18.0.2:9502 --size 10g /volume
 docker run --net longhorn-net --ip 172.18.0.3 -v /volume \
-    rancher/longhorn-engine launch replica --listen 172.18.0.3:9502 --size 10g /volume
+    longhornio/longhorn-engine longhorn replica --listen 172.18.0.3:9502 --size 10g /volume
 ```
 
 ##### 3. Start the controller. Take TGT for example:
 ```
 docker run --net longhorn-net --privileged -v /dev:/host/dev -v /proc:/host/proc \
-    rancher/longhorn-engine launch controller --frontend tgt-blockdev \ 
+    longhornio/longhorn-engine longhorn controller --frontend tgt-blockdev \ 
     --replica tcp://172.18.0.2:9502 --replica tcp://172.18.0.3:9502 vol-name
 ```
 Now you will have device `/dev/longhorn/vol-name`.
