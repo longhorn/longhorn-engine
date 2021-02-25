@@ -3,6 +3,8 @@ package controller
 import (
 	"fmt"
 	"net"
+	"os/exec"
+	"strings"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -52,6 +54,7 @@ type Controller struct {
 }
 
 const (
+	freezeTimeout         = 60 * time.Minute // qemu uses 60 minute timeouts for freezing
 	syncTimeout           = 60 * time.Minute
 	lastModifyCheckPeriod = 5 * time.Second
 )
@@ -166,15 +169,28 @@ func (c *Controller) addReplica(address string, snapshotRequired bool, mode type
 	return c.addReplicaNoLock(newBackend, address, snapshotRequired, mode)
 }
 
+// Snapshot will try to freeze the filesystem of the volume if possible
+// and will fallback to a system level sync in all other cases
 func (c *Controller) Snapshot(name string, labels map[string]string) (string, error) {
-	// We perform a system level sync without the lock. Cannot block read/write
-	// Can be improved to only sync the filesystem on the block device later
+	log := logrus.WithFields(logrus.Fields{"volume": c.Name, "snapshot": name})
 	if ne, err := iutil.NewNamespaceExecutor(util.GetInitiatorNS()); err != nil {
-		logrus.Errorf("WARNING: continue to snapshot for %v, but cannot sync due to cannot get the namespace executor: %v", name, err)
+		log.WithError(err).Error("WARNING: cannot get namespace executor for volume sync/freeze")
 	} else {
-		if _, err := ne.ExecuteWithTimeout(syncTimeout, "sync", []string{}); err != nil {
-			// sync should never fail though, so it more like due to the nsenter
-			logrus.Errorf("WARNING: continue to snapshot for %v, but sync failed: %v", name, err)
+		// we always try to unfreeze the volume after finishing the snapshot process
+		// if the user manually froze the filesystem this will lead to an unfreeze but it's better than
+		// potentially having a left over frozen volume.
+		defer unfreezeVolume(ne, c.Name)
+		isFrozen, err := freezeVolume(ne, c.Name)
+		if err != nil {
+			log.WithError(err).Error("WARNING: failed to freeze the volume filesystem falling back to sync")
+		}
+
+		if !isFrozen {
+			log.Info("Volume is not frozen, requesting system sync before snapshot")
+			if _, err := ne.ExecuteWithTimeout(syncTimeout, "sync", []string{}); err != nil {
+				// sync should never fail though, so it more like due to the nsenter
+				log.WithError(err).Errorf("WARNING: failed to sync continuing with snapshot")
+			}
 		}
 	}
 
@@ -900,4 +916,118 @@ func (c *Controller) BackupReplicaMappingDelete(id string) error {
 	}
 	delete(c.backupList, id)
 	return nil
+}
+
+func freezeVolume(ne *iutil.NamespaceExecutor, volume string) (bool, error) {
+	devicePath := "/dev/longhorn/" + volume
+	mountPoint, err := findMountPoint(ne, devicePath)
+	if err != nil {
+		logrus.WithField("volume", volume).Warn("Failed to execute find mount point, cannot freeze potential filesystem")
+		return false, err
+	} else if mountPoint == "" {
+		logrus.WithField("volume", volume).Info("Volume is not mounted, no need to freeze filesystem")
+		return false, nil
+	}
+
+	if err = freezeFilesystem(ne, mountPoint); err != nil {
+		logrus.WithField("volume", volume).WithError(err).Errorf("Failed to freeze the filesystem at %v", mountPoint)
+		return false, err
+	}
+
+	logrus.WithField("volume", volume).Infof("Froze filesystem of volume mounted at %v", mountPoint)
+	return true, nil
+}
+
+func unfreezeVolume(ne *iutil.NamespaceExecutor, volume string) error {
+	devicePath := "/dev/longhorn/" + volume
+	mountPoint, err := findMountPoint(ne, devicePath)
+	if err != nil {
+		logrus.WithField("volume", volume).Warn("Failed to execute find mount point, cannot unfreeze potential filesystem")
+		return err
+	} else if mountPoint == "" {
+		logrus.WithField("volume", volume).Info("Volume is not mounted, no need to unfreeze filesystem")
+		return nil
+	}
+
+	if err = unfreezeFilesystem(ne, mountPoint); err != nil {
+		logrus.WithField("volume", volume).WithError(err).Errorf("Failed to unfreeze the filesystem at %v", mountPoint)
+		return err
+	}
+
+	logrus.WithField("volume", volume).Infof("Unfroze filesystem of volume mounted at %v", mountPoint)
+	return nil
+}
+
+func findMountPoint(ne *iutil.NamespaceExecutor, devicePath string) (string, error) {
+	/* Example command output
+	   # all of these run with nsenter --mount=/host/proc/1/ns/mnt --net=/host/proc/1/ns/net
+	   # found mount, returns 0
+	   $ findmnt -o TARGET,FSTYPE --noheadings --first-only --source /dev/longhorn/pvc-397cfa17-70d1-4780-bac7-bbff7e00d7ec
+	   /var/lib/kubelet/pods/4d097f01-bb44-4d7d-8905-a9c59ff09468/volumes/kubernetes.io~csi/pvc-397cfa17-70d1-4780-bac7-bbff7e00d7ec/mount ext4
+
+	   # failed to find mount, returns 1
+	   $ findmnt /dev/longhorn/unknown
+	*/
+
+	logrus.Debugf("Searching for mount point of device %v", devicePath)
+	var ee *exec.ExitError
+	out, err := ne.Execute("findmnt", []string{"-o", "target,fstype", "--first-only", "--noheadings", "--source", devicePath})
+	if err != nil && errors.As(err, &ee) && ee.ExitCode() == 1 {
+		// findmnt return error code 1 if no mount is found
+		// so we need to unwrap the returned error to get the exit code
+		logrus.WithError(ee).Debugf("Device %v is not mounted", devicePath)
+		return "", nil
+	}
+
+	var mountPoint string
+	if i := strings.LastIndex(strings.TrimSuffix(out, "\n"), " "); i != -1 {
+		mountPoint = out[:i]
+		logrus.Debugf("Found mount point %v for device %v", mountPoint, devicePath)
+	}
+
+	return mountPoint, err
+}
+
+func freezeFilesystem(ne *iutil.NamespaceExecutor, mountPoint string) error {
+	/* Example Command output
+	   # successful freeze, returns 0, no output
+	   $ fsfreeze -f /var/lib/kubelet/pods/4d097f01-bb44-4d7d-8905-a9c59ff09468/volumes/kubernetes.io~csi/pvc-397cfa17-70d1-4780-bac7-bbff7e00d7ec/mount
+
+	   # already frozen, returns 1
+	   $ fsfreeze -f /var/lib/kubelet/pods/4d097f01-bb44-4d7d-8905-a9c59ff09468/volumes/kubernetes.io~csi/pvc-397cfa17-70d1-4780-bac7-bbff7e00d7ec/mount
+	   fsfreeze: /var/lib/kubelet/pods/4d097f01-bb44-4d7d-8905-a9c59ff09468/volumes/kubernetes.io~csi/pvc-397cfa17-70d1-4780-bac7-bbff7e00d7ec/mount: freeze failed: Device or resource busy
+	*/
+	var ee *exec.ExitError
+	_, err := ne.ExecuteWithTimeout(freezeTimeout, "fsfreeze", []string{"-f", mountPoint})
+	if err != nil && errors.As(err, &ee) && ee.ExitCode() == 1 {
+		// most likely the filesystem is already frozen or the mount point doesn't exist
+		logrus.WithError(err).Debugf("Freeze of filesystem mounted at %v failed", mountPoint)
+		return nil
+	}
+
+	return err
+}
+
+func unfreezeFilesystem(ne *iutil.NamespaceExecutor, mountPoint string) error {
+	/* Example Command output
+	   # successful unfreeze, returns 0, no output
+	   $ fsfreeze -u /var/lib/kubelet/pods/4d097f01-bb44-4d7d-8905-a9c59ff09468/volumes/kubernetes.io~csi/pvc-397cfa17-70d1-4780-bac7-bbff7e00d7ec/mount
+
+	   # not frozen, returns 1
+	   $ fsfreeze -u /var/lib/kubelet/pods/4d097f01-bb44-4d7d-8905-a9c59ff09468/volumes/kubernetes.io~csi/pvc-397cfa17-70d1-4780-bac7-bbff7e00d7ec/mount
+		 fsfreeze: /var/lib/kubelet/pods/4d097f01-bb44-4d7d-8905-a9c59ff09468/volumes/kubernetes.io~csi/pvc-397cfa17-70d1-4780-bac7-bbff7e00d7ec/mount: unfreeze failed: Invalid argument
+
+	   # unknown mount point, returns 1
+	   $ fsfreeze -u /no-mount-point
+	   fsfreeze: cannot open /no-mount-point: No such file or directory
+	*/
+	var ee *exec.ExitError
+	_, err := ne.ExecuteWithTimeout(freezeTimeout, "fsfreeze", []string{"-u", mountPoint})
+	if err != nil && errors.As(err, &ee) && ee.ExitCode() == 1 {
+		// most likely the filesystem is not frozen or the mount point doesn't exist
+		logrus.WithError(err).Debugf("Unfreeze of filesystem mounted at %v failed", mountPoint)
+		return nil
+	}
+
+	return err
 }
