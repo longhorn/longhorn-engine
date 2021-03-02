@@ -58,11 +58,13 @@ github.com/gorilla/handlers
 github.com/gorilla/mux
 # github.com/gorilla/websocket v1.4.0
 github.com/gorilla/websocket
+# github.com/honestbee/jobq v1.0.2
+github.com/honestbee/jobq
 # github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af
 github.com/jmespath/go-jmespath
 # github.com/konsorten/go-windows-terminal-sequences v1.0.1
 github.com/konsorten/go-windows-terminal-sequences
-# github.com/longhorn/backupstore v0.0.0-20210226025431-845d80a9292c
+# github.com/longhorn/backupstore v0.0.0-20210302061525-eb790e398638
 github.com/longhorn/backupstore
 github.com/longhorn/backupstore/cmd
 github.com/longhorn/backupstore/fsops

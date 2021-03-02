@@ -11,7 +11,7 @@ require (
 	github.com/gorilla/handlers v1.4.2
 	github.com/gorilla/mux v1.7.3
 	github.com/gorilla/websocket v1.4.0 // indirect
-	github.com/longhorn/backupstore v0.0.0-20210226025431-845d80a9292c
+	github.com/longhorn/backupstore v0.0.0-20210302061525-eb790e398638
 	github.com/longhorn/go-iscsi-helper v0.0.0-20201111045018-ee87992ec536
 	github.com/longhorn/sparse-tools v0.0.0-20201111045115-7a3bbbb6f408
 	github.com/mattn/go-colorable v0.1.4 // indirect
@@ -22,7 +22,6 @@ require (
 	github.com/rancher/go-rancher v0.1.1-0.20190307222549-9756097e5e4c
 	github.com/satori/go.uuid v1.0.0
 	github.com/sirupsen/logrus v1.4.1
-	github.com/stretchr/testify v1.3.0 // indirect
 	github.com/urfave/cli v1.22.1
 	golang.org/x/net v0.0.0-20190522155817-f3200d17e092
 	golang.org/x/sys v0.0.0-20190524152521-dbbf3f1254d4
