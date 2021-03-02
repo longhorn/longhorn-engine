@@ -1,8 +1,14 @@
 package backupstore
 
 import (
+	"context"
+	"errors"
 	"fmt"
+	"runtime"
+	"strings"
+	"time"
 
+	"github.com/honestbee/jobq"
 	"github.com/sirupsen/logrus"
 
 	. "github.com/longhorn/backupstore/logging"
@@ -103,18 +109,49 @@ func List(volumeName, destURL string, volumeOnly bool) (map[string]*VolumeInfo, 
 	if err != nil {
 		return nil, err
 	}
-	resp := make(map[string]*VolumeInfo)
+
+	jobQueues := jobq.NewWorkerDispatcher(
+		// init #cpu*16 workers
+		jobq.WorkerN(runtime.NumCPU()*16),
+		// init worker pool size to 256
+		jobq.WorkerPoolSize(256),
+	)
+	defer jobQueues.Stop()
+	jobQueueTimeout := 30 * time.Second
+
 	volumeNames := []string{volumeName}
 	if volumeName == "" {
-		volumeNames = getVolumeNames(driver)
-	}
-
-	for _, volumeName := range volumeNames {
-		volumeInfo, err := addListVolume(volumeName, driver, volumeOnly)
+		volumeNames, err = getVolumeNames(jobQueues, jobQueueTimeout, driver)
 		if err != nil {
 			return nil, err
 		}
-		resp[volumeName] = volumeInfo
+	}
+
+	var trackers []jobq.JobTracker
+	for _, volumeName := range volumeNames {
+		volumeName := volumeName
+		tracker := jobQueues.QueueTimedFunc(context.Background(), func(ctx context.Context) (interface{}, error) {
+			return addListVolume(volumeName, driver, volumeOnly)
+		}, jobQueueTimeout)
+		trackers = append(trackers, tracker)
+	}
+
+	var (
+		resp = make(map[string]*VolumeInfo)
+		errs []string
+	)
+	for _, tracker := range trackers {
+		payload, err := tracker.Result()
+		if err != nil {
+			errs = append(errs, err.Error())
+			continue
+		}
+		volumeInfo := payload.(*VolumeInfo)
+		resp[volumeInfo.Name] = volumeInfo
+	}
+
+	if len(errs) > 0 {
+		return nil, errors.New(strings.Join(errs, "\n"))
 	}
 	return resp, nil
 }
