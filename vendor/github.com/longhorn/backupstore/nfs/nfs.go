@@ -65,7 +65,7 @@ func initFunc(destURL string) (backupstore.BackupStoreDriver, error) {
 	b.serverPath = u.Host + u.Path
 	b.mountDir = filepath.Join(MountDir, strings.TrimRight(strings.Replace(u.Host, ".", "_", -1), ":"), u.Path)
 	if err := os.MkdirAll(b.mountDir, os.ModeDir|0700); err != nil {
-		return nil, fmt.Errorf("Cannot create mount directory %v for NFS server", b.mountDir)
+		return nil, fmt.Errorf("Cannot create mount directory %v for NFS server: %v", b.mountDir, err)
 	}
 
 	if err := b.mount(); err != nil {
