@@ -64,7 +64,7 @@ github.com/honestbee/jobq
 github.com/jmespath/go-jmespath
 # github.com/konsorten/go-windows-terminal-sequences v1.0.1
 github.com/konsorten/go-windows-terminal-sequences
-# github.com/longhorn/backupstore v0.0.0-20210304124311-0aee37c899e2
+# github.com/longhorn/backupstore v0.0.0-20210311053000-a6c606557ab0
 github.com/longhorn/backupstore
 github.com/longhorn/backupstore/cmd
 github.com/longhorn/backupstore/fsops
