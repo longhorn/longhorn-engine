@@ -488,10 +488,18 @@ func (s *SyncAgentServer) BackupCreate(ctx context.Context, req *ptypes.BackupCr
 	// set aws credential
 	if backupType == "s3" {
 		credential := req.Credential
-		// validate environment variable first, since CronJob has set credential to environment variable.
-		if credential != nil && credential[types.AWSAccessKey] != "" && credential[types.AWSSecretKey] != "" {
-			os.Setenv(types.AWSAccessKey, credential[types.AWSAccessKey])
-			os.Setenv(types.AWSSecretKey, credential[types.AWSSecretKey])
+		if credential != nil {
+			if credential[types.AWSAccessKey] == "" && credential[types.AWSSecretKey] != "" {
+				return nil, errors.New("Could not backup to s3 without setting credential access key")
+			}
+			if credential[types.AWSAccessKey] != "" && credential[types.AWSSecretKey] == "" {
+				return nil, errors.New("Could not backup to s3 without setting credential secret access key")
+			}
+			if credential[types.AWSAccessKey] != "" && credential[types.AWSSecretKey] != "" {
+				os.Setenv(types.AWSAccessKey, credential[types.AWSAccessKey])
+				os.Setenv(types.AWSSecretKey, credential[types.AWSSecretKey])
+			}
+
 			os.Setenv(types.AWSEndPoint, credential[types.AWSEndPoint])
 			os.Setenv(types.HTTPSProxy, credential[types.HTTPSProxy])
 			os.Setenv(types.HTTPProxy, credential[types.HTTPProxy])
@@ -502,8 +510,6 @@ func (s *SyncAgentServer) BackupCreate(ctx context.Context, req *ptypes.BackupCr
 			if credential[types.AWSCert] != "" {
 				os.Setenv(types.AWSCert, credential[types.AWSCert])
 			}
-		} else if os.Getenv(types.AWSAccessKey) == "" || os.Getenv(types.AWSSecretKey) == "" {
-			return nil, errors.New("Could not backup to s3 without setting credential secret")
 		}
 	}
 
@@ -614,10 +620,18 @@ func (s *SyncAgentServer) BackupRestore(ctx context.Context, req *ptypes.BackupR
 	// Check/Set AWS credential
 	if backupType == "s3" {
 		credential := req.Credential
-		// validate environment variable first, since CronJob has set credential to environment variable.
-		if credential != nil && credential[types.AWSAccessKey] != "" && credential[types.AWSSecretKey] != "" {
-			os.Setenv(types.AWSAccessKey, credential[types.AWSAccessKey])
-			os.Setenv(types.AWSSecretKey, credential[types.AWSSecretKey])
+		if credential != nil {
+			if credential[types.AWSAccessKey] == "" && credential[types.AWSSecretKey] != "" {
+				return nil, errors.New("Could not backup to s3 without setting credential access key")
+			}
+			if credential[types.AWSAccessKey] != "" && credential[types.AWSSecretKey] == "" {
+				return nil, errors.New("Could not backup to s3 without setting credential secret access key")
+			}
+			if credential[types.AWSAccessKey] != "" && credential[types.AWSSecretKey] != "" {
+				os.Setenv(types.AWSAccessKey, credential[types.AWSAccessKey])
+				os.Setenv(types.AWSSecretKey, credential[types.AWSSecretKey])
+			}
+
 			os.Setenv(types.AWSEndPoint, credential[types.AWSEndPoint])
 			os.Setenv(types.HTTPSProxy, credential[types.HTTPSProxy])
 			os.Setenv(types.HTTPProxy, credential[types.HTTPProxy])
@@ -628,8 +642,6 @@ func (s *SyncAgentServer) BackupRestore(ctx context.Context, req *ptypes.BackupR
 			if credential[types.AWSCert] != "" {
 				os.Setenv(types.AWSCert, credential[types.AWSCert])
 			}
-		} else if os.Getenv(types.AWSAccessKey) == "" || os.Getenv(types.AWSSecretKey) == "" {
-			return nil, fmt.Errorf("could not do backup restore from s3 without setting credential secret")
 		}
 	}
 	requestedBackupName, err := backupstore.GetBackupFromBackupURL(util.UnescapeURL(req.Backup))

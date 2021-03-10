@@ -1,6 +1,7 @@
 package util
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"net"
@@ -270,15 +271,18 @@ func GetBackupCredential(backupURL string) (map[string]string, error) {
 	}
 	if backupType == "s3" {
 		accessKey := os.Getenv(types.AWSAccessKey)
-		if accessKey == "" {
-			return nil, fmt.Errorf("missing environment variable AWS_ACCESS_KEY_ID for s3 backup")
-		}
 		secretKey := os.Getenv(types.AWSSecretKey)
-		if secretKey == "" {
-			return nil, fmt.Errorf("missing environment variable AWS_SECRET_ACCESS_KEY for s3 backup")
+		if accessKey == "" && secretKey != "" {
+			return nil, errors.New("Could not backup to s3 without setting credential access key")
 		}
-		credential[types.AWSAccessKey] = accessKey
-		credential[types.AWSSecretKey] = secretKey
+		if accessKey != "" && secretKey == "" {
+			return nil, errors.New("Could not backup to s3 without setting credential secret access key")
+		}
+		if accessKey != "" && secretKey != "" {
+			credential[types.AWSAccessKey] = accessKey
+			credential[types.AWSSecretKey] = secretKey
+		}
+
 		credential[types.AWSEndPoint] = os.Getenv(types.AWSEndPoint)
 		credential[types.AWSCert] = os.Getenv(types.AWSCert)
 		credential[types.HTTPSProxy] = os.Getenv(types.HTTPSProxy)
