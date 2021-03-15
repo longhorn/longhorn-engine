@@ -173,8 +173,9 @@ func (c *Controller) addReplica(address string, snapshotRequired bool, mode type
 // and will fallback to a system level sync in all other cases
 func (c *Controller) Snapshot(name string, labels map[string]string) (string, error) {
 	log := logrus.WithFields(logrus.Fields{"volume": c.Name, "snapshot": name})
+	log.Info("Starting snapshot")
 	if ne, err := iutil.NewNamespaceExecutor(util.GetInitiatorNS()); err != nil {
-		log.WithError(err).Error("WARNING: cannot get namespace executor for volume sync/freeze")
+		log.WithError(err).Errorf("WARNING: continue to snapshot for %v, but cannot sync due to cannot get the namespace executor", name)
 	} else {
 		// we always try to unfreeze the volume after finishing the snapshot process
 		// if the user manually froze the filesystem this will lead to an unfreeze but it's better than
@@ -182,14 +183,14 @@ func (c *Controller) Snapshot(name string, labels map[string]string) (string, er
 		defer unfreezeVolume(ne, c.Name)
 		isFrozen, err := freezeVolume(ne, c.Name)
 		if err != nil {
-			log.WithError(err).Error("WARNING: failed to freeze the volume filesystem falling back to sync")
+			log.WithError(err).Errorf("WARNING: failed to freeze the volume filesystem falling back to sync for %v", name)
 		}
 
 		if !isFrozen {
 			log.Info("Volume is not frozen, requesting system sync before snapshot")
 			if _, err := ne.ExecuteWithTimeout(syncTimeout, "sync", []string{}); err != nil {
 				// sync should never fail though, so it more like due to the nsenter
-				log.WithError(err).Errorf("WARNING: failed to sync continuing with snapshot")
+				log.WithError(err).Errorf("WARNING: failed to sync continuing with snapshot for %v", name)
 			}
 		}
 	}
@@ -211,6 +212,7 @@ func (c *Controller) Snapshot(name string, labels map[string]string) (string, er
 	if err := c.handleErrorNoLock(c.backend.Snapshot(name, true, created, labels)); err != nil {
 		return "", err
 	}
+	log.Info("Finished snapshot")
 	return name, nil
 }
 

@@ -808,6 +808,8 @@ func (r *Replica) revertDisk(parent, created string) (*Replica, error) {
 }
 
 func (r *Replica) createDisk(name string, userCreated bool, created string, labels map[string]string, size int64) (err error) {
+	log := logrus.WithFields(logrus.Fields{"disk": name})
+	log.Info("Starting to create disk")
 	if r.readOnly {
 		return fmt.Errorf("Can not create disk on read-only replica")
 	}
@@ -830,7 +832,7 @@ func (r *Replica) createDisk(name string, userCreated bool, created string, labe
 	defer func() {
 		var rollbackErr error
 		if err != nil {
-			logrus.Errorf("failed to create disk %v, will do rollback: %v", name, err)
+			log.WithError(err).Errorf("failed to create disk %v, will do rollback", name)
 			delete(r.diskData, newHeadDisk.Name)
 			delete(r.diskData, newSnapName)
 			delete(r.diskChildrenMap, newSnapName)
@@ -882,6 +884,7 @@ func (r *Replica) createDisk(name string, userCreated bool, created string, labe
 	r.volume.files = append(r.volume.files, f)
 	r.activeDiskData = append(r.activeDiskData, &newHeadDisk)
 
+	log.Info("Finished creating disk")
 	return nil
 }
 
