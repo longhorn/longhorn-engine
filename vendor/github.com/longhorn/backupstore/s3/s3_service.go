@@ -49,6 +49,9 @@ func (s *Service) New() (*s3.S3, error) {
 	if err != nil {
 		return nil, err
 	}
+	if _, err := ses.Config.Credentials.Get(); err != nil {
+		return nil, err
+	}
 	return s3.New(ses), nil
 }
 
