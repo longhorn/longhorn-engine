@@ -30,15 +30,17 @@ type syncClient struct {
 const connectionRetries = 5
 
 // SyncFile synchronizes local file to remote host
-func SyncFile(localPath string, remote string, timeout int) error {
+func SyncFile(localPath string, remote string, timeout int, directIO bool) error {
 	fileInfo, err := os.Stat(localPath)
 	if err != nil {
 		log.Errorf("Failed to get size of source file: %s, err: %s", localPath, err)
 		return err
 	}
 	fileSize := fileInfo.Size()
-	directIO := (fileSize%Blocks == 0)
-	log.Infof("source file size: %d, setting up directIo: %v", fileSize, directIO)
+	if directIO && fileSize%Blocks != 0 {
+		return fmt.Errorf("Invalid directIO file block size: %v", fileSize)
+	}
+	log.Infof("source file size: %d, setting up directIO: %v", fileSize, directIO)
 
 	var fileIo FileIoProcessor
 	if directIO {
@@ -56,7 +58,7 @@ func SyncFile(localPath string, remote string, timeout int) error {
 
 	defer client.closeServer() // kill the server no matter success or not, best effort
 
-	err = client.syncFileContent(fileIo, fileSize)
+	err = client.syncFileContent(fileIo, fileSize, directIO)
 	if err != nil {
 		log.Errorf("syncFileContent failed: %s", err)
 		return err
@@ -65,13 +67,13 @@ func SyncFile(localPath string, remote string, timeout int) error {
 	return err
 }
 
-func (client *syncClient) syncFileContent(file FileIoProcessor, fileSize int64) error {
+func (client *syncClient) syncFileContent(file FileIoProcessor, fileSize int64, directIO bool) error {
 	exts, err := GetFiemapExtents(file)
 	if err != nil {
 		return err
 	}
 
-	err = client.openServer()
+	err = client.openServer(directIO)
 	if err != nil {
 		return fmt.Errorf("openServer failed, err: %s", err)
 	}
@@ -128,7 +130,7 @@ func (client *syncClient) syncFileContent(file FileIoProcessor, fileSize int64) 
 	return nil
 }
 
-func (client *syncClient) sendHTTPRequest(method string, action string, interval Interval, data []byte) (*http.Response, error) {
+func (client *syncClient) sendHTTPRequest(method string, action string, queries map[string]string, data []byte) (*http.Response, error) {
 	httpClient := &http.Client{Timeout: time.Duration(httpClientTimeout * time.Second)}
 
 	url := fmt.Sprintf("http://%s/v1-ssync/%s", client.remote, action)
@@ -147,8 +149,9 @@ func (client *syncClient) sendHTTPRequest(method string, action string, interval
 	req.Header.Add("Accept", "application/json")
 
 	q := req.URL.Query()
-	q.Add("begin", strconv.FormatInt(interval.Begin, 10))
-	q.Add("end", strconv.FormatInt(interval.End, 10))
+	for k, v := range queries {
+		q.Add(k, v)
+	}
 	req.URL.RawQuery = q.Encode()
 
 	log.Debugf("method: %s, url with query string: %s, data len: %d", method, req.URL.String(), len(data))
@@ -156,14 +159,18 @@ func (client *syncClient) sendHTTPRequest(method string, action string, interval
 	return httpClient.Do(req)
 }
 
-func (client *syncClient) openServer() error {
+func (client *syncClient) openServer(directIO bool) error {
 	var err error
 	var resp *http.Response
 
 	timeStart := time.Now()
 	timeStop := timeStart.Add(time.Duration(client.timeout) * time.Second)
+	queries := make(map[string]string)
+	queries["begin"] = strconv.FormatInt(0, 10)
+	queries["end"] = strconv.FormatInt(client.fileSize, 10)
+	queries["directIO"] = strconv.FormatBool(directIO)
 	for timeNow := timeStart; timeNow.Before(timeStop); timeNow = time.Now() {
-		resp, err = client.sendHTTPRequest("GET", "open", Interval{0, client.fileSize}, nil)
+		resp, err = client.sendHTTPRequest("GET", "open", queries, nil)
 		if err == nil {
 			break
 		}
@@ -186,11 +193,15 @@ func (client *syncClient) openServer() error {
 }
 
 func (client *syncClient) closeServer() {
-	client.sendHTTPRequest("POST", "close", Interval{0, 0}, nil)
+	queries := make(map[string]string)
+	client.sendHTTPRequest("POST", "close", queries, nil)
 }
 
 func (client *syncClient) syncHoleInterval(holeInterval Interval) error {
-	resp, err := client.sendHTTPRequest("POST", "sendHole", holeInterval, nil)
+	queries := make(map[string]string)
+	queries["begin"] = strconv.FormatInt(holeInterval.Begin, 10)
+	queries["end"] = strconv.FormatInt(holeInterval.End, 10)
+	resp, err := client.sendHTTPRequest("POST", "sendHole", queries, nil)
 	if err != nil {
 		return fmt.Errorf("sendHole failed, err: %s", err)
 	}
@@ -203,7 +214,10 @@ func (client *syncClient) syncHoleInterval(holeInterval Interval) error {
 }
 
 func (client *syncClient) getServerChecksum(checksumInterval Interval) ([]byte, error) {
-	resp, err := client.sendHTTPRequest("GET", "getChecksum", checksumInterval, nil)
+	queries := make(map[string]string)
+	queries["begin"] = strconv.FormatInt(checksumInterval.Begin, 10)
+	queries["end"] = strconv.FormatInt(checksumInterval.End, 10)
+	resp, err := client.sendHTTPRequest("GET", "getChecksum", queries, nil)
 	if err != nil {
 		return nil, fmt.Errorf("getChecksum failed, err: %s", err)
 	}
@@ -216,7 +230,10 @@ func (client *syncClient) getServerChecksum(checksumInterval Interval) ([]byte, 
 }
 
 func (client *syncClient) writeData(dataInterval Interval, data []byte) error {
-	resp, err := client.sendHTTPRequest("POST", "writeData", dataInterval, data)
+	queries := make(map[string]string)
+	queries["begin"] = strconv.FormatInt(dataInterval.Begin, 10)
+	queries["end"] = strconv.FormatInt(dataInterval.End, 10)
+	resp, err := client.sendHTTPRequest("POST", "writeData", queries, data)
 	if err != nil {
 		return fmt.Errorf("writeData failed, err: %s", err)
 	}

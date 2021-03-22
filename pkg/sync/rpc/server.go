@@ -5,6 +5,7 @@ import (
 	"net"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -329,8 +330,12 @@ func (*SyncAgentServer) FileRename(ctx context.Context, req *ptypes.FileRenameRe
 
 func (s *SyncAgentServer) FileSend(ctx context.Context, req *ptypes.FileSendRequest) (*empty.Empty, error) {
 	address := net.JoinHostPort(req.Host, strconv.Itoa(int(req.Port)))
+	directIO := true
+	if filepath.Ext(strings.TrimSpace(req.FromFileName)) == ".meta" {
+		directIO = false
+	}
 	logrus.Infof("Sending file %v to %v", req.FromFileName, address)
-	if err := sparse.SyncFile(req.FromFileName, address, FileSyncTimeout); err != nil {
+	if err := sparse.SyncFile(req.FromFileName, address, FileSyncTimeout, directIO); err != nil {
 		return nil, err
 	}
 	logrus.Infof("Done sending file %v to %v", req.FromFileName, address)
