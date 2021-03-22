@@ -22,6 +22,20 @@ type SyncFileStub struct{}
 
 func (f *SyncFileStub) UpdateSyncFileProgress(size int64) {}
 
+func (server *SyncServer) getQueryDirectIO(request *http.Request) (bool, error) {
+	queryParams := request.URL.Query()
+	directIOStr := queryParams.Get("directIO")
+	if directIOStr == "" {
+		return false, fmt.Errorf("directIO does not exist in the queries: %+v", queryParams)
+	}
+
+	directIO, err := strconv.ParseBool(directIOStr)
+	if err != nil {
+		return false, fmt.Errorf("strconv.ParseBool(directIOStr) error: %s", err)
+	}
+	return directIO, nil
+}
+
 func (server *SyncServer) getQueryInterval(request *http.Request) (sparse.Interval, error) {
 	var interval sparse.Interval
 	var err error
@@ -59,18 +73,25 @@ func (server *SyncServer) open(writer http.ResponseWriter, request *http.Request
 }
 
 func (server *SyncServer) doOpen(request *http.Request) error {
+	// get directIO
+	directIO, err := server.getQueryDirectIO(request)
+	if err != nil {
+		return fmt.Errorf("server.getQueryDirectIO failed, err: %s", err)
+	}
+
 	// get file size
 	interval, err := server.getQueryInterval(request)
 	if err != nil {
 		return fmt.Errorf("server.getQueryInterval failed, err: %s", err)
 	}
 
-	// if file size is multiple of 4k, then directIo
-	directIo := (interval.End%sparse.Blocks == 0)
-	log.Infof("open: receiving fileSize: %d, setting up directIo: %v", interval.End, directIo)
+	if directIO && interval.End%sparse.Blocks != 0 {
+		return fmt.Errorf("Invalid directIO file block size: %v", interval.End)
+	}
+	log.Infof("open: receiving fileSize: %d, setting up directIO: %v", interval.End, directIO)
 
 	var fileIo sparse.FileIoProcessor
-	if directIo {
+	if directIO {
 		fileIo, err = sparse.NewDirectFileIoProcessor(server.filePath, os.O_RDWR, 0666, true)
 	} else {
 		fileIo, err = sparse.NewBufferedFileIoProcessor(server.filePath, os.O_RDWR, 0666, true)
