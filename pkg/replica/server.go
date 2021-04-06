@@ -110,6 +110,7 @@ func (s *Server) Status() (State, Info) {
 		if os.IsNotExist(err) {
 			return Initial, Info{}
 		} else if err != nil {
+			logrus.Errorf("Failed to read info in replica directory %s: %v", s.dir, err)
 			return Error, Info{}
 		}
 		return Closed, info
