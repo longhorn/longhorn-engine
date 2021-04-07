@@ -246,7 +246,7 @@ func ParseLabels(labels []string) (map[string]string, error) {
 }
 
 func UnescapeURL(url string) string {
-	// Deal with escape in url inputed from bash
+	// Deal with escape in url inputted from bash
 	result := strings.Replace(url, "\\u0026", "&", 1)
 	result = strings.Replace(result, "u0026", "&", 1)
 	result = strings.TrimLeft(result, "\"'")
