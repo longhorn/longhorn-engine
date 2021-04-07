@@ -688,7 +688,7 @@ func (c *Controller) Start(addresses ...string) error {
 			}
 		} else {
 			// For revision counter enabled case, no matter salvageRequested
-			// alway check the revision counter.
+			// always check the revision counter.
 			if err := c.checkReplicasRevisionCounter(); err != nil {
 				return err
 			}

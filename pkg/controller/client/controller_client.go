@@ -356,7 +356,7 @@ func (c *ControllerClient) ReplicaVerifyRebuild(address string) error {
 	if _, err := controllerServiceClient.ReplicaVerifyRebuild(ctx, &ptypes.ReplicaAddress{
 		Address: address,
 	}); err != nil {
-		return fmt.Errorf("failed to verify rebuilded replica %v for volume %v: %v", address, c.grpcAddress, err)
+		return fmt.Errorf("failed to verify rebuilt replica %v for volume %v: %v", address, c.grpcAddress, err)
 	}
 
 	return nil

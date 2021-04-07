@@ -52,7 +52,7 @@ func (c *Controller) Revert(name string) error {
 			c.setReplicaModeNoLock(address, types.ERR)
 		} else {
 			minimalSuccess = true
-			logrus.Infof("Reverting to snapshot %s on %s successed", name, address)
+			logrus.Infof("Reverting to snapshot %s on %s succeeded", name, address)
 		}
 	}
 
