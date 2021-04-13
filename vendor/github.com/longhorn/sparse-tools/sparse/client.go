@@ -154,7 +154,7 @@ func (client *syncClient) sendHTTPRequest(method string, action string, queries 
 	}
 	req.URL.RawQuery = q.Encode()
 
-	log.Debugf("method: %s, url with query string: %s, data len: %d", method, req.URL.String(), len(data))
+	log.Tracef("method: %s, url with query string: %s, data len: %d", method, req.URL.String(), len(data))
 
 	return httpClient.Do(req)
 }
@@ -304,7 +304,7 @@ func (client *syncClient) syncDataInterval(file FileIoProcessor, dataInterval In
 		}
 		if serverNeedData {
 			// send data buffer
-			log.Debugf("sending dataBuffer size: %d", len(dataBuffer))
+			log.Tracef("sending dataBuffer size: %d", len(dataBuffer))
 			if err := client.writeData(batchInterval, dataBuffer); err != nil {
 				log.Errorf("writeData for batchInterval: %s failed, err: %s", batchInterval, err)
 				return err

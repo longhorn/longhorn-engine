@@ -19,7 +19,7 @@ const (
 type SampleOp int
 
 const (
-	// OpNone unitialized operation
+	// OpNone uninitialized operation
 	OpNone SampleOp = iota
 	// OpRead read from replica
 	OpRead
@@ -138,7 +138,7 @@ func Process(processor func(dataPoint)) chan struct{} {
 	return ProcessLimited(0 /*no limit*/, processor)
 }
 
-// ProcessLimited number of unreported samples is restricted by specified limit, the rest os droppped
+// ProcessLimited number of unreported samples is restricted by specified limit, the rest os dropped
 func ProcessLimited(limit int, processor func(dataPoint)) chan struct{} {
 	// Fetch unreported window
 	done := make(chan struct{})
