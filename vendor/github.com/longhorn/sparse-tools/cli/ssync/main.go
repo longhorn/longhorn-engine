@@ -1,6 +1,7 @@
 package ssync
 
 import (
+	"context"
 	"flag"
 
 	log "github.com/sirupsen/logrus"
@@ -42,7 +43,8 @@ func Main() {
 		dstPath := args[0]
 
 		ops := &rest.SyncFileStub{}
-		err := rest.Server(*port, dstPath, ops)
+		ctx, cancelFunc := context.WithCancel(context.Background())
+		err := rest.Server(ctx, cancelFunc, *port, dstPath, ops)
 		if err != nil {
 			log.Fatalf("Ssync server failed, err: %s", err)
 		}
