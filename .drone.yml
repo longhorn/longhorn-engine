@@ -256,7 +256,8 @@ steps:
   commands:
   - apt-get update -y
   - apt-get install -y jq
-  - ./bin/longhorn version --client-only | jq '.clientVersion | .cliAPIVersion,"-",.cliAPIMinVersion, ".", .controllerAPIVersion, "-", .controllerAPIMinVersion, ".", .dataFormatVersion, "-", .dataFormatMinVersion, "-amd64"| tostring' | tr '\n' ' ' | tr -d '"' | tr -d ' ' > .tags
+#  - ./bin/longhorn version --client-only | jq '.clientVersion | .cliAPIVersion,"-",.cliAPIMinVersion, ".", .controllerAPIVersion, "-", .controllerAPIMinVersion, ".", .dataFormatVersion, "-", .dataFormatMinVersion, "-amd64"| tostring' | tr '\n' ' ' | tr -d '"' | tr -d ' ' > .tags
+  - ./bin/longhorn version --client-only | jq '.clientVersion | "live-upgrade-", .cliAPIVersion,"-", .controllerAPIVersion, "-", .dataFormatVersion, "-amd64"| tostring' | tr '\n' ' ' | tr -d '"' | tr -d ' ' > .tags
   privileged: true
   volumes:
   - name: socket
@@ -271,7 +272,7 @@ steps:
     dockerfile: package/Dockerfile
     password:
       from_secret: docker_password
-    repo: longhornio/longhorn-test
+    repo: longhornio/longhorn-engine
     username:
       from_secret: docker_username
   when:
@@ -340,7 +341,8 @@ steps:
   commands:
   - apt-get update -y
   - apt-get install -y jq
-  - ./bin/longhorn version --client-only | jq '.clientVersion | .cliAPIVersion,"-",.cliAPIMinVersion, ".", .controllerAPIVersion, "-", .controllerAPIMinVersion, ".", .dataFormatVersion, "-", .dataFormatMinVersion, "-arm64"| tostring' | tr '\n' ' ' | tr -d '"' | tr -d ' ' > .tags
+#- ./bin/longhorn version --client-only | jq '.clientVersion | .cliAPIVersion,"-",.cliAPIMinVersion, ".", .controllerAPIVersion, "-", .controllerAPIMinVersion, ".", .dataFormatVersion, "-", .dataFormatMinVersion, "-arm64"| tostring' | tr '\n' ' ' | tr -d '"' | tr -d ' ' > .tags
+  - ./bin/longhorn version --client-only | jq '.clientVersion | "live-upgrade-", .cliAPIVersion,"-", .controllerAPIVersion, "-", .dataFormatVersion, "-amd64"| tostring' | tr '\n' ' ' | tr -d '"' | tr -d ' ' > .tags
   privileged: true
   volumes:
   - name: socket
@@ -355,7 +357,7 @@ steps:
     dockerfile: package/Dockerfile
     password:
       from_secret: docker_password
-    repo: longhornio/longhorn-test
+    repo: longhornio/longhorn-engine
     username:
       from_secret: docker_username
   when:
@@ -416,7 +418,8 @@ steps:
   commands:
   - apt-get update -y
   - apt-get install -y jq
-  - ./bin/longhorn version --client-only | jq '.clientVersion | .cliAPIVersion,"-",.cliAPIMinVersion, ".", .controllerAPIVersion, "-", .controllerAPIMinVersion, ".", .dataFormatVersion, "-", .dataFormatMinVersion, "-arm64"| tostring' | tr '\n' ' ' | tr -d '"' | tr -d ' ' > .tags
+#- ./bin/longhorn version --client-only | jq '.clientVersion | .cliAPIVersion,"-",.cliAPIMinVersion, ".", .controllerAPIVersion, "-", .controllerAPIMinVersion, ".", .dataFormatVersion, "-", .dataFormatMinVersion, "-arm64"| tostring' | tr '\n' ' ' | tr -d '"' | tr -d ' ' > .tags
+  - ./bin/longhorn version --client-only | jq '.clientVersion | "live-upgrade-", .cliAPIVersion,"-", .controllerAPIVersion, "-", .dataFormatVersion, "-amd64"| tostring' | tr '\n' ' ' | tr -d '"' | tr -d ' ' > .tags
   privileged: true
   volumes:
   - name: socket
@@ -434,6 +437,7 @@ steps:
       - linux/arm64
     spec: ./drone-manifest.tmpl
     auto_tag: true
+    dump: true
   when:
     instance:
     - drone-publish.longhorn.io
