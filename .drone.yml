@@ -424,8 +424,6 @@ steps:
 
 - name: engine-compatible-image-manifest
   image: plugins/manifest:1
-  commands:
-  - /bin/drone-manifest --tags ".tags"
   settings:
     username:
       from_secret: docker_username
@@ -434,10 +432,7 @@ steps:
     platforms:
       - linux/amd64
       - linux/arm64
-    target: "longhornio/longhorn-test"
-    template: "longhornio/longhorn-engine:${PLUGIN_TAGS}-ARCH"
-  environment:
-    PLUGIN_TAGS: ".tags"
+    spec: ./drone-manifest.tmpl
   when:
     instance:
     - drone-publish.longhorn.io
