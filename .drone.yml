@@ -433,6 +433,7 @@ steps:
       - linux/amd64
       - linux/arm64
     spec: ./drone-manifest.tmpl
+    tags: ".tags"
   when:
     instance:
     - drone-publish.longhorn.io
