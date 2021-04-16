@@ -449,8 +449,8 @@ steps:
 depends_on:
 - engine-compatible-image-amd64
 - engine-compatible-image-arm64
-#- default-amd64                                                                 
-#- default-arm64 
+- default-amd64                                                                 
+- default-arm64 
 
 volumes:                                                                        
 - name: socket                                                                  
