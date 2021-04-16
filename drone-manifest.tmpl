@@ -1,9 +1,6 @@
 image: longhornio/longhorn-engine:{{build.tag}}
 
-tags:
-{{#each build.tags}}
-  - {{this}}
-{{/each}}
+tags: ".tags"
 
 manifests:
   -
