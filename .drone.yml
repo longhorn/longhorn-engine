@@ -340,7 +340,7 @@ steps:
   commands:
   - apt-get update -y
   - apt-get install -y jq
-  - ./bin/longhorn version --client-only | jq '.clientVersion | "live-upgrade-staging-", .cliAPIVersion,"-", .controllerAPIVersion, "-", .dataFormatVersion, "-amd64"| tostring' | tr '\n' ' ' | tr -d '"' | tr -d ' ' > .tags
+  - ./bin/longhorn version --client-only | jq '.clientVersion | "live-upgrade-staging-", .cliAPIVersion,"-", .controllerAPIVersion, "-", .dataFormatVersion, "-arm64"| tostring' | tr '\n' ' ' | tr -d '"' | tr -d ' ' > .tags
   privileged: true
   volumes:
   - name: socket
@@ -416,7 +416,7 @@ steps:
   commands:
   - apt-get update -y
   - apt-get install -y jq
-  - ./bin/longhorn version --client-only | jq '.clientVersion | "live-upgrade-staging-", .cliAPIVersion,"-", .controllerAPIVersion, "-", .dataFormatVersion, "-amd64"| tostring' | tr '\n' ' ' | tr -d '"' | tr -d ' ' > .tags
+  - ./bin/longhorn version --client-only | jq '.clientVersion | "live-upgrade-staging-", .cliAPIVersion,"-", .controllerAPIVersion, "-", .dataFormatVersion | tostring' | tr '\n' ' ' | tr -d '"' | tr -d ' ' > .tags
   privileged: true
   volumes:
   - name: socket
