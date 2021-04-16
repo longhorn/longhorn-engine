@@ -222,3 +222,234 @@ steps:
 depends_on:
 - default-amd64
 - default-arm64
+
+
+---
+kind: pipeline
+name: engine-compatible-image-amd64
+
+platform:
+  os: linux
+  arch: amd64
+
+steps:
+- name: generate new commit
+  image: ubuntu:18.04
+  commands:
+  - apt-get update
+  - apt-get install -y git
+  - git fetch --tags
+  - git commit --amend --no-edit
+
+- name: package
+  pull: default
+  image: rancher/dapper:v0.5.3
+  commands:
+  - dapper package
+  privileged: true
+  volumes:
+  - name: socket
+    path: /var/run/docker.sock
+
+- name: generate tag from version
+  pull: default
+  image: ubuntu:18.04
+  commands:
+  - apt-get update -y
+  - apt-get install -y jq
+  - ./bin/longhorn version --client-only | jq '.clientVersion | .cliAPIVersion,"-",.cliAPIMinVersion, ".", .controllerAPIVersion, "-", .controllerAPIMinVersion, ".", .dataFormatVersion, "-", .dataFormatMinVersion, "-amd64"| tostring' | tr '\n' ' ' | tr -d '"' | tr -d ' ' > .tags
+  privileged: true
+  volumes:
+  - name: socket
+    path: /var/run/docker.sock
+
+- name: publish-compatible-engine-amd64
+  image: plugins/docker
+  settings:
+    build_args:
+    - ARCH=amd64
+    custom_dns: 1.1.1.1
+    dockerfile: package/Dockerfile
+    password:
+      from_secret: docker_password
+    repo: longhornio/longhorn-test
+    username:
+      from_secret: docker_username
+  when:
+    instance:
+      include:
+      - drone-publish.longhorn.io
+    branch:
+    - master
+    event:
+    - push
+
+- name: slack_notify
+  image: plugins/slack
+  settings:
+    template: "Build {{build.link}} failed.\n"
+    username: Drone_Publish
+    webhook:
+      from_secret: slack_webhook
+  when:
+    event:
+      exclude:
+      - pull_request
+    instance:
+      include:
+      - drone-publish.longhorn.io
+    status:
+      - failure
+
+volumes:
+- name: socket
+  host:
+    path: /var/run/docker.sock
+
+depends_on:                                                                     
+- default-amd64                                                                 
+---
+kind: pipeline
+name: engine-compatible-image-arm64
+
+platform:
+  os: linux
+  arch: arm64
+
+steps:
+- name: generate new commit
+  image: ubuntu:18.04
+  commands:
+  - apt-get update
+  - apt-get install -y git
+  - git fetch --tags
+  - git commit --amend --no-edit
+
+- name: package
+  pull: default
+  image: rancher/dapper:v0.5.3
+  commands:
+  - dapper package
+  privileged: true
+  volumes:
+  - name: socket
+    path: /var/run/docker.sock
+
+- name: generate tag from version
+  pull: default
+  image: ubuntu:18.04
+  commands:
+  - apt-get update -y
+  - apt-get install -y jq
+  - ./bin/longhorn version --client-only | jq '.clientVersion | .cliAPIVersion,"-",.cliAPIMinVersion, ".", .controllerAPIVersion, "-", .controllerAPIMinVersion, ".", .dataFormatVersion, "-", .dataFormatMinVersion, "-arm64"| tostring' | tr '\n' ' ' | tr -d '"' | tr -d ' ' > .tags
+  privileged: true
+  volumes:
+  - name: socket
+    path: /var/run/docker.sock
+
+- name: publish-compatible-engine-arm64
+  image: plugins/docker
+  settings:
+    build_args:
+    - ARCH=arm64
+    custom_dns: 1.1.1.1
+    dockerfile: package/Dockerfile
+    password:
+      from_secret: docker_password
+    repo: longhornio/longhorn-test
+    username:
+      from_secret: docker_username
+  when:
+    instance:
+      include:
+      - drone-publish.longhorn.io
+    branch:
+    - master
+    event:
+    - push
+
+- name: slack_notify
+  image: plugins/slack
+  settings:
+    template: "Build {{build.link}} failed.\n"
+    username: Drone_Publish
+    webhook:
+      from_secret: slack_webhook
+  when:
+    event:
+      exclude:
+      - pull_request
+    instance:
+      include:
+      - drone-publish.longhorn.io
+    status:
+      - failure
+
+volumes:
+- name: socket
+  host:
+    path: /var/run/docker.sock
+depends_on:
+- default-arm64 
+
+---
+kind: pipeline
+name: engine-compatible-image-manifest
+
+platform:
+  os: linux
+  arch: amd64
+
+steps:
+- name: package
+  pull: default
+  image: rancher/dapper:v0.5.3
+  commands:
+  - dapper package
+  privileged: true
+  volumes:
+  - name: socket
+    path: /var/run/docker.sock
+
+- name: generate tag from version
+  pull: default
+  image: ubuntu:18.04
+  commands:
+  - apt-get update -y
+  - apt-get install -y jq
+  - ./bin/longhorn version --client-only | jq '.clientVersion | .cliAPIVersion,"-",.cliAPIMinVersion, ".", .controllerAPIVersion, "-", .controllerAPIMinVersion, ".", .dataFormatVersion, "-", .dataFormatMinVersion, "-arm64"| tostring' | tr '\n' ' ' | tr -d '"' | tr -d ' ' > .tags
+  privileged: true
+  volumes:
+  - name: socket
+    path: /var/run/docker.sock
+
+- name: manifest
+  image: plugins/manifest:1
+  settings:
+    username:
+      from_secret: docker_username
+    password:
+      from_secret: docker_password
+    platforms:
+      - linux/amd64
+      - linux/arm64
+    target: "longhornio/longhorn-test"
+    template: "longhornio/longhorn-engine:${PLUGIN_TAG}-ARCH"
+  when:
+    instance:
+    - drone-publish.longhorn.io
+    branch:
+    - master
+    event:
+    - push
+
+depends_on:
+- engine-compatible-image-amd64
+- engine-compatible-image-arm64
+- default-amd64                                                                 
+- default-arm64 
+
+volumes:                                                                        
+- name: socket                                                                  
+  host:                                                                         
+    path: /var/run/docker.sock 
