@@ -1,4 +1,4 @@
-image: longhorn-test:drone-upgrade-test-{{build.tag}}
+image: longhornio/longhorn-engine:live-upgrade-{{build.tag}}
 
 tags:
 {{#each build.tags}}
@@ -7,12 +7,12 @@ tags:
 
 manifests:
   -
-    image: plugins/manifest:drone-upgrade-test-{{build.tag}}-amd64
+    image: longhornio/longhorn-engine:live-upgrade-{{build.tag}}
     platform:
       architecture: amd64
       os: linux
   -
-    image: plugins/manifest:drone-upgrade-test-{{build.tag}}-arm64
+    image: longhornio/longhorn-engine:live-upgrade-{{build.tag}}
     platform:
       architecture: arm64
       os: linux
