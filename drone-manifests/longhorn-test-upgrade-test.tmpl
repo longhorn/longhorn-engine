@@ -1,0 +1,20 @@
+image: longhornio/longhorn-test:{{ build.tags }}
+
+{{#if build.tags}}
+tags:
+{{#each build.tags}}
+  - {{this}}
+{{/each}}
+{{/if}}
+
+manifests:
+  -
+    image: longhornio/longhorn-test:{{ build.tags }}-amd64
+    platform:
+      architecture: amd64
+      os: linux
+  -
+    image: longhornio/longhorn-test:{{ build.tags }}-arm64
+    platform:
+      architecture: arm64
+      os: linux
