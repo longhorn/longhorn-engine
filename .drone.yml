@@ -256,8 +256,7 @@ steps:
   commands:
   - apt-get update -y
   - apt-get install -y jq
-#  - ./bin/longhorn version --client-only | jq '.clientVersion | .cliAPIVersion,"-",.cliAPIMinVersion, ".", .controllerAPIVersion, "-", .controllerAPIMinVersion, ".", .dataFormatVersion, "-", .dataFormatMinVersion, "-amd64"| tostring' | tr '\n' ' ' | tr -d '"' | tr -d ' ' > .tags
-  - ./bin/longhorn version --client-only | jq '.clientVersion | "live-upgrade-", .cliAPIVersion,"-", .controllerAPIVersion, "-", .dataFormatVersion, "-amd64"| tostring' | tr '\n' ' ' | tr -d '"' | tr -d ' ' > .tags
+  - ./bin/longhorn version --client-only | jq '.clientVersion | "live-upgrade-staging-", .cliAPIVersion,"-", .controllerAPIVersion, "-", .dataFormatVersion, "-amd64"| tostring' | tr '\n' ' ' | tr -d '"' | tr -d ' ' > .tags
   privileged: true
   volumes:
   - name: socket
@@ -279,8 +278,8 @@ steps:
     instance:
       include:
       - drone-publish.longhorn.io
-    branch:
-    - master
+    #branch:
+    #- master
     event:
     - push
 
@@ -341,8 +340,7 @@ steps:
   commands:
   - apt-get update -y
   - apt-get install -y jq
-#- ./bin/longhorn version --client-only | jq '.clientVersion | .cliAPIVersion,"-",.cliAPIMinVersion, ".", .controllerAPIVersion, "-", .controllerAPIMinVersion, ".", .dataFormatVersion, "-", .dataFormatMinVersion, "-arm64"| tostring' | tr '\n' ' ' | tr -d '"' | tr -d ' ' > .tags
-  - ./bin/longhorn version --client-only | jq '.clientVersion | "live-upgrade-", .cliAPIVersion,"-", .controllerAPIVersion, "-", .dataFormatVersion, "-amd64"| tostring' | tr '\n' ' ' | tr -d '"' | tr -d ' ' > .tags
+  - ./bin/longhorn version --client-only | jq '.clientVersion | "live-upgrade-staging-", .cliAPIVersion,"-", .controllerAPIVersion, "-", .dataFormatVersion, "-amd64"| tostring' | tr '\n' ' ' | tr -d '"' | tr -d ' ' > .tags
   privileged: true
   volumes:
   - name: socket
@@ -364,8 +362,8 @@ steps:
     instance:
       include:
       - drone-publish.longhorn.io
-    branch:
-    - master
+    #branch:
+    #- master
     event:
     - push
 
@@ -418,8 +416,7 @@ steps:
   commands:
   - apt-get update -y
   - apt-get install -y jq
-#- ./bin/longhorn version --client-only | jq '.clientVersion | .cliAPIVersion,"-",.cliAPIMinVersion, ".", .controllerAPIVersion, "-", .controllerAPIMinVersion, ".", .dataFormatVersion, "-", .dataFormatMinVersion, "-arm64"| tostring' | tr '\n' ' ' | tr -d '"' | tr -d ' ' > .tags
-  - ./bin/longhorn version --client-only | jq '.clientVersion | "live-upgrade-", .cliAPIVersion,"-", .controllerAPIVersion, "-", .dataFormatVersion, "-amd64"| tostring' | tr '\n' ' ' | tr -d '"' | tr -d ' ' > .tags
+  - ./bin/longhorn version --client-only | jq '.clientVersion | "live-upgrade-staging-", .cliAPIVersion,"-", .controllerAPIVersion, "-", .dataFormatVersion, "-amd64"| tostring' | tr '\n' ' ' | tr -d '"' | tr -d ' ' > .tags
   privileged: true
   volumes:
   - name: socket
