@@ -76,7 +76,7 @@ func (s *Service) ListObjects(key, delimiter string) ([]*s3.Object, []*s3.Common
 	}
 	defer s.Close()
 	// WARNING: Directory must end in "/" in S3, otherwise it may match
-	// unintentially
+	// unintentionally
 	params := &s3.ListObjectsInput{
 		Bucket:    aws.String(s.Bucket),
 		Prefix:    aws.String(key),
