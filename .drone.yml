@@ -423,7 +423,7 @@ steps:
   - name: socket
     path: /var/run/docker.sock
 
-- name: manifest
+- name: engine-compatible-image-manifest
   image: plugins/manifest:1
   settings:
     username:
@@ -438,8 +438,8 @@ steps:
   when:
     instance:
     - drone-publish.longhorn.io
-    branch:
-    - master
+    #branch:
+    #- master
     event:
     - push
 
