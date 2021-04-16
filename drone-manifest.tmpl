@@ -1,4 +1,4 @@
-image: longhornio/longhorn-engine:live-upgrade-staging-{{build.tag}}
+image: longhornio/longhorn-engine:{{build.tag}}
 
 tags:
 {{#each build.tags}}
@@ -7,12 +7,12 @@ tags:
 
 manifests:
   -
-    image: longhornio/longhorn-engine:live-upgrade-staging-{{build.tag}}
+    image: longhornio/longhorn-engine:{{build.tag}}
     platform:
       architecture: amd64
       os: linux
   -
-    image: longhornio/longhorn-engine:live-upgrade-staging-{{build.tag}}
+    image: longhornio/longhorn-engine:{{build.tag}}
     platform:
       architecture: arm64
       os: linux
