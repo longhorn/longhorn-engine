@@ -433,7 +433,9 @@ steps:
       - linux/amd64
       - linux/arm64
     target: "longhornio/longhorn-test"
-    template: "longhornio/longhorn-engine:${TAG}-ARCH"
+    template: "longhornio/longhorn-engine:${PLUGIN_TAGS}-ARCH"
+  environment:
+    PLUGIN_TAGS: ".tags"
   when:
     instance:
     - drone-publish.longhorn.io
