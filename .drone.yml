@@ -305,8 +305,8 @@ volumes:
   host:
     path: /var/run/docker.sock
 
-depends_on:                                                                     
-- default-amd64                                                                 
+#depends_on:                                                                     
+#- default-amd64                                                                 
 ---
 kind: pipeline
 name: engine-compatible-image-arm64
@@ -388,8 +388,8 @@ volumes:
 - name: socket
   host:
     path: /var/run/docker.sock
-depends_on:
-- default-arm64 
+#depends_on:
+#- default-arm64 
 
 ---
 kind: pipeline
