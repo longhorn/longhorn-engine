@@ -13,7 +13,7 @@ require (
 	github.com/gorilla/websocket v1.4.0 // indirect
 	github.com/longhorn/backupstore v0.0.0-20210413103305-10466b9f5adf
 	github.com/longhorn/go-iscsi-helper v0.0.0-20210304120829-4c21e728023b
-	github.com/longhorn/sparse-tools v0.0.0-20210414083048-58c725efe143
+	github.com/longhorn/sparse-tools v0.0.0-20210420073041-5c51de69e0eb
 	github.com/mattn/go-colorable v0.1.4 // indirect
 	github.com/mattn/go-runewidth v0.0.5-0.20181218000649-703b5e6b11ae // indirect
 	github.com/moby/moby v1.11.1

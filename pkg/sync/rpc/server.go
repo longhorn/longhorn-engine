@@ -367,8 +367,7 @@ func (s *SyncAgentServer) launchReceiver(processName, toFileName string, ops spa
 		}()
 
 		logrus.Infof("Running ssync server for file %v at port %v", toFileName, port)
-		ctx, cancel := context.WithCancel(context.Background())
-		if err = sparserest.Server(ctx, cancel, strconv.Itoa(port), toFileName, ops); err != nil && err != http.ErrServerClosed {
+		if err = sparserest.Server(context.Background(), strconv.Itoa(port), toFileName, ops); err != nil && err != http.ErrServerClosed {
 			logrus.Errorf("Error running ssync server: %v", err)
 			return
 		}

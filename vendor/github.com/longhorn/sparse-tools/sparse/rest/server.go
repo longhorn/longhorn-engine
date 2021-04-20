@@ -2,8 +2,9 @@ package rest
 
 import (
 	"context"
-	log "github.com/sirupsen/logrus"
 	"net/http"
+
+	log "github.com/sirupsen/logrus"
 
 	"github.com/longhorn/sparse-tools/sparse"
 )
@@ -19,12 +20,13 @@ type SyncServer struct {
 }
 
 // TestServer daemon serves only one connection for each test then exits
-func TestServer(ctx context.Context, cancelFunc context.CancelFunc, port string, filePath string, timeout int) {
-	Server(ctx, cancelFunc, port, filePath, &SyncFileStub{})
+func TestServer(ctx context.Context, port string, filePath string, timeout int) {
+	Server(ctx, port, filePath, &SyncFileStub{})
 }
 
-func Server(ctx context.Context, cancelFunc context.CancelFunc, port string, filePath string, syncFileOps SyncFileOperations) error {
+func Server(ctx context.Context, port string, filePath string, syncFileOps SyncFileOperations) error {
 	log.Infof("Creating Ssync service")
+	ctx, cancelFunc := context.WithCancel(ctx)
 	srv := &http.Server{
 		Addr: ":" + port,
 	}

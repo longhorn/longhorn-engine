@@ -43,8 +43,7 @@ func Main() {
 		dstPath := args[0]
 
 		ops := &rest.SyncFileStub{}
-		ctx, cancelFunc := context.WithCancel(context.Background())
-		err := rest.Server(ctx, cancelFunc, *port, dstPath, ops)
+		err := rest.Server(context.Background(), *port, dstPath, ops)
 		if err != nil {
 			log.Fatalf("Ssync server failed, err: %s", err)
 		}
