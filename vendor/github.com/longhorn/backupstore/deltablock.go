@@ -469,8 +469,21 @@ func RestoreDeltaBlockBackup(config *DeltaRestoreConfig) error {
 		defer volDev.Close()
 		defer lock.Unlock()
 
-		blkCounts := len(backup.Blocks)
 		var progress int
+		// This pre-truncate is to ensure the XFS speculatively
+		// preallocates post-EOF blocks get reclaimed when volDev is
+		// closed.
+		// https://github.com/longhorn/longhorn/issues/2503
+		// We want to truncate regular files, but not device
+		if stat.Mode()&os.ModeType == 0 {
+			log.Debugf("Truncate %v to size %v", volDevName, vol.Size)
+			if err := volDev.Truncate(vol.Size); err != nil {
+				deltaOps.UpdateRestoreStatus(volDevName, progress, err)
+				return
+			}
+		}
+
+		blkCounts := len(backup.Blocks)
 		for i, block := range backup.Blocks {
 			log.Debugf("Restore for %v: block %v, %v/%v", volDevName, block.BlockChecksum, i+1, blkCounts)
 			if err := restoreBlockToFile(srcVolumeName, volDev, bsDriver, block); err != nil {
@@ -481,14 +494,6 @@ func RestoreDeltaBlockBackup(config *DeltaRestoreConfig) error {
 			deltaOps.UpdateRestoreStatus(volDevName, progress, err)
 		}
 
-		// We want to truncate regular files, but not device
-		if stat.Mode()&os.ModeType == 0 {
-			log.Debugf("Truncate %v to size %v", volDevName, vol.Size)
-			if err := volDev.Truncate(vol.Size); err != nil {
-				deltaOps.UpdateRestoreStatus(volDevName, progress, err)
-				return
-			}
-		}
 		deltaOps.UpdateRestoreStatus(volDevName, PROGRESS_PERCENTAGE_BACKUP_TOTAL, nil)
 	}()
 
@@ -614,10 +619,10 @@ func RestoreDeltaBlockBackupIncrementally(config *DeltaRestoreConfig) error {
 		defer volDev.Close()
 		defer lock.Unlock()
 
-		if err := performIncrementalRestore(srcVolumeName, volDev, lastBackup, backup, bsDriver, config); err != nil {
-			deltaOps.UpdateRestoreStatus(volDevName, 0, err)
-			return
-		}
+		// This pre-truncate is to ensure the XFS speculatively
+		// preallocates post-EOF blocks get reclaimed when volDev is
+		// closed.
+		// https://github.com/longhorn/longhorn/issues/2503
 		// We want to truncate regular files, but not device
 		if stat.Mode()&os.ModeType == 0 {
 			log.Debugf("Truncate %v to size %v", volDevName, vol.Size)
@@ -626,6 +631,12 @@ func RestoreDeltaBlockBackupIncrementally(config *DeltaRestoreConfig) error {
 				return
 			}
 		}
+
+		if err := performIncrementalRestore(srcVolumeName, volDev, lastBackup, backup, bsDriver, config); err != nil {
+			deltaOps.UpdateRestoreStatus(volDevName, 0, err)
+			return
+		}
+
 		deltaOps.UpdateRestoreStatus(volDevName, PROGRESS_PERCENTAGE_BACKUP_TOTAL, nil)
 	}()
 	return nil
