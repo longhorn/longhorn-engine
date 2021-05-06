@@ -1,15 +1,13 @@
 image: longhornio/longhorn-engine:{{build.tag}}
 
-tags: ".tags"
-
 manifests:
   -
-    image: longhornio/longhorn-engine:{{build.tag}}
+    image: longhornio/longhorn-engine:{{build.tag}}-amd64
     platform:
       architecture: amd64
       os: linux
   -
-    image: longhornio/longhorn-engine:{{build.tag}}
+    image: longhornio/longhorn-engine:{{build.tag}}-arm64
     platform:
       architecture: arm64
       os: linux
