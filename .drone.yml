@@ -432,8 +432,7 @@ steps:
     platforms:
       - linux/amd64
       - linux/arm64
-    spec: ./drone-manifest.tmpl
-    auto_tag: true
+    spec: "./drone-manifest.tmpl"
     dump: true
   when:
     instance:
