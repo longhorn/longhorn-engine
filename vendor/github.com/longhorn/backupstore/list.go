@@ -15,6 +15,8 @@ import (
 	"github.com/longhorn/backupstore/util"
 )
 
+const jobQueueTimeout = time.Minute
+
 type VolumeInfo struct {
 	Name           string
 	Size           int64 `json:",string"`
@@ -81,24 +83,43 @@ func addListVolume(volumeName string, driver BackupStoreDriver, volumeOnly bool)
 		return volumeInfo, nil
 	}
 
+	jobQueues := jobq.NewWorkerDispatcher(
+		// init #cpu*16 workers
+		jobq.WorkerN(runtime.NumCPU()*16),
+		// init worker pool size to 50 (same as maximum retentions)
+		jobq.WorkerPoolSize(50),
+	)
+	defer jobQueues.Stop()
+
+	var trackers []jobq.JobTracker
 	for _, backupName := range backupNames {
-		var info *BackupInfo
-		backup, err := loadBackup(backupName, volumeName, driver)
-		if err != nil {
-			log.WithFields(logrus.Fields{
-				LogFieldReason: LogReasonFallback,
-				LogFieldEvent:  LogEventList,
-				LogFieldObject: LogObjectBackup,
-				LogFieldBackup: backupName,
-				LogFieldVolume: volumeName,
-			}).Warn("Failed to load backup in backupstore")
-			info = failedBackupInfo(backupName, volumeName, driver.GetURL(), err)
-		} else if isBackupInProgress(backup) {
-			// for now we don't return in progress backups to the ui
-			continue
-		} else {
-			info = fillBackupInfo(backup, driver.GetURL())
-		}
+		backupName := backupName
+		tracker := jobQueues.QueueTimedFunc(context.Background(), func(ctx context.Context) (interface{}, error) {
+			var info *BackupInfo
+			backup, err := loadBackup(backupName, volumeName, driver)
+			if err != nil {
+				log.WithFields(logrus.Fields{
+					LogFieldReason: LogReasonFallback,
+					LogFieldEvent:  LogEventList,
+					LogFieldObject: LogObjectBackup,
+					LogFieldBackup: backupName,
+					LogFieldVolume: volumeName,
+				}).Warn("Failed to load backup in backupstore")
+				info = failedBackupInfo(backupName, volumeName, driver.GetURL(), err)
+			} else if isBackupInProgress(backup) {
+				// for now we don't return in progress backups to the ui
+			} else {
+				info = fillBackupInfo(backup, driver.GetURL())
+			}
+			return info, nil
+		}, jobQueueTimeout)
+
+		trackers = append(trackers, tracker)
+	}
+
+	for _, tracker := range trackers {
+		payload, _ := tracker.Result()
+		info := payload.(*BackupInfo)
 		volumeInfo.Backups[info.URL] = info
 	}
 	return volumeInfo, nil
@@ -113,11 +134,10 @@ func List(volumeName, destURL string, volumeOnly bool) (map[string]*VolumeInfo, 
 	jobQueues := jobq.NewWorkerDispatcher(
 		// init #cpu*16 workers
 		jobq.WorkerN(runtime.NumCPU()*16),
-		// init worker pool size to 256
+		// init worker pool size to 256 (same as max folders 16*16)
 		jobq.WorkerPoolSize(256),
 	)
 	defer jobQueues.Stop()
-	jobQueueTimeout := 30 * time.Second
 
 	volumeNames := []string{volumeName}
 	if volumeName == "" {
