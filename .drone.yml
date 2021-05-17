@@ -424,8 +424,6 @@ steps:
 
 - name: engine-compatible-image-manifest
   image: plugins/manifest:latest
-  environment:
-    PLUGIN_TAG: ".tags"
   settings:
     username:
       from_secret: docker_username
