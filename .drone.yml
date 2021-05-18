@@ -423,7 +423,7 @@ steps:
     path: /var/run/docker.sock
 
 - name: engine-compatible-image-manifest
-  image: plugins/manifest:latest
+  image: plugins/manifest:1.2.3
   settings:
     username:
       from_secret: docker_username
