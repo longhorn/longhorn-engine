@@ -1,4 +1,4 @@
-image: longhornio/longhorn-engine:{{#if build.tag}}{{trimPrefix "v" build.tag}}{{else}}latest{{/if}}
+image: longhornio/longhorn-engine:{{ index build.tags 0}}
 
 {{#if build.tags}}
 tags:
@@ -9,12 +9,12 @@ tags:
 
 manifests:
   -
-    image: longhornio/longhorn-engine:{{#if build.tag}}{{trimPrefix "v" build.tag}}-{{/if}}amd64
+    image: longhornio/longhorn-engine:{{ index build.tags 0}}-amd64
     platform:
       architecture: amd64
       os: linux
   -
-    image: longhornio/longhorn-engine:{{#if build.tag}}{{trimPrefix "v" build.tag}}-{{/if}}arm64
+    image: longhornio/longhorn-engine:{{ index build.tags 0}}-arm64
     platform:
       architecture: arm64
       os: linux
