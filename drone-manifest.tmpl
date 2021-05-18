@@ -9,12 +9,12 @@ tags:
 
 manifests:
   -
-    image: longhornio/longhorn-engine:{{ build.tags }}
+    image: longhornio/longhorn-engine:{{ build.tags }}-amd64
     platform:
       architecture: amd64
       os: linux
   -
-    image: longhornio/longhorn-engine:{{ build.tags }}
+    image: longhornio/longhorn-engine:{{ build.tags }}-arm64
     platform:
       architecture: arm64
       os: linux
