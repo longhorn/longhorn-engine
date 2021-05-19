@@ -24,7 +24,7 @@ steps:
   - name: socket
     path: /var/run/docker.sock
 
-- name: publish-master-image
+- name: publish-image
   image: plugins/docker
   settings:
     build_args:
@@ -34,12 +34,10 @@ steps:
     password:
       from_secret: docker_password
     repo: longhornio/longhorn-engine
-    tag: "master-amd64"
+    tag: "${DRONE_BRANCH}-head-amd64"
     username:
       from_secret: docker_username
   when:
-    branch:
-    - master
     event:
     - push
 
@@ -57,8 +55,6 @@ steps:
     username:
       from_secret: docker_username
   when:
-    branch:
-    - master
     event:
     - tag
 
@@ -110,7 +106,7 @@ steps:
   - name: socket
     path: /var/run/docker.sock
 
-- name: publish-master-image
+- name: publish-image
   image: plugins/docker
   settings:
     build_args:
@@ -120,12 +116,10 @@ steps:
     password:
       from_secret: docker_password
     repo: longhornio/longhorn-engine
-    tag: "master-arm64"
+    tag: "${DRONE_BRANCH}-head-arm64"
     username:
       from_secret: docker_username
   when:
-    branch:
-    - master
     event:
     - push
 
@@ -143,8 +137,6 @@ steps:
     username:
       from_secret: docker_username
   when:
-    branch:
-    - master
     event:
     - tag
 
@@ -179,7 +171,7 @@ platform:
   arch: amd64
 
 steps:
-- name: manifest-master
+- name: manifest
   image: plugins/manifest:1
   settings:
     username:
@@ -189,13 +181,11 @@ steps:
     platforms:
       - linux/amd64
       - linux/arm64
-    target: "longhornio/longhorn-engine:master"
-    template: "longhornio/longhorn-engine:master-ARCH"
+    target: "longhornio/longhorn-engine:${DRONE_BRANCH}-head"
+    template: "longhornio/longhorn-engine:${DRONE_BRANCH}-head-ARCH"
   when:
     instance:
     - drone-publish.longhorn.io
-    branch:
-    - master
     event:
     - push
 
@@ -214,8 +204,6 @@ steps:
   when:
     instance:
     - drone-publish.longhorn.io
-    branch:
-    - master
     event:
     - tag
 
