@@ -33,9 +33,8 @@ func (m *MultiWriterError) Error() string {
 	}
 }
 
-func (m *MultiWriterAt) WriteAt(p []byte, off int64) (n int, err error) {
+func (m *MultiWriterAt) WriteAt(p []byte, off int64) (int, error) {
 	errs := make([]error, len(m.writers))
-	errored := false
 	wg := sync.WaitGroup{}
 
 	for i, w := range m.writers {
@@ -43,20 +42,28 @@ func (m *MultiWriterAt) WriteAt(p []byte, off int64) (n int, err error) {
 		go func(index int, w io.WriterAt) {
 			_, err := w.WriteAt(p, off)
 			if err != nil {
-				errored = true
 				errs[index] = err
 			}
+
 			wg.Done()
 		}(i, w)
 	}
 
 	wg.Wait()
-	if errored {
-		return 0, &MultiWriterError{
-			Writers: m.writers,
-			Errors:  errs,
+
+	n := 0
+	var err error = nil
+
+	for i := range errs {
+		if errs[i] != nil {
+			err = &MultiWriterError{
+				Writers: m.writers,
+				Errors:  errs,
+			}
+		} else {
+			n = len(p)
 		}
 	}
 
-	return len(p), nil
+	return n, err
 }
