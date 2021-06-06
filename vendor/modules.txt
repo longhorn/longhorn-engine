@@ -74,7 +74,7 @@ github.com/longhorn/backupstore/nfs
 github.com/longhorn/backupstore/s3
 github.com/longhorn/backupstore/util
 github.com/longhorn/backupstore/vfs
-# github.com/longhorn/go-iscsi-helper v0.0.0-20210304120829-4c21e728023b
+# github.com/longhorn/go-iscsi-helper v0.0.0-20210330030558-49a327fb024e
 github.com/longhorn/go-iscsi-helper/iscsi
 github.com/longhorn/go-iscsi-helper/iscsidev
 github.com/longhorn/go-iscsi-helper/longhorndev
