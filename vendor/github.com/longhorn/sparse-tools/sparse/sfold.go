@@ -1,16 +1,20 @@
 package sparse
 
 import (
+	"context"
 	"fmt"
 	"os"
+	"sync"
+	"sync/atomic"
 	"syscall"
+	"time"
 
 	log "github.com/sirupsen/logrus"
 )
 
 const (
 	batchBlockCount  = 32
-	progressComplete = 100
+	progressComplete = uint32(100)
 )
 
 type FoldFileOperations interface {
@@ -60,14 +64,35 @@ func FoldFile(childFileName, parentFileName string, ops FoldFileOperations) erro
 }
 
 func coalesce(parentFileIo, childFileIo FileIoProcessor, fileSize int64, ops FoldFileOperations) (err error) {
-	var progress int
+	var progress uint32
+	progressMutex := &sync.Mutex{}
+
+	// progress updates can only be monotonically increasing, once that's replaced we can use an atomic cmp&swp around progress
+	// that doesn't require locking and we also limit the update function calls to p=[0,100] since there
+	// is no point in calling updates for the same p value multiple times
+	updateProgress := func(newProgress uint32, done bool, err error) {
+		forcedUpdate := done || err != nil
+		if !forcedUpdate && newProgress <= atomic.LoadUint32(&progress) {
+			return
+		}
+
+		// this lock ensures that there is only a single in flight UpdateFoldFileProgress operation
+		// with multiple in flight operations, the lock on the receiver side would be non deterministically
+		// acquired which would potentially lead to non monotonic progress updates.
+		progressMutex.Lock()
+		defer progressMutex.Unlock()
+		if forcedUpdate || newProgress > atomic.LoadUint32(&progress) {
+			ops.UpdateFoldFileProgress(int(newProgress), done, err)
+			atomic.StoreUint32(&progress, newProgress)
+		}
+	}
 
 	defer func() {
 		if err != nil {
 			log.Errorf(err.Error())
-			ops.UpdateFoldFileProgress(progress, true, err)
+			updateProgress(atomic.LoadUint32(&progress), true, err)
 		} else {
-			ops.UpdateFoldFileProgress(progressComplete, true, nil)
+			updateProgress(progressComplete, true, nil)
 		}
 	}()
 
@@ -75,49 +100,67 @@ func coalesce(parentFileIo, childFileIo FileIoProcessor, fileSize int64, ops Fol
 	if err != nil {
 		return fmt.Errorf("can't get FS block size, error: %v", err)
 	}
-	exts, err := GetFiemapExtents(childFileIo)
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	syncStartTime := time.Now()
+	out, errc, err := GetFileLayout(ctx, childFileIo)
 	if err != nil {
-		return fmt.Errorf("failed to GetFiemapExtents of childFile filename: %s, err: %v", childFileIo.Name(), err)
+		return fmt.Errorf("failed to retrieve file layout for file %v err: %v", childFileIo.Name(), err)
 	}
 
-	for _, e := range exts {
-		dataBegin := int64(e.Logical)
-		dataEnd := int64(e.Logical + e.Length)
-
-		// now we have a data start offset and length(hole - data)
-		// let's read from child and write to parent file. We read/write up to
-		// 32 blocks in a batch
-		_, err = parentFileIo.Seek(dataBegin, os.SEEK_SET)
-		if err != nil {
-			return fmt.Errorf("Failed to os.Seek os.SEEK_SET parentFile filename: %v, at: %v", parentFileIo.Name(), dataBegin)
-		}
-
+	processSegment := func(segment FileInterval) error {
 		batch := batchBlockCount * blockSize
 		buffer := AllocateAligned(batch)
-		for offset := dataBegin; offset < dataEnd; {
-			var n int
 
-			size := batch
-			if offset+int64(size) > dataEnd {
-				size = int(dataEnd - offset)
+		if segment.Kind == SparseData {
+			for offset := segment.Begin; offset < segment.End; {
+				var n int
+
+				size := batch
+				if offset+int64(size) > segment.End {
+					size = int(segment.End - offset)
+				}
+				// read a batch from child
+				n, err := childFileIo.ReadAt(buffer[:size], offset)
+				if err != nil {
+					return fmt.Errorf("failed to read childFile filename: %v, size: %v, at: %v",
+						childFileIo.Name(), size, offset)
+				}
+				// write a batch to parent
+				n, err = parentFileIo.WriteAt(buffer[:size], offset)
+				if err != nil {
+					return fmt.Errorf("failed to write to parentFile filename: %v, size: %v, at: %v",
+						parentFileIo.Name(), size, offset)
+				}
+				offset += int64(n)
 			}
-			// read a batch from child
-			n, err = childFileIo.ReadAt(buffer[:size], offset)
-			if err != nil {
-				return fmt.Errorf("Failed to read childFile filename: %v, size: %v, at: %v", childFileIo.Name(), size, offset)
-			}
-			// write a batch to parent
-			n, err = parentFileIo.WriteAt(buffer[:size], offset)
-			if err != nil {
-				return fmt.Errorf("Failed to write to parentFile filename: %v, size: %v, at: %v", parentFileIo.Name(), size, offset)
-			}
-			offset += int64(n)
-			progress = int(float64(offset) / float64(fileSize) * 100)
-			ops.UpdateFoldFileProgress(progress, false, nil)
+
+			newProgress := uint32(float64(segment.End) / float64(fileSize) * 100)
+			updateProgress(newProgress, false, nil)
 		}
+
+		return nil
 	}
 
-	return nil
+	const WorkerCount = 4
+	errorChannels := []<-chan error{errc}
+	for i := 0; i < WorkerCount; i++ {
+		errorChannels = append(errorChannels, processFileIntervals(ctx, out, processSegment))
+	}
+
+	// the below select will exit once all error channels are closed, or a single
+	// channel has run into an error, which will lead to the ctx being cancelled
+	mergedErrc := mergeErrorChannels(ctx, errorChannels...)
+	select {
+	case err = <-mergedErrc:
+		break
+	}
+
+	log.Debugf("finished fold for parent: %v child: %v size: %v elapsed: %.2fs",
+		parentFileIo.Name(), childFileIo.Name(), fileSize, time.Now().Sub(syncStartTime).Seconds())
+	return err
 }
 
 // get the file system block size

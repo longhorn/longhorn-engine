@@ -121,7 +121,7 @@ func LoginTarget(ip, target string, ne *util.NamespaceExecutor) error {
 			return errors.Wrapf(err, "Failed to manually rescan iscsi session of target %v:%v", target, ip)
 		}
 	} else {
-		logrus.Infof("default: automatically rescan all LUNs of all iscis sessions")
+		logrus.Infof("default: automatically rescan all LUNs of all iscsi sessions")
 	}
 
 	return nil

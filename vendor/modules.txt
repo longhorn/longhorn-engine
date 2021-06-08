@@ -74,7 +74,7 @@ github.com/longhorn/backupstore/nfs
 github.com/longhorn/backupstore/s3
 github.com/longhorn/backupstore/util
 github.com/longhorn/backupstore/vfs
-# github.com/longhorn/go-iscsi-helper v0.0.0-20210304120829-4c21e728023b
+# github.com/longhorn/go-iscsi-helper v0.0.0-20210330030558-49a327fb024e
 github.com/longhorn/go-iscsi-helper/iscsi
 github.com/longhorn/go-iscsi-helper/iscsidev
 github.com/longhorn/go-iscsi-helper/longhorndev
@@ -82,7 +82,7 @@ github.com/longhorn/go-iscsi-helper/types
 github.com/longhorn/go-iscsi-helper/util
 # github.com/longhorn/nsfilelock v0.0.0-20200723175406-fa7c83ad0003
 github.com/longhorn/nsfilelock
-# github.com/longhorn/sparse-tools v0.0.0-20210420073041-5c51de69e0eb
+# github.com/longhorn/sparse-tools v0.0.0-20210608154118-5a6415ebe755
 github.com/longhorn/sparse-tools/cli/ssync
 github.com/longhorn/sparse-tools/sparse
 github.com/longhorn/sparse-tools/sparse/rest

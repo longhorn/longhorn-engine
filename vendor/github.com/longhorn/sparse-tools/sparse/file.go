@@ -1,11 +1,13 @@
 package sparse
 
 import (
+	"context"
 	"crypto/sha512"
 	"fmt"
 	"io"
 	"os"
 	"syscall"
+	"time"
 	"unsafe"
 
 	log "github.com/sirupsen/logrus"
@@ -155,7 +157,7 @@ func alignmentShift(block []byte) int {
 }
 
 func ReadDataInterval(file FileIoProcessor, dataInterval Interval) ([]byte, error) {
-	data := make([]byte, dataInterval.Len())
+	data := AllocateAligned(int(dataInterval.Len()))
 	n, err := file.ReadAt(data, dataInterval.Begin)
 	if err != nil {
 		if err == io.EOF {
@@ -192,38 +194,136 @@ func HashData(data []byte) ([]byte, error) {
 	return sum[:], nil
 }
 
+func GetFileLayout(ctx context.Context, file FileIoProcessor) (<-chan FileInterval, <-chan error, error) {
+	fileInfo, err := file.Stat()
+	if err != nil {
+		return nil, nil, err
+	}
+
+	// for EXT4 on kernels < 5.8 the extent retrieval time sucks
+	// for 1024 extents, it can take 3 minutes to return from the kernel
+	// so this process cannot be killed for that amount of time
+	// we use a 10x MaxInflightIntervals buffer to allow the extent retrieval to get 5x ahead of processing
+	// this makes any variance in the extent retrieval time irrelevant and decreases potential wait time
+	const MaxExtentsBuffer = 1024
+	const MaxInflightIntervals = MaxExtentsBuffer * 10
+	out := make(chan FileInterval, MaxInflightIntervals)
+	errc := make(chan error, 1)
+	go func() {
+		defer close(out)
+		defer close(errc)
+
+		startTime := time.Now()
+		totalExtents := 0
+		defer func() {
+			log.Debugf("retrieved extents for file %v, fileSize: %v elapsed: %.2fs, extents: %v",
+				fileInfo.Name(), fileInfo.Size(),
+				time.Now().Sub(startTime).Seconds(), totalExtents)
+		}()
+
+		var lastIntervalEnd int64
+		isFinalInterval := fileInfo.Size() == 0
+		for !isFinalInterval {
+			exts, err := GetFiemapRegionExts(file, Interval{lastIntervalEnd, fileInfo.Size()}, MaxExtentsBuffer)
+			if err != nil {
+				errc <- err
+				return
+			}
+
+			// we pre allocate the temporary interval buffer, so we only need a single allocation
+			// the final extent can have 3 intervals, a prior hole, data, final hole
+			// other extents will have at most 2 intervals, a prior hole, data
+			intervals := make([]FileInterval, 0, 1+len(exts)*2)
+			isFinalInterval = len(exts) == 0
+			totalExtents += len(exts)
+
+			// special case the whole file is a hole
+			if totalExtents == 0 && fileInfo.Size() != 0 {
+				hole := FileInterval{SparseHole, Interval{0, fileInfo.Size()}}
+				intervals = append(intervals, hole)
+			}
+
+			// map to intervals
+			for _, e := range exts {
+				data := FileInterval{SparseData, Interval{int64(e.Logical), int64(e.Logical + e.Length)}}
+
+				if lastIntervalEnd < data.Begin {
+					hole := FileInterval{SparseHole, Interval{lastIntervalEnd, data.Begin}}
+					intervals = append(intervals, hole)
+				}
+
+				lastIntervalEnd = data.End
+				intervals = append(intervals, data)
+				isFinalInterval = e.Flags&FIEMAP_EXTENT_LAST != 0
+
+				if isFinalInterval {
+					// add a hole between last data segment and end of file
+					if lastIntervalEnd < fileInfo.Size() {
+						hole := FileInterval{SparseHole, Interval{lastIntervalEnd, fileInfo.Size()}}
+						intervals = append(intervals, hole)
+					}
+				}
+			}
+
+			// transmit intervals
+			for _, interval := range intervals {
+				select {
+				case out <- interval:
+				case <-ctx.Done():
+					return
+				}
+			}
+		}
+	}()
+
+	return out, errc, err
+}
+
 func GetFiemapExtents(file FileIoProcessor) ([]Extent, error) {
 	fileInfo, err := file.Stat()
 	if err != nil {
 		return nil, err
 	}
-	return GetFiemapRegionExts(file, Interval{0, fileInfo.Size()})
+
+	var extents []Extent
+	var lastIntervalEnd int64
+	const MaxExtentsBuffer = 1024
+
+	isFinalExtent := fileInfo.Size() == 0
+	for !isFinalExtent && lastIntervalEnd < fileInfo.Size() {
+		exts, err := GetFiemapRegionExts(file, Interval{lastIntervalEnd, fileInfo.Size()}, MaxExtentsBuffer)
+		if err != nil {
+			return nil, err
+		}
+
+		if len(exts) == 0 {
+			return extents, nil
+		}
+
+		lastIntervalEnd = int64(exts[len(exts)-1].Logical + exts[len(exts)-1].Length + 1)
+		isFinalExtent = exts[len(exts)-1].Flags&FIEMAP_EXTENT_LAST != 0
+		extents = append(extents, exts...)
+	}
+
+	return extents, nil
 }
 
-func GetFiemapRegionExts(file FileIoProcessor, interval Interval) ([]Extent, error) {
-	if interval.End == 0 {
+func GetFiemapRegionExts(file FileIoProcessor, interval Interval, extCount int) ([]Extent, error) {
+	if interval.End == 0 || extCount == 0 {
 		return nil, nil
 	}
-	var exts []Extent
+
+	retrievalStart := time.Now()
 	fiemap := NewFiemapFile(file.GetFile())
-
-	// first call of Fiemap with 0 extent count will actually return total mapped ext counts
-	// we can use that to allocate extent struct slice to get details of each extent
-	extCount, _, errno := fiemap.FiemapRegion(0, uint64(interval.Begin), uint64(interval.End-interval.Begin))
-	if errno != 0 {
-		log.Error("failed to call fiemap.Fiemap(0)")
-		return exts, fmt.Errorf(errno.Error())
-	}
-
-	if extCount == 0 {
-		return exts, nil
-	}
-
-	_, exts, errno = fiemap.FiemapRegion(extCount, uint64(interval.Begin), uint64(interval.End-interval.Begin))
+	_, exts, errno := fiemap.FiemapRegion(uint32(extCount), uint64(interval.Begin), uint64(interval.End-interval.Begin))
 	if errno != 0 {
 		log.Error("failed to call fiemap.Fiemap(extCount)")
 		return exts, fmt.Errorf(errno.Error())
 	}
+
+	log.Tracef("retrieved %v/%v extents from file %v interval: %v elapsed: %.2fs",
+		len(exts), extCount, file.Name(), interval,
+		time.Now().Sub(retrievalStart).Seconds())
 
 	// The exts returned by File System should be ordered
 	var lastExtStart uint64
@@ -231,7 +331,7 @@ func GetFiemapRegionExts(file FileIoProcessor, interval Interval) ([]Extent, err
 
 		// if lastExtStart is initialized and this ext start is less than last ext start
 		if i != 0 && ext.Logical < lastExtStart {
-			return exts, fmt.Errorf("The exts returned by fiemap are not ordered")
+			return exts, fmt.Errorf("the extents returned by fiemap are not ordered")
 		}
 		lastExtStart = ext.Logical
 	}
