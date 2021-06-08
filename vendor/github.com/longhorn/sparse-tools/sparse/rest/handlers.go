@@ -162,7 +162,7 @@ func (server *SyncServer) doGetChecksum(writer http.ResponseWriter, request *htt
 	var checksum []byte
 
 	// For the region to have valid data, it can only has one extent covering the whole region
-	exts, err := sparse.GetFiemapRegionExts(server.fileIo, remoteDataInterval)
+	exts, err := sparse.GetFiemapRegionExts(server.fileIo, remoteDataInterval, 2)
 	if len(exts) == 1 && int64(exts[0].Logical) <= remoteDataInterval.Begin &&
 		int64(exts[0].Logical+exts[0].Length) >= remoteDataInterval.End {
 
