@@ -16,7 +16,7 @@ import (
 )
 
 const (
-	GRPCServiceCommonTimeout = 1 * time.Minute
+	GRPCServiceCommonTimeout = 3 * time.Minute
 	GRPCServiceLongTimeout   = 24 * time.Hour
 )
 

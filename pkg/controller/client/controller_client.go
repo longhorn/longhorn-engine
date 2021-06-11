@@ -20,7 +20,7 @@ type ControllerClient struct {
 }
 
 const (
-	GRPCServiceTimeout = 1 * time.Minute
+	GRPCServiceTimeout = 3 * time.Minute
 )
 
 func NewControllerClient(address string) *ControllerClient {
