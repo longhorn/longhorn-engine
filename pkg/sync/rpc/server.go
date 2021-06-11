@@ -41,7 +41,7 @@ const (
 
 	PeriodicRefreshIntervalInSeconds = 2
 
-	GRPCServiceCommonTimeout = 1 * time.Minute
+	GRPCServiceCommonTimeout = 3 * time.Minute
 
 	FileSyncTimeout = 120
 
