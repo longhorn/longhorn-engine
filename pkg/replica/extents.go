@@ -6,60 +6,37 @@ import (
 	"github.com/longhorn/longhorn-engine/pkg/types"
 )
 
-type UsedGenerator struct {
-	err  error
-	disk types.DiffDisk
-	d    *diffDisk
-}
+const MaxExtentsBuffer = 1024
 
-func newGenerator(diffDisk *diffDisk, disk types.DiffDisk) *UsedGenerator {
-	return &UsedGenerator{
-		disk: disk,
-		d:    diffDisk,
-	}
-}
-
-func (u *UsedGenerator) Err() error {
-	return u.err
-}
-
-func (u *UsedGenerator) Generate() <-chan int64 {
-	c := make(chan int64)
-	go u.findExtents(c)
-	return c
-}
-
-func (u *UsedGenerator) findExtents(c chan<- int64) {
-	defer close(c)
-
-	fd := u.disk.Fd()
+func LoadDiffDiskLocationList(diffDisk *diffDisk, disk types.DiffDisk, currentFileIndex byte) error {
+	fd := disk.Fd()
 
 	// The backing file will have a Fd of 0
 	if fd == 0 {
-		return
+		return nil
 	}
 
 	start := uint64(0)
-	end := uint64(len(u.d.location)) * uint64(u.d.sectorSize)
+	end := uint64(len(diffDisk.location)) * uint64(diffDisk.sectorSize)
 	for {
-		extents, errno := fibmap.Fiemap(fd, start, end-start, 1024)
+		extents, errno := fibmap.Fiemap(fd, start, end-start, MaxExtentsBuffer)
 		if errno != 0 {
-			u.err = errno
-			return
+			return errno
 		}
 
 		if len(extents) == 0 {
-			return
+			return nil
 		}
 
 		for _, extent := range extents {
-			start = extent.Logical + extent.Length
-			for i := int64(0); i < int64(extent.Length); i += u.d.sectorSize {
-				c <- (int64(extent.Logical) + i) / u.d.sectorSize
+			for i := int64(0); i < int64(extent.Length); i += diffDisk.sectorSize {
+				diffDisk.location[(int64(extent.Logical)+i)/diffDisk.sectorSize] = currentFileIndex
 			}
 			if extent.Flags&fibmap.FIEMAP_EXTENT_LAST != 0 {
-				return
+				return nil
 			}
 		}
+
+		start = extents[len(extents)-1].Logical + extents[len(extents)-1].Length
 	}
 }
