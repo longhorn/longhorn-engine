@@ -356,13 +356,8 @@ func preload(d *diffDisk) error {
 			}
 		}
 
-		generator := newGenerator(d, f)
-		for offset := range generator.Generate() {
-			d.location[offset] = byte(i)
-		}
-
-		if generator.Err() != nil {
-			return generator.Err()
+		if err := LoadDiffDiskLocationList(d, f, byte(i)); err != nil {
+			return err
 		}
 
 		if i == (len(d.files) - 1) {
