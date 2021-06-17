@@ -120,7 +120,9 @@ func addListVolume(volumeName string, driver BackupStoreDriver, volumeOnly bool)
 	for _, tracker := range trackers {
 		payload, _ := tracker.Result()
 		info := payload.(*BackupInfo)
-		volumeInfo.Backups[info.URL] = info
+		if info != nil {
+			volumeInfo.Backups[info.URL] = info
+		}
 	}
 	return volumeInfo, nil
 }
