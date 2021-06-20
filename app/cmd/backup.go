@@ -49,12 +49,16 @@ func BackupCreateCmd() cli.Command {
 				Usage: "specify backing image name of the volume for backup",
 			},
 			cli.StringFlag{
-				Name:  "backing-image-url",
-				Usage: "specify backing image URL of the volume for backup",
+				Name:  "backing-image-checksum",
+				Usage: "specify checksum of backing image file",
 			},
 			cli.StringSliceFlag{
 				Name:  "label",
 				Usage: "specify labels for backup, in the format of `--label key1=value1 --label key2=value2`",
+			},
+			cli.StringFlag{
+				Name:  "backing-image-url",
+				Usage: "deprecated. specify backing image URL of the volume for backup",
 			},
 		},
 		Action: func(c *cli.Context) {
@@ -276,7 +280,7 @@ func createBackup(c *cli.Context) error {
 	}
 
 	biName := c.String("backing-image-name")
-	biURL := c.String("backing-image-url")
+	biChecksum := c.String("backing-image-checksum")
 
 	labels := c.StringSlice("label")
 	if labels != nil {
@@ -299,7 +303,7 @@ func createBackup(c *cli.Context) error {
 		return err
 	}
 
-	backup, err := task.CreateBackup(snapshot, dest, biName, biURL, labels, credential)
+	backup, err := task.CreateBackup(snapshot, dest, biName, biChecksum, labels, credential)
 	if err != nil {
 		return err
 	}

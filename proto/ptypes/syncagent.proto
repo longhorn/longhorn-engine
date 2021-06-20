@@ -60,7 +60,7 @@ message BackupCreateRequest {
   repeated string labels = 4;
   map<string, string> credential = 5;
   string backing_image_name = 6;
-  string backing_image_url = 7;
+  string backing_image_checksum = 7;
 }
 
 message BackupCreateResponse {
