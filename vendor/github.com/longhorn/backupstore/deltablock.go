@@ -327,7 +327,7 @@ func performBackup(config *DeltaBackupConfig, delta *Mappings, deltaBackup *Back
 	volume.Size = config.Volume.Size
 	volume.Labels = config.Labels
 	volume.BackingImageName = config.Volume.BackingImageName
-	volume.BackingImageURL = config.Volume.BackingImageURL
+	volume.BackingImageChecksum = config.Volume.BackingImageChecksum
 
 	if err := saveVolume(volume, bsDriver); err != nil {
 		return progress, "", err
