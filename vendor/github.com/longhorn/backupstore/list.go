@@ -30,8 +30,8 @@ type VolumeInfo struct {
 
 	Backups map[string]*BackupInfo `json:",omitempty"`
 
-	BackingImageName string
-	BackingImageURL  string
+	BackingImageName     string
+	BackingImageChecksum string
 }
 
 type BackupInfo struct {
@@ -48,7 +48,6 @@ type BackupInfo struct {
 	VolumeSize             int64  `json:",string,omitempty"`
 	VolumeCreated          string `json:",omitempty"`
 	VolumeBackingImageName string `json:",omitempty"`
-	VolumeBackingImageURL  string `json:",omitempty"`
 
 	Messages map[MessageType]string
 }
@@ -180,17 +179,17 @@ func List(volumeName, destURL string, volumeOnly bool) (map[string]*VolumeInfo, 
 
 func fillVolumeInfo(volume *Volume) *VolumeInfo {
 	return &VolumeInfo{
-		Name:             volume.Name,
-		Size:             volume.Size,
-		Labels:           volume.Labels,
-		Created:          volume.CreatedTime,
-		LastBackupName:   volume.LastBackupName,
-		LastBackupAt:     volume.LastBackupAt,
-		DataStored:       int64(volume.BlockCount * DEFAULT_BLOCK_SIZE),
-		Messages:         make(map[MessageType]string),
-		Backups:          make(map[string]*BackupInfo),
-		BackingImageName: volume.BackingImageName,
-		BackingImageURL:  volume.BackingImageURL,
+		Name:                 volume.Name,
+		Size:                 volume.Size,
+		Labels:               volume.Labels,
+		Created:              volume.CreatedTime,
+		LastBackupName:       volume.LastBackupName,
+		LastBackupAt:         volume.LastBackupAt,
+		DataStored:           int64(volume.BlockCount * DEFAULT_BLOCK_SIZE),
+		Messages:             make(map[MessageType]string),
+		Backups:              make(map[string]*BackupInfo),
+		BackingImageName:     volume.BackingImageName,
+		BackingImageChecksum: volume.BackingImageChecksum,
 	}
 }
 
@@ -223,7 +222,6 @@ func fillFullBackupInfo(backup *Backup, volume *Volume, destURL string) *BackupI
 	info.VolumeSize = volume.Size
 	info.VolumeCreated = volume.CreatedTime
 	info.VolumeBackingImageName = volume.BackingImageName
-	info.VolumeBackingImageURL = volume.BackingImageURL
 	return info
 }
 
