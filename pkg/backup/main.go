@@ -56,7 +56,7 @@ func RequiredMissingError(name string) error {
 	return fmt.Errorf("Cannot find valid required parameter: %v", name)
 }
 
-func DoBackupCreate(volumeName, snapshotName, destURL, backingImageName, backingImageURL string,
+func DoBackupCreate(volumeName, snapshotName, destURL, backingImageName, backingImageChecksum string,
 	labels []string) (string, *replica.BackupStatus, error) {
 	var (
 		err         error
@@ -66,10 +66,6 @@ func DoBackupCreate(volumeName, snapshotName, destURL, backingImageName, backing
 
 	if volumeName == "" || snapshotName == "" || destURL == "" {
 		return "", nil, fmt.Errorf("missing input parameter")
-	}
-	if (backingImageName == "" && backingImageURL != "") ||
-		(backingImageName != "" && backingImageURL == "") {
-		return "", nil, fmt.Errorf("invalid backing image name %v and URL %v", backingImageName, backingImageURL)
 	}
 
 	if !util.ValidVolumeName(volumeName) {
@@ -106,12 +102,12 @@ func DoBackupCreate(volumeName, snapshotName, destURL, backingImageName, backing
 	replicaBackup := replica.NewBackup(backingFile)
 
 	volume := &backupstore.Volume{
-		Name:             volumeName,
-		Size:             volumeInfo.Size,
-		Labels:           labelMap,
-		BackingImageName: backingImageName,
-		BackingImageURL:  backingImageURL,
-		CreatedTime:      util.Now(),
+		Name:                 volumeName,
+		Size:                 volumeInfo.Size,
+		Labels:               labelMap,
+		BackingImageName:     backingImageName,
+		BackingImageChecksum: backingImageChecksum,
+		CreatedTime:          util.Now(),
 	}
 	snapshot := &backupstore.Snapshot{
 		Name:        snapshotName,

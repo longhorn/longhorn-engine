@@ -33,8 +33,8 @@ DELETE_LOCK = "lock_delete"
 BACKUP_LOCK = "lock_backup"
 RESTORE_LOCK = "lock_restore"
 BACKING_IMAGE_NAME = "backing-image-test"
-BACKING_IMAGE_URL = \
-    "https://fake.longhorn.io/\\?export\\=download\\&id\\=backing-image-test"
+BACKING_IMAGE_CHECKSUM = \
+    "FakeBackingImageSHA512Checksum"
 
 
 def backup_test(
@@ -129,7 +129,7 @@ def backup_with_backing_file_test(backup_target,  # NOQA
 
     backup0_info = create_backup(address, snap0, backup_target,
                                  backing_image_name=BACKING_IMAGE_NAME,
-                                 backing_image_url=BACKING_IMAGE_URL)
+                                 backing_image_checksum=BACKING_IMAGE_CHECKSUM)
     assert backup0_info["VolumeName"] == VOLUME_BACKING_NAME
 
     backup_test(
@@ -181,7 +181,7 @@ def backup_hole_with_backing_file_test(backup_target,  # NOQA
     hole_data_backup1 = read_dev(dev, hole_offset, hole_length)
     backup1_info = create_backup(address, snap1, backup_target,
                                  backing_image_name=BACKING_IMAGE_NAME,
-                                 backing_image_url=BACKING_IMAGE_URL)
+                                 backing_image_checksum=BACKING_IMAGE_CHECKSUM)
 
     snap2_data = random_string(length2)
     verify_data(dev, offset2, snap2_data)
@@ -192,9 +192,8 @@ def backup_hole_with_backing_file_test(backup_target,  # NOQA
     hole_data_backup2 = read_dev(dev, hole_offset, hole_length)
     backup2_info = create_backup(address, snap2, backup_target,
                                  backing_image_name=BACKING_IMAGE_NAME,
-                                 backing_image_url=BACKING_IMAGE_URL)
+                                 backing_image_checksum=BACKING_IMAGE_CHECKSUM)
     assert backup2_info["VolumeBackingImageName"] == BACKING_IMAGE_NAME
-    assert backup2_info["VolumeBackingImageURL"] == BACKING_IMAGE_URL
 
     reset_volume(grpc_backing_controller,
                  grpc_backing_replica1, grpc_backing_replica2)

@@ -431,16 +431,14 @@ def reset_volume(grpc_c, *grpc_r_list):
 
 
 def create_backup(url, snap, backup_target, volume_size=SIZE_STR,
-                  backing_image_name="", backing_image_url=""):
+                  backing_image_name="", backing_image_checksum=""):
     backup = cmd.backup_create(url, snap, backup_target,
-                               [], backing_image_name, backing_image_url)
+                               [], backing_image_name, backing_image_checksum)
     backup_info = cmd.backup_inspect(url, backup)
     assert backup_info["URL"] == backup
     assert backup_info["VolumeSize"] == volume_size
     if backing_image_name != "":
         assert backup_info["VolumeBackingImageName"] == backing_image_name
-    if backing_image_url != "":
-        assert backup_info["VolumeBackingImageURL"] == backing_image_url
     assert snap in backup_info["SnapshotName"]
     return backup_info
 
