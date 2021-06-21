@@ -1,6 +1,7 @@
 package remote
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"strconv"
@@ -20,8 +21,10 @@ import (
 )
 
 var (
-	pingInveral   = 2 * time.Second
-	timeout       = 30 * time.Second
+	ErrPingTimeout = errors.New("Ping timeout")
+
+	pingInterval  = 2 * time.Second
+	pingTimeout   = 8 * time.Second
 	requestBuffer = 1024
 )
 
@@ -284,7 +287,11 @@ func (rf *Factory) Create(address string) (types.Backend, error) {
 }
 
 func (r *Remote) monitorPing(client *dataconn.Client) {
-	ticker := time.NewTicker(pingInveral)
+	pingStatus := make(chan error, 1)
+	ticks := time.Duration(0)
+	ticksForFailure := pingTimeout / pingInterval
+	inProgress := false
+	ticker := time.NewTicker(pingInterval)
 	defer ticker.Stop()
 
 	for {
@@ -293,13 +300,36 @@ func (r *Remote) monitorPing(client *dataconn.Client) {
 			r.monitorChan <- nil
 			return
 		case <-ticker.C:
-			if err := client.Ping(); err != nil {
+			if !inProgress {
+				inProgress = true
+				r.ping(client, pingStatus)
+
+			} else {
+				ticks++
+				if ticks >= ticksForFailure {
+					client.SetError(ErrPingTimeout)
+					r.monitorChan <- ErrPingTimeout
+					return
+				}
+			}
+
+		case err := <-pingStatus:
+			inProgress = false
+			ticks = 0
+
+			if err != nil {
 				client.SetError(err)
 				r.monitorChan <- err
 				return
 			}
 		}
 	}
+}
+
+func (r *Remote) ping(client *dataconn.Client, status chan<- error) {
+	go func() {
+		status <- client.Ping()
+	}()
 }
 
 func (r *Remote) GetMonitorChannel() types.MonitorChannel {
