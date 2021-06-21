@@ -3,6 +3,7 @@ package dataconn
 import (
 	"errors"
 	"io"
+	"math"
 	"net"
 	"time"
 
@@ -16,23 +17,22 @@ var (
 	ErrRWTimeout   = errors.New("r/w timeout")
 	ErrPingTimeout = errors.New("Ping timeout")
 
-	opRetries      = 2
-	opReadTimeout  = 4 * time.Second // client read
-	opWriteTimeout = 4 * time.Second // client write
-	opPingTimeout  = 8 * time.Second
+	opTimeout = 8 * time.Second
 )
 
 //Client replica client
 type Client struct {
-	end       chan struct{}
-	requests  chan *Message
-	send      chan *Message
-	responses chan *Message
-	seq       uint32
-	messages  map[uint32]*Message
-	wire      *Wire
-	peerAddr  string
-	err       error
+	end          chan struct{}
+	requests     chan *Message
+	send         chan *Message
+	responses    chan *Message
+	seq          uint32
+	messages     map[uint32]*Message
+	wire         *Wire
+	peerAddr     string
+	err          error
+	timeoutTimer *time.Timer
+	iops         int
 }
 
 //NewClient replica client
@@ -81,68 +81,32 @@ func (c *Client) Ping() error {
 }
 
 func (c *Client) operation(op uint32, buf []byte, offset int64) (int, error) {
-	retry := 0
-	for {
-		msg := Message{
-			Complete: make(chan struct{}, 1),
-			Type:     op,
-			Offset:   offset,
-			Size:     uint32(len(buf)),
-			Data:     nil,
-		}
-
-		if op == TypeWrite {
-			msg.Data = buf
-		}
-
-		timeout := func(op uint32) <-chan time.Time {
-			switch op {
-			case TypeRead:
-				return time.After(opReadTimeout)
-			case TypeWrite:
-				return time.After(opWriteTimeout)
-			}
-			return time.After(opPingTimeout)
-		}(msg.Type)
-
-		c.requests <- &msg
-
-		select {
-		case <-msg.Complete:
-			// Only copy the message if a read is requested
-			if op == TypeRead && (msg.Type == TypeResponse || msg.Type == TypeEOF) {
-				copy(buf, msg.Data)
-			}
-			if msg.Type == TypeError {
-				return 0, errors.New(string(msg.Data))
-			}
-			if msg.Type == TypeEOF {
-				return int(msg.Size), io.EOF
-			}
-			return int(msg.Size), nil
-		case <-timeout:
-			switch msg.Type {
-			case TypeRead:
-				logrus.Errorln("Read timeout on replica", c.TargetID(), "seq=", msg.Seq, "size=", msg.Size/1024, "(kB)")
-			case TypeWrite:
-				logrus.Errorln("Write timeout on replica", c.TargetID(), "seq=", msg.Seq, "size=", msg.Size/1024, "(kB)")
-			case TypePing:
-				logrus.Errorln("Ping timeout on replica", c.TargetID(), "seq=", msg.Seq)
-			}
-			if retry < opRetries {
-				retry++
-				logrus.Errorln("Retry ", retry, "on replica", c.TargetID(), "seq=", msg.Seq, "size=", msg.Size/1024, "(kB)")
-			} else {
-				err := ErrRWTimeout
-				if msg.Type == TypePing {
-					err = ErrPingTimeout
-				}
-				c.SetError(err)
-				journal.PrintLimited(1000) //flush automatically upon timeout
-				return 0, err
-			}
-		}
+	msg := Message{
+		Complete: make(chan struct{}, 1),
+		Type:     op,
+		Offset:   offset,
+		Size:     uint32(len(buf)),
+		Data:     nil,
 	}
+
+	if op == TypeWrite {
+		msg.Data = buf
+	}
+
+	c.requests <- &msg
+
+	<-msg.Complete
+	// Only copy the message if a read is requested
+	if op == TypeRead && (msg.Type == TypeResponse || msg.Type == TypeEOF) {
+		copy(buf, msg.Data)
+	}
+	if msg.Type == TypeError {
+		return 0, errors.New(string(msg.Data))
+	}
+	if msg.Type == TypeEOF {
+		return int(msg.Size), io.EOF
+	}
+	return int(msg.Size), nil
 }
 
 //Close replica client
@@ -152,10 +116,16 @@ func (c *Client) Close() {
 }
 
 func (c *Client) loop() {
+	// Don't fire the timer initially.  It will be set to a shorter time
+	// upon the first message, so it's set to the maximum duration.
+	c.timeoutTimer = time.NewTimer(time.Duration(math.MaxInt64))
+
 	defer close(c.send)
 
 	for {
 		select {
+		case <-c.timeoutTimer.C:
+			c.handleTimeout()
 		case <-c.end:
 			return
 		case req := <-c.requests:
@@ -196,7 +166,42 @@ func (c *Client) handleRequest(req *Message) {
 	req.MagicVersion = MagicVersion
 	req.Seq = c.nextSeq()
 	c.messages[req.Seq] = req
+
+	if req.Type == TypeRead || req.Type == TypeWrite {
+		// Start a new timer when sending a new message
+		// when there are no other reads or writes in
+		// progress.
+		if c.iops == 0 {
+			if !c.timeoutTimer.Stop() {
+				if len(c.timeoutTimer.C) > 0 {
+					<-c.timeoutTimer.C
+				}
+			}
+			c.timeoutTimer.Reset(opTimeout)
+		}
+
+		c.iops++
+	}
+
 	c.send <- req
+}
+
+// Timeout logic:
+// When the first I/O operation starts, start the timer for opTimeout second.
+// When an I/O operation completes, stop the timer.
+// If there are more I/O operations in progress, restart the timer.
+
+func (c *Client) handleTimeout() {
+	c.err = ErrRWTimeout
+
+	logrus.Errorf("R/W Timeout. No response received in %v.\n", opTimeout)
+
+	// Terminate all in flight
+	for _, msg := range c.messages {
+		c.replyError(msg)
+	}
+
+	journal.PrintLimited(1000) //flush automatically upon timeout
 }
 
 func (c *Client) handleResponse(resp *Message) {
@@ -217,6 +222,25 @@ func (c *Client) handleResponse(resp *Message) {
 
 		journal.RemovePendingOp(req.ID, true)
 		delete(c.messages, resp.Seq)
+
+		if req.Type == TypeRead || req.Type == TypeWrite {
+			// We received a response to an I/O operation
+			// Stop the timer.
+			if !c.timeoutTimer.Stop() {
+				if len(c.timeoutTimer.C) > 0 {
+					<-c.timeoutTimer.C
+				}
+			}
+			c.iops--
+
+			// If there are other reads and writes in
+			// progress, wait opTimeout seconds for any
+			// response to an I/O operation.
+			if c.iops > 0 {
+				c.timeoutTimer.Reset(opTimeout)
+			}
+		}
+
 		req.Type = resp.Type
 		req.Size = resp.Size
 		req.Data = resp.Data
