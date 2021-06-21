@@ -13,13 +13,11 @@ import (
 
 var (
 	//ErrRWTimeout r/w operation timeout
-	ErrRWTimeout   = errors.New("r/w timeout")
-	ErrPingTimeout = errors.New("Ping timeout")
+	ErrRWTimeout = errors.New("r/w timeout")
+)
 
-	opRetries      = 2
-	opReadTimeout  = 4 * time.Second // client read
-	opWriteTimeout = 4 * time.Second // client write
-	opPingTimeout  = 8 * time.Second
+const (
+	OPTimeout = 8 * time.Second
 )
 
 //Client replica client
@@ -32,7 +30,6 @@ type Client struct {
 	messages  map[uint32]*Message
 	wire      *Wire
 	peerAddr  string
-	err       error
 }
 
 //NewClient replica client
@@ -81,68 +78,32 @@ func (c *Client) Ping() error {
 }
 
 func (c *Client) operation(op uint32, buf []byte, offset int64) (int, error) {
-	retry := 0
-	for {
-		msg := Message{
-			Complete: make(chan struct{}, 1),
-			Type:     op,
-			Offset:   offset,
-			Size:     uint32(len(buf)),
-			Data:     nil,
-		}
-
-		if op == TypeWrite {
-			msg.Data = buf
-		}
-
-		timeout := func(op uint32) <-chan time.Time {
-			switch op {
-			case TypeRead:
-				return time.After(opReadTimeout)
-			case TypeWrite:
-				return time.After(opWriteTimeout)
-			}
-			return time.After(opPingTimeout)
-		}(msg.Type)
-
-		c.requests <- &msg
-
-		select {
-		case <-msg.Complete:
-			// Only copy the message if a read is requested
-			if op == TypeRead && (msg.Type == TypeResponse || msg.Type == TypeEOF) {
-				copy(buf, msg.Data)
-			}
-			if msg.Type == TypeError {
-				return 0, errors.New(string(msg.Data))
-			}
-			if msg.Type == TypeEOF {
-				return int(msg.Size), io.EOF
-			}
-			return int(msg.Size), nil
-		case <-timeout:
-			switch msg.Type {
-			case TypeRead:
-				logrus.Errorln("Read timeout on replica", c.TargetID(), "seq=", msg.Seq, "size=", msg.Size/1024, "(kB)")
-			case TypeWrite:
-				logrus.Errorln("Write timeout on replica", c.TargetID(), "seq=", msg.Seq, "size=", msg.Size/1024, "(kB)")
-			case TypePing:
-				logrus.Errorln("Ping timeout on replica", c.TargetID(), "seq=", msg.Seq)
-			}
-			if retry < opRetries {
-				retry++
-				logrus.Errorln("Retry ", retry, "on replica", c.TargetID(), "seq=", msg.Seq, "size=", msg.Size/1024, "(kB)")
-			} else {
-				err := ErrRWTimeout
-				if msg.Type == TypePing {
-					err = ErrPingTimeout
-				}
-				c.SetError(err)
-				journal.PrintLimited(1000) //flush automatically upon timeout
-				return 0, err
-			}
-		}
+	msg := Message{
+		Complete: make(chan struct{}, 1),
+		Type:     op,
+		Offset:   offset,
+		Size:     uint32(len(buf)),
+		Data:     nil,
 	}
+
+	if op == TypeWrite {
+		msg.Data = buf
+	}
+
+	c.requests <- &msg
+
+	<-msg.Complete
+	// Only copy the message if a read is requested
+	if op == TypeRead && (msg.Type == TypeResponse || msg.Type == TypeEOF) {
+		copy(buf, msg.Data)
+	}
+	if msg.Type == TypeError {
+		return 0, errors.New(string(msg.Data))
+	}
+	if msg.Type == TypeEOF {
+		return int(msg.Size), io.EOF
+	}
+	return int(msg.Size), nil
 }
 
 //Close replica client
@@ -153,14 +114,77 @@ func (c *Client) Close() {
 
 func (c *Client) loop() {
 	defer close(c.send)
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
+	var clientError error
+	var ioInflight int
+	var ioDeadline time.Time
+
+	// handleClientError cleans up all in flight messages
+	// also stores the error so that future requests/responses get errored immediately.
+	handleClientError := func(err error) {
+		clientError = err
+		for _, msg := range c.messages {
+			c.replyError(msg, err)
+		}
+
+		ioInflight = 0
+		ioDeadline = time.Time{}
+	}
 
 	for {
 		select {
 		case <-c.end:
 			return
+		case <-ticker.C:
+			if ioDeadline.IsZero() || time.Now().Before(ioDeadline) {
+				continue
+			}
+
+			logrus.Errorf("R/W Timeout. No response received in %v", OPTimeout)
+			handleClientError(ErrRWTimeout)
+			journal.PrintLimited(1000)
 		case req := <-c.requests:
+			if clientError != nil {
+				c.replyError(req, clientError)
+				continue
+			}
+
+			if req.Type == TypeRead || req.Type == TypeWrite {
+				if ioInflight == 0 {
+					ioDeadline = time.Now().Add(OPTimeout)
+				}
+				ioInflight++
+			}
+
 			c.handleRequest(req)
 		case resp := <-c.responses:
+			if resp.transportErr != nil {
+				handleClientError(resp.transportErr)
+				continue
+			}
+
+			req, pending := c.messages[resp.Seq]
+			if !pending {
+				logrus.Warnf("received response message id %v seq %v type %v for non pending request", resp.ID, resp.Seq, resp.Type)
+				continue
+			}
+
+			if req.Type == TypeRead || req.Type == TypeWrite {
+				ioInflight--
+				if ioInflight > 0 {
+					ioDeadline = time.Now().Add(OPTimeout)
+				} else if ioInflight == 0 {
+					ioDeadline = time.Time{}
+				}
+			}
+
+			if clientError != nil {
+				c.replyError(req, clientError)
+				continue
+			}
+
 			c.handleResponse(resp)
 		}
 	}
@@ -171,11 +195,11 @@ func (c *Client) nextSeq() uint32 {
 	return c.seq
 }
 
-func (c *Client) replyError(req *Message) {
+func (c *Client) replyError(req *Message, err error) {
 	journal.RemovePendingOp(req.ID, false)
 	delete(c.messages, req.Seq)
 	req.Type = TypeError
-	req.Data = []byte(c.err.Error())
+	req.Data = []byte(err.Error())
 	req.Complete <- struct{}{}
 }
 
@@ -188,10 +212,6 @@ func (c *Client) handleRequest(req *Message) {
 	case TypePing:
 		req.ID = journal.InsertPendingOp(time.Now(), c.TargetID(), journal.OpPing, 0)
 	}
-	if c.err != nil {
-		c.replyError(req)
-		return
-	}
 
 	req.MagicVersion = MagicVersion
 	req.Seq = c.nextSeq()
@@ -200,21 +220,7 @@ func (c *Client) handleRequest(req *Message) {
 }
 
 func (c *Client) handleResponse(resp *Message) {
-	if resp.transportErr != nil {
-		c.err = resp.transportErr
-		// Terminate all in flight
-		for _, msg := range c.messages {
-			c.replyError(msg)
-		}
-		return
-	}
-
 	if req, ok := c.messages[resp.Seq]; ok {
-		if c.err != nil {
-			c.replyError(req)
-			return
-		}
-
 		journal.RemovePendingOp(req.ID, true)
 		delete(c.messages, resp.Seq)
 		req.Type = resp.Type
