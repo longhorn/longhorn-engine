@@ -30,6 +30,7 @@ from common.core import (  # NOQA
     get_replica_client_with_delay,
     get_controller_version_detail,
     verify_replica_mode,
+    get_backup_volume_url,
 )
 
 import common.cmd as cmd
@@ -44,6 +45,7 @@ from common.constants import (
     REPLICA_NAME, REPLICA_2_NAME, ENGINE_NAME,
     RETRY_COUNTS_SHORT,
     RETRY_INTERVAL_SHORT,
+    MESSAGE_TYPE_ERROR,
 )
 
 from common.util import (
@@ -58,7 +60,6 @@ VOLUME_HEAD = "volume-head"
 
 VOLUME_CONFIG_FILE = "volume.cfg"
 VOLUME_TMP_CONFIG_FILE = "volume.cfg.tmp"
-MESSAGE_TYPE_ERROR = "error"
 
 
 @pytest.fixture()
@@ -689,20 +690,18 @@ def backup_core(bin, engine_manager_client,  # NOQA
     volume_info = cmd.backup_volume_list(
         grpc_controller_client.address,
         VOLUME_NAME, backup_target,
-        include_backup_details=True)[VOLUME_NAME]
+        include_backup_details=True)
+    assert volume_info[VOLUME_NAME] is not None
+    backup_list = volume_info[VOLUME_NAME]["Backups"]
+    assert backup_list[backup1_info["Name"]] is not None
+    assert backup_list[backup2_info["Name"]] is not None
+
+    # inspect backup volume metadata
+    url = get_backup_volume_url(backup_target, VOLUME_NAME)
+    volume_info = cmd.backup_inspect_volume(
+        grpc_controller_client.address, url)
     assert volume_info["Name"] == VOLUME_NAME
     assert volume_info["Size"] == SIZE_STR
-    backup_list = volume_info["Backups"]
-    assert backup_list[backup1]["URL"] == backup1_info["URL"]
-    assert backup_list[backup1]["SnapshotName"] == backup1_info["SnapshotName"]
-    assert backup_list[backup1]["Size"] == backup1_info["Size"]
-    assert backup_list[backup1]["Created"] == backup1_info["Created"]
-    assert backup_list[backup1]["Messages"] is None
-    assert backup_list[backup2]["URL"] == backup2_info["URL"]
-    assert backup_list[backup2]["SnapshotName"] == backup2_info["SnapshotName"]
-    assert backup_list[backup2]["Size"] == backup2_info["Size"]
-    assert backup_list[backup2]["Created"] == backup2_info["Created"]
-    assert backup_list[backup2]["Messages"] is None
 
     # test that corrupt backups are signaled during a list operation
     # https://github.com/longhorn/longhorn/issues/1212
@@ -728,16 +727,20 @@ def backup_core(bin, engine_manager_client,  # NOQA
     volume_info = cmd.backup_volume_list(
         grpc_controller_client.address,
         VOLUME_NAME, backup_target,
-        include_backup_details=True)[VOLUME_NAME]
-    assert volume_info["Name"] == VOLUME_NAME
-    backup_list = volume_info["Backups"]
-    assert backup_list[backup1]["URL"] == backup1_info["URL"]
-    assert backup_list[backup1]["Messages"] is None
-    assert backup_list[backup2]["URL"] == backup2_info["URL"]
-    assert MESSAGE_TYPE_ERROR in backup_list[backup2]["Messages"]
+        include_backup_details=True)
+    assert volume_info[VOLUME_NAME] is not None
+    assert backup_list[backup1_info["Name"]] is not None
+    assert backup_list[backup2_info["Name"]] is not None
 
-    # we still want to fail inspects, since they operate on urls
-    # with no guarantee of backup existence
+    # inspect backup volume metadata
+    url = get_backup_volume_url(backup_target, VOLUME_NAME)
+    volume_info = cmd.backup_inspect_volume(
+        grpc_controller_client.address, url)
+    assert volume_info["Name"] == VOLUME_NAME
+
+    # inspect volume snapshot backup metadata
+    backup1_info = cmd.backup_inspect(grpc_controller_client.address, backup1)
+    assert backup1_info["Messages"] is None
     with pytest.raises(subprocess.CalledProcessError):
         cmd.backup_inspect(grpc_controller_client.address, backup2)
 
@@ -755,17 +758,18 @@ def backup_core(bin, engine_manager_client,  # NOQA
     os.rename(volume_cfg_path, volume_tmp_cfg_path)
     assert os.path.exists(volume_tmp_cfg_path)
 
-    volume_info = cmd.backup_volume_list(grpc_controller_client.address,
-                                         "", backup_target)
-    assert MESSAGE_TYPE_ERROR in volume_info[VOLUME_NAME]["Messages"]
+    url = get_backup_volume_url(backup_target, VOLUME_NAME)
+    with pytest.raises(subprocess.CalledProcessError):
+        cmd.backup_inspect_volume(grpc_controller_client.address, url)
 
     os.rename(volume_tmp_cfg_path, volume_cfg_path)
     assert os.path.exists(volume_cfg_path)
 
-    volume_info = cmd.backup_volume_list(grpc_controller_client.address,
-                                         "", backup_target)
-    assert volume_info[VOLUME_NAME]["Messages"] is not None
-    assert MESSAGE_TYPE_ERROR not in volume_info[VOLUME_NAME]["Messages"]
+    url = get_backup_volume_url(backup_target, VOLUME_NAME)
+    volume_info = cmd.backup_inspect_volume(
+        grpc_controller_client.address, url)
+    assert volume_info["Messages"] is not None
+    assert MESSAGE_TYPE_ERROR not in volume_info["Messages"]
 
     # backup doesn't exists so it should error
     with pytest.raises(subprocess.CalledProcessError):
@@ -1401,6 +1405,7 @@ def test_engine_restart_after_sigkill(bin):  # NOQA
 
     cleanup_process(em_client)
     cleanup_process(rm_client)
+
 
 def test_replica_removal_and_recreation(bin):  # NOQA
     """
