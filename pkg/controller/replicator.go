@@ -79,6 +79,9 @@ func (r *replicator) RemoveBackend(address string) {
 	// We cannot wait for it's return because peer may not exists anymore
 	// The backend may be nil if the mode is ERR
 	if backend.backend != nil {
+		// Stop the monitoring goroutine in the Controller
+		backend.backend.StopMonitoring()
+
 		go backend.backend.Close()
 	}
 	delete(r.backends, address)
