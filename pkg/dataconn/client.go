@@ -3,7 +3,6 @@ package dataconn
 import (
 	"errors"
 	"io"
-	"math"
 	"net"
 	"time"
 
@@ -14,25 +13,23 @@ import (
 
 var (
 	//ErrRWTimeout r/w operation timeout
-	ErrRWTimeout   = errors.New("r/w timeout")
-	ErrPingTimeout = errors.New("Ping timeout")
+	ErrRWTimeout = errors.New("r/w timeout")
+)
 
-	opTimeout = 8 * time.Second
+const (
+	OPTimeout = 8 * time.Second
 )
 
 //Client replica client
 type Client struct {
-	end          chan struct{}
-	requests     chan *Message
-	send         chan *Message
-	responses    chan *Message
-	seq          uint32
-	messages     map[uint32]*Message
-	wire         *Wire
-	peerAddr     string
-	err          error
-	timeoutTimer *time.Timer
-	iops         int
+	end       chan struct{}
+	requests  chan *Message
+	send      chan *Message
+	responses chan *Message
+	seq       uint32
+	messages  map[uint32]*Message
+	wire      *Wire
+	peerAddr  string
 }
 
 //NewClient replica client
@@ -116,21 +113,78 @@ func (c *Client) Close() {
 }
 
 func (c *Client) loop() {
-	// Don't fire the timer initially.  It will be set to a shorter time
-	// upon the first message, so it's set to the maximum duration.
-	c.timeoutTimer = time.NewTimer(time.Duration(math.MaxInt64))
-
 	defer close(c.send)
+	ticker := time.NewTicker(1 * time.Second)
+	defer ticker.Stop()
+
+	var clientError error
+	var ioInflight int
+	var ioDeadline time.Time
+
+	// handleClientError cleans up all in flight messages
+	// also stores the error so that future requests/responses get errored immediately.
+	handleClientError := func(err error) {
+		clientError = err
+		for _, msg := range c.messages {
+			c.replyError(msg, err)
+		}
+
+		ioInflight = 0
+		ioDeadline = time.Time{}
+	}
 
 	for {
 		select {
-		case <-c.timeoutTimer.C:
-			c.handleTimeout()
 		case <-c.end:
 			return
+		case <-ticker.C:
+			if ioDeadline.IsZero() || time.Now().Before(ioDeadline) {
+				continue
+			}
+
+			logrus.Errorf("R/W Timeout. No response received in %v", OPTimeout)
+			handleClientError(ErrRWTimeout)
+			journal.PrintLimited(1000)
 		case req := <-c.requests:
+			if clientError != nil {
+				c.replyError(req, clientError)
+				continue
+			}
+
+			if req.Type == TypeRead || req.Type == TypeWrite {
+				if ioInflight == 0 {
+					ioDeadline = time.Now().Add(OPTimeout)
+				}
+				ioInflight++
+			}
+
 			c.handleRequest(req)
 		case resp := <-c.responses:
+			if resp.transportErr != nil {
+				handleClientError(resp.transportErr)
+				continue
+			}
+
+			req, pending := c.messages[resp.Seq]
+			if !pending {
+				logrus.Warnf("received response message id %v seq %v type %v for non pending request", resp.ID, resp.Seq, resp.Type)
+				continue
+			}
+
+			if req.Type == TypeRead || req.Type == TypeWrite {
+				ioInflight--
+				if ioInflight > 0 {
+					ioDeadline = time.Now().Add(OPTimeout)
+				} else if ioInflight == 0 {
+					ioDeadline = time.Time{}
+				}
+			}
+
+			if clientError != nil {
+				c.replyError(req, clientError)
+				continue
+			}
+
 			c.handleResponse(resp)
 		}
 	}
@@ -141,11 +195,11 @@ func (c *Client) nextSeq() uint32 {
 	return c.seq
 }
 
-func (c *Client) replyError(req *Message) {
+func (c *Client) replyError(req *Message, err error) {
 	journal.RemovePendingOp(req.ID, false)
 	delete(c.messages, req.Seq)
 	req.Type = TypeError
-	req.Data = []byte(c.err.Error())
+	req.Data = []byte(err.Error())
 	req.Complete <- struct{}{}
 }
 
@@ -158,89 +212,17 @@ func (c *Client) handleRequest(req *Message) {
 	case TypePing:
 		req.ID = journal.InsertPendingOp(time.Now(), c.TargetID(), journal.OpPing, 0)
 	}
-	if c.err != nil {
-		c.replyError(req)
-		return
-	}
 
 	req.MagicVersion = MagicVersion
 	req.Seq = c.nextSeq()
 	c.messages[req.Seq] = req
-
-	if req.Type == TypeRead || req.Type == TypeWrite {
-		// Start a new timer when sending a new message
-		// when there are no other reads or writes in
-		// progress.
-		if c.iops == 0 {
-			if !c.timeoutTimer.Stop() {
-				if len(c.timeoutTimer.C) > 0 {
-					<-c.timeoutTimer.C
-				}
-			}
-			c.timeoutTimer.Reset(opTimeout)
-		}
-
-		c.iops++
-	}
-
 	c.send <- req
 }
 
-// Timeout logic:
-// When the first I/O operation starts, start the timer for opTimeout second.
-// When an I/O operation completes, stop the timer.
-// If there are more I/O operations in progress, restart the timer.
-
-func (c *Client) handleTimeout() {
-	c.err = ErrRWTimeout
-
-	logrus.Errorf("R/W Timeout. No response received in %v.\n", opTimeout)
-
-	// Terminate all in flight
-	for _, msg := range c.messages {
-		c.replyError(msg)
-	}
-
-	journal.PrintLimited(1000) //flush automatically upon timeout
-}
-
 func (c *Client) handleResponse(resp *Message) {
-	if resp.transportErr != nil {
-		c.err = resp.transportErr
-		// Terminate all in flight
-		for _, msg := range c.messages {
-			c.replyError(msg)
-		}
-		return
-	}
-
 	if req, ok := c.messages[resp.Seq]; ok {
-		if c.err != nil {
-			c.replyError(req)
-			return
-		}
-
 		journal.RemovePendingOp(req.ID, true)
 		delete(c.messages, resp.Seq)
-
-		if req.Type == TypeRead || req.Type == TypeWrite {
-			// We received a response to an I/O operation
-			// Stop the timer.
-			if !c.timeoutTimer.Stop() {
-				if len(c.timeoutTimer.C) > 0 {
-					<-c.timeoutTimer.C
-				}
-			}
-			c.iops--
-
-			// If there are other reads and writes in
-			// progress, wait opTimeout seconds for any
-			// response to an I/O operation.
-			if c.iops > 0 {
-				c.timeoutTimer.Reset(opTimeout)
-			}
-		}
-
 		req.Type = resp.Type
 		req.Size = resp.Size
 		req.Data = resp.Data
