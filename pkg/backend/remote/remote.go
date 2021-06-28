@@ -21,11 +21,12 @@ import (
 )
 
 var (
-	ErrPingTimeout = errors.New("Ping timeout")
+	ErrPingTimeout = errors.New("ping timeout")
+)
 
-	pingInterval  = 2 * time.Second
-	pingTimeout   = 8 * time.Second
-	requestBuffer = 1024
+const (
+	PingInterval = 2 * time.Second
+	PingTimeout  = 8 * time.Second
 )
 
 func New() types.BackendFactory {
@@ -289,9 +290,9 @@ func (rf *Factory) Create(address string) (types.Backend, error) {
 func (r *Remote) monitorPing(client *dataconn.Client) {
 	pingStatus := make(chan error, 1)
 	ticks := time.Duration(0)
-	ticksForFailure := pingTimeout / pingInterval
+	ticksForFailure := PingTimeout / PingInterval
 	inProgress := false
-	ticker := time.NewTicker(pingInterval)
+	ticker := time.NewTicker(PingInterval)
 	defer ticker.Stop()
 
 	for {
@@ -302,15 +303,16 @@ func (r *Remote) monitorPing(client *dataconn.Client) {
 		case <-ticker.C:
 			if !inProgress {
 				inProgress = true
+				ticks = 0
 				r.ping(client, pingStatus)
+				continue
+			}
 
-			} else {
-				ticks++
-				if ticks >= ticksForFailure {
-					client.SetError(ErrPingTimeout)
-					r.monitorChan <- ErrPingTimeout
-					return
-				}
+			ticks++
+			if ticks >= ticksForFailure {
+				client.SetError(ErrPingTimeout)
+				r.monitorChan <- ErrPingTimeout
+				return
 			}
 
 		case err := <-pingStatus:
