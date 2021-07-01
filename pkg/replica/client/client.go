@@ -489,7 +489,7 @@ func (c *ReplicaClient) SyncFiles(fromAddress string, list []types.SyncFileInfo)
 	return nil
 }
 
-func (c *ReplicaClient) CreateBackup(snapshot, dest, volume, backingImageName, backingImageChecksum string, labels []string, credential map[string]string) (*ptypes.BackupCreateResponse, error) {
+func (c *ReplicaClient) CreateBackup(backupName, snapshot, dest, volume, backingImageName, backingImageChecksum string, labels []string, credential map[string]string) (*ptypes.BackupCreateResponse, error) {
 	syncAgentServiceClient, err := c.getSyncServiceClient()
 	if err != nil {
 		return nil, err
@@ -505,6 +505,7 @@ func (c *ReplicaClient) CreateBackup(snapshot, dest, volume, backingImageName, b
 		BackingImageChecksum: backingImageChecksum,
 		Labels:               labels,
 		Credential:           credential,
+		BackupName:           backupName,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to create backup to %v for volume %v: %v", dest, volume, err)
