@@ -6,6 +6,7 @@ import json
 import datetime
 import pytest
 import tempfile
+import grpc
 
 from urllib.parse import urlparse
 
@@ -28,6 +29,7 @@ from common.core import (  # NOQA
     reset_volume,
     get_replica_client_with_delay,
     get_controller_version_detail,
+    verify_replica_mode,
 )
 
 import common.cmd as cmd
@@ -40,6 +42,8 @@ from common.constants import (
 
     INSTANCE_MANAGER_ENGINE, INSTANCE_MANAGER_REPLICA,
     REPLICA_NAME, REPLICA_2_NAME, ENGINE_NAME,
+    RETRY_COUNTS_SHORT,
+    RETRY_INTERVAL_SHORT,
 )
 
 from common.util import (
@@ -1394,6 +1398,66 @@ def test_engine_restart_after_sigkill(bin):  # NOQA
 {}
 {}
 '''.format(snap2, snap0)
+
+    cleanup_process(em_client)
+    cleanup_process(rm_client)
+
+def test_replica_removal_and_recreation(bin):  # NOQA
+    """
+    Test if engine can be remove and recreate a replica.
+
+    1. Create then initialize 1 engine and 2 replicas.
+    2. Start the engine.
+    3. Start the replicas.
+    4. Remove one replica.
+    5. Immediately recreate the removed replica.
+    6. Check that the recreated replica is created and it's mode
+       isn't error.
+    """
+
+    em_client = ProcessManagerClient(INSTANCE_MANAGER_ENGINE)
+    engine_process = create_engine_process(em_client)
+    grpc_controller_client = ControllerClient(
+        get_process_address(engine_process))
+    get_controller_version_detail(grpc_controller_client)
+
+    rm_client = ProcessManagerClient(INSTANCE_MANAGER_REPLICA)
+    replica_dir1 = tempfile.mkdtemp()
+    replica_dir2 = tempfile.mkdtemp()
+    replica_process1 = create_replica_process(rm_client, REPLICA_NAME,
+                                              replica_dir=replica_dir1)
+    grpc_replica_client1 = ReplicaClient(
+        get_process_address(replica_process1))
+    cleanup_replica(grpc_replica_client1)
+    replica_process2 = create_replica_process(rm_client, REPLICA_2_NAME,
+                                              replica_dir=replica_dir2)
+    grpc_replica_client2 = ReplicaClient(
+        get_process_address(replica_process2))
+    cleanup_replica(grpc_replica_client2)
+
+    open_replica(grpc_replica_client1)
+    open_replica(grpc_replica_client2)
+    r1_url = grpc_replica_client1.url
+    r2_url = grpc_replica_client2.url
+    v = grpc_controller_client.volume_start(replicas=[
+        r1_url, r2_url,
+    ])
+    assert v.replicaCount == 2
+
+    # Remove the first replica and recreate it immediately.
+    grpc_controller_client.replica_delete(r1_url)
+
+    for i in range(RETRY_COUNTS_SHORT):
+        try:
+            grpc_controller_client.replica_create(r1_url, True, "RW")
+        except grpc.RpcError as grpc_error:
+            assert "Replica must be closed" in grpc_error.details()
+            continue
+        break
+        time.sleep(RETRY_INTERVAL_SHORT)
+
+    # If the issue in #1628 occurs the mode will be ERR.
+    verify_replica_mode(grpc_controller_client, r1_url, "RW")
 
     cleanup_process(em_client)
     cleanup_process(rm_client)
