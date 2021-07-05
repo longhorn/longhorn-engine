@@ -20,7 +20,7 @@ RUN apt-get update && \
     apt-get install -y cmake wget curl git less file \
         libglib2.0-dev libkmod-dev libnl-genl-3-dev linux-libc-dev pkg-config psmisc python-tox qemu-utils fuse python3-dev \
         devscripts debhelper bash-completion librdmacm-dev libibverbs-dev xsltproc docbook-xsl \
-        libconfig-general-perl libaio-dev libc6-dev sg3-utils iptables libltdl7 python3-pip uuid-runtime libdevmapper-dev iproute2
+        libconfig-general-perl libaio-dev libc6-dev sg3-utils iptables libltdl7 python3-pip uuid-runtime libdevmapper-dev iproute2 jq
 
 # needed for ${!var} substitution
 RUN rm -f /bin/sh && ln -s /bin/bash /bin/sh
@@ -113,11 +113,12 @@ RUN mkdir integration/
 COPY integration/setup.py integration/tox.ini integration/requirements.txt integration/flake8-requirements.txt integration/
 RUN cd integration && tox --notest
 
-# Build longhorn-instance-manager
+# Build longhorn-instance-manager for integraiton testing
 RUN cd /go/src/github.com/longhorn && \
     git clone https://github.com/longhorn/longhorn-instance-manager.git && \
     cd longhorn-instance-manager && \
-    git checkout v1_20201021 && \
+    im_release=$(curl -sfSL https://api.github.com/repos/longhorn/longhorn-instance-manager/releases/latest | jq -r '.tag_name') && \
+    git checkout ${im_release} && \
     go build -o ./longhorn-instance-manager && \
     cp -r integration/rpc/ ${DAPPER_SOURCE}/integration/rpc/ && \
     cp longhorn-instance-manager /usr/local/bin
