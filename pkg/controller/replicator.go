@@ -292,6 +292,9 @@ func (r *replicator) Close() error {
 		if backend.mode == types.ERR {
 			continue
 		}
+
+		backend.backend.StopMonitoring()
+
 		if err := backend.backend.Close(); err != nil {
 			lastErr = err
 		}
