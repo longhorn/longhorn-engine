@@ -11,7 +11,7 @@ require (
 	github.com/gorilla/handlers v1.4.2
 	github.com/gorilla/mux v1.7.3
 	github.com/gorilla/websocket v1.4.2 // indirect
-	github.com/longhorn/backupstore v0.0.0-20210706140155-b5338d086100
+	github.com/longhorn/backupstore v0.0.0-20210729000425-b76c1441afc0
 	github.com/longhorn/go-iscsi-helper v0.0.0-20210330030558-49a327fb024e
 	github.com/longhorn/sparse-tools v0.0.0-20210729195155-a0fb4226a960
 	github.com/mattn/go-colorable v0.1.4 // indirect
@@ -21,11 +21,10 @@ require (
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
 	github.com/rancher/go-rancher v0.1.1-0.20190307222549-9756097e5e4c
 	github.com/satori/go.uuid v1.2.0
-	github.com/sirupsen/logrus v1.4.1
+	github.com/sirupsen/logrus v1.8.1
 	github.com/urfave/cli v1.22.1
 	golang.org/x/net v0.0.0-20190522155817-f3200d17e092
-	golang.org/x/sys v0.0.0-20190524152521-dbbf3f1254d4
-	golang.org/x/text v0.3.2 // indirect
+	golang.org/x/sys v0.0.0-20210630005230-0f9fa26af87c
 	google.golang.org/grpc v1.21.0
 	gopkg.in/check.v1 v1.0.0-20160105164936-4f90aeace3a2
 	gopkg.in/cheggaaa/pb.v1 v1.0.28 // indirect
