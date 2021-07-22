@@ -12,7 +12,7 @@ RUN apt-get update && \
 RUN wget https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/v0.3.2/grpc_health_probe-linux-${ARCH} -O /usr/local/bin/grpc_health_probe && \
     chmod +x /usr/local/bin/grpc_health_probe
 
-COPY bin/longhorn /usr/local/bin/
+COPY bin/longhorn bin/longhorn-instance-manager /usr/local/bin/
 
 COPY package/launch-simple-longhorn package/engine-manager package/launch-simple-file /usr/local/bin/
 
