@@ -91,7 +91,11 @@ func getBackupStatus(c *cli.Context, backupID string, replicaAddress string) (*s
 }
 
 func getReplicaModeMap(c *cli.Context) (map[string]types.Mode, error) {
-	controllerClient := getControllerClient(c)
+	controllerClient, err := getControllerClient(c)
+	if err != nil {
+		return nil, err
+	}
+
 	replicas, err := controllerClient.ReplicaList()
 	if err != nil {
 		return nil, fmt.Errorf("failed to get replica list: %v", err)
@@ -108,7 +112,12 @@ func getReplicaModeMap(c *cli.Context) (map[string]types.Mode, error) {
 func fetchAllBackups(c *cli.Context) error {
 	backupProgressList := make(map[string]*sync.BackupStatusInfo)
 
-	controllerClient := getControllerClient(c)
+	controllerClient, err := getControllerClient(c)
+	if err != nil {
+		return err
+	}
+	defer controllerClient.Close()
+
 	backupReplicaMap, err := controllerClient.BackupReplicaMappingGet()
 	if err != nil {
 		return fmt.Errorf("failed to get list of backupIDs: %v", err)
@@ -179,7 +188,12 @@ func checkBackupStatus(c *cli.Context) error {
 		return fetchAllBackups(c)
 	}
 
-	controllerClient := getControllerClient(c)
+	controllerClient, err := getControllerClient(c)
+	if err != nil {
+		return err
+	}
+	defer controllerClient.Close()
+
 	br, err := controllerClient.BackupReplicaMappingGet()
 	if err != nil {
 		return err
