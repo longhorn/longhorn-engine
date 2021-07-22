@@ -113,12 +113,11 @@ RUN mkdir integration/
 COPY integration/setup.py integration/tox.ini integration/requirements.txt integration/flake8-requirements.txt integration/
 RUN cd integration && tox --notest
 
-# Build longhorn-instance-manager for integraiton testing
+# Build longhorn-instance-manager for integration testing
 RUN cd /go/src/github.com/longhorn && \
     git clone https://github.com/longhorn/longhorn-instance-manager.git && \
     cd longhorn-instance-manager && \
-    im_release=$(curl -sfSL https://api.github.com/repos/longhorn/longhorn-instance-manager/releases/latest | jq -r '.tag_name') && \
-    git checkout ${im_release} && \
+    git checkout v1_20210621 && \
     go build -o ./longhorn-instance-manager && \
     cp -r integration/rpc/ ${DAPPER_SOURCE}/integration/rpc/ && \
     cp longhorn-instance-manager /usr/local/bin
