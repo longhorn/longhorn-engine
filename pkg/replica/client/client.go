@@ -103,15 +103,15 @@ func GetReplicaInfo(r *ptypes.Replica) *types.ReplicaInfo {
 	return replicaInfo
 }
 
-func (c *ReplicaClient) syncFileInfoListToSyncAgentGRPCFormat(list []types.SyncFileInfo) []*ptypes.SyncFileInfo {
+func syncFileInfoListToSyncAgentGRPCFormat(list []types.SyncFileInfo) []*ptypes.SyncFileInfo {
 	res := []*ptypes.SyncFileInfo{}
 	for _, info := range list {
-		res = append(res, c.syncFileInfoToSyncAgentGRPCFormat(info))
+		res = append(res, syncFileInfoToSyncAgentGRPCFormat(info))
 	}
 	return res
 }
 
-func (c *ReplicaClient) syncFileInfoToSyncAgentGRPCFormat(info types.SyncFileInfo) *ptypes.SyncFileInfo {
+func syncFileInfoToSyncAgentGRPCFormat(info types.SyncFileInfo) *ptypes.SyncFileInfo {
 	return &ptypes.SyncFileInfo{
 		FromFileName: info.FromFileName,
 		ToFileName:   info.ToFileName,
@@ -450,7 +450,7 @@ func (c *ReplicaClient) SyncFiles(fromAddress string, list []types.SyncFileInfo)
 	if _, err := syncAgentServiceClient.FilesSync(ctx, &ptypes.FilesSyncRequest{
 		FromAddress:      fromAddress,
 		ToHost:           c.host,
-		SyncFileInfoList: c.syncFileInfoListToSyncAgentGRPCFormat(list),
+		SyncFileInfoList: syncFileInfoListToSyncAgentGRPCFormat(list),
 	}); err != nil {
 		return fmt.Errorf("failed to sync files %+v from %v: %v", list, fromAddress, err)
 	}
