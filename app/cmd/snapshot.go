@@ -145,7 +145,12 @@ func createSnapshot(c *cli.Context) error {
 		}
 	}
 
-	controllerClient := getControllerClient(c)
+	controllerClient, err := getControllerClient(c)
+	if err != nil {
+		return err
+	}
+	defer controllerClient.Close()
+
 	id, err := controllerClient.VolumeSnapshot(name, labelMap)
 	if err != nil {
 		return err
@@ -161,9 +166,13 @@ func revertSnapshot(c *cli.Context) error {
 		return fmt.Errorf("Missing parameter for snapshot")
 	}
 
-	controllerClient := getControllerClient(c)
-	err := controllerClient.VolumeRevert(name)
+	controllerClient, err := getControllerClient(c)
 	if err != nil {
+		return err
+	}
+	defer controllerClient.Close()
+
+	if err = controllerClient.VolumeRevert(name); err != nil {
 		return err
 	}
 
@@ -214,7 +223,12 @@ func purgeSnapshotStatus(c *cli.Context) error {
 }
 
 func lsSnapshot(c *cli.Context) error {
-	controllerClient := getControllerClient(c)
+	controllerClient, err := getControllerClient(c)
+	if err != nil {
+		return err
+	}
+	defer controllerClient.Close()
+
 	replicas, err := controllerClient.ReplicaList()
 	if err != nil {
 		return err
@@ -267,7 +281,12 @@ func lsSnapshot(c *cli.Context) error {
 func infoSnapshot(c *cli.Context) error {
 	var output []byte
 
-	controllerClient := getControllerClient(c)
+	controllerClient, err := getControllerClient(c)
+	if err != nil {
+		return err
+	}
+	defer controllerClient.Close()
+
 	replicas, err := controllerClient.ReplicaList()
 	if err != nil {
 		return err

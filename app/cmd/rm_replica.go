@@ -25,6 +25,11 @@ func rmReplica(c *cli.Context) error {
 	}
 	replica := c.Args()[0]
 
-	controllerClient := getControllerClient(c)
+	controllerClient, err := getControllerClient(c)
+	if err != nil {
+		return err
+	}
+	defer controllerClient.Close()
+
 	return controllerClient.ReplicaDelete(replica)
 }
