@@ -52,6 +52,7 @@ RUN cd /usr/src/libqcow-20181117 && \
 RUN cd /usr/src/libqcow-20181117 && \
     make -j$(nproc) && \
     make install
+RUN ldconfig
 
 # GRPC dependencies
 # GRPC health probe
