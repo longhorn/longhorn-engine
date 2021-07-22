@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net"
 	"strconv"
-	"strings"
 	"time"
 
 	"github.com/golang/protobuf/ptypes/empty"
@@ -12,6 +11,7 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/longhorn/longhorn-engine/pkg/types"
+	"github.com/longhorn/longhorn-engine/pkg/util"
 	"github.com/longhorn/longhorn-engine/proto/ptypes"
 )
 
@@ -20,42 +20,122 @@ const (
 	GRPCServiceLongTimeout   = 24 * time.Hour
 )
 
+type ReplicaServiceContext struct {
+	cc      *grpc.ClientConn
+	service ptypes.ReplicaServiceClient
+}
+
+func (c ReplicaServiceContext) Close() error {
+	if c.cc == nil {
+		return nil
+	}
+	return c.cc.Close()
+}
+
+type SyncServiceContext struct {
+	cc      *grpc.ClientConn
+	service ptypes.SyncAgentServiceClient
+}
+
+func (c SyncServiceContext) Close() error {
+	if c.cc == nil {
+		return nil
+	}
+	return c.cc.Close()
+}
+
 type ReplicaClient struct {
 	host                string
 	replicaServiceURL   string
 	syncAgentServiceURL string
+
+	replicaServiceContext ReplicaServiceContext
+	syncServiceContext    SyncServiceContext
+}
+
+func (c ReplicaClient) Close() error {
+	_ = c.replicaServiceContext.Close()
+	_ = c.syncServiceContext.Close()
+	return nil
 }
 
 func NewReplicaClient(address string) (*ReplicaClient, error) {
-	if strings.HasPrefix(address, "tcp://") {
-		address = strings.TrimPrefix(address, "tcp://")
-	}
-
-	if strings.HasPrefix(address, "http://") {
-		address = strings.TrimPrefix(address, "http://")
-	}
-
-	if strings.HasSuffix(address, "/v1") {
-		address = strings.TrimSuffix(address, "/v1")
-	}
-
-	host, strPort, err := net.SplitHostPort(address)
+	replicaServiceURL := util.GetGRPCAddress(address)
+	host, strPort, err := net.SplitHostPort(replicaServiceURL)
 	if err != nil {
-		return nil, fmt.Errorf("Invalid address %s, must have a port in it", address)
+		return nil, fmt.Errorf("invalid replica address %s, must have a port in it", replicaServiceURL)
 	}
 
 	port, err := strconv.Atoi(strPort)
 	if err != nil {
 		return nil, err
 	}
-
 	syncAgentServiceURL := net.JoinHostPort(host, strconv.Itoa(port+2))
+
+	getReplicaServiceContext := func(serviceUrl string) (ReplicaServiceContext, error) {
+		cc, err := grpc.Dial(serviceUrl, grpc.WithInsecure())
+		if err != nil {
+			return ReplicaServiceContext{}, fmt.Errorf("cannot connect to ReplicaService %v: %v", serviceUrl, err)
+		}
+
+		return ReplicaServiceContext{cc: cc, service: ptypes.NewReplicaServiceClient(cc)}, nil
+	}
+
+	getSyncServiceContext := func(serviceUrl string) (SyncServiceContext, error) {
+		cc, err := grpc.Dial(serviceUrl, grpc.WithInsecure())
+		if err != nil {
+			return SyncServiceContext{}, fmt.Errorf("cannot connect to SyncAgentService %v: %v", serviceUrl, err)
+		}
+
+		return SyncServiceContext{cc: cc, service: ptypes.NewSyncAgentServiceClient(cc)}, nil
+	}
+
+	getServiceContexts := func(replicaServiceURL, syncServiceURL string) (ReplicaServiceContext, SyncServiceContext, error) {
+		var replicaServiceContext ReplicaServiceContext
+		var syncServiceContext SyncServiceContext
+		var err error
+
+		defer func() {
+			if err != nil {
+				_ = replicaServiceContext.Close()
+				_ = syncServiceContext.Close()
+			}
+		}()
+
+		replicaServiceContext, err = getReplicaServiceContext(replicaServiceURL)
+		if err != nil {
+			return replicaServiceContext, syncServiceContext, err
+		}
+
+		syncServiceContext, err = getSyncServiceContext(syncAgentServiceURL)
+		if err != nil {
+			return replicaServiceContext, syncServiceContext, err
+		}
+
+		return replicaServiceContext, syncServiceContext, nil
+	}
+
+	replicaServiceContext, syncServiceContext, err := getServiceContexts(replicaServiceURL, syncAgentServiceURL)
+	if err != nil {
+		return nil, err
+	}
 
 	return &ReplicaClient{
 		host:                host,
-		replicaServiceURL:   address,
+		replicaServiceURL:   replicaServiceURL,
 		syncAgentServiceURL: syncAgentServiceURL,
+
+		replicaServiceContext: replicaServiceContext,
+		syncServiceContext:    syncServiceContext,
 	}, nil
+}
+
+func (c *ReplicaClient) getReplicaServiceClient() ptypes.ReplicaServiceClient {
+	return c.replicaServiceContext.service
+}
+
+func (c *ReplicaClient) getSyncServiceClient() ptypes.SyncAgentServiceClient {
+	return c.syncServiceContext.service
 }
 
 func GetDiskInfo(info *ptypes.DiskInfo) *types.DiskInfo {
@@ -120,13 +200,7 @@ func syncFileInfoToSyncAgentGRPCFormat(info types.SyncFileInfo) *ptypes.SyncFile
 }
 
 func (c *ReplicaClient) GetReplica() (*types.ReplicaInfo, error) {
-	conn, err := grpc.Dial(c.replicaServiceURL, grpc.WithInsecure())
-	if err != nil {
-		return nil, fmt.Errorf("cannot connect to ReplicaService %v: %v", c.replicaServiceURL, err)
-	}
-	defer conn.Close()
-	replicaServiceClient := ptypes.NewReplicaServiceClient(conn)
-
+	replicaServiceClient := c.getReplicaServiceClient()
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
 	defer cancel()
 
@@ -139,13 +213,7 @@ func (c *ReplicaClient) GetReplica() (*types.ReplicaInfo, error) {
 }
 
 func (c *ReplicaClient) OpenReplica() error {
-	conn, err := grpc.Dial(c.replicaServiceURL, grpc.WithInsecure())
-	if err != nil {
-		return fmt.Errorf("cannot connect to ReplicaService %v: %v", c.replicaServiceURL, err)
-	}
-	defer conn.Close()
-	replicaServiceClient := ptypes.NewReplicaServiceClient(conn)
-
+	replicaServiceClient := c.getReplicaServiceClient()
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
 	defer cancel()
 
@@ -157,13 +225,7 @@ func (c *ReplicaClient) OpenReplica() error {
 }
 
 func (c *ReplicaClient) Close() error {
-	conn, err := grpc.Dial(c.replicaServiceURL, grpc.WithInsecure())
-	if err != nil {
-		return fmt.Errorf("cannot connect to ReplicaService %v: %v", c.replicaServiceURL, err)
-	}
-	defer conn.Close()
-	replicaServiceClient := ptypes.NewReplicaServiceClient(conn)
-
+	replicaServiceClient := c.getReplicaServiceClient()
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
 	defer cancel()
 
@@ -175,13 +237,7 @@ func (c *ReplicaClient) Close() error {
 }
 
 func (c *ReplicaClient) ReloadReplica() (*types.ReplicaInfo, error) {
-	conn, err := grpc.Dial(c.replicaServiceURL, grpc.WithInsecure())
-	if err != nil {
-		return nil, fmt.Errorf("cannot connect to ReplicaService %v: %v", c.replicaServiceURL, err)
-	}
-	defer conn.Close()
-	replicaServiceClient := ptypes.NewReplicaServiceClient(conn)
-
+	replicaServiceClient := c.getReplicaServiceClient()
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
 	defer cancel()
 
@@ -193,18 +249,8 @@ func (c *ReplicaClient) ReloadReplica() (*types.ReplicaInfo, error) {
 	return GetReplicaInfo(resp.Replica), nil
 }
 
-func (c *ReplicaClient) ExpandReplica(size int64) (r *types.ReplicaInfo, err error) {
-	defer func() {
-		err = types.WrapError(err, "failed to expand replica %v", c.replicaServiceURL)
-	}()
-
-	conn, err := grpc.Dial(c.replicaServiceURL, grpc.WithInsecure())
-	if err != nil {
-		return nil, fmt.Errorf("cannot connect to ReplicaService %v: %v", c.replicaServiceURL, err)
-	}
-	defer conn.Close()
-	replicaServiceClient := ptypes.NewReplicaServiceClient(conn)
-
+func (c *ReplicaClient) ExpandReplica(size int64) (*types.ReplicaInfo, error) {
+	replicaServiceClient := c.getReplicaServiceClient()
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
 	defer cancel()
 
@@ -212,20 +258,14 @@ func (c *ReplicaClient) ExpandReplica(size int64) (r *types.ReplicaInfo, err err
 		Size: size,
 	})
 	if err != nil {
-		return nil, types.UnmarshalGRPCError(err)
+		return nil, types.WrapError(types.UnmarshalGRPCError(err), "failed to expand replica %v", c.replicaServiceURL)
 	}
 
 	return GetReplicaInfo(resp.Replica), nil
 }
 
 func (c *ReplicaClient) Revert(name, created string) error {
-	conn, err := grpc.Dial(c.replicaServiceURL, grpc.WithInsecure())
-	if err != nil {
-		return fmt.Errorf("cannot connect to ReplicaService %v: %v", c.replicaServiceURL, err)
-	}
-	defer conn.Close()
-	replicaServiceClient := ptypes.NewReplicaServiceClient(conn)
-
+	replicaServiceClient := c.getReplicaServiceClient()
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
 	defer cancel()
 
@@ -240,13 +280,7 @@ func (c *ReplicaClient) Revert(name, created string) error {
 }
 
 func (c *ReplicaClient) RemoveDisk(disk string, force bool) error {
-	conn, err := grpc.Dial(c.replicaServiceURL, grpc.WithInsecure())
-	if err != nil {
-		return fmt.Errorf("cannot connect to ReplicaService %v: %v", c.replicaServiceURL, err)
-	}
-	defer conn.Close()
-	replicaServiceClient := ptypes.NewReplicaServiceClient(conn)
-
+	replicaServiceClient := c.getReplicaServiceClient()
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
 	defer cancel()
 
@@ -261,13 +295,7 @@ func (c *ReplicaClient) RemoveDisk(disk string, force bool) error {
 }
 
 func (c *ReplicaClient) ReplaceDisk(target, source string) error {
-	conn, err := grpc.Dial(c.replicaServiceURL, grpc.WithInsecure())
-	if err != nil {
-		return fmt.Errorf("cannot connect to ReplicaService %v: %v", c.replicaServiceURL, err)
-	}
-	defer conn.Close()
-	replicaServiceClient := ptypes.NewReplicaServiceClient(conn)
-
+	replicaServiceClient := c.getReplicaServiceClient()
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
 	defer cancel()
 
@@ -282,13 +310,7 @@ func (c *ReplicaClient) ReplaceDisk(target, source string) error {
 }
 
 func (c *ReplicaClient) PrepareRemoveDisk(disk string) ([]*types.PrepareRemoveAction, error) {
-	conn, err := grpc.Dial(c.replicaServiceURL, grpc.WithInsecure())
-	if err != nil {
-		return nil, fmt.Errorf("cannot connect to ReplicaService %v: %v", c.replicaServiceURL, err)
-	}
-	defer conn.Close()
-	replicaServiceClient := ptypes.NewReplicaServiceClient(conn)
-
+	replicaServiceClient := c.getReplicaServiceClient()
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
 	defer cancel()
 
@@ -313,13 +335,7 @@ func (c *ReplicaClient) PrepareRemoveDisk(disk string) ([]*types.PrepareRemoveAc
 }
 
 func (c *ReplicaClient) MarkDiskAsRemoved(disk string) error {
-	conn, err := grpc.Dial(c.replicaServiceURL, grpc.WithInsecure())
-	if err != nil {
-		return fmt.Errorf("cannot connect to ReplicaService %v: %v", c.replicaServiceURL, err)
-	}
-	defer conn.Close()
-	replicaServiceClient := ptypes.NewReplicaServiceClient(conn)
-
+	replicaServiceClient := c.getReplicaServiceClient()
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
 	defer cancel()
 
@@ -333,13 +349,7 @@ func (c *ReplicaClient) MarkDiskAsRemoved(disk string) error {
 }
 
 func (c *ReplicaClient) SetRebuilding(rebuilding bool) error {
-	conn, err := grpc.Dial(c.replicaServiceURL, grpc.WithInsecure())
-	if err != nil {
-		return fmt.Errorf("cannot connect to ReplicaService %v: %v", c.replicaServiceURL, err)
-	}
-	defer conn.Close()
-	replicaServiceClient := ptypes.NewReplicaServiceClient(conn)
-
+	replicaServiceClient := c.getReplicaServiceClient()
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
 	defer cancel()
 
@@ -353,13 +363,7 @@ func (c *ReplicaClient) SetRebuilding(rebuilding bool) error {
 }
 
 func (c *ReplicaClient) RemoveFile(file string) error {
-	conn, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure())
-	if err != nil {
-		return fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
-	}
-	defer conn.Close()
-	syncAgentServiceClient := ptypes.NewSyncAgentServiceClient(conn)
-
+	syncAgentServiceClient := c.getSyncServiceClient()
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
 	defer cancel()
 
@@ -373,13 +377,7 @@ func (c *ReplicaClient) RemoveFile(file string) error {
 }
 
 func (c *ReplicaClient) RenameFile(oldFileName, newFileName string) error {
-	conn, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure())
-	if err != nil {
-		return fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
-	}
-	defer conn.Close()
-	syncAgentServiceClient := ptypes.NewSyncAgentServiceClient(conn)
-
+	syncAgentServiceClient := c.getSyncServiceClient()
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
 	defer cancel()
 
@@ -394,13 +392,7 @@ func (c *ReplicaClient) RenameFile(oldFileName, newFileName string) error {
 }
 
 func (c *ReplicaClient) SendFile(from, host string, port int32) error {
-	conn, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure())
-	if err != nil {
-		return fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
-	}
-	defer conn.Close()
-	syncAgentServiceClient := ptypes.NewSyncAgentServiceClient(conn)
-
+	syncAgentServiceClient := c.getSyncServiceClient()
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceLongTimeout)
 	defer cancel()
 
@@ -416,13 +408,7 @@ func (c *ReplicaClient) SendFile(from, host string, port int32) error {
 }
 
 func (c *ReplicaClient) LaunchReceiver(toFilePath string) (string, int32, error) {
-	conn, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure())
-	if err != nil {
-		return "", 0, fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
-	}
-	defer conn.Close()
-	syncAgentServiceClient := ptypes.NewSyncAgentServiceClient(conn)
-
+	syncAgentServiceClient := c.getSyncServiceClient()
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
 	defer cancel()
 
@@ -437,13 +423,7 @@ func (c *ReplicaClient) LaunchReceiver(toFilePath string) (string, int32, error)
 }
 
 func (c *ReplicaClient) SyncFiles(fromAddress string, list []types.SyncFileInfo) error {
-	conn, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure())
-	if err != nil {
-		return fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
-	}
-	defer conn.Close()
-	syncAgentServiceClient := ptypes.NewSyncAgentServiceClient(conn)
-
+	syncAgentServiceClient := c.getSyncServiceClient()
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceLongTimeout)
 	defer cancel()
 
@@ -459,13 +439,7 @@ func (c *ReplicaClient) SyncFiles(fromAddress string, list []types.SyncFileInfo)
 }
 
 func (c *ReplicaClient) CreateBackup(snapshot, dest, volume, backingImageName, backingImageURL string, labels []string, credential map[string]string) (*ptypes.BackupCreateResponse, error) {
-	conn, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure())
-	if err != nil {
-		return nil, fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
-	}
-	defer conn.Close()
-	syncAgentServiceClient := ptypes.NewSyncAgentServiceClient(conn)
-
+	syncAgentServiceClient := c.getSyncServiceClient()
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
 	defer cancel()
 
@@ -486,13 +460,7 @@ func (c *ReplicaClient) CreateBackup(snapshot, dest, volume, backingImageName, b
 }
 
 func (c *ReplicaClient) BackupStatus(backupName string) (*ptypes.BackupStatusResponse, error) {
-	conn, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure())
-	if err != nil {
-		return nil, fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
-	}
-	defer conn.Close()
-	syncAgentServiceClient := ptypes.NewSyncAgentServiceClient(conn)
-
+	syncAgentServiceClient := c.getSyncServiceClient()
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
 	defer cancel()
 
@@ -508,13 +476,7 @@ func (c *ReplicaClient) BackupStatus(backupName string) (*ptypes.BackupStatusRes
 }
 
 func (c *ReplicaClient) RmBackup(backup string) error {
-	conn, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure())
-	if err != nil {
-		return fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
-	}
-	defer conn.Close()
-	syncAgentServiceClient := ptypes.NewSyncAgentServiceClient(conn)
-
+	syncAgentServiceClient := c.getSyncServiceClient()
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
 	defer cancel()
 
@@ -528,13 +490,7 @@ func (c *ReplicaClient) RmBackup(backup string) error {
 }
 
 func (c *ReplicaClient) RestoreBackup(backup, snapshotDiskName string, credential map[string]string) error {
-	conn, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure())
-	if err != nil {
-		return fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
-	}
-	defer conn.Close()
-	syncAgentServiceClient := ptypes.NewSyncAgentServiceClient(conn)
-
+	syncAgentServiceClient := c.getSyncServiceClient()
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
 	defer cancel()
 
@@ -550,13 +506,7 @@ func (c *ReplicaClient) RestoreBackup(backup, snapshotDiskName string, credentia
 }
 
 func (c *ReplicaClient) Reset() error {
-	conn, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure())
-	if err != nil {
-		return fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
-	}
-	defer conn.Close()
-	syncAgentServiceClient := ptypes.NewSyncAgentServiceClient(conn)
-
+	syncAgentServiceClient := c.getSyncServiceClient()
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
 	defer cancel()
 
@@ -568,13 +518,7 @@ func (c *ReplicaClient) Reset() error {
 }
 
 func (c *ReplicaClient) RestoreStatus() (*ptypes.RestoreStatusResponse, error) {
-	conn, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure())
-	if err != nil {
-		return nil, fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
-	}
-	defer conn.Close()
-	syncAgentServiceClient := ptypes.NewSyncAgentServiceClient(conn)
-
+	syncAgentServiceClient := c.getSyncServiceClient()
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
 	defer cancel()
 
@@ -587,13 +531,7 @@ func (c *ReplicaClient) RestoreStatus() (*ptypes.RestoreStatusResponse, error) {
 }
 
 func (c *ReplicaClient) SnapshotPurge() error {
-	conn, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure())
-	if err != nil {
-		return fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
-	}
-	defer conn.Close()
-
-	syncAgentServiceClient := ptypes.NewSyncAgentServiceClient(conn)
+	syncAgentServiceClient := c.getSyncServiceClient()
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
 	defer cancel()
 
@@ -605,13 +543,7 @@ func (c *ReplicaClient) SnapshotPurge() error {
 }
 
 func (c *ReplicaClient) SnapshotPurgeStatus() (*ptypes.SnapshotPurgeStatusResponse, error) {
-	conn, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure())
-	if err != nil {
-		return nil, fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
-	}
-	defer conn.Close()
-
-	syncAgentServiceClient := ptypes.NewSyncAgentServiceClient(conn)
+	syncAgentServiceClient := c.getSyncServiceClient()
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
 	defer cancel()
 
@@ -624,13 +556,7 @@ func (c *ReplicaClient) SnapshotPurgeStatus() (*ptypes.SnapshotPurgeStatusRespon
 }
 
 func (c *ReplicaClient) ReplicaRebuildStatus() (*ptypes.ReplicaRebuildStatusResponse, error) {
-	conn, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure())
-	if err != nil {
-		return nil, fmt.Errorf("cannot connect to SyncAgentService %v: %v", c.syncAgentServiceURL, err)
-	}
-	defer conn.Close()
-
-	syncAgentServiceClient := ptypes.NewSyncAgentServiceClient(conn)
+	syncAgentServiceClient := c.getSyncServiceClient()
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
 	defer cancel()
 
