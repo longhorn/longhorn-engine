@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"strconv"
@@ -89,7 +90,13 @@ func startSyncAgent(c *cli.Context) error {
 }
 
 func doReset(c *cli.Context) error {
-	task := sync.NewTask(c.GlobalString("url"))
+	url := c.GlobalString("url")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	task, err := sync.NewTask(ctx, url)
+	if err != nil {
+		return err
+	}
 
 	if err := task.Reset(); err != nil {
 		logrus.Errorf("Failed to reset sync agent server")

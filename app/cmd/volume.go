@@ -71,7 +71,12 @@ func FrontendShutdownCmd() cli.Command {
 }
 
 func info(c *cli.Context) error {
-	controllerClient := getControllerClient(c)
+	controllerClient, err := getControllerClient(c)
+	if err != nil {
+		return err
+	}
+	defer controllerClient.Close()
+
 	volumeInfo, err := controllerClient.VolumeGet()
 	if err != nil {
 		return err
@@ -88,13 +93,13 @@ func info(c *cli.Context) error {
 
 func expand(c *cli.Context) error {
 	size := c.Int64("size")
-	controllerClient := getControllerClient(c)
-	err := controllerClient.VolumeExpand(size)
+	controllerClient, err := getControllerClient(c)
 	if err != nil {
 		return err
 	}
+	defer controllerClient.Close()
 
-	return nil
+	return controllerClient.VolumeExpand(size)
 }
 
 func startFrontend(c *cli.Context) error {
@@ -103,21 +108,21 @@ func startFrontend(c *cli.Context) error {
 		return fmt.Errorf("Missing required parameter frontendName")
 	}
 
-	controllerClient := getControllerClient(c)
-	err := controllerClient.VolumeFrontendStart(frontendName)
+	controllerClient, err := getControllerClient(c)
 	if err != nil {
 		return err
 	}
+	defer controllerClient.Close()
 
-	return nil
+	return controllerClient.VolumeFrontendStart(frontendName)
 }
 
 func shutdownFrontend(c *cli.Context) error {
-	controllerClient := getControllerClient(c)
-	err := controllerClient.VolumeFrontendShutdown()
+	controllerClient, err := getControllerClient(c)
 	if err != nil {
 		return err
 	}
+	defer controllerClient.Close()
 
-	return nil
+	return controllerClient.VolumeFrontendShutdown()
 }

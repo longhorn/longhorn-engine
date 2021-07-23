@@ -37,8 +37,12 @@ func version(c *cli.Context) error {
 	v := VersionOutput{ClientVersion: &clientVersion}
 
 	if !c.Bool("client-only") {
-		url := c.GlobalString("url")
-		controllerClient := client.NewControllerClient(url)
+		controllerClient, err := client.NewControllerClient(c.GlobalString("url"))
+		if err != nil {
+			return err
+		}
+		defer controllerClient.Close()
+
 		version, err := controllerClient.VersionDetailGet()
 		if err != nil {
 			return err
