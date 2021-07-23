@@ -88,26 +88,6 @@ func (c *Controller) clientsAndSnapshot(name string) (map[string]*client.Replica
 			return nil, "", err
 		}
 
-		/*
-			found := ""
-			for _, snapshot := range rep.Chain {
-				if snapshot == name {
-					found = name
-					break
-				}
-				fullName := "volume-snap-" + name + ".img"
-				if snapshot == fullName {
-					found = fullName
-					break
-				}
-			}
-
-			if found == "" {
-				return nil, "", fmt.Errorf("Failed to find snapshot %s on %s", name, replica)
-			}
-
-			name = found
-		*/
 		clients[replica.Address] = repClient
 	}
 	name = "volume-snap-" + name + ".img"
