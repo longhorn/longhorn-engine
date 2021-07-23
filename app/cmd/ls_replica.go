@@ -56,6 +56,7 @@ func getChain(address string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer repClient.Close()
 
 	r, err := repClient.GetReplica()
 	if err != nil {

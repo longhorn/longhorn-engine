@@ -84,6 +84,7 @@ func (t *Task) createBackup(replicaInController *types.ControllerReplicaInfo, sn
 	if err != nil {
 		return nil, err
 	}
+	defer repClient.Close()
 
 	rep, err := repClient.GetReplica()
 	if err != nil {
@@ -119,6 +120,7 @@ func (t *Task) FetchBackupStatus(backupID string, replicaAddr string) (*BackupSt
 		logrus.Errorf("Cannot create a replica client for IP[%v]: %v", replicaAddr, err)
 		return nil, err
 	}
+	defer repClient.Close()
 
 	bs, err := repClient.BackupStatus(backupID)
 	if err != nil {
@@ -271,6 +273,8 @@ func (t *Task) restoreBackup(replicaInController *types.ControllerReplicaInfo, b
 	if err != nil {
 		return err
 	}
+	defer repClient.Close()
+
 	if err := repClient.RestoreBackup(backup, snapshotFile, credential); err != nil {
 		return err
 	}
@@ -295,15 +299,22 @@ func (t *Task) Reset() error {
 		}
 	}
 
+	var clients []*replicaClient.ReplicaClient
+	defer func() {
+		for _, client := range clients {
+			_ = client.Close()
+		}
+	}()
+
 	for _, replica := range replicas {
 		repClient, err := replicaClient.NewReplicaClient(replica.Address)
 		if err != nil {
 			logrus.Errorf("Failed to get a replica client: %v for %v", err, replica.Address)
 			return err
 		}
+		clients = append(clients, repClient)
 
 		logrus.Infof("Performing sync-agent-server-reset for replica %s", replica.Address)
-
 		if err := repClient.Reset(); err != nil {
 			logrus.Errorf("Failed Resetting restore status for replica %s", replica.Address)
 			return err
@@ -321,14 +332,24 @@ func (t *Task) RestoreStatus() (map[string]*RestoreStatus, error) {
 		return nil, err
 	}
 
+	// clean up clients after processing
+	var clients []*replicaClient.ReplicaClient
+	defer func() {
+		for _, client := range clients {
+			_ = client.Close()
+		}
+	}()
+
 	for _, replica := range replicas {
 		if replica.Mode == types.ERR {
 			continue
 		}
+
 		repClient, err := replicaClient.NewReplicaClient(replica.Address)
 		if err != nil {
 			return nil, err
 		}
+		clients = append(clients, repClient)
 
 		rs, err := repClient.RestoreStatus()
 		if err != nil {
