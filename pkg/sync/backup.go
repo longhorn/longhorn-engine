@@ -114,6 +114,7 @@ func (t *Task) createBackup(replicaInController *types.ControllerReplicaInfo, sn
 	return info, nil
 }
 
+// FetchBackupStatus instance method is @deprecated use the free function FetchBackupStatus instead
 func (t *Task) FetchBackupStatus(backupID string, replicaAddr string) (*BackupStatusInfo, error) {
 	repClient, err := replicaClient.NewReplicaClient(replicaAddr)
 	if err != nil {
@@ -139,6 +140,24 @@ func (t *Task) FetchBackupStatus(backupID string, replicaAddr string) (*BackupSt
 	}
 
 	return info, nil
+}
+
+func FetchBackupStatus(client *replicaClient.ReplicaClient, backupID string, replicaAddr string) (*BackupStatusInfo, error) {
+	bs, err := client.BackupStatus(backupID)
+	if err != nil {
+		return &BackupStatusInfo{
+			Error: fmt.Sprintf("Failed to get backup status on %s for %v: %v", replicaAddr, backupID, err),
+		}, nil
+	}
+
+	return &BackupStatusInfo{
+		Progress:       int(bs.Progress),
+		BackupURL:      bs.BackupUrl,
+		Error:          bs.Error,
+		SnapshotName:   bs.SnapshotName,
+		State:          bs.State,
+		ReplicaAddress: replicaAddr,
+	}, nil
 }
 
 func (t *Task) RestoreBackup(backup string, credential map[string]string) error {
