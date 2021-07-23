@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -36,7 +37,12 @@ func addReplica(c *cli.Context) error {
 	replica := c.Args()[0]
 
 	url := c.GlobalString("url")
-	task := sync.NewTask(url)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	task, err := sync.NewTask(ctx, url)
+	if err != nil {
+		return err
+	}
 
 	if c.Bool("restore") {
 		return task.AddRestoreReplica(replica)
@@ -63,7 +69,13 @@ func startWithReplicas(c *cli.Context) error {
 	replicas := c.Args()
 
 	url := c.GlobalString("url")
-	task := sync.NewTask(url)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	task, err := sync.NewTask(ctx, url)
+	if err != nil {
+		return err
+	}
+
 	return task.StartWithReplicas(replicas)
 }
 
@@ -80,7 +92,14 @@ func RebuildStatusCmd() cli.Command {
 }
 
 func rebuildStatus(c *cli.Context) error {
-	task := sync.NewTask(c.GlobalString("url"))
+	url := c.GlobalString("url")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	task, err := sync.NewTask(ctx, url)
+	if err != nil {
+		return err
+	}
+
 	statusMap, err := task.RebuildStatus()
 	if err != nil {
 		return err
@@ -112,8 +131,15 @@ func verifyRebuildReplica(c *cli.Context) error {
 		return errors.New("replica address is required")
 	}
 	address := c.Args()[0]
+	url := c.GlobalString("url")
 
-	task := sync.NewTask(c.GlobalString("url"))
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	task, err := sync.NewTask(ctx, url)
+	if err != nil {
+		return err
+	}
+
 	if err := task.VerifyRebuildReplica(address); err != nil {
 		return err
 	}

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -79,9 +80,16 @@ func getBackupStatus(c *cli.Context, backupID string, replicaAddress string) (*s
 	if backupID == "" {
 		return nil, fmt.Errorf("Missing required parameter backupID")
 	}
-	//Fetch backupObject using the replicaIP
-	task := sync.NewTask(c.GlobalString("url"))
 
+	url := c.GlobalString("url")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	task, err := sync.NewTask(ctx, url)
+	if err != nil {
+		return nil, err
+	}
+
+	//Fetch backupObject using the replicaIP
 	backupStatus, err := task.FetchBackupStatus(backupID, replicaAddress)
 	if err != nil {
 		return nil, err
@@ -264,9 +272,6 @@ func RestoreStatusCmd() cli.Command {
 }
 
 func createBackup(c *cli.Context) error {
-	url := c.GlobalString("url")
-	task := sync.NewTask(url)
-
 	dest := c.String("dest")
 	if dest == "" {
 		return fmt.Errorf("Missing required parameter --dest")
@@ -293,6 +298,14 @@ func createBackup(c *cli.Context) error {
 		return err
 	}
 
+	url := c.GlobalString("url")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	task, err := sync.NewTask(ctx, url)
+	if err != nil {
+		return err
+	}
+
 	backup, err := task.CreateBackup(snapshot, dest, biName, biURL, labels, credential)
 	if err != nil {
 		return err
@@ -308,7 +321,12 @@ func createBackup(c *cli.Context) error {
 
 func restoreBackup(c *cli.Context) error {
 	url := c.GlobalString("url")
-	task := sync.NewTask(url)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	task, err := sync.NewTask(ctx, url)
+	if err != nil {
+		return err
+	}
 
 	backup := c.Args().First()
 	if backup == "" {
@@ -329,7 +347,13 @@ func restoreBackup(c *cli.Context) error {
 }
 
 func restoreStatus(c *cli.Context) error {
-	task := sync.NewTask(c.GlobalString("url"))
+	url := c.GlobalString("url")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	task, err := sync.NewTask(ctx, url)
+	if err != nil {
+		return err
+	}
 
 	rsMap, err := task.RestoreStatus()
 	if err != nil {

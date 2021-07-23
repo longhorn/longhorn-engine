@@ -1,6 +1,7 @@
 package sync
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -87,10 +88,23 @@ func (e ReplicaError) Error() string {
 	return fmt.Sprintf("%v: %v", e.Address, e.Message)
 }
 
-func NewTask(controller string) *Task {
-	return &Task{
-		client: client.NewControllerClient(controller),
+// NewTask creates new task with an initialized ControllerClient
+// The lifetime of the Task::client is bound to the context lifetime
+// client calls have their own contexts with timeouts for the call
+func NewTask(ctx context.Context, controllerAddress string) (*Task, error) {
+	controllerClient, err := client.NewControllerClient(controllerAddress)
+	if err != nil {
+		return nil, err
 	}
+
+	go func() {
+		<-ctx.Done()
+		_ = controllerClient.Close()
+	}()
+
+	return &Task{
+		client: controllerClient,
+	}, nil
 }
 
 func (t *Task) DeleteSnapshot(snapshot string) error {
