@@ -1,6 +1,7 @@
 package sync
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
@@ -87,10 +88,23 @@ func (e ReplicaError) Error() string {
 	return fmt.Sprintf("%v: %v", e.Address, e.Message)
 }
 
-func NewTask(controller string) *Task {
-	return &Task{
-		client: client.NewControllerClient(controller),
+// NewTask creates new task with an initialized ControllerClient
+// The lifetime of the Task::client is bound to the context lifetime
+// client calls have their own contexts with timeouts for the call
+func NewTask(ctx context.Context, controllerAddress string) (*Task, error) {
+	controllerClient, err := client.NewControllerClient(controllerAddress)
+	if err != nil {
+		return nil, err
 	}
+
+	go func() {
+		<-ctx.Done()
+		_ = controllerClient.Close()
+	}()
+
+	return &Task{
+		client: controllerClient,
+	}, nil
 }
 
 func (t *Task) DeleteSnapshot(snapshot string) error {
@@ -159,6 +173,7 @@ func (t *Task) PurgeSnapshots(skip bool) error {
 				errorMap.Store(rep.Address, err)
 				return
 			}
+			defer repClient.Close()
 
 			if err := repClient.SnapshotPurge(); err != nil {
 				errorMap.Store(rep.Address, err)
@@ -193,14 +208,24 @@ func (t *Task) PurgeSnapshotStatus() (map[string]*SnapshotPurgeStatus, error) {
 		return nil, err
 	}
 
+	// clean up clients after processing
+	var clients []*replicaClient.ReplicaClient
+	defer func() {
+		for _, client := range clients {
+			_ = client.Close()
+		}
+	}()
+
 	for _, r := range replicas {
 		if r.Mode == types.ERR {
 			continue
 		}
+
 		repClient, err := replicaClient.NewReplicaClient(r.Address)
 		if err != nil {
 			return nil, err
 		}
+		clients = append(clients, repClient)
 
 		status, err := repClient.SnapshotPurgeStatus()
 		if err != nil {
@@ -239,6 +264,7 @@ func (t *Task) isRebuilding(replicaInController *types.ControllerReplicaInfo) (b
 	if err != nil {
 		return false, err
 	}
+	defer repClient.Close()
 
 	replica, err := repClient.GetReplica()
 	if err != nil {
@@ -253,6 +279,7 @@ func (t *Task) isPurging(replicaInController *types.ControllerReplicaInfo) (bool
 	if err != nil {
 		return false, err
 	}
+	defer repClient.Close()
 
 	status, err := repClient.SnapshotPurgeStatus()
 	if err != nil {
@@ -267,6 +294,7 @@ func (t *Task) isDirty(replicaInController *types.ControllerReplicaInfo) (bool, 
 	if err != nil {
 		return false, err
 	}
+	defer repClient.Close()
 
 	replica, err := repClient.GetReplica()
 	if err != nil {
@@ -285,6 +313,7 @@ func (t *Task) markSnapshotAsRemoved(replicaInController *types.ControllerReplic
 	if err != nil {
 		return err
 	}
+	defer repClient.Close()
 
 	if err := repClient.MarkDiskAsRemoved(snapshot); err != nil {
 		return err
@@ -332,6 +361,7 @@ func (t *Task) checkRestoreReplicaSize(address string, volumeSize int64) error {
 	if err != nil {
 		return err
 	}
+	defer replicaCli.CloseReplica()
 
 	replicaInfo, err := replicaCli.GetReplica()
 	if err != nil {
@@ -379,10 +409,15 @@ func (t *Task) AddReplica(replica string) error {
 		return err
 	}
 
-	_, toClient, fromAddress, _, err := t.getTransferClients(replica)
+	fromClient, toClient, fromAddress, _, err := t.getTransferClients(replica)
 	if err != nil {
 		return err
 	}
+
+	defer func() {
+		_ = fromClient.Close()
+		_ = toClient.Close()
+	}()
 
 	if err := toClient.SetRebuilding(true); err != nil {
 		return err
@@ -413,6 +448,7 @@ func (t *Task) checkAndResetFailedRebuild(address string) error {
 	if err != nil {
 		return err
 	}
+	defer client.Close()
 
 	replica, err := client.GetReplica()
 	if err != nil {
@@ -428,7 +464,7 @@ func (t *Task) checkAndResetFailedRebuild(address string) error {
 			return err
 		}
 
-		return client.Close()
+		return client.CloseReplica()
 	}
 
 	return nil
@@ -439,6 +475,7 @@ func (t *Task) checkAndExpandReplica(address string, size int64) error {
 	if err != nil {
 		return err
 	}
+	defer client.Close()
 
 	replica, err := client.GetReplica()
 	if err != nil {
@@ -464,7 +501,7 @@ func (t *Task) checkAndExpandReplica(address string, size int64) error {
 			return err
 		}
 		if needClose {
-			return client.Close()
+			return client.CloseReplica()
 		}
 	}
 
@@ -497,15 +534,30 @@ func checkIfVolumeHeadExists(infoList []types.SyncFileInfo) bool {
 	return false
 }
 
-func (t *Task) getTransferClients(address string) (
-	*replicaClient.ReplicaClient, *replicaClient.ReplicaClient, string, string, error) {
+func (t *Task) getTransferClients(address string) (*replicaClient.ReplicaClient, *replicaClient.ReplicaClient, string, string, error) {
+	var err error
+	var fromClient *replicaClient.ReplicaClient
+	var toClient *replicaClient.ReplicaClient
+
 	from, err := t.getFromReplica()
 	if err != nil {
 		return nil, nil, "", "", err
 	}
 	logrus.Infof("Using replica %s as the source for rebuild ", from.Address)
 
-	fromClient, err := replicaClient.NewReplicaClient(from.Address)
+	// cleanup replica clients on failure
+	defer func() {
+		if err != nil {
+			if fromClient != nil {
+				_ = fromClient.Close()
+			}
+			if toClient != nil {
+				_ = toClient.Close()
+			}
+		}
+	}()
+
+	fromClient, err = replicaClient.NewReplicaClient(from.Address)
 	if err != nil {
 		return nil, nil, "", "", err
 	}
@@ -516,7 +568,7 @@ func (t *Task) getTransferClients(address string) (
 	}
 	logrus.Infof("Using replica %s as the target for rebuild ", to.Address)
 
-	toClient, err := replicaClient.NewReplicaClient(to.Address)
+	toClient, err = replicaClient.NewReplicaClient(to.Address)
 	if err != nil {
 		return nil, nil, "", "", err
 	}
@@ -562,6 +614,7 @@ func getNonBackingDisks(address string) (map[string]types.DiskInfo, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer repClient.Close()
 
 	r, err := repClient.GetReplica()
 	if err != nil {
@@ -668,14 +721,24 @@ func (t *Task) RebuildStatus() (map[string]*ReplicaRebuildStatus, error) {
 		return nil, err
 	}
 
+	// clean up clients after processing
+	var clients []*replicaClient.ReplicaClient
+	defer func() {
+		for _, client := range clients {
+			_ = client.Close()
+		}
+	}()
+
 	for _, r := range replicas {
 		if r.Mode != types.WO {
 			continue
 		}
+
 		repClient, err := replicaClient.NewReplicaClient(r.Address)
 		if err != nil {
 			return nil, err
 		}
+		clients = append(clients, repClient)
 
 		restoreStatus, err := repClient.RestoreStatus()
 		if err != nil {

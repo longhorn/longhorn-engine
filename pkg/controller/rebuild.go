@@ -18,6 +18,7 @@ func getReplicaDisksAndHead(address string) (map[string]types.DiskInfo, string, 
 		return nil, "", fmt.Errorf("Cannot get replica client for %v: %v",
 			address, err)
 	}
+	defer repClient.Close()
 
 	rep, err := repClient.GetReplica()
 	if err != nil {
@@ -135,12 +136,14 @@ func syncFile(from, to string, fromReplica, toReplica *types.Replica) error {
 		return fmt.Errorf("Cannot get replica client for %v: %v",
 			fromReplica.Address, err)
 	}
+	defer fromClient.Close()
 
 	toClient, err := client.NewReplicaClient(toReplica.Address)
 	if err != nil {
 		return fmt.Errorf("Cannot get replica client for %v: %v",
 			toReplica.Address, err)
 	}
+	defer toClient.Close()
 
 	host, port, err := toClient.LaunchReceiver(to)
 	if err != nil {
@@ -235,6 +238,7 @@ func removeExtraDisks(extraDisks map[string]types.DiskInfo, address string) (err
 	if err != nil {
 		return errors.Wrapf(err, "cannot replica client")
 	}
+	defer repClient.Close()
 
 	for disk := range extraDisks {
 		if err = repClient.RemoveDisk(disk, true); err != nil {

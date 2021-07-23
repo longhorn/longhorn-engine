@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/longhorn/backupstore/cmd"
 
+	replicaClient "github.com/longhorn/longhorn-engine/pkg/replica/client"
 	"github.com/longhorn/longhorn-engine/pkg/sync"
 	"github.com/longhorn/longhorn-engine/pkg/types"
 	"github.com/longhorn/longhorn-engine/pkg/util"
@@ -75,49 +77,41 @@ func BackupStatusCmd() cli.Command {
 	}
 }
 
-func getBackupStatus(c *cli.Context, backupID string, replicaAddress string) (*sync.BackupStatusInfo, error) {
-	if backupID == "" {
-		return nil, fmt.Errorf("Missing required parameter backupID")
-	}
-	//Fetch backupObject using the replicaIP
-	task := sync.NewTask(c.GlobalString("url"))
-
-	backupStatus, err := task.FetchBackupStatus(backupID, replicaAddress)
-	if err != nil {
-		return nil, err
-	}
-
-	return backupStatus, nil
-}
-
-func getReplicaModeMap(c *cli.Context) (map[string]types.Mode, error) {
-	controllerClient := getControllerClient(c)
-	replicas, err := controllerClient.ReplicaList()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get replica list: %v", err)
-	}
-
+func getReplicaModeMap(replicas []*types.ControllerReplicaInfo) map[string]types.Mode {
 	replicaModeMap := make(map[string]types.Mode)
 	for _, replica := range replicas {
 		replicaModeMap[replica.Address] = replica.Mode
 	}
 
-	return replicaModeMap, nil
+	return replicaModeMap
 }
 
 func fetchAllBackups(c *cli.Context) error {
 	backupProgressList := make(map[string]*sync.BackupStatusInfo)
 
-	controllerClient := getControllerClient(c)
+	controllerClient, err := getControllerClient(c)
+	if err != nil {
+		return err
+	}
+	defer controllerClient.Close()
+
 	backupReplicaMap, err := controllerClient.BackupReplicaMappingGet()
 	if err != nil {
 		return fmt.Errorf("failed to get list of backupIDs: %v", err)
 	}
 
-	replicaModeMap, err := getReplicaModeMap(c)
+	replicas, err := controllerClient.ReplicaList()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get replica list: %v", err)
 	}
+	replicaModeMap := getReplicaModeMap(replicas)
+
+	clients := map[string]*replicaClient.ReplicaClient{}
+	defer func() {
+		for _, client := range clients {
+			_ = client.Close()
+		}
+	}()
 
 	for backupID, replicaAddress := range backupReplicaMap {
 		// Only a replica in RW mode can create backups.
@@ -135,7 +129,18 @@ func fetchAllBackups(c *cli.Context) error {
 			continue
 		}
 
-		status, err := getBackupStatus(c, backupID, replicaAddress)
+		repClient := clients[replicaAddress]
+		if repClient == nil {
+			repClient, err = replicaClient.NewReplicaClient(replicaAddress)
+			if err != nil {
+				err := fmt.Errorf("cannot create a replica client for IP[%v]: %v", replicaAddress, err)
+				logrus.Error(err.Error())
+				return err
+			}
+			clients[replicaAddress] = repClient
+		}
+
+		status, err := sync.FetchBackupStatus(repClient, backupID, replicaAddress)
 		if err != nil {
 			return err
 		}
@@ -160,10 +165,6 @@ func fetchAllBackups(c *cli.Context) error {
 		backupProgressList[backupID] = status
 	}
 
-	if backupProgressList == nil {
-		return nil
-	}
-
 	output, err := cmd.ResponseOutput(backupProgressList)
 	if err != nil {
 		return err
@@ -179,7 +180,12 @@ func checkBackupStatus(c *cli.Context) error {
 		return fetchAllBackups(c)
 	}
 
-	controllerClient := getControllerClient(c)
+	controllerClient, err := getControllerClient(c)
+	if err != nil {
+		return err
+	}
+	defer controllerClient.Close()
+
 	br, err := controllerClient.BackupReplicaMappingGet()
 	if err != nil {
 		return err
@@ -190,17 +196,26 @@ func checkBackupStatus(c *cli.Context) error {
 			backupID, "replica not found")
 	}
 
-	replicaModeMap, err := getReplicaModeMap(c)
+	replicas, err := controllerClient.ReplicaList()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get replica list: %v", err)
 	}
+	replicaModeMap := getReplicaModeMap(replicas)
+
 	if mode := replicaModeMap[replicaAddress]; mode != types.RW {
 		_ = controllerClient.BackupReplicaMappingDelete(backupID)
 		return fmt.Errorf("Failed to get backup status on %s for %v: %v",
 			replicaAddress, backupID, "unknown replica")
 	}
 
-	status, err := getBackupStatus(c, backupID, replicaAddress)
+	repClient, err := replicaClient.NewReplicaClient(replicaAddress)
+	if err != nil {
+		logrus.Errorf("Cannot create a replica client for IP[%v]: %v", replicaAddress, err)
+		return err
+	}
+	defer repClient.Close()
+
+	status, err := sync.FetchBackupStatus(repClient, backupID, replicaAddress)
 	if err != nil {
 		return err
 	}
@@ -250,9 +265,6 @@ func RestoreStatusCmd() cli.Command {
 }
 
 func createBackup(c *cli.Context) error {
-	url := c.GlobalString("url")
-	task := sync.NewTask(url)
-
 	dest := c.String("dest")
 	if dest == "" {
 		return fmt.Errorf("Missing required parameter --dest")
@@ -279,6 +291,14 @@ func createBackup(c *cli.Context) error {
 		return err
 	}
 
+	url := c.GlobalString("url")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	task, err := sync.NewTask(ctx, url)
+	if err != nil {
+		return err
+	}
+
 	backup, err := task.CreateBackup(snapshot, dest, biName, biURL, labels, credential)
 	if err != nil {
 		return err
@@ -294,7 +314,12 @@ func createBackup(c *cli.Context) error {
 
 func restoreBackup(c *cli.Context) error {
 	url := c.GlobalString("url")
-	task := sync.NewTask(url)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	task, err := sync.NewTask(ctx, url)
+	if err != nil {
+		return err
+	}
 
 	backup := c.Args().First()
 	if backup == "" {
@@ -315,7 +340,13 @@ func restoreBackup(c *cli.Context) error {
 }
 
 func restoreStatus(c *cli.Context) error {
-	task := sync.NewTask(c.GlobalString("url"))
+	url := c.GlobalString("url")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	task, err := sync.NewTask(ctx, url)
+	if err != nil {
+		return err
+	}
 
 	rsMap, err := task.RestoreStatus()
 	if err != nil {

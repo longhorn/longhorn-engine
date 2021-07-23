@@ -122,7 +122,7 @@ func startController(c *cli.Context) error {
 	return control.WaitForShutdown()
 }
 
-func getControllerClient(c *cli.Context) *client.ControllerClient {
+func getControllerClient(c *cli.Context) (*client.ControllerClient, error) {
 	url := c.GlobalString("url")
 	return client.NewControllerClient(url)
 }

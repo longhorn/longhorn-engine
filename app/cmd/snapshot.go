@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -145,7 +146,12 @@ func createSnapshot(c *cli.Context) error {
 		}
 	}
 
-	controllerClient := getControllerClient(c)
+	controllerClient, err := getControllerClient(c)
+	if err != nil {
+		return err
+	}
+	defer controllerClient.Close()
+
 	id, err := controllerClient.VolumeSnapshot(name, labelMap)
 	if err != nil {
 		return err
@@ -161,9 +167,13 @@ func revertSnapshot(c *cli.Context) error {
 		return fmt.Errorf("Missing parameter for snapshot")
 	}
 
-	controllerClient := getControllerClient(c)
-	err := controllerClient.VolumeRevert(name)
+	controllerClient, err := getControllerClient(c)
 	if err != nil {
+		return err
+	}
+	defer controllerClient.Close()
+
+	if err = controllerClient.VolumeRevert(name); err != nil {
 		return err
 	}
 
@@ -171,10 +181,15 @@ func revertSnapshot(c *cli.Context) error {
 }
 
 func rmSnapshot(c *cli.Context) error {
-	var lastErr error
 	url := c.GlobalString("url")
-	task := sync.NewTask(url)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	task, err := sync.NewTask(ctx, url)
+	if err != nil {
+		return err
+	}
 
+	var lastErr error
 	for _, name := range c.Args() {
 		if err := task.DeleteSnapshot(name); err != nil {
 			lastErr = err
@@ -187,9 +202,14 @@ func rmSnapshot(c *cli.Context) error {
 
 func purgeSnapshot(c *cli.Context) error {
 	url := c.GlobalString("url")
-	skip := c.Bool("skip-if-in-progress")
-	task := sync.NewTask(url)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	task, err := sync.NewTask(ctx, url)
+	if err != nil {
+		return err
+	}
 
+	skip := c.Bool("skip-if-in-progress")
 	if err := task.PurgeSnapshots(skip); err != nil {
 		return fmt.Errorf("Failed to purge snapshots: %v", err)
 	}
@@ -198,7 +218,14 @@ func purgeSnapshot(c *cli.Context) error {
 }
 
 func purgeSnapshotStatus(c *cli.Context) error {
-	task := sync.NewTask(c.GlobalString("url"))
+	url := c.GlobalString("url")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	task, err := sync.NewTask(ctx, url)
+	if err != nil {
+		return err
+	}
+
 	statusMap, err := task.PurgeSnapshotStatus()
 	if err != nil {
 		return err
@@ -214,7 +241,12 @@ func purgeSnapshotStatus(c *cli.Context) error {
 }
 
 func lsSnapshot(c *cli.Context) error {
-	controllerClient := getControllerClient(c)
+	controllerClient, err := getControllerClient(c)
+	if err != nil {
+		return err
+	}
+	defer controllerClient.Close()
+
 	replicas, err := controllerClient.ReplicaList()
 	if err != nil {
 		return err
@@ -267,7 +299,12 @@ func lsSnapshot(c *cli.Context) error {
 func infoSnapshot(c *cli.Context) error {
 	var output []byte
 
-	controllerClient := getControllerClient(c)
+	controllerClient, err := getControllerClient(c)
+	if err != nil {
+		return err
+	}
+	defer controllerClient.Close()
+
 	replicas, err := controllerClient.ReplicaList()
 	if err != nil {
 		return err

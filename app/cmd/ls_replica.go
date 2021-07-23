@@ -25,7 +25,12 @@ func LsReplicaCmd() cli.Command {
 }
 
 func lsReplica(c *cli.Context) error {
-	controllerClient := getControllerClient(c)
+	controllerClient, err := getControllerClient(c)
+	if err != nil {
+		return err
+	}
+	defer controllerClient.Close()
+
 	reps, err := controllerClient.ReplicaList()
 	if err != nil {
 		return err
@@ -56,6 +61,7 @@ func getChain(address string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer repClient.Close()
 
 	r, err := repClient.GetReplica()
 	if err != nil {

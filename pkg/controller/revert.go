@@ -35,6 +35,11 @@ func (c *Controller) Revert(name string) error {
 	if err != nil {
 		return err
 	}
+	defer func() {
+		for _, repClient := range clients {
+			_ = repClient.Close()
+		}
+	}()
 
 	if c.FrontendState() == "up" {
 		return fmt.Errorf("volume frontend enabled, aborting snapshot revert")
@@ -65,6 +70,17 @@ func (c *Controller) Revert(name string) error {
 
 func (c *Controller) clientsAndSnapshot(name string) (map[string]*client.ReplicaClient, string, error) {
 	clients := map[string]*client.ReplicaClient{}
+	var repClient *client.ReplicaClient
+	var err error
+
+	// close all clients in case of error
+	defer func() {
+		if err != nil {
+			for _, repClient := range clients {
+				_ = repClient.Close()
+			}
+		}
+	}()
 
 	for _, replica := range c.replicas {
 		if replica.Mode == types.WO {
@@ -78,37 +94,16 @@ func (c *Controller) clientsAndSnapshot(name string) (map[string]*client.Replica
 			return nil, "", fmt.Errorf("Backend %s does not support revert", replica.Address)
 		}
 
-		repClient, err := client.NewReplicaClient(replica.Address)
+		repClient, err = client.NewReplicaClient(replica.Address)
 		if err != nil {
 			return nil, "", err
 		}
+		clients[replica.Address] = repClient
 
 		_, err = repClient.GetReplica()
 		if err != nil {
 			return nil, "", err
 		}
-
-		/*
-			found := ""
-			for _, snapshot := range rep.Chain {
-				if snapshot == name {
-					found = name
-					break
-				}
-				fullName := "volume-snap-" + name + ".img"
-				if snapshot == fullName {
-					found = fullName
-					break
-				}
-			}
-
-			if found == "" {
-				return nil, "", fmt.Errorf("Failed to find snapshot %s on %s", name, replica)
-			}
-
-			name = found
-		*/
-		clients[replica.Address] = repClient
 	}
 	name = "volume-snap-" + name + ".img"
 
