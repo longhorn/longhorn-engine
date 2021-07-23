@@ -224,7 +224,7 @@ func (c *ReplicaClient) OpenReplica() error {
 	return nil
 }
 
-func (c *ReplicaClient) Close() error {
+func (c *ReplicaClient) CloseReplica() error {
 	replicaServiceClient := c.getReplicaServiceClient()
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
 	defer cancel()

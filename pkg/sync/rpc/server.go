@@ -403,6 +403,7 @@ func (s *SyncAgentServer) FilesSync(ctx context.Context, req *ptypes.FilesSyncRe
 	if err != nil {
 		return nil, err
 	}
+	defer fromClient.Close()
 
 	var ops sparserest.SyncFileOperations
 	fileStub := &sparserest.SyncFileStub{}
