@@ -12,6 +12,7 @@ import (
 
 	"github.com/longhorn/backupstore/cmd"
 
+	replicaClient "github.com/longhorn/longhorn-engine/pkg/replica/client"
 	"github.com/longhorn/longhorn-engine/pkg/sync"
 	"github.com/longhorn/longhorn-engine/pkg/types"
 	"github.com/longhorn/longhorn-engine/pkg/util"
@@ -76,28 +77,6 @@ func BackupStatusCmd() cli.Command {
 	}
 }
 
-func getBackupStatus(c *cli.Context, backupID string, replicaAddress string) (*sync.BackupStatusInfo, error) {
-	if backupID == "" {
-		return nil, fmt.Errorf("Missing required parameter backupID")
-	}
-
-	url := c.GlobalString("url")
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	task, err := sync.NewTask(ctx, url)
-	if err != nil {
-		return nil, err
-	}
-
-	//Fetch backupObject using the replicaIP
-	backupStatus, err := task.FetchBackupStatus(backupID, replicaAddress)
-	if err != nil {
-		return nil, err
-	}
-
-	return backupStatus, nil
-}
-
 func getReplicaModeMap(c *cli.Context) (map[string]types.Mode, error) {
 	controllerClient, err := getControllerClient(c)
 	if err != nil {
@@ -136,6 +115,13 @@ func fetchAllBackups(c *cli.Context) error {
 		return err
 	}
 
+	clients := map[string]*replicaClient.ReplicaClient{}
+	defer func() {
+		for _, client := range clients {
+			_ = client.Close()
+		}
+	}()
+
 	for backupID, replicaAddress := range backupReplicaMap {
 		// Only a replica in RW mode can create backups.
 		if mode := replicaModeMap[replicaAddress]; mode != types.RW {
@@ -152,7 +138,18 @@ func fetchAllBackups(c *cli.Context) error {
 			continue
 		}
 
-		status, err := getBackupStatus(c, backupID, replicaAddress)
+		repClient := clients[replicaAddress]
+		if repClient == nil {
+			repClient, err = replicaClient.NewReplicaClient(replicaAddress)
+			if err != nil {
+				err := fmt.Errorf("cannot create a replica client for IP[%v]: %v", replicaAddress, err)
+				logrus.Error(err.Error())
+				return err
+			}
+			clients[replicaAddress] = repClient
+		}
+
+		status, err := sync.FetchBackupStatus(repClient, backupID, replicaAddress)
 		if err != nil {
 			return err
 		}
@@ -175,10 +172,6 @@ func fetchAllBackups(c *cli.Context) error {
 		}
 
 		backupProgressList[backupID] = status
-	}
-
-	if backupProgressList == nil {
-		return nil
 	}
 
 	output, err := cmd.ResponseOutput(backupProgressList)
@@ -222,7 +215,14 @@ func checkBackupStatus(c *cli.Context) error {
 			replicaAddress, backupID, "unknown replica")
 	}
 
-	status, err := getBackupStatus(c, backupID, replicaAddress)
+	repClient, err := replicaClient.NewReplicaClient(replicaAddress)
+	if err != nil {
+		logrus.Errorf("Cannot create a replica client for IP[%v]: %v", replicaAddress, err)
+		return err
+	}
+	defer repClient.Close()
+
+	status, err := sync.FetchBackupStatus(repClient, backupID, replicaAddress)
 	if err != nil {
 		return err
 	}
