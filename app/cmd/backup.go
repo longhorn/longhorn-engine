@@ -77,23 +77,13 @@ func BackupStatusCmd() cli.Command {
 	}
 }
 
-func getReplicaModeMap(c *cli.Context) (map[string]types.Mode, error) {
-	controllerClient, err := getControllerClient(c)
-	if err != nil {
-		return nil, err
-	}
-
-	replicas, err := controllerClient.ReplicaList()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get replica list: %v", err)
-	}
-
+func getReplicaModeMap(replicas []*types.ControllerReplicaInfo) map[string]types.Mode {
 	replicaModeMap := make(map[string]types.Mode)
 	for _, replica := range replicas {
 		replicaModeMap[replica.Address] = replica.Mode
 	}
 
-	return replicaModeMap, nil
+	return replicaModeMap
 }
 
 func fetchAllBackups(c *cli.Context) error {
@@ -110,10 +100,11 @@ func fetchAllBackups(c *cli.Context) error {
 		return fmt.Errorf("failed to get list of backupIDs: %v", err)
 	}
 
-	replicaModeMap, err := getReplicaModeMap(c)
+	replicas, err := controllerClient.ReplicaList()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get replica list: %v", err)
 	}
+	replicaModeMap := getReplicaModeMap(replicas)
 
 	clients := map[string]*replicaClient.ReplicaClient{}
 	defer func() {
@@ -205,10 +196,12 @@ func checkBackupStatus(c *cli.Context) error {
 			backupID, "replica not found")
 	}
 
-	replicaModeMap, err := getReplicaModeMap(c)
+	replicas, err := controllerClient.ReplicaList()
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get replica list: %v", err)
 	}
+	replicaModeMap := getReplicaModeMap(replicas)
+
 	if mode := replicaModeMap[replicaAddress]; mode != types.RW {
 		_ = controllerClient.BackupReplicaMappingDelete(backupID)
 		return fmt.Errorf("Failed to get backup status on %s for %v: %v",
