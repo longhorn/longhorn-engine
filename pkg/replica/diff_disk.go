@@ -276,3 +276,31 @@ func (d *diffDisk) lookup(sector int64) (byte, error) {
 	}
 	return d.location[sector], nil
 }
+
+func (d *diffDisk) initializeSectorLocation(value byte) {
+	for i := 0; i < len(d.location); i++ {
+		d.location[i] = value
+	}
+}
+
+func (d *diffDisk) preload() error {
+	for i, f := range d.files {
+		if i == 0 {
+			continue
+		}
+
+		if err := LoadDiffDiskLocationList(d, f, byte(i)); err != nil {
+			return err
+		}
+
+		if i == (len(d.files) - 1) {
+			size, err := f.Size()
+			if err != nil {
+				return err
+			}
+			d.size = size
+		}
+	}
+
+	return nil
+}

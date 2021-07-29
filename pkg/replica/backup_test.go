@@ -5,6 +5,7 @@ import (
 	"os"
 	"path"
 
+	"github.com/longhorn/longhorn-engine/pkg/backingfile"
 	"github.com/longhorn/longhorn-engine/pkg/util"
 	. "gopkg.in/check.v1"
 )
@@ -70,7 +71,7 @@ func (s *TestSuite) TestBackupWithBackupsAndBacking(c *C) {
 	_, err = f.Write(buf)
 	c.Assert(err, IsNil)
 
-	backing := &BackingFile{
+	backing := &backingfile.BackingFile{
 		Path: "backing",
 		Disk: f,
 	}
@@ -78,7 +79,7 @@ func (s *TestSuite) TestBackupWithBackupsAndBacking(c *C) {
 	s.testBackupWithBackups(c, backing)
 }
 
-func (s *TestSuite) testBackupWithBackups(c *C, backingFile *BackingFile) {
+func (s *TestSuite) testBackupWithBackups(c *C, backingFile *backingfile.BackingFile) {
 	dir, err := ioutil.TempDir("", "replica")
 	c.Assert(err, IsNil)
 	defer os.RemoveAll(dir)

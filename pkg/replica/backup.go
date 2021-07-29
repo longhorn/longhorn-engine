@@ -7,6 +7,8 @@ import (
 
 	"github.com/sirupsen/logrus"
 
+	"github.com/longhorn/longhorn-engine/pkg/backingfile"
+
 	"github.com/longhorn/backupstore"
 )
 
@@ -141,7 +143,7 @@ func (status *RestoreStatus) DeepCopy() *RestoreStatus {
 
 type BackupStatus struct {
 	lock          sync.Mutex
-	backingFile   *BackingFile
+	backingFile   *backingfile.BackingFile
 	replica       *Replica
 	volumeID      string
 	SnapshotID    string
@@ -152,7 +154,7 @@ type BackupStatus struct {
 	IsIncremental bool
 }
 
-func NewBackup(backingFile *BackingFile) *BackupStatus {
+func NewBackup(backingFile *backingfile.BackingFile) *BackupStatus {
 	return &BackupStatus{
 		backingFile: backingFile,
 		State:       ProgressStateInProgress,
@@ -301,7 +303,7 @@ func (rb *BackupStatus) CompareSnapshot(snapID, compareSnapID, volumeID string) 
 		Offset: -1,
 	}
 
-	if err := preload(&rb.replica.volume); err != nil {
+	if err := rb.replica.Preload(false); err != nil {
 		return nil, err
 	}
 
@@ -341,33 +343,4 @@ func (rb *BackupStatus) findIndex(id string) int {
 	}
 	logrus.Warnf("Cannot find snapshot %s in activeDiskData list of volume %s", id, rb.volumeID)
 	return -1
-}
-
-func preload(d *diffDisk) error {
-	for i, f := range d.files {
-		if i == 0 {
-			continue
-		}
-
-		if i == 1 {
-			// Reinitialize to zero so that we can detect holes in the base snapshot
-			for j := 0; j < len(d.location); j++ {
-				d.location[j] = 0
-			}
-		}
-
-		if err := LoadDiffDiskLocationList(d, f, byte(i)); err != nil {
-			return err
-		}
-
-		if i == (len(d.files) - 1) {
-			size, err := f.Size()
-			if err != nil {
-				return err
-			}
-			d.size = size
-		}
-	}
-
-	return nil
 }

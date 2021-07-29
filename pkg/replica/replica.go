@@ -1,6 +1,7 @@
 package replica
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
@@ -20,6 +21,7 @@ import (
 
 	"github.com/longhorn/sparse-tools/sparse"
 
+	"github.com/longhorn/longhorn-engine/pkg/backingfile"
 	"github.com/longhorn/longhorn-engine/pkg/types"
 	"github.com/longhorn/longhorn-engine/pkg/util"
 )
@@ -45,6 +47,10 @@ const (
 	expansionSnapshotInfix = "expand-%d"
 
 	replicaExpansionLabelKey = "replica-expansion"
+
+	// Special indexes inside r.volume.files
+	backingFileIndex = byte(1) // Index of backing file if the replica has backing file
+	nilFileIndex     = byte(0) // Index 0 is a nil file. When a sector is mapped to nilFileIndex, it means we don't know the location for this sector yet
 )
 
 var (
@@ -79,7 +85,7 @@ type Info struct {
 	Parent          string
 	SectorSize      int64
 	BackingFilePath string
-	BackingFile     *BackingFile `json:"-"`
+	BackingFile     *backingfile.BackingFile `json:"-"`
 }
 
 type disk struct {
@@ -89,13 +95,6 @@ type disk struct {
 	UserCreated bool
 	Created     string
 	Labels      map[string]string
-}
-
-type BackingFile struct {
-	Size       int64
-	SectorSize int64
-	Path       string
-	Disk       types.DiffDisk
 }
 
 type PrepareRemoveAction struct {
@@ -121,22 +120,48 @@ const (
 	OpReplace  = "replace"
 )
 
+func OpenSnapshot(dir string, snapshotName string) (*Replica, error) {
+	snapshotDiskName := GenerateSnapshotDiskName(snapshotName)
+	volumeInfo, err := ReadInfo(dir)
+	if err != nil {
+		return nil, err
+	}
+	var backingFile *backingfile.BackingFile
+	if volumeInfo.BackingFilePath != "" {
+		backingFilePath := volumeInfo.BackingFilePath
+		if _, err := os.Stat(backingFilePath); err != nil {
+			return nil, err
+		}
+
+		backingFile, err = backingfile.OpenBackingFile(backingFilePath)
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	r, err := NewReadOnly(dir, snapshotDiskName, backingFile)
+	if err != nil {
+		return nil, err
+	}
+	return r, nil
+}
+
 func ReadInfo(dir string) (Info, error) {
 	var info Info
 	err := (&Replica{dir: dir}).unmarshalFile(volumeMetaData, &info)
 	return info, err
 }
 
-func New(size, sectorSize int64, dir string, backingFile *BackingFile, disableRevCounter bool) (*Replica, error) {
+func New(size, sectorSize int64, dir string, backingFile *backingfile.BackingFile, disableRevCounter bool) (*Replica, error) {
 	return construct(false, size, sectorSize, dir, "", backingFile, disableRevCounter)
 }
 
-func NewReadOnly(dir, head string, backingFile *BackingFile) (*Replica, error) {
+func NewReadOnly(dir, head string, backingFile *backingfile.BackingFile) (*Replica, error) {
 	// size and sectorSize don't matter because they will be read from metadata
 	return construct(true, 0, 512, dir, head, backingFile, false)
 }
 
-func construct(readonly bool, size, sectorSize int64, dir, head string, backingFile *BackingFile, disableRevCounter bool) (*Replica, error) {
+func construct(readonly bool, size, sectorSize int64, dir, head string, backingFile *backingfile.BackingFile, disableRevCounter bool) (*Replica, error) {
 	if size%sectorSize != 0 {
 		return nil, fmt.Errorf("Size %d not a multiple of sector size %d", size, sectorSize)
 	}
@@ -617,13 +642,16 @@ func (r *Replica) isBackingFile(index int) bool {
 	return index == 1
 }
 
-func (r *Replica) close() error {
+func (r *Replica) closeWithoutWritingMetaData() {
 	for i, f := range r.volume.files {
 		if f != nil && !r.isBackingFile(i) {
 			f.Close()
 		}
 	}
+}
 
+func (r *Replica) close() error {
+	r.closeWithoutWritingMetaData()
 	return r.writeVolumeMetaData(false, r.info.Rebuilding)
 }
 
@@ -1018,6 +1046,13 @@ func (r *Replica) Close() error {
 	return r.close()
 }
 
+func (r *Replica) CloseWithoutWritingMetaData() {
+	r.Lock()
+	defer r.Unlock()
+
+	r.closeWithoutWritingMetaData()
+}
+
 func (r *Replica) Delete() error {
 	r.Lock()
 	defer r.Unlock()
@@ -1155,4 +1190,80 @@ func (r *Replica) GetReplicaStat() (int64, int64) {
 	}
 
 	return lastModifyTime, headFileSize
+}
+
+// Preload populates r.volume.location with correct values
+func (r *Replica) Preload(includeBackingFileLayer bool) error {
+	if includeBackingFileLayer && r.info.BackingFile != nil {
+		r.volume.initializeSectorLocation(backingFileIndex)
+	} else {
+		r.volume.initializeSectorLocation(nilFileIndex)
+	}
+	return r.volume.preload()
+}
+
+func (r *Replica) GetDataLayout(ctx context.Context) (<-chan sparse.FileInterval, <-chan error, error) {
+	// baseDiskIndex is the smallest index in r.volume.files that is needed to export
+	// Note that index 0 in r.volume.files is nil. Index 1 is backing file if the volume has backing file.
+	// Otherwise, index 1 is regular disk file.
+	baseDiskIndex := 1
+
+	const MaxInflightIntervals = MaxExtentsBuffer * 10
+	fileIntervalChannel := make(chan sparse.FileInterval, MaxInflightIntervals)
+	errChannel := make(chan error)
+
+	go func() {
+		defer close(fileIntervalChannel)
+		defer close(errChannel)
+
+		// The replica consists of data and and hole region.
+		// Inside this function scope, let represent 0 as hole sector and 1 as data sector.
+		// Then a replica could look like 010001111...
+		const (
+			sectorTypeHole = 0
+			sectorTypeData = 1
+		)
+		getSectorType := func(diskIndex byte) int {
+			if diskIndex >= byte(baseDiskIndex) {
+				return sectorTypeData
+			}
+			return sectorTypeHole
+		}
+		getFileIntervalKind := func(sectorType int) sparse.FileIntervalKind {
+			if sectorType == sectorTypeHole {
+				return sparse.SparseHole
+			}
+			return sparse.SparseData
+		}
+
+		lastSectorType := sectorTypeHole
+		lastOffset := int64(0)
+		for sectorIndex, diskIndex := range r.volume.location {
+			offset := int64(sectorIndex) * r.volume.sectorSize
+			currentSectorType := getSectorType(diskIndex)
+			if currentSectorType != lastSectorType {
+				if lastOffset < offset {
+					fileInterval := sparse.FileInterval{Kind: getFileIntervalKind(lastSectorType), Interval: sparse.Interval{Begin: lastOffset, End: offset}}
+					select {
+					case fileIntervalChannel <- fileInterval:
+					case <-ctx.Done():
+						return
+					}
+				}
+				lastOffset = offset
+				lastSectorType = currentSectorType
+			}
+		}
+
+		if lastOffset < r.volume.size {
+			fileInterval := sparse.FileInterval{Kind: getFileIntervalKind(lastSectorType), Interval: sparse.Interval{Begin: lastOffset, End: r.volume.size}}
+			select {
+			case fileIntervalChannel <- fileInterval:
+			case <-ctx.Done():
+				return
+			}
+		}
+	}()
+
+	return fileIntervalChannel, errChannel, nil
 }

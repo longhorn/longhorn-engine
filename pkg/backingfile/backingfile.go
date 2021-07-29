@@ -1,4 +1,4 @@
-package backing
+package backingfile
 
 import (
 	"bufio"
@@ -12,12 +12,18 @@ import (
 	"github.com/longhorn/sparse-tools/sparse"
 
 	"github.com/longhorn/longhorn-engine/pkg/qcow"
-	"github.com/longhorn/longhorn-engine/pkg/replica"
 	"github.com/longhorn/longhorn-engine/pkg/types"
 	"github.com/longhorn/longhorn-engine/pkg/util"
 )
 
 const defaultSectorSize = 512
+
+type BackingFile struct {
+	Size       int64
+	SectorSize int64
+	Path       string
+	Disk       types.DiffDisk
+}
 
 func detectFileFormat(file string) (string, error) {
 
@@ -64,7 +70,7 @@ func detectFileFormat(file string) (string, error) {
 	return "", fmt.Errorf("cannot find the file format in the output %s", output.String())
 }
 
-func OpenBackingFile(file string) (*replica.BackingFile, error) {
+func OpenBackingFile(file string) (*BackingFile, error) {
 	if file == "" {
 		return nil, nil
 	}
@@ -100,7 +106,7 @@ func OpenBackingFile(file string) (*replica.BackingFile, error) {
 		return nil, fmt.Errorf("the backing file size %v should be a multiple of 512 bytes since Longhorn uses directIO by default", size)
 	}
 
-	return &replica.BackingFile{
+	return &BackingFile{
 		Path:       file,
 		Disk:       f,
 		Size:       size,
