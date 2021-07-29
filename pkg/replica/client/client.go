@@ -432,6 +432,26 @@ func (c *ReplicaClient) SendFile(from, host string, port int32) error {
 	return nil
 }
 
+func (c *ReplicaClient) ExportVolume(snapshotName, host string, port int32, exportBackingImageIfExist bool) error {
+	syncAgentServiceClient, err := c.getSyncServiceClient()
+	if err != nil {
+		return err
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceLongTimeout)
+	defer cancel()
+
+	if _, err := syncAgentServiceClient.VolumeExport(ctx, &ptypes.VolumeExportRequest{
+		SnapshotFileName:          snapshotName,
+		Host:                      host,
+		Port:                      port,
+		ExportBackingImageIfExist: exportBackingImageIfExist,
+	}); err != nil {
+		return fmt.Errorf("failed to export snapshot %v to %v:%v: %v", snapshotName, host, port, err)
+	}
+	return nil
+}
+
 func (c *ReplicaClient) LaunchReceiver(toFilePath string) (string, int32, error) {
 	syncAgentServiceClient, err := c.getSyncServiceClient()
 	if err != nil {
