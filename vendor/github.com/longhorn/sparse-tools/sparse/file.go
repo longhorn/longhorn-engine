@@ -18,6 +18,7 @@ type FileIoProcessor interface {
 	ReadAt(data []byte, offset int64) (int, error)
 	WriteAt(data []byte, offset int64) (int, error)
 	GetFile() *os.File
+	GetDataLayout (ctx context.Context) (<-chan FileInterval, <-chan error, error)
 	Close() error
 	Sync() error
 	Truncate(size int64) error
@@ -50,6 +51,10 @@ func NewBufferedFileIoProcessorByFP(fp *os.File) *BufferedFileIoProcessor {
 
 func (file *BufferedFileIoProcessor) GetFile() *os.File {
 	return file.File
+}
+
+func (file *BufferedFileIoProcessor) GetDataLayout (ctx context.Context) (<-chan FileInterval, <-chan error, error) {
+	return GetFileLayout(ctx, file)
 }
 
 func (file *BufferedFileIoProcessor) Size() (int64, error) {
@@ -124,6 +129,10 @@ func (file *DirectFileIoProcessor) GetFile() *os.File {
 	return file.File
 }
 
+func (file *DirectFileIoProcessor) GetDataLayout (ctx context.Context) (<-chan FileInterval, <-chan error, error) {
+	return GetFileLayout(ctx, file)
+}
+
 func (file *DirectFileIoProcessor) Size() (int64, error) {
 	info, err := file.File.Stat()
 	if err != nil {
@@ -156,9 +165,9 @@ func alignmentShift(block []byte) int {
 	return int(uintptr(unsafe.Pointer(&block[0])) & uintptr(alignment-1))
 }
 
-func ReadDataInterval(file FileIoProcessor, dataInterval Interval) ([]byte, error) {
+func ReadDataInterval(rw ReaderWriterAt, dataInterval Interval) ([]byte, error) {
 	data := AllocateAligned(int(dataInterval.Len()))
-	n, err := file.ReadAt(data, dataInterval.Begin)
+	n, err := rw.ReadAt(data, dataInterval.Begin)
 	if err != nil {
 		if err == io.EOF {
 			log.Debugf("have read at the end of file, total read: %d", n)
