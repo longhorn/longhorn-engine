@@ -6,6 +6,8 @@ import (
 	"sync"
 
 	"github.com/sirupsen/logrus"
+
+	"github.com/longhorn/longhorn-engine/pkg/backingfile"
 )
 
 const (
@@ -24,11 +26,11 @@ type Server struct {
 	r                       *Replica
 	dir                     string
 	defaultSectorSize       int64
-	backing                 *BackingFile
+	backing                 *backingfile.BackingFile
 	revisionCounterDisabled bool
 }
 
-func NewServer(dir string, backing *BackingFile, sectorSize int64, disableRevCounter bool) *Server {
+func NewServer(dir string, backing *backingfile.BackingFile, sectorSize int64, disableRevCounter bool) *Server {
 	return &Server{
 		dir:                     dir,
 		backing:                 backing,

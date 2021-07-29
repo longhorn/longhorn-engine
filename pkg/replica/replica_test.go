@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/longhorn/longhorn-engine/pkg/backingfile"
 	"github.com/longhorn/longhorn-engine/pkg/util"
 	. "gopkg.in/check.v1"
 )
@@ -771,7 +772,7 @@ func (s *TestSuite) TestBackingFile(c *C) {
 	_, err = f.Write(buf)
 	c.Assert(err, IsNil)
 
-	backing := &BackingFile{
+	backing := &backingfile.BackingFile{
 		Path: "backing",
 		Disk: f,
 	}

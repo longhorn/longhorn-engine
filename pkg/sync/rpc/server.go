@@ -343,6 +343,38 @@ func (s *SyncAgentServer) FileSend(ctx context.Context, req *ptypes.FileSendRequ
 	return &empty.Empty{}, nil
 }
 
+func (s *SyncAgentServer) VolumeExport(ctx context.Context, req *ptypes.VolumeExportRequest) (*empty.Empty, error) {
+	remoteAddress := net.JoinHostPort(req.Host, strconv.Itoa(int(req.Port)))
+
+	var err error
+	defer func() {
+		if err != nil {
+			logrus.Warnf("Failed to export snapshot %v to %v: %v", req.SnapshotFileName, remoteAddress, err)
+		}
+	}()
+
+	logrus.Infof("Exporting snapshot %v to %v", req.SnapshotFileName, remoteAddress)
+	dir, err := os.Getwd()
+	if err != nil {
+		return nil, fmt.Errorf("cannot get working directory: %v", err)
+	}
+	r, err := replica.OpenSnapshot(dir, req.SnapshotFileName)
+	if err != nil {
+		return nil, err
+	}
+	defer r.CloseWithoutWritingMetaData()
+	if err := r.Preload(req.ExportBackingImageIfExist); err != nil {
+		return nil, err
+	}
+	if err := sparse.SyncContent(req.SnapshotFileName, r, r.Info().Size, remoteAddress, FileSyncTimeout, true); err != nil {
+		return nil, err
+	}
+
+	logrus.Infof("Done exporting snapshot %v to %v", req.SnapshotFileName, remoteAddress)
+
+	return &empty.Empty{}, nil
+}
+
 func (s *SyncAgentServer) ReceiverLaunch(ctx context.Context, req *ptypes.ReceiverLaunchRequest) (*ptypes.ReceiverLaunchResponse, error) {
 	port, err := s.launchReceiver("ReceiverLaunch", req.ToFileName, &sparserest.SyncFileStub{})
 	if err != nil {
