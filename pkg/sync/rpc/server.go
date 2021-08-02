@@ -58,12 +58,14 @@ type SyncAgentServer struct {
 	isPurging       bool
 	isRestoring     bool
 	isRebuilding    bool
+	isCloning       bool
 	replicaAddress  string
 
 	BackupList    *BackupList
 	RestoreInfo   *replica.RestoreStatus
 	PurgeStatus   *PurgeStatus
 	RebuildStatus *RebuildStatus
+	CloneStatus   *CloneStatus
 }
 
 type BackupList struct {
@@ -117,23 +119,24 @@ func (rs *RebuildStatus) UpdateSyncFileProgress(size int64) {
 	rs.Progress = int((float32(rs.processedSize) / float32(rs.totalSize)) * 100)
 }
 
-func GetDiskInfo(info *ptypes.DiskInfo) *types.DiskInfo {
-	diskInfo := &types.DiskInfo{
-		Name:        info.Name,
-		Parent:      info.Parent,
-		Children:    info.Children,
-		Removed:     info.Removed,
-		UserCreated: info.UserCreated,
-		Created:     info.Created,
-		Size:        info.Size,
-		Labels:      info.Labels,
-	}
+type CloneStatus struct {
+	sync.RWMutex
+	Error              string
+	Progress           int
+	State              types.ProcessState
+	FromReplicaAddress string
+	SnapshotName       string
 
-	if diskInfo.Labels == nil {
-		diskInfo.Labels = map[string]string{}
-	}
+	processedSize int64
+	totalSize     int64
+}
 
-	return diskInfo
+func (cs *CloneStatus) UpdateSyncFileProgress(size int64) {
+	cs.Lock()
+	defer cs.Unlock()
+
+	cs.processedSize = cs.processedSize + size
+	cs.Progress = int((float32(cs.processedSize) / float32(cs.totalSize)) * 100)
 }
 
 func NewSyncAgentServer(startPort, endPort int, replicaAddress string) *SyncAgentServer {
@@ -148,6 +151,7 @@ func NewSyncAgentServer(startPort, endPort int, replicaAddress string) *SyncAgen
 		RestoreInfo:   &replica.RestoreStatus{},
 		PurgeStatus:   &PurgeStatus{},
 		RebuildStatus: &RebuildStatus{},
+		CloneStatus:   &CloneStatus{},
 	}
 }
 
@@ -301,6 +305,7 @@ func (s *SyncAgentServer) Reset(ctx context.Context, req *empty.Empty) (*empty.E
 	s.RestoreInfo = &replica.RestoreStatus{}
 	s.RebuildStatus = &RebuildStatus{}
 	s.PurgeStatus = &PurgeStatus{}
+	s.CloneStatus = &CloneStatus{}
 	return &empty.Empty{}, nil
 }
 
@@ -515,6 +520,143 @@ func (s *SyncAgentServer) ReplicaRebuildStatus(ctx context.Context, req *empty.E
 		Progress:           int32(s.RebuildStatus.Progress),
 		State:              string(s.RebuildStatus.State),
 		FromReplicaAddress: s.RebuildStatus.FromReplicaAddress,
+	}, nil
+}
+
+func (s *SyncAgentServer) SnapshotClone(ctx context.Context, req *ptypes.SnapshotCloneRequest) (res *empty.Empty, err error) {
+	fromClient, err := replicaclient.NewReplicaClient(req.FromAddress)
+	if err != nil {
+		return nil, err
+	}
+	defer fromClient.Close()
+
+	sourceReplica, err := fromClient.GetReplica()
+	if err != nil {
+		return nil, err
+	}
+	if _, ok := sourceReplica.Disks[replica.GenerateSnapshotDiskName(req.SnapshotFileName)]; !ok {
+		return nil, fmt.Errorf("cannot find snapshot %v in the source replica %v", req.SnapshotFileName, req.FromAddress)
+	}
+	snapshotSize, err := strconv.ParseInt(sourceReplica.Size, 10, 64)
+	if err != nil {
+		return nil, err
+	}
+
+	defer func() {
+		s.CloneStatus.Lock()
+		if err != nil {
+			s.CloneStatus.Error = err.Error()
+			s.CloneStatus.State = types.ProcessStateError
+			logrus.Errorf("Sync agent gRPC server failed to clone snapshot %v from replica %v to replica %v: %v", req.SnapshotFileName, req.FromAddress, req.ToHost, err)
+		} else {
+			s.CloneStatus.Progress = 100
+			s.CloneStatus.State = types.ProcessStateComplete
+			logrus.Infof("Sync agent gRPC server finished clonning snapshot %v from replica %v to replica %v", req.SnapshotFileName, req.FromAddress, req.ToHost)
+		}
+		s.CloneStatus.Unlock()
+		if err = s.FinishClone(); err != nil {
+			logrus.Errorf("could not finish clonning: %v", err)
+		}
+	}()
+
+	if err := s.prepareClone(req.FromAddress, req.SnapshotFileName, snapshotSize); err != nil {
+		return nil, err
+	}
+
+	if err := s.startCloning(req, fromClient); err != nil {
+		return nil, err
+	}
+
+	if err := s.postCloning(); err != nil {
+		return nil, err
+	}
+
+	return &empty.Empty{}, nil
+}
+
+func (s *SyncAgentServer) prepareClone(fromReplicaAddress, snapshotName string, snapshotSize int64) error {
+	s.Lock()
+	defer s.Unlock()
+	cloneStatus := s.CloneStatus
+	if s.isCloning {
+		return fmt.Errorf("replica is cloning snapshot %v from replica address %v", cloneStatus.SnapshotName, cloneStatus.FromReplicaAddress)
+	}
+	s.isCloning = true
+
+	cloneStatus.Lock()
+	defer cloneStatus.Unlock()
+	cloneStatus.FromReplicaAddress = fromReplicaAddress
+	cloneStatus.SnapshotName = snapshotName
+	cloneStatus.Error = ""
+	cloneStatus.State = types.ProcessStateInProgress
+	cloneStatus.totalSize = snapshotSize
+	// avoid possible division by zero
+	if cloneStatus.totalSize == 0 {
+		cloneStatus.totalSize = 1
+	}
+	cloneStatus.Progress = int((float32(cloneStatus.processedSize) / float32(cloneStatus.totalSize)) * 100)
+
+	return nil
+}
+
+func (s *SyncAgentServer) startCloning(req *ptypes.SnapshotCloneRequest, fromReplicaClient *replicaclient.ReplicaClient) error {
+	snapshotDiskName := replica.GenerateSnapshotDiskName(s.CloneStatus.SnapshotName)
+	port, err := s.launchReceiver("SnapshotClone", snapshotDiskName, s.CloneStatus)
+	if err != nil {
+		return errors.Wrapf(err, "failed to launch receiver for snapshot %v", req.SnapshotFileName)
+	}
+
+	if err := fromReplicaClient.ExportVolume(req.SnapshotFileName, util.GetGRPCAddress(req.ToHost), int32(port), false); err != nil {
+		return errors.Wrapf(err, "failed to export snapshot %v from replica %v to %v:%v", req.SnapshotFileName, req.FromAddress, req.ToHost, port)
+	}
+
+	return nil
+}
+
+func (s *SyncAgentServer) postCloning() error {
+	snapshotDiskName := replica.GenerateSnapshotDiskName(s.CloneStatus.SnapshotName)
+	if err := backup.CreateNewSnapshotMetafile(snapshotDiskName + ".meta"); err != nil {
+		return errors.Wrapf(err, "failed creating meta snapshot file")
+	}
+
+	if err := s.replicaRevert(snapshotDiskName, time.Now().UTC().Format(time.RFC3339)); err != nil {
+		return errors.Wrapf(err, "error on reverting to %v on %v", snapshotDiskName, s.replicaAddress)
+	}
+	logrus.Infof("Reverting to snapshot %s on %s successful", snapshotDiskName, s.replicaAddress)
+	return nil
+}
+
+func (s *SyncAgentServer) FinishClone() error {
+	s.Lock()
+	defer s.Unlock()
+
+	if !s.isCloning {
+		return fmt.Errorf("BUG: replica is not clonning")
+	}
+
+	s.isCloning = false
+	return nil
+}
+
+func (s *SyncAgentServer) IsCloning() bool {
+	s.RLock()
+	defer s.RUnlock()
+
+	return s.isCloning
+}
+
+func (s *SyncAgentServer) SnapshotCloneStatus(ctx context.Context, req *empty.Empty) (*ptypes.SnapshotCloneStatusResponse, error) {
+	isCloning := s.IsCloning()
+
+	s.CloneStatus.RLock()
+	defer s.CloneStatus.RUnlock()
+	return &ptypes.SnapshotCloneStatusResponse{
+		IsCloning:          isCloning,
+		Error:              s.CloneStatus.Error,
+		Progress:           int32(s.CloneStatus.Progress),
+		State:              string(s.CloneStatus.State),
+		FromReplicaAddress: s.CloneStatus.FromReplicaAddress,
+		SnapshotName:       s.CloneStatus.SnapshotName,
 	}, nil
 }
 
@@ -898,9 +1040,15 @@ func (s *SyncAgentServer) purgeSnapshots() (err error) {
 		}
 	}()
 
+	replicaClient, err := replicaclient.NewReplicaClient(s.replicaAddress)
+	if err != nil {
+		return err
+	}
+	defer replicaClient.Close()
+
 	var leaves []string
 
-	snapshotsInfo, _, err := s.getSnapshotsInfo()
+	snapshotsInfo, _, err := getSnapshotsInfo(replicaClient)
 	if err != nil {
 		return err
 	}
@@ -920,7 +1068,7 @@ func (s *SyncAgentServer) purgeSnapshots() (err error) {
 		}
 	}
 
-	snapshotsInfo, markedRemoved, err := s.getSnapshotsInfo()
+	snapshotsInfo, markedRemoved, err := getSnapshotsInfo(replicaClient)
 	if err != nil {
 		return err
 	}
@@ -958,7 +1106,7 @@ func (s *SyncAgentServer) purgeSnapshots() (err error) {
 			snapshot = info.Parent
 		}
 		// Update snapshotInfo in case some nodes have been removed
-		snapshotsInfo, _, err = s.getSnapshotsInfo()
+		snapshotsInfo, _, err = getSnapshotsInfo(replicaClient)
 		if err != nil {
 			return err
 		}
@@ -1027,28 +1175,18 @@ func (s *SyncAgentServer) IsPurging() bool {
 	return s.isPurging
 }
 
-func (s *SyncAgentServer) getSnapshotsInfo() (map[string]types.DiskInfo, int, error) {
-	conn, err := grpc.Dial(s.replicaAddress, grpc.WithInsecure())
-	if err != nil {
-		return nil, 0, fmt.Errorf("cannot connect to ReplicaService %v: %v", s.replicaAddress, err)
-	}
-	defer conn.Close()
-
-	replicaServiceClient := ptypes.NewReplicaServiceClient(conn)
-	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
-	defer cancel()
-
-	resp, err := replicaServiceClient.ReplicaGet(ctx, &empty.Empty{})
+func getSnapshotsInfo(replicaClient *replicaclient.ReplicaClient) (map[string]types.DiskInfo, int, error) {
+	resp, err := replicaClient.GetReplica()
 	if err != nil {
 		return nil, 0, err
 	}
 
 	disks := make(map[string]types.DiskInfo)
-	for name, disk := range resp.Replica.Disks {
-		if name == resp.Replica.BackingFile {
+	for name, disk := range resp.Disks {
+		if name == resp.BackingFile {
 			continue
 		}
-		disks[name] = *GetDiskInfo(disk)
+		disks[name] = disk
 	}
 
 	newDisks := make(map[string]types.DiskInfo)

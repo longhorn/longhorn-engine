@@ -10,6 +10,7 @@ service SyncAgentService {
   rpc FileRename(FileRenameRequest) returns (google.protobuf.Empty) {}
   rpc FileSend(FileSendRequest) returns (google.protobuf.Empty) {}
   rpc FilesSync(FilesSyncRequest) returns (google.protobuf.Empty) {}
+  rpc SnapshotClone(SnapshotCloneRequest) returns (google.protobuf.Empty) {}
   rpc VolumeExport(VolumeExportRequest) returns (google.protobuf.Empty) {}
   rpc ReceiverLaunch(ReceiverLaunchRequest) returns (ReceiverLaunchResponse) {}
   rpc BackupCreate(BackupCreateRequest) returns (BackupCreateResponse) {}
@@ -23,6 +24,7 @@ service SyncAgentService {
     (SnapshotPurgeStatusResponse) {}
   rpc ReplicaRebuildStatus(google.protobuf.Empty) returns
     (ReplicaRebuildStatusResponse) {}
+  rpc SnapshotCloneStatus(google.protobuf.Empty) returns (SnapshotCloneStatusResponse) {}
 }
 
 message FileRemoveRequest {
@@ -52,6 +54,13 @@ message FilesSyncRequest {
   string from_address = 1;
   string to_host = 2;
   repeated SyncFileInfo sync_file_info_list = 3;
+}
+
+message SnapshotCloneRequest {
+    string from_address = 1;
+    string to_host = 2;
+    string snapshot_file_name = 3;
+    bool export_backing_image_if_exist = 4;
 }
 
 message VolumeExportRequest {
@@ -130,4 +139,13 @@ message ReplicaRebuildStatusResponse {
   int32 progress = 3;
   string state = 4;
   string from_replica_address = 5;
+}
+
+message SnapshotCloneStatusResponse {
+  bool is_cloning = 1;
+  string error = 2;
+  int32 progress = 3;
+  string state = 4;
+  string from_replica_address = 5;
+  string snapshot_name = 6;
 }

@@ -12,6 +12,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 
+	"github.com/longhorn/longhorn-engine/pkg/controller/client"
 	"github.com/longhorn/longhorn-engine/pkg/sync"
 	"github.com/longhorn/longhorn-engine/pkg/types"
 	"github.com/longhorn/longhorn-engine/pkg/util"
@@ -29,6 +30,8 @@ func SnapshotCmd() cli.Command {
 			SnapshotPurgeCmd(),
 			SnapshotPurgeStatusCommand(),
 			SnapshotInfoCmd(),
+			SnapshotCloneCmd(),
+			SnapshotCloneStatusCmd(),
 		},
 		Action: func(c *cli.Context) {
 			if err := lsSnapshot(c); err != nil {
@@ -122,6 +125,42 @@ func SnapshotInfoCmd() cli.Command {
 		Action: func(c *cli.Context) {
 			if err := infoSnapshot(c); err != nil {
 				logrus.Fatalf("Error running snapshot info command: %v", err)
+			}
+		},
+	}
+}
+
+func SnapshotCloneCmd() cli.Command {
+	return cli.Command{
+		Name: "clone",
+		Flags: []cli.Flag{
+			cli.StringFlag{
+				Name:  "snapshot-name",
+				Usage: "Specify the name of snapshot needed to clone",
+			},
+			cli.StringFlag{
+				Name:  "from-controller-address",
+				Usage: "Specify the address of the engine controller of the source volume",
+			},
+			cli.BoolFlag{
+				Name:  "export-backing-image-if-exist",
+				Usage: "Specify if the backing image should be exported if it exists",
+			},
+		},
+		Action: func(c *cli.Context) {
+			if err := cloneSnapshot(c); err != nil {
+				logrus.Fatalf("Error running snapshot clone command: %v", err)
+			}
+		},
+	}
+}
+
+func SnapshotCloneStatusCmd() cli.Command {
+	return cli.Command{
+		Name: "clone-status",
+		Action: func(c *cli.Context) {
+			if err := cloneSnapshotStatus(c); err != nil {
+				logrus.Fatalf("Error running snapshot clone status command: %v", err)
 			}
 		},
 	}
@@ -323,6 +362,56 @@ func infoSnapshot(c *cli.Context) error {
 	if output == nil {
 		return fmt.Errorf("Cannot find suitable replica for snapshot info")
 	}
+	fmt.Println(string(output))
+	return nil
+}
+
+func cloneSnapshot(c *cli.Context) error {
+	snapshotName := c.String("snapshot-name")
+	if snapshotName == "" {
+		return fmt.Errorf("missing required parameter --snapshot-name")
+	}
+	fromControllerAddress := c.String("from-controller-address")
+	if fromControllerAddress == "" {
+		return fmt.Errorf("missing required parameter --from-controller-address")
+	}
+	exportBackingImageIfExist := c.Bool("export-backing-image-if-exist")
+
+	controllerClient, err := getControllerClient(c)
+	if err != nil {
+		return err
+	}
+	defer controllerClient.Close()
+
+	fromControllerClient, err := client.NewControllerClient(fromControllerAddress)
+	if err != nil {
+		return err
+	}
+	defer fromControllerClient.Close()
+
+	if err := sync.CloneSnapshot(controllerClient, fromControllerClient, snapshotName, exportBackingImageIfExist); err != nil {
+		return err
+	}
+	return nil
+}
+
+func cloneSnapshotStatus(c *cli.Context) error {
+	controllerClient, err := getControllerClient(c)
+	if err != nil {
+		return err
+	}
+	defer controllerClient.Close()
+
+	statusMap, err := sync.CloneStatus(controllerClient)
+	if err != nil {
+		return err
+	}
+
+	output, err := json.MarshalIndent(statusMap, "", "\t")
+	if err != nil {
+		return err
+	}
+
 	fmt.Println(string(output))
 	return nil
 }
