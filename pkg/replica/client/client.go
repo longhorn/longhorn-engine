@@ -645,3 +645,38 @@ func (c *ReplicaClient) ReplicaRebuildStatus() (*ptypes.ReplicaRebuildStatusResp
 
 	return status, nil
 }
+
+func (c *ReplicaClient) CloneSnapshot(fromAddress, snapshotFileName string, exportBackingImageIfExist bool) error {
+	syncAgentServiceClient, err := c.getSyncServiceClient()
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceLongTimeout)
+	defer cancel()
+
+	if _, err := syncAgentServiceClient.SnapshotClone(ctx, &ptypes.SnapshotCloneRequest{
+		FromAddress:               fromAddress,
+		ToHost:                    c.host,
+		SnapshotFileName:          snapshotFileName,
+		ExportBackingImageIfExist: exportBackingImageIfExist,
+	}); err != nil {
+		return fmt.Errorf("failed to clone snapshot %v from replica %v to host %v: %v", snapshotFileName, fromAddress, c.host, err)
+	}
+
+	return nil
+}
+
+func (c *ReplicaClient) SnapshotCloneStatus() (*ptypes.SnapshotCloneStatusResponse, error) {
+	syncAgentServiceClient, err := c.getSyncServiceClient()
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
+	defer cancel()
+
+	status, err := syncAgentServiceClient.SnapshotCloneStatus(ctx, &empty.Empty{})
+	if err != nil {
+		return nil, fmt.Errorf("failed to get snapshot clone status: %v", err)
+	}
+	return status, nil
+}

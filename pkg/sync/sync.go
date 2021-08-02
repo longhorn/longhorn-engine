@@ -48,6 +48,15 @@ type ReplicaRebuildStatus struct {
 	FromReplicaAddress string `json:"fromReplicaAddress"`
 }
 
+type SnapshotCloneStatus struct {
+	IsCloning          bool   `json:"isCloning"`
+	Error              string `json:"error"`
+	Progress           int    `json:"progress"`
+	State              string `json:"state"`
+	FromReplicaAddress string `json:"fromReplicaAddress"`
+	SnapshotName       string `json:"snapshotName"`
+}
+
 func NewTaskError(res ...ReplicaError) *TaskError {
 	return &TaskError{
 		ReplicaErrors: append([]ReplicaError{}, res...),
@@ -766,4 +775,107 @@ func (t *Task) RebuildStatus() (map[string]*ReplicaRebuildStatus, error) {
 	}
 
 	return replicaStatusMap, nil
+}
+
+func CloneSnapshot(engineControllerClient, fromControllerClient *client.ControllerClient, snapshotFileName string, exportBackingImageIfExist bool) error {
+	replicas, err := fromControllerClient.ReplicaList()
+	if err != nil {
+		return err
+	}
+	var sourceReplica *types.ControllerReplicaInfo
+	for _, r := range replicas {
+		if r.Mode == types.RW {
+			sourceReplica = r
+			break
+		}
+	}
+	if sourceReplica == nil {
+		return fmt.Errorf("cannot find a RW replica in the source volume for clonning")
+	}
+
+	replicas, err = engineControllerClient.ReplicaList()
+	if err != nil {
+		return err
+	}
+	for _, r := range replicas {
+		if r.Mode != types.RW {
+			return fmt.Errorf("cannot do snapshot clone because replica %v in %v mode. "+
+				"All replicas in the target volume must be in RW mode", r.Address, r.Mode)
+		}
+	}
+
+	taskErr := NewTaskError()
+	syncErrorMap := sync.Map{}
+	var wg sync.WaitGroup
+	wg.Add(len(replicas))
+
+	for _, r := range replicas {
+		go func(r *types.ControllerReplicaInfo) {
+			defer wg.Done()
+			repClient, err := replicaClient.NewReplicaClient(r.Address)
+			if err != nil {
+				syncErrorMap.Store(r.Address, err)
+				return
+			}
+			defer repClient.Close()
+			if err := repClient.CloneSnapshot(sourceReplica.Address, snapshotFileName, exportBackingImageIfExist); err != nil {
+				syncErrorMap.Store(r.Address, err)
+			}
+		}(r)
+	}
+
+	wg.Wait()
+
+	for _, r := range replicas {
+		if v, ok := syncErrorMap.Load(r.Address); ok {
+			err = v.(error)
+			taskErr.Append(NewReplicaError(r.Address, err))
+		}
+	}
+	if taskErr.HasError() {
+		return taskErr
+	}
+
+	return nil
+}
+
+func CloneStatus(engineControllerClient *client.ControllerClient) (map[string]*SnapshotCloneStatus, error) {
+	cloneStatusMap := make(map[string]*SnapshotCloneStatus)
+
+	replicas, err := engineControllerClient.ReplicaList()
+	if err != nil {
+		return nil, err
+	}
+
+	// clean up clients after processing
+	var clients []*replicaClient.ReplicaClient
+	defer func() {
+		for _, client := range clients {
+			_ = client.Close()
+		}
+	}()
+
+	for _, r := range replicas {
+		repClient, err := replicaClient.NewReplicaClient(r.Address)
+		if err != nil {
+			return nil, err
+		}
+		clients = append(clients, repClient)
+		status, err := repClient.SnapshotCloneStatus()
+		if err != nil {
+			cloneStatusMap[r.Address] = &SnapshotCloneStatus{
+				Error: fmt.Sprintf("failed to get snapshot clone status of %v: %v", r.Address, err),
+			}
+			continue
+		}
+		cloneStatusMap[r.Address] = &SnapshotCloneStatus{
+			IsCloning:          status.IsCloning,
+			Error:              status.Error,
+			Progress:           int(status.Progress),
+			State:              status.State,
+			FromReplicaAddress: status.FromReplicaAddress,
+			SnapshotName:       status.SnapshotName,
+		}
+	}
+	return cloneStatusMap, nil
 }
