@@ -4,6 +4,8 @@
 *.pyc
 *.pyo
 *.swp
+Dockerfile.dapper*
+.python-version
 
 integration/.tox/
 integration/.venv/
