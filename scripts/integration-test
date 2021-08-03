@@ -109,8 +109,8 @@ ps $pid_ime
 trap "kill $pid_ime && cleanupISCSI && kill $pid_imr" EXIT
 
 # start minio server to test s3 backup and set credential keys
-export MINIO_ACCESS_KEY=test-access-key
-export MINIO_SECRET_KEY=test-secret-key
+export MINIO_ROOT_USER=test-access-key
+export MINIO_ROOT_PASSWORD=test-secret-key
 
 # create custom ssl test certs
 mkdir -p ~/.minio/certs
