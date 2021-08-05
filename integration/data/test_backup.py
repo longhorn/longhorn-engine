@@ -12,6 +12,7 @@ from common.core import (  # NOQA
     create_backup, rm_backups,
     restore_with_frontend, open_replica,
     reset_volume,
+    get_backup_volume_url,
 )
 from data.snapshot_tree import (
     snapshot_tree_build, snapshot_tree_verify_backup_node
@@ -21,12 +22,12 @@ from common.constants import (
     VOLUME2_NAME, ENGINE2_NAME, REPLICA_2_NAME,
     ENGINE_NAME, ENGINE_BACKING_NAME, BACKUP_DIR,
     BLOCK_SIZE, BLOCK_SIZE_STR,
+    MESSAGE_TYPE_ERROR,
 )
 from common.util import (
     finddir, findfile
 )
 
-MESSAGE_TYPE_ERROR = "error"
 LOCK_REFRESH_INTERVAL = 60
 LOCK_MAX_WAIT_TIME = 30
 DELETE_LOCK = "lock_delete"
@@ -106,6 +107,7 @@ def backup_test(
     assert c == snap2_checksum
 
     rm_backups(address, engine_name, [backup2_info["URL"]])
+
 
 def backup_with_backing_file_test(backup_target,  # NOQA
                                   grpc_backing_controller,  # NOQA
@@ -498,8 +500,8 @@ def test_backup_hole_with_backing_file_raw(grpc_backing_raw_replica1, grpc_backi
 
 def check_backup_volume_block_count(address, volume, backup_target, expected):
     # check the volume block & size
-    info = cmd.backup_volume_list(address, volume,
-                                  backup_target)[volume]
+    url = get_backup_volume_url(backup_target, volume)
+    info = cmd.backup_inspect_volume(address, url)
     assert info["DataStored"] == str(BLOCK_SIZE * expected)
 
     # check the blocks on disk
@@ -578,9 +580,9 @@ def test_backup_block_deletion(grpc_replica1, grpc_replica2,  # NOQA
 
         # cleanup the backup volume
         cmd.backup_volume_rm(address, VOLUME_NAME, backup_target)
-        info = cmd.backup_volume_list(address, VOLUME_NAME,
-                                      backup_target)[VOLUME_NAME]
-        assert "cannot find" in info["Messages"]["error"]
+        url = get_backup_volume_url(backup_target, VOLUME_NAME)
+        with pytest.raises(subprocess.CalledProcessError):
+            cmd.backup_inspect_volume(address, url)
         cmd.sync_agent_server_reset(address)
         cleanup_controller(grpc_controller)
         cleanup_replica(grpc_replica1)
@@ -658,9 +660,9 @@ def test_backup_block_no_cleanup(grpc_replica1, grpc_replica2,  # NOQA
 
         # cleanup the backup volume
         cmd.backup_volume_rm(address, VOLUME_NAME, backup_target)
-        info = cmd.backup_volume_list(address, VOLUME_NAME,
-                                      backup_target)[VOLUME_NAME]
-        assert "cannot find" in info["Messages"]["error"]
+        url = get_backup_volume_url(backup_target, VOLUME_NAME)
+        with pytest.raises(subprocess.CalledProcessError):
+            cmd.backup_inspect_volume(address, url)
         cmd.sync_agent_server_reset(address)
         cleanup_controller(grpc_controller)
         cleanup_replica(grpc_replica1)
@@ -715,13 +717,14 @@ def test_backup_corrupt_deletion(grpc_replica1, grpc_replica2,  # NOQA
         cfg = findfile(finddir(BACKUP_DIR, VOLUME_NAME), "volume.cfg")
         os.remove(cfg)
         cmd.backup_volume_rm(address, VOLUME_NAME, backup_target)
-        info = cmd.backup_volume_list(address, VOLUME_NAME,
-                                      backup_target)[VOLUME_NAME]
-        assert "cannot find" in info["Messages"]["error"]
+        url = get_backup_volume_url(backup_target, VOLUME_NAME)
+        with pytest.raises(subprocess.CalledProcessError):
+            cmd.backup_inspect_volume(address, url)
         cmd.sync_agent_server_reset(address)
         cleanup_controller(grpc_controller)
         cleanup_replica(grpc_replica1)
         cleanup_replica(grpc_replica2)
+
 
 def test_backup_volume_deletion(grpc_replica1, grpc_replica2,  # NOQA
                                 grpc_controller, backup_targets):  # NOQA
@@ -742,13 +745,15 @@ def test_backup_volume_deletion(grpc_replica1, grpc_replica2,  # NOQA
         assert snap in backup_info["SnapshotName"]
 
         cmd.backup_volume_rm(address, VOLUME_NAME, backup_target)
-        info = cmd.backup_volume_list(address, VOLUME_NAME, backup_target)
-        assert "cannot find" in info[VOLUME_NAME]["Messages"]["error"]
+        url = get_backup_volume_url(backup_target, VOLUME_NAME)
+        with pytest.raises(subprocess.CalledProcessError):
+            cmd.backup_inspect_volume(address, url)
 
         cmd.sync_agent_server_reset(address)
         cleanup_controller(grpc_controller)
         cleanup_replica(grpc_replica1)
         cleanup_replica(grpc_replica2)
+
 
 def test_backup_volume_list(grpc_replica_client, grpc_controller_client,  # NOQA
                             grpc_replica1, grpc_replica2,  # NOQA
@@ -799,7 +804,8 @@ def test_backup_volume_list(grpc_replica_client, grpc_controller_client,  # NOQA
         snap_data = random_string(length)
         verify_data(dev, offset, snap_data)
         snap = cmd.snapshot_create(address)
-        backup_info = create_backup(address, snap, backup_target)
+        backup_info = create_backup(
+            address, snap, backup_target, backup_name="backup-z")
         assert backup_info["VolumeName"] == VOLUME_NAME
         assert backup_info["Size"] == BLOCK_SIZE_STR
         assert snap in backup_info["SnapshotName"]
@@ -807,7 +813,8 @@ def test_backup_volume_list(grpc_replica_client, grpc_controller_client,  # NOQA
         # create a regular backup on volume 2
         verify_data(dev2, offset, random_string(length))
         snap = cmd.snapshot_create(address2)
-        backup_info = create_backup(address2, snap, backup_target)
+        backup_info = create_backup(
+            address2, snap, backup_target, backup_name="backup-y")
         assert backup_info["VolumeName"] == VOLUME2_NAME
         assert backup_info["Size"] == BLOCK_SIZE_STR
         assert snap in backup_info["SnapshotName"]
@@ -815,10 +822,10 @@ def test_backup_volume_list(grpc_replica_client, grpc_controller_client,  # NOQA
         # request a volume list
         info = cmd.backup_volume_list(address, "", backup_target,
                                       include_backup_details=True)
-        assert info[VOLUME_NAME]["Name"] == VOLUME_NAME
+        assert info[VOLUME_NAME] is not None
         assert len(info[VOLUME_NAME]["Backups"]) == 1
         assert MESSAGE_TYPE_ERROR not in info[VOLUME_NAME]["Messages"]
-        assert info[VOLUME2_NAME]["Name"] == VOLUME2_NAME
+        assert info[VOLUME2_NAME] is not None
         assert len(info[VOLUME2_NAME]["Backups"]) == 1
         assert MESSAGE_TYPE_ERROR not in info[VOLUME2_NAME]["Messages"]
 
@@ -829,10 +836,10 @@ def test_backup_volume_list(grpc_replica_client, grpc_controller_client,  # NOQA
         cfg.close()
         info = cmd.backup_volume_list(address, "", backup_target,
                                       include_backup_details=True)
-        assert info[VOLUME_NAME]["Name"] == VOLUME_NAME
+        assert info[VOLUME_NAME] is not None
         assert len(info[VOLUME_NAME]["Backups"]) == 1
         assert MESSAGE_TYPE_ERROR not in info[VOLUME_NAME]["Messages"]
-        assert info[VOLUME2_NAME]["Name"] == VOLUME2_NAME
+        assert info[VOLUME2_NAME] is not None
         assert len(info[VOLUME2_NAME]["Backups"]) == 1
         assert MESSAGE_TYPE_ERROR not in info[VOLUME2_NAME]["Messages"]
 
@@ -840,13 +847,17 @@ def test_backup_volume_list(grpc_replica_client, grpc_controller_client,  # NOQA
         cmd.backup_volume_rm(address, VOLUME_NAME, backup_target)
         info = cmd.backup_volume_list(address, VOLUME_NAME, backup_target,
                                       include_backup_details=True)
-        assert "cannot find" in info[VOLUME_NAME]["Messages"]["error"]
+        url = get_backup_volume_url(backup_target, VOLUME_NAME)
+        with pytest.raises(subprocess.CalledProcessError):
+            cmd.backup_inspect_volume(address, url)
 
         # remove volume 2 backups
         cmd.backup_volume_rm(address, VOLUME2_NAME, backup_target)
         info = cmd.backup_volume_list(address, VOLUME2_NAME, backup_target,
                                       include_backup_details=True)
-        assert "cannot find" in info[VOLUME2_NAME]["Messages"]["error"]
+        url = get_backup_volume_url(backup_target, VOLUME2_NAME)
+        with pytest.raises(subprocess.CalledProcessError):
+            cmd.backup_inspect_volume(address, url)
 
         # cleanup volume 1
         cmd.sync_agent_server_reset(address)
@@ -859,6 +870,7 @@ def test_backup_volume_list(grpc_replica_client, grpc_controller_client,  # NOQA
         cleanup_controller(grpc2_controller)
         cleanup_replica(grpc2_replica1)
         cleanup_replica(grpc2_replica2)
+
 
 def test_backup_lock(grpc_replica1, grpc_replica2,  # NOQA
                             grpc_controller, backup_targets):  # NOQA

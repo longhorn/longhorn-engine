@@ -30,7 +30,9 @@ func BackupCmd() cli.Command {
 			RestoreStatusCmd(),
 			cmd.BackupRemoveCmd(),
 			cmd.BackupListCmd(),
-			cmd.BackupInspectCmd(),
+			cmd.InspectVolumeCmd(),
+			cmd.InspectBackupCmd(),
+			cmd.GetConfigMetadataCmd(),
 		},
 	}
 }
@@ -57,8 +59,8 @@ func BackupCreateCmd() cli.Command {
 				Usage: "specify labels for backup, in the format of `--label key1=value1 --label key2=value2`",
 			},
 			cli.StringFlag{
-				Name:  "backing-image-url",
-				Usage: "deprecated. specify backing image URL of the volume for backup",
+				Name:  "backup-name",
+				Usage: "specify the backup name. If it is not set, a random name will be generated automatically",
 			},
 		},
 		Action: func(c *cli.Context) {
@@ -290,6 +292,8 @@ func createBackup(c *cli.Context) error {
 		}
 	}
 
+	backupName := c.String("backup-name")
+
 	credential, err := util.GetBackupCredential(dest)
 	if err != nil {
 		return err
@@ -303,7 +307,7 @@ func createBackup(c *cli.Context) error {
 		return err
 	}
 
-	backup, err := task.CreateBackup(snapshot, dest, biName, biChecksum, labels, credential)
+	backup, err := task.CreateBackup(backupName, snapshot, dest, biName, biChecksum, labels, credential)
 	if err != nil {
 		return err
 	}

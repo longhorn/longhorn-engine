@@ -32,14 +32,6 @@ func BackupListCmd() cli.Command {
 	}
 }
 
-func BackupInspectCmd() cli.Command {
-	return cli.Command{
-		Name:   "inspect",
-		Usage:  "inspect a backup: inspect <backup>",
-		Action: cmdBackupInspect,
-	}
-}
-
 func cmdBackupList(c *cli.Context) {
 	if err := doBackupList(c); err != nil {
 		panic(err)
@@ -69,36 +61,6 @@ func doBackupList(c *cli.Context) error {
 		return err
 	}
 	data, err := ResponseOutput(list)
-	if err != nil {
-		return err
-	}
-	fmt.Println(string(data))
-	return nil
-}
-
-func cmdBackupInspect(c *cli.Context) {
-	if err := doBackupInspect(c); err != nil {
-		panic(err)
-	}
-}
-
-func doBackupInspect(c *cli.Context) error {
-	var err error
-
-	if c.NArg() == 0 {
-		return RequiredMissingError("backup URL")
-	}
-	backupURL := c.Args()[0]
-	if backupURL == "" {
-		return RequiredMissingError("backup URL")
-	}
-	backupURL = util.UnescapeURL(backupURL)
-
-	info, err := backupstore.InspectBackup(backupURL)
-	if err != nil {
-		return err
-	}
-	data, err := ResponseOutput(info)
 	if err != nil {
 		return err
 	}

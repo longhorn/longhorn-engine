@@ -78,6 +78,7 @@ message BackupCreateRequest {
   map<string, string> credential = 5;
   string backing_image_name = 6;
   string backing_image_checksum = 7;
+  string backup_name = 8;
 }
 
 message BackupCreateResponse {

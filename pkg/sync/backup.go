@@ -39,7 +39,7 @@ type RestoreStatus struct {
 	CurrentRestoringBackup string `json:"currentRestoringBackup"`
 }
 
-func (t *Task) CreateBackup(snapshot, dest, backingImageName, backingImageChecksum string, labels []string, credential map[string]string) (*BackupCreateInfo, error) {
+func (t *Task) CreateBackup(backupName, snapshot, dest, backingImageName, backingImageChecksum string, labels []string, credential map[string]string) (*BackupCreateInfo, error) {
 	var replica *types.ControllerReplicaInfo
 
 	if snapshot == VolumeHeadName {
@@ -67,14 +67,14 @@ func (t *Task) CreateBackup(snapshot, dest, backingImageName, backingImageChecks
 		return nil, fmt.Errorf("cannot find a suitable replica for backup")
 	}
 
-	backup, err := t.createBackup(replica, snapshot, dest, volume.Name, backingImageName, backingImageChecksum, labels, credential)
+	backup, err := t.createBackup(replica, backupName, snapshot, dest, volume.Name, backingImageName, backingImageChecksum, labels, credential)
 	if err != nil {
 		return nil, err
 	}
 	return backup, nil
 }
 
-func (t *Task) createBackup(replicaInController *types.ControllerReplicaInfo, snapshot, dest, volumeName, backingImageName, backingImageChecksum string, labels []string,
+func (t *Task) createBackup(replicaInController *types.ControllerReplicaInfo, backupName, snapshot, dest, volumeName, backingImageName, backingImageChecksum string, labels []string,
 	credential map[string]string) (*BackupCreateInfo, error) {
 	if replicaInController.Mode != types.RW {
 		return nil, fmt.Errorf("can only create backup from replica in mode RW, got %s", replicaInController.Mode)
@@ -98,7 +98,7 @@ func (t *Task) createBackup(replicaInController *types.ControllerReplicaInfo, sn
 
 	logrus.Infof("Backing up %s on %s, to %s", snapshot, replicaInController.Address, dest)
 
-	reply, err := repClient.CreateBackup(snapshot, dest, volumeName, backingImageName, backingImageChecksum, labels, credential)
+	reply, err := repClient.CreateBackup(backupName, snapshot, dest, volumeName, backingImageName, backingImageChecksum, labels, credential)
 	if err != nil {
 		return nil, err
 	}

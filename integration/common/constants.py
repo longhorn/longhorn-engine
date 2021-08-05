@@ -78,3 +78,5 @@ REPLICA_META_FILE_NAME = "volume.meta"
 EXPANSION_DISK_TMP_META_NAME = \
     "volume-snap-expand-%d.img.meta.tmp" % EXPANDED_SIZE
 EXPANSION_DISK_NAME = "volume-snap-expand-%d.img" % EXPANDED_SIZE
+
+MESSAGE_TYPE_ERROR = "error"
