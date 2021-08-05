@@ -60,7 +60,7 @@ func BackupCreateCmd() cli.Command {
 			},
 			cli.StringFlag{
 				Name:  "backup-name",
-				Usage: "specify the backup name",
+				Usage: "specify the backup name. If it is not set, a random name will be generated automatically",
 			},
 		},
 		Action: func(c *cli.Context) {
