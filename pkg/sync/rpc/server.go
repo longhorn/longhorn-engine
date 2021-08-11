@@ -693,7 +693,7 @@ func (s *SyncAgentServer) BackupCreate(ctx context.Context, req *ptypes.BackupCr
 		}
 	}
 
-	backupID, replicaObj, err := backup.DoBackupCreate(req.BackupName, req.VolumeName, req.SnapshotFileName, req.BackupTarget, req.BackingImageName, req.BackingImageChecksum, req.Labels)
+	backupID, replicaObj, err := backup.DoBackupCreate(req.VolumeName, req.SnapshotFileName, req.BackupTarget, req.BackingImageName, req.BackingImageChecksum, req.Labels)
 	if err != nil {
 		logrus.Errorf("Error creating backup: %v", err)
 		return nil, err
@@ -824,7 +824,7 @@ func (s *SyncAgentServer) BackupRestore(ctx context.Context, req *ptypes.BackupR
 			}
 		}
 	}
-	requestedBackupName, _, _, err := backupstore.DecodeBackupURL(util.UnescapeURL(req.Backup))
+	requestedBackupName, err := backupstore.GetBackupFromBackupURL(util.UnescapeURL(req.Backup))
 	if err != nil {
 		return nil, err
 	}

@@ -68,7 +68,7 @@ func RestoreToFileCmd() cli.Command {
 
 func restore(url string) error {
 	backupURL := util.UnescapeURL(url)
-	requestedBackupName, _, _, err := backupstore.DecodeBackupURL(backupURL)
+	requestedBackupName, err := backupstore.GetBackupFromBackupURL(backupURL)
 	if err != nil {
 		return err
 	}

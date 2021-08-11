@@ -88,7 +88,7 @@ def backup_status(url, backupID):
 
 
 def backup_create(url, snapshot, dest, labels=None,
-                  bi_name="", backing_image_checksum="", backup_name=""):
+                  bi_name="", backing_image_checksum=""):
     cmd = [_bin(), '--url', url, '--debug',
            'backup', 'create', snapshot, '--dest', dest]
     if bi_name != "":
@@ -97,9 +97,6 @@ def backup_create(url, snapshot, dest, labels=None,
     if backing_image_checksum != "":
         cmd.append('--backing-image-checksum')
         cmd.append(backing_image_checksum)
-    if backup_name != "":
-        cmd.append('--backup-name')
-        cmd.append(backup_name)
 
     if labels is not None:
         for key in labels:
@@ -108,8 +105,6 @@ def backup_create(url, snapshot, dest, labels=None,
 
     backup = json.loads(subprocess.check_output(cmd, encoding='utf-8').strip())
     assert "backupID" in backup.keys()
-    if backup_name != "":
-        assert backup_name == backup["backupID"]
     assert "isIncremental" in backup.keys()
     return backup_status(url, backup["backupID"])
 
@@ -122,11 +117,6 @@ def backup_rm(url, backup):
 def backup_restore(url, backup):
     cmd = [_bin(), '--url', url, '--debug', 'backup', 'restore', backup]
     return subprocess.check_output(cmd, encoding='utf-8').strip()
-
-
-def backup_inspect_volume(url, volume):
-    cmd = [_bin(), '--url', url, '--debug', 'backup', 'inspect-volume', volume]
-    return json.loads(subprocess.check_output(cmd, encoding='utf-8'))
 
 
 def backup_inspect(url, backup):

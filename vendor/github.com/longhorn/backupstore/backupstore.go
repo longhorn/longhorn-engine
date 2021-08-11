@@ -96,36 +96,29 @@ func removeVolume(volumeName string, driver BackupStoreDriver) error {
 	return nil
 }
 
-func EncodeBackupURL(backupName, volumeName, destURL string) string {
+func encodeBackupURL(backupName, volumeName, destURL string) string {
 	v := url.Values{}
 	v.Add("volume", volumeName)
-	if backupName != "" {
-		v.Add("backup", backupName)
-	}
+	v.Add("backup", backupName)
 	return destURL + "?" + v.Encode()
 }
 
-func DecodeBackupURL(backupURL string) (string, string, string, error) {
+func decodeBackupURL(backupURL string) (string, string, error) {
 	u, err := url.Parse(backupURL)
 	if err != nil {
-		return "", "", "", err
+		return "", "", err
 	}
 	v := u.Query()
 	volumeName := v.Get("volume")
 	backupName := v.Get("backup")
-	if !util.ValidateName(volumeName) {
-		return "", "", "", fmt.Errorf("Invalid volume name parsed, got %v", volumeName)
+	if !util.ValidateName(volumeName) || !util.ValidateName(backupName) {
+		return "", "", fmt.Errorf("Invalid name parsed, got %v and %v", backupName, volumeName)
 	}
-	if backupName != "" && !util.ValidateName(backupName) {
-		return "", "", "", fmt.Errorf("Invalid backup name parsed, got %v", backupName)
-	}
-	u.RawQuery = ""
-	destURL := u.String()
-	return backupName, volumeName, destURL, nil
+	return backupName, volumeName, nil
 }
 
 func LoadVolume(backupURL string) (*Volume, error) {
-	_, volumeName, _, err := DecodeBackupURL(backupURL)
+	_, volumeName, err := decodeBackupURL(backupURL)
 	if err != nil {
 		return nil, err
 	}
@@ -134,4 +127,14 @@ func LoadVolume(backupURL string) (*Volume, error) {
 		return nil, err
 	}
 	return loadVolume(volumeName, driver)
+}
+
+func GetBackupFromBackupURL(backupURL string) (string, error) {
+	backup, _, err := decodeBackupURL(backupURL)
+	return backup, err
+}
+
+func GetVolumeFromBackupURL(backupURL string) (string, error) {
+	_, volume, err := decodeBackupURL(backupURL)
+	return volume, err
 }

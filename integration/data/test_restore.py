@@ -19,7 +19,6 @@ from common.core import (  # NOQA
     wait_for_purge_completion,
     verify_no_frontend_data,
     start_no_frontend_volume, cleanup_no_frontend_volume,
-    get_backup_volume_url,
 )
 from common.constants import (
     FIXED_REPLICA_PATH1, FIXED_REPLICA_PATH2,
@@ -333,9 +332,7 @@ def test_inc_restore_with_rebuild_and_expansion(
     backup_volumes = cmd.backup_volume_list(address, VOLUME_NAME,
                                             backup_target)
     assert VOLUME_NAME in backup_volumes
-    url = get_backup_volume_url(backup_target, VOLUME_NAME)
-    backup_info = cmd.backup_inspect_volume(address, url)
-    assert backup_info["Size"] == EXPANDED_SIZE_STR
+    assert backup_volumes[VOLUME_NAME]["Size"] == EXPANDED_SIZE_STR
 
     # restore command invocation should error out
     with pytest.raises(subprocess.CalledProcessError) as e:

@@ -431,11 +431,9 @@ def reset_volume(grpc_c, *grpc_r_list):
 
 
 def create_backup(url, snap, backup_target, volume_size=SIZE_STR,
-                  backing_image_name="", backing_image_checksum="",
-                  backup_name=""):
+                  backing_image_name="", backing_image_checksum=""):
     backup = cmd.backup_create(url, snap, backup_target,
-                               [], backing_image_name, backing_image_checksum,
-                               backup_name)
+                               [], backing_image_name, backing_image_checksum)
     backup_info = cmd.backup_inspect(url, backup)
     assert backup_info["URL"] == backup
     assert backup_info["VolumeSize"] == volume_size
@@ -536,10 +534,6 @@ def prepare_backup_dir(backup_dir):
 
     os.makedirs(backup_dir)
     assert os.path.exists(backup_dir)
-
-
-def get_backup_volume_url(backup_target, volume_name):
-    return backup_target + "?volume=" + volume_name
 
 
 def read_from_backing_file(offset, length):

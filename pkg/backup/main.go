@@ -56,7 +56,7 @@ func RequiredMissingError(name string) error {
 	return fmt.Errorf("Cannot find valid required parameter: %v", name)
 }
 
-func DoBackupCreate(backupName, volumeName, snapshotName, destURL, backingImageName, backingImageChecksum string,
+func DoBackupCreate(volumeName, snapshotName, destURL, backingImageName, backingImageChecksum string,
 	labels []string) (string, *replica.BackupStatus, error) {
 	var (
 		err         error
@@ -116,12 +116,11 @@ func DoBackupCreate(backupName, volumeName, snapshotName, destURL, backingImageN
 
 	log.Debugf("Starting backup for %v, snapshot %v, dest %v", volume, snapshot, destURL)
 	config := &backupstore.DeltaBackupConfig{
-		BackupName: backupName,
-		Volume:     volume,
-		Snapshot:   snapshot,
-		DestURL:    destURL,
-		DeltaOps:   replicaBackup,
-		Labels:     labelMap,
+		Volume:   volume,
+		Snapshot: snapshot,
+		DestURL:  destURL,
+		DeltaOps: replicaBackup,
+		Labels:   labelMap,
 	}
 
 	backupID, isIncremental, err := backupstore.CreateDeltaBlockBackup(config)
