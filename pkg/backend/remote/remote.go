@@ -1,7 +1,6 @@
 package remote
 
 import (
-	"errors"
 	"fmt"
 	"net"
 	"strconv"
@@ -20,13 +19,8 @@ import (
 	"github.com/longhorn/longhorn-engine/proto/ptypes"
 )
 
-var (
-	ErrPingTimeout = errors.New("ping timeout")
-)
-
 const (
 	PingInterval = 2 * time.Second
-	PingTimeout  = 8 * time.Second
 )
 
 func New() types.BackendFactory {
@@ -288,9 +282,6 @@ func (rf *Factory) Create(address string) (types.Backend, error) {
 }
 
 func (r *Remote) monitorPing(client *dataconn.Client) {
-	pingStatus := make(chan error, 1)
-	pingDeadline := time.Time{}
-	inProgress := false
 	ticker := time.NewTicker(PingInterval)
 	defer ticker.Stop()
 
@@ -300,35 +291,13 @@ func (r *Remote) monitorPing(client *dataconn.Client) {
 			r.monitorChan <- nil
 			return
 		case <-ticker.C:
-			if !inProgress {
-				inProgress = true
-				pingDeadline = time.Now().Add(PingTimeout)
-				r.ping(client, pingStatus)
-				continue
-			}
-
-			if time.Now().After(pingDeadline) {
-				client.SetError(ErrPingTimeout)
-				r.monitorChan <- ErrPingTimeout
-				return
-			}
-
-		case err := <-pingStatus:
-			inProgress = false
-
-			if err != nil {
+			if err := client.Ping(); err != nil {
 				client.SetError(err)
 				r.monitorChan <- err
 				return
 			}
 		}
 	}
-}
-
-func (r *Remote) ping(client *dataconn.Client, status chan<- error) {
-	go func() {
-		status <- client.Ping()
-	}()
 }
 
 func (r *Remote) GetMonitorChannel() types.MonitorChannel {
