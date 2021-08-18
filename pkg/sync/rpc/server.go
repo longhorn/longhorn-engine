@@ -1106,12 +1106,13 @@ func (s *SyncAgentServer) purgeSnapshots() (err error) {
 			snapshot = info.Parent
 		}
 		// Update snapshotInfo in case some nodes have been removed
-		snapshotsInfo, _, err = getSnapshotsInfo(replicaClient)
+		snapshotsInfo, markedRemoved, err = getSnapshotsInfo(replicaClient)
 		if err != nil {
 			return err
 		}
 		s.PurgeStatus.Lock()
-		s.PurgeStatus.Progress = int(float32(removed) / float32(markedRemoved) * 100)
+		s.PurgeStatus.total = markedRemoved + removed
+		s.PurgeStatus.Progress = int(float32(removed) / float32(s.PurgeStatus.total) * 100)
 		s.PurgeStatus.Unlock()
 	}
 
