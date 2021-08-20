@@ -83,7 +83,7 @@ func initFunc(destURL string) (backupstore.BackupStoreDriver, error) {
 func (b *BackupStoreDriver) mount() (err error) {
 	defer func() {
 		if err != nil {
-			if _, err := util.Execute("mount", []string{"-t", "nfs", "-o", "nfsvers=3", "-o", "nolock", b.serverPath, b.mountDir}); err != nil {
+			if _, err := util.Execute("mount", []string{"-t", "nfs", "-o", "nfsvers=3", "-o", "nolock", "-o", "actimeo=1", b.serverPath, b.mountDir}); err != nil {
 				return
 			}
 			err = errors.Wrapf(err, "nfsv4 mount failed but nfsv3 mount succeeded, may be due to server only supporting nfsv3")
@@ -96,7 +96,7 @@ func (b *BackupStoreDriver) mount() (err error) {
 	if !util.IsMounted(b.mountDir) {
 		for _, version := range MinorVersions {
 			log.Debugf("attempting mount for nfs path %v with nfsvers %v", b.serverPath, version)
-			_, err = util.Execute("mount", []string{"-t", "nfs4", "-o", fmt.Sprintf("nfsvers=%v", version), b.serverPath, b.mountDir})
+			_, err = util.Execute("mount", []string{"-t", "nfs4", "-o", fmt.Sprintf("nfsvers=%v", version), "-o", "actimeo=1", b.serverPath, b.mountDir})
 			if err == nil || !strings.Contains(err.Error(), UnsupportedProtocolError) {
 				break
 			}
