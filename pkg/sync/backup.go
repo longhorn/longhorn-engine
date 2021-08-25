@@ -219,28 +219,31 @@ func (t *Task) RestoreBackup(backup string, credential map[string]string) error 
 	if err != nil {
 		return errors.Wrapf(err, "failed to get snapshot info before the incremental restore")
 	}
-	if isIncremental {
-		if len(snapshots) < 2 {
+
+	switch len(snapshots) {
+	case 1: // the volume head.
+		if isIncremental {
 			return fmt.Errorf("BUG: replicas %+v of DR volume should contains at least 2 disk files: the volume head and a snapshot storing restore data", replicas)
 		}
-		// Need to do snapshot purge before incremental restore.
-		// Otherwise, the snapshot chains may be different among all replicas after expansion and rebuild.
-		if len(snapshots) > 2 {
-			if err := t.PurgeSnapshots(true); err != nil {
-				return err
-			}
-			return fmt.Errorf("found more than 1 snapshot in the replicas, hence started to purge snapshots before the restore")
+		if snapshotDiskName == "" {
+			snapshotDiskName = replica.GenerateSnapshotDiskName(util.UUID())
 		}
+	case 2: // the volume head and the only system snapshot.
 		for _, s := range snapshots {
 			if s.Name == VolumeHeadName {
 				snapshotDiskName = replica.GenerateSnapshotDiskName(s.Parent)
 				break
 			}
 		}
-	} else {
-		if snapshotDiskName == "" {
-			snapshotDiskName = replica.GenerateSnapshotDiskName(util.UUID())
+	case 0:
+		return fmt.Errorf("BUG: replicas %+v do not contain any snapshots and volume head", replicas)
+	default: // more than 1 snapshots beside the volume head
+		// Need to do snapshot purge before restore if there are more than 1 (system) snapshot in one of the replicas.
+		// Otherwise, the snapshot chains may be different among all replicas after expansion or rebuild.
+		if err := t.PurgeSnapshots(true); err != nil {
+			return err
 		}
+		return fmt.Errorf("found more than 1 snapshot in the replicas, hence started to purge snapshots before the restore")
 	}
 
 	backupInfo, err := backupstore.InspectBackup(backup)
