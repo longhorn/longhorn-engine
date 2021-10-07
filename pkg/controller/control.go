@@ -177,21 +177,10 @@ func (c *Controller) Snapshot(name string, labels map[string]string) (string, er
 	if ne, err := iutil.NewNamespaceExecutor(util.GetInitiatorNS()); err != nil {
 		log.WithError(err).Errorf("WARNING: continue to snapshot for %v, but cannot sync due to cannot get the namespace executor", name)
 	} else {
-		// we always try to unfreeze the volume after finishing the snapshot process
-		// if the user manually froze the filesystem this will lead to an unfreeze but it's better than
-		// potentially having a left over frozen volume.
-		defer unfreezeVolume(ne, c.Name)
-		isFrozen, err := freezeVolume(ne, c.Name)
-		if err != nil {
-			log.WithError(err).Errorf("WARNING: failed to freeze the volume filesystem falling back to sync for %v", name)
-		}
-
-		if !isFrozen {
-			log.Info("Volume is not frozen, requesting system sync before snapshot")
-			if _, err := ne.ExecuteWithTimeout(syncTimeout, "sync", []string{}); err != nil {
-				// sync should never fail though, so it more like due to the nsenter
-				log.WithError(err).Errorf("WARNING: failed to sync continuing with snapshot for %v", name)
-			}
+		log.Info("Requesting system sync before snapshot")
+		if _, err := ne.ExecuteWithTimeout(syncTimeout, "sync", []string{}); err != nil {
+			// sync should never fail though, so it more like due to the nsenter
+			log.WithError(err).Errorf("WARNING: failed to sync continuing with snapshot for %v", name)
 		}
 	}
 
