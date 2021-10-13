@@ -26,5 +26,5 @@ func (d *Factory) Create(address string) (types.Backend, error) {
 		}
 	}
 
-	return nil, fmt.Errorf("Failed to find factory for %s", address)
+	return nil, fmt.Errorf("failed to find factory for %s", address)
 }

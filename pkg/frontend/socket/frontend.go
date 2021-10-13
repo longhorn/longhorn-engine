@@ -93,7 +93,7 @@ func (t *Socket) GetSocketPath() string {
 func (t *Socket) startSocketServer(rw types.ReaderWriterAt) error {
 	socketPath := t.GetSocketPath()
 	if err := os.MkdirAll(filepath.Dir(socketPath), 0700); err != nil {
-		return fmt.Errorf("Cannot create directory %v", filepath.Dir(socketPath))
+		return fmt.Errorf("cannot create directory %v", filepath.Dir(socketPath))
 	}
 	// Check and remove existing socket
 	if st, err := os.Stat(socketPath); err == nil && !st.IsDir() {

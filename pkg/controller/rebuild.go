@@ -15,14 +15,14 @@ import (
 func getReplicaDisksAndHead(address string) (map[string]types.DiskInfo, string, error) {
 	repClient, err := client.NewReplicaClient(address)
 	if err != nil {
-		return nil, "", fmt.Errorf("Cannot get replica client for %v: %v",
+		return nil, "", fmt.Errorf("cannot get replica client for %v: %v",
 			address, err)
 	}
 	defer repClient.Close()
 
 	rep, err := repClient.GetReplica()
 	if err != nil {
-		return nil, "", fmt.Errorf("Cannot get replica for %v: %v",
+		return nil, "", fmt.Errorf("cannot get replica for %v: %v",
 			address, err)
 	}
 
@@ -59,10 +59,10 @@ func (c *Controller) getCurrentAndRWReplica(address string) (*types.Replica, *ty
 		}
 	}
 	if current == nil {
-		return nil, nil, fmt.Errorf("Cannot find replica %v", address)
+		return nil, nil, fmt.Errorf("cannot find replica %v", address)
 	}
 	if rwReplica == nil {
-		return nil, nil, fmt.Errorf("Cannot find any healthy replica")
+		return nil, nil, fmt.Errorf("cannot find any healthy replica")
 	}
 
 	return current, rwReplica, nil
@@ -83,7 +83,7 @@ func (c *Controller) VerifyRebuildReplica(address string) error {
 		return nil
 	}
 	if replica.Mode != types.WO {
-		return fmt.Errorf("Invalid mode %v for replica %v to check", replica.Mode, address)
+		return fmt.Errorf("invalid mode %v for replica %v to check", replica.Mode, address)
 	}
 
 	fromDisks, _, err := getReplicaDisksAndHead(rwReplica.Address)
@@ -99,12 +99,12 @@ func (c *Controller) VerifyRebuildReplica(address string) error {
 	// The `Children` field of disk info may contain volume head. And the head file index of rebuilt replica
 	// is different from that of health replicas. Hence we cannot directly compare the disk info map here.
 	if len(fromDisks) != len(toDisks) {
-		return fmt.Errorf("Replica %v's disk number is not equal to that of RW replica %v: %+v vs %+v",
+		return fmt.Errorf("replica %v's disk number is not equal to that of RW replica %v: %+v vs %+v",
 			address, rwReplica.Address, toDisks, fromDisks)
 	}
 	for diskName := range fromDisks {
 		if _, exist := toDisks[diskName]; !exist {
-			return fmt.Errorf("Replica %v's chain not equal to RW replica %v's chain: %+v vs %+v",
+			return fmt.Errorf("replica %v's chain not equal to RW replica %v's chain: %+v vs %+v",
 				address, rwReplica.Address, toDisks, fromDisks)
 		}
 	}
@@ -112,12 +112,12 @@ func (c *Controller) VerifyRebuildReplica(address string) error {
 	if !c.revisionCounterDisabled {
 		counter, err := c.backend.GetRevisionCounter(rwReplica.Address)
 		if err != nil || counter == -1 {
-			return fmt.Errorf("Failed to get revision counter of RW Replica %v: counter %v, err %v",
+			return fmt.Errorf("failed to get revision counter of RW Replica %v: counter %v, err %v",
 				rwReplica.Address, counter, err)
 
 		}
 		if err := c.backend.SetRevisionCounter(address, counter); err != nil {
-			return fmt.Errorf("Fail to set revision counter for %v: %v", address, err)
+			return fmt.Errorf("fail to set revision counter for %v: %v", address, err)
 		}
 	}
 
@@ -133,14 +133,14 @@ func syncFile(from, to string, fromReplica, toReplica *types.Replica) error {
 
 	fromClient, err := client.NewReplicaClient(fromReplica.Address)
 	if err != nil {
-		return fmt.Errorf("Cannot get replica client for %v: %v",
+		return fmt.Errorf("cannot get replica client for %v: %v",
 			fromReplica.Address, err)
 	}
 	defer fromClient.Close()
 
 	toClient, err := client.NewReplicaClient(toReplica.Address)
 	if err != nil {
-		return fmt.Errorf("Cannot get replica client for %v: %v",
+		return fmt.Errorf("cannot get replica client for %v: %v",
 			toReplica.Address, err)
 	}
 	defer toClient.Close()
@@ -169,7 +169,7 @@ func (c *Controller) PrepareRebuildReplica(address string) ([]types.SyncFileInfo
 
 	if !c.revisionCounterDisabled {
 		if err := c.backend.SetRevisionCounter(address, 0); err != nil {
-			return nil, fmt.Errorf("Fail to set revision counter for %v: %v", address, err)
+			return nil, fmt.Errorf("fail to set revision counter for %v: %v", address, err)
 		}
 	}
 
@@ -178,7 +178,7 @@ func (c *Controller) PrepareRebuildReplica(address string) ([]types.SyncFileInfo
 		return nil, err
 	}
 	if replica.Mode != types.WO {
-		return nil, fmt.Errorf("Invalid mode %v for replica %v to prepare rebuild", replica.Mode, address)
+		return nil, fmt.Errorf("invalid mode %v for replica %v to prepare rebuild", replica.Mode, address)
 	}
 
 	fromDisks, fromHead, err := getReplicaDisksAndHead(rwReplica.Address)

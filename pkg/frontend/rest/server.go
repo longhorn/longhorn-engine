@@ -87,7 +87,7 @@ func (s *Server) WriteAt(rw http.ResponseWriter, req *http.Request) error {
 		return err
 	}
 	if len(buf) != input.Length {
-		return fmt.Errorf("Inconsistent length in request")
+		return fmt.Errorf("inconsistent length in request")
 	}
 
 	if _, err := s.d.backend.WriteAt(buf, input.Offset); err != nil {

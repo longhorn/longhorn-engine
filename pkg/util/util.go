@@ -42,7 +42,7 @@ const (
 func ParseAddresses(name string) (string, string, string, int, error) {
 	host, strPort, err := net.SplitHostPort(name)
 	if err != nil {
-		return "", "", "", 0, fmt.Errorf("Invalid address %s : couldn't find host and port", name)
+		return "", "", "", 0, fmt.Errorf("invalid address %s : couldn't find host and port", name)
 	}
 
 	port, _ := strconv.Atoi(strPort)
@@ -76,7 +76,7 @@ func GetPortFromAddress(address string) (int, error) {
 
 	_, strPort, err := net.SplitHostPort(address)
 	if err != nil {
-		return 0, fmt.Errorf("Invalid address %s, must have a port in it", address)
+		return 0, fmt.Errorf("invalid address %s, must have a port in it", address)
 	}
 
 	port, err := strconv.Atoi(strPort)
@@ -138,15 +138,15 @@ func (h filteredLoggingHandler) ServeHTTP(w http.ResponseWriter, req *http.Reque
 func DuplicateDevice(src, dest string) error {
 	stat := unix.Stat_t{}
 	if err := unix.Stat(src, &stat); err != nil {
-		return fmt.Errorf("Cannot duplicate device because cannot find %s: %v", src, err)
+		return fmt.Errorf("cannot duplicate device because cannot find %s: %v", src, err)
 	}
 	major := int(stat.Rdev / 256)
 	minor := int(stat.Rdev % 256)
 	if err := mknod(dest, major, minor); err != nil {
-		return fmt.Errorf("Cannot duplicate device %s to %s", src, dest)
+		return fmt.Errorf("cannot duplicate device %s to %s", src, dest)
 	}
 	if err := os.Chmod(dest, 0660); err != nil {
-		return fmt.Errorf("Couldn't change permission of the device %s: %s", dest, err)
+		return fmt.Errorf("couldn't change permission of the device %s: %s", dest, err)
 	}
 	return nil
 }
@@ -163,7 +163,7 @@ func mknod(device string, major, minor int) error {
 func RemoveDevice(dev string) error {
 	if _, err := os.Stat(dev); err == nil {
 		if err := remove(dev); err != nil {
-			return fmt.Errorf("Failed to removing device %s, %v", dev, err)
+			return fmt.Errorf("failed to removing device %s, %v", dev, err)
 		}
 	}
 	return nil
@@ -273,10 +273,10 @@ func GetBackupCredential(backupURL string) (map[string]string, error) {
 		accessKey := os.Getenv(types.AWSAccessKey)
 		secretKey := os.Getenv(types.AWSSecretKey)
 		if accessKey == "" && secretKey != "" {
-			return nil, errors.New("Could not backup to s3 without setting credential access key")
+			return nil, errors.New("could not backup to s3 without setting credential access key")
 		}
 		if accessKey != "" && secretKey == "" {
-			return nil, errors.New("Could not backup to s3 without setting credential secret access key")
+			return nil, errors.New("could not backup to s3 without setting credential secret access key")
 		}
 		if accessKey != "" && secretKey != "" {
 			credential[types.AWSAccessKey] = accessKey

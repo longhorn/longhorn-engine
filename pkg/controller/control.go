@@ -137,10 +137,10 @@ func (c *Controller) canAdd(address string) (bool, error) {
 		return false, nil
 	}
 	if c.hasWOReplica() {
-		return false, fmt.Errorf("Can only have one WO replica at a time")
+		return false, fmt.Errorf("can only have one WO replica at a time")
 	}
 	if c.isExpanding {
-		return false, fmt.Errorf("Cannot add WO replica during expansion")
+		return false, fmt.Errorf("cannot add WO replica during expansion")
 	}
 	return true, nil
 }
@@ -193,7 +193,7 @@ func (c *Controller) Snapshot(name string, labels map[string]string) (string, er
 	if remain, err := c.backend.RemainSnapshots(); err != nil {
 		return "", err
 	} else if remain <= 0 {
-		return "", fmt.Errorf("Too many snapshots created")
+		return "", fmt.Errorf("too many snapshots created")
 	}
 
 	created := util.Now()
@@ -332,7 +332,7 @@ func (c *Controller) addReplicaNoLock(newBackend types.Backend, address string, 
 		if remain, err := c.backend.RemainSnapshots(); err != nil {
 			return err
 		} else if remain <= 0 {
-			return fmt.Errorf("Too many snapshots created")
+			return fmt.Errorf("too many snapshots created")
 		}
 
 		if err := c.backend.Snapshot(uuid, false, created, nil); err != nil {
@@ -379,7 +379,7 @@ func (c *Controller) RemoveReplica(address string) error {
 	for i, r := range c.replicas {
 		if r.Address == address {
 			if len(c.replicas) == 1 && c.frontend != nil && c.frontend.State() == types.StateUp {
-				return fmt.Errorf("Cannot remove last replica if volume is up")
+				return fmt.Errorf("cannot remove last replica if volume is up")
 			}
 			c.replicas = append(c.replicas[:i], c.replicas[i+1:]...)
 			c.backend.RemoveBackend(r.Address)
@@ -402,7 +402,7 @@ func (c *Controller) SetReplicaMode(address string, mode types.Mode) error {
 		c.RLock()
 		defer c.RUnlock()
 	default:
-		return fmt.Errorf("Can not set to mode %s", mode)
+		return fmt.Errorf("can not set to mode %s", mode)
 	}
 
 	c.setReplicaModeNoLock(address, mode)
@@ -452,10 +452,10 @@ func (c *Controller) StartFrontend(frontend string) error {
 	defer c.Unlock()
 
 	if c.isExpanding {
-		return fmt.Errorf("Cannot start frontend during the engine expanison")
+		return fmt.Errorf("cannot start frontend during the engine expanison")
 	}
 	if frontend == "" {
-		return fmt.Errorf("Cannot start empty frontend")
+		return fmt.Errorf("cannot start empty frontend")
 	}
 	if c.frontend != nil {
 		if c.frontend.FrontendName() != frontend && c.frontend.State() != types.StateDown {
@@ -465,7 +465,7 @@ func (c *Controller) StartFrontend(frontend string) error {
 	}
 	f, ok := Frontends[frontend]
 	if !ok {
-		return fmt.Errorf("Failed to find frontend: %s", frontend)
+		return fmt.Errorf("failed to find frontend: %s", frontend)
 	}
 	c.frontend = f
 	return c.startFrontend()
@@ -522,7 +522,7 @@ func (c *Controller) salvageRevisionCounterDisabledReplicas() error {
 	}
 
 	if len(replicaCandidates) == 0 {
-		return fmt.Errorf("Can not find any replica for salvage")
+		return fmt.Errorf("can not find any replica for salvage")
 	}
 	var bestCandidate types.Replica
 	lastTime := time.Unix(0, lastModifyTime)
