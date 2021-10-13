@@ -14,7 +14,7 @@ import (
 )
 
 var (
-	ErrNoBackend = errors.New("No backend available")
+	ErrNoBackend = errors.New("no backend available")
 )
 
 type replicator struct {
@@ -341,7 +341,7 @@ func (r *replicator) RemainSnapshots() (int, error) {
 		}
 	}
 	if ret == math.MaxInt32 {
-		return 0, fmt.Errorf("Cannot get valid result for remain snapshot")
+		return 0, fmt.Errorf("cannot get valid result for remain snapshot")
 	}
 	return ret, nil
 }
@@ -349,7 +349,7 @@ func (r *replicator) RemainSnapshots() (int, error) {
 func (r *replicator) SetRevisionCounter(address string, counter int64) error {
 	backend, ok := r.backends[address]
 	if !ok {
-		return fmt.Errorf("Cannot find backend %v", address)
+		return fmt.Errorf("cannot find backend %v", address)
 	}
 
 	if err := backend.backend.SetRevisionCounter(counter); err != nil {
@@ -364,7 +364,7 @@ func (r *replicator) SetRevisionCounter(address string, counter int64) error {
 func (r *replicator) GetRevisionCounter(address string) (int64, error) {
 	backend, ok := r.backends[address]
 	if !ok {
-		return -1, fmt.Errorf("Cannot find backend %v", address)
+		return -1, fmt.Errorf("cannot find backend %v", address)
 	}
 
 	counter, err := backend.backend.GetRevisionCounter()

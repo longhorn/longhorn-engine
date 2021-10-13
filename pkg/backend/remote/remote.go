@@ -204,7 +204,7 @@ func (r *Remote) RemainSnapshots() (int, error) {
 	case "open", "dirty", "rebuilding":
 		return replicaInfo.RemainSnapshots, nil
 	}
-	return 0, fmt.Errorf("Invalid state %v for counting snapshots", replicaInfo.State)
+	return 0, fmt.Errorf("invalid state %v for counting snapshots", replicaInfo.State)
 }
 
 func (r *Remote) GetRevisionCounter() (int64, error) {
@@ -216,7 +216,7 @@ func (r *Remote) GetRevisionCounter() (int64, error) {
 	case "open", "dirty":
 		return replicaInfo.RevisionCounter, nil
 	}
-	return 0, fmt.Errorf("Invalid state %v for getting revision counter", replicaInfo.State)
+	return 0, fmt.Errorf("invalid state %v for getting revision counter", replicaInfo.State)
 }
 
 func (r *Remote) info() (*types.ReplicaInfo, error) {
@@ -261,7 +261,7 @@ func (rf *Factory) Create(address string) (types.Backend, error) {
 	}
 
 	if replica.State != "closed" {
-		return nil, fmt.Errorf("Replica must be closed, Can not add in state: %s", replica.State)
+		return nil, fmt.Errorf("replica must be closed, Can not add in state: %s", replica.State)
 	}
 
 	conn, err := net.Dial("tcp", dataAddress)

@@ -28,7 +28,7 @@ func (c *Controller) Revert(name string) error {
 	}
 
 	if !doable {
-		return fmt.Errorf("Not valid state to revert, rebuilding in process or all replica are in ERR state")
+		return fmt.Errorf("not valid state to revert, rebuilding in process or all replica are in ERR state")
 	}
 
 	clients, name, err := c.clientsAndSnapshot(name)
@@ -62,7 +62,7 @@ func (c *Controller) Revert(name string) error {
 	}
 
 	if !minimalSuccess {
-		return fmt.Errorf("Fail to revert to %v on all replicas", name)
+		return fmt.Errorf("fail to revert to %v on all replicas", name)
 	}
 
 	return nil
@@ -84,14 +84,14 @@ func (c *Controller) clientsAndSnapshot(name string) (map[string]*client.Replica
 
 	for _, replica := range c.replicas {
 		if replica.Mode == types.WO {
-			return nil, "", fmt.Errorf("Cannot revert %s during rebuilding process", replica.Address)
+			return nil, "", fmt.Errorf("cannot revert %s during rebuilding process", replica.Address)
 		}
 		if replica.Mode != types.RW {
 			continue
 		}
 
 		if !strings.HasPrefix(replica.Address, "tcp://") {
-			return nil, "", fmt.Errorf("Backend %s does not support revert", replica.Address)
+			return nil, "", fmt.Errorf("backend %s does not support revert", replica.Address)
 		}
 
 		repClient, err = client.NewReplicaClient(replica.Address)

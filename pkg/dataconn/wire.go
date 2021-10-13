@@ -60,7 +60,7 @@ func (w *Wire) Read() (*Message, error) {
 	}
 
 	if msg.MagicVersion != MagicVersion {
-		return nil, fmt.Errorf("Wrong API version received: 0x%x", &msg.MagicVersion)
+		return nil, fmt.Errorf("wrong API version received: 0x%x", &msg.MagicVersion)
 	}
 
 	if err := binary.Read(w.reader, binary.LittleEndian, &msg.Seq); err != nil {

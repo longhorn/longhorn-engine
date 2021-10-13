@@ -44,7 +44,7 @@ func (f *Wrapper) Expand(size int64) (err error) {
 		return err
 	}
 	if size < currentSize {
-		return fmt.Errorf("Cannot truncate to a smaller size %v for the backend type file", size)
+		return fmt.Errorf("cannot truncate to a smaller size %v for the backend type file", size)
 	} else if size == currentSize {
 		return nil
 	}
