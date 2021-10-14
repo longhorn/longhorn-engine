@@ -125,7 +125,6 @@ func (s *Server) write() {
 			}
 			//Best effort to notify client to close connection
 			s.wire.Write(msg)
-			break
 		}
 	}
 }
