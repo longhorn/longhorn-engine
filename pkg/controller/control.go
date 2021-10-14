@@ -109,7 +109,6 @@ func (c *Controller) StartGRPCServer() error {
 		err = c.GRPCServer.Serve(listener)
 		logrus.Errorf("GRPC server at %v is down: %v", grpcAddress, err)
 		c.lastError = err
-		return
 	}()
 
 	return nil
@@ -308,7 +307,6 @@ func (c *Controller) finishExpansion(expanded bool, size int64) {
 		c.size = size
 	}
 	c.isExpanding = false
-	return
 }
 
 func (c *Controller) IsExpanding() bool {
@@ -705,7 +703,7 @@ func (c *Controller) WriteAt(b []byte, off int64) (int, error) {
 	if err != nil {
 		return n, c.handleError(err)
 	}
-	c.recordMetrics(false, l, time.Now().Sub(startTime))
+	c.recordMetrics(false, l, time.Since(startTime))
 	return n, err
 }
 
@@ -723,7 +721,7 @@ func (c *Controller) ReadAt(b []byte, off int64) (int, error) {
 	if err != nil {
 		return n, c.handleError(err)
 	}
-	c.recordMetrics(true, l, time.Now().Sub(startTime))
+	c.recordMetrics(true, l, time.Since(startTime))
 	return n, err
 }
 
@@ -902,7 +900,7 @@ func (c *Controller) BackupReplicaMappingGet() map[string]string {
 func (c *Controller) BackupReplicaMappingDelete(id string) error {
 	c.backupListMutex.Lock()
 	defer c.backupListMutex.Unlock()
-	if _, present := c.backupList[id]; present == false {
+	if _, present := c.backupList[id]; !present {
 		return fmt.Errorf("backupID not found: %v", id)
 	}
 	delete(c.backupList, id)
