@@ -263,7 +263,6 @@ func (c *Controller) Expand(size int64) error {
 		}
 
 		expanded = true
-		return
 	}(size)
 
 	return nil
