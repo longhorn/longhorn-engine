@@ -1456,7 +1456,7 @@ def test_replica_removal_and_recreation(bin):  # NOQA
         try:
             grpc_controller_client.replica_create(r1_url, True, "RW")
         except grpc.RpcError as grpc_error:
-            assert "Replica must be closed" in grpc_error.details()
+            assert "replica must be closed" in grpc_error.details()
             continue
         break
         time.sleep(RETRY_INTERVAL_SHORT)

@@ -39,7 +39,7 @@ def test_replica_create(grpc_controller_client):  # NOQA
     r2 = 'file://' + f2
     with pytest.raises(grpc.RpcError) as e:
         grpc_controller_client.replica_create(address=r2)
-    assert 'Can only have one WO replica at a time' in str(e.value)
+    assert 'can only have one WO replica at a time' in str(e.value)
 
     r = grpc_controller_client.replica_update(rs[0].address, mode='RW')
     assert r.mode == 'RW'
