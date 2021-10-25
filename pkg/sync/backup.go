@@ -102,16 +102,10 @@ func (t *Task) createBackup(replicaInController *types.ControllerReplicaInfo, ba
 	if err != nil {
 		return nil, err
 	}
-
-	info := &BackupCreateInfo{
+	return &BackupCreateInfo{
 		BackupID:      reply.Backup,
 		IsIncremental: reply.IsIncremental,
-	}
-	//Store the backupID - Replica IP mapping in controller
-	if err := t.client.BackupReplicaMappingCreate(info.BackupID, replicaInController.Address); err != nil {
-		return nil, err
-	}
-	return info, nil
+	}, nil
 }
 
 // FetchBackupStatus instance method is @deprecated use the free function FetchBackupStatus instead
