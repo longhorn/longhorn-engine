@@ -15,8 +15,9 @@ import (
 )
 
 type BackupCreateInfo struct {
-	BackupID      string `json:"backupID"`
-	IsIncremental bool   `json:"isIncremental"`
+	BackupID       string `json:"backupID"`
+	IsIncremental  bool   `json:"isIncremental"`
+	ReplicaAddress string `json:"replicaAddress"`
 }
 
 type BackupStatusInfo struct {
@@ -103,8 +104,9 @@ func (t *Task) createBackup(replicaInController *types.ControllerReplicaInfo, ba
 		return nil, err
 	}
 	return &BackupCreateInfo{
-		BackupID:      reply.Backup,
-		IsIncremental: reply.IsIncremental,
+		BackupID:       reply.Backup,
+		IsIncremental:  reply.IsIncremental,
+		ReplicaAddress: replicaInController.Address,
 	}, nil
 }
 
