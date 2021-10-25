@@ -62,9 +62,10 @@ def snapshot_purge_status(url):
     return json.loads(output)
 
 
-def backup_status(url, backupID):
+def backup_status(url, backupID, replicaAddress):
     output = ""
-    cmd = [_bin(), '--url', url, '--debug', 'backup', 'status', backupID]
+    cmd = [_bin(), '--url', url, '--debug', 'backup', 'status',
+           backupID, '--replica', replicaAddress]
     for x in range(RETRY_COUNTS):
         backup = json.loads(subprocess.
                             check_output(cmd, encoding='utf-8').strip())
@@ -111,7 +112,9 @@ def backup_create(url, snapshot, dest, labels=None,
     if backup_name != "":
         assert backup_name == backup["backupID"]
     assert "isIncremental" in backup.keys()
-    return backup_status(url, backup["backupID"])
+    assert "replicaAddress" in backup.keys()
+    assert backup["replicaAddress"] != ""
+    return backup_status(url, backup["backupID"], backup["replicaAddress"])
 
 
 def backup_rm(url, backup):
