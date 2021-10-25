@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -90,94 +89,6 @@ func getReplicaModeMap(replicas []*types.ControllerReplicaInfo) map[string]types
 	}
 
 	return replicaModeMap
-}
-
-func fetchAllBackups(c *cli.Context) error {
-	backupProgressList := make(map[string]*sync.BackupStatusInfo)
-
-	controllerClient, err := getControllerClient(c)
-	if err != nil {
-		return err
-	}
-	defer controllerClient.Close()
-
-	backupReplicaMap, err := controllerClient.BackupReplicaMappingGet()
-	if err != nil {
-		return fmt.Errorf("failed to get list of backupIDs: %v", err)
-	}
-
-	replicas, err := controllerClient.ReplicaList()
-	if err != nil {
-		return fmt.Errorf("failed to get replica list: %v", err)
-	}
-	replicaModeMap := getReplicaModeMap(replicas)
-
-	clients := map[string]*replicaClient.ReplicaClient{}
-	defer func() {
-		for _, client := range clients {
-			_ = client.Close()
-		}
-	}()
-
-	for backupID, replicaAddress := range backupReplicaMap {
-		// Only a replica in RW mode can create backups.
-		if mode := replicaModeMap[replicaAddress]; mode != types.RW {
-			err := controllerClient.BackupReplicaMappingDelete(backupID)
-			if err != nil {
-				return err
-			}
-			backupProgressList[backupID] = &sync.BackupStatusInfo{
-				ReplicaAddress: replicaAddress,
-				State:          "error",
-				Error: fmt.Sprintf("Failed to get backup status on %s for %v: %v",
-					replicaAddress, backupID, "unknown replica"),
-			}
-			continue
-		}
-
-		repClient := clients[replicaAddress]
-		if repClient == nil {
-			repClient, err = replicaClient.NewReplicaClient(replicaAddress)
-			if err != nil {
-				err := fmt.Errorf("cannot create a replica client for IP[%v]: %v", replicaAddress, err)
-				logrus.Error(err.Error())
-				return err
-			}
-			clients[replicaAddress] = repClient
-		}
-
-		status, err := sync.FetchBackupStatus(repClient, backupID, replicaAddress)
-		if err != nil {
-			return err
-		}
-
-		if status == nil {
-			continue
-		}
-		if strings.Contains(status.Error, "backup not found") {
-			err := controllerClient.BackupReplicaMappingDelete(backupID)
-			if err != nil {
-				return err
-			}
-			backupProgressList[backupID] = &sync.BackupStatusInfo{
-				ReplicaAddress: replicaAddress,
-				State:          "error",
-				Error: fmt.Sprintf("Failed to get backup status on %s for %v: %v",
-					replicaAddress, backupID, "backup not found"),
-			}
-			continue
-		}
-
-		backupProgressList[backupID] = status
-	}
-
-	output, err := cmd.ResponseOutput(backupProgressList)
-	if err != nil {
-		return err
-	}
-
-	fmt.Println(string(output))
-	return nil
 }
 
 func checkBackupStatus(c *cli.Context) error {
