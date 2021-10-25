@@ -74,7 +74,7 @@ func BackupCreateCmd() cli.Command {
 func BackupStatusCmd() cli.Command {
 	return cli.Command{
 		Name:  "status",
-		Usage: "query the progress of the backup: status [<backupID>]",
+		Usage: "query the progress of the backup: status <backupID>",
 		Action: func(c *cli.Context) {
 			if err := checkBackupStatus(c); err != nil {
 				logrus.Fatalf("Error querying backup status: %v", err)
@@ -183,7 +183,7 @@ func fetchAllBackups(c *cli.Context) error {
 func checkBackupStatus(c *cli.Context) error {
 	backupID := c.Args().First()
 	if backupID == "" {
-		return fetchAllBackups(c)
+		return fmt.Errorf("Missing required parameter backupID")
 	}
 
 	controllerClient, err := getControllerClient(c)
