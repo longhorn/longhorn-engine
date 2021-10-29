@@ -30,3 +30,5 @@ require (
 	gopkg.in/cheggaaa/pb.v1 v1.0.28 // indirect
 	gopkg.in/cheggaaa/pb.v2 v2.0.0-20190301131520-f907f6f5dd81
 )
+
+replace github.com/longhorn/backupstore v0.0.0-20210908163358-43c9d3298665 => github.com/derekbit/backupstore v0.0.0-20211029120756-3ed8c0e7df1c
