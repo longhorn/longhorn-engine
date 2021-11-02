@@ -2,7 +2,6 @@ import os
 from os import path
 import stat
 import mmap
-import directio
 
 from common.constants import (
     LONGHORN_SOCKET_DIR, LONGHORN_DEV_DIR, PAGE_SIZE,
