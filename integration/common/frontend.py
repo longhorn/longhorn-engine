@@ -44,7 +44,7 @@ def writeat_direct(dev, offset, data):
         m.write(pg_data)
         m.seek(offset % PAGE_SIZE)
         m.write(data.encode('utf-8'))
-        ret = directio.write(f, m[:PAGE_SIZE])
+        ret = os.write(f, m)
     finally:
         m.close()
         os.close(f)
