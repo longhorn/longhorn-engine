@@ -22,12 +22,16 @@ def readat_direct(dev, offset, length):
     pg_offset = pg * PAGE_SIZE
 
     f = os.open(dev, os.O_DIRECT | os.O_RDONLY)
+    fo = os.fdopen(f, 'rb+', 0)
+    m = mmap.mmap(-1, to_read)
     try:
         os.lseek(f, pg_offset, os.SEEK_SET)
-        ret = directio.read(f, to_read)
+        fo.readinto(m)
+        ret = m[in_page_offset: in_page_offset + length]
     finally:
+        m.close()
         os.close(f)
-    return ret[in_page_offset: in_page_offset + length]
+    return ret
 
 
 def writeat_direct(dev, offset, data):
