@@ -17,9 +17,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/google/uuid"
 	"github.com/gorilla/handlers"
 	iutil "github.com/longhorn/go-iscsi-helper/util"
-	uuid "github.com/satori/go.uuid"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 
@@ -88,7 +88,7 @@ func GetPortFromAddress(address string) (int, error) {
 }
 
 func UUID() string {
-	return uuid.NewV4().String()
+	return uuid.New().String()
 }
 
 func Filter(list []string, check func(string) bool) []string {
