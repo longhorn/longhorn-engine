@@ -7,6 +7,7 @@ require (
 	github.com/docker/go-units v0.3.3
 	github.com/fatih/color v1.7.0 // indirect
 	github.com/golang/protobuf v1.3.3-0.20190920234318-1680a479a2cf
+	github.com/google/uuid v1.3.0
 	github.com/gorilla/context v1.1.1 // indirect
 	github.com/gorilla/handlers v1.4.2
 	github.com/gorilla/mux v1.7.3
@@ -20,7 +21,6 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
 	github.com/rancher/go-rancher v0.1.1-0.20190307222549-9756097e5e4c
-	github.com/satori/go.uuid v1.2.0
 	github.com/sirupsen/logrus v1.8.1
 	github.com/urfave/cli v1.22.1
 	golang.org/x/net v0.0.0-20190522155817-f3200d17e092
