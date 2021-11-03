@@ -3,7 +3,7 @@ module github.com/longhorn/backupstore
 go 1.13
 
 require (
-	github.com/aws/aws-sdk-go v1.25.16
+	github.com/aws/aws-sdk-go v1.34.2
 	github.com/honestbee/jobq v1.0.2
 	github.com/pkg/errors v0.9.1
 	github.com/satori/go.uuid v1.2.0
