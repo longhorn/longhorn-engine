@@ -15,9 +15,8 @@ import (
 )
 
 type BackupCreateInfo struct {
-	BackupID       string `json:"backupID"`
-	IsIncremental  bool   `json:"isIncremental"`
-	ReplicaAddress string `json:"replicaAddress"`
+	BackupID      string `json:"backupID"`
+	IsIncremental bool   `json:"isIncremental"`
 }
 
 type BackupStatusInfo struct {
@@ -103,11 +102,16 @@ func (t *Task) createBackup(replicaInController *types.ControllerReplicaInfo, ba
 	if err != nil {
 		return nil, err
 	}
-	return &BackupCreateInfo{
-		BackupID:       reply.Backup,
-		IsIncremental:  reply.IsIncremental,
-		ReplicaAddress: replicaInController.Address,
-	}, nil
+
+	info := &BackupCreateInfo{
+		BackupID:      reply.Backup,
+		IsIncremental: reply.IsIncremental,
+	}
+	//Store the backupID - Replica IP mapping in controller
+	if err := t.client.BackupReplicaMappingCreate(info.BackupID, replicaInController.Address); err != nil {
+		return nil, err
+	}
+	return info, nil
 }
 
 // FetchBackupStatus instance method is @deprecated use the free function FetchBackupStatus instead
