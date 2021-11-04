@@ -23,10 +23,6 @@ service ControllerService {
     rpc ReplicaPrepareRebuild(ReplicaAddress) returns (ReplicaPrepareRebuildReply);
     rpc ReplicaVerifyRebuild(ReplicaAddress) returns (ControllerReplica);
 
-    rpc BackupReplicaMappingCreate(BackupReplicaMapping) returns (google.protobuf.Empty);
-    rpc BackupReplicaMappingGet(google.protobuf.Empty) returns (BackupReplicaMap);
-    rpc BackupReplicaMappingDelete(BackupReplicaMappingDeleteRequest) returns (google.protobuf.Empty);
-
     rpc JournalList(JournalListRequest) returns (google.protobuf.Empty);
 
     rpc VersionDetailGet(google.protobuf.Empty) returns(VersionDetailGetReply);
@@ -141,17 +137,4 @@ message Metric {
 
 message MetricGetReply {
     Metric metric = 1;
-}
-
-message BackupReplicaMapping {
-    string backup = 1;
-    string replicaAddress = 2;
-}
-
-message BackupReplicaMap {
-    map <string,string> backupReplicaMap = 1;
-}
-
-message BackupReplicaMappingDeleteRequest {
-    string backup = 1;
 }
