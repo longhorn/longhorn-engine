@@ -62,7 +62,7 @@ github.com/gorilla/websocket
 github.com/honestbee/jobq
 # github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af
 github.com/jmespath/go-jmespath
-# github.com/longhorn/backupstore v0.0.0-20210908163358-43c9d3298665
+# github.com/longhorn/backupstore v0.0.0-20211103081249-ebc3c90895ba
 github.com/longhorn/backupstore
 github.com/longhorn/backupstore/cmd
 github.com/longhorn/backupstore/fsops
