@@ -90,6 +90,21 @@ class ControllerServiceStub(object):
         request_serializer=controller__pb2.ReplicaAddress.SerializeToString,
         response_deserializer=controller__pb2.ControllerReplica.FromString,
         )
+    self.BackupReplicaMappingCreate = channel.unary_unary(
+        '/ptypes.ControllerService/BackupReplicaMappingCreate',
+        request_serializer=controller__pb2.BackupReplicaMapping.SerializeToString,
+        response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+        )
+    self.BackupReplicaMappingGet = channel.unary_unary(
+        '/ptypes.ControllerService/BackupReplicaMappingGet',
+        request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+        response_deserializer=controller__pb2.BackupReplicaMap.FromString,
+        )
+    self.BackupReplicaMappingDelete = channel.unary_unary(
+        '/ptypes.ControllerService/BackupReplicaMappingDelete',
+        request_serializer=controller__pb2.BackupReplicaMappingDeleteRequest.SerializeToString,
+        response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+        )
     self.JournalList = channel.unary_unary(
         '/ptypes.ControllerService/JournalList',
         request_serializer=controller__pb2.JournalListRequest.SerializeToString,
@@ -216,6 +231,27 @@ class ControllerServiceServicer(object):
     context.set_details('Method not implemented!')
     raise NotImplementedError('Method not implemented!')
 
+  def BackupReplicaMappingCreate(self, request, context):
+    # missing associated documentation comment in .proto file
+    pass
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
+  def BackupReplicaMappingGet(self, request, context):
+    # missing associated documentation comment in .proto file
+    pass
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
+  def BackupReplicaMappingDelete(self, request, context):
+    # missing associated documentation comment in .proto file
+    pass
+    context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+    context.set_details('Method not implemented!')
+    raise NotImplementedError('Method not implemented!')
+
   def JournalList(self, request, context):
     # missing associated documentation comment in .proto file
     pass
@@ -314,6 +350,21 @@ def add_ControllerServiceServicer_to_server(servicer, server):
           servicer.ReplicaVerifyRebuild,
           request_deserializer=controller__pb2.ReplicaAddress.FromString,
           response_serializer=controller__pb2.ControllerReplica.SerializeToString,
+      ),
+      'BackupReplicaMappingCreate': grpc.unary_unary_rpc_method_handler(
+          servicer.BackupReplicaMappingCreate,
+          request_deserializer=controller__pb2.BackupReplicaMapping.FromString,
+          response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+      ),
+      'BackupReplicaMappingGet': grpc.unary_unary_rpc_method_handler(
+          servicer.BackupReplicaMappingGet,
+          request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+          response_serializer=controller__pb2.BackupReplicaMap.SerializeToString,
+      ),
+      'BackupReplicaMappingDelete': grpc.unary_unary_rpc_method_handler(
+          servicer.BackupReplicaMappingDelete,
+          request_deserializer=controller__pb2.BackupReplicaMappingDeleteRequest.FromString,
+          response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
       ),
       'JournalList': grpc.unary_unary_rpc_method_handler(
           servicer.JournalList,
