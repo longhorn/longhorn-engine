@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -74,7 +73,13 @@ func BackupCreateCmd() cli.Command {
 func BackupStatusCmd() cli.Command {
 	return cli.Command{
 		Name:  "status",
-		Usage: "query the progress of the backup: status [<backupID>]",
+		Usage: "query the progress of the backup: status <backupID>",
+		Flags: []cli.Flag{
+			cli.StringFlag{
+				Name:  "replica",
+				Usage: "specify the replica address",
+			},
+		},
 		Action: func(c *cli.Context) {
 			if err := checkBackupStatus(c); err != nil {
 				logrus.Fatalf("Error querying backup status: %v", err)
@@ -92,98 +97,10 @@ func getReplicaModeMap(replicas []*types.ControllerReplicaInfo) map[string]types
 	return replicaModeMap
 }
 
-func fetchAllBackups(c *cli.Context) error {
-	backupProgressList := make(map[string]*sync.BackupStatusInfo)
-
-	controllerClient, err := getControllerClient(c)
-	if err != nil {
-		return err
-	}
-	defer controllerClient.Close()
-
-	backupReplicaMap, err := controllerClient.BackupReplicaMappingGet()
-	if err != nil {
-		return fmt.Errorf("failed to get list of backupIDs: %v", err)
-	}
-
-	replicas, err := controllerClient.ReplicaList()
-	if err != nil {
-		return fmt.Errorf("failed to get replica list: %v", err)
-	}
-	replicaModeMap := getReplicaModeMap(replicas)
-
-	clients := map[string]*replicaClient.ReplicaClient{}
-	defer func() {
-		for _, client := range clients {
-			_ = client.Close()
-		}
-	}()
-
-	for backupID, replicaAddress := range backupReplicaMap {
-		// Only a replica in RW mode can create backups.
-		if mode := replicaModeMap[replicaAddress]; mode != types.RW {
-			err := controllerClient.BackupReplicaMappingDelete(backupID)
-			if err != nil {
-				return err
-			}
-			backupProgressList[backupID] = &sync.BackupStatusInfo{
-				ReplicaAddress: replicaAddress,
-				State:          "error",
-				Error: fmt.Sprintf("Failed to get backup status on %s for %v: %v",
-					replicaAddress, backupID, "unknown replica"),
-			}
-			continue
-		}
-
-		repClient := clients[replicaAddress]
-		if repClient == nil {
-			repClient, err = replicaClient.NewReplicaClient(replicaAddress)
-			if err != nil {
-				err := fmt.Errorf("cannot create a replica client for IP[%v]: %v", replicaAddress, err)
-				logrus.Error(err.Error())
-				return err
-			}
-			clients[replicaAddress] = repClient
-		}
-
-		status, err := sync.FetchBackupStatus(repClient, backupID, replicaAddress)
-		if err != nil {
-			return err
-		}
-
-		if status == nil {
-			continue
-		}
-		if strings.Contains(status.Error, "backup not found") {
-			err := controllerClient.BackupReplicaMappingDelete(backupID)
-			if err != nil {
-				return err
-			}
-			backupProgressList[backupID] = &sync.BackupStatusInfo{
-				ReplicaAddress: replicaAddress,
-				State:          "error",
-				Error: fmt.Sprintf("Failed to get backup status on %s for %v: %v",
-					replicaAddress, backupID, "backup not found"),
-			}
-			continue
-		}
-
-		backupProgressList[backupID] = status
-	}
-
-	output, err := cmd.ResponseOutput(backupProgressList)
-	if err != nil {
-		return err
-	}
-
-	fmt.Println(string(output))
-	return nil
-}
-
 func checkBackupStatus(c *cli.Context) error {
 	backupID := c.Args().First()
 	if backupID == "" {
-		return fetchAllBackups(c)
+		return fmt.Errorf("Missing required parameter backupID")
 	}
 
 	controllerClient, err := getControllerClient(c)
@@ -192,24 +109,39 @@ func checkBackupStatus(c *cli.Context) error {
 	}
 	defer controllerClient.Close()
 
-	br, err := controllerClient.BackupReplicaMappingGet()
-	if err != nil {
-		return err
-	}
-	replicaAddress, present := br[backupID]
-	if !present || replicaAddress == "" {
-		return fmt.Errorf("failed to get backup status for %v: %v",
-			backupID, "replica not found")
-	}
-
 	replicas, err := controllerClient.ReplicaList()
 	if err != nil {
 		return fmt.Errorf("failed to get replica list: %v", err)
 	}
-	replicaModeMap := getReplicaModeMap(replicas)
 
+	replicaAddress := c.String("replica")
+	if replicaAddress == "" {
+		// find a replica which has the corresponding backup
+		for _, replica := range replicas {
+			if replica.Mode != types.RW {
+				continue
+			}
+
+			repClient, err := replicaClient.NewReplicaClient(replica.Address)
+			if err != nil {
+				logrus.Errorf("Cannot create a replica client for IP[%v]: %v", replicaAddress, err)
+				return err
+			}
+
+			_, err = sync.FetchBackupStatus(repClient, backupID, replica.Address)
+			repClient.Close()
+			if err == nil {
+				replicaAddress = replica.Address
+				break
+			}
+		}
+	}
+	if replicaAddress == "" {
+		return fmt.Errorf("Cannot find a replica which has the corresponding backup %s", backupID)
+	}
+
+	replicaModeMap := getReplicaModeMap(replicas)
 	if mode := replicaModeMap[replicaAddress]; mode != types.RW {
-		_ = controllerClient.BackupReplicaMappingDelete(backupID)
 		return fmt.Errorf("Failed to get backup status on %s for %v: %v",
 			replicaAddress, backupID, "unknown replica")
 	}
