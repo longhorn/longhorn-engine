@@ -26,7 +26,7 @@ import (
 func ReplicaCmd() cli.Command {
 	return cli.Command{
 		Name:      "replica",
-		UsageText: "longhorn controller DIRECTORY SIZE",
+		UsageText: "longhorn replica DIRECTORY SIZE",
 		Flags: []cli.Flag{
 			cli.StringFlag{
 				Name:  "listen",
@@ -59,6 +59,12 @@ func ReplicaCmd() cli.Command {
 				Name:   "disableRevCounter",
 				Hidden: false,
 				Usage:  "To disable revision counter for every write",
+			},
+			cli.StringFlag{
+				Name:     "host-suffix",
+				Required: false,
+				EnvVar:   "HOST_SUFFIX",
+				Usage:    "specify the allowed DNS suffix for connections",
 			},
 		},
 		Action: func(c *cli.Context) {
@@ -126,7 +132,7 @@ func startReplica(c *cli.Context) error {
 	}()
 
 	go func() {
-		rpcServer := replicarpc.NewDataServer(dataAddress, s)
+		rpcServer := replicarpc.NewDataServer(dataAddress, s, c.String("host-suffix"))
 		logrus.Infof("Listening on data server %s", dataAddress)
 		err := rpcServer.ListenAndServe()
 		logrus.Warnf("Replica rest server at %v is down: %v", dataAddress, err)
