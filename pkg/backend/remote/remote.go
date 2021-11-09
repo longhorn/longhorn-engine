@@ -284,6 +284,7 @@ func (rf *Factory) Create(address string) (types.Backend, error) {
 func (r *Remote) monitorPing(client *dataconn.Client) {
 	ticker := time.NewTicker(PingInterval)
 	defer ticker.Stop()
+	defer client.Close()
 
 	for {
 		select {
