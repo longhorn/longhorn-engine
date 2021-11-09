@@ -70,7 +70,7 @@ github.com/gorilla/websocket
 github.com/honestbee/jobq
 # github.com/jmespath/go-jmespath v0.3.0
 github.com/jmespath/go-jmespath
-# github.com/longhorn/backupstore v0.0.0-20211103081249-ebc3c90895ba
+# github.com/longhorn/backupstore v0.0.0-20211109055147-56ddc538b859
 github.com/longhorn/backupstore
 github.com/longhorn/backupstore/cmd
 github.com/longhorn/backupstore/fsops
@@ -106,8 +106,6 @@ github.com/rancher/go-rancher/api
 github.com/rancher/go-rancher/client
 # github.com/russross/blackfriday/v2 v2.0.1
 github.com/russross/blackfriday/v2
-# github.com/satori/go.uuid v1.2.0
-github.com/satori/go.uuid
 # github.com/shurcooL/sanitized_anchor_name v1.0.0
 github.com/shurcooL/sanitized_anchor_name
 # github.com/sirupsen/logrus v1.8.1
