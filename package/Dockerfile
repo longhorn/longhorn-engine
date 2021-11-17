@@ -1,12 +1,15 @@
-FROM ubuntu:18.04
+FROM ubuntu:20.04
 
 ARG ARCH=amd64
 
+ENV DEBIAN_FRONTEND=noninteractive
+
 RUN apt-get update && \
-    apt-get upgrade -y && \
+    apt-get dist-upgrade -y && \
     apt-get install -y kmod curl nfs-common fuse \
     libibverbs1 librdmacm1 libconfig-general-perl libaio1 sg3-utils \
-    iputils-ping telnet iperf qemu-utils wget iproute2
+    iputils-ping telnet iperf qemu-utils wget iproute2 && \
+    rm -rf /var/lib/apt/lists/*
 
 # Install grpc_health_probe
 RUN wget https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/v0.3.2/grpc_health_probe-linux-${ARCH} -O /usr/local/bin/grpc_health_probe && \
