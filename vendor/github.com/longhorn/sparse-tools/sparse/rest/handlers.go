@@ -116,7 +116,9 @@ func (server *SyncServer) close(writer http.ResponseWriter, request *http.Reques
 		f.Flush()
 	}
 
-	server.fileIo.Close()
+	if server.fileIo != nil {
+		server.fileIo.Close()
+	}
 	log.Infof("Closing ssync server")
 
 	server.cancelFunc()
