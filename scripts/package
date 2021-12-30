@@ -27,7 +27,6 @@ if [ ! -x ./bin/longhorn ]; then
     ./scripts/build
 fi
 
-cp /usr/src/tgt/pkg/tgt_*.deb ./bin/
 cp /usr/local/bin/longhorn-instance-manager ./bin/
 
 # update base image to get latest changes

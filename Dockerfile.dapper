@@ -1,4 +1,4 @@
-FROM ubuntu:20.04
+FROM registry.suse.com/bci/bci-base:15.3
 
 ARG DAPPER_HOST_ARCH=amd64
 ARG http_proxy
@@ -14,15 +14,18 @@ ENV DAPPER_RUN_ARGS --privileged --tmpfs /go/src/github.com/longhorn/longhorn-en
 ENV DAPPER_SOURCE /go/src/github.com/longhorn/longhorn-engine
 WORKDIR ${DAPPER_SOURCE}
 
-ENV DEBIAN_FRONTEND=noninteractive
+RUN zypper -n addrepo --refresh https://download.opensuse.org/repositories/system:/snappy/SLE_15/system:snappy.repo && \
+    zypper -n addrepo --refresh https://download.opensuse.org/repositories/devel:tools:scm/SLE_15_SP3/devel:tools:scm.repo && \
+    zypper --gpg-auto-import-keys ref
 
 # Install packages
-RUN apt-get update && \
-    apt-get dist-upgrade -y && \
-    apt-get install -y cmake wget curl git less file \
-        libglib2.0-dev libkmod-dev libnl-genl-3-dev linux-libc-dev pkg-config psmisc tox qemu-utils fuse python3-dev \
-        devscripts debhelper bash-completion librdmacm-dev libibverbs-dev xsltproc docbook-xsl \
-        libconfig-general-perl libaio-dev libc6-dev sg3-utils iptables libltdl7 python3-pip uuid-runtime libdevmapper-dev iproute2 jq
+RUN zypper -n install cmake wget curl git less file gcc \
+    libkmod-devel libnl3-devel linux-glibc-devel pkg-config psmisc tox qemu-tools fuse python3-devel \
+    bash-completion librdmacm1 librdmacm-utils libibverbs xsltproc docbook-xsl-stylesheets \
+    perl-Config-General libaio-devel glibc-devel-static glibc-devel sg3_utils iptables libltdl7 \
+    python3-pip uuid-runtime libdevmapper1_03 iproute2 jq unzip zlib-devel zlib-devel-static \
+    rpm-build rdma-core-devel gcc-c++ docker && \
+    rm -rf rm -rf /var/cache/zypp/*
 
 # needed for ${!var} substitution
 RUN rm -f /bin/sh && ln -s /bin/bash /bin/sh
@@ -30,19 +33,12 @@ RUN rm -f /bin/sh && ln -s /bin/bash /bin/sh
 # Install Go & tools
 ENV GOLANG_ARCH_amd64=amd64 GOLANG_ARCH_arm64=arm64 GOLANG_ARCH=GOLANG_ARCH_${ARCH} \
     GOPATH=/go PATH=/go/bin:/usr/local/go/bin:${PATH} SHELL=/bin/bash
-RUN wget -O - https://storage.googleapis.com/golang/go1.14.4.linux-${!GOLANG_ARCH}.tar.gz | tar -xzf - -C /usr/local && \
+RUN wget -O - https://storage.googleapis.com/golang/go1.14.15.linux-${!GOLANG_ARCH}.tar.gz | tar -xzf - -C /usr/local && \
     go get github.com/rancher/trash && go get -u golang.org/x/lint/golint
 
-# Docker
-ENV DOCKER_URL_amd64=https://download.docker.com/linux/ubuntu/dists/focal/pool/stable/amd64/docker-ce-cli_20.10.7~3-0~ubuntu-focal_amd64.deb \
-    DOCKER_URL_arm64=https://download.docker.com/linux/ubuntu/dists/focal/pool/stable/arm64/docker-ce-cli_20.10.7~3-0~ubuntu-focal_arm64.deb \
-    DOCKER_URL=DOCKER_URL_${ARCH}
-
-RUN wget ${!DOCKER_URL} -O docker_ce_${ARCH} && dpkg -i docker_ce_${ARCH}
-
 # Minio
-ENV MINIO_URL_amd64=https://dl.min.io/server/minio/release/linux-amd64/archive/minio.RELEASE.2021-07-30T00-02-00Z \
-    MINIO_URL_arm64=https://dl.min.io/server/minio/release/linux-arm64/archive/minio.RELEASE.2021-07-30T00-02-00Z \
+ENV MINIO_URL_amd64=https://dl.min.io/server/minio/release/linux-amd64/archive/minio.RELEASE.2021-12-20T22-07-16Z \
+    MINIO_URL_arm64=https://dl.min.io/server/minio/release/linux-arm64/archive/minio.RELEASE.2021-12-20T22-07-16Z \
 	MINIO_URL=MINIO_URL_${ARCH}
 
 RUN wget ${!MINIO_URL} -O /usr/bin/minio && chmod +x /usr/bin/minio
@@ -100,16 +96,16 @@ RUN cd /usr/src && \
     git clone https://github.com/rancher/liblonghorn.git && \
     cd liblonghorn && \
     git checkout 09956ed9329d51f41a85d6e06113948c947976a8 && \
-    make deb && \
-    dpkg -i ./pkg/liblonghorn_*.deb
+    make && \
+    make install
 
 # Build TGT
 RUN cd /usr/src && \
     git clone https://github.com/rancher/tgt.git && \
     cd tgt && \
     git checkout e042fdd3616ca90619637b5826695a3de9b5dd8e && \
-    ./scripts/build-pkg.sh deb && \
-    dpkg -i ./pkg/tgt_*.deb
+    make && \
+    make install 
 
 # Build cache for tox
 RUN mkdir integration/
