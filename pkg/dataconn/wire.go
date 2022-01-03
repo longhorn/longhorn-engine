@@ -6,39 +6,46 @@ import (
 	"fmt"
 	"io"
 	"net"
+	"runtime"
 )
 
 type Wire struct {
-	conn   net.Conn
-	writer *bufio.Writer
-	reader io.Reader
+	conn      net.Conn
+	writer    *bufio.Writer
+	reader    io.Reader
+	byteOrder binary.ByteOrder
 }
 
 func NewWire(conn net.Conn) *Wire {
+	var byteOrder binary.ByteOrder = binary.LittleEndian
+	if runtime.GOARCH == "s390x" {
+		byteOrder = binary.BigEndian
+	}
 	return &Wire{
-		conn:   conn,
-		writer: bufio.NewWriterSize(conn, writeBufferSize),
-		reader: bufio.NewReaderSize(conn, readBufferSize),
+		conn:      conn,
+		writer:    bufio.NewWriterSize(conn, writeBufferSize),
+		reader:    bufio.NewReaderSize(conn, readBufferSize),
+		byteOrder: byteOrder,
 	}
 }
 
 func (w *Wire) Write(msg *Message) error {
-	if err := binary.Write(w.writer, binary.LittleEndian, msg.MagicVersion); err != nil {
+	if err := binary.Write(w.writer, w.byteOrder, msg.MagicVersion); err != nil {
 		return err
 	}
-	if err := binary.Write(w.writer, binary.LittleEndian, msg.Seq); err != nil {
+	if err := binary.Write(w.writer, w.byteOrder, msg.Seq); err != nil {
 		return err
 	}
-	if err := binary.Write(w.writer, binary.LittleEndian, msg.Type); err != nil {
+	if err := binary.Write(w.writer, w.byteOrder, msg.Type); err != nil {
 		return err
 	}
-	if err := binary.Write(w.writer, binary.LittleEndian, msg.Offset); err != nil {
+	if err := binary.Write(w.writer, w.byteOrder, msg.Offset); err != nil {
 		return err
 	}
-	if err := binary.Write(w.writer, binary.LittleEndian, msg.Size); err != nil {
+	if err := binary.Write(w.writer, w.byteOrder, msg.Size); err != nil {
 		return err
 	}
-	if err := binary.Write(w.writer, binary.LittleEndian, uint32(len(msg.Data))); err != nil {
+	if err := binary.Write(w.writer, w.byteOrder, uint32(len(msg.Data))); err != nil {
 		return err
 	}
 	if len(msg.Data) > 0 {
@@ -55,7 +62,7 @@ func (w *Wire) Read() (*Message, error) {
 		length uint32
 	)
 
-	if err := binary.Read(w.reader, binary.LittleEndian, &msg.MagicVersion); err != nil {
+	if err := binary.Read(w.reader, w.byteOrder, &msg.MagicVersion); err != nil {
 		return nil, err
 	}
 
@@ -63,19 +70,19 @@ func (w *Wire) Read() (*Message, error) {
 		return nil, fmt.Errorf("wrong API version received: 0x%x", &msg.MagicVersion)
 	}
 
-	if err := binary.Read(w.reader, binary.LittleEndian, &msg.Seq); err != nil {
+	if err := binary.Read(w.reader, w.byteOrder, &msg.Seq); err != nil {
 		return nil, err
 	}
-	if err := binary.Read(w.reader, binary.LittleEndian, &msg.Type); err != nil {
+	if err := binary.Read(w.reader, w.byteOrder, &msg.Type); err != nil {
 		return nil, err
 	}
-	if err := binary.Read(w.reader, binary.LittleEndian, &msg.Offset); err != nil {
+	if err := binary.Read(w.reader, w.byteOrder, &msg.Offset); err != nil {
 		return nil, err
 	}
-	if err := binary.Read(w.reader, binary.LittleEndian, &msg.Size); err != nil {
+	if err := binary.Read(w.reader, w.byteOrder, &msg.Size); err != nil {
 		return nil, err
 	}
-	if err := binary.Read(w.reader, binary.LittleEndian, &length); err != nil {
+	if err := binary.Read(w.reader, w.byteOrder, &length); err != nil {
 		return nil, err
 	}
 	if length > 0 {

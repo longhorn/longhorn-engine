@@ -30,8 +30,12 @@ RUN zypper -n install cmake wget curl git less file gcc \
 # needed for ${!var} substitution
 RUN rm -f /bin/sh && ln -s /bin/bash /bin/sh
 
+RUN if [ ${ARCH} == "s390x" ]; then \
+        ln -s /usr/bin/gcc /usr/bin/s390x-linux-gnu-gcc;\
+    fi
+
 # Install Go & tools
-ENV GOLANG_ARCH_amd64=amd64 GOLANG_ARCH_arm64=arm64 GOLANG_ARCH=GOLANG_ARCH_${ARCH} \
+ENV GOLANG_ARCH_amd64=amd64 GOLANG_ARCH_arm64=arm64 GOLANG_ARCH_s390x=s390x GOLANG_ARCH=GOLANG_ARCH_${ARCH} \
     GOPATH=/go PATH=/go/bin:/usr/local/go/bin:${PATH} SHELL=/bin/bash
 RUN wget -O - https://storage.googleapis.com/golang/go1.14.15.linux-${!GOLANG_ARCH}.tar.gz | tar -xzf - -C /usr/local && \
     go get github.com/rancher/trash && go get -u golang.org/x/lint/golint
@@ -39,6 +43,7 @@ RUN wget -O - https://storage.googleapis.com/golang/go1.14.15.linux-${!GOLANG_AR
 # Minio
 ENV MINIO_URL_amd64=https://dl.min.io/server/minio/release/linux-amd64/archive/minio.RELEASE.2021-12-20T22-07-16Z \
     MINIO_URL_arm64=https://dl.min.io/server/minio/release/linux-arm64/archive/minio.RELEASE.2021-12-20T22-07-16Z \
+    MINIO_URL_s390x=https://dl.min.io/server/minio/release/linux-s390x/archive/minio.RELEASE.2021-12-20T22-07-16Z \
 	MINIO_URL=MINIO_URL_${ARCH}
 
 RUN wget ${!MINIO_URL} -O /usr/bin/minio && chmod +x /usr/bin/minio
@@ -56,6 +61,7 @@ RUN ldconfig
 # GRPC health probe
 ENV GRPC_HEALTH_PROBE_amd64=https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/v0.3.2/grpc_health_probe-linux-amd64 \
     GRPC_HEALTH_PROBE_arm64=https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/v0.3.2/grpc_health_probe-linux-arm64 \
+    GRPC_HEALTH_PROBE_s390x=https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/v0.3.2/grpc_health_probe-linux-s390x \
 	GRPC_HEALTH_PROBE=GRPC_HEALTH_PROBE_${ARCH}
 
 RUN wget ${!GRPC_HEALTH_PROBE} -O /usr/local/bin/grpc_health_probe && \
@@ -64,6 +70,7 @@ RUN wget ${!GRPC_HEALTH_PROBE} -O /usr/local/bin/grpc_health_probe && \
 # protoc
 ENV PROTOC_amd64=https://github.com/protocolbuffers/protobuf/releases/download/v3.7.1/protoc-3.7.1-linux-x86_64.zip \
 	PROTOC_arm64=https://github.com/protocolbuffers/protobuf/releases/download/v3.7.1/protoc-3.7.1-linux-aarch_64.zip \
+	PROTOC_s390x=https://github.com/protocolbuffers/protobuf/releases/download/v3.18.0/protoc-3.18.0-linux-s390_64.zip \
 	PROTOC=PROTOC_${ARCH}
 
 RUN cd /usr/src && \
@@ -82,7 +89,12 @@ RUN cd /go/src/github.com/ && \
     cp protoc-gen-go /usr/local/bin
 
 # python grpc-tools
-RUN pip3 install grpcio==1.25.0 grpcio_tools==1.25.0
+RUN if [ "${ARCH}" == "s390x" ]; then \
+        zypper -n in libopenssl-devel && \
+        GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=True pip3 install grpcio==1.25.0 grpcio_tools==1.25.0;\   
+    else \
+        pip3 install grpcio==1.25.0 grpcio_tools==1.25.0; \
+    fi
 
 # buf
 ENV GO111MODULE=on
@@ -110,7 +122,12 @@ RUN cd /usr/src && \
 # Build cache for tox
 RUN mkdir integration/
 COPY integration/setup.py integration/tox.ini integration/requirements.txt integration/flake8-requirements.txt integration/
-RUN cd integration && tox --notest
+RUN cd integration && \
+    if [ "${ARCH}" == "s390x" ]; then \
+        GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=True tox --notest;\
+    else \
+        tox --notest; \
+    fi
 
 # Build longhorn-instance-manager for integration testing
 RUN cd /go/src/github.com/longhorn && \
