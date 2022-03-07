@@ -11,8 +11,8 @@ import (
 	log "github.com/sirupsen/logrus"
 )
 
-// FoldFile folds child snapshot data into its parent
-func FoldFile(childFileName, parentFileName string, ops FileHandlingOperations) error {
+// PruneFile removes the overlapping chunks from the parent snapshot based on its child volume head
+func PruneFile(parentFileName, childFileName string, ops FileHandlingOperations) error {
 	childFInfo, err := os.Stat(childFileName)
 	if err != nil {
 		return fmt.Errorf("os.Stat(childFileName) failed, error: %v", err)
@@ -33,7 +33,7 @@ func FoldFile(childFileName, parentFileName string, ops FileHandlingOperations) 
 			return fmt.Errorf("file sizes are not equal and the parent file is larger than the child file")
 		}
 		if err := os.Truncate(parentFileName, childFInfo.Size()); err != nil {
-			return fmt.Errorf("failed to expand the parent file size before coalesce, error: %v", err)
+			return fmt.Errorf("failed to expand the parent file size before pruning, error: %v", err)
 		}
 	}
 
@@ -44,16 +44,16 @@ func FoldFile(childFileName, parentFileName string, ops FileHandlingOperations) 
 	}
 	defer childFileIo.Close()
 
-	parentFileIo, err := NewDirectFileIoProcessor(parentFileName, os.O_WRONLY, 0)
+	parentFileIo, err := NewDirectFileIoProcessor(parentFileName, os.O_RDWR, 0)
 	if err != nil {
 		return fmt.Errorf("failed to open parentFile, error: %v", err)
 	}
 	defer parentFileIo.Close()
 
-	return coalesce(parentFileIo, childFileIo, childFInfo.Size(), ops)
+	return prune(parentFileIo, childFileIo, childFInfo.Size(), ops)
 }
 
-func coalesce(parentFileIo, childFileIo FileIoProcessor, fileSize int64, ops FileHandlingOperations) (err error) {
+func prune(parentFileIo, childFileIo FileIoProcessor, fileSize int64, ops FileHandlingOperations) (err error) {
 	progress := new(uint32)
 	progressMutex := &sync.Mutex{}
 
@@ -66,11 +66,6 @@ func coalesce(parentFileIo, childFileIo FileIoProcessor, fileSize int64, ops Fil
 		}
 	}()
 
-	blockSize, err := getFileSystemBlockSize(childFileIo)
-	if err != nil {
-		return fmt.Errorf("can't get FS block size, error: %v", err)
-	}
-
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
@@ -80,36 +75,18 @@ func coalesce(parentFileIo, childFileIo FileIoProcessor, fileSize int64, ops Fil
 		return fmt.Errorf("failed to retrieve file layout for file %v err: %v", childFileIo.Name(), err)
 	}
 
+	parentFiemap := NewFiemapFile(parentFileIo.GetFile())
+
 	processSegment := func(segment FileInterval) error {
-		batch := batchBlockCount * blockSize
-		buffer := AllocateAligned(batch)
-
 		if segment.Kind == SparseData {
-			for offset := segment.Begin; offset < segment.End; {
-				var n int
-
-				size := batch
-				if offset+int64(size) > segment.End {
-					size = int(segment.End - offset)
-				}
-				// read a batch from child
-				n, err := childFileIo.ReadAt(buffer[:size], offset)
-				if err != nil {
-					return fmt.Errorf("failed to read childFile filename: %v, size: %v, at: %v, error: %v",
-						childFileIo.Name(), size, offset, err)
-				}
-				// write a batch to parent
-				n, err = parentFileIo.WriteAt(buffer[:size], offset)
-				if err != nil {
-					return fmt.Errorf("failed to write to parentFile filename: %v, size: %v, at: %v, error: %v",
-						parentFileIo.Name(), size, offset, err)
-				}
-				offset += int64(n)
+			// punch a hole to the parent to reclaim the space
+			if err := parentFiemap.PunchHole(segment.Begin, segment.Len()); err != nil {
+				return fmt.Errorf("failed to punch a hole to childFile filename: %v, size: %v, at: %v, error: %v",
+					childFileIo.Name(), segment.Begin, segment.Len(), err)
 			}
-
-			newProgress := uint32(float64(segment.End) / float64(fileSize) * 100)
-			updateProgress(progress, newProgress, false, nil, progressMutex, ops)
 		}
+		newProgress := uint32(float64(segment.End) / float64(fileSize) * 100)
+		updateProgress(progress, newProgress, false, nil, progressMutex, ops)
 
 		return nil
 	}
@@ -128,7 +105,7 @@ func coalesce(parentFileIo, childFileIo FileIoProcessor, fileSize int64, ops Fil
 		break
 	}
 
-	log.Debugf("finished fold for parent: %v child: %v size: %v elapsed: %.2fs",
+	log.Debugf("finished pruning for parent: %v child: %v size: %v elapsed: %.2fs",
 		parentFileIo.Name(), childFileIo.Name(), fileSize, time.Now().Sub(syncStartTime).Seconds())
 	return err
 }
