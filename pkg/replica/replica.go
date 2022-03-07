@@ -118,6 +118,7 @@ const (
 	OpCoalesce = "coalesce" // Source is parent, target is child
 	OpRemove   = "remove"
 	OpReplace  = "replace"
+	OpPrune    = "prune" // Remove overlapping chunks from the source.
 )
 
 func OpenSnapshot(dir string, snapshotName string) (*Replica, error) {
@@ -577,8 +578,17 @@ func (r *Replica) processPrepareRemoveDisks(disk string) ([]PrepareRemoveAction,
 					Source: disk,
 					Target: child,
 				})
-			return actions, nil
+		} else {
+			// Remove the overlapping chunks from the snapshot while keeping
+			// the volume head unchanged.
+			actions = append(actions,
+				PrepareRemoveAction{
+					Action: OpPrune,
+					Source: disk,
+					Target: child,
+				})
 		}
+		return actions, nil
 	}
 
 	logrus.Infof("Currently snapshot %v doesn't meet criteria to be removed, skip it for now", disk)

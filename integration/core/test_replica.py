@@ -149,7 +149,7 @@ def test_remove_disk(grpc_replica_client):  # NOQA
 
     grpc_replica_client.disk_mark_as_removed(name='001')
     ops = grpc_replica_client.disk_prepare_remove(name='001').operations
-    assert len(ops) == 0
+    assert len(ops) == 1
 
     r = grpc_replica_client.disk_remove(name='volume-snap-001.img')
     assert r.state == 'dirty'
