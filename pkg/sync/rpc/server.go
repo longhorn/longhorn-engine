@@ -1131,6 +1131,12 @@ func (s *SyncAgentServer) processRemoveSnapshot(snapshot string) error {
 				logrus.Errorf("Failed to replace %v with %v", op.Target, op.Source)
 				return err
 			}
+		case replica.OpPrune:
+			logrus.Infof("Prune overlapping chunks from %v based on %v", op.Source, op.Target)
+			if err := sparse.PruneFile(op.Source, op.Target, s.PurgeStatus); err != nil {
+				logrus.Errorf("failed to prune %s based on %s: %v", op.Source, op.Target, err)
+				return err
+			}
 		}
 	}
 
@@ -1252,7 +1258,7 @@ func (b *BackupList) Refresh() error {
 		}
 	}
 	if completed == MaxBackupSize {
-		//Remove all the older completed backups in the range backupList[0:index]
+		// Remove all the older completed backups in the range backupList[0:index]
 		for ; index >= 0; index-- {
 			if b.backups[index].backupStatus.Progress == 100 {
 				updatedList, err := b.remove(b.backups, index)
@@ -1260,7 +1266,7 @@ func (b *BackupList) Refresh() error {
 					return err
 				}
 				b.backups = updatedList
-				//As this backupList[index] is removed, will have to decrement the index by one
+				// As this backupList[index] is removed, will have to decrement the index by one
 				index--
 			}
 		}

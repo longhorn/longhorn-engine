@@ -565,7 +565,7 @@ func (s *TestSuite) TestPrepareRemove(c *C) {
 
 	actions, err := r.PrepareRemoveDisk("001")
 	c.Assert(err, IsNil)
-	c.Assert(actions, HasLen, 0)
+	c.Assert(actions, HasLen, 1)
 
 	err = r.MarkDiskAsRemoved("volume-snap-000.img")
 	c.Assert(err, IsNil)
@@ -601,7 +601,7 @@ func (s *TestSuite) TestPrepareRemove(c *C) {
 
 	actions, err = r.PrepareRemoveDisk("002")
 	c.Assert(err, IsNil)
-	c.Assert(actions, HasLen, 0)
+	c.Assert(actions, HasLen, 1)
 
 	err = r.Snapshot("003", true, now, nil)
 	c.Assert(err, IsNil)
