@@ -88,7 +88,7 @@ type PurgeStatus struct {
 	total     int
 }
 
-func (ps *PurgeStatus) UpdateFoldFileProgress(progress int, done bool, err error) {
+func (ps *PurgeStatus) UpdateFileHandlingProgress(progress int, done bool, err error) {
 	ps.Lock()
 	defer ps.Unlock()
 
