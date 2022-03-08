@@ -33,7 +33,10 @@ def readat_direct(dev, offset, length):
 def writeat_direct(dev, offset, data):
     pg = offset // PAGE_SIZE
     # don't support across page write
-    assert pg == (offset + len(data)) // PAGE_SIZE
+    if len(data) == PAGE_SIZE:
+        assert pg == (offset + len(data) - 1) // PAGE_SIZE
+    else:
+        assert pg == (offset + len(data)) // PAGE_SIZE
     pg_offset = pg * PAGE_SIZE
 
     f = os.open(dev, os.O_DIRECT | os.O_RDWR)
