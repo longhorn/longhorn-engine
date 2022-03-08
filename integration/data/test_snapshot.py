@@ -11,13 +11,14 @@ from common.core import (  # NOQA
     Data, random_length, random_string,
     expand_volume_with_frontend,
     wait_and_check_volume_expansion,
-    checksum_dev
+    checksum_dev, verify_data
 )
 
 from common.constants import (
     VOLUME_HEAD, ENGINE_NAME, ENGINE_BACKING_NAME,
     VOLUME_NAME, VOLUME_BACKING_NAME,
     PAGE_SIZE, SIZE, EXPANDED_SIZE,
+    FRONTEND_TGT_BLOCKDEV
 )
 
 from common.util import checksum_data
@@ -485,3 +486,109 @@ def snapshot_mounted_filesystem_test(volume_name, dev, address, engine_name):  #
 
     # remove the created mount folder
     subprocess.check_call(nsenter_cmd + ["rmdir", mnt_path])
+
+
+def test_snapshot_prune(grpc_controller, grpc_replica1, grpc_replica2):  # NOQA
+    """
+    Test removing the snapshot directly behinds the volume head would trigger
+    snapshot prune. Snapshot pruning means removing the overlapping part from
+    the snapshot based on the volume head content.
+
+    Context:
+
+    We need to verify that removing the snapshot directly behinds the volume
+    head would trigger snapshot prune. And the data after the purge is intact.
+    Snapshot pruning means removing the overlapping part from the snapshot
+    based on the volume head content.
+
+    Steps:
+
+    1.  Create a volume and attach to the current node
+    2.  Write some data to the volume.
+    3.  Take snapshot `snap1`.
+    4.  Write some data to the volume then compute the checksum.
+    5.  Delete snapshot `snap1`.
+    6.  Verify the snapshot is marked as Removed.
+    7.  Wait for the snapshot purge (pruning) complete.
+    8.  Verify the volume data is intact.
+    9.  Verify Snapshot size is decreased by the overlapping size.
+    10. Create one more snapshot `snap2`.
+    11. Try to revert to snapshot `snap1`. This should fail.
+    12. Trigger the snapshot purge.
+        Verify snapshot `snap1` can be removed. And the data is still intact.
+    """
+
+    address = grpc_controller.address
+
+    dev = get_dev(grpc_replica1, grpc_replica2, grpc_controller)
+
+    # Create a snapshot that contains 4Ki data at offset 0.
+    offset1 = 0
+    page_count1 = 8
+    length1 = page_count1*PAGE_SIZE
+    data1 = random_string(length1)
+    for i in range(page_count1):
+        verify_data(dev, i*PAGE_SIZE, data1[i*PAGE_SIZE: (i+1)*PAGE_SIZE])
+    snap1 = cmd.snapshot_create(address)
+
+    # Write 512B actual data at offset 512 to the volume head.
+    offset2 = PAGE_SIZE
+    length2 = PAGE_SIZE
+    data2 = random_string(length2)
+    verify_data(dev, offset2, data2)
+
+    # the result should look like this
+    # snap1(4Ki) -> volume head(4Ki rather than 512B)
+    info = cmd.snapshot_info(address)
+    assert len(info) == 2
+
+    assert snap1 in info
+    assert info[snap1]["parent"] == ""
+    assert VOLUME_HEAD in info[snap1]["children"]
+    assert not info[snap1]["removed"]
+
+    assert VOLUME_HEAD in info
+    assert info[VOLUME_HEAD]["parent"] == snap1
+
+    snap1_size1 = int(info[snap1]["size"])
+    head_size1 = int(info[VOLUME_HEAD]["size"])
+
+    cmd.snapshot_rm(address, snap1)
+    cmd.snapshot_purge(address)
+    wait_for_purge_completion(address)
+
+    info = cmd.snapshot_info(address)
+    assert len(info) == 2
+
+    assert snap1 in info
+    assert info[snap1]["parent"] == ""
+    assert VOLUME_HEAD in info[snap1]["children"]
+    assert info[snap1]["removed"]
+    assert int(info[snap1]["size"]) == snap1_size1 - 4096
+
+    assert VOLUME_HEAD in info
+    assert info[VOLUME_HEAD]["parent"] == snap1
+    assert int(info[VOLUME_HEAD]["size"]) == head_size1
+
+    # Verify the data content
+    assert read_dev(dev, offset1, length1) == \
+           data1[:offset2] + data2 + data1[offset2+length2:]
+
+    snap2 = cmd.snapshot_create(address)
+
+    with pytest.raises(subprocess.CalledProcessError):
+        snapshot_revert_with_frontend(address, ENGINE_NAME, snap1)
+    grpc_controller.volume_frontend_start(FRONTEND_TGT_BLOCKDEV)
+
+    cmd.snapshot_purge(address)
+    wait_for_purge_completion(address)
+
+    info = cmd.snapshot_info(address)
+    assert len(info) == 2
+
+    assert snap1 not in info
+    assert snap2 in info
+    assert info[snap2]["parent"] == ""
+    assert VOLUME_HEAD in info[snap2]["children"]
+    assert not info[snap2]["removed"]
+    assert int(info[snap2]["size"]) == length1
