@@ -267,8 +267,10 @@ def test_snapshot_tree_basic(grpc_controller,  # NOQA
     assert VOLUME_HEAD in info
     assert info[VOLUME_HEAD]["parent"] == snap["1b"]
 
-    snapshot_tree_verify_node(dev, address, ENGINE_NAME,
-                              offset, length, snap, data, "0b")
+    # Reverting to a removing snapshot would fail
+    with pytest.raises(subprocess.CalledProcessError):
+        snapshot_tree_verify_node(dev, address, ENGINE_NAME,
+                                  offset, length, snap, data, "0b")
     snapshot_tree_verify_node(dev, address, ENGINE_NAME,
                               offset, length, snap, data, "0c")
     snapshot_tree_verify_node(dev, address, ENGINE_NAME,
