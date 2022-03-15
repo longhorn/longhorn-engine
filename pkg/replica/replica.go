@@ -785,13 +785,19 @@ func (r *Replica) rmDisk(name string) error {
 	return lastErr
 }
 
-func (r *Replica) revertDisk(parent, created string) (*Replica, error) {
-	if _, err := os.Stat(r.diskPath(parent)); err != nil {
+func (r *Replica) revertDisk(parentDiskFileName, created string) (*Replica, error) {
+	if _, err := os.Stat(r.diskPath(parentDiskFileName)); err != nil {
 		return nil, err
 	}
 
+	if diskInfo, exists := r.diskData[parentDiskFileName]; !exists {
+		return nil, fmt.Errorf("cannot revert to disk file %v since it's not in the disk chain", parentDiskFileName)
+	} else if diskInfo.Removed {
+		return nil, fmt.Errorf("cannot revert to disk file %v since it's already marked as removed", parentDiskFileName)
+	}
+
 	oldHead := r.info.Head
-	f, newHeadDisk, err := r.createNewHead(oldHead, parent, created, r.info.Size)
+	f, newHeadDisk, err := r.createNewHead(oldHead, parentDiskFileName, created, r.info.Size)
 	if err != nil {
 		return nil, err
 	}
