@@ -51,6 +51,12 @@ def snapshot_revert_test(dev, address, engine_name):  # NOQA
     snap2.refute_data()
     snap1.verify_checksum()
 
+    cmd.snapshot_rm(address, snap2.name)
+    with pytest.raises(subprocess.CalledProcessError):
+        snapshot_revert_with_frontend(address, engine_name, snap2.name)
+
+    with pytest.raises(subprocess.CalledProcessError):
+        snapshot_revert_with_frontend(address, engine_name, "non-existing")
 
 def test_snapshot_revert(grpc_controller,  # NOQA
                          grpc_replica1, grpc_replica2):  # NOQA
