@@ -12,44 +12,6 @@ import (
 	"github.com/longhorn/longhorn-engine/pkg/types"
 )
 
-func getReplicaDisksAndHead(address string) (map[string]types.DiskInfo, string, error) {
-	repClient, err := client.NewReplicaClient(address)
-	if err != nil {
-		return nil, "", fmt.Errorf("Cannot get replica client for %v: %v",
-			address, err)
-	}
-	defer repClient.Close()
-
-	rep, err := repClient.GetReplica()
-	if err != nil {
-		return nil, "", fmt.Errorf("Cannot get replica for %v: %v",
-			address, err)
-	}
-
-	if len(rep.Chain) == 0 {
-		return nil, "", fmt.Errorf("replica on %v does not have any non-removed disks", address)
-	}
-
-	disks := map[string]types.DiskInfo{}
-	head := rep.Chain[0]
-	for diskName, info := range rep.Disks {
-		// skip volume head
-		if diskName == head {
-			continue
-		}
-		// skip backing file
-		if diskName == rep.BackingFile {
-			continue
-		}
-		disks[diskName] = info
-	}
-	return disks, head, nil
-}
-
-func getDiskMetaFileName(disk string) string {
-	return fmt.Sprintf("%s.meta", disk)
-}
-
 func (c *Controller) getCurrentAndRWReplica(address string) (*types.Replica, *types.Replica, error) {
 	var (
 		current, rwReplica *types.Replica
@@ -90,12 +52,12 @@ func (c *Controller) VerifyRebuildReplica(address string) error {
 		return fmt.Errorf("Invalid mode %v for replica %v to check", replica.Mode, address)
 	}
 
-	fromDisks, _, err := getReplicaDisksAndHead(rwReplica.Address)
+	fromDisks, _, err := GetReplicaDisksAndHead(rwReplica.Address)
 	if err != nil {
 		return err
 	}
 
-	toDisks, _, err := getReplicaDisksAndHead(address)
+	toDisks, _, err := GetReplicaDisksAndHead(address)
 	if err != nil {
 		return err
 	}
@@ -185,12 +147,12 @@ func (c *Controller) PrepareRebuildReplica(address string) ([]types.SyncFileInfo
 		return nil, fmt.Errorf("Invalid mode %v for replica %v to prepare rebuild", replica.Mode, address)
 	}
 
-	fromDisks, fromHead, err := getReplicaDisksAndHead(rwReplica.Address)
+	fromDisks, fromHead, err := GetReplicaDisksAndHead(rwReplica.Address)
 	if err != nil {
 		return nil, err
 	}
 
-	toDisks, toHead, err := getReplicaDisksAndHead(address)
+	toDisks, toHead, err := GetReplicaDisksAndHead(address)
 	if err != nil {
 		return nil, err
 	}
@@ -198,7 +160,7 @@ func (c *Controller) PrepareRebuildReplica(address string) ([]types.SyncFileInfo
 	syncFileInfoList := []types.SyncFileInfo{}
 	extraDisks := toDisks
 	for diskName, info := range fromDisks {
-		diskMeta := getDiskMetaFileName(diskName)
+		diskMeta := GenerateSnapshotDiskMetaName(diskName)
 		diskSize, err := strconv.ParseInt(info.Size, 10, 64)
 		if err != nil {
 			return nil, err
