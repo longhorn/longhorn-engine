@@ -12,23 +12,48 @@ import (
 )
 
 func (c *Controller) Revert(name string) error {
-	doable := false
 	rw := false
 	wo := false
 	for _, rep := range c.replicas {
-		//BUG: Need to deal with replica in rebuilding(WO) mode.
+		// BUG: Need to deal with replica in rebuilding(WO) mode.
 		if rep.Mode == types.RW {
 			rw = true
 		} else if rep.Mode == types.WO {
 			wo = true
 		}
 	}
-	if rw && !wo {
-		doable = true
-	}
-
+	doable := rw && !wo
 	if !doable {
 		return fmt.Errorf("Not valid state to revert, rebuilding in process or all replica are in ERR state")
+	}
+
+	snapshotDiskName := GenerateSnapshotDiskName(name)
+	found := false
+	for _, r := range c.replicas {
+		if r.Mode != types.RW {
+			continue
+		}
+
+		disks, _, err := GetReplicaDisksAndHead(r.Address)
+		if err != nil {
+			return err
+		}
+		for _, disk := range disks {
+			if disk.Name != snapshotDiskName {
+				continue
+			}
+			if disk.Removed {
+				return fmt.Errorf("cannot revert to removed snapshot %v", name)
+			}
+			found = true
+			break
+		}
+		if found {
+			break
+		}
+	}
+	if !found {
+		return fmt.Errorf("cannot do revert since the target snapshot %v is not found", name)
 	}
 
 	clients, name, err := c.clientsAndSnapshot(name)
