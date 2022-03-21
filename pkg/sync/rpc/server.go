@@ -1077,6 +1077,7 @@ func (s *SyncAgentServer) purgeSnapshots() (err error) {
 	s.PurgeStatus.total = markedRemoved
 	s.PurgeStatus.Unlock()
 
+	var latestSnapshot string
 	// We're tracing up from each leaf to the root
 	var removed int
 	for _, leaf := range leaves {
@@ -1095,6 +1096,19 @@ func (s *SyncAgentServer) purgeSnapshots() (err error) {
 				if info.Name == VolumeHeadName {
 					return fmt.Errorf("BUG: Volume head was marked as removed")
 				}
+				// Process the snapshot directly behinds the volume head in the end
+				if latestSnapshot == "" {
+					for childName := range info.Children {
+						if childName == VolumeHeadName {
+							latestSnapshot = snapshot
+							break
+						}
+					}
+					if latestSnapshot != "" {
+						snapshot = info.Parent
+						continue
+					}
+				}
 				if err := s.processRemoveSnapshot(snapshot); err != nil {
 					return err
 				}
@@ -1112,6 +1126,18 @@ func (s *SyncAgentServer) purgeSnapshots() (err error) {
 		}
 		s.PurgeStatus.Lock()
 		s.PurgeStatus.total = markedRemoved + removed
+		s.PurgeStatus.Progress = int(float32(removed) / float32(s.PurgeStatus.total) * 100)
+		s.PurgeStatus.Unlock()
+	}
+
+	if latestSnapshot != "" {
+		if err := s.processRemoveSnapshot(latestSnapshot); err != nil {
+			return err
+		}
+		removed++
+		s.PurgeStatus.Lock()
+		s.PurgeStatus.processed = removed
+		s.PurgeStatus.total++
 		s.PurgeStatus.Progress = int(float32(removed) / float32(s.PurgeStatus.total) * 100)
 		s.PurgeStatus.Unlock()
 	}
