@@ -263,6 +263,10 @@ def get_replica_head_file_path(replica_dir):
     return subprocess.check_output(cmd).strip()
 
 
+def get_filesystem_block_size(path="/tmp"):
+    return int(subprocess.check_output(["stat", "-fc", "%s", path]).strip())
+
+
 def wait_for_rebuild_complete(url):
     completed = 0
     rebuild_status = {}
