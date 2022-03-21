@@ -11,7 +11,8 @@ from common.core import (  # NOQA
     Data, random_length, random_string,
     expand_volume_with_frontend,
     wait_and_check_volume_expansion,
-    checksum_dev, verify_data
+    checksum_dev, verify_data,
+    get_filesystem_block_size
 )
 
 from common.constants import (
@@ -598,3 +599,71 @@ def test_snapshot_prune(grpc_controller, grpc_replica1, grpc_replica2):  # NOQA
     assert VOLUME_HEAD in info[snap2]["children"]
     assert not info[snap2]["removed"]
     assert int(info[snap2]["size"]) == length1
+
+
+def test_snapshot_prune_with_coalesce(grpc_controller, grpc_replica1, grpc_replica2):  # NOQA
+    """
+    Test the prune for the snapshot directly behinds the volume head would be
+    handled after all snapshot coalescing done.
+
+    Steps:
+
+    1.  Create a volume and attach to the current node
+    2.  Write some data to the 1st block of the volume.
+    3.  Take snapshot `snap1`.
+    4.  Write some data to the 2nd block of the volume.
+    5.  Take snapshot `snap2`.
+    6.  Write some data to the 3rd block of the volume.
+    7.  Take snapshot `snap3`.
+    8.  Overwrite the previous data to the volume head
+        then compute the checksum.
+    9.  Mark all snapshot as Removed then start snapshot purge.
+    10. Verify there is only one empty snapshot after purge.
+        And the data is still intact.
+    """
+
+    fs_block_size = get_filesystem_block_size()
+
+    address = grpc_controller.address
+
+    dev = get_dev(grpc_replica1, grpc_replica2, grpc_controller)
+
+    # snap1
+    verify_data(dev, 0*fs_block_size, random_string(PAGE_SIZE))
+    snap1 = cmd.snapshot_create(address)
+
+    verify_data(dev, 1*fs_block_size, random_string(PAGE_SIZE))
+    snap2 = cmd.snapshot_create(address)
+
+    verify_data(dev, 2*fs_block_size, random_string(PAGE_SIZE))
+    snap3 = cmd.snapshot_create(address)
+
+    # Overwrite the data in the volume head
+    verify_data(dev, 0*fs_block_size, random_string(PAGE_SIZE))
+    verify_data(dev, 1*fs_block_size, random_string(PAGE_SIZE))
+    verify_data(dev, 2*fs_block_size, random_string(PAGE_SIZE))
+    cksum = read_dev(dev, 0, 3*fs_block_size)
+
+    cmd.snapshot_rm(address, snap1)
+    cmd.snapshot_rm(address, snap2)
+    cmd.snapshot_rm(address, snap3)
+    cmd.snapshot_purge(address)
+    wait_for_purge_completion(address)
+
+    info = cmd.snapshot_info(address)
+    assert len(info) == 2
+
+    assert snap1 not in info
+    assert snap2 not in info
+    assert snap3 in info
+    assert info[snap3]["parent"] == ""
+    assert VOLUME_HEAD in info[snap3]["children"]
+    assert info[snap3]["removed"]
+    assert int(info[snap3]["size"]) == 0
+
+    assert VOLUME_HEAD in info
+    assert info[VOLUME_HEAD]["parent"] == snap3
+    assert int(info[VOLUME_HEAD]["size"]) == 3*fs_block_size
+
+    # Verify the data content
+    assert cksum == read_dev(dev, 0, 3*fs_block_size)
