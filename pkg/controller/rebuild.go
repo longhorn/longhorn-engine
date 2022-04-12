@@ -26,6 +26,10 @@ func getReplicaDisksAndHead(address string) (map[string]types.DiskInfo, string, 
 			address, err)
 	}
 
+	if len(rep.Chain) == 0 {
+		return nil, "", fmt.Errorf("replica on %v does not have any non-removed disks", address)
+	}
+
 	disks := map[string]types.DiskInfo{}
 	head := rep.Chain[0]
 	for diskName, info := range rep.Disks {
