@@ -185,6 +185,97 @@ volumes:
 
 ---
 kind: pipeline
+name: default-s390x
+
+node:
+  arch: s390x
+
+platform:
+  os: linux
+  arch: amd64
+
+steps:
+- name: fetch
+  image: ubuntu:18.04
+  commands:
+  - apt-get update
+  - apt-get install -y git
+  - git fetch --tags
+
+- name: build
+  pull: default
+  image: rancher/dapper:v0.5.8
+  commands:
+  - dapper ci
+  privileged: true
+  volumes:
+  - name: socket
+    path: /var/run/docker.sock
+
+- name: publish-image
+  image: rancher/drone-images:docker-s390x
+  settings:
+    build_args:
+    - ARCH=s390x
+    custom_dns: 1.1.1.1
+    dockerfile: package/Dockerfile
+    password:
+      from_secret: docker_password
+    repo: longhornio/longhorn-engine
+    tag: "${DRONE_BRANCH}-head-s390x"
+    username:
+      from_secret: docker_username
+  volumes:
+    - name: socket
+      path: /var/run/docker.sock
+  when:
+    event:
+    - push
+
+- name: publish-tagged-image
+  image: rancher/drone-images:docker-s390x
+  settings:
+    build_args:
+    - ARCH=s390x
+    custom_dns: 1.1.1.1
+    dockerfile: package/Dockerfile
+    password:
+      from_secret: docker_password
+    repo: longhornio/longhorn-engine
+    tag: "${DRONE_TAG}-s390x"
+    username:
+      from_secret: docker_username
+  volumes:
+    - name: socket
+      path: /var/run/docker.sock
+  when:
+    event:
+    - tag
+
+- name: slack_notify
+  image: plugins/slack
+  settings:
+    template: "Build {{build.link}} failed.\n"
+    username: Drone_Publish
+    webhook:
+      from_secret: slack_webhook
+  when:
+    event:
+      exclude:
+      - pull_request
+    instance:
+      include:
+      - drone-publish.longhorn.io
+    status:
+      - failure
+
+volumes:
+- name: socket
+  host:
+    path: /var/run/docker.sock
+
+---
+kind: pipeline
 name: manifest
 
 platform:
@@ -202,6 +293,7 @@ steps:
     platforms:
       - linux/amd64
       - linux/arm64
+      - linux/s390x
     target: "longhornio/longhorn-engine:${DRONE_BRANCH}-head"
     template: "longhornio/longhorn-engine:${DRONE_BRANCH}-head-ARCH"
   when:
@@ -220,6 +312,7 @@ steps:
     platforms:
       - linux/amd64
       - linux/arm64
+      - linux/s390x
     target: "longhornio/longhorn-engine:${DRONE_TAG}"
     template: "longhornio/longhorn-engine:${DRONE_TAG}-ARCH"
   when:
@@ -231,3 +324,4 @@ steps:
 depends_on:
 - default-amd64
 - default-arm64
+- default-s390x
