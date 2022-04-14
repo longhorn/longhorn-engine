@@ -46,9 +46,6 @@ type Controller struct {
 	latestMetrics *types.Metrics
 	metrics       *types.Metrics
 
-	backupList      map[string]string
-	backupListMutex *sync.RWMutex
-
 	lastExpansionError    string
 	lastExpansionFailedAt string
 }
@@ -66,9 +63,6 @@ func NewController(name string, factory types.BackendFactory, frontend types.Fro
 		frontend:      frontend,
 		metrics:       &types.Metrics{},
 		latestMetrics: &types.Metrics{},
-
-		backupList:      map[string]string{},
-		backupListMutex: &sync.RWMutex{},
 
 		isUpgrade:               isUpgrade,
 		revisionCounterDisabled: disableRevCounter,
@@ -880,33 +874,6 @@ func (c *Controller) metricsStart() {
 
 func (c *Controller) GetLatestMetics() *types.Metrics {
 	return c.latestMetrics
-}
-
-func (c *Controller) BackupReplicaMappingCreate(id string, replicaAddress string) error {
-	c.backupListMutex.Lock()
-	defer c.backupListMutex.Unlock()
-	c.backupList[id] = replicaAddress
-	return nil
-}
-
-func (c *Controller) BackupReplicaMappingGet() map[string]string {
-	c.backupListMutex.RLock()
-	defer c.backupListMutex.RUnlock()
-	ret := map[string]string{}
-	for k, v := range c.backupList {
-		ret[k] = v
-	}
-	return ret
-}
-
-func (c *Controller) BackupReplicaMappingDelete(id string) error {
-	c.backupListMutex.Lock()
-	defer c.backupListMutex.Unlock()
-	if _, present := c.backupList[id]; present == false {
-		return fmt.Errorf("backupID not found: %v", id)
-	}
-	delete(c.backupList, id)
-	return nil
 }
 
 func freezeVolume(ne *iutil.NamespaceExecutor, volume string) (bool, error) {
