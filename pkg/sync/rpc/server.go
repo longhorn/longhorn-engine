@@ -695,14 +695,22 @@ func (s *SyncAgentServer) postFullRestoreOperations(restoreStatus *replica.Resto
 	// Check if this full restore is the fallback of the incremental restore
 	if strings.HasSuffix(restoreStatus.ToFileName, ".snap_tmp") {
 		if err := s.extraIncrementalFullRestoreOperations(restoreStatus); err != nil {
-			logrus.Errorf("failed to complete incremental fallback full restore: %v", err)
+			logrus.Errorf("Failed to complete incremental fallback full restore: %v", err)
 			return err
 		}
 		logrus.Infof("Done running full restore %v to %v as the fallback of the incremental restore",
 			restoreStatus.BackupURL, restoreStatus.ToFileName)
 	} else {
+		// Reload the replica so that the snapshot file can be loaded in the replica disk chain
+		if err := s.reloadReplica(); err != nil {
+			err = errors.Wrapf(err, "failed to reload replica %v for the full restore", s.replicaAddress)
+			logrus.Error(err)
+			return err
+		}
+
 		if err := s.replicaRevert(restoreStatus.ToFileName, time.Now().UTC().Format(time.RFC3339)); err != nil {
-			logrus.Errorf("Error on reverting to %s on %s: %v", restoreStatus.ToFileName, s.replicaAddress, err)
+			err = errors.Wrapf(err, "failed to revert to %s for replica %s", restoreStatus.ToFileName, s.replicaAddress)
+			logrus.Error(err)
 			return err
 		}
 		logrus.Infof("Reverting to snapshot %s on %s successful", restoreStatus.ToFileName, s.replicaAddress)
