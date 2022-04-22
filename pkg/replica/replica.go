@@ -492,6 +492,7 @@ func (r *Replica) removeDiskNode(name string, force bool) error {
 		return err
 	}
 	delete(r.diskData, name)
+	delete(r.diskChildrenMap, name)
 
 	index := r.findDisk(name)
 	if index <= 0 {
