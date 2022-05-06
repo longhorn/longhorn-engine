@@ -619,6 +619,13 @@ func (s *SyncAgentServer) postCloning() error {
 		return errors.Wrapf(err, "failed creating meta snapshot file")
 	}
 
+	// Reload the replica so that the snapshot file can be loaded in the replica disk chain
+	if err := s.reloadReplica(); err != nil {
+		err = errors.Wrapf(err, "failed to reload replica %v during cloning snapshot %v", s.replicaAddress, snapshotDiskName)
+		logrus.Error(err)
+		return err
+	}
+
 	if err := s.replicaRevert(snapshotDiskName, time.Now().UTC().Format(time.RFC3339)); err != nil {
 		return errors.Wrapf(err, "error on reverting to %v on %v", snapshotDiskName, s.replicaAddress)
 	}
