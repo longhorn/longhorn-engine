@@ -421,7 +421,8 @@ def snapshot_mounted_filesystem_test(volume_name, dev, address, engine_name):  #
     # create & mount a ext4 filesystem on dev
     nsenter_cmd = ["nsenter", "--mount=/host/proc/1/ns/mnt",
                    "--net=/host/proc/1/ns/net", "--"]
-    mount_cmd = nsenter_cmd + ["mount", "--make-shared", dev_path, mnt_path]
+    mount_cmd = nsenter_cmd + ["mount", "--make-shared", "-t", "ext4",
+                               dev_path, mnt_path]
     umount_cmd = nsenter_cmd + ["umount", mnt_path]
     findmnt_cmd = nsenter_cmd + ["findmnt", dev_path]
     subprocess.check_call(nsenter_cmd + ["mkfs.ext4", dev_path])
