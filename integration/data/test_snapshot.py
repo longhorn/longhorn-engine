@@ -383,6 +383,7 @@ def test_expansion_with_backing_file(grpc_backing_controller,  # NOQA
                                          read_from_backing_file(0, SIZE))
 
 
+@pytest.mark.skip(reason="flaky, `mount_cmd` sometimes not work")
 def test_snapshot_mounted_filesystem(grpc_controller,  # NOQA
                          grpc_replica1, grpc_replica2):  # NOQA
     """
