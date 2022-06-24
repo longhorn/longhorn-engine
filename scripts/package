@@ -36,7 +36,7 @@ cp /usr/local/bin/longhorn-instance-manager ./bin/
 BASE_IMAGE=`grep FROM package/Dockerfile  | awk '{print $2}'`
 docker pull ${BASE_IMAGE}
 
-docker build --build-arg ARCH=${ARCH} -t ${IMAGE} -f package/Dockerfile .
+docker build --no-cache --build-arg ARCH=${ARCH} -t ${IMAGE} -f package/Dockerfile .
 
 echo Built ${IMAGE}
 
