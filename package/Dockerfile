@@ -54,7 +54,7 @@ RUN cd /usr/src && \
 RUN cd /usr/src && \
     git clone https://github.com/rancher/tgt.git && \
     cd tgt && \
-    git checkout 026a99fbc4e06ce898b5e9cbf9e037a7d938a7a4 && \
+    git checkout c732193244096bc8db4cbc67886bbfe7f679053c && \
     if [ ${ARCH} == "amd64" ]; then \
         make EXTRA_LIBS=-ltcmalloc; \
     else \
