@@ -6,7 +6,10 @@ import (
 	"os"
 	"runtime"
 	"runtime/debug"
+	"strings"
+	"time"
 
+	"github.com/jpillora/backoff"
 	"github.com/sirupsen/logrus"
 
 	"github.com/longhorn/backupstore"
@@ -17,8 +20,12 @@ import (
 )
 
 var (
-	VERSION = "0.0.0"
-	log     = logrus.WithFields(logrus.Fields{"pkg": "backup"})
+	VERSION              = "0.0.0"
+	backoffMaxRetryCount = 5
+	backoffMinInterval   = 1 * time.Second
+	backoffMaxInterval   = 3 * time.Minute
+	backoffFactor        = 2.0
+	log                  = logrus.WithFields(logrus.Fields{"pkg": "backup"})
 )
 
 type ErrorResponse struct {
@@ -136,14 +143,33 @@ func DoBackupRestore(backupURL string, toFile string, restoreObj *replica.Restor
 	backupURL = util.UnescapeURL(backupURL)
 	log.Debugf("Start restoring from %v into snapshot %v", backupURL, toFile)
 
+	retryCount := 0
+	bf := &backoff.Backoff{
+		Min:    backoffMinInterval,
+		Max:    backoffMaxInterval,
+		Factor: backoffFactor,
+		Jitter: false,
+	}
+
 	config := &backupstore.DeltaRestoreConfig{
 		BackupURL: backupURL,
 		DeltaOps:  restoreObj,
 		Filename:  toFile,
 	}
 
-	if err := backupstore.RestoreDeltaBlockBackup(config); err != nil {
-		return err
+	for {
+		if err := backupstore.RestoreDeltaBlockBackup(config); err != nil {
+			log.Errorf("failed to restore delta Backup error: %v", err)
+			// only handle failed locak acquisition
+			if !strings.Contains(err.Error(), "failed lock") || retryCount >= backoffMaxRetryCount {
+				return err
+			}
+			retryCount++
+			time.Sleep(bf.Duration())
+			continue
+		} else {
+			break
+		}
 	}
 
 	return nil
@@ -154,6 +180,14 @@ func DoBackupRestoreIncrementally(url string, deltaFile string, lastRestored str
 	backupURL := util.UnescapeURL(url)
 	log.Debugf("Start incremental restoring from %v into delta file %v", backupURL, deltaFile)
 
+	retryCount := 0
+	bf := &backoff.Backoff{
+		Min:    backoffMinInterval,
+		Max:    backoffMaxInterval,
+		Factor: backoffFactor,
+		Jitter: false,
+	}
+
 	config := &backupstore.DeltaRestoreConfig{
 		BackupURL:      backupURL,
 		DeltaOps:       restoreObj,
@@ -161,8 +195,19 @@ func DoBackupRestoreIncrementally(url string, deltaFile string, lastRestored str
 		Filename:       deltaFile,
 	}
 
-	if err := backupstore.RestoreDeltaBlockBackupIncrementally(config); err != nil {
-		return err
+	for {
+		if err := backupstore.RestoreDeltaBlockBackupIncrementally(config); err != nil {
+			log.Errorf("failed to restore delta Backup incrementally error: %v", err)
+			// only handle failed locak acquisition
+			if !strings.Contains(err.Error(), "failed lock") || retryCount >= backoffMaxRetryCount {
+				return err
+			}
+			retryCount++
+			time.Sleep(bf.Duration())
+			continue
+		} else {
+			break
+		}
 	}
 
 	return nil
