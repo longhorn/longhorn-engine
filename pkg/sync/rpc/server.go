@@ -468,6 +468,9 @@ func (s *SyncAgentServer) PrepareRebuild(list []*ptypes.SyncFileInfo, fromReplic
 	s.Lock()
 	defer s.Unlock()
 
+	if s.isPurging {
+		return fmt.Errorf("replica is purging snapshots")
+	}
 	if s.isRebuilding {
 		return fmt.Errorf("replica is already rebuilding")
 	}
