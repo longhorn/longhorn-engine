@@ -545,14 +545,8 @@ func checkIfVolumeHeadExists(infoList []types.SyncFileInfo) bool {
 
 func (t *Task) getTransferClients(address string) (*replicaClient.ReplicaClient, *replicaClient.ReplicaClient, string, string, error) {
 	var err error
-	var fromClient *replicaClient.ReplicaClient
-	var toClient *replicaClient.ReplicaClient
-
-	from, err := t.getFromReplica()
-	if err != nil {
-		return nil, nil, "", "", err
-	}
-	logrus.Infof("Using replica %s as the source for rebuild ", from.Address)
+	var fromClient, toClient *replicaClient.ReplicaClient
+	var fromAddress, toAddress string
 
 	// cleanup replica clients on failure
 	defer func() {
@@ -566,56 +560,70 @@ func (t *Task) getTransferClients(address string) (*replicaClient.ReplicaClient,
 		}
 	}()
 
-	fromClient, err = replicaClient.NewReplicaClient(from.Address)
-	if err != nil {
+	if fromClient, fromAddress, err = t.getFromReplicaClientForTransfer(); err != nil {
 		return nil, nil, "", "", err
 	}
+	logrus.Infof("Using replica %s as the source for rebuild ", fromAddress)
 
-	to, err := t.getToReplica(address)
-	if err != nil {
+	if toClient, toAddress, err = t.getToReplicaClientForTransfer(address); err != nil {
 		return nil, nil, "", "", err
 	}
-	logrus.Infof("Using replica %s as the target for rebuild ", to.Address)
+	logrus.Infof("Using replica %s as the target for rebuild ", toAddress)
 
-	toClient, err = replicaClient.NewReplicaClient(to.Address)
-	if err != nil {
-		return nil, nil, "", "", err
-	}
-
-	return fromClient, toClient, from.Address, to.Address, nil
+	return fromClient, toClient, fromAddress, toAddress, nil
 }
 
-func (t *Task) getFromReplica() (*types.ControllerReplicaInfo, error) {
+func (t *Task) getFromReplicaClientForTransfer() (*replicaClient.ReplicaClient, string, error) {
 	replicas, err := t.client.ReplicaList()
 	if err != nil {
-		return &types.ControllerReplicaInfo{}, err
+		return nil, "", err
 	}
 
 	for _, r := range replicas {
-		if r.Mode == types.RW {
-			return r, nil
+		if r.Mode != types.RW {
+			continue
 		}
+		fromClient, err := replicaClient.NewReplicaClient(r.Address)
+		if err != nil {
+			logrus.Warnf("Failed to get the client for replica %v when picking up a transfer-from replica: %v", r.Address, err)
+			continue
+		}
+		fromReplicaPurgeStatus, err := fromClient.SnapshotPurgeStatus()
+		if err != nil {
+			logrus.Warnf("Failed to check the purge status for replica %v when picking up a transfer-from replica: %v", r.Address, err)
+			continue
+		}
+		if fromReplicaPurgeStatus.IsPurging {
+			logrus.Warnf("Replica %v is purging snapshots, cannot be used as a transfer-from replica", r.Address)
+			continue
+		}
+		return fromClient, r.Address, nil
 	}
 
-	return &types.ControllerReplicaInfo{}, fmt.Errorf("Failed to find good replica to copy from")
+	return nil, "", fmt.Errorf("failed to find good replica to copy from")
 }
 
-func (t *Task) getToReplica(address string) (*types.ControllerReplicaInfo, error) {
+func (t *Task) getToReplicaClientForTransfer(address string) (*replicaClient.ReplicaClient, string, error) {
 	replicas, err := t.client.ReplicaList()
 	if err != nil {
-		return &types.ControllerReplicaInfo{}, err
+		return nil, "", err
 	}
 
 	for _, r := range replicas {
-		if r.Address == address {
-			if r.Mode != types.WO {
-				return &types.ControllerReplicaInfo{}, fmt.Errorf("Replica %s is not in mode WO got: %s", address, r.Mode)
-			}
-			return r, nil
+		if r.Address != address {
+			continue
 		}
+		if r.Mode != types.WO {
+			return nil, "", fmt.Errorf("replica %s is not in mode WO: %s", address, r.Mode)
+		}
+		toClient, err := replicaClient.NewReplicaClient(r.Address)
+		if err != nil {
+			return nil, "", err
+		}
+		return toClient, r.Address, nil
 	}
 
-	return &types.ControllerReplicaInfo{}, fmt.Errorf("Failed to find target replica to copy to")
+	return nil, "", fmt.Errorf("failed to find target replica to copy to")
 }
 
 func getNonBackingDisks(address string) (map[string]types.DiskInfo, error) {
