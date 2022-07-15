@@ -35,6 +35,10 @@ var (
 	log = logrus.WithFields(logrus.Fields{"pkg": "backupstore"})
 )
 
+func GetLog() logrus.FieldLogger {
+	return log
+}
+
 func generateError(fields logrus.Fields, format string, v ...interface{}) error {
 	return ErrorWithFields("backupstore", fields, format, v...)
 }

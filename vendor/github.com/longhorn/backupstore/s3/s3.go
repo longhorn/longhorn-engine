@@ -195,11 +195,17 @@ func (s *BackupStoreDriver) Download(src, dst string) error {
 	if _, err := os.Stat(dst); err != nil {
 		os.Remove(dst)
 	}
+
+	if err := os.MkdirAll(filepath.Dir(dst), os.ModeDir|0700); err != nil {
+		return err
+	}
+
 	f, err := os.Create(dst)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
+
 	path := s.updatePath(src)
 	rc, err := s.service.GetObject(path)
 	if err != nil {
