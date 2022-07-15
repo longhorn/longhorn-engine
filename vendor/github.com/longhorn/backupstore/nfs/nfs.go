@@ -15,8 +15,9 @@ import (
 )
 
 var (
-	log           = logrus.WithFields(logrus.Fields{"pkg": "nfs"})
-	MinorVersions = []string{"4.2", "4.1", "4.0"}
+	log            = logrus.WithFields(logrus.Fields{"pkg": "nfs"})
+	MinorVersions  = []string{"4.2", "4.1", "4.0"}
+	defaultTimeout = 5 * time.Second
 )
 
 type BackupStoreDriver struct {
@@ -64,7 +65,7 @@ func initFunc(destURL string) (backupstore.BackupStoreDriver, error) {
 
 	b.serverPath = u.Host + u.Path
 	b.mountDir = filepath.Join(MountDir, strings.TrimRight(strings.Replace(u.Host, ".", "_", -1), ":"), u.Path)
-	if _, err = util.ExecuteWithCustomTimeout("mkdir", []string{"-m", "700", "-p", b.mountDir}, 3*time.Second); err != nil {
+	if _, err = util.ExecuteWithCustomTimeout("mkdir", []string{"-m", "700", "-p", b.mountDir}, defaultTimeout); err != nil {
 		return nil, fmt.Errorf("Cannot create mount directory %v for NFS server: %v", b.mountDir, err)
 	}
 
@@ -89,7 +90,7 @@ func (b *BackupStoreDriver) mount() (err error) {
 
 	for _, version := range MinorVersions {
 		log.Debugf("attempting mount for nfs path %v with nfsvers %v", b.serverPath, version)
-		_, err = util.Execute("mount", []string{"-t", "nfs4", "-o", fmt.Sprintf("nfsvers=%v", version), "-o", "actimeo=1", b.serverPath, b.mountDir})
+		_, err = util.ExecuteWithCustomTimeout("mount", []string{"-t", "nfs4", "-o", fmt.Sprintf("nfsvers=%v", version), "-o", "actimeo=1", b.serverPath, b.mountDir}, defaultTimeout)
 		if err == nil {
 			return nil
 		}
