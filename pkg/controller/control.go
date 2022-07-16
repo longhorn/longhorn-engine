@@ -584,12 +584,12 @@ func (c *Controller) Start(addresses ...string) error {
 		return nil
 	}
 
-	addressReplicaMap := map[string]string{}
+	checkDuplicate := map[string]struct{}{}
 	for _, address := range addresses {
-		if addressReplicaMap[address] != "" {
+		if _, exist := checkDuplicate[address]; exist {
 			return fmt.Errorf("invalid ReplicaAddress: duplicate replica addresses")
 		}
-		addressReplicaMap[address] = address
+		checkDuplicate[address] = struct{}{}
 	}
 
 	if len(c.replicas) > 0 {
