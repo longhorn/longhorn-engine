@@ -587,7 +587,7 @@ func (c *Controller) Start(addresses ...string) error {
 	checkDuplicate := map[string]struct{}{}
 	for _, address := range addresses {
 		if _, exist := checkDuplicate[address]; exist {
-			return fmt.Errorf("invalid ReplicaAddress: duplicate replica addresses")
+			return fmt.Errorf("invalid ReplicaAddress: duplicate replica addresses %s", address)
 		}
 		checkDuplicate[address] = struct{}{}
 	}
