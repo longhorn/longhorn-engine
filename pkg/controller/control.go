@@ -3,6 +3,7 @@ package controller
 import (
 	"fmt"
 	"net"
+	"regexp"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -721,19 +722,37 @@ func (c *Controller) ReadAt(b []byte, off int64) (int, error) {
 	return n, err
 }
 
+func isSnapshotDiskExist(err error) bool {
+	match, _ := regexp.MatchString("snapshot (.*) is already existing", err.Error())
+	return match
+}
+
 func (c *Controller) handleErrorNoLock(err error) error {
 	if bErr, ok := err.(*BackendError); ok {
+		snapshotExistList := make(map[string]struct{})
+
 		if len(bErr.Errors) > 0 {
 			for address, replicaErr := range bErr.Errors {
-				logrus.Errorf("Setting replica %s to ERR due to: %v", address, replicaErr)
-				c.setReplicaModeNoLock(address, types.ERR)
+				if isSnapshotDiskExist(replicaErr) {
+					// The snapshot request using a existing snapshot's name might be caused by
+					// users and callers unexpectedly.
+					// We reject the request, so do not set the replica to ERR if the snapshot is already existing.
+					snapshotExistList[address] = struct{}{}
+				} else {
+					logrus.Errorf("Setting replica %s to ERR due to: %v", address, replicaErr)
+					c.setReplicaModeNoLock(address, types.ERR)
+				}
 			}
-			// if we still have a good replica, do not return error
-			for _, r := range c.replicas {
-				if r.Mode == types.RW {
-					logrus.Errorf("Ignoring error because %s is mode RW: %v", r.Address, err)
-					err = nil
-					break
+
+			// Always return error if the snapshot is already existing.
+			if len(snapshotExistList) == 0 {
+				// if we still have a good replica, do not return error
+				for _, r := range c.replicas {
+					if r.Mode == types.RW {
+						logrus.Errorf("Ignoring error because %s is mode RW: %v", r.Address, err)
+						err = nil
+						break
+					}
 				}
 			}
 		}
