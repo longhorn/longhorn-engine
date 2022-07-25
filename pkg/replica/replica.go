@@ -771,12 +771,16 @@ func (r *Replica) linkDisk(oldname, newname string) error {
 		return nil
 	}
 
+	destMetadata := r.diskPath(newname + metadataSuffix)
+	logrus.Infof("Deleting old disk metadata file %v", destMetadata)
+	if err := os.RemoveAll(destMetadata); err != nil {
+		return errors.Wrapf(err, "failed to delete old disk metadata file %v", destMetadata)
+	}
+
 	dest := r.diskPath(newname)
-	if _, err := os.Stat(dest); err == nil {
-		logrus.Infof("Old file %s exists, deleting", dest)
-		if err := os.Remove(dest); err != nil {
-			return err
-		}
+	logrus.Infof("Deleting old disk file %v", dest)
+	if err := os.RemoveAll(dest); err != nil {
+		return errors.Wrapf(err, "failed to delete old disk file %v", dest)
 	}
 
 	if err := os.Link(r.diskPath(oldname), dest); err != nil {
@@ -868,6 +872,12 @@ func (r *Replica) createDisk(name string, userCreated bool, created string, labe
 
 	if oldHead == "" {
 		newSnapName = ""
+	}
+
+	if newSnapName != "" {
+		if _, ok := r.diskData[newSnapName]; ok {
+			return fmt.Errorf("snapshot %v is already existing", newSnapName)
+		}
 	}
 
 	f, newHeadDisk, err := r.createNewHead(oldHead, newSnapName, created, size)
