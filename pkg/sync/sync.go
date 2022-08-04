@@ -144,19 +144,19 @@ func (t *Task) DeleteSnapshot(snapshot string) error {
 func (t *Task) PurgeSnapshots(skip bool) error {
 	replicas, err := t.client.ReplicaList()
 	if err != nil {
-		return err
+		return errors.Wrap(err, "failed to list replicas before purging")
 	}
 
 	taskErr := NewTaskError()
 	for _, r := range replicas {
 		if ok, err := t.isRebuilding(r); err != nil {
-			taskErr.Append(NewReplicaError(r.Address, err))
+			taskErr.Append(NewReplicaError(r.Address, errors.Wrapf(err, "failed to check if replica %v is rebuilding before purging", r.Address)))
 		} else if ok {
 			taskErr.Append(NewReplicaError(r.Address, fmt.Errorf("cannot purge snapshots because %s is rebuilding", r.Address)))
 		}
 
 		if ok, err := t.isPurging(r); err != nil {
-			taskErr.Append(NewReplicaError(r.Address, err))
+			taskErr.Append(NewReplicaError(r.Address, errors.Wrapf(err, "failed to check if replica %v is purging before purging", r.Address)))
 		} else if ok {
 			if skip {
 				return nil
@@ -179,13 +179,13 @@ func (t *Task) PurgeSnapshots(skip bool) error {
 
 			repClient, err := replicaClient.NewReplicaClient(rep.Address)
 			if err != nil {
-				errorMap.Store(rep.Address, err)
+				errorMap.Store(rep.Address, errors.Wrapf(err, "failed to get replica client %v before purging", rep.Address))
 				return
 			}
 			defer repClient.Close()
 
 			if err := repClient.SnapshotPurge(); err != nil {
-				errorMap.Store(rep.Address, err)
+				errorMap.Store(rep.Address, errors.Wrapf(err, "replica %v failed to execute snapshot purge", rep.Address))
 				return
 			}
 		}(r)
