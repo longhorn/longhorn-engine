@@ -190,19 +190,16 @@ func (d *LonghornDevice) shutdownFrontend() error {
 			return fmt.Errorf("device %v: fail to stop SCSI device: %v", d.name, err)
 		}
 		if err := d.scsiDevice.DeleteTarget(); err != nil {
-			return fmt.Errorf("device %v: fail to delete target %v", d.name, d.scsiDevice.Target)
+			return fmt.Errorf("device %v: fail to delete target %v: %v", d.name, d.scsiDevice.Target, err)
 		}
 		logrus.Infof("device %v: SCSI device %v shutdown", d.name, dev)
-		break
 	case types.FrontendTGTISCSI:
 		if err := d.scsiDevice.DeleteTarget(); err != nil {
-			return fmt.Errorf("device %v: fail to delete target %v", d.name, d.scsiDevice.Target)
+			return fmt.Errorf("device %v: fail to delete target %v: %v", d.name, d.scsiDevice.Target, err)
 		}
 		logrus.Infof("device %v: SCSI target %v ", d.name, d.scsiDevice.Target)
-		break
 	case "":
 		logrus.Infof("device %v: skip shutdown frontend since it's not enabled", d.name)
-		break
 	default:
 		return fmt.Errorf("device %v: unknown frontend %v", d.name, d.frontend)
 	}
