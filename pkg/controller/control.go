@@ -474,7 +474,7 @@ func (c *Controller) StartFrontend(frontend string) error {
 // controller, and mark unmatch replica to ERR.
 func (c *Controller) checkReplicaRevCounterSettingMatch() error {
 	for _, r := range c.replicas {
-		if r.Mode == "ERR" {
+		if r.Mode == types.ERR {
 			continue
 		}
 		revCounterDisabled, err := c.backend.backends[r.Address].backend.IsRevisionCounterDisabled()
@@ -497,7 +497,7 @@ func (c *Controller) salvageRevisionCounterDisabledReplicas() error {
 	replicaCandidates := make(map[types.Replica]types.ReplicaSalvageInfo)
 	var lastModifyTime int64
 	for _, r := range c.replicas {
-		if r.Mode == "ERR" {
+		if r.Mode == types.ERR {
 			continue
 		}
 		repLastModifyTime, err := c.backend.backends[r.Address].backend.GetLastModifyTime()

@@ -563,12 +563,12 @@ func (t *Task) getTransferClients(address string) (*replicaClient.ReplicaClient,
 	if fromClient, fromAddress, err = t.getFromReplicaClientForTransfer(); err != nil {
 		return nil, nil, "", "", err
 	}
-	logrus.Infof("Using replica %s as the source for rebuild ", fromAddress)
+	logrus.Infof("Using replica %s as the source for rebuild", fromAddress)
 
 	if toClient, toAddress, err = t.getToReplicaClientForTransfer(address); err != nil {
 		return nil, nil, "", "", err
 	}
-	logrus.Infof("Using replica %s as the target for rebuild ", toAddress)
+	logrus.Infof("Using replica %s as the target for rebuild", toAddress)
 
 	return fromClient, toClient, fromAddress, toAddress, nil
 }
