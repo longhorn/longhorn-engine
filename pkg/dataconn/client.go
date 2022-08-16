@@ -244,7 +244,7 @@ func (c *Client) read() {
 	for {
 		msg, err := c.wire.Read()
 		if err != nil {
-			logrus.Errorf("Error reading from wire: %v", err)
+			logrus.Errorf("Error reading from wire %v: %v", c.peerAddr, err)
 			c.responses <- &Message{
 				transportErr: err,
 			}
