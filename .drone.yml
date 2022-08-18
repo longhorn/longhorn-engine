@@ -24,6 +24,13 @@ steps:
   - name: socket
     path: /var/run/docker.sock
 
+- name: codecov
+  image: robertstettner/drone-codecov
+  settings:
+    token:
+      from_secret: CODECOV_TOKEN
+    debug: true
+
 - name: fossa
   image: registry.suse.com/suse/sle15:15.3.17.8.1
   failure: ignore
