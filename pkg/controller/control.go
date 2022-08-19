@@ -16,6 +16,7 @@ import (
 
 	iutil "github.com/longhorn/go-iscsi-helper/util"
 
+	"github.com/longhorn/longhorn-engine/pkg/replica"
 	"github.com/longhorn/longhorn-engine/pkg/types"
 	"github.com/longhorn/longhorn-engine/pkg/util"
 )
@@ -585,6 +586,23 @@ func (c *Controller) checkReplicasRevisionCounter() error {
 	return nil
 }
 
+func isReplicaInInvalidState(state string) bool {
+	return state != string(replica.Open) && state != string(replica.Dirty)
+}
+
+func checkDeuplicteAddress(addresses ...string) error {
+	checkDuplicate := map[string]struct{}{}
+
+	for _, address := range addresses {
+		if _, exist := checkDuplicate[address]; exist {
+			return fmt.Errorf("invalid ReplicaAddress: duplicate replica addresses %s", address)
+		}
+		checkDuplicate[address] = struct{}{}
+	}
+
+	return nil
+}
+
 func (c *Controller) Start(addresses ...string) error {
 	c.Lock()
 	defer c.Unlock()
@@ -593,12 +611,8 @@ func (c *Controller) Start(addresses ...string) error {
 		return nil
 	}
 
-	checkDuplicate := map[string]struct{}{}
-	for _, address := range addresses {
-		if _, exist := checkDuplicate[address]; exist {
-			return fmt.Errorf("invalid ReplicaAddress: duplicate replica addresses %s", address)
-		}
-		checkDuplicate[address] = struct{}{}
+	if err := checkDeuplicteAddress(addresses...); err != nil {
+		return err
 	}
 
 	if len(c.replicas) > 0 {
@@ -626,6 +640,16 @@ func (c *Controller) Start(addresses ...string) error {
 			logrus.Warnf("failed to get the sector size from the backend address %v: %v", address, err)
 			continue
 		}
+		state, err := newBackend.GetState()
+		if err != nil {
+			logrus.Warnf("failed to get the state from the backend address %v: %v", address, err)
+			continue
+		}
+		if isReplicaInInvalidState(state) {
+			logrus.Warnf("backend %v is in the invalid state %v", address, state)
+			continue
+		}
+
 		availableBackends[address] = newBackend
 
 		if first {
