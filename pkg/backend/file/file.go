@@ -117,6 +117,10 @@ func (ff *Factory) Create(address string) (types.Backend, error) {
 	return &Wrapper{file}, nil
 }
 
+func (f *Wrapper) GetState() (string, error) {
+	return "open", nil
+}
+
 func (f *Wrapper) GetMonitorChannel() types.MonitorChannel {
 	return nil
 }
