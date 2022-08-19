@@ -219,6 +219,15 @@ func (r *Remote) GetRevisionCounter() (int64, error) {
 	return 0, fmt.Errorf("invalid state %v for getting revision counter", replicaInfo.State)
 }
 
+func (r *Remote) GetState() (string, error) {
+	replicaInfo, err := r.info()
+	if err != nil {
+		return "", err
+	}
+
+	return replicaInfo.State, nil
+}
+
 func (r *Remote) info() (*types.ReplicaInfo, error) {
 	conn, err := grpc.Dial(r.replicaServiceURL, grpc.WithInsecure())
 	if err != nil {
