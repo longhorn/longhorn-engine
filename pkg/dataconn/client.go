@@ -54,7 +54,12 @@ func (c *Client) TargetID() string {
 
 //WriteAt replica client
 func (c *Client) WriteAt(buf []byte, offset int64) (int, error) {
-	return c.operation(TypeWrite, buf, offset)
+	return c.operation(TypeWrite, buf, uint32(len(buf)), offset)
+}
+
+// UnmapAt replica client
+func (c *Client) UnmapAt(length uint32, offset int64) (int, error) {
+	return c.operation(TypeUnmap, nil, length, offset)
 }
 
 //SetError replica client transport error
@@ -66,21 +71,21 @@ func (c *Client) SetError(err error) {
 
 //ReadAt replica client
 func (c *Client) ReadAt(buf []byte, offset int64) (int, error) {
-	return c.operation(TypeRead, buf, offset)
+	return c.operation(TypeRead, buf, uint32(len(buf)), offset)
 }
 
 //Ping replica client
 func (c *Client) Ping() error {
-	_, err := c.operation(TypePing, nil, 0)
+	_, err := c.operation(TypePing, nil, 0, 0)
 	return err
 }
 
-func (c *Client) operation(op uint32, buf []byte, offset int64) (int, error) {
+func (c *Client) operation(op uint32, buf []byte, length uint32, offset int64) (int, error) {
 	msg := Message{
 		Complete: make(chan struct{}, 1),
 		Type:     op,
 		Offset:   offset,
-		Size:     uint32(len(buf)),
+		Size:     length,
 		Data:     nil,
 	}
 
@@ -149,7 +154,7 @@ func (c *Client) loop() {
 				continue
 			}
 
-			if req.Type == TypeRead || req.Type == TypeWrite {
+			if req.Type == TypeRead || req.Type == TypeWrite || req.Type == TypeUnmap {
 				if ioInflight == 0 {
 					ioDeadline = time.Now().Add(c.opTimeout)
 				}
@@ -169,7 +174,7 @@ func (c *Client) loop() {
 				continue
 			}
 
-			if req.Type == TypeRead || req.Type == TypeWrite {
+			if req.Type == TypeRead || req.Type == TypeWrite || req.Type == TypeUnmap {
 				ioInflight--
 				if ioInflight > 0 {
 					ioDeadline = time.Now().Add(c.opTimeout)
@@ -207,6 +212,8 @@ func (c *Client) handleRequest(req *Message) {
 		req.ID = journal.InsertPendingOp(time.Now(), c.TargetID(), journal.OpRead, int(req.Size))
 	case TypeWrite:
 		req.ID = journal.InsertPendingOp(time.Now(), c.TargetID(), journal.OpWrite, int(req.Size))
+	case TypeUnmap:
+		req.ID = journal.InsertPendingOp(time.Now(), c.TargetID(), journal.OpUnmap, int(req.Size))
 	case TypePing:
 		req.ID = journal.InsertPendingOp(time.Now(), c.TargetID(), journal.OpPing, 0)
 	}
