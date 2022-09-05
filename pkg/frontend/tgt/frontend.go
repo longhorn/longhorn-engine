@@ -60,8 +60,8 @@ func (t *Tgt) Init(name string, size, sectorSize int64) error {
 	return nil
 }
 
-func (t *Tgt) Startup(rw types.ReaderWriterAt) error {
-	if err := t.s.Startup(rw); err != nil {
+func (t *Tgt) Startup(rwu types.ReaderWriterUnmapperAt) error {
+	if err := t.s.Startup(rwu); err != nil {
 		return err
 	}
 
@@ -102,7 +102,7 @@ func (t *Tgt) Endpoint() string {
 	return ""
 }
 
-func (t *Tgt) Upgrade(name string, size, sectorSize int64, rw types.ReaderWriterAt) error {
+func (t *Tgt) Upgrade(name string, size, sectorSize int64, rwu types.ReaderWriterUnmapperAt) error {
 	ldc := longhorndev.LonghornDeviceCreator{}
 	dev, err := ldc.NewDevice(name, size, t.frontendName,
 		int64(t.scsiTimeout.Seconds()),
@@ -120,7 +120,7 @@ func (t *Tgt) Upgrade(name string, size, sectorSize int64, rw types.ReaderWriter
 	if err := t.s.Init(name, size, sectorSize); err != nil {
 		return err
 	}
-	if err := t.s.Startup(rw); err != nil {
+	if err := t.s.Startup(rwu); err != nil {
 		return err
 	}
 

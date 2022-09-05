@@ -22,8 +22,10 @@ type replicator struct {
 	backends          map[string]backendWrapper
 	writerIndex       map[int]string
 	readerIndex       map[int]string
+	unmapperIndex     map[int]string
 	readers           []io.ReaderAt
 	writer            io.WriterAt
+	unmapper          types.UnmapperAt
 	next              int
 }
 
@@ -65,7 +67,7 @@ func (r *replicator) AddBackend(address string, backend types.Backend, mode type
 		mode:    mode,
 	}
 
-	r.buildReadWriters()
+	r.buildReaderWriterUnmappers()
 }
 
 func (r *replicator) RemoveBackend(address string) {
@@ -85,7 +87,7 @@ func (r *replicator) RemoveBackend(address string) {
 		go backend.backend.Close()
 	}
 	delete(r.backends, address)
-	r.buildReadWriters()
+	r.buildReaderWriterUnmappers()
 }
 
 func (r *replicator) ReadAt(buf []byte, off int64) (int, error) {
@@ -143,16 +145,42 @@ func (r *replicator) WriteAt(p []byte, off int64) (int, error) {
 	return n, err
 }
 
-func (r *replicator) buildReadWriters() {
+func (r *replicator) UnmapAt(length uint32, off int64) (int, error) {
+	if !r.backendsAvailable {
+		return 0, ErrNoBackend
+	}
+
+	n, err := r.unmapper.UnmapAt(length, off)
+	if err != nil {
+		errs := map[string]error{
+			r.unmapperIndex[0]: err,
+		}
+		if mErr, ok := err.(*MultiWriterError); ok {
+			errs = map[string]error{}
+			for index, err := range mErr.Errors {
+				if err != nil {
+					errs[r.unmapperIndex[index]] = err
+				}
+			}
+		}
+		return n, &BackendError{Errors: errs}
+	}
+	return n, err
+}
+
+func (r *replicator) buildReaderWriterUnmappers() {
 	r.reset(false)
 
 	readers := []io.ReaderAt{}
 	writers := []io.WriterAt{}
+	unmappers := []types.UnmapperAt{}
 
 	for address, b := range r.backends {
 		if b.mode != types.ERR {
 			r.writerIndex[len(writers)] = address
 			writers = append(writers, b.backend)
+			r.unmapperIndex[len(unmappers)] = address
+			unmappers = append(unmappers, b.backend)
 		}
 		if b.mode == types.RW {
 			r.readerIndex[len(readers)] = address
@@ -162,6 +190,9 @@ func (r *replicator) buildReadWriters() {
 
 	r.writer = &MultiWriterAt{
 		writers: writers,
+	}
+	r.unmapper = &MultiUnmapperAt{
+		unmappers: unmappers,
 	}
 	r.readers = readers
 
@@ -181,7 +212,7 @@ func (r *replicator) SetMode(address string, mode types.Mode) {
 		b.backend.StopMonitoring()
 	}
 
-	r.buildReadWriters()
+	r.buildReaderWriterUnmappers()
 }
 
 func (r *replicator) Snapshot(name string, userCreated bool, created string, labels map[string]string) error {
@@ -308,8 +339,10 @@ func (r *replicator) Close() error {
 func (r *replicator) reset(full bool) {
 	r.backendsAvailable = false
 	r.writer = nil
+	r.unmapper = nil
 	r.writerIndex = map[int]string{}
 	r.readerIndex = map[int]string{}
+	r.unmapperIndex = map[int]string{}
 
 	if full {
 		r.backends = nil

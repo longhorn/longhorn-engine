@@ -25,7 +25,7 @@ type Device struct {
 	SectorSize int64
 
 	isUp    bool
-	backend types.ReaderWriterAt
+	backend types.ReaderWriterUnmapperAt
 }
 
 func New() types.Frontend {
@@ -43,8 +43,8 @@ func (d *Device) Init(name string, size, sectorSize int64) error {
 	return nil
 }
 
-func (d *Device) Startup(rw types.ReaderWriterAt) error {
-	d.backend = rw
+func (d *Device) Startup(rwu types.ReaderWriterUnmapperAt) error {
+	d.backend = rwu
 	if err := d.start(); err != nil {
 		return err
 	}
@@ -91,7 +91,7 @@ func (d *Device) Endpoint() string {
 	return ""
 }
 
-func (d *Device) Upgrade(name string, size, sectorSize int64, rw types.ReaderWriterAt) error {
+func (d *Device) Upgrade(name string, size, sectorSize int64, rwu types.ReaderWriterUnmapperAt) error {
 	return fmt.Errorf("upgrade is not supported")
 }
 

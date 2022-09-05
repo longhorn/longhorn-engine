@@ -19,6 +19,11 @@ type Factory struct {
 
 type Wrapper struct {
 	*os.File
+	types.UnmapperAt
+}
+
+func (f *Wrapper) UnmapAt(length uint32, off int64) (int, error) {
+	return 0, nil
 }
 
 func (f *Wrapper) Close() error {
@@ -115,7 +120,7 @@ func (ff *Factory) Create(volumeName, address string, dataServerProtocol types.D
 		return nil, err
 	}
 
-	return &Wrapper{file}, nil
+	return &Wrapper{File: file}, nil
 }
 
 func (f *Wrapper) GetState() (string, error) {
