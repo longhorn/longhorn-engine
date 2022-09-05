@@ -60,6 +60,8 @@ type Replica struct {
 	revisionFile            *sparse.DirectFileIoProcessor
 	revisionRefreshed       bool
 	revisionCounterDisabled bool
+
+	unmapMarkDiskChainRemoved bool
 }
 
 type Info struct {
@@ -1104,6 +1106,56 @@ func (r *Replica) ReadAt(buf []byte, offset int64) (int, error) {
 	c, err := r.volume.ReadAt(buf, offset)
 	r.RUnlock()
 	return c, err
+}
+
+func (r *Replica) UnmapAt(length uint32, offset int64) (n int, err error) {
+	defer func() {
+		if err != nil {
+			logrus.Errorf("Replica with dir %v failed to do unmap with offset %v and length %v: %v", r.dir, offset, length, err)
+		}
+	}()
+	if r.readOnly {
+		return 0, fmt.Errorf("can not unmap on read-only replica")
+	}
+
+	unmappedSize, err := func() (int, error) {
+		r.Lock()
+		defer r.Unlock()
+
+		// Figure out the disk chain that can be unmapped.
+		// The chain starts from the volume head,
+		// and is followed by continuous removed disks.
+		// For list `unmappableDisks`, the first entry is the volume head,
+		// the second one is the parent of the first entry...
+		unmappableDisks := []string{r.diskPath(r.activeDiskData[len(r.activeDiskData)-1].Name)}
+		for idx := len(r.activeDiskData) - 2; idx > 0; idx-- {
+			disk := r.activeDiskData[idx]
+			if len(r.diskChildrenMap[disk.Name]) > 1 {
+				break
+			}
+			if r.unmapMarkDiskChainRemoved {
+				if err := r.markDiskAsRemoved(disk.Name); err != nil {
+					return 0, errors.Wrapf(err, "failed to mark snapshot disk %v as removed before unmap", disk.Name)
+				}
+			}
+			if disk.Removed {
+				unmappableDisks = append(unmappableDisks, r.diskPath(disk.Name))
+			}
+		}
+		r.info.Dirty = true
+		return r.volume.UnmapAt(unmappableDisks, length, offset)
+	}()
+	if err != nil {
+		return 0, err
+	}
+
+	if !r.revisionCounterDisabled {
+		if err := r.increaseRevisionCounter(); err != nil {
+			return 0, err
+		}
+	}
+
+	return unmappedSize, nil
 }
 
 func (r *Replica) ListDisks() map[string]DiskInfo {

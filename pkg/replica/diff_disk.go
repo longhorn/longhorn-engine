@@ -5,11 +5,13 @@ import (
 	"io"
 	"sync"
 
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
 	"github.com/rancher/go-fibmap"
 
 	"github.com/longhorn/longhorn-engine/pkg/types"
+	"github.com/longhorn/longhorn-engine/pkg/util"
 )
 
 type diffDisk struct {
@@ -275,6 +277,76 @@ func (d *diffDisk) lookup(sector int64) (byte, error) {
 		}
 	}
 	return d.location[sector], nil
+}
+
+func (d *diffDisk) UnmapAt(unmappableDisks []string, length uint32, offset int64) (int, error) {
+	if length == 0 {
+		return 0, nil
+	}
+
+	startSectorOffset := offset % d.sectorSize
+	endSectorOffset := (int64(length) + offset) % d.sectorSize
+
+	if startSectorOffset != 0 {
+		offset += d.sectorSize - startSectorOffset
+		length -= uint32(d.sectorSize - startSectorOffset)
+	}
+	if endSectorOffset != 0 {
+		length -= uint32(endSectorOffset)
+	}
+	if length <= 0 {
+		return 0, nil
+	}
+
+	var unmappedSizeErr error
+	unmappedSize := int64(0)
+	actualSizeBefore, actualSizeAfter := int64(0), int64(0)
+	// Do unmap for the volume head and all continuous removing snapshots
+	for idx := len(d.files) - 1; idx > 0 && len(unmappableDisks) > len(d.files)-1-idx; idx-- {
+		diskFilePath := unmappableDisks[len(d.files)-1-idx]
+
+		if unmappedSizeErr == nil {
+			actualSizeBefore = util.GetFileActualSize(diskFilePath)
+			if actualSizeBefore < 0 {
+				unmappedSizeErr = fmt.Errorf("failed to get the disk file %v actual size before unmap", diskFilePath)
+			}
+		}
+
+		apparentSize, err := d.files[idx].Size()
+		if err != nil {
+			return 0, errors.Wrapf(err, "failed to get the disk file %v apparent size before unmap", diskFilePath)
+		}
+		if apparentSize < offset {
+			continue
+		}
+		curLength := length
+		end := offset + int64(length)
+		if apparentSize < end {
+			curLength = uint32(apparentSize - offset)
+		}
+		if curLength <= 0 {
+			continue
+		}
+		if _, err := d.files[idx].UnmapAt(curLength, offset); err != nil {
+			return 0, errors.Wrapf(err, "failed to do unmap with offset %v and length %v for the disk file %v", offset, curLength, diskFilePath)
+		}
+
+		if unmappedSizeErr == nil {
+			actualSizeAfter = util.GetFileActualSize(diskFilePath)
+			if actualSizeAfter < 0 {
+				unmappedSizeErr = fmt.Errorf("failed to get the disk file %v actual size after unmap", diskFilePath)
+			}
+		}
+		if unmappedSizeErr == nil {
+			unmappedSize += actualSizeBefore - actualSizeAfter
+		}
+	}
+	if unmappedSizeErr != nil {
+		logrus.Warnf("Unmapping disks succeeded but the unmapping size calculation failed, will return unmapping count 0 instead: %v", unmappedSizeErr)
+		unmappedSize = 0
+	}
+
+	return int(unmappedSize), nil
 }
 
 func (d *diffDisk) initializeSectorLocation(value byte) {

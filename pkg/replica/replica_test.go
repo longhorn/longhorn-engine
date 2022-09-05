@@ -24,6 +24,10 @@ type TestBackingFile struct {
 	*os.File
 }
 
+func (f *TestBackingFile) UnmapAt(length uint32, offset int64) (int, error) {
+	return int(length), nil
+}
+
 func NewTestBackingFile(path string) (*TestBackingFile, error) {
 	f, err := os.Create(path)
 	if err != nil {

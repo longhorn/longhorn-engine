@@ -297,6 +297,16 @@ func (s *Server) ReadAt(buf []byte, offset int64) (int, error) {
 	return i, err
 }
 
+func (s *Server) UnmapAt(length uint32, off int64) (int, error) {
+	s.RLock()
+	defer s.RUnlock()
+
+	if s.r == nil {
+		return 0, fmt.Errorf("Volume no longer exist")
+	}
+	return s.r.UnmapAt(length, off)
+}
+
 func (s *Server) SetRevisionCounter(counter int64) error {
 	s.Lock()
 	defer s.Unlock()
