@@ -36,7 +36,7 @@ type Factory struct {
 }
 
 type Remote struct {
-	types.ReaderWriterAt
+	types.ReaderWriterUnmapperAt
 	name              string
 	replicaServiceURL string
 	closeChan         chan struct{}
@@ -280,7 +280,7 @@ func (rf *Factory) Create(volumeName, address string, dataServerProtocol types.D
 	}
 
 	dataConnClient := dataconn.NewClient(conn, engineToReplicaTimeout)
-	r.ReaderWriterAt = dataConnClient
+	r.ReaderWriterUnmapperAt = dataConnClient
 
 	if err := r.open(); err != nil {
 		return nil, err
