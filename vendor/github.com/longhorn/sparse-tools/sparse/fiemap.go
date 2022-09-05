@@ -63,9 +63,9 @@ type FiemapFile struct {
 	*os.File
 }
 
-// NewFiemapFile : return a new FibmapFile
-func NewFiemapFile(f *os.File) FiemapFile {
-	return FiemapFile{f}
+// NewFiemapFile : return a new FiemapFile
+func NewFiemapFile(f *os.File) *FiemapFile {
+	return &FiemapFile{f}
 }
 
 // Fiemap : call FIEMAP ioctl

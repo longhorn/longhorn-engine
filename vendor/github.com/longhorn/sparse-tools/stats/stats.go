@@ -25,6 +25,8 @@ const (
 	OpRead
 	// OpWrite write to replica
 	OpWrite
+	// OpUnmap unmap for replica
+	OpUnmap
 	// OpPing ping replica
 	OpPing
 )
@@ -84,6 +86,8 @@ func (op SampleOp) String() string {
 		return "R"
 	case OpWrite:
 		return "W"
+	case OpUnmap:
+		return "U"
 	case OpPing:
 		return "P"
 	}
