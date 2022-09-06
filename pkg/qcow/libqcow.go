@@ -60,6 +60,10 @@ func (q *Qcow) ReadAt(buf []byte, off int64) (int, error) {
 	return int(ret), nil
 }
 
+func (q *Qcow) UnmapAt(legnth uint32, off int64) (int, error) {
+	return 0, errors.New("Unsupported operation")
+}
+
 func (q *Qcow) Close() error {
 	var qErr *C.libqcow_error_t
 	if C.libqcow_file_close(q.file, &qErr) != 1 {
