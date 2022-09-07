@@ -595,7 +595,25 @@ func checkDeuplicteAddress(addresses ...string) error {
 	return nil
 }
 
-func (c *Controller) Start(addresses ...string) error {
+func determineCorrectVolumeSize(volumeSize, volumeCurrentSize int64, backendSizes map[int64]struct{}) int64 {
+	if volumeCurrentSize == 0 {
+		return volumeSize
+	}
+
+	if len(backendSizes) == 1 {
+		backendSize := int64(0)
+		for size := range backendSizes {
+			backendSize = size
+		}
+		if backendSize == volumeSize {
+			return volumeSize
+		}
+	}
+
+	return volumeCurrentSize
+}
+
+func (c *Controller) Start(volumeSize, volumeCurrentSize int64, addresses ...string) error {
 	c.Lock()
 	defer c.Unlock()
 
@@ -613,8 +631,8 @@ func (c *Controller) Start(addresses ...string) error {
 
 	c.reset()
 
-	var fatalErr error
 	availableBackends := map[string]types.Backend{}
+	backendSizes := map[int64]struct{}{}
 	first := true
 	for _, address := range addresses {
 		newBackend, err := c.factory.Create(address)
@@ -622,16 +640,19 @@ func (c *Controller) Start(addresses ...string) error {
 			logrus.Warnf("failed to create backend with address %v: %v", address, err)
 			continue
 		}
+
 		newSize, err := newBackend.Size()
 		if err != nil {
 			logrus.Warnf("failed to get the size from the backend address %v: %v", address, err)
 			continue
 		}
+
 		newSectorSize, err := newBackend.SectorSize()
 		if err != nil {
 			logrus.Warnf("failed to get the sector size from the backend address %v: %v", address, err)
 			continue
 		}
+
 		state, err := newBackend.GetState()
 		if err != nil {
 			logrus.Warnf("failed to get the state from the backend address %v: %v", address, err)
@@ -642,20 +663,33 @@ func (c *Controller) Start(addresses ...string) error {
 			continue
 		}
 
-		availableBackends[address] = newBackend
-
 		if first {
 			first = false
-			c.size = newSize
 			c.sectorSize = newSectorSize
-		} else if c.size != newSize {
-			availableBackends = map[string]types.Backend{}
-			fatalErr = fmt.Errorf("BUG: Backend sizes do not match %d != %d in the engine initiation phase", c.size, newSize)
-			break
-		} else if c.sectorSize != newSectorSize {
-			availableBackends = map[string]types.Backend{}
-			fatalErr = fmt.Errorf("BUG: Backend sector sizes do not match %d != %d in the engine initiation phase", c.sectorSize, newSectorSize)
-			break
+		}
+
+		if c.sectorSize != newSectorSize {
+			logrus.Warnf("backend %v sector size does not match %d != %d in the engine initiation phase", address, c.sectorSize, newSectorSize)
+			continue
+		}
+
+		availableBackends[address] = newBackend
+		backendSizes[newSize] = struct{}{}
+	}
+
+	c.size = determineCorrectVolumeSize(volumeSize, volumeCurrentSize, backendSizes)
+
+	for address, backend := range availableBackends {
+		size, err := backend.Size()
+		if err != nil {
+			logrus.Warnf("failed to get the size from the backend address %v: %v", address, err)
+			delete(availableBackends, address)
+			continue
+		}
+
+		if c.size != size {
+			logrus.Warnf("backend %v size does not match %d != %d in the engine initiation phase", address, c.size, size)
+			delete(availableBackends, address)
 		}
 	}
 
@@ -672,9 +706,6 @@ func (c *Controller) Start(addresses ...string) error {
 		}
 	}
 
-	if fatalErr != nil {
-		return fatalErr
-	}
 	if len(availableBackends) == 0 {
 		return fmt.Errorf("cannot create an available backend for the engine from the addresses %+v", addresses)
 	}

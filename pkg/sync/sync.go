@@ -340,14 +340,14 @@ func find(list []string, item string) int {
 	return -1
 }
 
-func (t *Task) AddRestoreReplica(replica string) error {
+func (t *Task) AddRestoreReplica(volumeSize, volumeCurrentSize int64, replica string) error {
 	volume, err := t.client.VolumeGet()
 	if err != nil {
 		return err
 	}
 
 	if volume.ReplicaCount == 0 {
-		return t.client.VolumeStart(replica)
+		return t.client.VolumeStart(volumeSize, volumeCurrentSize, replica)
 	}
 
 	if err := t.checkRestoreReplicaSize(replica, volume.Size); err != nil {
@@ -394,14 +394,14 @@ func (t *Task) VerifyRebuildReplica(address string) error {
 	return nil
 }
 
-func (t *Task) AddReplica(replica string) error {
+func (t *Task) AddReplica(volumeSize, volumeCurrentSize int64, replica string) error {
 	volume, err := t.client.VolumeGet()
 	if err != nil {
 		return err
 	}
 
 	if volume.ReplicaCount == 0 {
-		return t.client.VolumeStart(replica)
+		return t.client.VolumeStart(volumeSize, volumeCurrentSize, replica)
 	}
 
 	if err := t.checkAndExpandReplica(replica, volume.Size); err != nil {
@@ -717,7 +717,7 @@ func GetSnapshotsInfo(replicas []*types.ControllerReplicaInfo) (outputDisks map[
 	return outputDisks, nil
 }
 
-func (t *Task) StartWithReplicas(replicas []string) error {
+func (t *Task) StartWithReplicas(volumeSize, volumeCurrentSize int64, replicas []string) error {
 	volume, err := t.client.VolumeGet()
 	if err != nil {
 		return err
@@ -727,7 +727,7 @@ func (t *Task) StartWithReplicas(replicas []string) error {
 		return fmt.Errorf("cannot add multiple replicas if volume is already up")
 	}
 
-	return t.client.VolumeStart(replicas...)
+	return t.client.VolumeStart(volumeSize, volumeCurrentSize, replicas...)
 }
 
 func (t *Task) RebuildStatus() (map[string]*ReplicaRebuildStatus, error) {

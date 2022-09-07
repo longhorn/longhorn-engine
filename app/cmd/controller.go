@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 
+	"github.com/docker/go-units"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 
@@ -25,6 +26,14 @@ func ControllerCmd() cli.Command {
 			cli.StringFlag{
 				Name:  "listen",
 				Value: "localhost:9501",
+			},
+			cli.StringFlag{
+				Name:  "size",
+				Usage: "Volume nominal size in bytes or human readable 42kb, 42mb, 42gb",
+			},
+			cli.StringFlag{
+				Name:  "current-size",
+				Usage: "Volume current size in bytes or human readable 42kb, 42mb, 42gb",
 			},
 			cli.StringFlag{
 				Name:  "frontend",
@@ -77,6 +86,24 @@ func startController(c *cli.Context) error {
 	disableRevCounter := c.Bool("disableRevCounter")
 	salvageRequested := c.Bool("salvageRequested")
 
+	size := c.String("size")
+	if size == "" {
+		return errors.New("size is required")
+	}
+	volumeSize, err := units.RAMInBytes(size)
+	if err != nil {
+		return err
+	}
+
+	size = c.String("current-size")
+	if size == "" {
+		return errors.New("current-size is required")
+	}
+	volumeCurrentSize, err := units.RAMInBytes(size)
+	if err != nil {
+		return err
+	}
+
 	factories := map[string]types.BackendFactory{}
 	for _, backend := range backends {
 		switch backend {
@@ -110,7 +137,7 @@ func startController(c *cli.Context) error {
 
 	if len(replicas) > 0 {
 		logrus.Infof("Starting with replicas %q", replicas)
-		if err := control.Start(replicas...); err != nil {
+		if err := control.Start(volumeSize, volumeCurrentSize, replicas...); err != nil {
 			log.Fatal(err)
 		}
 	}
