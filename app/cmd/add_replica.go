@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/docker/go-units"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 
@@ -20,6 +21,14 @@ func AddReplicaCmd() cli.Command {
 			cli.BoolFlag{
 				Name:  "restore",
 				Usage: "Set this flag if the replica is being added to a restore/DR volume",
+			},
+			cli.StringFlag{
+				Name:  "size",
+				Usage: "Volume nominal size in bytes or human readable 42kb, 42mb, 42gb",
+			},
+			cli.StringFlag{
+				Name:  "current-size",
+				Usage: "Volume current size in bytes or human readable 42kb, 42mb, 42gb",
 			},
 		},
 		Action: func(c *cli.Context) {
@@ -44,16 +53,44 @@ func addReplica(c *cli.Context) error {
 		return err
 	}
 
-	if c.Bool("restore") {
-		return task.AddRestoreReplica(replica)
+	size := c.String("size")
+	if size == "" {
+		return errors.New("size is required")
 	}
-	return task.AddReplica(replica)
+	volumeSize, err := units.RAMInBytes(size)
+	if err != nil {
+		return err
+	}
+
+	size = c.String("current-size")
+	if size == "" {
+		return errors.New("current-size is required")
+	}
+	volumeCurrentSize, err := units.RAMInBytes(size)
+	if err != nil {
+		return err
+	}
+
+	if c.Bool("restore") {
+		return task.AddRestoreReplica(volumeSize, volumeCurrentSize, replica)
+	}
+	return task.AddReplica(volumeSize, volumeCurrentSize, replica)
 }
 
 func StartWithReplicasCmd() cli.Command {
 	return cli.Command{
 		Name:      "start-with-replicas",
 		ShortName: "start",
+		Flags: []cli.Flag{
+			cli.StringFlag{
+				Name:  "size",
+				Usage: "Volume nominal size in bytes or human readable 42kb, 42mb, 42gb",
+			},
+			cli.StringFlag{
+				Name:  "current-size",
+				Usage: "Volume current size in bytes or human readable 42kb, 42mb, 42gb",
+			},
+		},
 		Action: func(c *cli.Context) {
 			if err := startWithReplicas(c); err != nil {
 				logrus.Fatalf("Error running start-with-replica command: %v", err)
@@ -76,7 +113,25 @@ func startWithReplicas(c *cli.Context) error {
 		return err
 	}
 
-	return task.StartWithReplicas(replicas)
+	size := c.String("size")
+	if size == "" {
+		return errors.New("size is required")
+	}
+	volumeSize, err := units.RAMInBytes(size)
+	if err != nil {
+		return err
+	}
+
+	size = c.String("current-size")
+	if size == "" {
+		return errors.New("current-size is required")
+	}
+	volumeCurrentSize, err := units.RAMInBytes(size)
+	if err != nil {
+		return err
+	}
+
+	return task.StartWithReplicas(volumeSize, volumeCurrentSize, replicas)
 }
 
 func RebuildStatusCmd() cli.Command {
