@@ -15,7 +15,7 @@ from common.core import (  # NOQA
 from common.frontend import get_socket_path
 from common.constants import (
     LONGHORN_DEV_DIR, PAGE_SIZE, SIZE,
-    VOLUME_NAME, ENGINE_NAME,
+    VOLUME_NAME, ENGINE_NAME
 )
 
 
@@ -94,7 +94,8 @@ def test_frontend_show(grpc_engine_manager, grpc_controller,  # NOQA
 
     r1_url = grpc_replica1.url
     r2_url = grpc_replica2.url
-    v = grpc_controller.volume_start(replicas=[r1_url, r2_url])
+    v = grpc_controller.volume_start(
+        SIZE, SIZE, replicas=[r1_url, r2_url])
 
     ft = v.frontend
     if ft == "tgt":
@@ -125,7 +126,8 @@ def test_cleanup_leftover_blockdev(grpc_controller,  # NOQA
 
     r1_url = grpc_replica1.url
     r2_url = grpc_replica2.url
-    grpc_controller.volume_start(replicas=[r1_url, r2_url])
+    grpc_controller.volume_start(
+        SIZE, SIZE, replicas=[r1_url, r2_url])
 
     info = cmd.info_get(grpc_controller.address)
     assert info["name"] == VOLUME_NAME

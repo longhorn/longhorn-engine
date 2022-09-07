@@ -11,6 +11,7 @@ from common.core import (  # NOQA
 
 from common.constants import (
     EXPANDED_SIZE,
+    SIZE,
 )
 
 from rpc.controller.controller_client import ControllerClient  # NOQA
@@ -107,7 +108,8 @@ def test_start(grpc_controller_client):  # NOQA
     f1 = create_backend_file()
     f2 = create_backend_file()
     addresses = ['file://' + f1, 'file://' + f2]
-    v = grpc_controller_client.volume_start(replicas=addresses)
+    v = grpc_controller_client.volume_start(
+        SIZE, SIZE, replicas=addresses)
 
     rs = grpc_controller_client.replica_list()
     assert len(rs) == 2
@@ -126,7 +128,8 @@ def test_shutdown(grpc_controller_client):  # NOQA
     f1 = create_backend_file()
     f2 = create_backend_file()
     addresses = ['file://' + f1, 'file://' + f2]
-    v = grpc_controller_client.volume_start(replicas=addresses)
+    v = grpc_controller_client.volume_start(
+        SIZE, SIZE, replicas=addresses)
     assert v.replicaCount == 2
 
     v = grpc_controller_client.volume_shutdown()
@@ -145,7 +148,8 @@ def test_controller_expand(grpc_controller_client):  # NOQA
     f1 = create_backend_file()
     f2 = create_backend_file()
     addresses = ['file://' + f1, 'file://' + f2]
-    v = grpc_controller_client.volume_start(replicas=addresses)
+    v = grpc_controller_client.volume_start(
+        SIZE, SIZE, replicas=addresses)
     assert v.replicaCount == 2
 
     expand_volume_with_frontend(grpc_controller_client, EXPANDED_SIZE)
