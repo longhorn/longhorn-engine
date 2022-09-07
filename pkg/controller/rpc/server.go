@@ -118,7 +118,7 @@ func (cs *ControllerServer) VolumeGet(ctx context.Context, req *empty.Empty) (*p
 }
 
 func (cs *ControllerServer) VolumeStart(ctx context.Context, req *ptypes.VolumeStartRequest) (*ptypes.Volume, error) {
-	if err := cs.c.Start(req.ReplicaAddresses...); err != nil {
+	if err := cs.c.Start(req.Size, req.CurrentSize, req.ReplicaAddresses...); err != nil {
 		return nil, err
 	}
 	return cs.getVolume(), nil
