@@ -296,7 +296,8 @@ def test_engine_upgrade(pm_client, em_client):  # NOQA
 
     replicas = ["tcp://localhost:"+str(r.status.port_start)]
     e = upgrade_engine(em_client, LONGHORN_UPGRADE_BINARY,
-                       engine_name, volume_name, replicas)
+                       engine_name, volume_name, SIZE_STR,
+                       replicas)
     assert e.spec.name == engine_name
     check_dev_existence(volume_name)
 
@@ -372,9 +373,8 @@ def engine_replica_mismatch(em_client, engine_rev_counter_disabled): # NOQA
         get_process_address(engine_process))
     r1_url = grpc_replica_client1.url
     r2_url = grpc_replica_client2.url
-    v = grpc_controller_client.volume_start(replicas=[
-        r1_url, r2_url,
-    ])
+    v = grpc_controller_client.volume_start(
+        SIZE, SIZE, replicas=[r1_url, r2_url])
     assert v.replicaCount == 2
 
     # Check if replica1 is mode `ERR`

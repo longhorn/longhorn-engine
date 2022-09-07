@@ -3,8 +3,10 @@ import time
 import subprocess
 from os import path
 
-from common.constants import RETRY_COUNTS, RETRY_INTERVAL
-
+from common.constants import (
+    RETRY_COUNTS, RETRY_INTERVAL,
+    SIZE
+)
 
 def _file(f):
     return path.join(_base(), '../../{}'.format(f))
@@ -152,8 +154,12 @@ def backup_volume_list(url, name, dest, include_backup_details=False):
     return json.loads(subprocess.check_output(cmd, encoding='utf-8'))
 
 
-def add_replica(url, replica_url, restore=False):
-    cmd = [_bin(), '--url', url, '--debug', 'add', replica_url]
+def add_replica(url, replica_url, size=SIZE, restore=False):
+    cmd = [_bin(), '--url', url, '--debug',
+           'add',
+           '--size', str(size),
+           '--current-size', str(size),
+           replica_url]
     if restore:
         cmd.append("--restore")
     return subprocess.check_output(cmd, encoding='utf-8').strip()
