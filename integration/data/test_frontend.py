@@ -5,6 +5,7 @@ from common.core import (  # NOQA
 from common.constants import (
     VOLUME_NO_FRONTEND_NAME,
     FRONTEND_TGT_BLOCKDEV,
+    SIZE
 )
 
 
@@ -20,7 +21,7 @@ def test_frontend_switch(grpc_controller_no_frontend,  # NOQA
     r1_url = grpc_replica1.url
     r2_url = grpc_replica2.url
     v = grpc_controller_no_frontend.volume_start(
-        replicas=[r1_url, r2_url])
+        SIZE, SIZE, replicas=[r1_url, r2_url])
     assert v.name == VOLUME_NO_FRONTEND_NAME
     assert v.replicaCount == 2
     assert v.frontend == ""

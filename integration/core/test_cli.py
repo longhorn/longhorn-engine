@@ -31,6 +31,7 @@ from common.core import (  # NOQA
     get_controller_version_detail,
     verify_replica_mode,
     get_backup_volume_url,
+    open_replica,
 )
 
 import common.cmd as cmd
@@ -106,31 +107,14 @@ def getNow():
     return datetime.datetime.utcnow().replace(microsecond=0).isoformat()
 
 
-def open_replica(grpc_client):
-    r = grpc_client.replica_get()
-    assert r.state == 'initial'
-    assert r.size == '0'
-    assert r.sector_size == 0
-    assert r.parent == ''
-    assert r.head == ''
-
-    r = grpc_client.replica_create(size=SIZE_STR)
-
-    assert r.state == 'closed'
-    assert r.size == SIZE_STR
-    assert r.sector_size == 512
-    assert r.parent == ''
-    assert r.head == 'volume-head-000.img'
-
-    return r
-
-
 def test_replica_add_start(bin, grpc_controller_client,  # NOQA
                            grpc_replica_client):  # NOQA
     open_replica(grpc_replica_client)
 
     cmd = [bin, '--debug', '--url', grpc_controller_client.address,
            'add-replica',
+           '--size', SIZE_STR,
+           '--current-size', SIZE_STR,
            grpc_replica_client.url]
     subprocess.check_call(cmd)
     wait_for_rebuild_complete(grpc_controller_client.address)
@@ -169,6 +153,8 @@ def test_replica_add_rebuild(bin, grpc_controller_client,  # NOQA
     grpc_replica_client.replica_close()
     cmd = [bin, '--debug', '--url', grpc_controller_client.address,
            'add-replica',
+           '--size', SIZE_STR,
+           '--current-size', SIZE_STR,
            grpc_replica_client.url]
     subprocess.check_call(cmd)
     wait_for_rebuild_complete(grpc_controller_client.address)
@@ -178,6 +164,8 @@ def test_replica_add_rebuild(bin, grpc_controller_client,  # NOQA
 
     cmd = [bin, '--debug', '--url', grpc_controller_client.address,
            'add-replica',
+           '--size', SIZE_STR,
+           '--current-size', SIZE_STR,
            grpc_replica_client2.url]
     subprocess.check_call(cmd)
     wait_for_rebuild_complete(grpc_controller_client.address)
@@ -255,6 +243,8 @@ def test_replica_add_after_rebuild_failed(bin, grpc_controller_client,  # NOQA
 
     cmd = [bin, '--debug', '--url', grpc_controller_client.address,
            'add-replica',
+           '--size', SIZE_STR,
+           '--current-size', SIZE_STR,
            grpc_replica_client.url]
     subprocess.check_call(cmd)
 
@@ -267,6 +257,8 @@ def test_replica_add_after_rebuild_failed(bin, grpc_controller_client,  # NOQA
 
     cmd = [bin, '--debug', '--url', grpc_controller_client.address,
            'add-replica',
+           '--size', SIZE_STR,
+           '--current-size', SIZE_STR,
            grpc_replica_client2.url]
     subprocess.check_call(cmd)
 
@@ -288,10 +280,8 @@ def test_replica_failure_detection(grpc_controller_client,  # NOQA
 
     r1_url = grpc_replica_client.url
     r2_url = grpc_replica_client2.url
-    v = grpc_controller_client.volume_start(replicas=[
-        r1_url,
-        r2_url,
-    ])
+    v = grpc_controller_client.volume_start(
+        SIZE, SIZE, replicas=[r1_url, r2_url])
     assert v.replicaCount == 2
 
     # wait for initial read/write period to pass
@@ -322,10 +312,8 @@ def test_revert(engine_manager_client,  # NOQA
 
     r1_url = grpc_replica_client.url
     r2_url = grpc_replica_client2.url
-    v = grpc_controller_client.volume_start(replicas=[
-        r1_url,
-        r2_url,
-    ])
+    v = grpc_controller_client.volume_start(
+        SIZE, SIZE, replicas=[r1_url, r2_url])
     assert v.replicaCount == 2
 
     snap = grpc_controller_client.volume_snapshot(name='foo1')
@@ -358,10 +346,8 @@ def test_snapshot(bin, grpc_controller_client,  # NOQA
 
     r1_url = grpc_replica_client.url
     r2_url = grpc_replica_client2.url
-    v = grpc_controller_client.volume_start(replicas=[
-        r1_url,
-        r2_url,
-    ])
+    v = grpc_controller_client.volume_start(
+        SIZE, SIZE, replicas=[r1_url, r2_url])
     assert v.replicaCount == 2
 
     snap = grpc_controller_client.volume_snapshot(name='foo1')
@@ -387,10 +373,8 @@ def test_snapshot_ls(bin, grpc_controller_client,  # NOQA
 
     r1_url = grpc_replica_client.url
     r2_url = grpc_replica_client2.url
-    v = grpc_controller_client.volume_start(replicas=[
-        r1_url,
-        r2_url,
-    ])
+    v = grpc_controller_client.volume_start(
+        SIZE, SIZE, replicas=[r1_url, r2_url])
     assert v.replicaCount == 2
 
     snap = grpc_controller_client.volume_snapshot()
@@ -416,10 +400,8 @@ def test_snapshot_info(bin, grpc_controller_client,  # NOQA
 
     r1_url = grpc_replica_client.url
     r2_url = grpc_replica_client2.url
-    v = grpc_controller_client.volume_start(replicas=[
-        r1_url,
-        r2_url,
-    ])
+    v = grpc_controller_client.volume_start(
+        SIZE, SIZE, replicas=[r1_url, r2_url])
     assert v.replicaCount == 2
 
     snap = grpc_controller_client.volume_snapshot()
@@ -475,10 +457,8 @@ def test_snapshot_create(bin, grpc_controller_client,  # NOQA
 
     r1_url = grpc_replica_client.url
     r2_url = grpc_replica_client2.url
-    v = grpc_controller_client.volume_start(replicas=[
-        r1_url,
-        r2_url,
-    ])
+    v = grpc_controller_client.volume_start(
+        SIZE, SIZE, replicas=[r1_url, r2_url])
     assert v.replicaCount == 2
 
     cmd = [bin, '--url', grpc_controller_client.address,
@@ -527,10 +507,8 @@ def test_snapshot_rm(bin, grpc_controller_client,  # NOQA
 
     r1_url = grpc_replica_client.url
     r2_url = grpc_replica_client2.url
-    v = grpc_controller_client.volume_start(replicas=[
-        r1_url,
-        r2_url,
-    ])
+    v = grpc_controller_client.volume_start(
+        SIZE, SIZE, replicas=[r1_url, r2_url])
     assert v.replicaCount == 2
 
     cmd = [bin, '--url', grpc_controller_client.address,
@@ -561,10 +539,8 @@ def test_snapshot_rm_empty(bin, grpc_controller_client,  # NOQA
 
     r1_url = grpc_replica_client.url
     r2_url = grpc_replica_client2.url
-    v = grpc_controller_client.volume_start(replicas=[
-        r1_url,
-        r2_url,
-    ])
+    v = grpc_controller_client.volume_start(
+        SIZE, SIZE, replicas=[r1_url, r2_url])
     assert v.replicaCount == 2
 
     cmd = [bin, '--url', grpc_controller_client.address,
@@ -604,13 +580,15 @@ def test_snapshot_last(bin, grpc_controller_client,  # NOQA
 
     r1_url = grpc_replica_client.url
     r2_url = grpc_replica_client2.url
-    v = grpc_controller_client.volume_start(replicas=[
-        r1_url,
-    ])
+    v = grpc_controller_client.volume_start(
+        SIZE, SIZE, replicas=[r1_url])
     assert v.replicaCount == 1
 
     cmd = [bin, '--url', grpc_controller_client.address,
-           'add', r2_url]
+           'add',
+           '--size', SIZE_STR,
+           '--current-size', SIZE_STR,
+           r2_url]
     subprocess.check_output(cmd)
     cmd = [bin, '--url', grpc_controller_client.address,
            'snapshot', 'ls']
@@ -643,10 +621,8 @@ def backup_core(bin, engine_manager_client,  # NOQA
 
     r1_url = grpc_replica_client.url
     r2_url = grpc_replica_client2.url
-    v = grpc_controller_client.volume_start(replicas=[
-        r1_url,
-        r2_url,
-    ])
+    v = grpc_controller_client.volume_start(
+        SIZE, SIZE, replicas=[r1_url, r2_url])
     assert v.replicaCount == 2
 
     backup_type = urlparse(backup_target).scheme
@@ -805,10 +781,8 @@ def test_snapshot_purge_basic(bin, grpc_controller_client,  # NOQA
 
     r1_url = grpc_replica_client.url
     r2_url = grpc_replica_client2.url
-    v = grpc_controller_client.volume_start(replicas=[
-        r1_url,
-        r2_url,
-    ])
+    v = grpc_controller_client.volume_start(
+        SIZE, SIZE, replicas=[r1_url, r2_url])
     assert v.replicaCount == 2
 
     cmd = [bin, '--url', grpc_controller_client.address,
@@ -867,10 +841,8 @@ def test_snapshot_purge_head_parent(bin, grpc_controller_client,  # NOQA
 
     r1_url = grpc_replica_client.url
     r2_url = grpc_replica_client2.url
-    v = grpc_controller_client.volume_start(replicas=[
-        r1_url,
-        r2_url,
-    ])
+    v = grpc_controller_client.volume_start(
+        SIZE, SIZE, replicas=[r1_url, r2_url])
     assert v.replicaCount == 2
 
     cmd = [bin, '--url', grpc_controller_client.address,
@@ -945,10 +917,8 @@ def test_volume_expand_with_snapshots(  # NOQA
 
     r1_url = grpc_replica_client.url
     r2_url = grpc_replica_client2.url
-    v = grpc_controller_client.volume_start(replicas=[
-        r1_url,
-        r2_url,
-    ])
+    v = grpc_controller_client.volume_start(
+        SIZE, SIZE, replicas=[r1_url, r2_url])
     assert v.replicaCount == 2
 
     cmd = [bin, '--url', grpc_controller_client.address,
@@ -1126,9 +1096,8 @@ def test_expand_multiple_times():
 
         open_replica(grpc_replica_client)
         r1_url = grpc_replica_client.url
-        v = grpc_controller_client.volume_start(replicas=[
-            r1_url,
-        ])
+        v = grpc_controller_client.volume_start(
+            SIZE, SIZE, replicas=[r1_url])
         assert v.replicaCount == 1
 
         expand_volume_with_frontend(
@@ -1185,9 +1154,8 @@ def test_single_replica_failure_during_engine_start(bin):  # NOQA
     open_replica(grpc_replica_client2)
     r1_url = grpc_replica_client1.url
     r2_url = grpc_replica_client2.url
-    v = grpc_controller_client.volume_start(replicas=[
-        r1_url, r2_url,
-    ])
+    v = grpc_controller_client.volume_start(
+        SIZE, SIZE, replicas=[r1_url, r2_url])
     assert v.replicaCount == 2
 
     cmd = [bin, '--url', grpc_controller_client.address,
@@ -1235,9 +1203,8 @@ def test_single_replica_failure_during_engine_start(bin):  # NOQA
     get_controller_version_detail(grpc_controller_client)
     r1_url = grpc_replica_client1.url
     r2_url = grpc_replica_client2.url
-    v = grpc_controller_client.volume_start(replicas=[
-        r1_url, r2_url,
-    ])
+    v = grpc_controller_client.volume_start(
+        SIZE, SIZE, replicas=[r1_url, r2_url])
     assert v.replicaCount == 2
 
     # Check if replica1 is mode `ERR`
@@ -1330,9 +1297,8 @@ def test_engine_restart_after_sigkill(bin):  # NOQA
     open_replica(grpc_replica_client2)
     r1_url = grpc_replica_client1.url
     r2_url = grpc_replica_client2.url
-    v = grpc_controller_client.volume_start(replicas=[
-        r1_url, r2_url,
-    ])
+    v = grpc_controller_client.volume_start(
+        SIZE, SIZE, replicas=[r1_url, r2_url])
     assert v.replicaCount == 2
 
     cmd = [bin, '--url', grpc_controller_client.address,
@@ -1377,9 +1343,8 @@ def test_engine_restart_after_sigkill(bin):  # NOQA
     get_controller_version_detail(grpc_controller_client)
     r1_url = grpc_replica_client1.url
     r2_url = grpc_replica_client2.url
-    v = grpc_controller_client.volume_start(replicas=[
-        r1_url, r2_url,
-    ])
+    v = grpc_controller_client.volume_start(
+        SIZE, SIZE, replicas=[r1_url, r2_url])
     assert v.replicaCount == 2
 
     # Verify the engine still works fine
@@ -1444,9 +1409,8 @@ def test_replica_removal_and_recreation(bin):  # NOQA
     open_replica(grpc_replica_client2)
     r1_url = grpc_replica_client1.url
     r2_url = grpc_replica_client2.url
-    v = grpc_controller_client.volume_start(replicas=[
-        r1_url, r2_url,
-    ])
+    v = grpc_controller_client.volume_start(
+        SIZE, SIZE, replicas=[r1_url, r2_url])
     assert v.replicaCount == 2
 
     # Remove the first replica and recreate it immediately.
@@ -1466,3 +1430,22 @@ def test_replica_removal_and_recreation(bin):  # NOQA
 
     cleanup_process(em_client)
     cleanup_process(rm_client)
+
+
+def test_replica_with_mismatched_size_add_start(bin, grpc_controller_client,  # NOQA
+                                                grpc_replica_client,  # NOQA
+                                                grpc_replica_client2):  # NOQA
+    open_replica(grpc_replica_client, size=SIZE)
+    open_replica(grpc_replica_client2, size=SIZE * 2)
+
+    r1_url = grpc_replica_client.url
+    r2_url = grpc_replica_client2.url
+    grpc_controller_client.volume_start(
+        SIZE, SIZE, replicas=[r1_url, r2_url])
+
+    rs = grpc_controller_client.replica_list()
+    for r in rs:
+        if r.address == r1_url:
+            assert r.mode == 'RW'
+        else:
+            assert r.mode == 'ERR'

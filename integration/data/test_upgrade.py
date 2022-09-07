@@ -14,7 +14,8 @@ from common.core import (  # NOQA
 from common.constants import (
     ENGINE_NAME, VOLUME_NAME,
     LONGHORN_BINARY, LONGHORN_UPGRADE_BINARY,
-    LONGHORN_DEV_DIR
+    LONGHORN_DEV_DIR,
+    SIZE, SIZE_STR
 )
 
 
@@ -38,12 +39,14 @@ def test_upgrade(grpc_engine_manager,  # NOQA
     upgrade_r1_url = grpc_extra_replica1.url
     upgrade_r2_url = grpc_extra_replica2.url
 
-    v = grpc_controller.volume_start(replicas=[r1_url, r2_url])
+    v = grpc_controller.volume_start(
+        SIZE, SIZE, replicas=[r1_url, r2_url])
     assert v.replicaCount == 2
 
     upgrade_e = upgrade_engine(grpc_engine_manager,
                                LONGHORN_UPGRADE_BINARY,
                                ENGINE_NAME, VOLUME_NAME,
+                               SIZE_STR,
                                replicas=[upgrade_r1_url, upgrade_r2_url])
     assert upgrade_e.spec.binary == LONGHORN_UPGRADE_BINARY
 
@@ -66,7 +69,7 @@ def test_upgrade(grpc_engine_manager,  # NOQA
     # cannot start with wrong replica, would trigger rollback
     with pytest.raises(grpc.RpcError):
         upgrade_engine(grpc_engine_manager, LONGHORN_BINARY,
-                       ENGINE_NAME, VOLUME_NAME,
+                       ENGINE_NAME, VOLUME_NAME, SIZE_STR,
                        ["random"])
     verify_data(dev, offset, data)
 
@@ -78,6 +81,7 @@ def test_upgrade(grpc_engine_manager,  # NOQA
     e = upgrade_engine(grpc_engine_manager,
                        LONGHORN_BINARY,
                        ENGINE_NAME, VOLUME_NAME,
+                       SIZE_STR,
                        [r1_url, r2_url])
     assert e.spec.binary == LONGHORN_BINARY
 

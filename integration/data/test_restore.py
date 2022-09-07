@@ -66,7 +66,8 @@ def test_restore_with_rebuild(
                             grpc_controller_no_frontend)
 
     open_replica(grpc_fixed_dir_replica2)
-    cmd.add_replica(dr_address, grpc_fixed_dir_replica2.url, True)
+    cmd.add_replica(dr_address, grpc_fixed_dir_replica2.url,
+                    restore=True)
 
     replicas = grpc_controller_no_frontend.replica_list()
     assert len(replicas) == 2
@@ -387,13 +388,14 @@ def test_inc_restore_with_rebuild_and_expansion(
     # For DR volume, the rebuilding replica won't be expanded automatically.
     open_replica(grpc_fixed_dir_replica2)
     with pytest.raises(subprocess.CalledProcessError):
-        cmd.add_replica(dr_address, grpc_fixed_dir_replica2.url, True)
+        cmd.add_replica(dr_address, grpc_fixed_dir_replica2.url,
+                        restore=True)
 
     # Manually expand the rebuilding replica then retry `add-replica`.
     grpc_fixed_dir_replica2.replica_open()
     grpc_fixed_dir_replica2.replica_expand(EXPANDED_SIZE)
     grpc_fixed_dir_replica2.replica_close()
-    cmd.add_replica(dr_address, grpc_fixed_dir_replica2.url, True)
+    cmd.add_replica(dr_address, grpc_fixed_dir_replica2.url, restore=True)
 
     replicas = grpc_controller_no_frontend.replica_list()
     assert len(replicas) == 2

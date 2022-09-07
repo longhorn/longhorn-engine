@@ -14,9 +14,11 @@ class ControllerClient(object):
     def volume_get(self):
         return self.stub.VolumeGet(empty_pb2.Empty())
 
-    def volume_start(self, replicas):
+    def volume_start(self, size, currentSize, replicas):
         return self.stub.VolumeStart(controller_pb2.VolumeStartRequest(
             replicaAddresses=replicas,
+            size=size,
+            currentSize=currentSize
         ))
 
     def volume_shutdown(self):
