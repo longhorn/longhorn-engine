@@ -121,6 +121,8 @@ def create_engine_process(client, name=ENGINE_NAME,
         args += ["--replica", r]
     for b in backends:
         args += ["--enable-backend", b]
+    args += ["--size", str(size)]
+    args += ["--current-size", str(size)]
     client.process_create(
         name=name, binary=binary, args=args,
         port_count=1, port_args=["--listen,localhost:"])
@@ -375,6 +377,7 @@ def start_no_frontend_volume(grpc_c, *grpc_r_list):
         open_replica(grpc_r)
 
     v = grpc_c.volume_start(
+        SIZE, SIZE,
         replicas=[grpc_r.url for grpc_r in grpc_r_list])
     assert v.replicaCount == len(grpc_r_list)
 
@@ -418,6 +421,7 @@ def reset_volume(grpc_c, *grpc_r_list):
         #  See https://github.com/longhorn/longhorn/issues/1628 for details.
         time.sleep(1)
         v = grpc_c.volume_start(
+            SIZE, SIZE,
             replicas=[grpc_r.url for grpc_r in grpc_r_list])
         rs = grpc_c.replica_list()
         if len(rs) != len(grpc_r_list):
@@ -487,7 +491,7 @@ def cleanup_replica_dir(dir=""):
             pass
 
 
-def open_replica(grpc_client, backing_file=None):
+def open_replica(grpc_client, size=SIZE):
     r = grpc_client.replica_get()
     assert r.state == 'initial'
     assert r.size == '0'
@@ -495,10 +499,10 @@ def open_replica(grpc_client, backing_file=None):
     assert r.parent == ''
     assert r.head == ''
 
-    r = grpc_client.replica_create(size=str(1024 * 4096))
+    r = grpc_client.replica_create(size=str(size))
 
     assert r.state == 'closed'
-    assert r.size == str(1024 * 4096)
+    assert r.size == str(size)
     assert r.sector_size == 512
     assert r.parent == ''
     assert r.head == 'volume-head-000.img'
@@ -783,8 +787,10 @@ def wait_for_dev_deletion(volume_name):
     assert not found
 
 
-def upgrade_engine(client, binary, engine_name, volume_name, replicas):
+def upgrade_engine(client, binary, engine_name, volume_name, size, replicas):
     args = ["controller", volume_name, "--frontend", FRONTEND_TGT_BLOCKDEV,
+            "--size", str(size),
+            "--current-size", str(size),
             "--upgrade"]
     for r in replicas:
         args += ["--replica", r]

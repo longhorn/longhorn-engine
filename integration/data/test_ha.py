@@ -29,7 +29,7 @@ from common.constants import (
     FIXED_REPLICA_PATH1, FIXED_REPLICA_PATH2,
     FRONTEND_TGT_BLOCKDEV,
     REPLICA_META_FILE_NAME,
-    EXPANSION_DISK_TMP_META_NAME, EXPANSION_DISK_NAME
+    EXPANSION_DISK_TMP_META_NAME, EXPANSION_DISK_NAME,
 )
 
 
@@ -43,7 +43,8 @@ def test_ha_single_replica_failure(grpc_controller,  # NOQA
 
     r1_url = grpc_replica1.url
     r2_url = grpc_replica2.url
-    v = grpc_controller.volume_start(replicas=[r1_url, r2_url])
+    v = grpc_controller.volume_start(
+        SIZE, SIZE, replicas=[r1_url, r2_url])
     assert v.replicaCount == 2
 
     replicas = grpc_controller.replica_list()
@@ -79,7 +80,8 @@ def test_ha_single_replica_rebuild(grpc_controller,  # NOQA
 
     r1_url = grpc_replica1.url
     r2_url = grpc_replica2.url
-    v = grpc_controller.volume_start(replicas=[r1_url, r2_url])
+    v = grpc_controller.volume_start(
+        SIZE, SIZE, replicas=[r1_url, r2_url])
     assert v.replicaCount == 2
 
     replicas = grpc_controller.replica_list()
@@ -147,7 +149,8 @@ def test_ha_double_replica_rebuild(grpc_controller,  # NOQA
 
     r1_url = grpc_replica1.url
     r2_url = grpc_replica2.url
-    v = grpc_controller.volume_start(replicas=[r1_url, r2_url])
+    v = grpc_controller.volume_start(
+        SIZE, SIZE, replicas=[r1_url, r2_url])
     assert v.name == VOLUME_NAME
     assert v.replicaCount == 2
 
@@ -192,7 +195,8 @@ def test_ha_double_replica_rebuild(grpc_controller,  # NOQA
     # NOTE the order is reversed here
     r1_url = grpc_replica1.url
     r2_url = grpc_replica2.url
-    v = grpc_controller.volume_start(replicas=[r2_url, r1_url])
+    v = grpc_controller.volume_start(
+        SIZE, SIZE, replicas=[r2_url, r1_url])
     assert v.replicaCount == 2
 
     # replica2 is out because of lower revision counter
@@ -238,7 +242,8 @@ def test_ha_revision_counter_consistency(grpc_controller,  # NOQA
 
     r1_url = grpc_replica1.url
     r2_url = grpc_replica2.url
-    v = grpc_controller.volume_start(replicas=[r1_url, r2_url])
+    v = grpc_controller.volume_start(
+        SIZE, SIZE, replicas=[r1_url, r2_url])
     assert v.name == VOLUME_NAME
     assert v.replicaCount == 2
 
@@ -273,7 +278,8 @@ def test_snapshot_tree_rebuild(grpc_controller,  # NOQA
 
     r1_url = grpc_replica1.url
     r2_url = grpc_replica2.url
-    v = grpc_controller.volume_start(replicas=[r1_url, r2_url])
+    v = grpc_controller.volume_start(
+        SIZE, SIZE, replicas=[r1_url, r2_url])
     assert v.name == VOLUME_NAME
     assert v.replicaCount == 2
 
@@ -342,7 +348,7 @@ def ha_single_backing_replica_rebuild_test(grpc_backing_controller, grpc_backing
     r1_url = grpc_backing_replica1.url
     r2_url = grpc_backing_replica2.url
     v = grpc_backing_controller.volume_start(
-        replicas=[r1_url, r2_url])
+        SIZE, SIZE, replicas=[r1_url, r2_url])
     assert v.replicaCount == 2
     assert v.name == VOLUME_BACKING_NAME
 
@@ -412,7 +418,8 @@ def test_ha_remove_extra_disks(grpc_controller,  # NOQA
     assert len(replicas) == 0
 
     r1_url = grpc_replica1.url
-    v = grpc_controller.volume_start(replicas=[r1_url])
+    v = grpc_controller.volume_start(
+        SIZE, SIZE, replicas=[r1_url])
     assert v.name == VOLUME_NAME
     assert v.replicaCount == 1
 
@@ -436,7 +443,8 @@ def test_ha_remove_extra_disks(grpc_controller,  # NOQA
     assert len(replicas) == 0
 
     r2_url = grpc_replica2.url
-    v = grpc_controller.volume_start(replicas=[r2_url])
+    v = grpc_controller.volume_start(
+        SIZE, SIZE, replicas=[r2_url])
     assert v.name == VOLUME_NAME
     assert v.replicaCount == 1
 
@@ -829,7 +837,8 @@ def test_replica_crashed_update_state_error(grpc_controller,
 
     # Create a volume on this engine controller with fixed_dir_replica1.
     r1_url = grpc_fixed_dir_replica1.url
-    v = grpc_controller.volume_start(replicas=[r1_url])
+    v = grpc_controller.volume_start(
+        SIZE, SIZE, replicas=[r1_url])
     assert v.replicaCount == 1
 
     # Check engine controller should have 1 replica in 'RW' mode.
