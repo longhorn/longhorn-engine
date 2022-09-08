@@ -87,7 +87,7 @@ func (c *Controller) Revert(name string) error {
 	}
 
 	if !minimalSuccess {
-		return fmt.Errorf("fail to revert to %v on all replicas", name)
+		return fmt.Errorf("failed to revert to %v on all replicas", name)
 	}
 
 	return nil

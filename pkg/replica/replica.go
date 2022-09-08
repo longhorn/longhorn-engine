@@ -400,7 +400,7 @@ func (r *Replica) MarkDiskAsRemoved(name string) error {
 	}
 
 	if err := r.markDiskAsRemoved(disk); err != nil {
-		return fmt.Errorf("Fail to mark disk %v as removed: %v", disk, err)
+		return fmt.Errorf("Failed to mark disk %v as removed: %v", disk, err)
 	}
 
 	return nil
@@ -414,12 +414,12 @@ func (r *Replica) hardlinkDisk(target, source string) error {
 	if _, err := os.Stat(r.diskPath(target)); err == nil {
 		logrus.Infof("Old file %s exists, deleting", target)
 		if err := os.Remove(r.diskPath(target)); err != nil {
-			return fmt.Errorf("Fail to remove %s: %v", target, err)
+			return fmt.Errorf("Failed to remove %s: %v", target, err)
 		}
 	}
 
 	if err := os.Link(r.diskPath(source), r.diskPath(target)); err != nil {
-		return fmt.Errorf("Fail to link %s to %s", source, target)
+		return fmt.Errorf("Failed to link %s to %s", source, target)
 	}
 	return nil
 }
@@ -1197,7 +1197,7 @@ func (r *Replica) GetRemainSnapshotCounts() int {
 func (r *Replica) getDiskSize(disk string) int64 {
 	ret := util.GetFileActualSize(r.diskPath(disk))
 	if ret == -1 {
-		errMessage := fmt.Sprintf("Fail to get file %v size", r.diskPath(disk))
+		errMessage := fmt.Sprintf("Failed to get file %v size", r.diskPath(disk))
 		if r.info.Error == "" {
 			r.info.Error = errMessage
 			logrus.Error(errMessage)
