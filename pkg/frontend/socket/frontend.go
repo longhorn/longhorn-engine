@@ -117,7 +117,7 @@ func (t *Socket) startSocketServerListen(rw types.ReaderWriterAt) error {
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
-			logrus.Errorln("Fail to accept socket connection")
+			logrus.Errorln("Failed to accept socket connection")
 			continue
 		}
 		go t.handleServerConnection(conn, rw)
@@ -130,7 +130,7 @@ func (t *Socket) handleServerConnection(c net.Conn, rw types.ReaderWriterAt) {
 	server := dataconn.NewServer(c, NewDataProcessorWrapper(rw))
 	logrus.Infoln("New data socket connection established")
 	if err := server.Handle(); err != nil && err != io.EOF {
-		logrus.Errorln("Fail to handle socket server connection due to ", err)
+		logrus.Errorln("Failed to handle socket server connection due to ", err)
 	} else if err == io.EOF {
 		logrus.Warnln("Socket server connection closed")
 	}
