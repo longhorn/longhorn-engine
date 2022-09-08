@@ -83,7 +83,7 @@ func (c *Controller) VerifyRebuildReplica(address string) error {
 
 		}
 		if err := c.backend.SetRevisionCounter(address, counter); err != nil {
-			return fmt.Errorf("fail to set revision counter for %v: %v", address, err)
+			return fmt.Errorf("failed to set revision counter for %v: %v", address, err)
 		}
 	}
 
@@ -135,7 +135,7 @@ func (c *Controller) PrepareRebuildReplica(address string) ([]types.SyncFileInfo
 
 	if !c.revisionCounterDisabled {
 		if err := c.backend.SetRevisionCounter(address, 0); err != nil {
-			return nil, fmt.Errorf("fail to set revision counter for %v: %v", address, err)
+			return nil, fmt.Errorf("failed to set revision counter for %v: %v", address, err)
 		}
 	}
 
