@@ -798,3 +798,30 @@ def upgrade_engine(client, binary, engine_name, volume_name, size, replicas):
     return client.process_replace(
         engine_name, binary, args,
     )
+
+
+def get_nsenter_cmd():
+    return ["nsenter", "--mount=/host/proc/1/ns/mnt",
+            "--net=/host/proc/1/ns/net", "--"]
+
+
+def checksum_filesystem_file(file_path):
+    read_cmd = get_nsenter_cmd() + ["cat", file_path]
+    data = subprocess.check_output(read_cmd)
+    return checksum_data(str(data).encode('utf-8'))
+
+
+def write_filesystem_file(length, file_path):
+    # beware don't touch this write command
+    data = random_string(length)
+    write_cmd = ["/bin/sh -c '/bin/echo",
+                 '"' + data + '"', ">>", file_path + "'"]
+    shell_cmd = " ".join(get_nsenter_cmd() + write_cmd)
+
+    subprocess.check_call(shell_cmd, shell=True)
+    return checksum_filesystem_file(file_path)
+
+
+def remove_filesystem_file(file_path):
+    rm_cmd = get_nsenter_cmd() + ["rm", file_path]
+    subprocess.check_output(rm_cmd)

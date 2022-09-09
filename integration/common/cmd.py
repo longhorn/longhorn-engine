@@ -200,3 +200,12 @@ def verify_rebuild_replica(url, replica_url):
     cmd = [_bin(), '--url', url, '--debug', 'verify-rebuild-replica',
            replica_url]
     return subprocess.check_output(cmd, encoding='utf-8')
+
+
+def set_unmap_mark_snap_chain_removed(url, enabled):
+    cmd = [_bin(), '--url', url, '--debug', 'unmap-mark-snap-chain-removed']
+    if enabled:
+        cmd.append("--enable")
+    else:
+        cmd.append("--disable")
+    return subprocess.check_output(cmd, encoding='utf-8')
