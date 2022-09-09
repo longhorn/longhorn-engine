@@ -1,10 +1,12 @@
 import random
 import subprocess
+
 import pytest
 
 import common.cmd as cmd
 
 from common.core import (  # NOQA
+    cleanup_controller, cleanup_replica,
     get_dev, read_dev,
     generate_random_data, read_from_backing_file,
     Snapshot, snapshot_revert_with_frontend, wait_for_purge_completion,
@@ -12,7 +14,9 @@ from common.core import (  # NOQA
     expand_volume_with_frontend,
     wait_and_check_volume_expansion,
     checksum_dev, verify_data,
-    get_filesystem_block_size
+    get_filesystem_block_size,
+    get_nsenter_cmd,
+    checksum_filesystem_file, write_filesystem_file, remove_filesystem_file,
 )
 
 from common.constants import (
@@ -21,8 +25,6 @@ from common.constants import (
     PAGE_SIZE, SIZE, EXPANDED_SIZE,
     FRONTEND_TGT_BLOCKDEV
 )
-
-from common.util import checksum_data
 
 from data.snapshot_tree import snapshot_tree_build, snapshot_tree_verify_node
 
@@ -419,8 +421,7 @@ def snapshot_mounted_filesystem_test(volume_name, dev, address, engine_name):  #
     print("mnt_path: " + mnt_path + "\n")
 
     # create & mount a ext4 filesystem on dev
-    nsenter_cmd = ["nsenter", "--mount=/host/proc/1/ns/mnt",
-                   "--net=/host/proc/1/ns/net", "--"]
+    nsenter_cmd = get_nsenter_cmd()
     mount_cmd = nsenter_cmd + ["mount", "--make-shared", dev_path, mnt_path]
     umount_cmd = nsenter_cmd + ["umount", mnt_path]
     findmnt_cmd = nsenter_cmd + ["findmnt", dev_path]
@@ -429,32 +430,17 @@ def snapshot_mounted_filesystem_test(volume_name, dev, address, engine_name):  #
     subprocess.check_call(mount_cmd)
     subprocess.check_call(findmnt_cmd)
 
-    def checksum_test_file():
-        read_cmd = nsenter_cmd + ["cat", test_file]
-        data = subprocess.check_output(read_cmd)
-        return checksum_data(str(data).encode('utf-8'))
-
-    def write_test_file():
-        # beware don't touch this write command
-        data = random_string(length)
-        write_cmd = ["/bin/sh -c '/bin/echo",
-                     '"' + data + '"', ">", test_file + "'"]
-        shell_cmd = " ".join(nsenter_cmd + write_cmd)
-
-        subprocess.check_call(shell_cmd, shell=True)
-        return checksum_test_file()
-
     # create snapshot1 with empty fs
     # NOTE: we cannot use checksum_dev since it assumes
     #  asci data for device data instead of raw bytes
     snap1 = cmd.snapshot_create(address)
 
     # create snapshot2 with a new test file
-    test2_checksum = write_test_file()
+    test2_checksum = write_filesystem_file(length, test_file)
     snap2 = cmd.snapshot_create(address)
 
     # create snapshot3 overwriting the test file
-    test3_checksum = write_test_file()
+    test3_checksum = write_filesystem_file(length, test_file)
     snap3 = cmd.snapshot_create(address)
 
     # verify existence of the snapshots
@@ -474,21 +460,21 @@ def snapshot_mounted_filesystem_test(volume_name, dev, address, engine_name):  #
     # should error since the file does not exist in snapshot 1
     with pytest.raises(subprocess.CalledProcessError):
         print("is expected error, since the file does not exist.")
-        checksum_test_file()
+        checksum_filesystem_file(test_file)
     subprocess.check_call(umount_cmd)
 
     print("\nsnapshot_revert_with_frontend snap2 begin")
     snapshot_revert_with_frontend(address, engine_name, snap2)
     print("snapshot_revert_with_frontend snap2 finish\n")
     subprocess.check_call(mount_cmd)
-    assert checksum_test_file() == test2_checksum
+    assert checksum_filesystem_file(test_file) == test2_checksum
     subprocess.check_call(umount_cmd)
 
     print("\nsnapshot_revert_with_frontend snap3 begin")
     snapshot_revert_with_frontend(address, engine_name, snap3)
     print("snapshot_revert_with_frontend snap3 finish\n")
     subprocess.check_call(mount_cmd)
-    assert checksum_test_file() == test3_checksum
+    assert checksum_filesystem_file(test_file) == test3_checksum
     subprocess.check_call(umount_cmd)
 
     # remove the created mount folder
@@ -667,3 +653,225 @@ def test_snapshot_prune_with_coalesce(grpc_controller, grpc_replica1, grpc_repli
 
     # Verify the data content
     assert cksum == read_dev(dev, 0, 3*fs_block_size)
+
+
+def test_snapshot_trim_filesystem(grpc_controller,  # NOQA
+                                  grpc_replica1, grpc_replica2):  # NOQA
+    """
+    Test that the trimming against the filesystem on a
+    currently mounted volume can be applied to a removing/system snapshot
+    or the volume head.
+
+    1. Create & attach a longhorn volume.
+    2. Create & mount an ext4 filesystem on that volume in host namespace.
+    3. Ensure volume mount point can be found in host namespace.
+    4. Write file1 on the filesystem and take snapshot1.
+    5. Write file_branch on the filesystem and take snapshot_branch.
+    6. Revert to snapshot1.
+    7. Write file2 on the filesystem and take snapshot2.
+    8. Write file3 on the filesystem and take snapshot3.
+    9. Modify file1 on the filesystem (in volume head).
+    10. Delete file1, file2, and file3.
+    11. Trim the filesystem, and validate:
+        only the size of the volume head is decreased.
+    12. Enable unmap-mark-snap-chain-removed for the volume.
+    13. Trim the filesystem again, and validate:
+        1. snapshot3 and snapshot2 are marked as removed
+        2. snapshot3 and snapshot2 size should decrease.
+        3. snapshot 1 is unchanged.
+    14. Revert to snapshot_branch,
+        validate file1 and file_branch original content.
+    """
+    address = grpc_controller.address
+
+    # TODO: Increase the default volume size of the engine integration test to
+    #  meet the min requirement of xfs. But increasing the volume size means
+    #  we need to re-check all expansion related tests.
+    for fs_type in ["ext4"]:
+        dev = get_dev(grpc_replica1, grpc_replica2, grpc_controller)
+        filesystem_trim_test(dev, address, VOLUME_NAME, ENGINE_NAME, fs_type)
+        cmd.sync_agent_server_reset(address)
+        cleanup_controller(grpc_controller)
+        cleanup_replica(grpc_replica1)
+        cleanup_replica(grpc_replica2)
+
+
+def filesystem_trim_test(dev, address, volume_name, engine_name, fs_type):  # NOQA
+    dev_path = dev.dev
+    mnt_path = "/tmp/mnt-" + VOLUME_NAME
+
+    # create & mount a ext4 filesystem on dev
+    nsenter_cmd = get_nsenter_cmd()
+    mount_cmd = nsenter_cmd + ["mount", "--make-shared", dev_path, mnt_path]
+    umount_cmd = nsenter_cmd + ["umount", mnt_path]
+    findmnt_cmd = nsenter_cmd + ["findmnt", dev_path]
+    trim_cmd = nsenter_cmd + ["fstrim", mnt_path]
+    if fs_type == "ext4":
+        subprocess.check_call(nsenter_cmd + ["mkfs.ext4", dev_path])
+    elif fs_type == "xfs":
+        subprocess.check_call(nsenter_cmd + ["mkfs.xfs", dev_path])
+    else:
+        raise Exception("unexpected filesystem type")
+    subprocess.check_call(nsenter_cmd + ["mkdir", "-p", mnt_path])
+    subprocess.check_call(mount_cmd)
+    subprocess.check_call(findmnt_cmd)
+
+    subprocess.check_call(nsenter_cmd + ["sync"])
+    info = cmd.snapshot_info(address)
+    assert len(info) == 1
+    assert VOLUME_HEAD in info
+    fs_meta_size = int(info[VOLUME_HEAD]["size"])
+
+    fs_block_size = 4 * 1024
+    length = 3 * 1024
+    # create snapshot1 with fs and file 1
+    file_path1 = mnt_path + "/test1"
+    test1_checksum = write_filesystem_file(length, file_path1)
+    subprocess.check_call(nsenter_cmd + ["sync"])
+    snap1 = cmd.snapshot_create(address)
+
+    # create snapshot-branch with file branch
+    file_path_branch = mnt_path + "/test-branch"
+    test_branch_checksum = write_filesystem_file(length, file_path_branch)
+    subprocess.check_call(nsenter_cmd + ["sync"])
+    snap_branch = cmd.snapshot_create(address)
+
+    info = cmd.snapshot_info(address)
+    assert snap1 in info
+    assert info[snap1]["parent"] == ""
+    assert snap_branch in info[snap1]["children"]
+    assert not info[snap1]["removed"]
+    # it is hard to predict the exact blocks the filesystem would consume
+    # when writing a file
+    snap1_size = int(info[snap1]["size"])
+    assert snap1_size >= fs_meta_size + fs_block_size
+
+    assert snap_branch in info
+    assert info[snap_branch]["parent"] == snap1
+    assert VOLUME_HEAD in info[snap_branch]["children"]
+    assert not info[snap_branch]["removed"]
+    snap_branch_size = int(info[snap_branch]["size"])
+    assert snap_branch_size >= fs_block_size
+
+    # revert to snapshot1
+    # unmount the volume, since each revert will shutdown the device
+    subprocess.check_call(umount_cmd)
+    snapshot_revert_with_frontend(address, engine_name, snap1)
+    subprocess.check_call(mount_cmd)
+
+    # create snapshot2 with file 2
+    file_path2 = mnt_path + "/test2"
+    write_filesystem_file(length, file_path2)
+    subprocess.check_call(nsenter_cmd + ["sync"])
+    snap2 = cmd.snapshot_create(address)
+
+    info = cmd.snapshot_info(address)
+    assert snap2 in info
+    assert info[snap2]["parent"] == snap1
+    snap2_size = int(info[snap2]["size"])
+    assert snap2_size >= fs_block_size
+
+    # create snapshot3 with file 3
+    file_path3 = mnt_path + "/test3"
+    write_filesystem_file(length, file_path3)
+    subprocess.check_call(nsenter_cmd + ["sync"])
+    snap3 = cmd.snapshot_create(address)
+
+    info = cmd.snapshot_info(address)
+    assert snap3 in info
+    assert info[snap3]["parent"] == snap2
+    snap3_size = int(info[snap3]["size"])
+    assert snap3_size >= fs_block_size
+
+    # append new data to file 1 in the volume head
+    write_filesystem_file(length, file_path1)
+    subprocess.check_call(nsenter_cmd + ["sync"])
+
+    remove_filesystem_file(file_path1)
+    remove_filesystem_file(file_path2)
+    remove_filesystem_file(file_path3)
+    subprocess.check_call(nsenter_cmd + ["sync"])
+
+    # verify the snapshots before and after the fs trim
+    info = cmd.snapshot_info(address)
+    assert len(info) == 5
+
+    assert snap1 in info
+    assert info[snap1]["parent"] == ""
+    assert snap2 in info[snap1]["children"]
+    assert not info[snap1]["removed"]
+    assert int(info[snap1]["size"]) == snap1_size
+
+    assert snap2 in info
+    assert info[snap2]["parent"] == snap1
+    assert snap3 in info[snap2]["children"]
+    assert not info[snap2]["removed"]
+    assert int(info[snap2]["size"]) == snap2_size
+
+    assert snap3 in info
+    assert info[snap3]["parent"] == snap2
+    assert VOLUME_HEAD in info[snap3]["children"]
+    assert not info[snap3]["removed"]
+    assert int(info[snap3]["size"]) == snap3_size
+
+    assert VOLUME_HEAD in info
+    assert info[VOLUME_HEAD]["parent"] == snap3
+    head_size = int(info[VOLUME_HEAD]["size"])
+    assert head_size >= fs_block_size
+
+    # trim the filesystem
+    subprocess.check_call(trim_cmd)
+
+    info = cmd.snapshot_info(address)
+    assert len(info) == 5
+
+    assert snap1 in info
+    assert not info[snap1]["removed"]
+    assert int(info[snap1]["size"]) == snap1_size
+
+    assert snap2 in info
+    assert not info[snap2]["removed"]
+    assert int(info[snap2]["size"]) <= snap2_size
+
+    assert snap3 in info
+    assert not info[snap3]["removed"]
+    assert int(info[snap3]["size"]) == snap3_size
+
+    assert VOLUME_HEAD in info
+    assert int(info[VOLUME_HEAD]["size"]) <= head_size - fs_block_size
+
+    cmd.set_unmap_mark_snap_chain_removed(address, True)
+
+    # Re-mount the filesystem then re-do trim
+    subprocess.check_call(umount_cmd)
+    subprocess.check_call(mount_cmd)
+    subprocess.check_call(trim_cmd)
+
+    info = cmd.snapshot_info(address)
+    assert len(info) == 5
+
+    assert snap1 in info
+    assert not info[snap1]["removed"]
+    assert int(info[snap1]["size"]) == snap1_size
+
+    assert snap2 in info
+    assert info[snap2]["removed"]
+    # similarly, it's hard to predict the exact trimmed blocks of a filesystem.
+    assert int(info[snap2]["size"]) <= snap2_size - fs_block_size
+
+    assert snap3 in info
+    assert info[snap3]["removed"]
+    assert int(info[snap3]["size"]) <= snap3_size - fs_block_size
+
+    assert VOLUME_HEAD in info
+    assert int(info[VOLUME_HEAD]["size"]) <= head_size - fs_block_size
+
+    # unmount the volume, since each revert will shutdown the device
+    subprocess.check_call(umount_cmd)
+
+    # restore to another snapshot branch and verify the data integrity
+    snapshot_revert_with_frontend(address, engine_name, snap_branch)
+    subprocess.check_call(mount_cmd)
+    assert checksum_filesystem_file(file_path1) == test1_checksum
+    assert checksum_filesystem_file(file_path_branch) == test_branch_checksum
+    subprocess.check_call(umount_cmd)
