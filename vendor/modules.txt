@@ -95,7 +95,7 @@ github.com/longhorn/sparse-tools/sparse/rest
 github.com/longhorn/sparse-tools/stats
 # github.com/mattn/go-runewidth v0.0.5-0.20181218000649-703b5e6b11ae
 github.com/mattn/go-runewidth
-# github.com/moby/moby v1.11.1
+# github.com/moby/moby v20.10.18+incompatible
 github.com/moby/moby/pkg/reexec
 # github.com/pkg/errors v0.9.1
 github.com/pkg/errors
@@ -112,7 +112,7 @@ github.com/shurcooL/sanitized_anchor_name
 github.com/sirupsen/logrus
 # github.com/urfave/cli v1.22.1
 github.com/urfave/cli
-# golang.org/x/net v0.0.0-20200202094626-16171245cfb2
+# golang.org/x/net v0.0.0-20201021035429-f5854403a974
 golang.org/x/net/context
 golang.org/x/net/http/httpguts
 golang.org/x/net/http2
