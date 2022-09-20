@@ -23,19 +23,21 @@ type State string
 
 type Server struct {
 	sync.RWMutex
-	r                       *Replica
-	dir                     string
-	sectorSize              int64
-	backing                 *backingfile.BackingFile
-	revisionCounterDisabled bool
+	r                         *Replica
+	dir                       string
+	sectorSize                int64
+	backing                   *backingfile.BackingFile
+	revisionCounterDisabled   bool
+	unmapMarkDiskChainRemoved bool
 }
 
-func NewServer(dir string, backing *backingfile.BackingFile, sectorSize int64, disableRevCounter bool) *Server {
+func NewServer(dir string, backing *backingfile.BackingFile, sectorSize int64, disableRevCounter, unmapMarkDiskChainRemoved bool) *Server {
 	return &Server{
-		dir:                     dir,
-		backing:                 backing,
-		sectorSize:              sectorSize,
-		revisionCounterDisabled: disableRevCounter,
+		dir:                       dir,
+		backing:                   backing,
+		sectorSize:                sectorSize,
+		revisionCounterDisabled:   disableRevCounter,
+		unmapMarkDiskChainRemoved: unmapMarkDiskChainRemoved,
 	}
 }
 
@@ -58,7 +60,7 @@ func (s *Server) Create(size int64) error {
 	sectorSize := s.getSectorSize()
 
 	logrus.Infof("Creating volume %s, size %d/%d", s.dir, size, sectorSize)
-	r, err := New(size, sectorSize, s.dir, s.backing, s.revisionCounterDisabled)
+	r, err := New(size, sectorSize, s.dir, s.backing, s.revisionCounterDisabled, s.unmapMarkDiskChainRemoved)
 	if err != nil {
 		return err
 	}
@@ -78,7 +80,7 @@ func (s *Server) Open() error {
 	sectorSize := s.getSectorSize()
 
 	logrus.Infof("Opening volume %s, size %d/%d", s.dir, info.Size, sectorSize)
-	r, err := New(info.Size, sectorSize, s.dir, s.backing, s.revisionCounterDisabled)
+	r, err := New(info.Size, sectorSize, s.dir, s.backing, s.revisionCounterDisabled, s.unmapMarkDiskChainRemoved)
 	if err != nil {
 		return err
 	}
@@ -177,6 +179,18 @@ func (s *Server) Snapshot(name string, userCreated bool, createdTime string, lab
 	logrus.Infof("Replica server starts to snapshot [%s] volume, user created %v, created time %v, labels %v",
 		name, userCreated, createdTime, labels)
 	return s.r.Snapshot(name, userCreated, createdTime, labels)
+}
+
+func (s *Server) SetUnmapMarkDiskChainRemoved(enabled bool) {
+	s.Lock()
+	defer s.Unlock()
+
+	s.unmapMarkDiskChainRemoved = enabled
+	if s.r != nil {
+		s.r.SetUnmapMarkDiskChainRemoved(enabled)
+	}
+
+	return
 }
 
 func (s *Server) Expand(size int64) error {

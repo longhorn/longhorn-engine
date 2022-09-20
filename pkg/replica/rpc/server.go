@@ -84,6 +84,8 @@ func (rs *ReplicaServer) getReplica() (replica *ptypes.Replica) {
 		modifyTime, headFileSize := r.GetReplicaStat()
 		replica.LastModifyTime = modifyTime
 		replica.HeadFileSize = headFileSize
+
+		replica.UnmapMarkDiskChainRemoved = r.GetUnmapMarkDiskChainRemoved()
 	}
 	return replica
 }
@@ -234,6 +236,11 @@ func (rs *ReplicaServer) RevisionCounterSet(ctx context.Context, req *ptypes.Rev
 		return nil, err
 	}
 	return &ptypes.RevisionCounterSetResponse{Replica: rs.getReplica()}, nil
+}
+
+func (rs *ReplicaServer) UnmapMarkDiskChainRemovedSet(ctx context.Context, req *ptypes.UnmapMarkDiskChainRemovedSetRequest) (*ptypes.UnmapMarkDiskChainRemovedSetResponse, error) {
+	rs.s.SetUnmapMarkDiskChainRemoved(req.Enabled)
+	return &ptypes.UnmapMarkDiskChainRemovedSetResponse{Replica: rs.getReplica()}, nil
 }
 
 func (hc *ReplicaHealthCheckServer) Check(context.Context, *healthpb.HealthCheckRequest) (*healthpb.HealthCheckResponse, error) {

@@ -141,16 +141,16 @@ func ReadInfo(dir string) (Info, error) {
 	return info, err
 }
 
-func New(size, sectorSize int64, dir string, backingFile *backingfile.BackingFile, disableRevCounter bool) (*Replica, error) {
-	return construct(false, size, sectorSize, dir, "", backingFile, disableRevCounter)
+func New(size, sectorSize int64, dir string, backingFile *backingfile.BackingFile, disableRevCounter, unmapMarkDiskChainRemoved bool) (*Replica, error) {
+	return construct(false, size, sectorSize, dir, "", backingFile, disableRevCounter, unmapMarkDiskChainRemoved)
 }
 
 func NewReadOnly(dir, head string, backingFile *backingfile.BackingFile) (*Replica, error) {
 	// size and sectorSize don't matter because they will be read from metadata
-	return construct(true, 0, diskutil.ReplicaSectorSize, dir, head, backingFile, false)
+	return construct(true, 0, diskutil.ReplicaSectorSize, dir, head, backingFile, false, false)
 }
 
-func construct(readonly bool, size, sectorSize int64, dir, head string, backingFile *backingfile.BackingFile, disableRevCounter bool) (*Replica, error) {
+func construct(readonly bool, size, sectorSize int64, dir, head string, backingFile *backingfile.BackingFile, disableRevCounter, unmapMarkDiskChainRemoved bool) (*Replica, error) {
 	if size%sectorSize != 0 {
 		return nil, fmt.Errorf("size %d not a multiple of sector size %d", size, sectorSize)
 	}
@@ -160,12 +160,13 @@ func construct(readonly bool, size, sectorSize int64, dir, head string, backingF
 	}
 
 	r := &Replica{
-		dir:                     dir,
-		activeDiskData:          make([]*disk, 1),
-		diskData:                make(map[string]*disk),
-		diskChildrenMap:         map[string]map[string]bool{},
-		readOnly:                readonly,
-		revisionCounterDisabled: disableRevCounter,
+		dir:                       dir,
+		activeDiskData:            make([]*disk, 1),
+		diskData:                  make(map[string]*disk),
+		diskChildrenMap:           map[string]map[string]bool{},
+		readOnly:                  readonly,
+		revisionCounterDisabled:   disableRevCounter,
+		unmapMarkDiskChainRemoved: unmapMarkDiskChainRemoved,
 	}
 	r.info.Size = size
 	r.info.SectorSize = sectorSize
@@ -279,7 +280,7 @@ func (r *Replica) SetRebuilding(rebuilding bool) error {
 }
 
 func (r *Replica) Reload() (*Replica, error) {
-	newReplica, err := New(r.info.Size, r.info.SectorSize, r.dir, r.info.BackingFile, r.revisionCounterDisabled)
+	newReplica, err := New(r.info.Size, r.info.SectorSize, r.dir, r.info.BackingFile, r.revisionCounterDisabled, r.unmapMarkDiskChainRemoved)
 	if err != nil {
 		return nil, err
 	}
@@ -1055,6 +1056,22 @@ func (r *Replica) Revert(name, created string) (*Replica, error) {
 	defer r.Unlock()
 
 	return r.revertDisk(name, created)
+}
+
+func (r *Replica) GetUnmapMarkDiskChainRemoved() bool {
+	r.RLock()
+	defer r.RUnlock()
+
+	return r.unmapMarkDiskChainRemoved
+}
+
+func (r *Replica) SetUnmapMarkDiskChainRemoved(enabled bool) {
+	r.Lock()
+	defer r.Unlock()
+
+	r.unmapMarkDiskChainRemoved = enabled
+
+	logrus.Infof("Set replica flag unmapMarkDiskChainRemoved to %v", enabled)
 }
 
 func (r *Replica) Expand(size int64) (err error) {

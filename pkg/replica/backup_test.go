@@ -22,7 +22,7 @@ func (s *TestSuite) TestBackup(c *C) {
 	err = os.Chdir(dir)
 	c.Assert(err, IsNil)
 
-	r, err := New(10*mb, bs, dir, nil, false)
+	r, err := New(10*mb, bs, dir, nil, false, false)
 	c.Assert(err, IsNil)
 	defer r.Close()
 
@@ -88,7 +88,7 @@ func (s *TestSuite) testBackupWithBackups(c *C, backingFile *backingfile.Backing
 	c.Assert(err, IsNil)
 	volume := "test"
 
-	r, err := New(10*mb, bs, dir, backingFile, false)
+	r, err := New(10*mb, bs, dir, backingFile, false, false)
 	c.Assert(err, IsNil)
 	defer r.Close()
 
