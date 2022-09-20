@@ -71,6 +71,11 @@ func ReplicaCmd() cli.Command {
 				Value: "tcp",
 				Usage: "Specify the data-server protocol. Available options are \"tcp\" and \"unix\"",
 			},
+			cli.BoolFlag{
+				Name:   "unmap-mark-disk-chain-removed",
+				Hidden: false,
+				Usage:  "To mark the current disk chain as removed before starting unmap",
+			},
 		},
 		Action: func(c *cli.Context) {
 			if err := startReplica(c); err != nil {
@@ -92,8 +97,9 @@ func startReplica(c *cli.Context) error {
 	}
 
 	disableRevCounter := c.Bool("disableRevCounter")
+	unmapMarkDiskChainRemoved := c.Bool("unmap-mark-disk-chain-removed")
 
-	s := replica.NewServer(dir, backingFile, diskutil.ReplicaSectorSize, disableRevCounter)
+	s := replica.NewServer(dir, backingFile, diskutil.ReplicaSectorSize, disableRevCounter, unmapMarkDiskChainRemoved)
 
 	address := c.String("listen")
 

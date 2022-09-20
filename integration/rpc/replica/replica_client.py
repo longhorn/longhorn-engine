@@ -58,3 +58,7 @@ class ReplicaClient(object):
     def rebuilding_set(self, rebuilding):
         return self.stub.RebuildingSet(
             replica_pb2.RebuildingSetRequest(rebuilding=rebuilding)).replica
+
+    def unmap_mark_disk_chain_removed_set(self, enabled):
+        return self.stub.UnmapMarkDiskChainRemovedSet(
+            replica_pb2.UnmapMarkDiskChainRemovedSetRequest(enabled=enabled)).replica
