@@ -19,6 +19,8 @@ import (
 	"github.com/longhorn/longhorn-engine/pkg/util"
 )
 
+const defaultSectorSize int64 = 4096
+
 type Controller struct {
 	sync.RWMutex
 	Name       string
@@ -750,13 +752,43 @@ func (c *Controller) WriteAt(b []byte, off int64) (int, error) {
 		return 0, err
 	}
 	startTime := time.Now()
-	n, err := c.backend.WriteAt(b, off)
+	var n int
+	var err error
+	if c.hasWOReplica() {
+		n, err = c.writeInWOMode(b, off)
+	} else {
+		n, err = c.writeInNormalMode(b, off)
+	}
 	c.RUnlock()
 	if err != nil {
 		return n, c.handleError(err)
 	}
 	c.recordMetrics(false, l, time.Since(startTime))
 	return n, err
+}
+
+func (c *Controller) writeInWOMode(b []byte, off int64) (int, error) {
+	bufLen := int64(len(b))
+	// buffer b is defaultSectorSize aligned
+	if (bufLen >= defaultSectorSize) && (off%defaultSectorSize == 0) && ((off+bufLen)%defaultSectorSize == 0) {
+		return c.backend.WriteAt(b, off)
+	}
+
+	readOffsetStart := (off / defaultSectorSize) * defaultSectorSize
+	readOffsetEnd := (((off + bufLen) / defaultSectorSize) + 1) * defaultSectorSize
+	readBuf := make([]byte, readOffsetEnd-readOffsetStart)
+	if _, err := c.backend.ReadAt(readBuf, readOffsetStart); err != nil {
+		return 0, errors.Wrap(err, "failed to retrieve aligned sectors from RW replicas")
+	}
+
+	startCut := off % defaultSectorSize
+	copy(readBuf[startCut:startCut+bufLen], b)
+
+	return c.backend.WriteAt(readBuf, readOffsetStart)
+}
+
+func (c *Controller) writeInNormalMode(b []byte, off int64) (int, error) {
+	return c.backend.WriteAt(b, off)
 }
 
 func (c *Controller) ReadAt(b []byte, off int64) (int, error) {
