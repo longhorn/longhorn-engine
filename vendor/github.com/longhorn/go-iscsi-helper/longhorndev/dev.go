@@ -29,10 +29,11 @@ const (
 
 type LonghornDevice struct {
 	*sync.RWMutex
-	name     string //VolumeName
-	size     int64
-	frontend string
-	endpoint string
+	name       string //VolumeName
+	size       int64
+	sectorSize int64
+	frontend   string
+	endpoint   string
 
 	scsiDevice *iscsidev.Device
 }
@@ -59,14 +60,15 @@ type DeviceCreator interface {
 
 type LonghornDeviceCreator struct{}
 
-func (ldc *LonghornDeviceCreator) NewDevice(name string, size int64, frontend string) (DeviceService, error) {
+func (ldc *LonghornDeviceCreator) NewDevice(name string, size, sectorSize int64, frontend string) (DeviceService, error) {
 	if name == "" || size == 0 {
 		return nil, fmt.Errorf("invalid parameter for creating Longhorn device")
 	}
 	dev := &LonghornDevice{
-		RWMutex: &sync.RWMutex{},
-		name:    name,
-		size:    size,
+		RWMutex:    &sync.RWMutex{},
+		name:       name,
+		size:       size,
+		sectorSize: sectorSize,
 	}
 	if err := dev.SetFrontend(frontend); err != nil {
 		return nil, err
@@ -93,7 +95,7 @@ func (d *LonghornDevice) InitDevice() error {
 // call with lock hold
 func (d *LonghornDevice) initScsiDevice() error {
 	bsOpts := fmt.Sprintf("size=%v", d.size)
-	scsiDev, err := iscsidev.NewDevice(d.name, d.GetSocketPath(), "longhorn", bsOpts)
+	scsiDev, err := iscsidev.NewDevice(d.name, d.GetSocketPath(), "longhorn", bsOpts, d.sectorSize)
 	if err != nil {
 		return err
 	}
@@ -121,7 +123,7 @@ func (d *LonghornDevice) startScsiDevice(startScsiDevice bool) (err error) {
 		// d.scsiDevice.KernelDevice is nil.
 		if startScsiDevice {
 			if d.scsiDevice == nil {
-				return fmt.Errorf("There is no iscsi device during the frontend %v starts", d.frontend)
+				return fmt.Errorf("there is no iscsi device during the frontend %v starts", d.frontend)
 			}
 			if err := d.scsiDevice.CreateTarget(); err != nil {
 				return err
@@ -136,12 +138,10 @@ func (d *LonghornDevice) startScsiDevice(startScsiDevice bool) (err error) {
 		}
 
 		d.endpoint = d.getDev()
-
-		break
 	case types.FrontendTGTISCSI:
 		if startScsiDevice {
 			if d.scsiDevice == nil {
-				return fmt.Errorf("There is no iscsi device during the frontend %v starts", d.frontend)
+				return fmt.Errorf("there is no iscsi device during the frontend %v starts", d.frontend)
 			}
 			if err := d.scsiDevice.CreateTarget(); err != nil {
 				return err
@@ -150,8 +150,6 @@ func (d *LonghornDevice) startScsiDevice(startScsiDevice bool) (err error) {
 		}
 
 		d.endpoint = d.scsiDevice.Target
-
-		break
 	default:
 		return fmt.Errorf("unknown frontend %v", d.frontend)
 	}
@@ -184,18 +182,18 @@ func (d *LonghornDevice) shutdownFrontend() error {
 	case types.FrontendTGTBlockDev:
 		dev := d.getDev()
 		if err := util.RemoveDevice(dev); err != nil {
-			return fmt.Errorf("device %v: fail to remove device %s: %v", d.name, dev, err)
+			return fmt.Errorf("device %v: failed to remove device %s: %v", d.name, dev, err)
 		}
 		if err := d.scsiDevice.StopInitiator(); err != nil {
-			return fmt.Errorf("device %v: fail to stop SCSI device: %v", d.name, err)
+			return fmt.Errorf("device %v: failed to stop SCSI device: %v", d.name, err)
 		}
 		if err := d.scsiDevice.DeleteTarget(); err != nil {
-			return fmt.Errorf("device %v: fail to delete target %v: %v", d.name, d.scsiDevice.Target, err)
+			return fmt.Errorf("device %v: failed to delete target %v: %v", d.name, d.scsiDevice.Target, err)
 		}
 		logrus.Infof("device %v: SCSI device %v shutdown", d.name, dev)
 	case types.FrontendTGTISCSI:
 		if err := d.scsiDevice.DeleteTarget(); err != nil {
-			return fmt.Errorf("device %v: fail to delete target %v: %v", d.name, d.scsiDevice.Target, err)
+			return fmt.Errorf("device %v: failed to delete target %v: %v", d.name, d.scsiDevice.Target, err)
 		}
 		logrus.Infof("device %v: SCSI target %v ", d.name, d.scsiDevice.Target)
 	case "":

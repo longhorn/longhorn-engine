@@ -31,16 +31,18 @@ type Device struct {
 	BackingFile  string
 	BSType       string
 	BSOpts       string
+	SectorSize   int64
 
 	targetID int
 }
 
-func NewDevice(name, backingFile, bsType, bsOpts string) (*Device, error) {
+func NewDevice(name, backingFile, bsType, bsOpts string, sectorSize int64) (*Device, error) {
 	dev := &Device{
 		Target:      GetTargetName(name),
 		BackingFile: backingFile,
 		BSType:      bsType,
 		BSOpts:      bsOpts,
+		SectorSize:  sectorSize,
 	}
 	return dev, nil
 }
@@ -78,7 +80,7 @@ func (dev *Device) CreateTarget() (err error) {
 		return err
 	}
 
-	if err := iscsi.AddLun(dev.targetID, TargetLunID, dev.BackingFile, dev.BSType, dev.BSOpts); err != nil {
+	if err := iscsi.AddLun(dev.targetID, TargetLunID, dev.BackingFile, dev.BSType, dev.BSOpts, dev.SectorSize); err != nil {
 		return err
 	}
 	if err := iscsi.BindInitiator(dev.targetID, "ALL"); err != nil {
@@ -90,7 +92,7 @@ func (dev *Device) CreateTarget() (err error) {
 func (dev *Device) StartInitator() error {
 	lock := nsfilelock.NewLockWithTimeout(util.GetHostNamespacePath(HostProc), LockFile, LockTimeout)
 	if err := lock.Lock(); err != nil {
-		return fmt.Errorf("Fail to lock: %v", err)
+		return fmt.Errorf("failed to lock: %v", err)
 	}
 	defer lock.Unlock()
 
@@ -115,12 +117,12 @@ func (dev *Device) StartInitator() error {
 			break
 		}
 
-		logrus.Warnf("FAIL to discover due to %v", err)
+		logrus.Warnf("Failed to discover due to %v", err)
 		// This is a trick to recover from the case. Remove the
 		// empty entries in /etc/iscsi/nodes/<target_name>. If one of the entry
 		// is empty it will triggered the issue.
 		if err := iscsi.CleanupScsiNodes(dev.Target, ne); err != nil {
-			logrus.Warnf("Fail to cleanup nodes for %v: %v", dev.Target, err)
+			logrus.Warnf("Failed to cleanup nodes for %v: %v", dev.Target, err)
 		} else {
 			logrus.Warnf("Nodes cleaned up for %v", dev.Target)
 		}
@@ -140,12 +142,12 @@ func (dev *Device) StartInitator() error {
 func (dev *Device) StopInitiator() error {
 	lock := nsfilelock.NewLockWithTimeout(util.GetHostNamespacePath(HostProc), LockFile, LockTimeout)
 	if err := lock.Lock(); err != nil {
-		return fmt.Errorf("Fail to lock: %v", err)
+		return fmt.Errorf("failed to lock: %v", err)
 	}
 	defer lock.Unlock()
 
 	if err := LogoutTarget(dev.Target); err != nil {
-		return fmt.Errorf("Fail to logout target: %v", err)
+		return fmt.Errorf("failed to logout target: %v", err)
 	}
 	return nil
 }
