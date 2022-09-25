@@ -38,6 +38,8 @@ type Controller struct {
 	revisionCounterDisabled bool
 	salvageRequested        bool
 
+	unmapMarkSnapChainRemoved bool
+
 	GRPCAddress string
 	GRPCServer  *grpc.Server
 
@@ -57,7 +59,7 @@ const (
 	lastModifyCheckPeriod = 5 * time.Second
 )
 
-func NewController(name string, factory types.BackendFactory, frontend types.Frontend, isUpgrade bool, disableRevCounter bool, salvageRequested bool,
+func NewController(name string, factory types.BackendFactory, frontend types.Frontend, isUpgrade, disableRevCounter, salvageRequested, unmapMarkSnapChainRemoved bool,
 	iscsiTargetRequestTimeout, engineReplicaTimeout time.Duration, dataServerProtocol types.DataServerProtocol) *Controller {
 	c := &Controller{
 		factory:       factory,
@@ -69,6 +71,8 @@ func NewController(name string, factory types.BackendFactory, frontend types.Fro
 		isUpgrade:                 isUpgrade,
 		revisionCounterDisabled:   disableRevCounter,
 		salvageRequested:          salvageRequested,
+		unmapMarkSnapChainRemoved: unmapMarkSnapChainRemoved,
+
 		iscsiTargetRequestTimeout: iscsiTargetRequestTimeout,
 		engineReplicaTimeout:      engineReplicaTimeout,
 		DataServerProtocol:        dataServerProtocol,
@@ -584,6 +588,58 @@ func (c *Controller) checkReplicasRevisionCounter() error {
 	return nil
 }
 
+func (c *Controller) SetUnmapMarkSnapChainRemoved(enabled bool) error {
+	c.Lock()
+	defer c.Unlock()
+
+	c.unmapMarkSnapChainRemoved = enabled
+	return c.checkUnmapMarkSnapChainRemoved()
+}
+
+func (c *Controller) GetUnmapMarkSnapChainRemoved() bool {
+	c.RLock()
+	defer c.RUnlock()
+	return c.unmapMarkSnapChainRemoved
+}
+
+// checkUnmapMarkSnapChainRemoved will check and correct any replica has
+// unmatched flag `UnmapMarkSnapChainRemoved`
+func (c *Controller) checkUnmapMarkSnapChainRemoved() error {
+	allFailed := true
+
+	expected := c.unmapMarkSnapChainRemoved
+	for _, r := range c.replicas {
+		// The related backend is nil if the mode is ERR
+		if r.Mode == types.ERR {
+			continue
+		}
+		enabled, err := c.backend.GetUnmapMarkSnapChainRemoved(r.Address)
+		if err != nil {
+			return err
+		}
+		if enabled != expected {
+			err := c.backend.SetUnmapMarkSnapChainRemoved(r.Address, expected)
+			if err != nil {
+				logrus.Errorf("Failed to correct Unmatched flag UnmapMarkSnapChainRemoved! Expect %v, got %v in replica %v. Mark as ERR",
+					expected, enabled, r.Address)
+				c.setReplicaModeNoLock(r.Address, types.ERR)
+			} else {
+				allFailed = false
+			}
+		} else {
+			allFailed = false
+		}
+	}
+
+	if allFailed {
+		return fmt.Errorf("failed to correct Unmatched flag UnmapMarkSnapChainRemoved for all replicas, expect %v", expected)
+	}
+
+	logrus.Infof("Controller check and correct flag unmapMarkSnapChainRemoved=%v for backend replicas", c.unmapMarkSnapChainRemoved)
+
+	return nil
+}
+
 func isReplicaInInvalidState(state string) bool {
 	return state != string(replica.Open) && state != string(replica.Dirty)
 }
@@ -714,6 +770,10 @@ func (c *Controller) Start(volumeSize, volumeCurrentSize int64, addresses ...str
 
 	if len(availableBackends) == 0 {
 		return fmt.Errorf("cannot create an available backend for the engine from the addresses %+v", addresses)
+	}
+
+	if err := c.checkUnmapMarkSnapChainRemoved(); err != nil {
+		return err
 	}
 
 	// If the live upgrade is in-progress, the revision counters among replicas can be temporarily

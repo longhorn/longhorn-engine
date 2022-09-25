@@ -36,6 +36,27 @@ func ExpandCmd() cli.Command {
 	}
 }
 
+func UnmapMarkSnapChainRemovedCmd() cli.Command {
+	return cli.Command{
+		Name:      "unmap-mark-snap-chain-removed",
+		ShortName: "unmap-mark-snap",
+		Flags: []cli.Flag{
+			cli.BoolFlag{
+				Name: "enable",
+			},
+			cli.BoolFlag{
+				Name: "disable",
+			},
+		},
+		Usage: "Enable marking the current snapshot chain as removed before unmapping",
+		Action: func(c *cli.Context) {
+			if err := unmapMarkSnapChainRemoved(c); err != nil {
+				logrus.Fatalf("Error running unmap-mark-snap-chain-removed command: %v", err)
+			}
+		},
+	}
+}
+
 func FrontendCmd() cli.Command {
 	return cli.Command{
 		Name: "frontend",
@@ -125,4 +146,23 @@ func shutdownFrontend(c *cli.Context) error {
 	defer controllerClient.Close()
 
 	return controllerClient.VolumeFrontendShutdown()
+}
+
+func unmapMarkSnapChainRemoved(c *cli.Context) error {
+	enabled := c.Bool("enable")
+	disabled := c.Bool("disable")
+	if enabled && disabled {
+		return fmt.Errorf("cannot enable and disable this option simultaneously")
+	}
+	if !enabled && !disabled {
+		return fmt.Errorf("this option is not specified")
+	}
+
+	controllerClient, err := getControllerClient(c)
+	if err != nil {
+		return err
+	}
+	defer controllerClient.Close()
+
+	return controllerClient.VolumeUnmapMarkSnapChainRemovedSet(enabled)
 }

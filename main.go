@@ -119,6 +119,7 @@ func longhornCli() {
 		cmd.SnapshotHashStatusCmd(),
 		cmd.BackupCmd(),
 		cmd.ExpandCmd(),
+		cmd.UnmapMarkSnapChainRemovedCmd(),
 		cmd.Journal(),
 		cmd.InfoCmd(),
 		cmd.FrontendCmd(),

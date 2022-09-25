@@ -68,15 +68,16 @@ func NewControllerClient(address string) (*ControllerClient, error) {
 
 func GetVolumeInfo(v *ptypes.Volume) *types.VolumeInfo {
 	return &types.VolumeInfo{
-		Name:                  v.Name,
-		Size:                  v.Size,
-		ReplicaCount:          int(v.ReplicaCount),
-		Endpoint:              v.Endpoint,
-		Frontend:              v.Frontend,
-		FrontendState:         v.FrontendState,
-		IsExpanding:           v.IsExpanding,
-		LastExpansionError:    v.LastExpansionError,
-		LastExpansionFailedAt: v.LastExpansionFailedAt,
+		Name:                      v.Name,
+		Size:                      v.Size,
+		ReplicaCount:              int(v.ReplicaCount),
+		Endpoint:                  v.Endpoint,
+		Frontend:                  v.Frontend,
+		FrontendState:             v.FrontendState,
+		IsExpanding:               v.IsExpanding,
+		LastExpansionError:        v.LastExpansionError,
+		LastExpansionFailedAt:     v.LastExpansionFailedAt,
+		UnmapMarkSnapChainRemoved: v.UnmapMarkSnapChainRemoved,
 	}
 }
 
@@ -206,6 +207,20 @@ func (c *ControllerClient) VolumeFrontendShutdown() error {
 
 	if _, err := controllerServiceClient.VolumeFrontendShutdown(ctx, &empty.Empty{}); err != nil {
 		return errors.Wrapf(err, "failed to shutdown frontend for volume %v", c.serviceURL)
+	}
+
+	return nil
+}
+
+func (c *ControllerClient) VolumeUnmapMarkSnapChainRemovedSet(enabled bool) error {
+	controllerServiceClient := c.getControllerServiceClient()
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
+	defer cancel()
+
+	if _, err := controllerServiceClient.VolumeUnmapMarkSnapChainRemovedSet(ctx, &ptypes.VolumeUnmapMarkSnapChainRemovedSetRequest{
+		Enabled: enabled,
+	}); err != nil {
+		return errors.Wrapf(err, "failed to set UnmapMarkSnapChainRemoved to %v for volume %v", enabled, c.serviceURL)
 	}
 
 	return nil

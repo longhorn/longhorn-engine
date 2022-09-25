@@ -37,6 +37,11 @@ class ControllerClient(object):
         return self.stub.VolumeExpand(controller_pb2.VolumeExpandRequest(
             size=size))
 
+    # def volume_unmap_mark_snap_chain_removed_set(self, enabled):
+    #     return self.stub.VolumeUnmapMarkSnapChainRemovedSet(
+    #         controller_pb2.VolumeUnmapMarkSnapChainRemovedSetRequest(
+    #             enabled=enabled))
+
     def replica_list(self):
         cr_list = self.stub.ReplicaList(empty_pb2.Empty()).replicas
         r_list = []

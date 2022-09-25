@@ -82,15 +82,16 @@ func (cs *ControllerServer) syncFileInfoToControllerFormat(info types.SyncFileIn
 func (cs *ControllerServer) getVolume() *ptypes.Volume {
 	lastExpansionError, lastExpansionFailedAt := cs.c.GetExpansionErrorInfo()
 	return &ptypes.Volume{
-		Name:                  cs.c.Name,
-		Size:                  cs.c.Size(),
-		ReplicaCount:          int32(len(cs.c.ListReplicas())),
-		Endpoint:              cs.c.Endpoint(),
-		Frontend:              cs.c.Frontend(),
-		FrontendState:         cs.c.FrontendState(),
-		IsExpanding:           cs.c.IsExpanding(),
-		LastExpansionError:    lastExpansionError,
-		LastExpansionFailedAt: lastExpansionFailedAt,
+		Name:                      cs.c.Name,
+		Size:                      cs.c.Size(),
+		ReplicaCount:              int32(len(cs.c.ListReplicas())),
+		Endpoint:                  cs.c.Endpoint(),
+		Frontend:                  cs.c.Frontend(),
+		FrontendState:             cs.c.FrontendState(),
+		IsExpanding:               cs.c.IsExpanding(),
+		LastExpansionError:        lastExpansionError,
+		LastExpansionFailedAt:     lastExpansionFailedAt,
+		UnmapMarkSnapChainRemoved: cs.c.GetUnmapMarkSnapChainRemoved(),
 	}
 }
 
@@ -167,6 +168,14 @@ func (cs *ControllerServer) VolumeFrontendStart(ctx context.Context, req *ptypes
 
 func (cs *ControllerServer) VolumeFrontendShutdown(ctx context.Context, req *empty.Empty) (*ptypes.Volume, error) {
 	if err := cs.c.ShutdownFrontend(); err != nil {
+		return nil, err
+	}
+
+	return cs.getVolume(), nil
+}
+
+func (cs *ControllerServer) VolumeUnmapMarkSnapChainRemovedSet(ctx context.Context, req *ptypes.VolumeUnmapMarkSnapChainRemovedSetRequest) (*ptypes.Volume, error) {
+	if err := cs.c.SetUnmapMarkSnapChainRemoved(req.Enabled); err != nil {
 		return nil, err
 	}
 
