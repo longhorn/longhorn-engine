@@ -69,6 +69,11 @@ func ControllerCmd() cli.Command {
 				Value: "tcp",
 				Usage: "Specify the data-server protocol. Available options are \"tcp\" and \"unix\"",
 			},
+			cli.BoolFlag{
+				Name:   "unmap-mark-snap-chain-removed",
+				Hidden: false,
+				Usage:  "To enable marking snapshot chain as removed during unmap",
+			},
 		},
 		Action: func(c *cli.Context) {
 			if err := startController(c); err != nil {
@@ -95,6 +100,7 @@ func startController(c *cli.Context) error {
 	isUpgrade := c.Bool("upgrade")
 	disableRevCounter := c.Bool("disableRevCounter")
 	salvageRequested := c.Bool("salvageRequested")
+	unmapMarkSnapChainRemoved := c.Bool("unmap-mark-snap-chain-removed")
 
 	size := c.String("size")
 	if size == "" {
@@ -144,7 +150,7 @@ func startController(c *cli.Context) error {
 
 	logrus.Infof("Creating controller %v with iSCSI target request timeout %v and engine to replica(s) timeout %v",
 		name, iscsiTargetRequestTimeout, engineReplicaTimeout)
-	control := controller.NewController(name, dynamic.New(factories), frontend, isUpgrade, disableRevCounter, salvageRequested,
+	control := controller.NewController(name, dynamic.New(factories), frontend, isUpgrade, disableRevCounter, salvageRequested, unmapMarkSnapChainRemoved,
 		iscsiTargetRequestTimeout, engineReplicaTimeout, types.DataServerProtocol(dataServerProtocol))
 
 	// need to wait for Shutdown() completion
