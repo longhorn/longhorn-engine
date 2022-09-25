@@ -229,6 +229,37 @@ func (r *Remote) GetState() (string, error) {
 	return replicaInfo.State, nil
 }
 
+func (r *Remote) GetUnmapMarkSnapChainRemoved() (bool, error) {
+	replicaInfo, err := r.info()
+	if err != nil {
+		return false, err
+	}
+
+	return replicaInfo.UnmapMarkDiskChainRemoved, nil
+}
+
+func (r *Remote) SetUnmapMarkSnapChainRemoved(enabled bool) error {
+	logrus.Infof("Setting UnmapMarkSnapChainRemoved of %s to : %v", r.name, enabled)
+
+	conn, err := grpc.Dial(r.replicaServiceURL, grpc.WithInsecure())
+	if err != nil {
+		return fmt.Errorf("cannot connect to ReplicaService %v: %v", r.replicaServiceURL, err)
+	}
+	defer conn.Close()
+	replicaServiceClient := ptypes.NewReplicaServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), client.GRPCServiceCommonTimeout)
+	defer cancel()
+
+	if _, err := replicaServiceClient.UnmapMarkDiskChainRemovedSet(ctx, &ptypes.UnmapMarkDiskChainRemovedSetRequest{
+		Enabled: enabled,
+	}); err != nil {
+		return errors.Wrapf(err, "failed to set UnmapMarkDiskChainRemoved to %v for replica %v from remote", enabled, r.replicaServiceURL)
+	}
+
+	return nil
+}
+
 func (r *Remote) info() (*types.ReplicaInfo, error) {
 	conn, err := grpc.Dial(r.replicaServiceURL, grpc.WithInsecure())
 	if err != nil {

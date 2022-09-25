@@ -112,6 +112,14 @@ func (f *Wrapper) SetRevisionCounter(counter int64) error {
 	return nil
 }
 
+func (f *Wrapper) GetUnmapMarkSnapChainRemoved() (bool, error) {
+	return false, nil
+}
+
+func (f *Wrapper) SetUnmapMarkSnapChainRemoved(enabled bool) error {
+	return nil
+}
+
 func (ff *Factory) Create(volumeName, address string, dataServerProtocol types.DataServerProtocol, engineToReplicaTimeout time.Duration) (types.Backend, error) {
 	logrus.Infof("Creating file: %s", address)
 	file, err := os.OpenFile(address, os.O_RDWR|os.O_CREATE, 0600)

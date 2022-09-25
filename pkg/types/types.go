@@ -80,6 +80,8 @@ type Backend interface {
 	IsRevisionCounterDisabled() (bool, error)
 	GetLastModifyTime() (int64, error)
 	GetHeadFileSize() (int64, error)
+	GetUnmapMarkSnapChainRemoved() (bool, error)
+	SetUnmapMarkSnapChainRemoved(enabled bool) error
 }
 
 type BackendFactory interface {
