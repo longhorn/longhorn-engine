@@ -412,3 +412,33 @@ func (r *replicator) GetRevisionCounter(address string) (int64, error) {
 
 	return counter, nil
 }
+
+func (r *replicator) SetUnmapMarkSnapChainRemoved(address string, enabled bool) error {
+	backend, ok := r.backends[address]
+	if !ok {
+		return fmt.Errorf("cannot find backend %v", address)
+	}
+
+	if err := backend.backend.SetUnmapMarkSnapChainRemoved(enabled); err != nil {
+		return err
+	}
+
+	logrus.Infof("Set backend %s UnmapMarkSnapChainRemoved to %v", address, enabled)
+
+	return nil
+}
+
+func (r *replicator) GetUnmapMarkSnapChainRemoved(address string) (bool, error) {
+	backend, ok := r.backends[address]
+	if !ok {
+		return false, fmt.Errorf("cannot find backend %v", address)
+	}
+
+	enabled, err := backend.backend.GetUnmapMarkSnapChainRemoved()
+	if err != nil {
+		return false, err
+	}
+	logrus.Infof("Get backend %s UnmapMarkSnapChainRemoved %v", address, enabled)
+
+	return enabled, nil
+}
