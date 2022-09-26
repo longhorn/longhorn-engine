@@ -33,6 +33,8 @@ var (
 	cmdTimeout = time.Minute // one minute by default
 
 	HostProc = "/host/proc"
+
+	DefaultBlockSize = int64(4096)
 )
 
 const (
