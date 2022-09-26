@@ -4,6 +4,8 @@ import controller_pb2
 import controller_pb2_grpc
 from google.protobuf import empty_pb2
 
+from common.constants import SECTORSIZE
+
 
 class ControllerClient(object):
     def __init__(self, url):
@@ -18,7 +20,8 @@ class ControllerClient(object):
         return self.stub.VolumeStart(controller_pb2.VolumeStartRequest(
             replicaAddresses=replicas,
             size=size,
-            currentSize=currentSize
+            currentSize=currentSize,
+            sectorSize=SECTORSIZE
         ))
 
     def volume_shutdown(self):

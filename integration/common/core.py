@@ -30,6 +30,7 @@ from common.constants import (
     ENGINE_NAME, EXPANDED_SIZE_STR,
     VOLUME_NO_FRONTEND_NAME,
     FIXED_REPLICA_PATH1, FIXED_REPLICA_PATH2,
+    SECTORSIZE_STR,
 )
 
 thread_failed = False
@@ -123,6 +124,7 @@ def create_engine_process(client, name=ENGINE_NAME,
         args += ["--enable-backend", b]
     args += ["--size", str(size)]
     args += ["--current-size", str(size)]
+    args += ["--sector-size", SECTORSIZE_STR]
     client.process_create(
         name=name, binary=binary, args=args,
         port_count=1, port_args=["--listen,localhost:"])
@@ -791,6 +793,7 @@ def upgrade_engine(client, binary, engine_name, volume_name, size, replicas):
     args = ["controller", volume_name, "--frontend", FRONTEND_TGT_BLOCKDEV,
             "--size", str(size),
             "--current-size", str(size),
+            "--sector-size", SECTORSIZE_STR,
             "--upgrade"]
     for r in replicas:
         args += ["--replica", r]
