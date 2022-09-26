@@ -41,6 +41,8 @@ message Volume {
 
     string last_expansion_error = 8;
     string last_expansion_failed_at = 9;
+
+    int64 sectorSize = 10;
 }
 
 message ReplicaAddress {
@@ -62,6 +64,7 @@ message VolumeStartRequest {
     repeated string replicaAddresses = 1;
     int64 size = 2;
     int64 currentSize = 3;
+    int64 sectorSize = 4;
 }
 
 message VolumeSnapshotRequest {
