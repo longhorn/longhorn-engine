@@ -84,6 +84,7 @@ func (cs *ControllerServer) getVolume() *ptypes.Volume {
 	return &ptypes.Volume{
 		Name:                  cs.c.Name,
 		Size:                  cs.c.Size(),
+		SectorSize:            cs.c.SectorSize(),
 		ReplicaCount:          int32(len(cs.c.ListReplicas())),
 		Endpoint:              cs.c.Endpoint(),
 		Frontend:              cs.c.Frontend(),
@@ -118,7 +119,7 @@ func (cs *ControllerServer) VolumeGet(ctx context.Context, req *empty.Empty) (*p
 }
 
 func (cs *ControllerServer) VolumeStart(ctx context.Context, req *ptypes.VolumeStartRequest) (*ptypes.Volume, error) {
-	if err := cs.c.Start(req.Size, req.CurrentSize, req.ReplicaAddresses...); err != nil {
+	if err := cs.c.Start(req.Size, req.CurrentSize, req.SectorSize, req.ReplicaAddresses...); err != nil {
 		return nil, err
 	}
 	return cs.getVolume(), nil

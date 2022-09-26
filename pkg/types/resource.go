@@ -38,6 +38,7 @@ type PrepareRemoveAction struct {
 type VolumeInfo struct {
 	Name                  string `json:"name"`
 	Size                  int64  `json:"size"`
+	SectorSize            int64  `json:"sectorSize"`
 	ReplicaCount          int    `json:"replicaCount"`
 	Endpoint              string `json:"endpoint"`
 	Frontend              string `json:"frontend"`

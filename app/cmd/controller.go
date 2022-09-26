@@ -28,6 +28,10 @@ func ControllerCmd() cli.Command {
 				Value: "localhost:9501",
 			},
 			cli.StringFlag{
+				Name:  "sector-size",
+				Usage: "Volume sector size in bytes or human readable 42kb, 42mb, 42gb",
+			},
+			cli.StringFlag{
 				Name:  "size",
 				Usage: "Volume nominal size in bytes or human readable 42kb, 42mb, 42gb",
 			},
@@ -104,6 +108,15 @@ func startController(c *cli.Context) error {
 		return err
 	}
 
+	size = c.String("sector-size")
+	if size == "" {
+		return errors.New("sector-size is required")
+	}
+	sectorSize, err := units.RAMInBytes(size)
+	if err != nil {
+		return err
+	}
+
 	factories := map[string]types.BackendFactory{}
 	for _, backend := range backends {
 		switch backend {
@@ -125,7 +138,7 @@ func startController(c *cli.Context) error {
 		frontend = f
 	}
 
-	control := controller.NewController(name, dynamic.New(factories), frontend, isUpgrade, disableRevCounter, salvageRequested)
+	control := controller.NewController(name, dynamic.New(factories), frontend, sectorSize, isUpgrade, disableRevCounter, salvageRequested)
 
 	// need to wait for Shutdown() completion
 	control.ShutdownWG.Add(1)
@@ -137,7 +150,7 @@ func startController(c *cli.Context) error {
 
 	if len(replicas) > 0 {
 		logrus.Infof("Starting with replicas %q", replicas)
-		if err := control.Start(volumeSize, volumeCurrentSize, replicas...); err != nil {
+		if err := control.Start(volumeSize, volumeCurrentSize, sectorSize, replicas...); err != nil {
 			log.Fatal(err)
 		}
 	}

@@ -69,6 +69,7 @@ func GetVolumeInfo(v *ptypes.Volume) *types.VolumeInfo {
 	return &types.VolumeInfo{
 		Name:                  v.Name,
 		Size:                  v.Size,
+		SectorSize:            v.SectorSize,
 		ReplicaCount:          int(v.ReplicaCount),
 		Endpoint:              v.Endpoint,
 		Frontend:              v.Frontend,
@@ -124,7 +125,7 @@ func (c *ControllerClient) VolumeGet() (*types.VolumeInfo, error) {
 	return GetVolumeInfo(volume), nil
 }
 
-func (c *ControllerClient) VolumeStart(size, currentSize int64, replicas ...string) error {
+func (c *ControllerClient) VolumeStart(size, currentSize, sectorSize int64, replicas ...string) error {
 	controllerServiceClient := c.getControllerServiceClient()
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
 	defer cancel()
@@ -133,6 +134,7 @@ func (c *ControllerClient) VolumeStart(size, currentSize int64, replicas ...stri
 		ReplicaAddresses: replicas,
 		Size:             size,
 		CurrentSize:      currentSize,
+		SectorSize:       sectorSize,
 	}); err != nil {
 		return fmt.Errorf("failed to start volume %v: %v", c.serviceURL, err)
 	}

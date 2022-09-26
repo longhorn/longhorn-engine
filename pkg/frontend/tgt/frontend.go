@@ -39,7 +39,7 @@ func (t *Tgt) Init(name string, size, sectorSize int64) error {
 	}
 
 	ldc := longhorndev.LonghornDeviceCreator{}
-	dev, err := ldc.NewDevice(name, size, t.frontendName)
+	dev, err := ldc.NewDevice(name, size, sectorSize, t.frontendName)
 	if err != nil {
 		return err
 	}
@@ -97,7 +97,7 @@ func (t *Tgt) Endpoint() string {
 
 func (t *Tgt) Upgrade(name string, size, sectorSize int64, rw types.ReaderWriterAt) error {
 	ldc := longhorndev.LonghornDeviceCreator{}
-	dev, err := ldc.NewDevice(name, size, t.frontendName)
+	dev, err := ldc.NewDevice(name, size, sectorSize, t.frontendName)
 	if err != nil {
 		return err
 	}

@@ -53,10 +53,11 @@ const (
 	lastModifyCheckPeriod = 5 * time.Second
 )
 
-func NewController(name string, factory types.BackendFactory, frontend types.Frontend, isUpgrade bool, disableRevCounter bool, salvageRequested bool) *Controller {
+func NewController(name string, factory types.BackendFactory, frontend types.Frontend, sectorSize int64, isUpgrade bool, disableRevCounter bool, salvageRequested bool) *Controller {
 	c := &Controller{
 		factory:       factory,
 		Name:          name,
+		sectorSize:    sectorSize,
 		frontend:      frontend,
 		metrics:       &types.Metrics{},
 		latestMetrics: &types.Metrics{},
@@ -613,7 +614,7 @@ func determineCorrectVolumeSize(volumeSize, volumeCurrentSize int64, backendSize
 	return volumeCurrentSize
 }
 
-func (c *Controller) Start(volumeSize, volumeCurrentSize int64, addresses ...string) error {
+func (c *Controller) Start(volumeSize, volumeCurrentSize, sectorSize int64, addresses ...string) error {
 	c.Lock()
 	defer c.Unlock()
 
@@ -665,10 +666,9 @@ func (c *Controller) Start(volumeSize, volumeCurrentSize int64, addresses ...str
 
 		if first {
 			first = false
-			c.sectorSize = newSectorSize
 		}
 
-		if c.sectorSize != newSectorSize {
+		if c.sectorSize != sectorSize {
 			logrus.Warnf("backend %v sector size does not match %d != %d in the engine initiation phase", address, c.sectorSize, newSectorSize)
 			continue
 		}
@@ -884,6 +884,10 @@ func (c *Controller) Shutdown() error {
 
 func (c *Controller) Size() int64 {
 	return c.size
+}
+
+func (c *Controller) SectorSize() int64 {
+	return c.sectorSize
 }
 
 func (c *Controller) monitoring(address string, backend types.Backend) {

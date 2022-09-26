@@ -347,7 +347,7 @@ func (t *Task) AddRestoreReplica(volumeSize, volumeCurrentSize int64, replica st
 	}
 
 	if volume.ReplicaCount == 0 {
-		return t.client.VolumeStart(volumeSize, volumeCurrentSize, replica)
+		return t.client.VolumeStart(volumeSize, volumeCurrentSize, volume.SectorSize, replica)
 	}
 
 	if err := t.checkRestoreReplicaSize(replica, volume.Size); err != nil {
@@ -401,7 +401,7 @@ func (t *Task) AddReplica(volumeSize, volumeCurrentSize int64, replica string) e
 	}
 
 	if volume.ReplicaCount == 0 {
-		return t.client.VolumeStart(volumeSize, volumeCurrentSize, replica)
+		return t.client.VolumeStart(volumeSize, volumeCurrentSize, volume.SectorSize, replica)
 	}
 
 	if err := t.checkAndExpandReplica(replica, volume.Size); err != nil {
@@ -727,7 +727,7 @@ func (t *Task) StartWithReplicas(volumeSize, volumeCurrentSize int64, replicas [
 		return fmt.Errorf("cannot add multiple replicas if volume is already up")
 	}
 
-	return t.client.VolumeStart(volumeSize, volumeCurrentSize, replicas...)
+	return t.client.VolumeStart(volumeSize, volumeCurrentSize, volume.SectorSize, replicas...)
 }
 
 func (t *Task) RebuildStatus() (map[string]*ReplicaRebuildStatus, error) {
