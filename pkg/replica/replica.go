@@ -30,7 +30,6 @@ const (
 	metadataSuffix     = ".meta"
 	imgSuffix          = ".img"
 	volumeMetaData     = "volume.meta"
-	defaultSectorSize  = 4096
 	headPrefix         = "volume-head-"
 	headSuffix         = ".img"
 	headName           = headPrefix + "%03d" + headSuffix
@@ -159,7 +158,7 @@ func New(size, sectorSize int64, dir string, backingFile *backingfile.BackingFil
 
 func NewReadOnly(dir, head string, backingFile *backingfile.BackingFile) (*Replica, error) {
 	// size and sectorSize don't matter because they will be read from metadata
-	return construct(true, 0, 512, dir, head, backingFile, false)
+	return construct(true, 0, util.DefaultReplicaSectorSize, dir, head, backingFile, false)
 }
 
 func construct(readonly bool, size, sectorSize int64, dir, head string, backingFile *backingfile.BackingFile, disableRevCounter bool) (*Replica, error) {
@@ -181,7 +180,7 @@ func construct(readonly bool, size, sectorSize int64, dir, head string, backingF
 	}
 	r.info.Size = size
 	r.info.SectorSize = sectorSize
-	r.volume.sectorSize = defaultSectorSize
+	r.volume.sectorSize = util.DefaultVolumeSectorSize
 
 	// Scan all the disks to build the disk map
 	exists, err := r.readMetadata()
@@ -205,7 +204,7 @@ func construct(readonly bool, size, sectorSize int64, dir, head string, backingF
 	// Reference r.info.Size because it may have changed from reading
 	// metadata
 	locationSize := r.info.Size / r.volume.sectorSize
-	if size%defaultSectorSize != 0 {
+	if size%util.DefaultVolumeSectorSize != 0 {
 		locationSize++
 	}
 	r.volume.location = make([]byte, locationSize)
@@ -1027,7 +1026,7 @@ func (r *Replica) readMetadata() (bool, error) {
 			if err := r.unmarshalFile(file.Name(), &r.info); err != nil {
 				return false, err
 			}
-			r.volume.sectorSize = defaultSectorSize
+			r.volume.sectorSize = util.DefaultVolumeSectorSize
 			r.volume.size = r.info.Size
 		} else if strings.HasSuffix(file.Name(), metadataSuffix) {
 			if err := r.readDiskData(file.Name()); err != nil {

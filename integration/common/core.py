@@ -30,7 +30,8 @@ from common.constants import (
     ENGINE_NAME, EXPANDED_SIZE_STR,
     VOLUME_NO_FRONTEND_NAME,
     FIXED_REPLICA_PATH1, FIXED_REPLICA_PATH2,
-    SECTORSIZE_STR,
+    REPLICA_SECTORSIZE,
+    VOLUME_SECTORSIZE_STR
 )
 
 thread_failed = False
@@ -124,7 +125,7 @@ def create_engine_process(client, name=ENGINE_NAME,
         args += ["--enable-backend", b]
     args += ["--size", str(size)]
     args += ["--current-size", str(size)]
-    args += ["--sector-size", SECTORSIZE_STR]
+    args += ["--sector-size", VOLUME_SECTORSIZE_STR]
     client.process_create(
         name=name, binary=binary, args=args,
         port_count=1, port_args=["--listen,localhost:"])
@@ -505,7 +506,7 @@ def open_replica(grpc_client, size=SIZE):
 
     assert r.state == 'closed'
     assert r.size == str(size)
-    assert r.sector_size == 512
+    assert r.sector_size == REPLICA_SECTORSIZE
     assert r.parent == ''
     assert r.head == 'volume-head-000.img'
 
@@ -793,7 +794,7 @@ def upgrade_engine(client, binary, engine_name, volume_name, size, replicas):
     args = ["controller", volume_name, "--frontend", FRONTEND_TGT_BLOCKDEV,
             "--size", str(size),
             "--current-size", str(size),
-            "--sector-size", SECTORSIZE_STR,
+            "--sector-size", VOLUME_SECTORSIZE_STR,
             "--upgrade"]
     for r in replicas:
         args += ["--replica", r]

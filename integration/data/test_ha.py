@@ -30,6 +30,7 @@ from common.constants import (
     FRONTEND_TGT_BLOCKDEV,
     REPLICA_META_FILE_NAME,
     EXPANSION_DISK_TMP_META_NAME, EXPANSION_DISK_NAME,
+    REPLICA_SECTORSIZE
 )
 
 
@@ -850,7 +851,7 @@ def test_replica_crashed_update_state_error(grpc_controller,
     r = grpc_fixed_dir_replica1.replica_get()
     assert r.chain == ['volume-head-000.img']
     assert r.state == 'open'
-    assert r.sector_size == 512
+    assert r.sector_size == REPLICA_SECTORSIZE
 
     # Removing a file from this replica directory
     remove_file = os.path.join(

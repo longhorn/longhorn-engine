@@ -16,8 +16,6 @@ import (
 	"github.com/longhorn/longhorn-engine/pkg/util"
 )
 
-const defaultSectorSize = 512
-
 type BackingFile struct {
 	Size       int64
 	SectorSize int64
@@ -102,7 +100,7 @@ func OpenBackingFile(file string) (*BackingFile, error) {
 	if err != nil {
 		return nil, err
 	}
-	if size%defaultSectorSize != 0 {
+	if size%util.DefaultBackingSectorSize != 0 {
 		return nil, fmt.Errorf("the backing file size %v should be a multiple of 512 bytes since Longhorn uses directIO by default", size)
 	}
 
@@ -110,6 +108,6 @@ func OpenBackingFile(file string) (*BackingFile, error) {
 		Path:       file,
 		Disk:       f,
 		Size:       size,
-		SectorSize: defaultSectorSize,
+		SectorSize: util.DefaultBackingSectorSize,
 	}, nil
 }

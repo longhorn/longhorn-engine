@@ -25,7 +25,7 @@ type Server struct {
 	sync.RWMutex
 	r                       *Replica
 	dir                     string
-	defaultSectorSize       int64
+	sectorSize              int64
 	backing                 *backingfile.BackingFile
 	revisionCounterDisabled bool
 }
@@ -34,7 +34,7 @@ func NewServer(dir string, backing *backingfile.BackingFile, sectorSize int64, d
 	return &Server{
 		dir:                     dir,
 		backing:                 backing,
-		defaultSectorSize:       sectorSize,
+		sectorSize:              sectorSize,
 		revisionCounterDisabled: disableRevCounter,
 	}
 }
@@ -43,7 +43,7 @@ func (s *Server) getSectorSize() int64 {
 	if s.backing != nil && s.backing.SectorSize > 0 {
 		return s.backing.SectorSize
 	}
-	return s.defaultSectorSize
+	return s.sectorSize
 }
 
 func (s *Server) Create(size int64) error {
@@ -57,7 +57,7 @@ func (s *Server) Create(size int64) error {
 
 	sectorSize := s.getSectorSize()
 
-	logrus.Infof("Creating volume %s, size %d/%d", s.dir, size, sectorSize)
+	logrus.Infof("Creating replica %s, size %d sectorSize %d", s.dir, size, sectorSize)
 	r, err := New(size, sectorSize, s.dir, s.backing, s.revisionCounterDisabled)
 	if err != nil {
 		return err
@@ -77,7 +77,7 @@ func (s *Server) Open() error {
 	_, info := s.Status()
 	sectorSize := s.getSectorSize()
 
-	logrus.Infof("Opening volume %s, size %d/%d", s.dir, info.Size, sectorSize)
+	logrus.Infof("Opening replica %s, size %d sectorSize %d", s.dir, info.Size, sectorSize)
 	r, err := New(info.Size, sectorSize, s.dir, s.backing, s.revisionCounterDisabled)
 	if err != nil {
 		return err
@@ -94,7 +94,7 @@ func (s *Server) Reload() error {
 		return nil
 	}
 
-	logrus.Infof("Reloading volume")
+	logrus.Infof("Reloading replica")
 	newReplica, err := s.r.Reload()
 	if err != nil {
 		return err
@@ -248,7 +248,7 @@ func (s *Server) Delete() error {
 		return nil
 	}
 
-	logrus.Infof("Deleting volume")
+	logrus.Infof("Deleting replica")
 	if err := s.r.Close(); err != nil {
 		return err
 	}
@@ -266,7 +266,7 @@ func (s *Server) Close() error {
 		return nil
 	}
 
-	logrus.Infof("Closing volume")
+	logrus.Infof("Closing replica")
 	if err := s.r.Close(); err != nil {
 		return err
 	}
@@ -280,7 +280,7 @@ func (s *Server) WriteAt(buf []byte, offset int64) (int, error) {
 	defer s.RUnlock()
 
 	if s.r == nil {
-		return 0, fmt.Errorf("Volume no longer exist")
+		return 0, fmt.Errorf("Replica no longer exist")
 	}
 	i, err := s.r.WriteAt(buf, offset)
 	return i, err
@@ -291,7 +291,7 @@ func (s *Server) ReadAt(buf []byte, offset int64) (int, error) {
 	defer s.RUnlock()
 
 	if s.r == nil {
-		return 0, fmt.Errorf("Volume no longer exist")
+		return 0, fmt.Errorf("Replica no longer exist")
 	}
 	i, err := s.r.ReadAt(buf, offset)
 	return i, err
