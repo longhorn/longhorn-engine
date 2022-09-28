@@ -88,7 +88,7 @@ func startReplica(c *cli.Context) error {
 
 	disableRevCounter := c.Bool("disableRevCounter")
 
-	s := replica.NewServer(dir, backingFile, 512, disableRevCounter)
+	s := replica.NewServer(dir, backingFile, util.ReplicaSectorSize, disableRevCounter)
 
 	address := c.String("listen")
 
