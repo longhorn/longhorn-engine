@@ -30,12 +30,14 @@ var (
 	MaximumVolumeNameSize = 64
 	validVolumeName       = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.-]+$`)
 
-	cmdTimeout = time.Minute // one minute by default
-
 	HostProc = "/host/proc"
 )
 
 const (
+	VolumeSectorSize       = 4096
+	ReplicaSectorSize      = 512
+	BackingImageSectorSize = 512
+
 	BlockSizeLinux = 512
 )
 
