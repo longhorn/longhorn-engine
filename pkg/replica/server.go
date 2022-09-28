@@ -25,7 +25,7 @@ type Server struct {
 	sync.RWMutex
 	r                       *Replica
 	dir                     string
-	defaultSectorSize       int64
+	sectorSize              int64
 	backing                 *backingfile.BackingFile
 	revisionCounterDisabled bool
 }
@@ -34,7 +34,7 @@ func NewServer(dir string, backing *backingfile.BackingFile, sectorSize int64, d
 	return &Server{
 		dir:                     dir,
 		backing:                 backing,
-		defaultSectorSize:       sectorSize,
+		sectorSize:              sectorSize,
 		revisionCounterDisabled: disableRevCounter,
 	}
 }
@@ -43,7 +43,7 @@ func (s *Server) getSectorSize() int64 {
 	if s.backing != nil && s.backing.SectorSize > 0 {
 		return s.backing.SectorSize
 	}
-	return s.defaultSectorSize
+	return s.sectorSize
 }
 
 func (s *Server) Create(size int64) error {
