@@ -103,10 +103,7 @@ RUN if [ "${ARCH}" == "s390x" ]; then \
 
 # buf
 ENV GO111MODULE=on
-RUN go get \
-  github.com/bufbuild/buf/cmd/buf@v0.26.0 \
-  github.com/bufbuild/buf/cmd/protoc-gen-buf-check-breaking@v0.26.0 \
-  github.com/bufbuild/buf/cmd/protoc-gen-buf-check-lint@v0.26.0
+RUN go install github.com/bufbuild/buf/cmd/buf@v1.4.0
 
 # Build gperftools
 # 1. Just use tcmalloc lib from gperftools installation
