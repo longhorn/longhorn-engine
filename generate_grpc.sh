@@ -11,7 +11,7 @@ if [ ! -e ./proto/vendor/protobuf/src/google/protobuf ]; then
 fi
 
 # proto lint check
-buf check lint
+buf lint
 
 # common
 protoc -I proto/ptypes/ -I proto/vendor/protobuf/src/ proto/ptypes/common.proto --go_out=plugins=grpc:proto/ptypes/
