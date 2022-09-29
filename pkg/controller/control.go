@@ -19,8 +19,6 @@ import (
 	"github.com/longhorn/longhorn-engine/pkg/util"
 )
 
-const defaultSectorSize int64 = 4096
-
 type Controller struct {
 	sync.RWMutex
 	Name       string
@@ -768,23 +766,37 @@ func (c *Controller) WriteAt(b []byte, off int64) (int, error) {
 }
 
 func (c *Controller) writeInWOMode(b []byte, off int64) (int, error) {
-	bufLen := int64(len(b))
+	bufLen := len(b)
 	// buffer b is defaultSectorSize aligned
-	if (bufLen >= defaultSectorSize) && (off%defaultSectorSize == 0) && ((off+bufLen)%defaultSectorSize == 0) {
+	if (bufLen == 0) || ((off%util.VolumeSectorSize == 0) && (bufLen%util.VolumeSectorSize == 0)) {
 		return c.backend.WriteAt(b, off)
 	}
 
-	readOffsetStart := (off / defaultSectorSize) * defaultSectorSize
-	readOffsetEnd := (((off + bufLen) / defaultSectorSize) + 1) * defaultSectorSize
+	readOffsetStart := (off / util.VolumeSectorSize) * util.VolumeSectorSize
+	var readOffsetEnd int64
+	if ((off + int64(bufLen)) % util.VolumeSectorSize) == 0 {
+		readOffsetEnd = off + int64(bufLen)
+	} else {
+		readOffsetEnd = (((off + int64(bufLen)) / util.VolumeSectorSize) + 1) * util.VolumeSectorSize
+	}
 	readBuf := make([]byte, readOffsetEnd-readOffsetStart)
 	if _, err := c.backend.ReadAt(readBuf, readOffsetStart); err != nil {
 		return 0, errors.Wrap(err, "failed to retrieve aligned sectors from RW replicas")
 	}
 
-	startCut := off % defaultSectorSize
+	startCut := int(off % util.VolumeSectorSize)
 	copy(readBuf[startCut:startCut+bufLen], b)
 
-	return c.backend.WriteAt(readBuf, readOffsetStart)
+	if n, err := c.backend.WriteAt(readBuf, readOffsetStart); err != nil {
+		if n < startCut {
+			return 0, err
+		}
+		if n-startCut < bufLen {
+			return n - startCut, err
+		}
+		return bufLen, err
+	}
+	return bufLen, nil
 }
 
 func (c *Controller) writeInNormalMode(b []byte, off int64) (int, error) {
