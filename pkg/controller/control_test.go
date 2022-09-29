@@ -1,6 +1,8 @@
 package controller
 
 import (
+	"github.com/longhorn/longhorn-engine/pkg/types"
+	"io"
 	"testing"
 
 	. "gopkg.in/check.v1"
@@ -84,5 +86,178 @@ func (s *TestSuite) TestDetermineCorrectVolumeSize(c *C) {
 	for _, t := range testsets {
 		size := determineCorrectVolumeSize(t.volumeSize, t.volumeCurrentSize, t.backendSizes)
 		c.Assert(size, Equals, t.expectedSize)
+	}
+}
+
+type fakeReader struct {
+	source []byte
+}
+
+func (r *fakeReader) ReadAt(buf []byte, off int64) (int, error) {
+	copy(buf, r.source[off:len(buf)])
+	return len(buf), nil
+}
+
+type fakeWriter struct {
+	source []byte
+}
+
+func (w *fakeWriter) WriteAt(buf []byte, off int64) (int, error) {
+	copy(w.source[off:len(buf)], buf)
+	return len(buf), nil
+}
+
+func NewMockReplicator(readSource, writeSource []byte) *replicator {
+	return &replicator{
+		backendsAvailable: true,
+		backends:          map[string]backendWrapper{},
+		writerIndex:       map[int]string{0: "fakeWriter"},
+		readerIndex:       map[int]string{0: "fakeReader"},
+		readers:           []io.ReaderAt{&fakeReader{source: readSource}},
+		writer:            &fakeWriter{source: writeSource},
+		next:              0,
+	}
+}
+
+func (s *TestSuite) TestWriteInWOMode(c *C) {
+	type testCase struct {
+		buf          []byte
+		off          int64
+		expectedData []byte
+	}
+
+	var dataLength = defaultSectorSize * 4
+	var readSourceInitVal byte = 1
+	var writeSourceInitVal byte = 0
+	var newVal byte = 2
+
+	testsets := []testCase{}
+
+	buf := makeByteSliceWithInitialData(512, newVal)
+	var off int64 = 0
+	expectedData := makeByteSliceWithInitialData(dataLength, writeSourceInitVal)
+	for i := 0; i < len(expectedData); i++ {
+		switch {
+		case i < 512:
+			expectedData[i] = newVal
+		case i < 4096:
+			expectedData[i] = readSourceInitVal
+		}
+	}
+	testsets = append(testsets, testCase{buf: buf, off: off, expectedData: expectedData})
+
+	buf = makeByteSliceWithInitialData(512, newVal)
+	off = 512
+	expectedData = makeByteSliceWithInitialData(dataLength, writeSourceInitVal)
+	for i := 0; i < len(expectedData); i++ {
+		switch {
+		case i < 512:
+			expectedData[i] = readSourceInitVal
+		case i < 512+512:
+			expectedData[i] = newVal
+		case i < 4096:
+			expectedData[i] = readSourceInitVal
+		}
+	}
+	testsets = append(testsets, testCase{buf: buf, off: off, expectedData: expectedData})
+
+	buf = makeByteSliceWithInitialData(512, newVal)
+	off = 4096 - 512
+	expectedData = makeByteSliceWithInitialData(dataLength, writeSourceInitVal)
+	for i := 0; i < len(expectedData); i++ {
+		switch {
+		case i < 4096-512:
+			expectedData[i] = readSourceInitVal
+		case i < 4096:
+			expectedData[i] = newVal
+		}
+	}
+	testsets = append(testsets, testCase{buf: buf, off: off, expectedData: expectedData})
+
+	buf = makeByteSliceWithInitialData(4096+1024, newVal)
+	off = 4096 - 512
+	expectedData = makeByteSliceWithInitialData(dataLength, writeSourceInitVal)
+	for i := 0; i < len(expectedData); i++ {
+		switch {
+		case i < 4096-512:
+			expectedData[i] = readSourceInitVal
+		case i < 4096-512+4096+1024:
+			expectedData[i] = newVal
+		case i < 4096*2:
+			expectedData[i] = readSourceInitVal
+		}
+	}
+	testsets = append(testsets, testCase{buf: buf, off: off, expectedData: expectedData})
+
+	buf = makeByteSliceWithInitialData(4096, newVal)
+	off = 4096
+	expectedData = makeByteSliceWithInitialData(dataLength, writeSourceInitVal)
+	for i := 0; i < len(expectedData); i++ {
+		switch {
+		case i < 4096:
+			continue
+		case i < 4096+4096:
+			expectedData[i] = newVal
+		}
+	}
+	testsets = append(testsets, testCase{buf: buf, off: off, expectedData: expectedData})
+
+	buf = makeByteSliceWithInitialData(4096*2, newVal)
+	off = 4096
+	expectedData = makeByteSliceWithInitialData(dataLength, writeSourceInitVal)
+	for i := 0; i < len(expectedData); i++ {
+		switch {
+		case i < 4096:
+			continue
+		case i < 4096*2:
+			expectedData[i] = newVal
+		}
+	}
+	testsets = append(testsets, testCase{buf: buf, off: off, expectedData: expectedData})
+
+	buf = makeByteSliceWithInitialData(4096+512, newVal)
+	off = dataLength - 4096 - 512
+	expectedData = makeByteSliceWithInitialData(dataLength, writeSourceInitVal)
+	for i := 0; i < len(expectedData); i++ {
+		switch {
+		case i < 4096*2:
+			continue
+		case i < 4096*4-4096-512:
+			expectedData[i] = readSourceInitVal
+		case i < 4096*4:
+			expectedData[i] = newVal
+		}
+	}
+	testsets = append(testsets, testCase{buf: buf, off: off, expectedData: expectedData})
+
+	readSource := makeByteSliceWithInitialData(dataLength, readSourceInitVal)
+	writeSource := makeByteSliceWithInitialData(dataLength, writeSourceInitVal)
+	controller := Controller{
+		Name:     "test-controller",
+		replicas: []types.Replica{types.Replica{Address: "0.0.0.0", Mode: types.WO}},
+		backend:  NewMockReplicator(readSource, writeSource),
+	}
+
+	for _, t := range testsets {
+		// reset data
+		resetSlice(writeSource, writeSourceInitVal)
+		// run test
+		n, err := controller.writeInWOMode(t.buf, t.off)
+		// check data
+		c.Assert(n, Equals, len(t.buf))
+		c.Assert(err, Equals, nil)
+		c.Assert(writeSource, Equals, t.expectedData)
+	}
+}
+
+func makeByteSliceWithInitialData(length int64, val byte) []byte {
+	buf := make([]byte, length)
+	resetSlice(buf, val)
+	return buf
+}
+
+func resetSlice(data []byte, val byte) {
+	for i, _ := range data {
+		data[i] = val
 	}
 }
