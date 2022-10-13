@@ -240,7 +240,7 @@ func MergeSnapshotsToBackingFile(snapFilepath, backingFilepath string) error {
 
 func rebaseSnapshot(snapFilepath, backingFilepath string) error {
 	logrus.Infof("Start rebaseSnapshot %s -> %s", snapFilepath, backingFilepath)
-	_, err := iutil.ExecuteWithoutTimeout(QEMUImageBinary, []string{"rebase", "-u", "-b", backingFilepath, snapFilepath})
+	_, err := iutil.ExecuteWithoutTimeout(QEMUImageBinary, []string{"rebase", "-u", "-b", backingFilepath, "-F", DefaultOutputFormat, snapFilepath})
 	if err != nil {
 		return errors.Wrapf(err, "failed rebaseSnapshot %s -> %s", snapFilepath, backingFilepath)
 	}
