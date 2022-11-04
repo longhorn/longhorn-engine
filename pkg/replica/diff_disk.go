@@ -114,7 +114,7 @@ func (d *diffDisk) readModifyWrite(buf []byte, offset int64) (int, error) {
 
 func (d *diffDisk) fullWriteAt(buf []byte, offset int64) (int, error) {
 	if int64(len(buf))%d.sectorSize != 0 || offset%d.sectorSize != 0 {
-		return 0, fmt.Errorf("Write len(%d), offset %d not a multiple of %d", len(buf), offset, d.sectorSize)
+		return 0, fmt.Errorf("write len(%d), offset %d not a multiple of %d", len(buf), offset, d.sectorSize)
 	}
 
 	target := byte(len(d.files) - 1)
@@ -172,7 +172,7 @@ func (d *diffDisk) ReadAt(buf []byte, offset int64) (int, error) {
 
 func (d *diffDisk) fullReadAt(buf []byte, offset int64) (int, error) {
 	if int64(len(buf))%d.sectorSize != 0 || offset%d.sectorSize != 0 {
-		return 0, fmt.Errorf("Read not a multiple of %d", d.sectorSize)
+		return 0, fmt.Errorf("read not a multiple of %d", d.sectorSize)
 	}
 
 	if len(buf) == 0 {

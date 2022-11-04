@@ -390,7 +390,7 @@ func (c *Controller) SetReplicaMode(address string, mode types.Mode) error {
 		c.RLock()
 		defer c.RUnlock()
 	default:
-		return fmt.Errorf("can not set to mode %s", mode)
+		return fmt.Errorf("cannot set to mode %s", mode)
 	}
 
 	c.setReplicaModeNoLock(address, mode)
@@ -447,7 +447,7 @@ func (c *Controller) StartFrontend(frontend string) error {
 	}
 	if c.frontend != nil {
 		if c.frontend.FrontendName() != frontend && c.frontend.State() != types.StateDown {
-			return fmt.Errorf("Frontend %v is already started, cannot be set as %v",
+			return fmt.Errorf("frontend %v is already started, cannot be set as %v",
 				c.frontend.FrontendName(), frontend)
 		}
 	}
@@ -510,7 +510,7 @@ func (c *Controller) salvageRevisionCounterDisabledReplicas() error {
 	}
 
 	if len(replicaCandidates) == 0 {
-		return fmt.Errorf("can not find any replica for salvage")
+		return fmt.Errorf("cannot find any replica for salvage")
 	}
 	var bestCandidate types.Replica
 	lastTime := time.Unix(0, lastModifyTime)

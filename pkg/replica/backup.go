@@ -5,6 +5,7 @@ import (
 	"os"
 	"sync"
 
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
 	"github.com/longhorn/longhorn-engine/pkg/backingfile"
@@ -206,12 +207,12 @@ func (rb *BackupStatus) OpenSnapshot(snapID, volumeID string) error {
 	}
 
 	if rb.volumeID != "" {
-		return fmt.Errorf("Volume %s and snapshot %s are already open, close first", rb.volumeID, rb.SnapshotID)
+		return fmt.Errorf("volume %s and snapshot %s are already open, close first", rb.volumeID, rb.SnapshotID)
 	}
 
 	dir, err := os.Getwd()
 	if err != nil {
-		return fmt.Errorf("Cannot get working directory: %v", err)
+		return errors.Wrap(err, "cannot get working directory")
 	}
 	r, err := NewReadOnly(dir, id, rb.backingFile)
 	if err != nil {
@@ -227,7 +228,7 @@ func (rb *BackupStatus) OpenSnapshot(snapID, volumeID string) error {
 
 func (rb *BackupStatus) assertOpen(id, volumeID string) error {
 	if rb.volumeID != volumeID || rb.SnapshotID != id {
-		return fmt.Errorf("Invalid state volume [%s] and snapshot [%s] are open, not volume [%s], snapshot [%s]", rb.volumeID, rb.SnapshotID, volumeID, id)
+		return fmt.Errorf("invalid state volume [%s] and snapshot [%s] are open, not volume [%s], snapshot [%s]", rb.volumeID, rb.SnapshotID, volumeID, id)
 	}
 	return nil
 }
@@ -288,12 +289,12 @@ func (rb *BackupStatus) CompareSnapshot(snapID, compareSnapID, volumeID string) 
 
 	from := rb.findIndex(id)
 	if from < 0 {
-		return nil, fmt.Errorf("Failed to find snapshot %s in chain", id)
+		return nil, fmt.Errorf("failed to find snapshot %s in chain", id)
 	}
 
 	to := rb.findIndex(compareID)
 	if to < 0 {
-		return nil, fmt.Errorf("Failed to find snapshot %s in chain", compareID)
+		return nil, fmt.Errorf("failed to find snapshot %s in chain", compareID)
 	}
 
 	mappings := &backupstore.Mappings{
