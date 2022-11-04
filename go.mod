@@ -6,6 +6,7 @@ require (
 	github.com/c9s/goprocinfo v0.0.0-20190309065803-0b2ad9ac246b // indirect
 	github.com/docker/go-units v0.3.3
 	github.com/fatih/color v1.7.0 // indirect
+	github.com/gofrs/flock v0.8.1
 	github.com/golang/protobuf v1.3.3-0.20190920234318-1680a479a2cf
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/context v1.1.1 // indirect
