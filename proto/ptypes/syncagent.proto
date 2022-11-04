@@ -25,6 +25,11 @@ service SyncAgentService {
   rpc ReplicaRebuildStatus(google.protobuf.Empty) returns
     (ReplicaRebuildStatusResponse) {}
   rpc SnapshotCloneStatus(google.protobuf.Empty) returns (SnapshotCloneStatusResponse) {}
+  rpc SnapshotHash(SnapshotHashRequest) returns (google.protobuf.Empty) {}
+  rpc SnapshotHashStatus(SnapshotHashStatusRequest) returns
+    (SnapshotHashStatusResponse) {}
+  rpc SnapshotHashCancel(SnapshotHashCancelRequest) returns (google.protobuf.Empty) {}
+  rpc SnapshotHashLockState(google.protobuf.Empty) returns (SnapshotHashLockStateResponse) {}
 }
 
 message FileRemoveRequest {
@@ -149,4 +154,28 @@ message SnapshotCloneStatusResponse {
   string state = 4;
   string from_replica_address = 5;
   string snapshot_name = 6;
+}
+
+message SnapshotHashRequest {
+  string snapshot_name = 1;
+  bool rehash = 2;
+}
+
+message SnapshotHashStatusRequest {
+  string snapshot_name = 1;
+}
+
+message SnapshotHashStatusResponse {
+  string state = 1;
+  string checksum = 2;
+  string error = 3;
+  bool silently_corrupted = 4;
+}
+
+message SnapshotHashCancelRequest {
+  string snapshot_name = 1;
+}
+
+message SnapshotHashLockStateResponse {
+  bool is_locked = 1;
 }
