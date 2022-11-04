@@ -275,14 +275,17 @@ func (c *ControllerClient) ReplicaDelete(address string) error {
 	return nil
 }
 
-func (c *ControllerClient) ReplicaUpdate(replica *types.ControllerReplicaInfo) (*types.ControllerReplicaInfo, error) {
+func (c *ControllerClient) ReplicaUpdate(address string, mode types.Mode) (*types.ControllerReplicaInfo, error) {
 	controllerServiceClient := c.getControllerServiceClient()
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
 	defer cancel()
 
-	cr, err := controllerServiceClient.ReplicaUpdate(ctx, GetControllerReplica(replica))
+	cr, err := controllerServiceClient.ReplicaUpdate(ctx, GetControllerReplica(&types.ControllerReplicaInfo{
+		Address: address,
+		Mode:    mode,
+	}))
 	if err != nil {
-		return nil, errors.Wrapf(err, "failed to update replica %v for volume %v", replica.Address, c.serviceURL)
+		return nil, errors.Wrapf(err, "failed to update replica %v for volume %v", address, c.serviceURL)
 	}
 
 	return GetControllerReplicaInfo(cr), nil

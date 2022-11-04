@@ -111,6 +111,7 @@ func longhornCli() {
 		cmd.VerifyRebuildReplicaCmd(),
 		cmd.LsReplicaCmd(),
 		cmd.RmReplicaCmd(),
+		cmd.UpdateReplicaCmd(),
 		cmd.RebuildStatusCmd(),
 		cmd.SnapshotCmd(),
 		cmd.BackupCmd(),
