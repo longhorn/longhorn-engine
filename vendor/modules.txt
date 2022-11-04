@@ -48,6 +48,8 @@ github.com/c9s/goprocinfo/linux
 github.com/cpuguy83/go-md2man/v2/md2man
 # github.com/docker/go-units v0.3.3
 github.com/docker/go-units
+# github.com/gofrs/flock v0.8.1
+github.com/gofrs/flock
 # github.com/golang/protobuf v1.3.3-0.20190920234318-1680a479a2cf
 github.com/golang/protobuf/proto
 github.com/golang/protobuf/protoc-gen-go/descriptor
