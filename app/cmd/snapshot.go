@@ -28,10 +28,13 @@ func SnapshotCmd() cli.Command {
 			SnapshotLsCmd(),
 			SnapshotRmCmd(),
 			SnapshotPurgeCmd(),
-			SnapshotPurgeStatusCommand(),
+			SnapshotPurgeStatusCmd(),
 			SnapshotInfoCmd(),
 			SnapshotCloneCmd(),
 			SnapshotCloneStatusCmd(),
+			SnapshotHashCmd(),
+			SnapshotHashCancelCmd(),
+			SnapshotHashStatusCmd(),
 		},
 		Action: func(c *cli.Context) {
 			if err := lsSnapshot(c); err != nil {
@@ -97,7 +100,7 @@ func SnapshotPurgeCmd() cli.Command {
 	}
 }
 
-func SnapshotPurgeStatusCommand() cli.Command {
+func SnapshotPurgeStatusCmd() cli.Command {
 	return cli.Command{
 		Name: "purge-status",
 		Action: func(c *cli.Context) {
@@ -161,6 +164,45 @@ func SnapshotCloneStatusCmd() cli.Command {
 		Action: func(c *cli.Context) {
 			if err := cloneSnapshotStatus(c); err != nil {
 				logrus.Fatalf("Error running snapshot clone status command: %v", err)
+			}
+		},
+	}
+}
+
+func SnapshotHashCmd() cli.Command {
+	return cli.Command{
+		Name: "hash",
+		Flags: []cli.Flag{
+			cli.BoolFlag{
+				Name:  "rehash",
+				Usage: "Rehash snapshot disk file",
+			},
+		},
+		Action: func(c *cli.Context) {
+			if err := hashSnapshot(c); err != nil {
+				logrus.Fatalf("Error running hash snapshot command: %v", err)
+			}
+		},
+	}
+}
+
+func SnapshotHashCancelCmd() cli.Command {
+	return cli.Command{
+		Name: "hash-cancel",
+		Action: func(c *cli.Context) {
+			if err := cancelHashSnapshot(c); err != nil {
+				logrus.Fatalf("Error running cancel hashing snapshot command: %v", err)
+			}
+		},
+	}
+}
+
+func SnapshotHashStatusCmd() cli.Command {
+	return cli.Command{
+		Name: "hash-status",
+		Action: func(c *cli.Context) {
+			if err := hashSnapshotStatus(c); err != nil {
+				logrus.Fatalf("Error running snapshot hash status command: %v", err)
 			}
 		},
 	}
@@ -403,6 +445,81 @@ func cloneSnapshotStatus(c *cli.Context) error {
 	defer controllerClient.Close()
 
 	statusMap, err := sync.CloneStatus(controllerClient)
+	if err != nil {
+		return err
+	}
+
+	output, err := json.MarshalIndent(statusMap, "", "\t")
+	if err != nil {
+		return err
+	}
+
+	fmt.Println(string(output))
+	return nil
+}
+
+func hashSnapshot(c *cli.Context) error {
+	if c.NArg() == 0 {
+		return errors.New("snapshot name is required")
+	}
+
+	snapshotName := c.Args()[0]
+
+	url := c.GlobalString("url")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	task, err := sync.NewTask(ctx, url)
+	if err != nil {
+		return err
+	}
+
+	rehash := c.Bool("rehash")
+
+	if err := task.HashSnapshot(snapshotName, rehash); err != nil {
+		return errors.Wrapf(err, "failed to hash snapshot %v", snapshotName)
+	}
+
+	return nil
+}
+
+func cancelHashSnapshot(c *cli.Context) error {
+	if c.NArg() == 0 {
+		return errors.New("snapshot name is required")
+	}
+
+	snapshotName := c.Args()[0]
+
+	url := c.GlobalString("url")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	task, err := sync.NewTask(ctx, url)
+	if err != nil {
+		return err
+	}
+
+	if err := task.HashSnapshotCancel(snapshotName); err != nil {
+		return errors.Wrapf(err, "failed to cancel hashing snapshot %v", snapshotName)
+	}
+
+	return nil
+}
+
+func hashSnapshotStatus(c *cli.Context) error {
+	if c.NArg() == 0 {
+		return errors.New("snapshot name is required")
+	}
+
+	snapshotName := c.Args()[0]
+
+	url := c.GlobalString("url")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	task, err := sync.NewTask(ctx, url)
+	if err != nil {
+		return err
+	}
+
+	statusMap, err := task.HashSnapshotStatus(snapshotName)
 	if err != nil {
 		return err
 	}

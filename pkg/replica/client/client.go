@@ -682,3 +682,71 @@ func (c *ReplicaClient) SnapshotCloneStatus() (*ptypes.SnapshotCloneStatusRespon
 	}
 	return status, nil
 }
+
+func (c *ReplicaClient) SnapshotHash(snapshotName string, rehash bool) error {
+	syncAgentServiceClient, err := c.getSyncServiceClient()
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
+	defer cancel()
+
+	if _, err := syncAgentServiceClient.SnapshotHash(ctx, &ptypes.SnapshotHashRequest{
+		SnapshotName: snapshotName,
+		Rehash:       rehash,
+	}); err != nil {
+		return errors.Wrap(err, "failed to start hashing snapshot")
+	}
+
+	return nil
+}
+
+func (c *ReplicaClient) SnapshotHashStatus(snapshotName string) (*ptypes.SnapshotHashStatusResponse, error) {
+	syncAgentServiceClient, err := c.getSyncServiceClient()
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
+	defer cancel()
+
+	status, err := syncAgentServiceClient.SnapshotHashStatus(ctx, &ptypes.SnapshotHashStatusRequest{
+		SnapshotName: snapshotName,
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get snapshot hash status")
+	}
+	return status, nil
+}
+
+func (c *ReplicaClient) SnapshotHashCancel(snapshotName string) error {
+	syncAgentServiceClient, err := c.getSyncServiceClient()
+	if err != nil {
+		return err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
+	defer cancel()
+
+	if _, err := syncAgentServiceClient.SnapshotHashCancel(ctx, &ptypes.SnapshotHashCancelRequest{
+		SnapshotName: snapshotName,
+	}); err != nil {
+		return errors.Wrapf(err, "failed to cancel snapshot %v hash task", snapshotName)
+	}
+
+	return nil
+}
+
+func (c *ReplicaClient) SnapshotHashLockState() (bool, error) {
+	syncAgentServiceClient, err := c.getSyncServiceClient()
+	if err != nil {
+		return false, err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
+	defer cancel()
+
+	resp, err := syncAgentServiceClient.SnapshotHashLockState(ctx, &empty.Empty{})
+	if err != nil {
+		return false, errors.Wrapf(err, "failed to get snapshot hash lock state")
+	}
+
+	return resp.IsLocked, nil
+}
