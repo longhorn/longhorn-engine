@@ -8,10 +8,11 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/longhorn/backupstore"
-	"github.com/longhorn/longhorn-engine/pkg/replica"
+
 	replicaClient "github.com/longhorn/longhorn-engine/pkg/replica/client"
 	"github.com/longhorn/longhorn-engine/pkg/types"
 	"github.com/longhorn/longhorn-engine/pkg/util"
+	diskutil "github.com/longhorn/longhorn-engine/pkg/util/disk"
 )
 
 type BackupCreateInfo struct {
@@ -43,8 +44,8 @@ type RestoreStatus struct {
 func (t *Task) CreateBackup(backupName, snapshot, dest, backingImageName, backingImageChecksum string, labels []string, credential map[string]string) (*BackupCreateInfo, error) {
 	var replica *types.ControllerReplicaInfo
 
-	if snapshot == VolumeHeadName {
-		return nil, fmt.Errorf("cannot backup the head disk in the chain")
+	if snapshot == types.VolumeHeadName {
+		return nil, fmt.Errorf("can not backup the head disk in the chain")
 	}
 
 	volume, err := t.client.VolumeGet()
@@ -92,7 +93,7 @@ func (t *Task) createBackup(replicaInController *types.ControllerReplicaInfo, ba
 		return nil, err
 	}
 
-	diskName := replica.GenerateSnapshotDiskName(snapshot)
+	diskName := diskutil.GenerateSnapshotDiskName(snapshot)
 	if _, ok := rep.Disks[diskName]; !ok {
 		return nil, fmt.Errorf("snapshot disk %s not found on replica %s", diskName, replicaInController.Address)
 	}
@@ -222,12 +223,12 @@ func (t *Task) RestoreBackup(backup string, credential map[string]string) error 
 			return fmt.Errorf("BUG: replicas %+v of DR volume should contains at least 2 disk files: the volume head and a snapshot storing restore data", replicas)
 		}
 		if snapshotDiskName == "" {
-			snapshotDiskName = replica.GenerateSnapshotDiskName(util.UUID())
+			snapshotDiskName = diskutil.GenerateSnapshotDiskName(util.UUID())
 		}
 	case 2: // the volume head and the only system snapshot.
 		for _, s := range snapshots {
-			if s.Name == VolumeHeadName {
-				snapshotDiskName = replica.GenerateSnapshotDiskName(s.Parent)
+			if s.Name == types.VolumeHeadName {
+				snapshotDiskName = diskutil.GenerateSnapshotDiskName(s.Parent)
 				break
 			}
 		}

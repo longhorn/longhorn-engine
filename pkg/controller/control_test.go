@@ -8,7 +8,7 @@ import (
 	. "gopkg.in/check.v1"
 
 	"github.com/longhorn/longhorn-engine/pkg/types"
-	"github.com/longhorn/longhorn-engine/pkg/util"
+	diskutil "github.com/longhorn/longhorn-engine/pkg/util/disk"
 )
 
 func Test(t *testing.T) { TestingT(t) }
@@ -129,7 +129,7 @@ func (s *TestSuite) TestWriteInWOMode(c *C) {
 		expectedData []byte
 	}
 
-	var dataLength = util.VolumeSectorSize * 4
+	var dataLength = diskutil.VolumeSectorSize * 4
 	var readSourceInitVal byte = 1
 	var writeSourceInitVal byte = 0
 	var newVal byte = 2

@@ -9,22 +9,6 @@ import (
 	"github.com/longhorn/longhorn-engine/pkg/types"
 )
 
-// These const are from "github.com/longhorn/longhorn-engine/pkg/replica/replica"
-const (
-	metadataSuffix   = ".meta"
-	diskPrefix       = "volume-snap-"
-	diskSuffix       = ".img"
-	diskNameTemplate = diskPrefix + "%s" + diskSuffix
-)
-
-func GenerateSnapshotDiskName(snapshotName string) string {
-	return fmt.Sprintf(diskNameTemplate, snapshotName)
-}
-
-func GenerateSnapshotDiskMetaName(diskName string) string {
-	return diskName + metadataSuffix
-}
-
 func GetReplicaDisksAndHead(address string) (map[string]types.DiskInfo, string, error) {
 	repClient, err := client.NewReplicaClient(address)
 	if err != nil {

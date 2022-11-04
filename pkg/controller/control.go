@@ -17,6 +17,7 @@ import (
 	"github.com/longhorn/longhorn-engine/pkg/replica"
 	"github.com/longhorn/longhorn-engine/pkg/types"
 	"github.com/longhorn/longhorn-engine/pkg/util"
+	diskutil "github.com/longhorn/longhorn-engine/pkg/util/disk"
 )
 
 type Controller struct {
@@ -771,23 +772,23 @@ func (c *Controller) WriteAt(b []byte, off int64) (int, error) {
 func (c *Controller) writeInWOMode(b []byte, off int64) (int, error) {
 	bufLen := len(b)
 	// buffer b is defaultSectorSize aligned
-	if (bufLen == 0) || ((off%util.VolumeSectorSize == 0) && (bufLen%util.VolumeSectorSize == 0)) {
+	if (bufLen == 0) || ((off%diskutil.VolumeSectorSize == 0) && (bufLen%diskutil.VolumeSectorSize == 0)) {
 		return c.backend.WriteAt(b, off)
 	}
 
-	readOffsetStart := (off / util.VolumeSectorSize) * util.VolumeSectorSize
+	readOffsetStart := (off / diskutil.VolumeSectorSize) * diskutil.VolumeSectorSize
 	var readOffsetEnd int64
-	if ((off + int64(bufLen)) % util.VolumeSectorSize) == 0 {
+	if ((off + int64(bufLen)) % diskutil.VolumeSectorSize) == 0 {
 		readOffsetEnd = off + int64(bufLen)
 	} else {
-		readOffsetEnd = (((off + int64(bufLen)) / util.VolumeSectorSize) + 1) * util.VolumeSectorSize
+		readOffsetEnd = (((off + int64(bufLen)) / diskutil.VolumeSectorSize) + 1) * diskutil.VolumeSectorSize
 	}
 	readBuf := make([]byte, readOffsetEnd-readOffsetStart)
 	if _, err := c.backend.ReadAt(readBuf, readOffsetStart); err != nil {
 		return 0, errors.Wrap(err, "failed to retrieve aligned sectors from RW replicas")
 	}
 
-	startCut := int(off % util.VolumeSectorSize)
+	startCut := int(off % diskutil.VolumeSectorSize)
 	copy(readBuf[startCut:startCut+bufLen], b)
 
 	if n, err := c.backend.WriteAt(readBuf, readOffsetStart); err != nil {
