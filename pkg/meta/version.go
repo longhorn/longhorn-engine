@@ -6,7 +6,7 @@ const (
 	CLIAPIMinVersion = 3
 
 	// ControllerAPIVersion used to communicate with instance-manager
-	ControllerAPIVersion    = 3
+	ControllerAPIVersion    = 4
 	ControllerAPIMinVersion = 3
 
 	// DataFormatVersion used by the Replica to store data
