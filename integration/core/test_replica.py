@@ -141,11 +141,11 @@ def test_remove_disk(grpc_replica_client):  # NOQA
 
     with pytest.raises(grpc.RpcError) as e:
         grpc_replica_client.disk_mark_as_removed(name='volume-head-002.img')
-    assert "Can not mark the active" in str(e.value)
+    assert "cannot mark the active" in str(e.value)
 
     with pytest.raises(grpc.RpcError) as e:
         grpc_replica_client.disk_prepare_remove(name='volume-head-002.img')
-    assert "Can not delete the active" in str(e.value)
+    assert "cannot delete the active" in str(e.value)
 
     grpc_replica_client.disk_mark_as_removed(name='001')
     ops = grpc_replica_client.disk_prepare_remove(name='001').operations

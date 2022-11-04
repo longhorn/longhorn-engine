@@ -105,7 +105,7 @@ func expand(c *cli.Context) error {
 func startFrontend(c *cli.Context) error {
 	frontendName := c.Args().First()
 	if frontendName == "" {
-		return fmt.Errorf("Missing required parameter frontendName")
+		return fmt.Errorf("missing required parameter frontendName")
 	}
 
 	controllerClient, err := getControllerClient(c)
