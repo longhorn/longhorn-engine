@@ -120,7 +120,7 @@ func startController(c *cli.Context) error {
 	if frontendName != "" {
 		f, ok := controller.Frontends[frontendName]
 		if !ok {
-			return fmt.Errorf("Failed to find frontend: %s", frontendName)
+			return fmt.Errorf("failed to find frontend: %s", frontendName)
 		}
 		frontend = f
 	}

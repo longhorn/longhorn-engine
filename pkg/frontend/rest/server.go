@@ -5,6 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/mux"
+	"github.com/pkg/errors"
 	"github.com/rancher/go-rancher/api"
 	"github.com/rancher/go-rancher/client"
 )
@@ -53,7 +54,7 @@ func (s *Server) ReadAt(rw http.ResponseWriter, req *http.Request) error {
 	_, err := s.d.backend.ReadAt(buf, input.Offset)
 	if err != nil {
 		log.Errorln("read failed: ", err.Error())
-		return fmt.Errorf("read failed: %v", err.Error())
+		return errors.Wrap(err, "read failed")
 	}
 
 	data := EncodeData(buf)

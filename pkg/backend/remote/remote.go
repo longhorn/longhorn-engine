@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/golang/protobuf/ptypes/empty"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -46,7 +47,7 @@ func (r *Remote) Close() error {
 	logrus.Infof("Closing: %s", r.name)
 	conn, err := grpc.Dial(r.replicaServiceURL, grpc.WithInsecure())
 	if err != nil {
-		return fmt.Errorf("cannot connect to ReplicaService %v: %v", r.replicaServiceURL, err)
+		return errors.Wrapf(err, "cannot connect to ReplicaService %v", r.replicaServiceURL)
 	}
 	defer conn.Close()
 	replicaServiceClient := ptypes.NewReplicaServiceClient(conn)
@@ -55,7 +56,7 @@ func (r *Remote) Close() error {
 	defer cancel()
 
 	if _, err := replicaServiceClient.ReplicaClose(ctx, &empty.Empty{}); err != nil {
-		return fmt.Errorf("failed to close replica %v from remote: %v", r.replicaServiceURL, err)
+		return errors.Wrapf(err, "failed to close replica %v from remote", r.replicaServiceURL)
 	}
 
 	return nil
@@ -65,7 +66,7 @@ func (r *Remote) open() error {
 	logrus.Infof("Opening: %s", r.name)
 	conn, err := grpc.Dial(r.replicaServiceURL, grpc.WithInsecure())
 	if err != nil {
-		return fmt.Errorf("cannot connect to ReplicaService %v: %v", r.replicaServiceURL, err)
+		return errors.Wrapf(err, "cannot connect to ReplicaService %v", r.replicaServiceURL)
 	}
 	defer conn.Close()
 	replicaServiceClient := ptypes.NewReplicaServiceClient(conn)
@@ -74,7 +75,7 @@ func (r *Remote) open() error {
 	defer cancel()
 
 	if _, err := replicaServiceClient.ReplicaOpen(ctx, &empty.Empty{}); err != nil {
-		return fmt.Errorf("failed to open replica %v from remote: %v", r.replicaServiceURL, err)
+		return errors.Wrapf(err, "failed to open replica %v from remote", r.replicaServiceURL)
 	}
 
 	return nil
@@ -85,7 +86,7 @@ func (r *Remote) Snapshot(name string, userCreated bool, created string, labels 
 		r.name, name, userCreated, created, labels)
 	conn, err := grpc.Dial(r.replicaServiceURL, grpc.WithInsecure())
 	if err != nil {
-		return fmt.Errorf("cannot connect to ReplicaService %v: %v", r.replicaServiceURL, err)
+		return errors.Wrapf(err, "cannot connect to ReplicaService %v", r.replicaServiceURL)
 	}
 	defer conn.Close()
 	replicaServiceClient := ptypes.NewReplicaServiceClient(conn)
@@ -99,7 +100,7 @@ func (r *Remote) Snapshot(name string, userCreated bool, created string, labels 
 		Created:     created,
 		Labels:      labels,
 	}); err != nil {
-		return fmt.Errorf("failed to snapshot replica %v from remote: %v", r.replicaServiceURL, err)
+		return errors.Wrapf(err, "failed to snapshot replica %v from remote", r.replicaServiceURL)
 	}
 	logrus.Infof("Finished to snapshot: %s %s UserCreated %v Created at %v, Labels %v",
 		r.name, name, userCreated, created, labels)
@@ -114,7 +115,7 @@ func (r *Remote) Expand(size int64) (err error) {
 
 	conn, err := grpc.Dial(r.replicaServiceURL, grpc.WithInsecure())
 	if err != nil {
-		return fmt.Errorf("cannot connect to ReplicaService %v: %v", r.replicaServiceURL, err)
+		return errors.Wrapf(err, "cannot connect to ReplicaService %v", r.replicaServiceURL)
 	}
 	defer conn.Close()
 	replicaServiceClient := ptypes.NewReplicaServiceClient(conn)
@@ -136,7 +137,7 @@ func (r *Remote) SetRevisionCounter(counter int64) error {
 
 	conn, err := grpc.Dial(r.replicaServiceURL, grpc.WithInsecure())
 	if err != nil {
-		return fmt.Errorf("cannot connect to ReplicaService %v: %v", r.replicaServiceURL, err)
+		return errors.Wrapf(err, "cannot connect to ReplicaService %v", r.replicaServiceURL)
 	}
 	defer conn.Close()
 	replicaServiceClient := ptypes.NewReplicaServiceClient(conn)
@@ -147,7 +148,7 @@ func (r *Remote) SetRevisionCounter(counter int64) error {
 	if _, err := replicaServiceClient.RevisionCounterSet(ctx, &ptypes.RevisionCounterSetRequest{
 		Counter: counter,
 	}); err != nil {
-		return fmt.Errorf("failed to set revision counter to %d for replica %v from remote: %v", counter, r.replicaServiceURL, err)
+		return errors.Wrapf(err, "failed to set revision counter to %d for replica %v from remote", counter, r.replicaServiceURL)
 	}
 
 	return nil
@@ -231,7 +232,7 @@ func (r *Remote) GetState() (string, error) {
 func (r *Remote) info() (*types.ReplicaInfo, error) {
 	conn, err := grpc.Dial(r.replicaServiceURL, grpc.WithInsecure())
 	if err != nil {
-		return nil, fmt.Errorf("cannot connect to ReplicaService %v: %v", r.replicaServiceURL, err)
+		return nil, errors.Wrapf(err, "cannot connect to ReplicaService %v", r.replicaServiceURL)
 	}
 	defer conn.Close()
 	replicaServiceClient := ptypes.NewReplicaServiceClient(conn)
@@ -241,7 +242,7 @@ func (r *Remote) info() (*types.ReplicaInfo, error) {
 
 	resp, err := replicaServiceClient.ReplicaGet(ctx, &empty.Empty{})
 	if err != nil {
-		return nil, fmt.Errorf("failed to get replica %v info from remote: %v", r.replicaServiceURL, err)
+		return nil, errors.Wrapf(err, "failed to get replica %v info from remote", r.replicaServiceURL)
 	}
 
 	return replicaClient.GetReplicaInfo(resp.Replica), nil
@@ -270,7 +271,7 @@ func (rf *Factory) Create(address string) (types.Backend, error) {
 	}
 
 	if replica.State != "closed" {
-		return nil, fmt.Errorf("replica must be closed, Can not add in state: %s", replica.State)
+		return nil, fmt.Errorf("replica must be closed, cannot add in state: %s", replica.State)
 	}
 
 	conn, err := net.Dial("tcp", dataAddress)

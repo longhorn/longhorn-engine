@@ -53,7 +53,7 @@ func ResponseOutput(v interface{}) ([]byte, error) {
 }
 
 func RequiredMissingError(name string) error {
-	return fmt.Errorf("Cannot find valid required parameter: %v", name)
+	return fmt.Errorf("cannot find valid required parameter: %v", name)
 }
 
 func DoBackupCreate(backupName, volumeName, snapshotName, destURL, backingImageName, backingImageChecksum string,
@@ -69,7 +69,7 @@ func DoBackupCreate(backupName, volumeName, snapshotName, destURL, backingImageN
 	}
 
 	if !util.ValidVolumeName(volumeName) {
-		return "", nil, fmt.Errorf("Invalid volume name %v for backup", volumeName)
+		return "", nil, fmt.Errorf("invalid volume name %v for backup", volumeName)
 	}
 
 	if labels != nil {

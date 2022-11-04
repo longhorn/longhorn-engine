@@ -44,7 +44,7 @@ func (t *Task) CreateBackup(backupName, snapshot, dest, backingImageName, backin
 	var replica *types.ControllerReplicaInfo
 
 	if snapshot == VolumeHeadName {
-		return nil, fmt.Errorf("can not backup the head disk in the chain")
+		return nil, fmt.Errorf("cannot backup the head disk in the chain")
 	}
 
 	volume, err := t.client.VolumeGet()
@@ -175,7 +175,7 @@ func (t *Task) RestoreBackup(backup string, credential map[string]string) error 
 		if isRebuilding, err := t.isRebuilding(r); err != nil {
 			taskErr.Append(NewReplicaError(r.Address, err))
 		} else if isRebuilding {
-			taskErr.Append(NewReplicaError(r.Address, fmt.Errorf("can not do restore for normal rebuilding replica")))
+			taskErr.Append(NewReplicaError(r.Address, fmt.Errorf("cannot do restore for normal rebuilding replica")))
 		}
 	}
 	if taskErr.HasError() {
@@ -284,7 +284,7 @@ func (t *Task) RestoreBackup(backup string, credential map[string]string) error 
 
 func (t *Task) restoreBackup(replicaInController *types.ControllerReplicaInfo, backup string, snapshotFile string, credential map[string]string) error {
 	if replicaInController.Mode == types.ERR {
-		return fmt.Errorf("can not restore backup from replica in mode ERR")
+		return fmt.Errorf("cannot restore backup from replica in mode ERR")
 	}
 
 	repClient, err := replicaClient.NewReplicaClient(replicaInController.Address)
@@ -313,7 +313,7 @@ func (t *Task) Reset() error {
 			return err
 		} else if ok {
 			logrus.Errorf("Replicas are rebuilding. Can't reset: %v", err)
-			return fmt.Errorf("can not reset Restore info as replica(%s) is rebuilding", r.Address)
+			return fmt.Errorf("cannot reset Restore info as replica(%s) is rebuilding", r.Address)
 		}
 	}
 

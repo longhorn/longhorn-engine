@@ -111,12 +111,12 @@ func restore(url string) error {
 func restoreToFile(c *cli.Context) error {
 	outputFormat := c.String("output-format")
 	if !outputFormatSupported(outputFormat) {
-		return fmt.Errorf("Unsupported output image format: %s", outputFormat)
+		return fmt.Errorf("unsupported output image format: %s", outputFormat)
 	}
 
 	backupURL := c.Args().First()
 	if backupURL == "" {
-		return fmt.Errorf("Missing the first argument, it should be backup-url")
+		return fmt.Errorf("missing the first argument, it should be backup-url")
 	}
 
 	outputFile := c.String("output-file")
@@ -125,7 +125,7 @@ func restoreToFile(c *cli.Context) error {
 	}
 	outputFilePath, err := filepath.Abs(outputFile)
 	if err != nil {
-		return errors.Wrap(err, "Error confirming output file path")
+		return errors.Wrap(err, "error confirming output file path")
 	}
 	logrus.Infof("Output file path=%s", outputFilePath)
 

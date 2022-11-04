@@ -139,10 +139,10 @@ func (rs *ReplicaServer) ReplicaReload(ctx context.Context, req *empty.Empty) (*
 
 func (rs *ReplicaServer) ReplicaRevert(ctx context.Context, req *ptypes.ReplicaRevertRequest) (*ptypes.ReplicaRevertResponse, error) {
 	if req.Name == "" {
-		return nil, fmt.Errorf("Cannot accept empty snapshot name")
+		return nil, fmt.Errorf("cannot accept empty snapshot name")
 	}
 	if req.Created == "" {
-		return nil, fmt.Errorf("Need to specific created time")
+		return nil, fmt.Errorf("need to specific created time")
 	}
 
 	if err := rs.s.Revert(req.Name, req.Created); err != nil {
@@ -154,10 +154,10 @@ func (rs *ReplicaServer) ReplicaRevert(ctx context.Context, req *ptypes.ReplicaR
 
 func (rs *ReplicaServer) ReplicaSnapshot(ctx context.Context, req *ptypes.ReplicaSnapshotRequest) (*ptypes.ReplicaSnapshotResponse, error) {
 	if req.Name == "" {
-		return nil, fmt.Errorf("Cannot accept empty snapshot name")
+		return nil, fmt.Errorf("cannot accept empty snapshot name")
 	}
 	if req.Created == "" {
-		return nil, fmt.Errorf("Need to specific created time")
+		return nil, fmt.Errorf("need to specific created time")
 	}
 
 	if err := rs.s.Snapshot(req.Name, req.UserCreated, req.Created, req.Labels); err != nil {
