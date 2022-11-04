@@ -83,7 +83,7 @@ func (c *Controller) VerifyRebuildReplica(address string) error {
 
 		}
 		if err := c.backend.SetRevisionCounter(address, counter); err != nil {
-			return fmt.Errorf("failed to set revision counter for %v: %v", address, err)
+			return errors.Wrapf(err, "failed to set revision counter for %v", address)
 		}
 	}
 
@@ -99,15 +99,13 @@ func syncFile(from, to string, fromReplica, toReplica *types.Replica) error {
 
 	fromClient, err := client.NewReplicaClient(fromReplica.Address)
 	if err != nil {
-		return fmt.Errorf("cannot get replica client for %v: %v",
-			fromReplica.Address, err)
+		return errors.Wrapf(err, "cannot get replica client for %v", fromReplica.Address)
 	}
 	defer fromClient.Close()
 
 	toClient, err := client.NewReplicaClient(toReplica.Address)
 	if err != nil {
-		return fmt.Errorf("cannot get replica client for %v: %v",
-			toReplica.Address, err)
+		return errors.Wrapf(err, "cannot get replica client for %v", toReplica.Address)
 	}
 	defer toClient.Close()
 
@@ -135,7 +133,7 @@ func (c *Controller) PrepareRebuildReplica(address string) ([]types.SyncFileInfo
 
 	if !c.revisionCounterDisabled {
 		if err := c.backend.SetRevisionCounter(address, 0); err != nil {
-			return nil, fmt.Errorf("failed to set revision counter for %v: %v", address, err)
+			return nil, errors.Wrapf(err, "failed to set revision counter for %v", address)
 		}
 	}
 

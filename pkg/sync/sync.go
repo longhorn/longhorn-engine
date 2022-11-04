@@ -798,7 +798,7 @@ func CloneSnapshot(engineControllerClient, fromControllerClient *client.Controll
 		}
 	}
 	if sourceReplica == nil {
-		return fmt.Errorf("cannot find a RW replica in the source volume for clonning")
+		return fmt.Errorf("cannot find a RW replica in the source volume for cloning")
 	}
 
 	replicas, err = engineControllerClient.ReplicaList()

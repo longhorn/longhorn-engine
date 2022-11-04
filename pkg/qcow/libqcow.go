@@ -20,7 +20,7 @@ func toError(e *C.libqcow_error_t) error {
 	buf := [1024]C.char{}
 	defer C.libqcow_error_free(&e)
 	if C.libqcow_error_sprint(e, &buf[0], 1023) < 0 {
-		return fmt.Errorf("Unknown error: %v", e)
+		return fmt.Errorf("unknown error: %v", e)
 	}
 	return errors.New(C.GoString(&buf[0]))
 }
@@ -44,7 +44,7 @@ func Open(path string) (*Qcow, error) {
 }
 
 func (q *Qcow) WriteAt(buf []byte, off int64) (int, error) {
-	return 0, errors.New("Unsupported operation")
+	return 0, errors.New("unsupported operation")
 }
 
 func (q *Qcow) ReadAt(buf []byte, off int64) (int, error) {

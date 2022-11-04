@@ -203,7 +203,7 @@ func createSnapshot(c *cli.Context) error {
 func revertSnapshot(c *cli.Context) error {
 	name := c.Args()[0]
 	if name == "" {
-		return fmt.Errorf("Missing parameter for snapshot")
+		return fmt.Errorf("missing parameter for snapshot")
 	}
 
 	controllerClient, err := getControllerClient(c)
@@ -250,7 +250,7 @@ func purgeSnapshot(c *cli.Context) error {
 
 	skip := c.Bool("skip-if-in-progress")
 	if err := task.PurgeSnapshots(skip); err != nil {
-		return fmt.Errorf("Failed to purge snapshots: %v", err)
+		return errors.Wrap(err, "failed to purge snapshots")
 	}
 
 	return nil
@@ -360,7 +360,7 @@ func infoSnapshot(c *cli.Context) error {
 	}
 
 	if output == nil {
-		return fmt.Errorf("Cannot find suitable replica for snapshot info")
+		return fmt.Errorf("cannot find suitable replica for snapshot info")
 	}
 	fmt.Println(string(output))
 	return nil

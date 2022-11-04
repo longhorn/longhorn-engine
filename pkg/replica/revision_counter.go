@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
 	"github.com/longhorn/sparse-tools/sparse"
@@ -26,11 +27,11 @@ func (r *Replica) readRevisionCounter() (int64, error) {
 	buf := make([]byte, revisionBlockSize)
 	_, err := r.revisionFile.ReadAt(buf, 0)
 	if err != nil && err != io.EOF {
-		return 0, fmt.Errorf("failed to read from revision counter file: %v", err)
+		return 0, errors.Wrap(err, "failed to read from revision counter file")
 	}
 	counter, err := strconv.ParseInt(strings.Trim(string(buf), "\x00"), 10, 64)
 	if err != nil {
-		return 0, fmt.Errorf("failed to parse revision counter file: %v", err)
+		return 0, errors.Wrap(err, "failed to parse revision counter file")
 	}
 	return counter, nil
 }
@@ -44,7 +45,7 @@ func (r *Replica) writeRevisionCounter(counter int64) error {
 	copy(buf, []byte(strconv.FormatInt(counter, 10)))
 	_, err := r.revisionFile.WriteAt(buf, 0)
 	if err != nil {
-		return fmt.Errorf("failed to write to revision counter file: %v", err)
+		return errors.Wrap(err, "failed to write to revision counter file")
 	}
 	return nil
 }

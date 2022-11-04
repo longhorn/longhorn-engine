@@ -62,7 +62,7 @@ func startSyncAgent(c *cli.Context) error {
 
 	parts := strings.Split(portRange, "-")
 	if len(parts) != 2 {
-		return fmt.Errorf("Invalid format for range: %s", portRange)
+		return fmt.Errorf("invalid format for range: %s", portRange)
 	}
 
 	start, err := strconv.Atoi(strings.TrimSpace(parts[0]))
@@ -77,7 +77,7 @@ func startSyncAgent(c *cli.Context) error {
 
 	listen, err := net.Listen("tcp", listenPort)
 	if err != nil {
-		return errors.Wrap(err, "Failed to listen")
+		return errors.Wrap(err, "failed to listen")
 	}
 
 	server := grpc.NewServer()

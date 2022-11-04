@@ -100,7 +100,7 @@ func getReplicaModeMap(replicas []*types.ControllerReplicaInfo) map[string]types
 func checkBackupStatus(c *cli.Context) error {
 	backupID := c.Args().First()
 	if backupID == "" {
-		return fmt.Errorf("Missing required parameter backupID")
+		return fmt.Errorf("missing required parameter backupID")
 	}
 
 	controllerClient, err := getControllerClient(c)
@@ -111,7 +111,7 @@ func checkBackupStatus(c *cli.Context) error {
 
 	replicas, err := controllerClient.ReplicaList()
 	if err != nil {
-		return fmt.Errorf("failed to get replica list: %v", err)
+		return errors.Wrap(err, "failed to get replica list")
 	}
 
 	replicaAddress := c.String("replica")
@@ -137,18 +137,18 @@ func checkBackupStatus(c *cli.Context) error {
 		}
 	}
 	if replicaAddress == "" {
-		return fmt.Errorf("Cannot find a replica which has the corresponding backup %s", backupID)
+		return fmt.Errorf("cannot find a replica which has the corresponding backup %s", backupID)
 	}
 
 	replicaModeMap := getReplicaModeMap(replicas)
 	if mode := replicaModeMap[replicaAddress]; mode != types.RW {
-		return fmt.Errorf("Failed to get backup status on %s for %v: %v",
+		return fmt.Errorf("failed to get backup status on %s for %v: %v",
 			replicaAddress, backupID, "unknown replica")
 	}
 
 	repClient, err := replicaClient.NewReplicaClient(replicaAddress)
 	if err != nil {
-		logrus.Errorf("Cannot create a replica client for IP[%v]: %v", replicaAddress, err)
+		logrus.Errorf("cannot create a replica client for IP[%v]: %v", replicaAddress, err)
 		return err
 	}
 	defer repClient.Close()
@@ -205,12 +205,12 @@ func RestoreStatusCmd() cli.Command {
 func createBackup(c *cli.Context) error {
 	dest := c.String("dest")
 	if dest == "" {
-		return fmt.Errorf("Missing required parameter --dest")
+		return fmt.Errorf("missing required parameter --dest")
 	}
 
 	snapshot := c.Args().First()
 	if snapshot == "" {
-		return fmt.Errorf("Missing required parameter snapshot")
+		return fmt.Errorf("missing required parameter snapshot")
 	}
 
 	biName := c.String("backing-image-name")
@@ -263,7 +263,7 @@ func restoreBackup(c *cli.Context) error {
 
 	backup := c.Args().First()
 	if backup == "" {
-		return fmt.Errorf("Missing required parameter backup")
+		return fmt.Errorf("missing required parameter backup")
 	}
 	backupURL := util.UnescapeURL(backup)
 

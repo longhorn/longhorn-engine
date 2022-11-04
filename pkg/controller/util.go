@@ -3,6 +3,8 @@ package controller
 import (
 	"fmt"
 
+	"github.com/pkg/errors"
+
 	"github.com/longhorn/longhorn-engine/pkg/replica/client"
 	"github.com/longhorn/longhorn-engine/pkg/types"
 )
@@ -26,15 +28,13 @@ func GenerateSnapshotDiskMetaName(diskName string) string {
 func GetReplicaDisksAndHead(address string) (map[string]types.DiskInfo, string, error) {
 	repClient, err := client.NewReplicaClient(address)
 	if err != nil {
-		return nil, "", fmt.Errorf("cannot get replica client for %v: %v",
-			address, err)
+		return nil, "", errors.Wrapf(err, "cannot get replica client for %v", address)
 	}
 	defer repClient.Close()
 
 	rep, err := repClient.GetReplica()
 	if err != nil {
-		return nil, "", fmt.Errorf("cannot get replica for %v: %v",
-			address, err)
+		return nil, "", errors.Wrapf(err, "cannot get replica for %v", address)
 	}
 
 	if len(rep.Chain) == 0 {
