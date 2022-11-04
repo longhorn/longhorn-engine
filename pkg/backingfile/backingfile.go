@@ -14,6 +14,7 @@ import (
 	"github.com/longhorn/longhorn-engine/pkg/qcow"
 	"github.com/longhorn/longhorn-engine/pkg/types"
 	"github.com/longhorn/longhorn-engine/pkg/util"
+	diskutil "github.com/longhorn/longhorn-engine/pkg/util/disk"
 )
 
 type BackingFile struct {
@@ -100,14 +101,14 @@ func OpenBackingFile(file string) (*BackingFile, error) {
 	if err != nil {
 		return nil, err
 	}
-	if size%util.BackingImageSectorSize != 0 {
-		return nil, fmt.Errorf("the backing file size %v should be a multiple of %v bytes since Longhorn uses directIO by default", size, util.BackingImageSectorSize)
+	if size%diskutil.BackingImageSectorSize != 0 {
+		return nil, fmt.Errorf("the backing file size %v should be a multiple of %v bytes since Longhorn uses directIO by default", size, diskutil.BackingImageSectorSize)
 	}
 
 	return &BackingFile{
 		Path:       file,
 		Disk:       f,
 		Size:       size,
-		SectorSize: util.BackingImageSectorSize,
+		SectorSize: diskutil.BackingImageSectorSize,
 	}, nil
 }

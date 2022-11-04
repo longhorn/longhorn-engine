@@ -10,6 +10,7 @@ import (
 
 	"github.com/longhorn/longhorn-engine/pkg/replica/client"
 	"github.com/longhorn/longhorn-engine/pkg/types"
+	diskutil "github.com/longhorn/longhorn-engine/pkg/util/disk"
 )
 
 func (c *Controller) getCurrentAndRWReplica(address string) (*types.Replica, *types.Replica, error) {
@@ -158,7 +159,7 @@ func (c *Controller) PrepareRebuildReplica(address string) ([]types.SyncFileInfo
 	syncFileInfoList := []types.SyncFileInfo{}
 	extraDisks := toDisks
 	for diskName, info := range fromDisks {
-		diskMeta := GenerateSnapshotDiskMetaName(diskName)
+		diskMeta := diskutil.GenerateSnapshotDiskMetaName(diskName)
 		diskSize, err := strconv.ParseInt(info.Size, 10, 64)
 		if err != nil {
 			return nil, err

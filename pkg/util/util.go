@@ -34,10 +34,6 @@ var (
 )
 
 const (
-	VolumeSectorSize       = 4096
-	ReplicaSectorSize      = 512
-	BackingImageSectorSize = 512
-
 	BlockSizeLinux = 512
 )
 

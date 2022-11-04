@@ -20,6 +20,7 @@ import (
 	"github.com/longhorn/longhorn-engine/pkg/replica"
 	replicarpc "github.com/longhorn/longhorn-engine/pkg/replica/rpc"
 	"github.com/longhorn/longhorn-engine/pkg/util"
+	diskutil "github.com/longhorn/longhorn-engine/pkg/util/disk"
 	"github.com/longhorn/longhorn-engine/proto/ptypes"
 )
 
@@ -82,7 +83,7 @@ func startReplica(c *cli.Context) error {
 
 	disableRevCounter := c.Bool("disableRevCounter")
 
-	s := replica.NewServer(dir, backingFile, util.ReplicaSectorSize, disableRevCounter)
+	s := replica.NewServer(dir, backingFile, diskutil.ReplicaSectorSize, disableRevCounter)
 
 	address := c.String("listen")
 

@@ -9,6 +9,7 @@ import (
 	"github.com/longhorn/longhorn-engine/pkg/replica/client"
 	"github.com/longhorn/longhorn-engine/pkg/types"
 	"github.com/longhorn/longhorn-engine/pkg/util"
+	diskutil "github.com/longhorn/longhorn-engine/pkg/util/disk"
 )
 
 func (c *Controller) Revert(name string) error {
@@ -27,7 +28,7 @@ func (c *Controller) Revert(name string) error {
 		return fmt.Errorf("not valid state to revert, rebuilding in process or all replica are in ERR state")
 	}
 
-	snapshotDiskName := GenerateSnapshotDiskName(name)
+	snapshotDiskName := diskutil.GenerateSnapshotDiskName(name)
 	found := false
 	for _, r := range c.replicas {
 		if r.Mode != types.RW {
@@ -130,7 +131,7 @@ func (c *Controller) clientsAndSnapshot(name string) (map[string]*client.Replica
 			return nil, "", err
 		}
 	}
-	name = "volume-snap-" + name + ".img"
+	name = diskutil.GenerateSnapshotDiskName(name)
 
 	return clients, name, nil
 }

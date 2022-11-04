@@ -20,14 +20,16 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/longhorn/backupstore"
+	"github.com/longhorn/sparse-tools/sparse"
+	sparserest "github.com/longhorn/sparse-tools/sparse/rest"
+
 	"github.com/longhorn/longhorn-engine/pkg/backup"
 	"github.com/longhorn/longhorn-engine/pkg/replica"
 	replicaclient "github.com/longhorn/longhorn-engine/pkg/replica/client"
 	"github.com/longhorn/longhorn-engine/pkg/types"
 	"github.com/longhorn/longhorn-engine/pkg/util"
+	diskutil "github.com/longhorn/longhorn-engine/pkg/util/disk"
 	"github.com/longhorn/longhorn-engine/proto/ptypes"
-	"github.com/longhorn/sparse-tools/sparse"
-	sparserest "github.com/longhorn/sparse-tools/sparse/rest"
 )
 
 /*
@@ -44,8 +46,6 @@ const (
 	GRPCServiceCommonTimeout = 3 * time.Minute
 
 	FileSyncTimeout = 120
-
-	VolumeHeadName = "volume-head"
 )
 
 type SyncAgentServer struct {
@@ -218,9 +218,9 @@ func (s *SyncAgentServer) StartRestore(backupURL, requestedBackupName, snapshotD
 		var toFileName string
 		validLastRestoredBackup := s.canDoIncrementalRestore(restoreStatus, backupURL, requestedBackupName)
 		if validLastRestoredBackup {
-			toFileName = replica.GenerateDeltaFileName(restoreStatus.LastRestored)
+			toFileName = diskutil.GenerateDeltaFileName(restoreStatus.LastRestored)
 		} else {
-			toFileName = replica.GenerateSnapTempFileName(snapshotDiskName)
+			toFileName = diskutil.GenerateSnapTempFileName(snapshotDiskName)
 		}
 		s.RestoreInfo.StartNewRestore(backupURL, requestedBackupName, toFileName, snapshotDiskName, validLastRestoredBackup)
 	}
@@ -537,7 +537,7 @@ func (s *SyncAgentServer) SnapshotClone(ctx context.Context, req *ptypes.Snapsho
 	if err != nil {
 		return nil, err
 	}
-	if _, ok := sourceReplica.Disks[replica.GenerateSnapshotDiskName(req.SnapshotFileName)]; !ok {
+	if _, ok := sourceReplica.Disks[diskutil.GenerateSnapshotDiskName(req.SnapshotFileName)]; !ok {
 		return nil, fmt.Errorf("cannot find snapshot %v in the source replica %v", req.SnapshotFileName, req.FromAddress)
 	}
 	snapshotSize, err := strconv.ParseInt(sourceReplica.Size, 10, 64)
@@ -603,7 +603,7 @@ func (s *SyncAgentServer) prepareClone(fromReplicaAddress, snapshotName string, 
 }
 
 func (s *SyncAgentServer) startCloning(req *ptypes.SnapshotCloneRequest, fromReplicaClient *replicaclient.ReplicaClient) error {
-	snapshotDiskName := replica.GenerateSnapshotDiskName(s.CloneStatus.SnapshotName)
+	snapshotDiskName := diskutil.GenerateSnapshotDiskName(s.CloneStatus.SnapshotName)
 	port, err := s.launchReceiver("SnapshotClone", snapshotDiskName, s.CloneStatus)
 	if err != nil {
 		return errors.Wrapf(err, "failed to launch receiver for snapshot %v", req.SnapshotFileName)
@@ -617,7 +617,7 @@ func (s *SyncAgentServer) startCloning(req *ptypes.SnapshotCloneRequest, fromRep
 }
 
 func (s *SyncAgentServer) postCloning() error {
-	snapshotDiskName := replica.GenerateSnapshotDiskName(s.CloneStatus.SnapshotName)
+	snapshotDiskName := diskutil.GenerateSnapshotDiskName(s.CloneStatus.SnapshotName)
 	if err := backup.CreateNewSnapshotMetafile(snapshotDiskName + ".meta"); err != nil {
 		return errors.Wrapf(err, "failed creating meta snapshot file")
 	}
@@ -732,7 +732,7 @@ func (s *SyncAgentServer) BackupStatus(ctx context.Context, req *ptypes.BackupSt
 		return nil, err
 	}
 
-	snapshotName, err := replica.GetSnapshotNameFromDiskName(replicaObj.SnapshotID)
+	snapshotName, err := diskutil.GetSnapshotNameFromDiskName(replicaObj.SnapshotID)
 	if err != nil {
 		return nil, errors.Wrap(err, "couldn't get snapshot name")
 	}
@@ -906,13 +906,13 @@ func (s *SyncAgentServer) postFullRestoreOperations(restoreStatus *replica.Resto
 
 func (s *SyncAgentServer) extraIncrementalFullRestoreOperations(restoreStatus *replica.RestoreStatus) error {
 	tmpSnapshotDiskName := restoreStatus.ToFileName
-	snapshotDiskName, err := replica.GetSnapshotNameFromTempFileName(tmpSnapshotDiskName)
+	snapshotDiskName, err := diskutil.GetSnapshotNameFromTempFileName(tmpSnapshotDiskName)
 	if err != nil {
 		logrus.Errorf("failed to get snapshotName from tempFileName: %v", err)
 		return err
 	}
-	snapshotDiskMetaName := replica.GenerateSnapshotDiskMetaName(snapshotDiskName)
-	tmpSnapshotDiskMetaName := replica.GenerateSnapshotDiskMetaName(tmpSnapshotDiskName)
+	snapshotDiskMetaName := diskutil.GenerateSnapshotDiskMetaName(snapshotDiskName)
+	tmpSnapshotDiskMetaName := diskutil.GenerateSnapshotDiskMetaName(tmpSnapshotDiskName)
 
 	defer func() {
 		// try to cleanup tmp files
@@ -1075,7 +1075,7 @@ func (s *SyncAgentServer) purgeSnapshots() (err error) {
 		if len(info.Children) == 0 {
 			leaves = append(leaves, snapshot)
 		}
-		if info.Name == VolumeHeadName {
+		if info.Name == types.VolumeHeadName {
 			continue
 		}
 		// Mark system generated snapshots as removed
@@ -1111,13 +1111,13 @@ func (s *SyncAgentServer) purgeSnapshots() (err error) {
 				break
 			}
 			if info.Removed {
-				if info.Name == VolumeHeadName {
+				if info.Name == types.VolumeHeadName {
 					return fmt.Errorf("BUG: Volume head was marked as removed")
 				}
 				// Process the snapshot directly behinds the volume head in the end
 				if latestSnapshot == "" {
 					for childName := range info.Children {
-						if childName == VolumeHeadName {
+						if childName == types.VolumeHeadName {
 							latestSnapshot = snapshot
 							break
 						}
@@ -1239,30 +1239,30 @@ func getSnapshotsInfo(replicaClient *replicaclient.ReplicaClient) (map[string]ty
 	for name, disk := range disks {
 		snapshot := ""
 
-		if !replica.IsHeadDisk(name) {
-			snapshot, err = replica.GetSnapshotNameFromDiskName(name)
+		if !diskutil.IsHeadDisk(name) {
+			snapshot, err = diskutil.GetSnapshotNameFromDiskName(name)
 			if err != nil {
 				return nil, 0, err
 			}
 		} else {
-			snapshot = VolumeHeadName
+			snapshot = types.VolumeHeadName
 		}
 		children := map[string]bool{}
 		for childDisk := range disk.Children {
 			child := ""
-			if !replica.IsHeadDisk(childDisk) {
-				child, err = replica.GetSnapshotNameFromDiskName(childDisk)
+			if !diskutil.IsHeadDisk(childDisk) {
+				child, err = diskutil.GetSnapshotNameFromDiskName(childDisk)
 				if err != nil {
 					return nil, 0, err
 				}
 			} else {
-				child = VolumeHeadName
+				child = types.VolumeHeadName
 			}
 			children[child] = true
 		}
 		parent := ""
 		if disk.Parent != "" {
-			parent, err = replica.GetSnapshotNameFromDiskName(disk.Parent)
+			parent, err = diskutil.GetSnapshotNameFromDiskName(disk.Parent)
 			if err != nil {
 				return nil, 0, err
 			}

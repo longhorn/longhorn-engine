@@ -7,9 +7,9 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 
-	"github.com/longhorn/longhorn-engine/pkg/replica"
 	replicaclient "github.com/longhorn/longhorn-engine/pkg/replica/client"
 	"github.com/longhorn/longhorn-engine/pkg/types"
+	diskutil "github.com/longhorn/longhorn-engine/pkg/util/disk"
 )
 
 func ExportVolumeCmd() cli.Command {
@@ -97,7 +97,7 @@ func exportVolume(c *cli.Context) error {
 	}
 
 	// Check the snapshot in the replica
-	diskName := replica.GenerateSnapshotDiskName(snapshotName)
+	diskName := diskutil.GenerateSnapshotDiskName(snapshotName)
 	if _, ok := rInfo.Disks[diskName]; !ok {
 		return fmt.Errorf("snapshot disk %s not found on replica %s", diskName, r.Address)
 	}
