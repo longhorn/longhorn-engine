@@ -42,7 +42,7 @@ RUN if [ ${ARCH} == "amd64" ]; then \
 RUN cd /usr/src && \
     git clone https://github.com/rancher/liblonghorn.git && \
     cd liblonghorn && \
-    git checkout fe86d7f1c6780904760f2832d8055c7ca7f0d92a && \
+    git checkout 53d1c063b95efc8d949b095bd4bf04637230265f && \
     if [ ${ARCH} == "amd64" ]; then \
         make EXTRA_LIBS=/usr/local/lib/libtcmalloc.a; \
     else \
@@ -54,7 +54,7 @@ RUN cd /usr/src && \
 RUN cd /usr/src && \
     git clone https://github.com/rancher/tgt.git && \
     cd tgt && \
-    git checkout 64a3443ad6ab829343167e744a757d8ec044185a && \
+    git checkout 026a99fbc4e06ce898b5e9cbf9e037a7d938a7a4 && \
     if [ ${ARCH} == "amd64" ]; then \
         make EXTRA_LIBS=-ltcmalloc; \
     else \
