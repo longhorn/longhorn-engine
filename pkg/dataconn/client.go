@@ -16,10 +16,6 @@ var (
 	ErrRWTimeout = errors.New("r/w timeout")
 )
 
-const (
-	OPTimeout = 8 * time.Second
-)
-
 //Client replica client
 type Client struct {
 	end       chan struct{}
@@ -30,10 +26,11 @@ type Client struct {
 	messages  map[uint32]*Message
 	wire      *Wire
 	peerAddr  string
+	opTimeout time.Duration
 }
 
 //NewClient replica client
-func NewClient(conn net.Conn) *Client {
+func NewClient(conn net.Conn, engineToReplicaTimeout time.Duration) *Client {
 	c := &Client{
 		wire:      NewWire(conn),
 		peerAddr:  conn.RemoteAddr().String(),
@@ -42,6 +39,7 @@ func NewClient(conn net.Conn) *Client {
 		send:      make(chan *Message, 1024),
 		responses: make(chan *Message, 1024),
 		messages:  map[uint32]*Message{},
+		opTimeout: engineToReplicaTimeout,
 	}
 	go c.loop()
 	go c.write()
@@ -142,7 +140,7 @@ func (c *Client) loop() {
 				continue
 			}
 
-			logrus.Errorf("R/W Timeout. No response received in %v", OPTimeout)
+			logrus.Errorf("R/W Timeout. No response received in %v", c.opTimeout)
 			handleClientError(ErrRWTimeout)
 			journal.PrintLimited(1000)
 		case req := <-c.requests:
@@ -153,7 +151,7 @@ func (c *Client) loop() {
 
 			if req.Type == TypeRead || req.Type == TypeWrite {
 				if ioInflight == 0 {
-					ioDeadline = time.Now().Add(OPTimeout)
+					ioDeadline = time.Now().Add(c.opTimeout)
 				}
 				ioInflight++
 			}
@@ -174,7 +172,7 @@ func (c *Client) loop() {
 			if req.Type == TypeRead || req.Type == TypeWrite {
 				ioInflight--
 				if ioInflight > 0 {
-					ioDeadline = time.Now().Add(OPTimeout)
+					ioDeadline = time.Now().Add(c.opTimeout)
 				} else if ioInflight == 0 {
 					ioDeadline = time.Time{}
 				}

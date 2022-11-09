@@ -21,14 +21,16 @@ import (
 
 type Controller struct {
 	sync.RWMutex
-	Name       string
-	size       int64
-	sectorSize int64
-	replicas   []types.Replica
-	factory    types.BackendFactory
-	backend    *replicator
-	frontend   types.Frontend
-	isUpgrade  bool
+	Name                      string
+	size                      int64
+	sectorSize                int64
+	replicas                  []types.Replica
+	factory                   types.BackendFactory
+	backend                   *replicator
+	frontend                  types.Frontend
+	isUpgrade                 bool
+	iscsiTargetRequestTimeout time.Duration
+	engineReplicaTimeout      time.Duration
 
 	isExpanding             bool
 	revisionCounterDisabled bool
@@ -53,7 +55,8 @@ const (
 	lastModifyCheckPeriod = 5 * time.Second
 )
 
-func NewController(name string, factory types.BackendFactory, frontend types.Frontend, isUpgrade bool, disableRevCounter bool, salvageRequested bool) *Controller {
+func NewController(name string, factory types.BackendFactory, frontend types.Frontend, isUpgrade bool, disableRevCounter bool, salvageRequested bool,
+	iscsiTargetRequestTimeout, engineReplicaTimeout time.Duration) *Controller {
 	c := &Controller{
 		factory:       factory,
 		Name:          name,
@@ -61,9 +64,11 @@ func NewController(name string, factory types.BackendFactory, frontend types.Fro
 		metrics:       &types.Metrics{},
 		latestMetrics: &types.Metrics{},
 
-		isUpgrade:               isUpgrade,
-		revisionCounterDisabled: disableRevCounter,
-		salvageRequested:        salvageRequested,
+		isUpgrade:                 isUpgrade,
+		revisionCounterDisabled:   disableRevCounter,
+		salvageRequested:          salvageRequested,
+		iscsiTargetRequestTimeout: iscsiTargetRequestTimeout,
+		engineReplicaTimeout:      engineReplicaTimeout,
 	}
 	c.reset()
 	c.metricsStart()
@@ -143,7 +148,7 @@ func (c *Controller) addReplica(address string, snapshotRequired bool, mode type
 		return err
 	}
 
-	newBackend, err := c.factory.Create(address)
+	newBackend, err := c.factory.Create(address, c.engineReplicaTimeout)
 	if err != nil {
 		return err
 	}
@@ -443,7 +448,7 @@ func (c *Controller) StartFrontend(frontend string) error {
 	defer c.Unlock()
 
 	if c.isExpanding {
-		return fmt.Errorf("cannot start frontend during the engine expanison")
+		return fmt.Errorf("cannot start frontend during the engine expansion")
 	}
 	if frontend == "" {
 		return fmt.Errorf("cannot start empty frontend")
@@ -454,9 +459,10 @@ func (c *Controller) StartFrontend(frontend string) error {
 				c.frontend.FrontendName(), frontend)
 		}
 	}
-	f, ok := Frontends[frontend]
-	if !ok {
-		return fmt.Errorf("failed to find frontend: %s", frontend)
+
+	f, err := NewFrontend(frontend, c.iscsiTargetRequestTimeout)
+	if err != nil {
+		return errors.Wrapf(err, "failed to find frontend: %s", frontend)
 	}
 	c.frontend = f
 	return c.startFrontend()
@@ -635,7 +641,7 @@ func (c *Controller) Start(volumeSize, volumeCurrentSize int64, addresses ...str
 	backendSizes := map[int64]struct{}{}
 	first := true
 	for _, address := range addresses {
-		newBackend, err := c.factory.Create(address)
+		newBackend, err := c.factory.Create(address, c.engineReplicaTimeout)
 		if err != nil {
 			logrus.Warnf("failed to create backend with address %v: %v", address, err)
 			continue

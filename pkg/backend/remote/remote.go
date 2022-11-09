@@ -248,7 +248,7 @@ func (r *Remote) info() (*types.ReplicaInfo, error) {
 	return replicaClient.GetReplicaInfo(resp.Replica), nil
 }
 
-func (rf *Factory) Create(address string) (types.Backend, error) {
+func (rf *Factory) Create(address string, engineToReplicaTimeout time.Duration) (types.Backend, error) {
 	logrus.Infof("Connecting to remote: %s", address)
 
 	controlAddress, dataAddress, _, _, err := util.ParseAddresses(address)
@@ -279,7 +279,7 @@ func (rf *Factory) Create(address string) (types.Backend, error) {
 		return nil, err
 	}
 
-	dataConnClient := dataconn.NewClient(conn)
+	dataConnClient := dataconn.NewClient(conn, engineToReplicaTimeout)
 	r.ReaderWriterAt = dataConnClient
 
 	if err := r.open(); err != nil {

@@ -1,11 +1,11 @@
 package cmd
 
 import (
-	"errors"
-	"fmt"
 	"log"
+	"time"
 
 	"github.com/docker/go-units"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 
@@ -59,6 +59,11 @@ func ControllerCmd() cli.Command {
 				Hidden: false,
 				Usage:  "Start engine controller in a special mode only to get best replica candidate for salvage",
 			},
+			cli.Int64Flag{
+				Name:   "engine-replica-timeout",
+				Hidden: false,
+				Usage:  "In seconds. Timeout between engine and replica(s)",
+			},
 		},
 		Action: func(c *cli.Context) {
 			if err := startController(c); err != nil {
@@ -104,6 +109,11 @@ func startController(c *cli.Context) error {
 		return err
 	}
 
+	timeout := c.Int64("engine-replica-timeout")
+	engineReplicaTimeout := time.Duration(timeout) * time.Second
+	engineReplicaTimeout = controller.DetermineEngineReplicaTimeout(engineReplicaTimeout)
+	iscsiTargetRequestTimeout := controller.DetermineIscsiTargetRequestTimeout(engineReplicaTimeout)
+
 	factories := map[string]types.BackendFactory{}
 	for _, backend := range backends {
 		switch backend {
@@ -118,14 +128,17 @@ func startController(c *cli.Context) error {
 
 	var frontend types.Frontend
 	if frontendName != "" {
-		f, ok := controller.Frontends[frontendName]
-		if !ok {
-			return fmt.Errorf("failed to find frontend: %s", frontendName)
+		f, err := controller.NewFrontend(frontendName, iscsiTargetRequestTimeout)
+		if err != nil {
+			return errors.Wrapf(err, "failed to find frontend: %s", frontendName)
 		}
 		frontend = f
 	}
 
-	control := controller.NewController(name, dynamic.New(factories), frontend, isUpgrade, disableRevCounter, salvageRequested)
+	logrus.Infof("Creating controller %v with iSCSI target request timeout %v and engine to replica(s) timeout %v",
+		name, iscsiTargetRequestTimeout, engineReplicaTimeout)
+	control := controller.NewController(name, dynamic.New(factories), frontend, isUpgrade, disableRevCounter, salvageRequested,
+		iscsiTargetRequestTimeout, engineReplicaTimeout)
 
 	// need to wait for Shutdown() completion
 	control.ShutdownWG.Add(1)
