@@ -69,7 +69,7 @@ type Backend interface {
 }
 
 type BackendFactory interface {
-	Create(address string) (Backend, error)
+	Create(address string, engineReplicaTimeout time.Duration) (Backend, error)
 }
 
 type Controller interface {

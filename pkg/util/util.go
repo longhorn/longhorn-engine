@@ -19,10 +19,10 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/gorilla/handlers"
-	iutil "github.com/longhorn/go-iscsi-helper/util"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 
+	iutil "github.com/longhorn/go-iscsi-helper/util"
 	"github.com/longhorn/longhorn-engine/pkg/types"
 )
 

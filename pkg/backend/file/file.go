@@ -3,6 +3,7 @@ package file
 import (
 	"fmt"
 	"os"
+	"time"
 
 	"github.com/sirupsen/logrus"
 
@@ -106,7 +107,7 @@ func (f *Wrapper) SetRevisionCounter(counter int64) error {
 	return nil
 }
 
-func (ff *Factory) Create(address string) (types.Backend, error) {
+func (ff *Factory) Create(address string, engineToReplicaTimeout time.Duration) (types.Backend, error) {
 	logrus.Infof("Creating file: %s", address)
 	file, err := os.OpenFile(address, os.O_RDWR|os.O_CREATE, 0600)
 	if err != nil {

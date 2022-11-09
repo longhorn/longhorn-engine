@@ -2,6 +2,7 @@ package tgt
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/sirupsen/logrus"
 
@@ -19,14 +20,17 @@ const (
 type Tgt struct {
 	s *socket.Socket
 
-	isUp         bool
-	dev          longhorndev.DeviceService
-	frontendName string
+	isUp                      bool
+	dev                       longhorndev.DeviceService
+	frontendName              string
+	scsiTimeout               time.Duration
+	iscsiAbortTimeout         time.Duration
+	iscsiTargetRequestTimeout time.Duration
 }
 
-func New(frontendName string) types.Frontend {
+func New(frontendName string, scsiTimeout, iscsiAbortTimeout, iscsiTargetRequestTimeout time.Duration) types.Frontend {
 	s := socket.New()
-	return &Tgt{s, false, nil, frontendName}
+	return &Tgt{s, false, nil, frontendName, scsiTimeout, iscsiAbortTimeout, iscsiTargetRequestTimeout}
 }
 
 func (t *Tgt) FrontendName() string {
@@ -39,7 +43,10 @@ func (t *Tgt) Init(name string, size, sectorSize int64) error {
 	}
 
 	ldc := longhorndev.LonghornDeviceCreator{}
-	dev, err := ldc.NewDevice(name, size, t.frontendName)
+	dev, err := ldc.NewDevice(name, size, t.frontendName,
+		int64(t.scsiTimeout.Seconds()),
+		int64(t.iscsiAbortTimeout.Seconds()),
+		int64(t.iscsiTargetRequestTimeout.Seconds()))
 	if err != nil {
 		return err
 	}
@@ -97,7 +104,10 @@ func (t *Tgt) Endpoint() string {
 
 func (t *Tgt) Upgrade(name string, size, sectorSize int64, rw types.ReaderWriterAt) error {
 	ldc := longhorndev.LonghornDeviceCreator{}
-	dev, err := ldc.NewDevice(name, size, t.frontendName)
+	dev, err := ldc.NewDevice(name, size, t.frontendName,
+		int64(t.scsiTimeout.Seconds()),
+		int64(t.iscsiAbortTimeout.Seconds()),
+		int64(t.iscsiTargetRequestTimeout.Seconds()))
 	if err != nil {
 		return err
 	}

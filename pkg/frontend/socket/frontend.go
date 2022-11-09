@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
 	"github.com/longhorn/longhorn-engine/pkg/dataconn"
@@ -25,9 +26,11 @@ func New() *Socket {
 }
 
 type Socket struct {
-	Volume     string
-	Size       int64
-	SectorSize int
+	Volume            string
+	Size              int64
+	SectorSize        int
+	ScsiTimeout       int
+	iscsiAbortTimeout int
 
 	isUp         bool
 	socketPath   string
@@ -93,7 +96,7 @@ func (t *Socket) GetSocketPath() string {
 func (t *Socket) startSocketServer(rw types.ReaderWriterAt) error {
 	socketPath := t.GetSocketPath()
 	if err := os.MkdirAll(filepath.Dir(socketPath), 0700); err != nil {
-		return fmt.Errorf("cannot create directory %v", filepath.Dir(socketPath))
+		return errors.Wrapf(err, "cannot create directory %v", filepath.Dir(socketPath))
 	}
 	// Check and remove existing socket
 	if st, err := os.Stat(socketPath); err == nil && !st.IsDir() {
