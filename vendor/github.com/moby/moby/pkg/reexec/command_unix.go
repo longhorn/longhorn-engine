@@ -1,6 +1,7 @@
-// +build freebsd
+//go:build freebsd || darwin
+// +build freebsd darwin
 
-package reexec
+package reexec // import "github.com/docker/docker/pkg/reexec"
 
 import (
 	"os/exec"
@@ -12,7 +13,7 @@ func Self() string {
 	return naiveSelf()
 }
 
-// Command returns *exec.Cmd which have Path as current binary.
+// Command returns *exec.Cmd which has Path as current binary.
 // For example if current binary is "docker" at "/usr/bin/", then cmd.Path will
 // be set to "/usr/bin/docker".
 func Command(args ...string) *exec.Cmd {
