@@ -186,10 +186,8 @@ func (c *Controller) Snapshot(name string, labels map[string]string) (string, er
 		name = util.UUID()
 	}
 
-	if remain, err := c.backend.RemainSnapshots(); err != nil {
+	if _, err := c.backend.RemainSnapshots(); err != nil {
 		return "", err
-	} else if remain <= 0 {
-		return "", fmt.Errorf("too many snapshots created")
 	}
 
 	created := util.Now()
@@ -226,11 +224,8 @@ func (c *Controller) Expand(size int64) error {
 		// Should block R/W during the expansion.
 		c.Lock()
 		defer c.Unlock()
-		if remain, err := c.backend.RemainSnapshots(); err != nil {
+		if _, err := c.backend.RemainSnapshots(); err != nil {
 			logrus.Errorf("Cannot get remain snapshot count before expansion: %v", err)
-			return
-		} else if remain <= 0 {
-			logrus.Errorf("Cannot do expansion since too many snapshots created")
 			return
 		}
 
@@ -316,7 +311,13 @@ func (c *Controller) GetExpansionErrorInfo() (string, string) {
 	return c.lastExpansionError, c.lastExpansionFailedAt
 }
 
-func (c *Controller) addReplicaNoLock(newBackend types.Backend, address string, snapshot bool, mode types.Mode) error {
+func (c *Controller) addReplicaNoLock(newBackend types.Backend, address string, snapshot bool, mode types.Mode) (err error) {
+	defer func() {
+		if err != nil && newBackend != nil {
+			newBackend.Close()
+		}
+	}()
+
 	if ok, err := c.canAdd(address); !ok {
 		return err
 	}
@@ -325,18 +326,14 @@ func (c *Controller) addReplicaNoLock(newBackend types.Backend, address string, 
 		uuid := util.UUID()
 		created := util.Now()
 
-		if remain, err := c.backend.RemainSnapshots(); err != nil {
+		if _, err := c.backend.RemainSnapshots(); err != nil {
 			return err
-		} else if remain <= 0 {
-			return fmt.Errorf("too many snapshots created")
 		}
 
 		if err := c.backend.Snapshot(uuid, false, created, nil); err != nil {
-			newBackend.Close()
 			return err
 		}
 		if err := newBackend.Snapshot(uuid, false, created, nil); err != nil {
-			newBackend.Close()
 			return err
 		}
 	}
