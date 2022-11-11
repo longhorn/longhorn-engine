@@ -343,6 +343,10 @@ func (r *replicator) RemainSnapshots() (int, error) {
 	if ret == math.MaxInt32 {
 		return 0, fmt.Errorf("cannot get valid result for remain snapshot")
 	}
+	if ret <= 0 {
+		return 0, fmt.Errorf("too many snapshots created")
+	}
+
 	return ret, nil
 }
 
