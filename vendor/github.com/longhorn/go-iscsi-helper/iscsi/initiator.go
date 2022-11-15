@@ -29,11 +29,40 @@ const (
 	scanModeManual = "manual"
 	scanModeAuto   = "auto"
 	ScanTimeout    = 10 * time.Second
+
+	shellBinary = "sh"
 )
 
 func CheckForInitiatorExistence(ne *util.NamespaceExecutor) error {
 	opts := []string{
 		"--version",
+	}
+	_, err := ne.Execute(iscsiBinary, opts)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func UpdateScsiDeviceTimeout(devName string, timeout int64, ne *util.NamespaceExecutor) error {
+	opts := []string{
+		"-c",
+		fmt.Sprintf("echo %v > /sys/block/%v/device/timeout", timeout, devName),
+	}
+	_, err := ne.Execute(shellBinary, opts)
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
+func UpdateIscsiDeviceAbortTimeout(target string, timeout int64, ne *util.NamespaceExecutor) error {
+	opts := []string{
+		"-m", "node",
+		"-T", target,
+		"-o", "update",
+		"-n", "node.session.err_timeo.abort_timeout",
+		"-v", strconv.FormatInt(timeout, 10),
 	}
 	_, err := ne.Execute(iscsiBinary, opts)
 	if err != nil {
@@ -278,7 +307,7 @@ func findScsiDevice(ip, target string, lun int, ne *util.NamespaceExecutor) (*ut
 		if inLun {
 			line := scanner.Text()
 			if !strings.Contains(line, diskPrefix) {
-				return nil, fmt.Errorf("Invalid output format, cannot find disk in: %s\n %s", line, output)
+				return nil, fmt.Errorf("invalid output format, cannot find disk in: %s\n %s", line, output)
 			}
 			line = strings.TrimSpace(strings.Split(line, stateLine)[0])
 			line = strings.TrimPrefix(line, diskPrefix)
@@ -288,7 +317,7 @@ func findScsiDevice(ip, target string, lun int, ne *util.NamespaceExecutor) (*ut
 	}
 
 	if name == "" {
-		return nil, fmt.Errorf("Cannot find iscsi device")
+		return nil, fmt.Errorf("cannot find iSCSI device")
 	}
 
 	// now that we know the device is mapped, we can get it's (major:minor)
@@ -299,7 +328,7 @@ func findScsiDevice(ip, target string, lun int, ne *util.NamespaceExecutor) (*ut
 
 	dev, known := devices[name]
 	if !known {
-		return nil, fmt.Errorf("Cannot find kernel device for iscsi device: %s", name)
+		return nil, fmt.Errorf("cannot find kernel device for iSCSI device: %s", name)
 	}
 
 	return dev, nil
@@ -317,18 +346,18 @@ func CleanupScsiNodes(target string, ne *util.NamespaceExecutor) error {
 		// Remove all empty files in the directory
 		output, err := ne.Execute("find", []string{targetDir})
 		if err != nil {
-			return fmt.Errorf("Failed to search SCSI directory %v: %v", targetDir, err)
+			return errors.Wrapf(err, "failed to search SCSI directory %v", targetDir)
 		}
 		scanner := bufio.NewScanner(strings.NewReader(output))
 		for scanner.Scan() {
 			file := scanner.Text()
 			output, err := ne.Execute("stat", []string{file})
 			if err != nil {
-				return fmt.Errorf("Failed to check SCSI node file %v: %v", file, err)
+				return errors.Wrapf(err, "failed to check SCSI node file %v", file)
 			}
 			if strings.Contains(output, "regular empty file") {
 				if _, err := ne.Execute("rm", []string{file}); err != nil {
-					return fmt.Errorf("Failed to cleanup empty SCSI node file %v: %v", file, err)
+					return errors.Wrapf(err, "failed to clean up empty SCSI node file %v", file)
 				}
 				// We're trying to clean up the upper level directory as well, but won't mind if we fail
 				_, _ = ne.Execute("rmdir", []string{filepath.Dir(file)})
