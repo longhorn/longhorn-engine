@@ -1,12 +1,13 @@
 package iscsidev
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
-	"github.com/longhorn/nsfilelock"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+
+	"github.com/longhorn/nsfilelock"
 
 	"github.com/longhorn/go-iscsi-helper/iscsi"
 	"github.com/longhorn/go-iscsi-helper/util"
@@ -25,19 +26,37 @@ var (
 	HostProc = "/host/proc"
 )
 
+type ScsiDeviceParameters struct {
+	ScsiTimeout int64
+}
+
+type IscsiDeviceParameters struct {
+	IscsiAbortTimeout int64
+}
+
 type Device struct {
 	Target       string
 	KernelDevice *util.KernelDevice
-	BackingFile  string
-	BSType       string
-	BSOpts       string
+
+	ScsiDeviceParameters
+	IscsiDeviceParameters
+
+	BackingFile string
+	BSType      string
+	BSOpts      string
 
 	targetID int
 }
 
-func NewDevice(name, backingFile, bsType, bsOpts string) (*Device, error) {
+func NewDevice(name, backingFile, bsType, bsOpts string, scsiTimeout, iscsiAbortTimeout int64) (*Device, error) {
 	dev := &Device{
-		Target:      GetTargetName(name),
+		Target: GetTargetName(name),
+		ScsiDeviceParameters: ScsiDeviceParameters{
+			ScsiTimeout: scsiTimeout,
+		},
+		IscsiDeviceParameters: IscsiDeviceParameters{
+			IscsiAbortTimeout: iscsiAbortTimeout,
+		},
 		BackingFile: backingFile,
 		BSType:      bsType,
 		BSOpts:      bsOpts,
@@ -81,6 +100,10 @@ func (dev *Device) CreateTarget() (err error) {
 	if err := iscsi.AddLun(dev.targetID, TargetLunID, dev.BackingFile, dev.BSType, dev.BSOpts); err != nil {
 		return err
 	}
+	// Cannot modify the parameters for the LUNs during the adding stage
+	if err := iscsi.SetLunThinProvisioning(dev.targetID, TargetLunID); err != nil {
+		return err
+	}
 	if err := iscsi.BindInitiator(dev.targetID, "ALL"); err != nil {
 		return err
 	}
@@ -90,7 +113,7 @@ func (dev *Device) CreateTarget() (err error) {
 func (dev *Device) StartInitator() error {
 	lock := nsfilelock.NewLockWithTimeout(util.GetHostNamespacePath(HostProc), LockFile, LockTimeout)
 	if err := lock.Lock(); err != nil {
-		return fmt.Errorf("Fail to lock: %v", err)
+		return errors.Wrapf(err, "failed to lock")
 	}
 	defer lock.Unlock()
 
@@ -115,22 +138,28 @@ func (dev *Device) StartInitator() error {
 			break
 		}
 
-		logrus.Warnf("FAIL to discover due to %v", err)
+		logrus.Warnf("Failed to discover due to %v", err)
 		// This is a trick to recover from the case. Remove the
 		// empty entries in /etc/iscsi/nodes/<target_name>. If one of the entry
 		// is empty it will triggered the issue.
 		if err := iscsi.CleanupScsiNodes(dev.Target, ne); err != nil {
-			logrus.Warnf("Fail to cleanup nodes for %v: %v", dev.Target, err)
+			logrus.Warnf("Failed to clean up nodes for %v: %v", dev.Target, err)
 		} else {
 			logrus.Warnf("Nodes cleaned up for %v", dev.Target)
 		}
 
 		time.Sleep(RetryIntervalSCSI)
 	}
+	if err := iscsi.UpdateIscsiDeviceAbortTimeout(dev.Target, dev.IscsiAbortTimeout, ne); err != nil {
+		return err
+	}
 	if err := iscsi.LoginTarget(localIP, dev.Target, ne); err != nil {
 		return err
 	}
 	if dev.KernelDevice, err = iscsi.GetDevice(localIP, dev.Target, TargetLunID, ne); err != nil {
+		return err
+	}
+	if err := iscsi.UpdateScsiDeviceTimeout(dev.KernelDevice.Name, dev.ScsiTimeout, ne); err != nil {
 		return err
 	}
 
@@ -140,12 +169,12 @@ func (dev *Device) StartInitator() error {
 func (dev *Device) StopInitiator() error {
 	lock := nsfilelock.NewLockWithTimeout(util.GetHostNamespacePath(HostProc), LockFile, LockTimeout)
 	if err := lock.Lock(); err != nil {
-		return fmt.Errorf("Fail to lock: %v", err)
+		return errors.Wrapf(err, "failed to lock")
 	}
 	defer lock.Unlock()
 
 	if err := LogoutTarget(dev.Target); err != nil {
-		return fmt.Errorf("Fail to logout target: %v", err)
+		return errors.Wrapf(err, "failed to logout target")
 	}
 	return nil
 }
@@ -193,7 +222,7 @@ func LogoutTarget(target string) error {
 			}
 		}
 		if err != nil {
-			return fmt.Errorf("Failed to logout target: %v", err)
+			return errors.Wrapf(err, "failed to logout target")
 		}
 		/*
 		 * Immediately delete target after logout may result in error:
