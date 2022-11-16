@@ -33,7 +33,7 @@ func AddReplicaCmd() cli.Command {
 		},
 		Action: func(c *cli.Context) {
 			if err := addReplica(c); err != nil {
-				logrus.Fatalf("Error running add replica command: %v", err)
+				logrus.WithError(err).Fatalf("Error running add replica command")
 			}
 		},
 	}
@@ -93,7 +93,7 @@ func StartWithReplicasCmd() cli.Command {
 		},
 		Action: func(c *cli.Context) {
 			if err := startWithReplicas(c); err != nil {
-				logrus.Fatalf("Error running start-with-replica command: %v", err)
+				logrus.WithError(err).Fatalf("Error running start-with-replica command")
 			}
 		},
 	}
@@ -140,7 +140,7 @@ func RebuildStatusCmd() cli.Command {
 		ShortName: "rebuild-status",
 		Action: func(c *cli.Context) {
 			if err := rebuildStatus(c); err != nil {
-				logrus.Fatalf("Error running replica rebuild status: %v", err)
+				logrus.WithError(err).Fatalf("Error running replica rebuild status")
 			}
 		},
 	}
@@ -175,7 +175,7 @@ func VerifyRebuildReplicaCmd() cli.Command {
 		ShortName: "verify-rebuild",
 		Action: func(c *cli.Context) {
 			if err := verifyRebuildReplica(c); err != nil {
-				logrus.Fatalf("Error running verify rebuild replica command: %v", err)
+				logrus.WithError(err).Fatalf("Error running verify rebuild replica command")
 			}
 		},
 	}

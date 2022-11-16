@@ -30,7 +30,7 @@ func ExpandCmd() cli.Command {
 		},
 		Action: func(c *cli.Context) {
 			if err := expand(c); err != nil {
-				logrus.Fatalf("Error running expand command: %v", err)
+				logrus.WithError(err).Fatalf("Error running expand command")
 			}
 		},
 	}
@@ -52,7 +52,7 @@ func FrontendStartCmd() cli.Command {
 		Usage: "start <frontend name>",
 		Action: func(c *cli.Context) {
 			if err := startFrontend(c); err != nil {
-				logrus.Fatalf("Error running frontend start command: %v", err)
+				logrus.WithError(err).Fatalf("Error running frontend start command")
 			}
 		},
 	}
@@ -64,7 +64,7 @@ func FrontendShutdownCmd() cli.Command {
 		Usage: "shutdown",
 		Action: func(c *cli.Context) {
 			if err := shutdownFrontend(c); err != nil {
-				logrus.Fatalf("Error running frontend shutdown command: %v", err)
+				logrus.WithError(err).Fatalf("Error running frontend shutdown command")
 			}
 		},
 	}

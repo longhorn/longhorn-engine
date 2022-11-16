@@ -64,7 +64,7 @@ func BackupCreateCmd() cli.Command {
 		},
 		Action: func(c *cli.Context) {
 			if err := createBackup(c); err != nil {
-				logrus.Fatalf("Error running create backup command: %v", err)
+				logrus.WithError(err).Fatalf("Error running create backup command")
 			}
 		},
 	}
@@ -183,7 +183,7 @@ func BackupRestoreCmd() cli.Command {
 						fmt.Println(err.Error())
 					}
 				}
-				logrus.Fatalf("Error running restore backup command: %v", err)
+				logrus.WithError(err).Fatalf("Error running restore backup command")
 			}
 		},
 	}
@@ -196,7 +196,7 @@ func RestoreStatusCmd() cli.Command {
 
 		Action: func(c *cli.Context) {
 			if err := restoreStatus(c); err != nil {
-				logrus.Fatalf("Error running restore backup command: %v", err)
+				logrus.WithError(err).Fatalf("Error running restore backup command")
 			}
 		},
 	}

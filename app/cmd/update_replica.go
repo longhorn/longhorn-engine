@@ -23,7 +23,7 @@ func UpdateReplicaCmd() cli.Command {
 		Action: func(c *cli.Context) {
 			_, err := updateReplica(c)
 			if err != nil {
-				logrus.Fatalf("Error running update replica command: %v", err)
+				logrus.WithError(err).Fatalf("Error running update replica command")
 			}
 		},
 	}
