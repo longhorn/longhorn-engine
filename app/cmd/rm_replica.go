@@ -13,7 +13,7 @@ func RmReplicaCmd() cli.Command {
 		ShortName: "rm",
 		Action: func(c *cli.Context) {
 			if err := rmReplica(c); err != nil {
-				logrus.Fatalf("Error running rm replica command: %v", err)
+				logrus.WithError(err).Fatalf("Error running rm replica command")
 			}
 		},
 	}

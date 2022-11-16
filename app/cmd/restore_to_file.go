@@ -58,7 +58,7 @@ func RestoreToFileCmd() cli.Command {
 			logrus.Infof("Running restore to file command: backup-url=%s backing-file=%s output-file=%s output-format=%s",
 				c.Args().First(), c.String("backing-file"), c.String("output-file"), c.String("output-format"))
 			if err := restoreToFile(c); err != nil {
-				logrus.Fatalf("Error running restore to file command: %v", err)
+				logrus.WithError(err).Fatalf("Error running restore to file command")
 			}
 			logrus.Infof("Done running restore to file command. Produced image: %s",
 				c.String("output-file"))

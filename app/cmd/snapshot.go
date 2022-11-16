@@ -38,7 +38,7 @@ func SnapshotCmd() cli.Command {
 		},
 		Action: func(c *cli.Context) {
 			if err := lsSnapshot(c); err != nil {
-				logrus.Fatalf("Error running snapshot command: %v", err)
+				logrus.WithError(err).Fatalf("Error running snapshot command")
 			}
 		},
 	}
@@ -55,7 +55,7 @@ func SnapshotCreateCmd() cli.Command {
 		},
 		Action: func(c *cli.Context) {
 			if err := createSnapshot(c); err != nil {
-				logrus.Fatalf("Error running create snapshot command: %v", err)
+				logrus.WithError(err).Fatalf("Error running create snapshot command")
 			}
 		},
 	}
@@ -66,7 +66,7 @@ func SnapshotRevertCmd() cli.Command {
 		Name: "revert",
 		Action: func(c *cli.Context) {
 			if err := revertSnapshot(c); err != nil {
-				logrus.Fatalf("Error running revert snapshot command: %v", err)
+				logrus.WithError(err).Fatalf("Error running revert snapshot command")
 			}
 		},
 	}
@@ -77,7 +77,7 @@ func SnapshotRmCmd() cli.Command {
 		Name: "rm",
 		Action: func(c *cli.Context) {
 			if err := rmSnapshot(c); err != nil {
-				logrus.Fatalf("Error running rm snapshot command: %v", err)
+				logrus.WithError(err).Fatalf("Error running rm snapshot command")
 			}
 		},
 	}
@@ -94,7 +94,7 @@ func SnapshotPurgeCmd() cli.Command {
 		},
 		Action: func(c *cli.Context) {
 			if err := purgeSnapshot(c); err != nil {
-				logrus.Fatalf("Error running purge snapshot command: %v", err)
+				logrus.WithError(err).Fatalf("Error running purge snapshot command")
 			}
 		},
 	}
@@ -105,7 +105,7 @@ func SnapshotPurgeStatusCmd() cli.Command {
 		Name: "purge-status",
 		Action: func(c *cli.Context) {
 			if err := purgeSnapshotStatus(c); err != nil {
-				logrus.Fatalf("Error running snapshot purge status command: %v", err)
+				logrus.WithError(err).Fatalf("Error running snapshot purge status command")
 			}
 		},
 	}
@@ -116,7 +116,7 @@ func SnapshotLsCmd() cli.Command {
 		Name: "ls",
 		Action: func(c *cli.Context) {
 			if err := lsSnapshot(c); err != nil {
-				logrus.Fatalf("Error running ls snapshot command: %v", err)
+				logrus.WithError(err).Fatalf("Error running ls snapshot command")
 			}
 		},
 	}
@@ -127,7 +127,7 @@ func SnapshotInfoCmd() cli.Command {
 		Name: "info",
 		Action: func(c *cli.Context) {
 			if err := infoSnapshot(c); err != nil {
-				logrus.Fatalf("Error running snapshot info command: %v", err)
+				logrus.WithError(err).Fatalf("Error running snapshot info command")
 			}
 		},
 	}
@@ -152,7 +152,7 @@ func SnapshotCloneCmd() cli.Command {
 		},
 		Action: func(c *cli.Context) {
 			if err := cloneSnapshot(c); err != nil {
-				logrus.Fatalf("Error running snapshot clone command: %v", err)
+				logrus.WithError(err).Fatalf("Error running snapshot clone command")
 			}
 		},
 	}
@@ -163,7 +163,7 @@ func SnapshotCloneStatusCmd() cli.Command {
 		Name: "clone-status",
 		Action: func(c *cli.Context) {
 			if err := cloneSnapshotStatus(c); err != nil {
-				logrus.Fatalf("Error running snapshot clone status command: %v", err)
+				logrus.WithError(err).Fatalf("Error running snapshot clone status command")
 			}
 		},
 	}
@@ -180,7 +180,7 @@ func SnapshotHashCmd() cli.Command {
 		},
 		Action: func(c *cli.Context) {
 			if err := hashSnapshot(c); err != nil {
-				logrus.Fatalf("Error running hash snapshot command: %v", err)
+				logrus.WithError(err).Fatalf("Error running hash snapshot command")
 			}
 		},
 	}
@@ -191,7 +191,7 @@ func SnapshotHashCancelCmd() cli.Command {
 		Name: "hash-cancel",
 		Action: func(c *cli.Context) {
 			if err := cancelHashSnapshot(c); err != nil {
-				logrus.Fatalf("Error running cancel hashing snapshot command: %v", err)
+				logrus.WithError(err).Fatalf("Error running cancel hashing snapshot command")
 			}
 		},
 	}
@@ -202,7 +202,7 @@ func SnapshotHashStatusCmd() cli.Command {
 		Name: "hash-status",
 		Action: func(c *cli.Context) {
 			if err := hashSnapshotStatus(c); err != nil {
-				logrus.Fatalf("Error running snapshot hash status command: %v", err)
+				logrus.WithError(err).Fatalf("Error running snapshot hash status command")
 			}
 		},
 	}

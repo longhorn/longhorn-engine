@@ -67,7 +67,7 @@ func ControllerCmd() cli.Command {
 		},
 		Action: func(c *cli.Context) {
 			if err := startController(c); err != nil {
-				logrus.Fatalf("Error running controller command: %v.", err)
+				logrus.WithError(err).Fatalf("Error running controller command")
 			}
 		},
 	}
