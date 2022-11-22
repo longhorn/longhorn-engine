@@ -64,6 +64,11 @@ func ControllerCmd() cli.Command {
 				Hidden: false,
 				Usage:  "In seconds. Timeout between engine and replica(s)",
 			},
+			cli.StringFlag{
+				Name:  "data-server-protocol",
+				Value: "tcp",
+				Usage: "Specify the data-server protocol. Available options are \"tcp\" and \"unix\"",
+			},
 		},
 		Action: func(c *cli.Context) {
 			if err := startController(c); err != nil {
@@ -114,6 +119,8 @@ func startController(c *cli.Context) error {
 	engineReplicaTimeout = controller.DetermineEngineReplicaTimeout(engineReplicaTimeout)
 	iscsiTargetRequestTimeout := controller.DetermineIscsiTargetRequestTimeout(engineReplicaTimeout)
 
+	dataServerProtocol := c.String("data-server-protocol")
+
 	factories := map[string]types.BackendFactory{}
 	for _, backend := range backends {
 		switch backend {
@@ -138,7 +145,7 @@ func startController(c *cli.Context) error {
 	logrus.Infof("Creating controller %v with iSCSI target request timeout %v and engine to replica(s) timeout %v",
 		name, iscsiTargetRequestTimeout, engineReplicaTimeout)
 	control := controller.NewController(name, dynamic.New(factories), frontend, isUpgrade, disableRevCounter, salvageRequested,
-		iscsiTargetRequestTimeout, engineReplicaTimeout)
+		iscsiTargetRequestTimeout, engineReplicaTimeout, types.DataServerProtocol(dataServerProtocol))
 
 	// need to wait for Shutdown() completion
 	control.ShutdownWG.Add(1)

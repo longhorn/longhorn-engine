@@ -19,6 +19,7 @@ import (
 	"github.com/longhorn/longhorn-engine/pkg/backingfile"
 	"github.com/longhorn/longhorn-engine/pkg/replica"
 	replicarpc "github.com/longhorn/longhorn-engine/pkg/replica/rpc"
+	"github.com/longhorn/longhorn-engine/pkg/types"
 	"github.com/longhorn/longhorn-engine/pkg/util"
 	diskutil "github.com/longhorn/longhorn-engine/pkg/util/disk"
 	"github.com/longhorn/longhorn-engine/proto/ptypes"
@@ -61,6 +62,15 @@ func ReplicaCmd() cli.Command {
 				Hidden: false,
 				Usage:  "To disable revision counter for every write",
 			},
+			cli.StringFlag{
+				Name:  "volume-name",
+				Value: "",
+			},
+			cli.StringFlag{
+				Name:  "data-server-protocol",
+				Value: "tcp",
+				Usage: "Specify the data-server protocol. Available options are \"tcp\" and \"unix\"",
+			},
 		},
 		Action: func(c *cli.Context) {
 			if err := startReplica(c); err != nil {
@@ -99,7 +109,11 @@ func startReplica(c *cli.Context) error {
 		}
 	}
 
-	controlAddress, dataAddress, syncAddress, syncPort, err := util.ParseAddresses(address)
+	volumeName := c.String("volume-name")
+	dataServerProtocol := c.String("data-server-protocol")
+
+	controlAddress, dataAddress, syncAddress, syncPort, err :=
+		util.GetAddresses(volumeName, address, types.DataServerProtocol(dataServerProtocol))
 	if err != nil {
 		return err
 	}
@@ -127,7 +141,7 @@ func startReplica(c *cli.Context) error {
 	}()
 
 	go func() {
-		rpcServer := replicarpc.NewDataServer(dataAddress, s)
+		rpcServer := replicarpc.NewDataServer(types.DataServerProtocol(dataServerProtocol), dataAddress, s)
 		logrus.Infof("Listening on data server %s", dataAddress)
 		err := rpcServer.ListenAndServe()
 		logrus.Warnf("Replica rest server at %v is down: %v", dataAddress, err)
