@@ -32,6 +32,7 @@ type Controller struct {
 	isUpgrade                 bool
 	iscsiTargetRequestTimeout time.Duration
 	engineReplicaTimeout      time.Duration
+	DataServerProtocol        types.DataServerProtocol
 
 	isExpanding             bool
 	revisionCounterDisabled bool
@@ -57,7 +58,7 @@ const (
 )
 
 func NewController(name string, factory types.BackendFactory, frontend types.Frontend, isUpgrade bool, disableRevCounter bool, salvageRequested bool,
-	iscsiTargetRequestTimeout, engineReplicaTimeout time.Duration) *Controller {
+	iscsiTargetRequestTimeout, engineReplicaTimeout time.Duration, dataServerProtocol types.DataServerProtocol) *Controller {
 	c := &Controller{
 		factory:       factory,
 		Name:          name,
@@ -70,6 +71,7 @@ func NewController(name string, factory types.BackendFactory, frontend types.Fro
 		salvageRequested:          salvageRequested,
 		iscsiTargetRequestTimeout: iscsiTargetRequestTimeout,
 		engineReplicaTimeout:      engineReplicaTimeout,
+		DataServerProtocol:        dataServerProtocol,
 	}
 	c.reset()
 	c.metricsStart()
@@ -149,7 +151,7 @@ func (c *Controller) addReplica(address string, snapshotRequired bool, mode type
 		return err
 	}
 
-	newBackend, err := c.factory.Create(address, c.engineReplicaTimeout)
+	newBackend, err := c.factory.Create(c.Name, address, c.DataServerProtocol, c.engineReplicaTimeout)
 	if err != nil {
 		return err
 	}
@@ -639,7 +641,7 @@ func (c *Controller) Start(volumeSize, volumeCurrentSize int64, addresses ...str
 	backendSizes := map[int64]struct{}{}
 	first := true
 	for _, address := range addresses {
-		newBackend, err := c.factory.Create(address, c.engineReplicaTimeout)
+		newBackend, err := c.factory.Create(c.Name, address, c.DataServerProtocol, c.engineReplicaTimeout)
 		if err != nil {
 			logrus.Warnf("failed to create backend with address %v: %v", address, err)
 			continue

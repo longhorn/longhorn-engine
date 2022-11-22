@@ -23,6 +23,7 @@ import (
 	"golang.org/x/sys/unix"
 
 	iutil "github.com/longhorn/go-iscsi-helper/util"
+
 	"github.com/longhorn/longhorn-engine/pkg/types"
 )
 
@@ -31,6 +32,8 @@ var (
 	validVolumeName       = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.-]+$`)
 
 	HostProc = "/host/proc"
+
+	unixDomainSocketDirectoryInContainer = "/host/var/lib/longhorn/unix-domain-socket/"
 )
 
 const (
@@ -330,4 +333,17 @@ func GetFunctionName(i interface{}) string {
 
 func RandomID(randomIDLenth int) string {
 	return UUID()[:randomIDLenth]
+}
+
+func GetAddresses(volumeName, address string, dataServerProtocol types.DataServerProtocol) (string, string, string, int, error) {
+	switch dataServerProtocol {
+	case types.DataServerProtocolTCP:
+		return ParseAddresses(address)
+	case types.DataServerProtocolUNIX:
+		controlAddress, _, syncAddress, syncPort, err := ParseAddresses(address)
+		sockPath := filepath.Join(unixDomainSocketDirectoryInContainer, volumeName+filepath.Ext(".sock"))
+		return controlAddress, sockPath, syncAddress, syncPort, err
+	default:
+		return "", "", "", -1, fmt.Errorf("unsupported protocol: %v", dataServerProtocol)
+	}
 }
