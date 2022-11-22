@@ -248,10 +248,10 @@ func (r *Remote) info() (*types.ReplicaInfo, error) {
 	return replicaClient.GetReplicaInfo(resp.Replica), nil
 }
 
-func (rf *Factory) Create(address string, engineToReplicaTimeout time.Duration) (types.Backend, error) {
-	logrus.Infof("Connecting to remote: %s", address)
+func (rf *Factory) Create(volumeName, address string, dataServerProtocol types.DataServerProtocol, engineToReplicaTimeout time.Duration) (types.Backend, error) {
+	logrus.Infof("Connecting to remote: %s (%v)", address, dataServerProtocol)
 
-	controlAddress, dataAddress, _, _, err := util.ParseAddresses(address)
+	controlAddress, dataAddress, _, _, err := util.GetAddresses(volumeName, address, dataServerProtocol)
 	if err != nil {
 		return nil, err
 	}
@@ -274,7 +274,7 @@ func (rf *Factory) Create(address string, engineToReplicaTimeout time.Duration) 
 		return nil, fmt.Errorf("replica must be closed, cannot add in state: %s", replica.State)
 	}
 
-	conn, err := net.Dial("tcp", dataAddress)
+	conn, err := connect(dataServerProtocol, dataAddress)
 	if err != nil {
 		return nil, err
 	}
@@ -289,6 +289,21 @@ func (rf *Factory) Create(address string, engineToReplicaTimeout time.Duration) 
 	go r.monitorPing(dataConnClient)
 
 	return r, nil
+}
+
+func connect(dataServerProtocol types.DataServerProtocol, address string) (net.Conn, error) {
+	switch dataServerProtocol {
+	case types.DataServerProtocolTCP:
+		return net.Dial(string(dataServerProtocol), address)
+	case types.DataServerProtocolUNIX:
+		unixAddr, err := net.ResolveUnixAddr("unix", address)
+		if err != nil {
+			return nil, err
+		}
+		return net.DialUnix("unix", nil, unixAddr)
+	default:
+		return nil, fmt.Errorf("unsupported protocol: %v", dataServerProtocol)
+	}
 }
 
 func (r *Remote) monitorPing(client *dataconn.Client) {

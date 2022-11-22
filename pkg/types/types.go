@@ -38,6 +38,13 @@ const (
 	VolumeHeadName = "volume-head"
 )
 
+type DataServerProtocol string
+
+const (
+	DataServerProtocolTCP  = DataServerProtocol("tcp")
+	DataServerProtocolUNIX = DataServerProtocol("unix")
+)
+
 type ReaderWriterAt interface {
 	io.ReaderAt
 	io.WriterAt
@@ -71,7 +78,7 @@ type Backend interface {
 }
 
 type BackendFactory interface {
-	Create(address string, engineReplicaTimeout time.Duration) (Backend, error)
+	Create(volumeName, address string, dataServerProtocol DataServerProtocol, engineReplicaTimeout time.Duration) (Backend, error)
 }
 
 type Controller interface {
