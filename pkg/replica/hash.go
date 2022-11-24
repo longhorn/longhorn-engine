@@ -1,7 +1,6 @@
 package replica
 
 import (
-	"bytes"
 	"context"
 	"encoding/hex"
 	"encoding/json"
@@ -11,6 +10,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -19,14 +19,12 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
+	"github.com/longhorn/longhorn-engine/pkg/types"
 	diskutil "github.com/longhorn/longhorn-engine/pkg/util/disk"
 )
 
 const (
 	defaultHashMethod = "crc64"
-
-	xattrSnapshotHashName     = "user.longhorn.metadata"
-	xattrSnapshotHashValueMax = 256
 
 	FileLockDirectory = "/host/var/lib/longhorn/.lock"
 	HashLockFileName  = "hash"
@@ -127,7 +125,7 @@ func (t *SnapshotHashJob) Execute() (err error) {
 				return
 			}
 
-			SetSnapshotHashInfoToXattr(t.SnapshotName, &SnapshotXattrHashInfo{
+			SetSnapshotHashInfoToChecksumFile(t.SnapshotName, &SnapshotXattrHashInfo{
 				Method:            defaultHashMethod,
 				Checksum:          checksum,
 				ChangeTime:        changeTime,
@@ -140,10 +138,10 @@ func (t *SnapshotHashJob) Execute() (err error) {
 				if err == nil {
 					err = fmt.Errorf("snapshot %v modification time is changed", t.SnapshotName)
 				}
-				// Do the best to delete the useless xattr.
+				// Do the best to delete the useless checksum file.
 				// The deletion failure is acceptable, because the mismatching timestamps
 				// will trigger the rehash in the next hash request.
-				DeleteSnapshotHashInfoFromXattr(t.SnapshotName)
+				DeleteSnapshotHashInfoChecksumFile(t.SnapshotName)
 			}
 		}
 
@@ -198,12 +196,12 @@ func (t *SnapshotHashJob) Execute() (err error) {
 		return err
 	}
 
-	// If the silent corruption is detected, the xattr will not be overrode.
+	// If the silent corruption is detected, the checksum file will not be overrode.
 	// The scene will be preserved and only set silentlyCorrupted to true.
 	if t.isSnapshotSilentlyCorrupted(checksum) {
 		silentlyCorrupted = true
 
-		info, err := GetSnapshotHashInfoFromXattrFile(t.SnapshotName)
+		info, err := GetSnapshotHashInfoFromChecksumFile(t.SnapshotName)
 		if err != nil {
 			return err
 		}
@@ -221,7 +219,7 @@ func (t *SnapshotHashJob) isSnapshotSilentlyCorrupted(checksum string) bool {
 	// Then, rehash the file and compare the changeTimes and checksums.
 	// If the changeTimes are identical but the checksums differ, the file is silently corrupted.
 
-	info, err := GetSnapshotHashInfoFromXattr(t.SnapshotName)
+	info, err := GetSnapshotHashInfoFromChecksumFile(t.SnapshotName)
 	if err != nil || info == nil {
 		return false
 	}
@@ -255,47 +253,90 @@ func GetSnapshotChangeTime(snapshotName string) (string, error) {
 	return time.Unix(int64(stat.Ctim.Sec), int64(stat.Ctim.Nsec)).String(), nil
 }
 
-func GetSnapshotHashInfoFromXattr(snapshotName string) (*SnapshotXattrHashInfo, error) {
-	xattrSnapshotHashValue := make([]byte, xattrSnapshotHashValueMax)
-	_, err := unix.Getxattr(diskutil.GenerateSnapshotDiskName(snapshotName), xattrSnapshotHashName, xattrSnapshotHashValue)
+func GetSnapshotHashInfoFromChecksumFile(snapshotName string) (*SnapshotXattrHashInfo, error) {
+	dir, err := os.Getwd()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to get working directory when getting snapshot hash info")
+	}
+
+	path := filepath.Join(dir, diskutil.GenerateSnapshotDiskChecksumName(diskutil.GenerateSnapshotDiskName(snapshotName)))
+
+	f, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
+	defer f.Close()
 
-	index := bytes.IndexByte(xattrSnapshotHashValue, 0)
+	var info SnapshotXattrHashInfo
 
-	info := &SnapshotXattrHashInfo{}
-	if err := json.Unmarshal(xattrSnapshotHashValue[:index], info); err != nil {
+	if err := json.NewDecoder(f).Decode(&info); err != nil {
 		return nil, err
 	}
 
-	return info, nil
+	return &info, nil
 }
 
-func SetSnapshotHashInfoToXattr(snapshotName string, info *SnapshotXattrHashInfo) error {
-	xattrSnapshotHashValue, err := json.Marshal(&SnapshotXattrHashInfo{
+func SetSnapshotHashInfoToChecksumFile(snapshotName string, info *SnapshotXattrHashInfo) error {
+	dir, err := os.Getwd()
+	if err != nil {
+		return errors.Wrap(err, "failed to get working directory when setting snapshot hash info")
+	}
+
+	path := filepath.Join(dir, diskutil.GenerateSnapshotDiskChecksumName(diskutil.GenerateSnapshotDiskName(snapshotName)))
+
+	return encodeToFile(SnapshotXattrHashInfo{
 		Method:            defaultHashMethod,
 		Checksum:          info.Checksum,
 		ChangeTime:        info.ChangeTime,
 		LastHashedAt:      info.LastHashedAt,
 		SilentlyCorrupted: info.SilentlyCorrupted,
-	})
+	}, path)
+}
+
+func encodeToFile(obj interface{}, path string) (err error) {
+	tmpPath := fmt.Sprintf("%s.%s", path, tmpFileSuffix)
+
+	defer func() {
+		var rollbackErr error
+		if err != nil {
+			if _, err := os.Stat(tmpPath); err == nil {
+				if err := os.Remove(tmpPath); err != nil {
+					rollbackErr = err
+				}
+			}
+		}
+		err = types.GenerateFunctionErrorWithRollback(err, rollbackErr)
+	}()
+
+	f, err := os.Create(tmpPath)
 	if err != nil {
 		return err
 	}
+	defer f.Close()
 
-	return unix.Setxattr(diskutil.GenerateSnapshotDiskName(snapshotName), xattrSnapshotHashName, xattrSnapshotHashValue, 0)
+	if err := json.NewEncoder(f).Encode(&obj); err != nil {
+		return err
+	}
+
+	return os.Rename(tmpPath, path)
 }
 
-func DeleteSnapshotHashInfoFromXattr(snapshotName string) error {
-	return unix.Removexattr(diskutil.GenerateSnapshotDiskName(snapshotName), xattrSnapshotHashName)
+func DeleteSnapshotHashInfoChecksumFile(snapshotName string) error {
+	dir, err := os.Getwd()
+	if err != nil {
+		return errors.Wrap(err, "failed to get working directory when deleting snapshot hash info")
+	}
+
+	path := filepath.Join(dir, diskutil.GenerateSnapshotDiskChecksumName(diskutil.GenerateSnapshotDiskName(snapshotName)))
+
+	return os.RemoveAll(path)
 }
 
-func (t *SnapshotHashJob) isSilentCorruptionAlreadyDetected(currentModTime string) (bool, error) {
-	info, err := GetSnapshotHashInfoFromXattr(t.SnapshotName)
+func (t *SnapshotHashJob) isSilentCorruptionAlreadyDetected(currentChangeTime string) (bool, error) {
+	info, err := GetSnapshotHashInfoFromChecksumFile(t.SnapshotName)
 	if err != nil || info == nil {
-		if err != syscall.ENODATA {
-			return false, errors.Wrapf(err, "failed to get snapshot %v last hash info from xattr", t.SnapshotName)
+		if !strings.Contains(err.Error(), syscall.ENOENT.Error()) {
+			return false, errors.Wrapf(err, "failed to get snapshot %v last hash info from checksum file", t.SnapshotName)
 		}
 		return false, nil
 	}
@@ -307,11 +348,11 @@ func (t *SnapshotHashJob) isSilentCorruptionAlreadyDetected(currentModTime strin
 	return false, nil
 }
 
-func (t *SnapshotHashJob) isRehashRequired(currentModTime string) (bool, string, error) {
-	info, err := GetSnapshotHashInfoFromXattr(t.SnapshotName)
+func (t *SnapshotHashJob) isRehashRequired(currentChangeTime string) (bool, string, error) {
+	info, err := GetSnapshotHashInfoFromChecksumFile(t.SnapshotName)
 	if err != nil || info == nil {
-		if err != syscall.ENODATA {
-			return true, "", errors.Wrapf(err, "failed to get snapshot %v last hash info from xattr", t.SnapshotName)
+		if !strings.Contains(err.Error(), syscall.ENOENT.Error()) {
+			return true, "", errors.Wrapf(err, "failed to get snapshot %v last hash info from checksum file", t.SnapshotName)
 		}
 		return true, "", nil
 	}
@@ -338,7 +379,7 @@ func (t *SnapshotHashJob) isChangeTimeRemain(oldChangeTime string) (bool, error)
 func hashSnapshot(ctx context.Context, snapshotName string) (string, error) {
 	dir, err := os.Getwd()
 	if err != nil {
-		return "", errors.Wrap(err, "cannot get working directory")
+		return "", errors.Wrapf(err, "failed to get working directory when hashing snapshot %v", snapshotName)
 	}
 
 	path := filepath.Join(dir, diskutil.GenerateSnapshotDiskName(snapshotName))

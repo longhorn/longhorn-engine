@@ -714,6 +714,12 @@ func (r *Replica) linkDisk(oldname, newname string) error {
 		return errors.Wrapf(err, "failed to delete old disk metadata file %v", destMetadata)
 	}
 
+	destChecksum := r.diskPath(newname + diskutil.DiskChecksumSuffix)
+	logrus.Infof("Deleting old disk checksum file %v", destChecksum)
+	if err := os.RemoveAll(destChecksum); err != nil {
+		return errors.Wrapf(err, "failed to delete old disk checksum file %v", destChecksum)
+	}
+
 	dest := r.diskPath(newname)
 	logrus.Infof("Deleting old disk file %v", dest)
 	if err := os.RemoveAll(dest); err != nil {
@@ -750,6 +756,9 @@ func (r *Replica) rmDisk(name string) error {
 
 	lastErr := os.Remove(r.diskPath(name))
 	if err := os.Remove(r.diskPath(name + diskutil.DiskMetadataSuffix)); err != nil {
+		lastErr = err
+	}
+	if err := os.RemoveAll(r.diskPath(name + diskutil.DiskChecksumSuffix)); err != nil {
 		lastErr = err
 	}
 	return lastErr

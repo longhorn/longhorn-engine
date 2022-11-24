@@ -14,6 +14,7 @@ const (
 	DeltaDiskName   = DeltaDiskPrefix + "%s" + DeltaDiskSuffix
 
 	DiskMetadataSuffix = ".meta"
+	DiskChecksumSuffix = ".checksum"
 
 	snapTmpSuffix = ".snap_tmp"
 
