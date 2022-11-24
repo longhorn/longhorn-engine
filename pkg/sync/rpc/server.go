@@ -1413,8 +1413,8 @@ func (s *SyncAgentServer) SnapshotHash(ctx context.Context, req *ptypes.Snapshot
 	return &empty.Empty{}, nil
 }
 
-func checkSnapshotHashStatusFromXattr(snapshotName string) (string, error) {
-	info, err := replica.GetSnapshotHashInfoFromXattr(snapshotName)
+func checkSnapshotHashStatusFromChecksumFile(snapshotName string) (string, error) {
+	info, err := replica.GetSnapshotHashInfoFromChecksumFile(snapshotName)
 	if err != nil {
 		return "", err
 	}
@@ -1436,12 +1436,12 @@ func checkSnapshotHashStatusFromXattr(snapshotName string) (string, error) {
 
 func (s *SyncAgentServer) SnapshotHashStatus(ctx context.Context, req *ptypes.SnapshotHashStatusRequest) (*ptypes.SnapshotHashStatusResponse, error) {
 	// By default, the hash status should be retrieved from SnapshotHashList.
-	// After finishing the hash task, the state becomes complete and xattr is set. If the hash status in the SnapshotHashList is
-	// somehow cleaned up by refresh(), the result can be read from xattr instead.
-	// If the state cannot be found in the xattr, it implicitly indicate the hashing task failed.
+	// After finishing the hash task, the state becomes complete and checksum file is set. If the hash status in the SnapshotHashList is
+	// somehow cleaned up by refresh(), the result can be read from checksum file instead.
+	// If the state cannot be found in the checksum file, it implicitly indicate the hashing task failed.
 	task, err := s.SnapshotHashList.Get(req.SnapshotName)
 	if err != nil {
-		checksum, err := checkSnapshotHashStatusFromXattr(req.SnapshotName)
+		checksum, err := checkSnapshotHashStatusFromChecksumFile(req.SnapshotName)
 		if err != nil {
 			return &ptypes.SnapshotHashStatusResponse{
 				State: string(replica.ProgressStateError),

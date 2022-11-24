@@ -10,6 +10,10 @@ func GenerateSnapshotDiskName(name string) string {
 	return fmt.Sprintf(SnapshotDiskName, name)
 }
 
+func GenerateSnapshotDiskChecksumName(diskName string) string {
+	return diskName + DiskChecksumSuffix
+}
+
 func GenerateSnapshotDiskMetaName(diskName string) string {
 	return diskName + DiskMetadataSuffix
 }
