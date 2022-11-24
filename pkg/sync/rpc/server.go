@@ -1420,14 +1420,14 @@ func checkSnapshotHashStatusFromXattr(snapshotName string) (string, error) {
 	}
 
 	checksum := info.Checksum
-	modTime := info.ModTime
+	changeTime := info.ChangeTime
 
-	currentModTime, err := replica.GetSnapshotModTime(snapshotName)
+	currentChangeTime, err := replica.GetSnapshotChangeTime(snapshotName)
 	if err != nil {
 		return "", err
 	}
 
-	if modTime != currentModTime {
+	if changeTime != currentChangeTime {
 		return "", fmt.Errorf("snapshot %v is changed", snapshotName)
 	}
 

@@ -18,7 +18,6 @@ import (
 	"github.com/gofrs/flock"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/sys/unix"
 
 	diskutil "github.com/longhorn/longhorn-engine/pkg/util/disk"
 )
@@ -59,7 +58,7 @@ type SnapshotHashJob struct {
 type SnapshotXattrHashInfo struct {
 	Method            string `json:"method"`
 	Checksum          string `json:"checksum"`
-	ModTime           string `json:"modTime"`
+	ChangeTime        string `json:"changeTime"`
 	LastHashedAt      string `json:"lastHashedAt"`
 	SilentlyCorrupted bool   `json:"silentlyCorrupted"`
 }
@@ -108,7 +107,7 @@ func (t *SnapshotHashJob) UnlockFile(fileLock *flock.Flock) {
 
 func (t *SnapshotHashJob) Execute() (err error) {
 	var checksum string
-	var modTime string
+	var changeTime string
 	var lastHashedAt string
 	var silentlyCorrupted bool
 
@@ -131,12 +130,12 @@ func (t *SnapshotHashJob) Execute() (err error) {
 			SetSnapshotHashInfoToXattr(t.SnapshotName, &SnapshotXattrHashInfo{
 				Method:            defaultHashMethod,
 				Checksum:          checksum,
-				ModTime:           modTime,
+				ChangeTime:        changeTime,
 				LastHashedAt:      lastHashedAt,
 				SilentlyCorrupted: silentlyCorrupted,
 			})
 
-			remain, err := t.isModTimeRemain(modTime)
+			remain, err := t.isChangeTimeRemain(changeTime)
 			if !remain {
 				if err == nil {
 					err = fmt.Errorf("snapshot %v modification time is changed", t.SnapshotName)
@@ -165,14 +164,14 @@ func (t *SnapshotHashJob) Execute() (err error) {
 	}
 	defer t.UnlockFile(fileLock)
 
-	modTime, err = GetSnapshotModTime(t.SnapshotName)
+	changeTime, err = GetSnapshotChangeTime(t.SnapshotName)
 	if err != nil {
 		return err
 	}
 
 	// If the silent corruption is detected, don't need to recalculate the checksum.
 	// Just set SilentlyCorrupted to true and return it.
-	silentlyCorrupted, err = t.isSilentCorruptionAlreadyDetected(modTime)
+	silentlyCorrupted, err = t.isSilentCorruptionAlreadyDetected(changeTime)
 	if err != nil {
 		return err
 	}
@@ -182,7 +181,7 @@ func (t *SnapshotHashJob) Execute() (err error) {
 
 	requireRehash := true
 	if !t.Rehash {
-		requireRehash, checksum, err = t.isRehashRequired(modTime)
+		requireRehash, checksum, err = t.isRehashRequired(changeTime)
 		if err != nil {
 			return err
 		}
@@ -204,23 +203,23 @@ func (t *SnapshotHashJob) Execute() (err error) {
 	if t.isSnapshotSilentlyCorrupted(checksum) {
 		silentlyCorrupted = true
 
-		info, err := GetSnapshotHashInfoFromXattr(t.SnapshotName)
+		info, err := GetSnapshotHashInfoFromXattrFile(t.SnapshotName)
 		if err != nil {
 			return err
 		}
 
 		checksum = info.Checksum
 		lastHashedAt = info.LastHashedAt
-		modTime = info.ModTime
+		changeTime = info.ChangeTime
 	}
 
 	return nil
 }
 
 func (t *SnapshotHashJob) isSnapshotSilentlyCorrupted(checksum string) bool {
-	// To detect the silent corruption, read the modTime and checksum already recorded in the snapshot disk file first.
-	// Then, rehash the file and compare the modTimes and checksums.
-	// If the modTimes are identical but the checksums differ, the file is silently corrupted.
+	// To detect the silent corruption, read the changeTime and checksum already recorded in the snapshot disk file first.
+	// Then, rehash the file and compare the changeTimes and checksums.
+	// If the changeTimes are identical but the checksums differ, the file is silently corrupted.
 
 	info, err := GetSnapshotHashInfoFromXattr(t.SnapshotName)
 	if err != nil || info == nil {
@@ -228,13 +227,13 @@ func (t *SnapshotHashJob) isSnapshotSilentlyCorrupted(checksum string) bool {
 	}
 
 	existingChecksum := info.Checksum
-	existingModTime := info.ModTime
+	existingChangeTime := info.ChangeTime
 
-	if existingChecksum == "" || existingModTime == "" {
+	if existingChecksum == "" || existingChangeTime == "" {
 		return false
 	}
 
-	remain, _ := t.isModTimeRemain(existingModTime)
+	remain, _ := t.isChangeTimeRemain(existingChangeTime)
 	if !remain {
 		return false
 	}
@@ -246,13 +245,14 @@ func (t *SnapshotHashJob) isSnapshotSilentlyCorrupted(checksum string) bool {
 	return false
 }
 
-func GetSnapshotModTime(snapshotName string) (string, error) {
+func GetSnapshotChangeTime(snapshotName string) (string, error) {
 	fileInfo, err := os.Stat(diskutil.GenerateSnapshotDiskName(snapshotName))
 	if err != nil {
 		return "", err
 	}
 
-	return fileInfo.ModTime().String(), nil
+	stat := fileInfo.Sys().(*syscall.Stat_t)
+	return time.Unix(int64(stat.Ctim.Sec), int64(stat.Ctim.Nsec)).String(), nil
 }
 
 func GetSnapshotHashInfoFromXattr(snapshotName string) (*SnapshotXattrHashInfo, error) {
@@ -276,7 +276,7 @@ func SetSnapshotHashInfoToXattr(snapshotName string, info *SnapshotXattrHashInfo
 	xattrSnapshotHashValue, err := json.Marshal(&SnapshotXattrHashInfo{
 		Method:            defaultHashMethod,
 		Checksum:          info.Checksum,
-		ModTime:           info.ModTime,
+		ChangeTime:        info.ChangeTime,
 		LastHashedAt:      info.LastHashedAt,
 		SilentlyCorrupted: info.SilentlyCorrupted,
 	})
@@ -300,7 +300,7 @@ func (t *SnapshotHashJob) isSilentCorruptionAlreadyDetected(currentModTime strin
 		return false, nil
 	}
 
-	if currentModTime == info.ModTime {
+	if currentChangeTime == info.ChangeTime {
 		return info.SilentlyCorrupted, nil
 	}
 
@@ -317,22 +317,22 @@ func (t *SnapshotHashJob) isRehashRequired(currentModTime string) (bool, string,
 	}
 
 	checksum := info.Checksum
-	modTime := info.ModTime
+	changeTime := info.ChangeTime
 
-	if modTime != currentModTime || checksum == "" {
+	if changeTime != currentChangeTime || checksum == "" {
 		return true, "", nil
 	}
 
 	return false, checksum, nil
 }
 
-func (t *SnapshotHashJob) isModTimeRemain(oldModTime string) (bool, error) {
-	newModTime, err := GetSnapshotModTime(t.SnapshotName)
+func (t *SnapshotHashJob) isChangeTimeRemain(oldChangeTime string) (bool, error) {
+	newChangeTime, err := GetSnapshotChangeTime(t.SnapshotName)
 	if err != nil {
 		return false, err
 	}
 
-	return oldModTime == newModTime, nil
+	return oldChangeTime == newChangeTime, nil
 }
 
 func hashSnapshot(ctx context.Context, snapshotName string) (string, error) {
