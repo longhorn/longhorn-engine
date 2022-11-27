@@ -331,11 +331,11 @@ func (s *SyncAgentServer) FileSend(ctx context.Context, req *ptypes.FileSendRequ
 	if filepath.Ext(strings.TrimSpace(req.FromFileName)) == ".meta" {
 		directIO = false
 	}
-	logrus.Infof("Sending file %v to %v", req.FromFileName, address)
+	logrus.Infof("Syncing file %v to %v", req.FromFileName, address)
 	if err := sparse.SyncFile(req.FromFileName, address, FileSyncTimeout, directIO); err != nil {
 		return nil, err
 	}
-	logrus.Infof("Done sending file %v to %v", req.FromFileName, address)
+	logrus.Infof("Done syncing file %v to %v", req.FromFileName, address)
 
 	return &empty.Empty{}, nil
 }
@@ -397,7 +397,7 @@ func (s *SyncAgentServer) launchReceiver(processName, toFileName string, ops spa
 
 		logrus.Infof("Running ssync server for file %v at port %v", toFileName, port)
 		if err = sparserest.Server(context.Background(), strconv.Itoa(port), toFileName, ops); err != nil && err != http.ErrServerClosed {
-			logrus.Errorf("Error running ssync server: %v", err)
+			logrus.WithError(err).Error("Error running ssync server")
 			return
 		}
 		logrus.Infof("Done running ssync server for file %v at port %v", toFileName, port)
@@ -416,7 +416,7 @@ func (s *SyncAgentServer) FilesSync(ctx context.Context, req *ptypes.FilesSyncRe
 		if err != nil {
 			s.RebuildStatus.Error = err.Error()
 			s.RebuildStatus.State = types.ProcessStateError
-			logrus.Errorf("Sync agent gRPC server failed to rebuild replica/sync files: %v", err)
+			logrus.WithError(err).Error("sync agent gRPC server failed to rebuild replica/sync files")
 		} else {
 			s.RebuildStatus.State = types.ProcessStateComplete
 			logrus.Infof("Sync agent gRPC server finished rebuilding replica/sync files for replica %v", req.ToHost)
@@ -424,7 +424,7 @@ func (s *SyncAgentServer) FilesSync(ctx context.Context, req *ptypes.FilesSyncRe
 		s.RebuildStatus.Unlock()
 
 		if err = s.FinishRebuild(); err != nil {
-			logrus.Errorf("could not finish rebuilding: %v", err)
+			logrus.WithError(err).Error("could not finish rebuilding")
 		}
 	}()
 
