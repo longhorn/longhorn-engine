@@ -341,7 +341,7 @@ func GetAddresses(volumeName, address string, dataServerProtocol types.DataServe
 		return ParseAddresses(address)
 	case types.DataServerProtocolUNIX:
 		controlAddress, _, syncAddress, syncPort, err := ParseAddresses(address)
-		sockPath := filepath.Join(unixDomainSocketDirectoryInContainer, volumeName+filepath.Ext(".sock"))
+		sockPath := filepath.Join(unixDomainSocketDirectoryInContainer, volumeName+".sock")
 		return controlAddress, sockPath, syncAddress, syncPort, err
 	default:
 		return "", "", "", -1, fmt.Errorf("unsupported protocol: %v", dataServerProtocol)

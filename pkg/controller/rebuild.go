@@ -79,8 +79,8 @@ func (c *Controller) VerifyRebuildReplica(address string) error {
 	if !c.revisionCounterDisabled {
 		counter, err := c.backend.GetRevisionCounter(rwReplica.Address)
 		if err != nil || counter == -1 {
-			return fmt.Errorf("failed to get revision counter of RW Replica %v: counter %v, err %v",
-				rwReplica.Address, counter, err)
+			return errors.Wrapf(err, "failed to get revision counter of RW Replica %v: counter %v",
+				rwReplica.Address, counter)
 
 		}
 		if err := c.backend.SetRevisionCounter(address, counter); err != nil {
@@ -117,12 +117,12 @@ func syncFile(from, to string, fromReplica, toReplica *types.Replica) error {
 
 	strHostPort := net.JoinHostPort(host, strconv.Itoa(int(port)))
 
-	logrus.Infof("Synchronizing %s to %s@%s", from, to, strHostPort)
+	logrus.Infof("Synchronizing %s to %s:%s", from, to, strHostPort)
 	err = fromClient.SendFile(from, host, port)
 	if err != nil {
-		logrus.Infof("Failed synchronizing %s to %s@%s: %v", from, to, strHostPort, err)
+		logrus.WithError(err).Errorf("failed to synchronize %s to %s:%s", from, to, strHostPort)
 	} else {
-		logrus.Infof("Done synchronizing %s to %s@%s", from, to, strHostPort)
+		logrus.Infof("Done synchronizing %s to %s:%s", from, to, strHostPort)
 	}
 
 	return err
@@ -201,13 +201,13 @@ func removeExtraDisks(extraDisks map[string]types.DiskInfo, address string) (err
 
 	repClient, err := client.NewReplicaClient(address)
 	if err != nil {
-		return errors.Wrapf(err, "cannot replica client")
+		return errors.Wrapf(err, "cannot create replica client for address %v", address)
 	}
 	defer repClient.Close()
 
 	for disk := range extraDisks {
 		if err = repClient.RemoveDisk(disk, true); err != nil {
-			return errors.Wrapf(err, "cannot remove disk")
+			return errors.Wrapf(err, "cannot remove disk %v", disk)
 		}
 	}
 	logrus.Warnf("Removed extra disks %v in replica %v", extraDisks, address)
