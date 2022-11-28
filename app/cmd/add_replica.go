@@ -30,6 +30,11 @@ func AddReplicaCmd() cli.Command {
 				Name:  "current-size",
 				Usage: "Volume current size in bytes or human readable 42kb, 42mb, 42gb",
 			},
+			cli.BoolFlag{
+				Name:     "fast-sync",
+				Required: false,
+				Usage:    "Enable fast file synchronization using change time and checksum",
+			},
 		},
 		Action: func(c *cli.Context) {
 			if err := addReplica(c); err != nil {
@@ -71,10 +76,12 @@ func addReplica(c *cli.Context) error {
 		return err
 	}
 
+	fastSync := c.Bool("fast-sync")
+
 	if c.Bool("restore") {
 		return task.AddRestoreReplica(volumeSize, volumeCurrentSize, replica)
 	}
-	return task.AddReplica(volumeSize, volumeCurrentSize, replica)
+	return task.AddReplica(volumeSize, volumeCurrentSize, replica, fastSync)
 }
 
 func StartWithReplicasCmd() cli.Command {

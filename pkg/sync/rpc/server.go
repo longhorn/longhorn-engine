@@ -332,7 +332,7 @@ func (s *SyncAgentServer) FileSend(ctx context.Context, req *ptypes.FileSendRequ
 		directIO = false
 	}
 	logrus.Infof("Syncing file %v to %v", req.FromFileName, address)
-	if err := sparse.SyncFile(req.FromFileName, address, FileSyncTimeout, directIO); err != nil {
+	if err := sparse.SyncFile(req.FromFileName, address, FileSyncTimeout, directIO, req.FastSync); err != nil {
 		return nil, err
 	}
 	logrus.Infof("Done syncing file %v to %v", req.FromFileName, address)
@@ -363,7 +363,7 @@ func (s *SyncAgentServer) VolumeExport(ctx context.Context, req *ptypes.VolumeEx
 	if err := r.Preload(req.ExportBackingImageIfExist); err != nil {
 		return nil, err
 	}
-	if err := sparse.SyncContent(req.SnapshotFileName, r, r.Info().Size, remoteAddress, FileSyncTimeout, true); err != nil {
+	if err := sparse.SyncContent(req.SnapshotFileName, r, r.Info().Size, remoteAddress, FileSyncTimeout, true, false); err != nil {
 		return nil, err
 	}
 
@@ -448,7 +448,7 @@ func (s *SyncAgentServer) FilesSync(ctx context.Context, req *ptypes.FilesSyncRe
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to launch receiver for file %v", info.ToFileName)
 		}
-		if err := fromClient.SendFile(info.FromFileName, req.ToHost, int32(port)); err != nil {
+		if err := fromClient.SendFile(info.FromFileName, req.ToHost, int32(port), req.FastSync); err != nil {
 			return nil, errors.Wrapf(err, "replica %v failed to send file %v to %v:%v", req.FromAddress, info.ToFileName, req.ToHost, port)
 		}
 	}

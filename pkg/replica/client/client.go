@@ -432,7 +432,7 @@ func (c *ReplicaClient) RenameFile(oldFileName, newFileName string) error {
 	return nil
 }
 
-func (c *ReplicaClient) SendFile(from, host string, port int32) error {
+func (c *ReplicaClient) SendFile(from, host string, port int32, fastSync bool) error {
 	syncAgentServiceClient, err := c.getSyncServiceClient()
 	if err != nil {
 		return err
@@ -444,6 +444,7 @@ func (c *ReplicaClient) SendFile(from, host string, port int32) error {
 		FromFileName: from,
 		Host:         host,
 		Port:         port,
+		FastSync:     fastSync,
 	}); err != nil {
 		return errors.Wrapf(err, "failed to send file %v to %v:%v", from, host, port)
 	}
@@ -489,7 +490,7 @@ func (c *ReplicaClient) LaunchReceiver(toFilePath string) (string, int32, error)
 	return c.host, reply.Port, nil
 }
 
-func (c *ReplicaClient) SyncFiles(fromAddress string, list []types.SyncFileInfo) error {
+func (c *ReplicaClient) SyncFiles(fromAddress string, list []types.SyncFileInfo, fastSync bool) error {
 	syncAgentServiceClient, err := c.getSyncServiceClient()
 	if err != nil {
 		return err
@@ -501,6 +502,7 @@ func (c *ReplicaClient) SyncFiles(fromAddress string, list []types.SyncFileInfo)
 		FromAddress:      fromAddress,
 		ToHost:           c.host,
 		SyncFileInfoList: syncFileInfoListToSyncAgentGRPCFormat(list),
+		FastSync:         fastSync,
 	}); err != nil {
 		return errors.Wrapf(err, "failed to sync files %+v from %v", list, fromAddress)
 	}
