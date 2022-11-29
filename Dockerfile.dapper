@@ -16,7 +16,7 @@ ENV DAPPER_SOURCE /go/src/github.com/longhorn/longhorn-engine
 WORKDIR ${DAPPER_SOURCE}
 
 RUN zypper -n addrepo --refresh https://download.opensuse.org/repositories/system:/snappy/SLE_15/system:snappy.repo && \
-    zypper -n addrepo --refresh https://download.opensuse.org/repositories/devel:tools:scm/15.4/devel:tools:scm.repo && \
+    zypper -n addrepo --refresh https://download.opensuse.org/repositories/devel:/tools:/scm/15.4/devel:tools:scm.repo && \
     zypper --gpg-auto-import-keys ref
 
 # Install packages
