@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"io"
 	"io/ioutil"
 	"os"
 	"path"
@@ -171,6 +172,11 @@ func construct(readonly bool, size, sectorSize int64, dir, head string, backingF
 	r.info.Size = size
 	r.info.SectorSize = sectorSize
 	r.volume.sectorSize = diskutil.VolumeSectorSize
+
+	// Try to recover volume metafile if deleted or empty.
+	if err := r.tryRecoverVolumeMetaFile(head); err != nil {
+		return nil, err
+	}
 
 	// Scan all the disks to build the disk map
 	exists, err := r.readMetadata()
@@ -986,6 +992,50 @@ func (r *Replica) readMetadata() (bool, error) {
 	}
 
 	return len(r.diskData) > 0, nil
+}
+
+func (r *Replica) tryRecoverVolumeMetaFile(head string) error {
+	valid, err := r.checkValidVolumeMetaData()
+	if err != nil {
+		return err
+	}
+	if valid {
+		return nil
+	}
+
+	if head != "" {
+		r.info.Head = head
+	}
+
+	if r.info.Head == "" {
+		files, err := ioutil.ReadDir(r.dir)
+		if err != nil {
+			return err
+		}
+		for _, file := range files {
+			if strings.Contains(file.Name(), types.VolumeHeadName) {
+				r.info.Head = file.Name()
+				break
+			}
+		}
+	}
+
+	logrus.Warnf("Recovering volume metafile %v, and replica info: %+v", r.diskPath(volumeMetaData), r.info)
+	return r.writeVolumeMetaData(true, r.info.Rebuilding)
+}
+
+func (r *Replica) checkValidVolumeMetaData() (bool, error) {
+	err := r.unmarshalFile(r.diskPath(volumeMetaData), &r.info)
+	if err == nil {
+		return true, nil
+	}
+
+	// recover metadata file that does not exist or is empty
+	if os.IsNotExist(err) || errors.Is(err, io.EOF) {
+		return false, nil
+	}
+
+	return false, err
 }
 
 func (r *Replica) readDiskData(file string) error {
