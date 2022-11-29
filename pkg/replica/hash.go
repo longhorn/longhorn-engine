@@ -19,6 +19,8 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
+	xattrType "github.com/longhorn/sparse-tools/types"
+
 	"github.com/longhorn/longhorn-engine/pkg/types"
 	diskutil "github.com/longhorn/longhorn-engine/pkg/util/disk"
 )
@@ -51,14 +53,6 @@ type SnapshotHashJob struct {
 	file *os.File
 
 	SnapshotHashStatus
-}
-
-type SnapshotXattrHashInfo struct {
-	Method            string `json:"method"`
-	Checksum          string `json:"checksum"`
-	ChangeTime        string `json:"changeTime"`
-	LastHashedAt      string `json:"lastHashedAt"`
-	SilentlyCorrupted bool   `json:"silentlyCorrupted"`
 }
 
 func NewSnapshotHashJob(ctx context.Context, cancel context.CancelFunc, snapshotName string, rehash bool) *SnapshotHashJob {
@@ -125,7 +119,7 @@ func (t *SnapshotHashJob) Execute() (err error) {
 				return
 			}
 
-			SetSnapshotHashInfoToChecksumFile(t.SnapshotName, &SnapshotXattrHashInfo{
+			SetSnapshotHashInfoToChecksumFile(t.SnapshotName, &xattrType.SnapshotHashInfo{
 				Method:            defaultHashMethod,
 				Checksum:          checksum,
 				ChangeTime:        changeTime,
@@ -253,7 +247,7 @@ func GetSnapshotChangeTime(snapshotName string) (string, error) {
 	return time.Unix(int64(stat.Ctim.Sec), int64(stat.Ctim.Nsec)).String(), nil
 }
 
-func GetSnapshotHashInfoFromChecksumFile(snapshotName string) (*SnapshotXattrHashInfo, error) {
+func GetSnapshotHashInfoFromChecksumFile(snapshotName string) (*xattrType.SnapshotHashInfo, error) {
 	dir, err := os.Getwd()
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get working directory when getting snapshot hash info")
@@ -267,7 +261,7 @@ func GetSnapshotHashInfoFromChecksumFile(snapshotName string) (*SnapshotXattrHas
 	}
 	defer f.Close()
 
-	var info SnapshotXattrHashInfo
+	var info xattrType.SnapshotHashInfo
 
 	if err := json.NewDecoder(f).Decode(&info); err != nil {
 		return nil, err
@@ -276,7 +270,7 @@ func GetSnapshotHashInfoFromChecksumFile(snapshotName string) (*SnapshotXattrHas
 	return &info, nil
 }
 
-func SetSnapshotHashInfoToChecksumFile(snapshotName string, info *SnapshotXattrHashInfo) error {
+func SetSnapshotHashInfoToChecksumFile(snapshotName string, info *xattrType.SnapshotHashInfo) error {
 	dir, err := os.Getwd()
 	if err != nil {
 		return errors.Wrap(err, "failed to get working directory when setting snapshot hash info")
@@ -284,7 +278,7 @@ func SetSnapshotHashInfoToChecksumFile(snapshotName string, info *SnapshotXattrH
 
 	path := filepath.Join(dir, diskutil.GenerateSnapshotDiskChecksumName(diskutil.GenerateSnapshotDiskName(snapshotName)))
 
-	return encodeToFile(SnapshotXattrHashInfo{
+	return encodeToFile(xattrType.SnapshotHashInfo{
 		Method:            defaultHashMethod,
 		Checksum:          info.Checksum,
 		ChangeTime:        info.ChangeTime,
