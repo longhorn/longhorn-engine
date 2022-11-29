@@ -34,6 +34,8 @@ const (
 
 	EngineFrontendBlockDev = "tgt-blockdev"
 	EngineFrontendISCSI    = "tgt-iscsi"
+
+	VolumeHeadName = "volume-head"
 )
 
 type ReaderWriterAt interface {

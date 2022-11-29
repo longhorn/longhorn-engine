@@ -111,7 +111,19 @@ func (s *Server) Status() (State, Info) {
 		info, err := ReadInfo(s.dir)
 		if os.IsNotExist(err) {
 			return Initial, Info{}
-		} else if err != nil {
+		}
+
+		replica := Replica{dir: s.dir}
+		volumeMetaFileValid, vaildErr := replica.checkValidVolumeMetaData()
+		if vaildErr != nil {
+			logrus.Errorf("Failed to check if volume metedata is valid in replica directory %s: %v", s.dir, err)
+			return Error, Info{}
+		}
+		if !volumeMetaFileValid {
+			return Initial, Info{}
+		}
+
+		if err != nil {
 			logrus.Errorf("Failed to read info in replica directory %s: %v", s.dir, err)
 			return Error, Info{}
 		}
