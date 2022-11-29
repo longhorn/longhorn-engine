@@ -10,6 +10,7 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -191,9 +192,9 @@ func ReadDataInterval(rw ReaderWriterAt, dataInterval Interval) ([]byte, error) 
 		if err == io.EOF {
 			log.Debugf("have read at the end of file, total read: %d", n)
 		} else {
-			errStr := fmt.Sprintf("File to read interval:%s, error: %s", dataInterval, err)
-			log.Error(errStr)
-			return nil, fmt.Errorf(errStr)
+			err = errors.Wrapf(err, "failed to read interval %+v", dataInterval)
+			log.Error(err)
+			return nil, err
 		}
 	}
 	return data[:n], nil
@@ -202,9 +203,9 @@ func ReadDataInterval(rw ReaderWriterAt, dataInterval Interval) ([]byte, error) 
 func WriteDataInterval(file FileIoProcessor, dataInterval Interval, data []byte) error {
 	_, err := file.WriteAt(data, dataInterval.Begin)
 	if err != nil {
-		errStr := fmt.Sprintf("Failed to write file interval:%s, error: %s", dataInterval, err)
-		log.Error(errStr)
-		return fmt.Errorf(errStr)
+		err = errors.Wrapf(err, "failed to write file interval %+v", dataInterval)
+		log.Error(err)
+		return err
 	}
 	return nil
 }
@@ -244,9 +245,9 @@ func GetFileLayout(ctx context.Context, file FileIoProcessor) (<-chan FileInterv
 		startTime := time.Now()
 		totalExtents := 0
 		defer func() {
-			log.Debugf("retrieved extents for file %v, fileSize: %v elapsed: %.2fs, extents: %v",
+			log.Debugf("Retrieved extents for file %v, fileSize %v, elapsed %.2fs, extents %v",
 				fileInfo.Name(), fileInfo.Size(),
-				time.Now().Sub(startTime).Seconds(), totalExtents)
+				time.Since(startTime).Seconds(), totalExtents)
 		}()
 
 		var lastIntervalEnd int64
@@ -348,9 +349,9 @@ func GetFiemapRegionExts(file FileIoProcessor, interval Interval, extCount int) 
 		return exts, fmt.Errorf(errno.Error())
 	}
 
-	log.Tracef("retrieved %v/%v extents from file %v interval: %v elapsed: %.2fs",
+	log.Tracef("Retrieved %v/%v extents from file %v, interval %+v, elapsed %.2fs",
 		len(exts), extCount, file.Name(), interval,
-		time.Now().Sub(retrievalStart).Seconds())
+		time.Since(retrievalStart).Seconds())
 
 	// The exts returned by File System should be ordered
 	var lastExtStart uint64

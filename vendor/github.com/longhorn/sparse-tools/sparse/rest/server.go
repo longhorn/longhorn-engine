@@ -9,6 +9,15 @@ import (
 	"github.com/longhorn/sparse-tools/sparse"
 )
 
+type DataSyncServer interface {
+	open(writer http.ResponseWriter, request *http.Request)
+	close(writer http.ResponseWriter, request *http.Request)
+	sendHole(writer http.ResponseWriter, request *http.Request)
+	writeData(writer http.ResponseWriter, request *http.Request)
+	getChecksum(writer http.ResponseWriter, request *http.Request)
+	getRecordedMetadata(writer http.ResponseWriter, request *http.Request)
+}
+
 type SyncServer struct {
 	filePath    string
 	fileIo      sparse.FileIoProcessor
@@ -17,11 +26,6 @@ type SyncServer struct {
 	cancelFunc  context.CancelFunc
 
 	srv *http.Server
-}
-
-// TestServer daemon serves only one connection for each test then exits
-func TestServer(ctx context.Context, port string, filePath string, timeout int) {
-	Server(ctx, port, filePath, &SyncFileStub{})
 }
 
 func Server(ctx context.Context, port string, filePath string, syncFileOps SyncFileOperations) error {
@@ -45,4 +49,9 @@ func Server(ctx context.Context, port string, filePath string, syncFileOps SyncF
 	}()
 
 	return srv.ListenAndServe()
+}
+
+// TestServer daemon serves only one connection for each test then exits
+func TestServer(ctx context.Context, port string, filePath string, timeout int) {
+	Server(ctx, port, filePath, &SyncFileStub{})
 }
