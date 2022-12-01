@@ -62,7 +62,7 @@ func (t *Socket) Startup(rwu types.ReaderWriterUnmapperAt) error {
 func (t *Socket) Shutdown() error {
 	if t.Volume != "" {
 		if t.socketServer != nil {
-			logrus.Infof("Shutdown TGT socket server for %v", t.Volume)
+			logrus.Infof("Shutting down TGT socket server for %v", t.Volume)
 			t.socketServer.Stop()
 			t.socketServer = nil
 		}
