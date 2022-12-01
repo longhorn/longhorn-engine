@@ -103,14 +103,14 @@ func (c *Controller) StartGRPCServer() error {
 		grpcAddress := c.GRPCAddress
 		listener, err := net.Listen("tcp", c.GRPCAddress)
 		if err != nil {
-			logrus.Errorf("Failed to listen %v: %v", grpcAddress, err)
+			logrus.WithError(err).Errorf("Failed to listen %v", grpcAddress)
 			c.lastError = err
 			return
 		}
 
 		logrus.Infof("Listening on gRPC Controller server: %v", grpcAddress)
 		err = c.GRPCServer.Serve(listener)
-		logrus.Errorf("GRPC server at %v is down: %v", grpcAddress, err)
+		logrus.WithError(err).Errorf("GRPC server at %v is down", grpcAddress)
 		c.lastError = err
 	}()
 
@@ -207,7 +207,7 @@ func (c *Controller) Snapshot(name string, labels map[string]string) (string, er
 
 func (c *Controller) Expand(size int64) error {
 	if err := c.startExpansion(size); err != nil {
-		logrus.Errorf("controller failed to start expansion: %v", err)
+		logrus.WithError(err).Errorf("Controller failed to start expansion")
 		return err
 	}
 
@@ -220,11 +220,12 @@ func (c *Controller) Expand(size int64) error {
 		// We perform a system level sync without the lock. Cannot block read/write
 		// Can be improved to only sync the filesystem on the block device later
 		if ne, err := iutil.NewNamespaceExecutor(util.GetInitiatorNS()); err != nil {
-			logrus.Errorf("WARNING: continue to expand to size %v for %v, but cannot sync due to cannot get the namespace executor: %v", size, c.Name, err)
+			logrus.WithError(err).Errorf("WARNING: continue to expand to size %v for %v, but cannot sync due to cannot get the namespace executor",
+				size, c.Name)
 		} else {
 			if _, err := ne.ExecuteWithTimeout(syncTimeout, "sync", []string{}); err != nil {
 				// sync should never fail though, so it more like due to the nsenter
-				logrus.Errorf("WARNING: continue to expand to size %v for %v, but sync failed: %v", size, c.Name, err)
+				logrus.WithError(err).Errorf("WARNING: continue to expand to size %v for %v, but sync failed", size, c.Name)
 			}
 		}
 
@@ -232,7 +233,7 @@ func (c *Controller) Expand(size int64) error {
 		c.Lock()
 		defer c.Unlock()
 		if _, err := c.backend.RemainSnapshots(); err != nil {
-			logrus.Errorf("Cannot get remain snapshot count before expansion: %v", err)
+			logrus.WithError(err).Errorf("Cannot get remain snapshot count before expansion")
 			return
 		}
 
@@ -245,7 +246,7 @@ func (c *Controller) Expand(size int64) error {
 				c.lastExpansionError = fmt.Sprintf("the expansion failed since all replica expansion failed: %v", errsForRecording)
 			}
 			if err := c.handleErrorNoLock(errsNeedToBeHandled); err != nil {
-				logrus.Errorf("failed to handle the backend expansion errors: %v", err)
+				logrus.WithError(err).Errorf("failed to handle the backend expansion errors")
 			}
 			// If there is expansion failure, controller cannot continue expanding the frontend
 			if !expansionSuccess {
@@ -255,7 +256,7 @@ func (c *Controller) Expand(size int64) error {
 
 		if c.frontend != nil {
 			if err := c.frontend.Expand(size); err != nil {
-				logrus.Errorf("failed to expand the frontend: %v", err)
+				logrus.WithError(err).Errorf("Failed to expand the frontend")
 				return
 			}
 		}
@@ -430,17 +431,17 @@ func (c *Controller) startFrontend() error {
 		if c.isUpgrade {
 			logrus.Infof("Upgrading frontend")
 			if err := c.frontend.Upgrade(c.Name, c.size, c.sectorSize, c); err != nil {
-				logrus.Errorf("Failed to upgrade frontend: %v", err)
+				logrus.WithError(err).Error("Failed to upgrade frontend")
 				return errors.Wrap(err, "failed to upgrade frontend")
 			}
 			return nil
 		}
 		if err := c.frontend.Init(c.Name, c.size, c.sectorSize); err != nil {
-			logrus.Errorf("Failed to init frontend: %v", err)
+			logrus.WithError(err).Error("Failed to init frontend", err)
 			return errors.Wrap(err, "failed to init frontend")
 		}
 		if err := c.frontend.Startup(c); err != nil {
-			logrus.Errorf("Failed to startup frontend: %v", err)
+			logrus.WithError(err).Error("Failed to startup frontend")
 			return errors.Wrap(err, "failed to start up frontend")
 		}
 	}
@@ -485,7 +486,8 @@ func (c *Controller) checkReplicaRevCounterSettingMatch() error {
 		}
 
 		if c.revisionCounterDisabled != revCounterDisabled {
-			logrus.Errorf("Revision Counter Disabled setting mismatch at engine %v, replica %v: %v, mark this replica as ERR.", c.revisionCounterDisabled, r.Address, revCounterDisabled)
+			logrus.Errorf("Revision Counter Disabled setting mismatch at engine %v, replica %v: %v, mark this replica as ERR.",
+				c.revisionCounterDisabled, r.Address, revCounterDisabled)
 			c.setReplicaModeNoLock(r.Address, types.ERR)
 		}
 	}
@@ -933,7 +935,7 @@ func (c *Controller) handleErrorNoLock(err error) error {
 					// We reject the request, so do not set the replica to ERR if the snapshot is already existing.
 					snapshotExistList[address] = struct{}{}
 				} else {
-					logrus.Errorf("Setting replica %s to ERR due to: %v", address, replicaErr)
+					logrus.WithError(replicaErr).Errorf("Setting replica %s to ERR", address)
 					c.setReplicaModeNoLock(address, types.ERR)
 				}
 			}
@@ -943,7 +945,7 @@ func (c *Controller) handleErrorNoLock(err error) error {
 				// if we still have a good replica, do not return error
 				for _, r := range c.replicas {
 					if r.Mode == types.RW {
-						logrus.Errorf("Ignoring error because %s is mode RW: %v", r.Address, err)
+						logrus.WithError(err).Errorf("Ignoring error because %s is mode RW", r.Address)
 						err = nil
 						break
 					}
@@ -952,7 +954,7 @@ func (c *Controller) handleErrorNoLock(err error) error {
 		}
 	}
 	if err != nil {
-		logrus.Errorf("I/O error: %v", err)
+		logrus.WithError(err).Errorf("I/O error")
 	}
 	return err
 }
@@ -1007,15 +1009,14 @@ func (c *Controller) Shutdown() error {
 	*/
 	errFrontend := c.shutdownFrontend()
 	if errFrontend != nil {
-		logrus.Error("Error when shutting down frontend:", errFrontend)
+		logrus.WithError(errFrontend).Error("Error when shutting down frontend")
 	}
 	errBackend := c.shutdownBackend()
 	if errBackend != nil {
-		logrus.Error("Error when shutting down backend:", errBackend)
+		logrus.WithError(errBackend).Error("Error when shutting down backend")
 	}
 	if errFrontend != nil || errBackend != nil {
-		return fmt.Errorf("errors when shutting down controller: frontend: %v backend: %v",
-			errFrontend, errBackend)
+		return errors.Wrapf(errBackend, "errors when shutting down controller: frontend: %v backend", errFrontend)
 	}
 
 	return nil
@@ -1035,7 +1036,7 @@ func (c *Controller) monitoring(address string, backend types.Backend) {
 	logrus.Infof("Start monitoring %v", address)
 	err := <-monitorChan
 	if err != nil {
-		logrus.Errorf("Backend %v monitoring failed, mark as ERR: %v", address, err)
+		logrus.WithError(err).Errorf("Backend %v monitoring failed, mark as ERR", address)
 		c.SetReplicaMode(address, types.ERR)
 	}
 	logrus.Infof("Monitoring stopped %v", address)
