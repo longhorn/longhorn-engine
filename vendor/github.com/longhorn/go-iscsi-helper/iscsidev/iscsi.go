@@ -10,6 +10,7 @@ import (
 	"github.com/longhorn/nsfilelock"
 
 	"github.com/longhorn/go-iscsi-helper/iscsi"
+	"github.com/longhorn/go-iscsi-helper/types"
 	"github.com/longhorn/go-iscsi-helper/util"
 )
 
@@ -138,12 +139,12 @@ func (dev *Device) StartInitator() error {
 			break
 		}
 
-		logrus.Warnf("Failed to discover due to %v", err)
+		logrus.WithError(err).Warnf("Failed to discover")
 		// This is a trick to recover from the case. Remove the
 		// empty entries in /etc/iscsi/nodes/<target_name>. If one of the entry
 		// is empty it will triggered the issue.
 		if err := iscsi.CleanupScsiNodes(dev.Target, ne); err != nil {
-			logrus.Warnf("Failed to clean up nodes for %v: %v", dev.Target, err)
+			logrus.WithError(err).Warnf("Failed to clean up nodes for %v", dev.Target)
 		} else {
 			logrus.Warnf("Nodes cleaned up for %v", dev.Target)
 		}
@@ -192,7 +193,7 @@ func LogoutTarget(target string) error {
 		var err error
 		loggingOut := false
 
-		logrus.Infof("Shutdown SCSI device for target %v", target)
+		logrus.Infof("Shutting down iSCSI device for target %v", target)
 		for i := 0; i < RetryCounts; i++ {
 			// New IP may be different from the IP in the previous record.
 			// https://github.com/longhorn/longhorn/issues/1920
@@ -212,7 +213,7 @@ func LogoutTarget(target string) error {
 		}
 		// Wait for device to logout
 		if loggingOut {
-			logrus.Infof("Logout SCSI device timeout, waiting for logout complete")
+			logrus.Infof("Logging out iSCSI device timeout, waiting for logout complete")
 			for i := 0; i < RetryCounts; i++ {
 				if !iscsi.IsTargetLoggedIn("", target, ne) {
 					err = nil
@@ -261,9 +262,17 @@ func (dev *Device) DeleteTarget() error {
 		if tid != dev.targetID && dev.targetID != 0 {
 			logrus.Errorf("BUG: Invalid TID %v found for %v, was %v", tid, dev.Target, dev.targetID)
 		}
-		logrus.Infof("Shutdown SCSI target %v", dev.Target)
+
+		logrus.Infof("Shutting down iSCSI target %v", dev.Target)
+
+		// UnbindInitiator can return tgtadmSuccess, tgtadmAclNoexist or tgtadmNoTarget
+		// Target is deleted in the last step, so tgtadmNoTarget error should not occur here.
+		// Just ingore tgtadmAclNoexist and continue working on the remaining tasks.
 		if err := iscsi.UnbindInitiator(tid, "ALL"); err != nil {
-			return err
+			if !strings.Contains(err.Error(), types.TgtadmAclNoexist) {
+				return err
+			}
+			logrus.WithError(err).Warnf("failed to unbind initiator target id %v", tid)
 		}
 
 		sessionConnectionsMap, err := iscsi.GetTargetConnections(tid)
