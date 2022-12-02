@@ -358,14 +358,15 @@ func (r *Replica) hardlinkDisk(target, source string) error {
 	}
 
 	if _, err := os.Stat(r.diskPath(target)); err == nil {
-		logrus.Infof("Old file %s exists, deleting", target)
+		logrus.Infof("Removing old file %s", target)
 		if err := os.Remove(r.diskPath(target)); err != nil {
 			return errors.Wrapf(err, "failed to remove %s", target)
 		}
 	}
 
+	logrus.Infof("Hard linking %v to %v", source, target)
 	if err := os.Link(r.diskPath(source), r.diskPath(target)); err != nil {
-		return fmt.Errorf("failed to link %s to %s", source, target)
+		return fmt.Errorf("failed to hard link %s to %s", source, target)
 	}
 	return nil
 }
@@ -404,7 +405,7 @@ func (r *Replica) ReplaceDisk(target, source string) error {
 	}
 	r.volume.files[index] = newFile
 
-	logrus.Infof("Done replacing %v with %v", target, source)
+	logrus.Infof("Done replacing disk %v with %v", source, target)
 
 	return nil
 }
@@ -763,12 +764,22 @@ func (r *Replica) rmDisk(name string) error {
 		return nil
 	}
 
-	lastErr := os.Remove(r.diskPath(name))
-	if err := os.Remove(r.diskPath(name + diskutil.DiskMetadataSuffix)); err != nil {
-		lastErr = err
+	logrus.Infof("Removing disk %v", name)
+
+	diskPath := r.diskPath(name)
+	lastErr := os.Remove(diskPath)
+	if lastErr != nil {
+		logrus.WithError(lastErr).Errorf("Failed to remove disk file %v", diskPath)
 	}
-	if err := os.RemoveAll(r.diskPath(name + diskutil.DiskChecksumSuffix)); err != nil {
+	diskMetaPath := r.diskPath(name + diskutil.DiskMetadataSuffix)
+	if err := os.Remove(diskMetaPath); err != nil {
 		lastErr = err
+		logrus.WithError(lastErr).Errorf("Failed to remove disk metadata file %v", diskMetaPath)
+	}
+	diskChecksumPath := r.diskPath(name + diskutil.DiskChecksumSuffix)
+	if err := os.RemoveAll(diskChecksumPath); err != nil {
+		lastErr = err
+		logrus.WithError(lastErr).Errorf("Failed to remove disk checksum file %v", diskChecksumPath)
 	}
 	return lastErr
 }
