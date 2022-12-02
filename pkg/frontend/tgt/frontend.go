@@ -1,7 +1,6 @@
 package tgt
 
 import (
-	"fmt"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -134,9 +133,6 @@ func (t *Tgt) Upgrade(name string, size, sectorSize int64, rwu types.ReaderWrite
 }
 
 func (t *Tgt) Expand(size int64) error {
-	if t.isUp {
-		return fmt.Errorf("cannot expand the active frontend %v", t.frontendName)
-	}
 	if t.dev != nil {
 		return t.dev.Expand(size)
 	}
