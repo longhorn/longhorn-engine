@@ -250,7 +250,7 @@ func (s *Server) PrepareRemoveDisk(name string) ([]PrepareRemoveAction, error) {
 		return nil, nil
 	}
 
-	logrus.Infof("Prepare removing disk: %s", name)
+	logrus.Infof("Prepare removing disk %s", name)
 	return s.r.PrepareRemoveDisk(name)
 }
 

@@ -1323,24 +1323,25 @@ func (s *SyncAgentServer) processRemoveSnapshot(snapshot string) error {
 		case replica.OpCoalesce:
 			logrus.Infof("Coalescing %v to %v", op.Target, op.Source)
 			if err := sparse.FoldFile(op.Target, op.Source, s.PurgeStatus); err != nil {
-				logrus.Errorf("failed to coalesce %s on %s: %v", op.Target, op.Source, err)
+				logrus.WithError(err).Errorf("Failed to coalesce %v to %v", op.Target, op.Source)
 				return err
 			}
 		case replica.OpRemove:
 			logrus.Infof("Removing %v", op.Source)
 			if err := s.rmDisk(op.Source); err != nil {
+				logrus.WithError(err).Errorf("Failed to remove %v", op.Source)
 				return err
 			}
 		case replica.OpReplace:
-			logrus.Infof("Replace %v with %v", op.Target, op.Source)
+			logrus.Infof("Replacing %v with %v", op.Source, op.Target)
 			if err = s.replaceDisk(op.Source, op.Target); err != nil {
-				logrus.Errorf("Failed to replace %v with %v", op.Target, op.Source)
+				logrus.WithError(err).Errorf("Failed to replace %v with %v", op.Source, op.Target)
 				return err
 			}
 		case replica.OpPrune:
-			logrus.Infof("Prune overlapping chunks from %v based on %v", op.Source, op.Target)
+			logrus.Infof("Pruning overlapping chunks from %v based on %v", op.Source, op.Target)
 			if err := sparse.PruneFile(op.Source, op.Target, s.PurgeStatus); err != nil {
-				logrus.Errorf("failed to prune %s based on %s: %v", op.Source, op.Target, err)
+				logrus.WithError(err).Errorf("Failed to prune %v based on %v", op.Source, op.Target)
 				return err
 			}
 		}
