@@ -404,16 +404,46 @@ func (d *LonghornDevice) Expand(size int64) error {
 	d.Lock()
 	defer d.Unlock()
 
-	if d.scsiDevice != nil {
-		return fmt.Errorf("cannot expand the device %v to size %v since the frontend %v is already up", d.name, size, d.frontend)
-	}
-
 	if d.size > size {
 		return fmt.Errorf("device %v: cannot expand the device from size %v to a smaller size %v", d.name, d.size, size)
 	} else if d.size == size {
 		return nil
 	}
 	d.size = size
+
+	if d.scsiDevice == nil {
+		logrus.Info("Device: No need to do anything for the expansion since the frontend is shutdown")
+		return nil
+	}
+	if err := d.scsiDevice.UpdateScsiBackingStore("longhorn", fmt.Sprintf("size=%v", d.size)); err != nil {
+		return err
+	}
+
+	switch d.frontend {
+	case types.FrontendTGTBlockDev:
+		logrus.Infof("Device %v: Expanding frontend %v target %v", d.name, d.frontend, d.scsiDevice.Target)
+		if err := d.scsiDevice.ExpandTarget(size); err != nil {
+			return fmt.Errorf("device %v: fail to expand target %v: %v", d.name, d.scsiDevice.Target, err)
+		}
+		logrus.Infof("Device %v: Refreshing/Rescanning frontend %v initiator for the expansion", d.name, d.frontend)
+		if err := d.scsiDevice.RefreshInitiator(); err != nil {
+			return fmt.Errorf("device %v: fail to refresh iSCSI initiator: %v", d.name, err)
+		}
+		logrus.Infof("Device %v: Expanded frontend %v size to %d", d.name, d.frontend, size)
+		break
+	case types.FrontendTGTISCSI:
+		logrus.Infof("Device %v: Frontend is expanding the target %v", d.name, d.scsiDevice.Target)
+		if err := d.scsiDevice.ExpandTarget(size); err != nil {
+			return fmt.Errorf("device %v: fail to expand target %v: %v", d.name, d.scsiDevice.Target, err)
+		}
+		logrus.Infof("Device %v: Expanded frontend %v size to %d, users need to refresh/rescan the initiator by themselves", d.name, d.frontend, size)
+		break
+	case "":
+		logrus.Infof("Device %v: skip expansion since the frontend not enabled", d.name)
+		break
+	default:
+		return fmt.Errorf("failed to expand device %v: unknown frontend %v", d.name, d.frontend)
+	}
 
 	return nil
 }
