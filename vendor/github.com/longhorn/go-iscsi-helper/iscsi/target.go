@@ -131,6 +131,21 @@ func DeleteLun(tid int, lun int) error {
 	return err
 }
 
+// ExpandLun will update the size for the LUN.
+// This is valid only for the customized tgt https://github.com/rancher/tgt/
+func ExpandLun(tid, lun int, size int64) error {
+	opts := []string{
+		"--lld", "iscsi",
+		"--op", "update",
+		"--mode", "logicalunit",
+		"--tid", strconv.Itoa(tid),
+		"--lun", strconv.Itoa(lun),
+		"--params", fmt.Sprintf("bsopts=size=%d", size),
+	}
+	_, err := util.Execute(tgtBinary, opts)
+	return err
+}
+
 // BindInitiator will add permission to allow certain initiator(s) to connect to
 // certain target. "ALL" is a special initiator which is the wildcard
 func BindInitiator(tid int, initiator string) error {

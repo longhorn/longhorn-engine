@@ -348,3 +348,16 @@ func CleanupScsiNodes(target string, ne *util.NamespaceExecutor) error {
 	}
 	return nil
 }
+
+func RescanTarget(ip, target string, ne *util.NamespaceExecutor) error {
+	opts := []string{
+		"-m", "node",
+		"-T", target,
+		"-R",
+	}
+	if ip != "" {
+		opts = append(opts, "-p", ip)
+	}
+	_, err := ne.Execute(iscsiBinary, opts)
+	return err
+}

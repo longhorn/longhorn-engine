@@ -114,7 +114,7 @@ func (dev *Device) CreateTarget() (err error) {
 func (dev *Device) StartInitator() error {
 	lock := nsfilelock.NewLockWithTimeout(util.GetHostNamespacePath(HostProc), LockFile, LockTimeout)
 	if err := lock.Lock(); err != nil {
-		return errors.Wrapf(err, "failed to lock")
+		return errors.Wrap(err, "failed to lock")
 	}
 	defer lock.Unlock()
 
@@ -170,7 +170,7 @@ func (dev *Device) StartInitator() error {
 func (dev *Device) StopInitiator() error {
 	lock := nsfilelock.NewLockWithTimeout(util.GetHostNamespacePath(HostProc), LockFile, LockTimeout)
 	if err := lock.Lock(); err != nil {
-		return errors.Wrapf(err, "failed to lock")
+		return errors.Wrap(err, "failed to lock")
 	}
 	defer lock.Unlock()
 
@@ -178,6 +178,29 @@ func (dev *Device) StopInitiator() error {
 		return errors.Wrapf(err, "failed to logout target")
 	}
 	return nil
+}
+
+func (dev *Device) RefreshInitiator() error {
+	lock := nsfilelock.NewLockWithTimeout(util.GetHostNamespacePath(HostProc), LockFile, LockTimeout)
+	if err := lock.Lock(); err != nil {
+		return errors.Wrap(err, "failed to lock")
+	}
+	defer lock.Unlock()
+
+	ne, err := util.NewNamespaceExecutor(util.GetHostNamespacePath(HostProc))
+	if err != nil {
+		return err
+	}
+	if err := iscsi.CheckForInitiatorExistence(ne); err != nil {
+		return err
+	}
+
+	ip, err := util.GetIPToHost()
+	if err != nil {
+		return err
+	}
+
+	return iscsi.RescanTarget(ip, dev.Target, ne)
 }
 
 func LogoutTarget(target string) error {
@@ -296,4 +319,14 @@ func (dev *Device) DeleteTarget() error {
 		}
 	}
 	return nil
+}
+
+func (dev *Device) UpdateScsiBackingStore(bsType, bsOpts string) error {
+	dev.BSType = bsType
+	dev.BSOpts = bsOpts
+	return nil
+}
+
+func (dev *Device) ExpandTarget(size int64) error {
+	return iscsi.ExpandLun(dev.targetID, TargetLunID, size)
 }
