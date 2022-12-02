@@ -301,7 +301,7 @@ func (rf *Factory) Create(volumeName, address string, dataServerProtocol types.D
 		return nil, err
 	}
 
-	if replica.State != "closed" {
+	if replica.State != string(types.ReplicaStateClosed) {
 		return nil, fmt.Errorf("replica must be closed, cannot add in state: %s", replica.State)
 	}
 
