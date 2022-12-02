@@ -38,6 +38,17 @@ const (
 	VolumeHeadName = "volume-head"
 )
 
+type ReplicaState string
+
+const (
+	ReplicaStateInitial    = ReplicaState("initial")
+	ReplicaStateOpen       = ReplicaState("open")
+	ReplicaStateClosed     = ReplicaState("closed")
+	ReplicaStateDirty      = ReplicaState("dirty")
+	ReplicaStateRebuilding = ReplicaState("rebuilding")
+	ReplicaStateError      = ReplicaState("error")
+)
+
 type ReaderWriterAt interface {
 	io.ReaderAt
 	io.WriterAt

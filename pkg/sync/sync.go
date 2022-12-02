@@ -464,7 +464,7 @@ func (t *Task) checkAndResetFailedRebuild(address string) error {
 		return err
 	}
 
-	if replica.State == "closed" && replica.Rebuilding {
+	if replica.State == string(types.ReplicaStateClosed) && replica.Rebuilding {
 		if err := client.OpenReplica(); err != nil {
 			return err
 		}

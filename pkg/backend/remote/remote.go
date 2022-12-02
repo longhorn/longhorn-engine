@@ -270,7 +270,7 @@ func (rf *Factory) Create(address string) (types.Backend, error) {
 		return nil, err
 	}
 
-	if replica.State != "closed" {
+	if replica.State != string(types.ReplicaStateClosed) {
 		return nil, fmt.Errorf("replica must be closed, cannot add in state: %s", replica.State)
 	}
 

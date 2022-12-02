@@ -8,18 +8,8 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/longhorn/longhorn-engine/pkg/backingfile"
+	"github.com/longhorn/longhorn-engine/pkg/types"
 )
-
-const (
-	Initial    = State("initial")
-	Open       = State("open")
-	Closed     = State("closed")
-	Dirty      = State("dirty")
-	Rebuilding = State("rebuilding")
-	Error      = State("error")
-)
-
-type State string
 
 type Server struct {
 	sync.RWMutex
@@ -51,7 +41,7 @@ func (s *Server) Create(size int64) error {
 	defer s.Unlock()
 
 	state, _ := s.Status()
-	if state != Initial {
+	if state != types.ReplicaStateInitial {
 		return nil
 	}
 
@@ -94,7 +84,7 @@ func (s *Server) Reload() error {
 		return nil
 	}
 
-	logrus.Infof("Reloading volume")
+	logrus.Info("Reloading volume")
 	newReplica, err := s.r.Reload()
 	if err != nil {
 		return err
@@ -106,39 +96,39 @@ func (s *Server) Reload() error {
 	return nil
 }
 
-func (s *Server) Status() (State, Info) {
+func (s *Server) Status() (types.ReplicaState, Info) {
 	if s.r == nil {
 		info, err := ReadInfo(s.dir)
 		if os.IsNotExist(err) {
-			return Initial, Info{}
+			return types.ReplicaStateInitial, Info{}
 		}
 
 		replica := Replica{dir: s.dir}
-		volumeMetaFileValid, vaildErr := replica.checkValidVolumeMetaData()
-		if vaildErr != nil {
-			logrus.Errorf("Failed to check if volume metedata is valid in replica directory %s: %v", s.dir, err)
-			return Error, Info{}
+		volumeMetaFileValid, validErr := replica.checkValidVolumeMetaData()
+		if validErr != nil {
+			logrus.WithError(validErr).Errorf("Failed to check if volume metadata is valid in replica directory %s", s.dir)
+			return types.ReplicaStateError, Info{}
 		}
 		if !volumeMetaFileValid {
-			return Initial, Info{}
+			return types.ReplicaStateInitial, Info{}
 		}
 
 		if err != nil {
-			logrus.Errorf("Failed to read info in replica directory %s: %v", s.dir, err)
-			return Error, Info{}
+			logrus.WithError(err).Errorf("Failed to read info in replica directory %s", s.dir)
+			return types.ReplicaStateError, Info{}
 		}
-		return Closed, info
+		return types.ReplicaStateClosed, info
 	}
 	info := s.r.Info()
 	switch {
 	case info.Error != "":
-		return Error, info
+		return types.ReplicaStateError, info
 	case info.Rebuilding:
-		return Rebuilding, info
+		return types.ReplicaStateRebuilding, info
 	case info.Dirty:
-		return Dirty, info
+		return types.ReplicaStateDirty, info
 	default:
-		return Open, info
+		return types.ReplicaStateOpen, info
 	}
 }
 
@@ -148,8 +138,8 @@ func (s *Server) SetRebuilding(rebuilding bool) error {
 
 	state, _ := s.Status()
 	// Must be Open/Dirty to set true or must be Rebuilding to set false
-	if (rebuilding && state != Open && state != Dirty) ||
-		(!rebuilding && state != Rebuilding) {
+	if (rebuilding && state != types.ReplicaStateOpen && state != types.ReplicaStateDirty) ||
+		(!rebuilding && state != types.ReplicaStateRebuilding) {
 		return fmt.Errorf("cannot set rebuilding=%v from state %s", rebuilding, state)
 	}
 
@@ -321,10 +311,10 @@ func (s *Server) SetRevisionCounter(counter int64) error {
 
 func (s *Server) PingResponse() error {
 	state, info := s.Status()
-	if state == Error {
+	if state == types.ReplicaStateError {
 		return fmt.Errorf("ping failure due to %v", info.Error)
 	}
-	if state != Open && state != Dirty && state != Rebuilding {
+	if state != types.ReplicaStateOpen && state != types.ReplicaStateDirty && state != types.ReplicaStateRebuilding {
 		return fmt.Errorf("ping failure: replica state %v", state)
 	}
 	return nil

@@ -14,7 +14,6 @@ import (
 
 	iutil "github.com/longhorn/go-iscsi-helper/util"
 
-	"github.com/longhorn/longhorn-engine/pkg/replica"
 	"github.com/longhorn/longhorn-engine/pkg/types"
 	"github.com/longhorn/longhorn-engine/pkg/util"
 )
@@ -576,7 +575,7 @@ func (c *Controller) checkReplicasRevisionCounter() error {
 }
 
 func isReplicaInInvalidState(state string) bool {
-	return state != string(replica.Open) && state != string(replica.Dirty)
+	return state != string(types.ReplicaStateOpen) && state != string(types.ReplicaStateDirty)
 }
 
 func checkDeuplicteAddress(addresses ...string) error {
