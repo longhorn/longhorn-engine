@@ -213,6 +213,14 @@ func (c *Controller) Expand(size int64) error {
 	go func(size int64) {
 		expanded := false
 		defer func() {
+			// Frontend expansion involves in the iSCSI session rescanning, which will wait for the in-fly io requests complete.
+			// Hence there will be a deadlock once we use the lock to protect this frontend expansion.
+			if c.frontend != nil {
+				if err := c.frontend.Expand(size); err != nil {
+					logrus.WithError(err).Error("Failed to expand the frontend")
+					expanded = false
+				}
+			}
 			c.finishExpansion(expanded, size)
 		}()
 
@@ -252,13 +260,6 @@ func (c *Controller) Expand(size int64) error {
 			}
 		}
 
-		if c.frontend != nil {
-			if err := c.frontend.Expand(size); err != nil {
-				logrus.WithError(err).Error("Failed to expand the frontend")
-				return
-			}
-		}
-
 		expanded = true
 	}(size)
 
@@ -288,9 +289,6 @@ func (c *Controller) startExpansion(size int64) (err error) {
 	} else if c.size == size {
 		return fmt.Errorf("controller %v is already expanded to size %v", c.Name, size)
 	}
-	if c.frontend != nil && c.frontend.State() == types.StateUp {
-		return fmt.Errorf("controller %v doesn't support on-line expansion, frontend: %v", c.Name, c.frontend.FrontendName())
-	}
 
 	c.isExpanding = true
 	return nil
@@ -298,9 +296,13 @@ func (c *Controller) startExpansion(size int64) (err error) {
 
 func (c *Controller) finishExpansion(expanded bool, size int64) {
 	c.Lock()
-	c.Unlock()
+	defer c.Unlock()
+
 	if expanded {
+		logrus.Infof("Controller succeeded to expand from size %v to %v", c.size, size)
 		c.size = size
+	} else {
+		logrus.Infof("Controller failed to expand from size %v to %v", c.size, size)
 	}
 	c.isExpanding = false
 }
