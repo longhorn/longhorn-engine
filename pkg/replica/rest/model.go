@@ -7,6 +7,7 @@ import (
 	"github.com/rancher/go-rancher/client"
 
 	"github.com/longhorn/longhorn-engine/pkg/replica"
+	"github.com/longhorn/longhorn-engine/pkg/types"
 )
 
 type Replica struct {
@@ -26,7 +27,7 @@ type Replica struct {
 	RevisionCounterDisabled bool                        `json:"revisioncounterdisabled"`
 }
 
-func NewReplica(context *api.ApiContext, state replica.State, info replica.Info, rep *replica.Replica) *Replica {
+func NewReplica(context *api.ApiContext, state types.ReplicaState, info replica.Info, rep *replica.Replica) *Replica {
 	r := &Replica{
 		Resource: client.Resource{
 			Type:    "replica",
@@ -40,12 +41,12 @@ func NewReplica(context *api.ApiContext, state replica.State, info replica.Info,
 	actions := map[string]bool{}
 
 	switch state {
-	case replica.Initial:
-	case replica.Open:
-	case replica.Closed:
-	case replica.Dirty:
-	case replica.Rebuilding:
-	case replica.Error:
+	case types.ReplicaStateInitial:
+	case types.ReplicaStateOpen:
+	case types.ReplicaStateClosed:
+	case types.ReplicaStateDirty:
+	case types.ReplicaStateRebuilding:
+	case types.ReplicaStateError:
 	}
 
 	for action := range actions {
