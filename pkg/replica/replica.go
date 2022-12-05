@@ -1136,6 +1136,10 @@ func (r *Replica) SetUnmapMarkDiskChainRemoved(enabled bool) {
 }
 
 func (r *Replica) Expand(size int64) (err error) {
+	if size%diskutil.VolumeSectorSize != 0 {
+		return fmt.Errorf("failed to expend volume replica size %v, because it is not multiple of volume sector size %v", size, diskutil.VolumeSectorSize)
+	}
+
 	r.Lock()
 	defer r.Unlock()
 

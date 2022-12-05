@@ -284,6 +284,9 @@ func (c *Controller) startExpansion(size int64) (err error) {
 	if c.hasWOReplica() {
 		return fmt.Errorf("cannot do expansion since there is WO(rebuilding) replica")
 	}
+	if size%diskutil.VolumeSectorSize != 0 {
+		return fmt.Errorf("failed to expand volume size %v, because it is not multiple of volume sector size %v", size, diskutil.VolumeSectorSize)
+	}
 	if c.size > size {
 		return fmt.Errorf("controller cannot be expanded to a smaller size %v", size)
 	} else if c.size == size {
