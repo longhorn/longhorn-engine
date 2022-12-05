@@ -375,7 +375,7 @@ func (r *replicator) GetRevisionCounter(address string) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	logrus.Infof("Get backend %s revision counter %v", address, counter)
+	logrus.Infof("Got backend %s revision counter %v", address, counter)
 
 	return counter, nil
 }

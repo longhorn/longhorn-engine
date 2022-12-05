@@ -149,7 +149,7 @@ func (c *Controller) addReplica(address string, snapshotRequired bool, mode type
 
 	replicaSize, err := newBackend.Size()
 	if err != nil {
-		return errors.Wrapf(err, "failed to get the size before adding a replica")
+		return errors.Wrap(err, "failed to get the size before adding a replica")
 	}
 	if c.size == 0 && len(c.replicas) == 0 {
 		c.size = replicaSize
@@ -194,7 +194,7 @@ func (c *Controller) Snapshot(name string, labels map[string]string) (string, er
 
 func (c *Controller) Expand(size int64) error {
 	if err := c.startExpansion(size); err != nil {
-		logrus.Errorf("controller failed to start expansion: %v", err)
+		logrus.WithError(err).Error("Controller failed to start expansion")
 		return err
 	}
 
@@ -207,7 +207,7 @@ func (c *Controller) Expand(size int64) error {
 		// We perform a system level sync without the lock. Cannot block read/write
 		// Can be improved to only sync the filesystem on the block device later
 		if ne, err := iutil.NewNamespaceExecutor(util.GetInitiatorNS()); err != nil {
-			logrus.Errorf("WARNING: continue to expand to size %v for %v, but cannot sync due to cannot get the namespace executor: %v", size, c.Name, err)
+			logrus.WithError(err).Errorf("WARNING: continue to expand to size %v for %v, but cannot sync due to cannot get the namespace executor", size, c.Name)
 		} else {
 			if _, err := ne.ExecuteWithTimeout(syncTimeout, "sync", []string{}); err != nil {
 				// sync should never fail though, so it more like due to the nsenter
@@ -219,7 +219,7 @@ func (c *Controller) Expand(size int64) error {
 		c.Lock()
 		defer c.Unlock()
 		if _, err := c.backend.RemainSnapshots(); err != nil {
-			logrus.Errorf("Cannot get remain snapshot count before expansion: %v", err)
+			logrus.WithError(err).Error("Cannot get remain snapshot count before expansion")
 			return
 		}
 
@@ -232,7 +232,7 @@ func (c *Controller) Expand(size int64) error {
 				c.lastExpansionError = fmt.Sprintf("the expansion failed since all replica expansion failed: %v", errsForRecording)
 			}
 			if err := c.handleErrorNoLock(errsNeedToBeHandled); err != nil {
-				logrus.Errorf("failed to handle the backend expansion errors: %v", err)
+				logrus.WithError(err).Error("Failed to handle the backend expansion errors")
 			}
 			// If there is expansion failure, controller cannot continue expanding the frontend
 			if !expansionSuccess {
@@ -242,7 +242,7 @@ func (c *Controller) Expand(size int64) error {
 
 		if c.frontend != nil {
 			if err := c.frontend.Expand(size); err != nil {
-				logrus.Errorf("failed to expand the frontend: %v", err)
+				logrus.WithError(err).Error("Failed to expand the frontend")
 				return
 			}
 		}
@@ -400,13 +400,12 @@ func (c *Controller) setReplicaModeNoLock(address string, mode types.Mode) {
 	for i, r := range c.replicas {
 		if r.Address == address {
 			if r.Mode != types.ERR {
-				logrus.Infof("Set replica %v to mode %v", address, mode)
+				logrus.Infof("Setting replica %v to mode %v", address, mode)
 				r.Mode = mode
 				c.replicas[i] = r
 				c.backend.SetMode(address, mode)
 			} else {
-				logrus.Infof("Ignore set replica %v to mode %v due to it's ERR",
-					address, mode)
+				logrus.Infof("Ignore set replica %v to mode %v due to it's ERR", address, mode)
 			}
 		}
 	}
@@ -415,7 +414,7 @@ func (c *Controller) setReplicaModeNoLock(address string, mode types.Mode) {
 func (c *Controller) startFrontend() error {
 	if len(c.replicas) > 0 && c.frontend != nil {
 		if c.isUpgrade {
-			logrus.Infof("Upgrading frontend")
+			logrus.Info("Upgrading frontend")
 			if err := c.frontend.Upgrade(c.Name, c.size, c.sectorSize, c); err != nil {
 				logrus.Errorf("Failed to upgrade frontend: %v", err)
 				return errors.Wrap(err, "failed to upgrade frontend")
@@ -423,7 +422,7 @@ func (c *Controller) startFrontend() error {
 			return nil
 		}
 		if err := c.frontend.Init(c.Name, c.size, c.sectorSize); err != nil {
-			logrus.Errorf("Failed to init frontend: %v", err)
+			logrus.WithError(err).Error("Failed to init frontend")
 			return errors.Wrap(err, "failed to init frontend")
 		}
 		if err := c.frontend.Startup(c); err != nil {
@@ -578,7 +577,7 @@ func isReplicaInInvalidState(state string) bool {
 	return state != string(types.ReplicaStateOpen) && state != string(types.ReplicaStateDirty)
 }
 
-func checkDeuplicteAddress(addresses ...string) error {
+func checkDuplicateAddress(addresses ...string) error {
 	checkDuplicate := map[string]struct{}{}
 
 	for _, address := range addresses {
@@ -617,7 +616,7 @@ func (c *Controller) Start(volumeSize, volumeCurrentSize int64, addresses ...str
 		return nil
 	}
 
-	if err := checkDeuplicteAddress(addresses...); err != nil {
+	if err := checkDuplicateAddress(addresses...); err != nil {
 		return err
 	}
 
@@ -633,29 +632,29 @@ func (c *Controller) Start(volumeSize, volumeCurrentSize int64, addresses ...str
 	for _, address := range addresses {
 		newBackend, err := c.factory.Create(address)
 		if err != nil {
-			logrus.Warnf("failed to create backend with address %v: %v", address, err)
+			logrus.WithError(err).Warnf("Failed to create backend with address %v", address)
 			continue
 		}
 
 		newSize, err := newBackend.Size()
 		if err != nil {
-			logrus.Warnf("failed to get the size from the backend address %v: %v", address, err)
+			logrus.WithError(err).Warnf("Failed to get the size from the backend address %v", address)
 			continue
 		}
 
 		newSectorSize, err := newBackend.SectorSize()
 		if err != nil {
-			logrus.Warnf("failed to get the sector size from the backend address %v: %v", address, err)
+			logrus.WithError(err).Warnf("Failed to get the sector size from the backend address %v", address)
 			continue
 		}
 
 		state, err := newBackend.GetState()
 		if err != nil {
-			logrus.Warnf("failed to get the state from the backend address %v: %v", address, err)
+			logrus.WithError(err).Warnf("Failed to get the state from the backend address %v", address)
 			continue
 		}
 		if isReplicaInInvalidState(state) {
-			logrus.Warnf("backend %v is in the invalid state %v", address, state)
+			logrus.Warnf("Backend %v is in the invalid state %v", address, state)
 			continue
 		}
 
@@ -665,7 +664,7 @@ func (c *Controller) Start(volumeSize, volumeCurrentSize int64, addresses ...str
 		}
 
 		if c.sectorSize != newSectorSize {
-			logrus.Warnf("backend %v sector size does not match %d != %d in the engine initiation phase", address, c.sectorSize, newSectorSize)
+			logrus.Warnf("Backend %v sector size does not match %d != %d in the engine initiation phase", address, c.sectorSize, newSectorSize)
 			continue
 		}
 
@@ -678,13 +677,13 @@ func (c *Controller) Start(volumeSize, volumeCurrentSize int64, addresses ...str
 	for address, backend := range availableBackends {
 		size, err := backend.Size()
 		if err != nil {
-			logrus.Warnf("failed to get the size from the backend address %v: %v", address, err)
+			logrus.WithError(err).Warnf("Failed to get the size from the backend address %v", address)
 			delete(availableBackends, address)
 			continue
 		}
 
 		if c.size != size {
-			logrus.Warnf("backend %v size does not match %d != %d in the engine initiation phase", address, c.size, size)
+			logrus.Warnf("Backend %v size does not match %d != %d in the engine initiation phase", address, c.size, size)
 			delete(availableBackends, address)
 		}
 	}
@@ -730,11 +729,7 @@ func (c *Controller) Start(volumeSize, volumeCurrentSize int64, addresses ...str
 		}
 	}
 
-	if err := c.startFrontend(); err != nil {
-		return err
-	}
-
-	return nil
+	return c.startFrontend()
 }
 
 func (c *Controller) WriteAt(b []byte, off int64) (int, error) {
