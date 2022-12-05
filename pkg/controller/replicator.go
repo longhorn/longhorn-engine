@@ -408,7 +408,7 @@ func (r *replicator) GetRevisionCounter(address string) (int64, error) {
 	if err != nil {
 		return 0, err
 	}
-	logrus.Infof("Get backend %s revision counter %v", address, counter)
+	logrus.Infof("Got backend %s revision counter %v", address, counter)
 
 	return counter, nil
 }
@@ -438,7 +438,7 @@ func (r *replicator) GetUnmapMarkSnapChainRemoved(address string) (bool, error) 
 	if err != nil {
 		return false, err
 	}
-	logrus.Infof("Get backend %s UnmapMarkSnapChainRemoved %v", address, enabled)
+	logrus.Infof("Got backend %s UnmapMarkSnapChainRemoved %v", address, enabled)
 
 	return enabled, nil
 }

@@ -130,6 +130,6 @@ func longhornCli() {
 	a.OnUsageError = onUsageError
 
 	if err := a.Run(os.Args); err != nil {
-		logrus.Fatal("Error when executing command: ", err)
+		logrus.WithError(err).Fatal("Error when executing command")
 	}
 }
