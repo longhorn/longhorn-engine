@@ -3,7 +3,9 @@ package cmd
 import (
 	"errors"
 	"fmt"
-	"log"
+	"os"
+	"strings"
+	"syscall"
 
 	"github.com/docker/go-units"
 	"github.com/sirupsen/logrus"
@@ -138,7 +140,15 @@ func startController(c *cli.Context) error {
 	if len(replicas) > 0 {
 		logrus.Infof("Starting with replicas %q", replicas)
 		if err := control.Start(volumeSize, volumeCurrentSize, replicas...); err != nil {
-			log.Fatal(err)
+			exitCode := 1
+			// Most of the time, 1 is the exit code when there's an error.
+			// The exit code will be ENODATA (61) if there is no backend.
+			// The engine controller will then catch the ENODATA.
+			if strings.Contains(err.Error(), controller.ControllerErrorNoBackend) {
+				exitCode = int(syscall.ENODATA)
+			}
+			logrus.Error(err.Error())
+			os.Exit(exitCode)
 		}
 	}
 

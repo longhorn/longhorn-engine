@@ -702,7 +702,7 @@ func (c *Controller) Start(volumeSize, volumeCurrentSize int64, addresses ...str
 	}
 
 	if len(availableBackends) == 0 {
-		return fmt.Errorf("cannot create an available backend for the engine from the addresses %+v", addresses)
+		return fmt.Errorf(ControllerErrorNoBackend+" from the addresses %+v", addresses)
 	}
 
 	// If the live upgrade is in-progress, the revision counters among replicas can be temporarily
