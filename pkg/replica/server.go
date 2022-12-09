@@ -49,7 +49,7 @@ func (s *Server) Create(size int64) error {
 
 	sectorSize := s.getSectorSize()
 
-	logrus.Infof("Creating volume %s, size %d/%d", s.dir, size, sectorSize)
+	logrus.Infof("Creating replica %s, size %d/%d", s.dir, size, sectorSize)
 	r, err := New(size, sectorSize, s.dir, s.backing, s.revisionCounterDisabled, s.unmapMarkDiskChainRemoved)
 	if err != nil {
 		return err
@@ -69,7 +69,7 @@ func (s *Server) Open() error {
 	_, info := s.Status()
 	sectorSize := s.getSectorSize()
 
-	logrus.Infof("Opening volume %s, size %d/%d", s.dir, info.Size, sectorSize)
+	logrus.Infof("Opening replica: dir %s, size %d, sector size %d", s.dir, info.Size, sectorSize)
 	r, err := New(info.Size, sectorSize, s.dir, s.backing, s.revisionCounterDisabled, s.unmapMarkDiskChainRemoved)
 	if err != nil {
 		return err
@@ -86,7 +86,7 @@ func (s *Server) Reload() error {
 		return nil
 	}
 
-	logrus.Info("Reloading volume")
+	logrus.Info("Reloading replica")
 	newReplica, err := s.r.Reload()
 	if err != nil {
 		return err
@@ -160,7 +160,7 @@ func (s *Server) Revert(name, created string) error {
 		return nil
 	}
 
-	logrus.Infof("Reverting to snapshot [%s] on volume at %s", name, created)
+	logrus.Infof("Reverting to snapshot [%s] on replica at %s", name, created)
 	r, err := s.r.Revert(name, created)
 	if err != nil {
 		return err
@@ -264,7 +264,7 @@ func (s *Server) Delete() error {
 		return nil
 	}
 
-	logrus.Infof("Deleting volume")
+	logrus.Infof("Deleting replica")
 	if err := s.r.Close(); err != nil {
 		return err
 	}
@@ -282,7 +282,7 @@ func (s *Server) Close() error {
 		return nil
 	}
 
-	logrus.Infof("Closing volume")
+	logrus.Infof("Closing replica")
 	if err := s.r.Close(); err != nil {
 		return err
 	}
@@ -296,7 +296,7 @@ func (s *Server) WriteAt(buf []byte, offset int64) (int, error) {
 	defer s.RUnlock()
 
 	if s.r == nil {
-		return 0, fmt.Errorf("volume no longer exist")
+		return 0, fmt.Errorf("replica no longer exist")
 	}
 	i, err := s.r.WriteAt(buf, offset)
 	return i, err
@@ -307,7 +307,7 @@ func (s *Server) ReadAt(buf []byte, offset int64) (int, error) {
 	defer s.RUnlock()
 
 	if s.r == nil {
-		return 0, fmt.Errorf("volume no longer exist")
+		return 0, fmt.Errorf("replica no longer exist")
 	}
 	i, err := s.r.ReadAt(buf, offset)
 	return i, err
@@ -318,7 +318,7 @@ func (s *Server) UnmapAt(length uint32, off int64) (int, error) {
 	defer s.RUnlock()
 
 	if s.r == nil {
-		return 0, fmt.Errorf("Volume no longer exist")
+		return 0, fmt.Errorf("replica no longer exist")
 	}
 	return s.r.UnmapAt(length, off)
 }
