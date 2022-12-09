@@ -16,7 +16,7 @@ const (
 	defaultScsiTimeout       = 60 * time.Second // SCSI device timeout
 	defaultIscsiAbortTimeout = 15 * time.Second
 
-	defaultEngineReplicaTimeout = 8 * time.Second
+	DefaultEngineReplicaTimeout = 8 * time.Second
 	minEngineReplicaTimeout     = 8 * time.Second
 	maxEngineReplicaTimeout     = 30 * time.Second
 )
@@ -39,8 +39,8 @@ func NewFrontend(frontendType string, iscsiTargetRequestTimeout time.Duration) (
 func DetermineEngineReplicaTimeout(timeout time.Duration) time.Duration {
 	if timeout < minEngineReplicaTimeout ||
 		timeout > maxEngineReplicaTimeout {
-		logrus.Warnf("Using default engine-replica timeout %v instead since the given value %v is not allowable", defaultEngineReplicaTimeout, timeout)
-		return defaultEngineReplicaTimeout
+		logrus.Warnf("Using default engine-replica timeout %v instead since the given value %v is not allowable", DefaultEngineReplicaTimeout, timeout)
+		return DefaultEngineReplicaTimeout
 	}
 	return timeout
 }

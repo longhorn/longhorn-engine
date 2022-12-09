@@ -64,6 +64,7 @@ func ControllerCmd() cli.Command {
 			cli.Int64Flag{
 				Name:   "engine-replica-timeout",
 				Hidden: false,
+				Value:  int64(controller.DefaultEngineReplicaTimeout.Seconds()),
 				Usage:  "In seconds. Timeout between engine and replica(s)",
 			},
 			cli.StringFlag{
