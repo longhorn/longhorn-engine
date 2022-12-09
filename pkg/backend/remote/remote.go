@@ -63,7 +63,7 @@ func (r *Remote) Close() error {
 }
 
 func (r *Remote) open() error {
-	logrus.Infof("Opening: %s", r.name)
+	logrus.Infof("Opening remote: %s", r.name)
 	conn, err := grpc.Dial(r.replicaServiceURL, grpc.WithInsecure())
 	if err != nil {
 		return errors.Wrapf(err, "cannot connect to ReplicaService %v", r.replicaServiceURL)
