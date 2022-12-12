@@ -215,7 +215,7 @@ func (c *Controller) Expand(size int64) error {
 		defer func() {
 			// Frontend expansion involves in the iSCSI session rescanning, which will wait for the in-fly io requests complete.
 			// Hence there will be a deadlock once we use the lock to protect this frontend expansion.
-			if c.frontend != nil {
+			if c.frontend != nil && expanded {
 				if err := c.frontend.Expand(size); err != nil {
 					logrus.WithError(err).Error("Failed to expand the frontend")
 					expanded = false
