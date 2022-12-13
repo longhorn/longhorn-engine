@@ -590,7 +590,8 @@ func (r *Replica) writeVolumeMetaData(dirty, rebuilding bool) error {
 	info := r.info
 	info.Dirty = dirty
 	info.Rebuilding = rebuilding
-	return r.encodeToFile(&info, volumeMetaData)
+	_, err := r.encodeToFile(&info, volumeMetaData)
+	return err
 }
 
 func (r *Replica) isBackingFile(index int) bool {
@@ -613,40 +614,44 @@ func (r *Replica) close() error {
 	return r.writeVolumeMetaData(false, r.info.Rebuilding)
 }
 
-func (r *Replica) encodeToFile(obj interface{}, file string) (err error) {
+func (r *Replica) encodeToFile(obj interface{}, file string) (rollbackFunc func() error, err error) {
 	if r.readOnly {
-		return nil
+		return nil, nil
 	}
 
 	tmpFileName := fmt.Sprintf("%s%s", file, tmpFileSuffix)
 
 	defer func() {
-		var rollbackErr error
-		if err != nil {
-			if _, err := os.Stat(r.diskPath(tmpFileName)); err == nil {
-				if err := os.Remove(r.diskPath(tmpFileName)); err != nil {
-					rollbackErr = err
-				}
-			}
+		// This rollback function will be executed either after the current function errors out,
+		// or by the upper layer when the current function succeeds but the subsequent executions fail.
+		//
+		// It allows the upper caller to be atomic:
+		// the upper layer either succeeds to execute all functions,
+		// or fails in the middle then does rollback for the previous succeeded parts so that everything looks like unchanged.
+		rollbackFunc = func() error {
+			return os.RemoveAll(r.diskPath(tmpFileName))
 		}
-		err = types.GenerateFunctionErrorWithRollback(err, rollbackErr)
+
+		if err != nil {
+			err = types.GenerateFunctionErrorWithRollback(err, rollbackFunc())
+			rollbackFunc = nil
+		}
 	}()
 
 	f, err := os.Create(r.diskPath(tmpFileName))
 	if err != nil {
-		return err
+		return rollbackFunc, errors.Wrapf(err, "failed to create the tmp file for file %v", r.diskPath(file))
 	}
-	defer f.Close()
 
 	if err := json.NewEncoder(f).Encode(&obj); err != nil {
-		return err
+		return rollbackFunc, err
 	}
 
 	if err := f.Close(); err != nil {
-		return err
+		return rollbackFunc, err
 	}
 
-	return os.Rename(r.diskPath(tmpFileName), r.diskPath(file))
+	return rollbackFunc, os.Rename(r.diskPath(tmpFileName), r.diskPath(file))
 }
 
 func (r *Replica) nextFile(parsePattern *regexp.Regexp, pattern, parent string) (string, error) {
@@ -667,39 +672,45 @@ func (r *Replica) openFile(name string, flag int) (types.DiffDisk, error) {
 	return sparse.NewDirectFileIoProcessor(r.diskPath(name), os.O_RDWR|flag, 06666, true)
 }
 
-func (r *Replica) createNewHead(oldHead, parent, created string, size int64) (f types.DiffDisk, newDisk disk, err error) {
+func (r *Replica) createNewHead(oldHead, parent, created string, size int64) (f types.DiffDisk, newDisk disk, rollbackFunc func() error, err error) {
 	newHeadName, err := r.nextFile(diskPattern, diskutil.VolumeHeadDiskName, oldHead)
 	if err != nil {
-		return nil, disk{}, err
+		return nil, disk{}, nil, err
 	}
 
 	if _, err := os.Stat(r.diskPath(newHeadName)); err == nil {
-		return nil, disk{}, fmt.Errorf("%s already exists", newHeadName)
+		return nil, disk{}, nil, fmt.Errorf("%s already exists", newHeadName)
 	}
-
-	defer func() {
-		var rollbackErr error
-		if err != nil {
-			if _, err := os.Stat(r.diskPath(newHeadName)); err == nil {
-				if err := os.Remove(r.diskPath(newHeadName)); err != nil {
-					rollbackErr = err
-				}
-			}
-			if _, err := os.Stat(r.diskPath(newHeadName + diskutil.DiskMetadataSuffix)); err == nil {
-				if err := os.Remove(r.diskPath(newHeadName + diskutil.DiskMetadataSuffix)); err != nil {
-					rollbackErr = types.CombineErrors(rollbackErr, err)
-				}
-			}
-			err = types.GenerateFunctionErrorWithRollback(err, rollbackErr)
-		}
-	}()
 
 	f, err = r.openFile(r.diskPath(newHeadName), os.O_TRUNC)
 	if err != nil {
-		return nil, disk{}, err
+		return nil, disk{}, nil, err
 	}
+
+	var subRollbackFunc func() error
+	defer func() {
+		// This rollback function will be executed either after the current function errors out,
+		// or by the upper layer when the current function succeeds but the subsequent executions fail.
+		//
+		// It allows the upper caller to be atomic:
+		// the upper layer either succeeds to execute all functions,
+		// or fails in the middle then does rollback for the previous succeeded parts so that everything looks like unchanged.
+		rollbackFunc = func() error {
+			f.Close()
+			if subRollbackFunc != nil {
+				return types.CombineErrors(subRollbackFunc(), r.rmDisk(newHeadName))
+			}
+			return r.rmDisk(newHeadName)
+		}
+
+		if err != nil {
+			err = types.GenerateFunctionErrorWithRollback(err, rollbackFunc())
+			rollbackFunc = nil
+		}
+	}()
+
 	if err := syscall.Truncate(r.diskPath(newHeadName), size); err != nil {
-		return nil, disk{}, err
+		return nil, disk{}, rollbackFunc, err
 	}
 
 	newDisk = disk{
@@ -709,38 +720,63 @@ func (r *Replica) createNewHead(oldHead, parent, created string, size int64) (f 
 		UserCreated: false,
 		Created:     created,
 	}
-	err = r.encodeToFile(&newDisk, newHeadName+diskutil.DiskMetadataSuffix)
-	return f, newDisk, err
+	subRollbackFunc, err = r.encodeToFile(&newDisk, newHeadName+diskutil.DiskMetadataSuffix)
+	return f, newDisk, rollbackFunc, err
 }
 
-func (r *Replica) linkDisk(oldname, newname string) error {
-	if oldname == "" {
-		return nil
+func (r *Replica) linkDisk(oldName, newName string) (rollbackFunc func() error, err error) {
+	if oldName == "" {
+		return nil, nil
 	}
 
-	destMetadata := r.diskPath(newname + diskutil.DiskMetadataSuffix)
-	logrus.Infof("Deleting old disk metadata file %v", destMetadata)
+	defer func() {
+		if err != nil {
+			return
+		}
+
+		// This rollback function will be executed either after the current function errors out,
+		// or by the upper layer when the current function succeeds but the subsequent executions fail.
+		//
+		// It allows the upper caller to be atomic:
+		// the upper layer either succeeds to execute all functions,
+		// or fails in the middle then does rollback for the previous succeeded parts so that everything looks like unchanged.
+		rollbackFunc = func() error {
+			return r.rmDisk(newName)
+		}
+	}()
+
+	destMetadata := r.diskPath(newName + diskutil.DiskMetadataSuffix)
+	logrus.Infof("Cleaning up new disk metadata file path %v before linking", destMetadata)
 	if err := os.RemoveAll(destMetadata); err != nil {
-		return errors.Wrapf(err, "failed to delete old disk metadata file %v", destMetadata)
+		return rollbackFunc, errors.Wrapf(err, "failed to clean up new disk metadata file %v before linking", destMetadata)
 	}
 
-	destChecksum := r.diskPath(newname + diskutil.DiskChecksumSuffix)
-	logrus.Infof("Deleting old disk checksum file %v", destChecksum)
+	destChecksum := r.diskPath(newName + diskutil.DiskChecksumSuffix)
+	logrus.Infof("Cleaning up new disk checksum file %v before linking", destChecksum)
 	if err := os.RemoveAll(destChecksum); err != nil {
-		return errors.Wrapf(err, "failed to delete old disk checksum file %v", destChecksum)
+		return rollbackFunc, errors.Wrapf(err, "failed to clean up new disk checksum file %v before linking", destChecksum)
 	}
 
-	dest := r.diskPath(newname)
-	logrus.Infof("Deleting old disk file %v", dest)
+	dest := r.diskPath(newName)
+	logrus.Infof("Cleaning up new disk file %v before linking", dest)
 	if err := os.RemoveAll(dest); err != nil {
-		return errors.Wrapf(err, "failed to delete old disk file %v", dest)
+		return rollbackFunc, errors.Wrapf(err, "failed to clean up new disk file %v before linking", dest)
 	}
 
-	if err := os.Link(r.diskPath(oldname), dest); err != nil {
-		return err
+	defer func() {
+		if err != nil {
+			err = types.GenerateFunctionErrorWithRollback(err, r.rmDisk(newName))
+		}
+	}()
+
+	if err := os.Link(r.diskPath(oldName), dest); err != nil {
+		return rollbackFunc, err
 	}
 
-	return os.Link(r.diskPath(oldname+diskutil.DiskMetadataSuffix), r.diskPath(newname+diskutil.DiskMetadataSuffix))
+	// Typically, this function links an old volume head to a new snapshot. And the volume head does not contain a checksum file.
+	// Hence there is no need to link the checksum file here.
+
+	return rollbackFunc, os.Link(r.diskPath(oldName+diskutil.DiskMetadataSuffix), r.diskPath(newName+diskutil.DiskMetadataSuffix))
 }
 
 func (r *Replica) markDiskAsRemoved(name string) error {
@@ -756,7 +792,8 @@ func (r *Replica) markDiskAsRemoved(name string) error {
 	}
 	disk.Removed = true
 	r.diskData[name] = disk
-	return r.encodeToFile(disk, name+diskutil.DiskMetadataSuffix)
+	_, err := r.encodeToFile(disk, name+diskutil.DiskMetadataSuffix)
+	return err
 }
 
 func (r *Replica) rmDisk(name string) error {
@@ -796,7 +833,7 @@ func (r *Replica) revertDisk(parentDiskFileName, created string) (*Replica, erro
 	}
 
 	oldHead := r.info.Head
-	f, newHeadDisk, err := r.createNewHead(oldHead, parentDiskFileName, created, r.info.Size)
+	f, newHeadDisk, _, err := r.createNewHead(oldHead, parentDiskFileName, created, r.info.Size)
 	if err != nil {
 		return nil, err
 	}
@@ -807,7 +844,7 @@ func (r *Replica) revertDisk(parentDiskFileName, created string) (*Replica, erro
 	info.Dirty = true
 	info.Parent = newHeadDisk.Parent
 
-	if err := r.encodeToFile(&info, volumeMetaData); err != nil {
+	if _, err := r.encodeToFile(&info, volumeMetaData); err != nil {
 		r.encodeToFile(&r.info, volumeMetaData)
 		return nil, err
 	}
@@ -846,34 +883,37 @@ func (r *Replica) createDisk(name string, userCreated bool, created string, labe
 		}
 	}
 
-	f, newHeadDisk, err := r.createNewHead(oldHead, newSnapName, created, size)
+	rollbackFuncList := []func() error{}
+	defer func() {
+		if err == nil {
+			r.rmDisk(oldHead)
+			return
+		}
+
+		var rollbackErr error
+		log.WithError(err).Errorf("failed to create disk %v, will do rollback", name)
+		for _, rollbackFunc := range rollbackFuncList {
+			if rollbackFunc == nil {
+				continue
+			}
+			rollbackErr = types.CombineErrors(rollbackErr, rollbackFunc())
+		}
+		err = types.WrapError(
+			types.GenerateFunctionErrorWithRollback(err, rollbackErr),
+			"failed to create new disk %v", name)
+	}()
+
+	f, newHeadDisk, createNewHeadRollbackFunc, err := r.createNewHead(oldHead, newSnapName, created, size)
 	if err != nil {
 		return err
 	}
-	defer func() {
-		var rollbackErr error
-		if err != nil {
-			log.WithError(err).Errorf("failed to create disk %v, will do rollback", name)
-			delete(r.diskData, newHeadDisk.Name)
-			delete(r.diskData, newSnapName)
-			delete(r.diskChildrenMap, newSnapName)
-			rollbackErr = types.CombineErrors(
-				r.rmDisk(newHeadDisk.Name),
-				r.rmDisk(newSnapName),
-				f.Close(),
-				r.encodeToFile(&r.info, volumeMetaData),
-			)
-			err = types.WrapError(
-				types.GenerateFunctionErrorWithRollback(err, rollbackErr),
-				"failed to create new disk %v", name)
-		} else {
-			r.rmDisk(oldHead)
-		}
-	}()
+	rollbackFuncList = append(rollbackFuncList, createNewHeadRollbackFunc)
 
-	if err := r.linkDisk(r.info.Head, newSnapName); err != nil {
+	linkDiskRollbackFunc, err := r.linkDisk(r.info.Head, newSnapName)
+	if err != nil {
 		return err
 	}
+	rollbackFuncList = append(rollbackFuncList, linkDiskRollbackFunc)
 
 	info := r.info
 	info.Head = newHeadDisk.Name
@@ -881,9 +921,14 @@ func (r *Replica) createDisk(name string, userCreated bool, created string, labe
 	info.Parent = newSnapName
 	info.Size = size
 
-	if err := r.encodeToFile(&info, volumeMetaData); err != nil {
+	volumeMetaEncodeRollbackFunc, err := r.encodeToFile(&info, volumeMetaData)
+	if err != nil {
 		return err
 	}
+	rollbackFuncList = append(rollbackFuncList, func() error {
+		_, err := r.encodeToFile(&r.info, volumeMetaData)
+		return types.CombineErrors(volumeMetaEncodeRollbackFunc(), err)
+	})
 
 	r.diskData[newHeadDisk.Name] = &newHeadDisk
 	if newSnapName != "" {
@@ -892,9 +937,18 @@ func (r *Replica) createDisk(name string, userCreated bool, created string, labe
 		r.diskData[newSnapName].UserCreated = userCreated
 		r.diskData[newSnapName].Created = created
 		r.diskData[newSnapName].Labels = labels
-		if err := r.encodeToFile(r.diskData[newSnapName], newSnapName+diskutil.DiskMetadataSuffix); err != nil {
+		rollbackFuncList = append(rollbackFuncList, func() error {
+			delete(r.diskData, newHeadDisk.Name)
+			delete(r.diskData, newSnapName)
+			delete(r.diskChildrenMap, newSnapName)
+			return nil
+		})
+
+		snapMetaEncodeRollbackFunc, err := r.encodeToFile(r.diskData[newSnapName], newSnapName+diskutil.DiskMetadataSuffix)
+		if err != nil {
 			return err
 		}
+		rollbackFuncList = append(rollbackFuncList, snapMetaEncodeRollbackFunc)
 
 		r.updateChildDisk(oldHead, newSnapName)
 		r.activeDiskData[len(r.activeDiskData)-1].Name = newSnapName
@@ -950,7 +1004,8 @@ func (r *Replica) updateParentDisk(name, oldParent string) error {
 		child.Parent = ""
 	}
 	r.diskData[name] = child
-	return r.encodeToFile(child, child.Name+diskutil.DiskMetadataSuffix)
+	_, err := r.encodeToFile(child, child.Name+diskutil.DiskMetadataSuffix)
+	return err
 }
 
 func (r *Replica) openLiveChain() error {
