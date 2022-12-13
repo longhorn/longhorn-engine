@@ -270,30 +270,33 @@ func (c *Controller) startExpansion(size int64) (err error) {
 	c.Lock()
 	defer c.Unlock()
 
-	defer func() {
-		if err != nil {
-			err = fmt.Errorf("failed to start expansion: %v", err)
-			c.lastExpansionFailedAt = time.Now().UTC().Format(time.RFC3339)
-			c.lastExpansionError = err.Error()
-		}
-	}()
-
 	if c.isExpanding {
 		return fmt.Errorf("controller expansion is in progress")
 	}
-	if c.hasWOReplica() {
-		return fmt.Errorf("cannot do expansion since there is WO(rebuilding) replica")
-	}
+
+	defer func() {
+		if c.isExpanding {
+			c.lastExpansionFailedAt = ""
+			c.lastExpansionError = ""
+		} else if err != nil {
+			c.lastExpansionFailedAt = time.Now().String()
+			c.lastExpansionError = errors.Wrap(err, "controller failed to start expansion").Error()
+		}
+	}()
+
 	if size%diskutil.VolumeSectorSize != 0 {
-		return fmt.Errorf("failed to expand volume size %v, because it is not multiple of volume sector size %v", size, diskutil.VolumeSectorSize)
+		return fmt.Errorf("requested expansion size %v not multiple of volume sector size %v", size, diskutil.VolumeSectorSize)
+	}
+	if c.size == size {
+		logrus.Infof("controller %v is already expanded to size %v", c.Name, size)
+		return nil
 	}
 	if c.size > size {
 		return fmt.Errorf("controller cannot be expanded to a smaller size %v", size)
-	} else if c.size == size {
-		return fmt.Errorf("controller %v is already expanded to size %v", c.Name, size)
 	}
 
 	c.isExpanding = true
+
 	return nil
 }
 
