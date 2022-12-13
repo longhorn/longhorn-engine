@@ -28,7 +28,7 @@ RUN if [ ${ARCH} == "amd64" ]; then \
         cd /usr/src && \
         git clone https://github.com/gperftools/gperftools.git&& \
         cd gperftools && \
-        git checkout db6d94d9893fdd8c74028b5113cd9185be1e3111 && \
+        git checkout bf8b714bf5075d0a6f2f28504b43095e2b1e11c5 && \
         ./autogen.sh && \
         ./configure && \
         make && \
