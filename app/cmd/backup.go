@@ -124,7 +124,7 @@ func checkBackupStatus(c *cli.Context) error {
 
 			repClient, err := replicaClient.NewReplicaClient(replica.Address)
 			if err != nil {
-				logrus.Errorf("Cannot create a replica client for IP[%v]: %v", replicaAddress, err)
+				logrus.WithError(err).Errorf("Cannot create a replica client for IP[%v]", replicaAddress)
 				return err
 			}
 
@@ -148,7 +148,7 @@ func checkBackupStatus(c *cli.Context) error {
 
 	repClient, err := replicaClient.NewReplicaClient(replicaAddress)
 	if err != nil {
-		logrus.Errorf("cannot create a replica client for IP[%v]: %v", replicaAddress, err)
+		logrus.WithError(err).Errorf("Cannot create a replica client for IP[%v]", replicaAddress)
 		return err
 	}
 	defer repClient.Close()
@@ -174,7 +174,7 @@ func BackupRestoreCmd() cli.Command {
 			if err := restoreBackup(c); err != nil {
 				errInfo, jsonErr := json.MarshalIndent(err, "", "\t")
 				if jsonErr != nil {
-					logrus.Errorf("Cannot marshal err [%v] to json: %v", err, jsonErr)
+					logrus.WithError(jsonErr).Errorf("Cannot marshal err [%v] to json", err)
 				} else {
 					// If the error is not `TaskError`, the marshaled result is an empty json string.
 					if string(errInfo) != "{}" {

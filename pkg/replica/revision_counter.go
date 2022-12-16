@@ -101,7 +101,7 @@ func (r *Replica) GetRevisionCounter() int64 {
 
 	counter, err := r.readRevisionCounter()
 	if err != nil {
-		logrus.Error("Failed to get revision counter: ", err)
+		logrus.WithError(err).Error("Failed to get revision counter")
 		// -1 will result in the replica to be discarded
 		return -1
 	}

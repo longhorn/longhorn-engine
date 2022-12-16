@@ -578,7 +578,7 @@ def test_backup_block_deletion(grpc_replica1, grpc_replica2,  # NOQA
         check_backup_volume_block_count(address, VOLUME_NAME,
                                         backup_target, 0)
 
-        # cleanup the backup volume
+        # clean up the backup volume
         cmd.backup_volume_rm(address, VOLUME_NAME, backup_target)
         url = get_backup_volume_url(backup_target, VOLUME_NAME)
         with pytest.raises(subprocess.CalledProcessError):
@@ -658,7 +658,7 @@ def test_backup_block_no_cleanup(grpc_replica1, grpc_replica2,  # NOQA
         check_backup_volume_block_count(address, VOLUME_NAME,
                                         backup_target, 0)
 
-        # cleanup the backup volume
+        # clean up the backup volume
         cmd.backup_volume_rm(address, VOLUME_NAME, backup_target)
         url = get_backup_volume_url(backup_target, VOLUME_NAME)
         with pytest.raises(subprocess.CalledProcessError):
@@ -859,13 +859,13 @@ def test_backup_volume_list(grpc_replica_client, grpc_controller_client,  # NOQA
         with pytest.raises(subprocess.CalledProcessError):
             cmd.backup_inspect_volume(address, url)
 
-        # cleanup volume 1
+        # clean up volume 1
         cmd.sync_agent_server_reset(address)
         cleanup_controller(grpc_controller)
         cleanup_replica(grpc_replica1)
         cleanup_replica(grpc_replica2)
 
-        # cleanup volume 2
+        # clean up volume 2
         cmd.sync_agent_server_reset(address2)
         cleanup_controller(grpc2_controller)
         cleanup_replica(grpc2_replica1)
@@ -961,7 +961,7 @@ def test_backup_lock(grpc_replica1, grpc_replica2,  # NOQA
         # delete should succeed now, that there is no active restore lock
         rm_backups(address, ENGINE_NAME, [info["URL"]])
 
-        # cleanup volume 1
+        # clean up volume 1
         cmd.sync_agent_server_reset(address)
         cleanup_controller(grpc_controller)
         cleanup_replica(grpc_replica1)

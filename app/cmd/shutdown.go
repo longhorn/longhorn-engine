@@ -33,7 +33,7 @@ func registerShutdown() {
 			for _, hook := range hooks {
 				logrus.Warnf("Starting to execute registered shutdown func %v", util.GetFunctionName(hook))
 				if err := hook(); err != nil {
-					logrus.Warnf("Failed to execute hook %v: %v", util.GetFunctionName(hook), err)
+					logrus.WithError(err).Warnf("Failed to execute hook %v", util.GetFunctionName(hook))
 					exitCode = 1
 				}
 			}

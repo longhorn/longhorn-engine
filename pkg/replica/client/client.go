@@ -602,7 +602,7 @@ func (c *ReplicaClient) Reset() error {
 	defer cancel()
 
 	if _, err := syncAgentServiceClient.Reset(ctx, &empty.Empty{}); err != nil {
-		return errors.Wrap(err, "failed to cleanup restore info in Sync Agent Server")
+		return errors.Wrap(err, "failed to clean up restore info in Sync Agent Server")
 	}
 
 	return nil

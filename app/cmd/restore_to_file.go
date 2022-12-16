@@ -199,20 +199,20 @@ func CopyFile(backingFilepath, outputFile string) error {
 func CleanupTempFiles(outputFile string, files ...string) {
 	outputFilePath, err := filepath.Abs(outputFile)
 	if err != nil {
-		logrus.Errorf("failed to find absolute path for output file=%s: %v", outputFile, err)
+		logrus.WithError(err).Errorf("Failed to find absolute path for output file=%s", outputFile)
 		return
 	}
 	for _, file := range files {
 		filePath, err := filepath.Abs(file)
 		if err != nil {
-			logrus.Errorf("failed to find absolute path for tmp file=%s: %v", file, err)
+			logrus.WithError(err).Errorf("Failed to find absolute path for tmp file=%s", file)
 			continue
 		}
 		if filePath == outputFilePath {
 			continue
 		}
 		if err := os.Remove(filePath); err != nil {
-			logrus.Errorf("failed to remove tmp file=%s: %v", file, err)
+			logrus.WithError(err).Errorf("Failed to remove tmp file=%s", file)
 			continue
 		}
 	}

@@ -170,7 +170,7 @@ func (c *Client) loop() {
 
 			req, pending := c.messages[resp.Seq]
 			if !pending {
-				logrus.Warnf("received response message id %v seq %v type %v for non pending request", resp.ID, resp.Seq, resp.Type)
+				logrus.Warnf("Received response message id %v seq %v type %v for non pending request", resp.ID, resp.Seq, resp.Type)
 				continue
 			}
 
@@ -249,7 +249,7 @@ func (c *Client) read() {
 	for {
 		msg, err := c.wire.Read()
 		if err != nil {
-			logrus.Errorf("Error reading from wire %v: %v", c.peerAddr, err)
+			logrus.WithError(err).Errorf("Error reading from wire %v", c.peerAddr)
 			c.responses <- &Message{
 				transportErr: err,
 			}
