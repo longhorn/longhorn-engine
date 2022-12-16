@@ -95,7 +95,7 @@ def test_ha_single_replica_rebuild(grpc_controller,  # NOQA
     data_offset = 1024
     verify_data(dev, data_offset, data)
 
-    # Cleanup replica2
+    # Clean up replica2
     cleanup_replica(grpc_replica2)
 
     verify_async(dev, 10, 128, 1)
@@ -297,7 +297,7 @@ def test_snapshot_tree_rebuild(grpc_controller,  # NOQA
     data_offset = 1024
     verify_data(dev, data_offset, data)
 
-    # Cleanup replica2
+    # Clean up replica2
     cleanup_replica(grpc_replica2)
 
     verify_async(dev, 10, 128, 1)
@@ -363,7 +363,7 @@ def ha_single_backing_replica_rebuild_test(grpc_backing_controller, grpc_backing
     data_offset = 1024
     verify_data(dev, data_offset, data)
 
-    # Cleanup replica2
+    # Clean up replica2
     cleanup_replica(grpc_backing_replica2)
 
     verify_async(dev, 10, 128, 1)
@@ -515,7 +515,7 @@ def test_expansion_with_rebuild(grpc_controller,  # NOQA
         dev.readat(SIZE, SIZE) == zero_char*(data3.offset-SIZE) + \
         data3.content + zero_char*(EXPANDED_SIZE-data3.offset-data3.length)
 
-    # Cleanup replica2
+    # Clean up replica2
     cleanup_replica(grpc_replica2)
     verify_replica_state(grpc_controller,
                          grpc_replica2.address, "ERR")
@@ -529,7 +529,7 @@ def test_expansion_with_rebuild(grpc_controller,  # NOQA
     verify_replica_state(grpc_controller,
                          grpc_replica2.address, "RW")
 
-    # Cleanup replica1 then check if the rebuilt replica2 works fine
+    # Clean up replica1 then check if the rebuilt replica2 works fine
     cleanup_replica(grpc_replica1)
     verify_replica_state(grpc_controller,
                          grpc_replica1.address, "ERR")
@@ -686,7 +686,7 @@ def test_expansion_rollback_with_rebuild(
     wait_for_rebuild_complete(address)
     verify_replica_state(grpc_controller, r2_url, "RW")
 
-    # Cleanup replica1 then check if the rebuilt replica2 works fine
+    # Clean up replica1 then check if the rebuilt replica2 works fine
     cleanup_replica(grpc_fixed_dir_replica1)
     verify_replica_state(grpc_controller, r1_url, "ERR")
     grpc_controller.replica_delete(replicas[0].address)
@@ -773,7 +773,7 @@ def test_single_replica_expansion_failed(
         replica_meta_2 = json.load(f)
     assert replica_meta_2["Size"] == EXPANDED_SIZE
 
-    # Cleanup replica1 then check if replica2 works fine
+    # Clean up replica1 then check if replica2 works fine
     cleanup_replica(grpc_fixed_dir_replica1)
     verify_replica_state(grpc_controller, r1_url, "ERR")
     grpc_controller.replica_delete(replicas[0].address)
@@ -862,5 +862,5 @@ def test_replica_crashed_update_state_error(grpc_controller,
     # After removing the file, the replica should be in 'ERR' mode.
     verify_replica_mode(grpc_controller, r1_url, "ERR")
 
-    # Cleanup created replica.
+    # Clean up created replica.
     cleanup_replica(grpc_fixed_dir_replica1)

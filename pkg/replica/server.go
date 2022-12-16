@@ -264,7 +264,7 @@ func (s *Server) Delete() error {
 		return nil
 	}
 
-	logrus.Infof("Deleting replica")
+	logrus.Info("Deleting replica")
 	if err := s.r.Close(); err != nil {
 		return err
 	}
@@ -282,7 +282,7 @@ func (s *Server) Close() error {
 		return nil
 	}
 
-	logrus.Infof("Closing replica")
+	logrus.Info("Closing replica")
 	if err := s.r.Close(); err != nil {
 		return err
 	}

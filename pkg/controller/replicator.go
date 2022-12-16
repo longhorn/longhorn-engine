@@ -112,7 +112,7 @@ func (r *replicator) ReadAt(buf []byte, off int64) (int, error) {
 		if err == nil {
 			break
 		}
-		logrus.Error("Replicator.ReadAt:", index, err)
+		logrus.WithError(err).Errorf("Failed to read: index %v, off %v, len %v", index, off, len(buf))
 		retError.Errors[r.readerIndex[index]] = err
 		index = (index + 1) % readersLen
 	}
@@ -313,7 +313,7 @@ func (r *replicator) Expand(size int64) (bool, error, error) {
 		return false, nil, errs
 	}
 
-	logrus.Infof("Succeeded to expand the backend")
+	logrus.Info("Succeeded to expand the backend")
 	return true, nil, nil
 }
 

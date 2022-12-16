@@ -231,7 +231,7 @@ func (d *diffDisk) read(target byte, buf []byte, startOffset int64, startSector 
 
 	// Reading the out-of-bound part is not allowed
 	if bufLength > d.size-offset {
-		logrus.Warnf("Trying to read the out-of-bound part")
+		logrus.Warn("Trying to read the out-of-bound part")
 		return 0, io.ErrUnexpectedEOF
 	}
 

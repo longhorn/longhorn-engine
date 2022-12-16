@@ -45,7 +45,7 @@ func (t *Task) CreateBackup(backupName, snapshot, dest, backingImageName, backin
 	var replica *types.ControllerReplicaInfo
 
 	if snapshot == types.VolumeHeadName {
-		return nil, fmt.Errorf("can not backup the head disk in the chain")
+		return nil, fmt.Errorf("cannot backup the head disk in the chain")
 	}
 
 	volume, err := t.client.VolumeGet()
@@ -115,7 +115,7 @@ func (t *Task) createBackup(replicaInController *types.ControllerReplicaInfo, ba
 func (t *Task) FetchBackupStatus(backupID string, replicaAddr string) (*BackupStatusInfo, error) {
 	repClient, err := replicaClient.NewReplicaClient(replicaAddr)
 	if err != nil {
-		logrus.Errorf("Cannot create a replica client for IP[%v]: %v", replicaAddr, err)
+		logrus.WithError(err).Errorf("Cannot create a replica client for IP[%v]", replicaAddr)
 		return nil, err
 	}
 	defer repClient.Close()
@@ -304,16 +304,16 @@ func (t *Task) restoreBackup(replicaInController *types.ControllerReplicaInfo, b
 func (t *Task) Reset() error {
 	replicas, err := t.client.ReplicaList()
 	if err != nil {
-		logrus.Errorf("Failed to get the replica list: %v", err)
+		logrus.WithError(err).Error("Failed to get the replica list")
 		return err
 	}
 
 	for _, r := range replicas {
 		if ok, err := t.isRebuilding(r); err != nil {
-			logrus.Errorf("can't check if replica's are rebuilding: %v", err)
+			logrus.WithError(err).Error("Cannot check if replica's are rebuilding")
 			return err
 		} else if ok {
-			logrus.Errorf("Replicas are rebuilding. Can't reset: %v", err)
+			logrus.WithError(err).Error("Replicas are rebuilding. Can't reset")
 			return fmt.Errorf("cannot reset Restore info as replica(%s) is rebuilding", r.Address)
 		}
 	}

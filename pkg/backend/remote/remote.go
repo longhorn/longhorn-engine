@@ -13,7 +13,6 @@ import (
 	"google.golang.org/grpc"
 
 	"github.com/longhorn/longhorn-engine/pkg/dataconn"
-	"github.com/longhorn/longhorn-engine/pkg/replica/client"
 	replicaClient "github.com/longhorn/longhorn-engine/pkg/replica/client"
 	"github.com/longhorn/longhorn-engine/pkg/types"
 	"github.com/longhorn/longhorn-engine/pkg/util"
@@ -52,7 +51,7 @@ func (r *Remote) Close() error {
 	defer conn.Close()
 	replicaServiceClient := ptypes.NewReplicaServiceClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), client.GRPCServiceCommonTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), replicaClient.GRPCServiceCommonTimeout)
 	defer cancel()
 
 	if _, err := replicaServiceClient.ReplicaClose(ctx, &empty.Empty{}); err != nil {
@@ -71,7 +70,7 @@ func (r *Remote) open() error {
 	defer conn.Close()
 	replicaServiceClient := ptypes.NewReplicaServiceClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), client.GRPCServiceCommonTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), replicaClient.GRPCServiceCommonTimeout)
 	defer cancel()
 
 	if _, err := replicaServiceClient.ReplicaOpen(ctx, &empty.Empty{}); err != nil {
@@ -91,7 +90,7 @@ func (r *Remote) Snapshot(name string, userCreated bool, created string, labels 
 	defer conn.Close()
 	replicaServiceClient := ptypes.NewReplicaServiceClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), client.GRPCServiceCommonTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), replicaClient.GRPCServiceCommonTimeout)
 	defer cancel()
 
 	if _, err := replicaServiceClient.ReplicaSnapshot(ctx, &ptypes.ReplicaSnapshotRequest{
@@ -120,7 +119,7 @@ func (r *Remote) Expand(size int64) (err error) {
 	defer conn.Close()
 	replicaServiceClient := ptypes.NewReplicaServiceClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), client.GRPCServiceCommonTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), replicaClient.GRPCServiceCommonTimeout)
 	defer cancel()
 
 	if _, err := replicaServiceClient.ReplicaExpand(ctx, &ptypes.ReplicaExpandRequest{
@@ -142,7 +141,7 @@ func (r *Remote) SetRevisionCounter(counter int64) error {
 	defer conn.Close()
 	replicaServiceClient := ptypes.NewReplicaServiceClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), client.GRPCServiceCommonTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), replicaClient.GRPCServiceCommonTimeout)
 	defer cancel()
 
 	if _, err := replicaServiceClient.RevisionCounterSet(ctx, &ptypes.RevisionCounterSetRequest{
@@ -248,7 +247,7 @@ func (r *Remote) SetUnmapMarkSnapChainRemoved(enabled bool) error {
 	defer conn.Close()
 	replicaServiceClient := ptypes.NewReplicaServiceClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), client.GRPCServiceCommonTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), replicaClient.GRPCServiceCommonTimeout)
 	defer cancel()
 
 	if _, err := replicaServiceClient.UnmapMarkDiskChainRemovedSet(ctx, &ptypes.UnmapMarkDiskChainRemovedSetRequest{
@@ -268,7 +267,7 @@ func (r *Remote) info() (*types.ReplicaInfo, error) {
 	defer conn.Close()
 	replicaServiceClient := ptypes.NewReplicaServiceClient(conn)
 
-	ctx, cancel := context.WithTimeout(context.Background(), client.GRPCServiceCommonTimeout)
+	ctx, cancel := context.WithTimeout(context.Background(), replicaClient.GRPCServiceCommonTimeout)
 	defer cancel()
 
 	resp, err := replicaServiceClient.ReplicaGet(ctx, &empty.Empty{})

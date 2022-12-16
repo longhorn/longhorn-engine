@@ -172,7 +172,7 @@ func RemoveDevice(dev string) error {
 
 func removeAsync(path string, done chan<- error) {
 	if err := os.Remove(path); err != nil && !os.IsNotExist(err) {
-		logrus.Errorf("Unable to remove: %v", path)
+		logrus.WithError(err).Errorf("Unable to remove: %v", path)
 		done <- err
 	}
 	done <- nil
@@ -207,7 +207,7 @@ func Now() string {
 func GetFileActualSize(file string) int64 {
 	var st syscall.Stat_t
 	if err := syscall.Stat(file, &st); err != nil {
-		logrus.Errorf("Failed to get size of file %v: %v", file, err)
+		logrus.WithError(err).Errorf("Failed to get size of file %v", file)
 		return -1
 	}
 	return st.Blocks * BlockSizeLinux
@@ -217,7 +217,7 @@ func GetHeadFileModifyTimeAndSize(file string) (int64, int64, error) {
 	var st syscall.Stat_t
 
 	if err := syscall.Stat(file, &st); err != nil {
-		logrus.Errorf("Failed to head file %v stat, err %v", file, err)
+		logrus.WithError(err).Errorf("Failed to head file %v stat", file)
 		return 0, 0, err
 	}
 

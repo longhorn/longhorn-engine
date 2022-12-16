@@ -428,7 +428,7 @@ func (r *Replica) removeDiskNode(name string, force bool) error {
 			return fmt.Errorf("cannot remove snapshot %v with %v children",
 				name, len(children))
 		}
-		logrus.Warnf("force delete disk %v with multiple children. Randomly choose a child to inherit", name)
+		logrus.Warnf("Force delete disk %v with multiple children. Randomly choose a child to inherit", name)
 	}
 
 	// only one child from here (or forced deletion)
@@ -1193,7 +1193,7 @@ func (r *Replica) ReadAt(buf []byte, offset int64) (int, error) {
 func (r *Replica) UnmapAt(length uint32, offset int64) (n int, err error) {
 	defer func() {
 		if err != nil {
-			logrus.Errorf("Replica with dir %v failed to do unmap with offset %v and length %v: %v", r.dir, offset, length, err)
+			logrus.WithError(err).Errorf("Replica with dir %v failed to do unmap with offset %v and length %v", r.dir, offset, length)
 		}
 	}()
 	if r.readOnly {
