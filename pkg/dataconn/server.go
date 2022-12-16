@@ -39,7 +39,7 @@ func (s *Server) readFromWire(ret chan<- error) {
 		ret <- err
 		return
 	} else if err != nil {
-		logrus.Errorf("Failed to read: %v", err)
+		logrus.WithError(err).Error("Failed to read")
 		ret <- err
 		return
 	}
@@ -68,7 +68,7 @@ func (s *Server) read() error {
 			}
 			continue
 		case <-s.done:
-			logrus.Infof("RPC server stopped")
+			logrus.Info("RPC server stopped")
 			return nil
 		}
 	}
@@ -125,7 +125,7 @@ func (s *Server) write() {
 		select {
 		case msg := <-s.responses:
 			if err := s.wire.Write(msg); err != nil {
-				logrus.Errorf("Failed to write: %v", err)
+				logrus.WithError(err).Error("Failed to write")
 			}
 		case <-s.done:
 			msg := &Message{

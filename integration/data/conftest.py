@@ -80,7 +80,7 @@ def grpc_controller_device_name_test(request, first_available_device,
     os.link(os.devnull, first_available_device)
 
     def cleanup():
-        # cleanup our symbolic link only if it still points to devnull
+        # clean up our symbolic link only if it still points to devnull
         dev_info = os.stat(first_available_device)
         assert dev_info.st_rdev == os.stat(os.devnull).st_rdev
         os.unlink(first_available_device)

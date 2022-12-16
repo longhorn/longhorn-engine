@@ -72,7 +72,7 @@ func (t *SnapshotHashJob) LockFile() (fileLock *flock.Flock, err error) {
 	defer func() {
 		if err != nil && fileLock != nil && fileLock.Path() != "" {
 			if err := os.RemoveAll(fileLock.Path()); err != nil {
-				logrus.Warnf("failed to remove lock file %v since %v", fileLock.Path(), err)
+				logrus.WithError(err).Warnf("Failed to remove lock file %v", fileLock.Path())
 			}
 		}
 	}()

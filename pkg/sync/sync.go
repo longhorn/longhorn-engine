@@ -548,7 +548,7 @@ func (t *Task) getTransferClients(address string) (*replicaClient.ReplicaClient,
 	var fromClient, toClient *replicaClient.ReplicaClient
 	var fromAddress, toAddress string
 
-	// cleanup replica clients on failure
+	// clean up replica clients on failure
 	defer func() {
 		if err != nil {
 			if fromClient != nil {
@@ -585,12 +585,12 @@ func (t *Task) getFromReplicaClientForTransfer() (*replicaClient.ReplicaClient, 
 		}
 		fromClient, err := replicaClient.NewReplicaClient(r.Address)
 		if err != nil {
-			logrus.Warnf("Failed to get the client for replica %v when picking up a transfer-from replica: %v", r.Address, err)
+			logrus.WithError(err).Warnf("Failed to get the client for replica %v when picking up a transfer-from replica", r.Address)
 			continue
 		}
 		fromReplicaPurgeStatus, err := fromClient.SnapshotPurgeStatus()
 		if err != nil {
-			logrus.Warnf("Failed to check the purge status for replica %v when picking up a transfer-from replica: %v", r.Address, err)
+			logrus.WithError(err).Warnf("Failed to check the purge status for replica %v when picking up a transfer-from replica", r.Address)
 			continue
 		}
 		if fromReplicaPurgeStatus.IsPurging {
@@ -762,7 +762,7 @@ func (t *Task) RebuildStatus() (map[string]*ReplicaRebuildStatus, error) {
 			return nil, errors.Wrapf(err, "failed to check the restore status before fetching the rebuild status")
 		}
 		if restoreStatus.DestFileName != "" {
-			logrus.Debugf("Skip checking rebuild status since the volume is a restore/DR volume")
+			logrus.Debug("Skip checking rebuild status since the volume is a restore/DR volume")
 			return replicaStatusMap, nil
 		}
 

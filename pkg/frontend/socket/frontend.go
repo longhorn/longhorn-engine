@@ -26,11 +26,10 @@ func New() *Socket {
 }
 
 type Socket struct {
-	Volume            string
-	Size              int64
-	SectorSize        int
-	ScsiTimeout       int
-	iscsiAbortTimeout int
+	Volume      string
+	Size        int64
+	SectorSize  int
+	ScsiTimeout int
 
 	isUp         bool
 	socketPath   string
@@ -120,7 +119,7 @@ func (t *Socket) startSocketServerListen(rwu types.ReaderWriterUnmapperAt) error
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
-			logrus.Errorln("Failed to accept socket connection")
+			logrus.Error("Failed to accept socket connection")
 			continue
 		}
 		go t.handleServerConnection(conn, rwu)
@@ -131,11 +130,11 @@ func (t *Socket) handleServerConnection(c net.Conn, rwu types.ReaderWriterUnmapp
 	defer c.Close()
 
 	server := dataconn.NewServer(c, NewDataProcessorWrapper(rwu))
-	logrus.Infoln("New data socket connection established")
+	logrus.Info("New data socket connection established")
 	if err := server.Handle(); err != nil && err != io.EOF {
-		logrus.Errorln("Failed to handle socket server connection due to ", err)
+		logrus.Errorf("Failed to handle socket server connection due to %v", err)
 	} else if err == io.EOF {
-		logrus.Warnln("Socket server connection closed")
+		logrus.Warn("Socket server connection closed")
 	}
 }
 
