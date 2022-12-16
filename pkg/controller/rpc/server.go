@@ -283,15 +283,15 @@ func (hc *ControllerHealthCheckServer) Watch(req *healthpb.HealthCheckRequest, w
 			if err := ws.Send(&healthpb.HealthCheckResponse{
 				Status: healthpb.HealthCheckResponse_SERVING,
 			}); err != nil {
-				logrus.Errorf("Failed to send health check result %v for gRPC controller server: %v",
-					healthpb.HealthCheckResponse_SERVING, err)
+				logrus.WithError(err).Errorf("Failed to send health check result %v for gRPC controller server",
+					healthpb.HealthCheckResponse_SERVING)
 			}
 		} else {
 			if err := ws.Send(&healthpb.HealthCheckResponse{
 				Status: healthpb.HealthCheckResponse_NOT_SERVING,
 			}); err != nil {
-				logrus.Errorf("Failed to send health check result %v for gRPC controller server: %v",
-					healthpb.HealthCheckResponse_NOT_SERVING, err)
+				logrus.WithError(err).Errorf("Failed to send health check result %v for gRPC controller server",
+					healthpb.HealthCheckResponse_NOT_SERVING)
 			}
 
 		}

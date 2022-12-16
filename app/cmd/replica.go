@@ -129,7 +129,7 @@ func startReplica(c *cli.Context) error {
 	go func() {
 		listen, err := net.Listen("tcp", controlAddress)
 		if err != nil {
-			logrus.Warnf("Failed to listen %v: %v", controlAddress, err)
+			logrus.WithError(err).Warnf("Failed to listen %v", controlAddress)
 			resp <- err
 			return
 		}
@@ -142,7 +142,7 @@ func startReplica(c *cli.Context) error {
 
 		logrus.Infof("Listening on gRPC Replica server %s", controlAddress)
 		err = server.Serve(listen)
-		logrus.Warnf("gRPC Replica server at %v is down: %v", controlAddress, err)
+		logrus.WithError(err).Warnf("gRPC Replica server at %v is down", controlAddress)
 		resp <- err
 	}()
 
@@ -150,7 +150,7 @@ func startReplica(c *cli.Context) error {
 		rpcServer := replicarpc.NewDataServer(types.DataServerProtocol(dataServerProtocol), dataAddress, s)
 		logrus.Infof("Listening on data server %s", dataAddress)
 		err := rpcServer.ListenAndServe()
-		logrus.Warnf("Replica rest server at %v is down: %v", dataAddress, err)
+		logrus.WithError(err).Warnf("Replica rest server at %v is down", dataAddress)
 		resp <- err
 	}()
 
@@ -178,7 +178,7 @@ func startReplica(c *cli.Context) error {
 			cmd.Stderr = os.Stderr
 			logrus.Infof("Listening on sync agent server %s", syncAddress)
 			err := cmd.Run()
-			logrus.Warnf("Replica sync agent at %v is down: %v", syncAddress, err)
+			logrus.WithError(err).Warnf("Replica sync agent at %v is down", syncAddress)
 			resp <- err
 		}()
 	}

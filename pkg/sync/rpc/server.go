@@ -220,7 +220,7 @@ func (s *SyncAgentServer) StartRestore(backupURL, requestedBackupName, snapshotD
 	newRestoreStatus := s.RestoreInfo.DeepCopy()
 	defer func() {
 		if err != nil {
-			logrus.Warnf("Failed to initiate the backup restore, will do revert and cleanup then.")
+			logrus.Warn("Failed to initiate the backup restore, will do revert and clean up then.")
 			if newRestoreStatus.ToFileName != newRestoreStatus.SnapshotDiskName {
 				os.Remove(newRestoreStatus.ToFileName)
 			}
@@ -249,7 +249,7 @@ func (s *SyncAgentServer) canDoIncrementalRestore(restoreStatus *replica.Restore
 		return false
 	}
 	if _, err := backupstore.InspectBackup(strings.Replace(backupURL, requestedBackupName, restoreStatus.LastRestored, 1)); err != nil {
-		logrus.Warnf("The last restored backup %v becomes invalid for incremental restore, will do full restore instead, err: %v", restoreStatus.LastRestored, err)
+		logrus.WithError(err).Warnf("The last restored backup %v becomes invalid for incremental restore, will do full restore instead", restoreStatus.LastRestored)
 		return false
 	}
 	return true
@@ -288,7 +288,7 @@ func (s *SyncAgentServer) Reset(ctx context.Context, req *empty.Empty) (*empty.E
 	s.Lock()
 	defer s.Unlock()
 	if s.isRestoring {
-		logrus.Errorf("replica is currently restoring, cannot reset")
+		logrus.Error("Replica is currently restoring, cannot reset")
 		return nil, fmt.Errorf("replica is currently restoring, cannot reset")
 	}
 	s.isRestoring = false
@@ -346,7 +346,7 @@ func (s *SyncAgentServer) VolumeExport(ctx context.Context, req *ptypes.VolumeEx
 	var err error
 	defer func() {
 		if err != nil {
-			logrus.Warnf("Failed to export snapshot %v to %v: %v", req.SnapshotFileName, remoteAddress, err)
+			logrus.WithError(err).Warnf("Failed to export snapshot %v to %v", req.SnapshotFileName, remoteAddress)
 		}
 	}()
 
@@ -542,7 +542,7 @@ func (s *SyncAgentServer) SnapshotClone(ctx context.Context, req *ptypes.Snapsho
 		if err != nil {
 			s.CloneStatus.Error = err.Error()
 			s.CloneStatus.State = types.ProcessStateError
-			logrus.Errorf("Sync agent gRPC server failed to clone snapshot %v from replica %v to replica %v: %v", req.SnapshotFileName, req.FromAddress, req.ToHost, err)
+			logrus.WithError(err).Errorf("Sync agent gRPC server failed to clone snapshot %v from replica %v to replica %v", req.SnapshotFileName, req.FromAddress, req.ToHost)
 		} else {
 			s.CloneStatus.Progress = 100
 			s.CloneStatus.State = types.ProcessStateComplete
@@ -550,7 +550,7 @@ func (s *SyncAgentServer) SnapshotClone(ctx context.Context, req *ptypes.Snapsho
 		}
 		s.CloneStatus.Unlock()
 		if err = s.FinishClone(); err != nil {
-			logrus.Errorf("could not finish cloning: %v", err)
+			logrus.WithError(err).Error("Could not finish cloning")
 		}
 	}()
 
@@ -843,7 +843,7 @@ func (s *SyncAgentServer) BackupRestore(ctx context.Context, req *ptypes.BackupR
 func (s *SyncAgentServer) completeBackupRestore() (err error) {
 	defer func() {
 		if extraErr := s.FinishRestore(err); extraErr != nil {
-			logrus.Errorf("failed to finish backup restore: %v", extraErr)
+			logrus.WithError(extraErr).Error("Failed to finish backup restore")
 			return
 		}
 	}()
@@ -864,7 +864,7 @@ func (s *SyncAgentServer) completeBackupRestore() (err error) {
 
 func (s *SyncAgentServer) postFullRestoreOperations(restoreStatus *replica.RestoreStatus) error {
 	if err := backup.CreateNewSnapshotMetafile(restoreStatus.ToFileName + ".meta"); err != nil {
-		logrus.Errorf("failed creating meta snapshot file: %v", err)
+		logrus.WithError(err).Error("Failed creating meta snapshot file")
 		return err
 	}
 
@@ -900,24 +900,24 @@ func (s *SyncAgentServer) extraIncrementalFullRestoreOperations(restoreStatus *r
 	tmpSnapshotDiskName := restoreStatus.ToFileName
 	snapshotDiskName, err := diskutil.GetSnapshotNameFromTempFileName(tmpSnapshotDiskName)
 	if err != nil {
-		logrus.Errorf("failed to get snapshotName from tempFileName: %v", err)
+		logrus.WithError(err).Error("Failed to get snapshotName from tempFileName")
 		return err
 	}
 	snapshotDiskMetaName := diskutil.GenerateSnapshotDiskMetaName(snapshotDiskName)
 	tmpSnapshotDiskMetaName := diskutil.GenerateSnapshotDiskMetaName(tmpSnapshotDiskName)
 
 	defer func() {
-		// try to cleanup tmp files
+		// try to clean up tmp files
 		if _, err := s.FileRemove(nil, &ptypes.FileRemoveRequest{
 			FileName: tmpSnapshotDiskName,
 		}); err != nil {
-			logrus.Warnf("Failed to cleanup delta file %s: %v", tmpSnapshotDiskName, err)
+			logrus.WithError(err).Warnf("Failed to clean up delta file %s", tmpSnapshotDiskName)
 		}
 
 		if _, err := s.FileRemove(nil, &ptypes.FileRemoveRequest{
 			FileName: tmpSnapshotDiskMetaName,
 		}); err != nil {
-			logrus.Warnf("Failed to cleanup delta file %s: %v", tmpSnapshotDiskMetaName, err)
+			logrus.WithError(err).Warnf("Failed to clean up delta file %s", tmpSnapshotDiskMetaName)
 		}
 	}()
 
@@ -941,24 +941,24 @@ func (s *SyncAgentServer) extraIncrementalFullRestoreOperations(restoreStatus *r
 
 func (s *SyncAgentServer) postIncrementalRestoreOperations(restoreStatus *replica.RestoreStatus) error {
 	deltaFileName := restoreStatus.ToFileName
-	logrus.Infof("Cleaning up incremental restore by Coalescing and removing the delta file")
+	logrus.Info("Cleaning up incremental restore by Coalescing and removing the delta file")
 	defer func() {
 		if _, err := s.FileRemove(nil, &ptypes.FileRemoveRequest{
 			FileName: deltaFileName,
 		}); err != nil {
-			logrus.Warnf("Failed to cleanup delta file %s: %v", deltaFileName, err)
+			logrus.WithError(err).Warnf("Failed to clean up delta file %s", deltaFileName)
 		}
 	}()
 
 	// Coalesce delta file to snapshot/disk file
 	if err := sparse.FoldFile(deltaFileName, restoreStatus.SnapshotDiskName, &PurgeStatus{}); err != nil {
-		logrus.Errorf("Failed to coalesce %s on %s: %v", deltaFileName, restoreStatus.SnapshotDiskName, err)
+		logrus.WithError(err).Errorf("Failed to coalesce %s on %s", deltaFileName, restoreStatus.SnapshotDiskName)
 		return err
 	}
 
 	// Reload the replica as snapshot files got changed
 	if err := s.reloadReplica(); err != nil {
-		logrus.Errorf("failed to reload replica: %v", err)
+		logrus.WithError(err).Error("Failed to reload replica")
 		return err
 	}
 
@@ -1046,7 +1046,7 @@ func (s *SyncAgentServer) purgeSnapshots() (err error) {
 		s.PurgeStatus.Unlock()
 
 		if err := s.FinishPurge(); err != nil {
-			logrus.Errorf("could not mark finish purge: %v", err)
+			logrus.WithError(err).Error("Could not mark finish purge")
 		}
 	}()
 

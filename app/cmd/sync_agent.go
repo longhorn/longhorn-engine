@@ -38,7 +38,7 @@ func SyncAgentCmd() cli.Command {
 		},
 		Action: func(c *cli.Context) {
 			if err := startSyncAgent(c); err != nil {
-				logrus.WithError(err).Fatalf("Error running sync-agent command")
+				logrus.WithError(err).Fatal("Error running sync-agent command")
 			}
 		},
 	}
@@ -49,7 +49,7 @@ func SyncAgentServerResetCmd() cli.Command {
 		Name: "sync-agent-server-reset",
 		Action: func(c *cli.Context) {
 			if err := doReset(c); err != nil {
-				logrus.WithError(err).Fatalf("Error running sync-agent-server-reset command")
+				logrus.WithError(err).Fatal("Error running sync-agent-server-reset command")
 			}
 		},
 	}
@@ -99,9 +99,9 @@ func doReset(c *cli.Context) error {
 	}
 
 	if err := task.Reset(); err != nil {
-		logrus.Errorf("Failed to reset sync agent server")
+		logrus.Error("Failed to reset sync agent server")
 		return err
 	}
-	logrus.Infof("Successfully reset sync agent server")
+	logrus.Info("Successfully reset sync agent server")
 	return nil
 }
