@@ -45,8 +45,8 @@ github.com/konsorten/go-windows-terminal-sequences v1.0.1/go.mod h1:T0+1ngSBFLxv
 github.com/kr/fs v0.1.0/go.mod h1:FFnZGqtBN9Gxj7eW1uZ42v5BccTP0vu6NEaFoC2HwRg=
 github.com/longhorn/backupstore v0.0.0-20221114044558-19f4902cd4fd h1:dRGV5NNnYWoxtYHhm48YVwvhioU2U0Dote+vbgcR8WQ=
 github.com/longhorn/backupstore v0.0.0-20221114044558-19f4902cd4fd/go.mod h1:hvIVsrpjPey7KupirAh0WoPMg0ArWnE6fA5bI30X7AI=
-github.com/longhorn/go-iscsi-helper v0.0.0-20221209140622-1eaf67c743d6 h1:yCUExj15NOSBiWyg19rI7P5Dz8sDa8iHHfddkTqcs6o=
-github.com/longhorn/go-iscsi-helper v0.0.0-20221209140622-1eaf67c743d6/go.mod h1:9z/y9glKmWEdV50tjlUPxFwi1goQfIrrsoZbnMyIZbY=
+github.com/longhorn/go-iscsi-helper v0.0.0-20221219041640-6c94fb0d483a h1:wyL5quo6Z6PiM2XJJ2ZRmd5Yq1dXoyEZQgL5GGMzcoY=
+github.com/longhorn/go-iscsi-helper v0.0.0-20221219041640-6c94fb0d483a/go.mod h1:9z/y9glKmWEdV50tjlUPxFwi1goQfIrrsoZbnMyIZbY=
 github.com/longhorn/nsfilelock v0.0.0-20200723175406-fa7c83ad0003 h1:Jw9uANsGcHTxp6HcC++/vN17LfeuDmozHI2j6DoZf5E=
 github.com/longhorn/nsfilelock v0.0.0-20200723175406-fa7c83ad0003/go.mod h1:0CLeXlf59Lg6C0kjLSDf47ft73Dh37CwymYRKWwAn04=
 github.com/longhorn/sparse-tools v0.0.0-20221130075436-f6b8c1f51980 h1:cvnW+kTPwWsUD/KbMlOSbyqhEf6zvxcJpCJrj6Xy/g0=
