@@ -259,38 +259,10 @@ func (cs *ControllerServer) VersionDetailGet(ctx context.Context, req *empty.Emp
 	}, nil
 }
 
-func (cs *ControllerServer) MetricGet(req *empty.Empty, srv ptypes.ControllerService_MetricGetServer) error {
-	cnt := 0
-	for {
-		latestMetics := cs.c.GetLatestMetics()
-		metric := &ptypes.Metric{}
-		if latestMetics.IOPS.Read != 0 {
-			metric.ReadBandwidth = latestMetics.Bandwidth.Read
-			metric.ReadLatency = latestMetics.TotalLatency.Read / latestMetics.IOPS.Read
-		}
-		if latestMetics.IOPS.Write != 0 {
-			metric.WriteBandwidth = latestMetics.Bandwidth.Write
-			metric.WriteLatency = latestMetics.TotalLatency.Write / latestMetics.IOPS.Write
-		}
-		metric.IOPS = latestMetics.IOPS.Read + latestMetics.IOPS.Write
-
-		if err := srv.Send(&ptypes.MetricGetReply{
-			Metric: metric,
-		}); err != nil {
-			logrus.Errorf("failed to send metric in gRPC streaming: %v", err)
-			cnt++
-		} else {
-			cnt = 0
-		}
-
-		if cnt >= GRPCRetryCount {
-			break
-		}
-
-		time.Sleep(1 * time.Second)
-	}
-
-	return nil
+func (cs *ControllerServer) MetricsGet(ctx context.Context, req *empty.Empty) (*ptypes.MetricsGetReply, error) {
+	return &ptypes.MetricsGetReply{
+		Metrics: cs.c.GetLatestMetics(),
+	}, nil
 }
 
 func (hc *ControllerHealthCheckServer) Check(context.Context, *healthpb.HealthCheckRequest) (*healthpb.HealthCheckResponse, error) {

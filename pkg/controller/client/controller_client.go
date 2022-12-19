@@ -398,3 +398,28 @@ func (c *ControllerClient) Check() error {
 
 	return nil
 }
+
+func (c *ControllerClient) MetricsGet() (*types.Metrics, error) {
+	controllerServiceClient := c.getControllerServiceClient()
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
+	defer cancel()
+
+	reply, err := controllerServiceClient.MetricsGet(ctx, &empty.Empty{})
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to get metrics for volume %v", c.serviceURL)
+	}
+	return &types.Metrics{
+		Throughput: types.RWMetrics{
+			Read:  reply.Metrics.ReadThroughput,
+			Write: reply.Metrics.WriteThroughput,
+		},
+		TotalLatency: types.RWMetrics{
+			Read:  reply.Metrics.ReadLatency,
+			Write: reply.Metrics.WriteLatency,
+		},
+		IOPS: types.RWMetrics{
+			Read:  reply.Metrics.ReadIOPS,
+			Write: reply.Metrics.WriteIOPS,
+		},
+	}, nil
+}
