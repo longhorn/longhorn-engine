@@ -42,31 +42,42 @@ def test_basic_rw(dev):  # NOQA
         verify_data(dev, offset, data)
 
 
-def test_rw_with_metric(grpc_controller,  # NOQA
-                        grpc_replica1, grpc_replica2):  # NOQA
-    rw_dev = get_dev(grpc_replica1, grpc_replica2, grpc_controller)
+def test_metrics(grpc_replica1, grpc_replica2, grpc_controller):  # NOQA
+    rw_dev = get_dev(grpc_replica1, grpc_replica2,
+                     grpc_controller)
+    metrics = grpc_controller.metrics_get()
+    metrics = metrics.metrics
 
-    replies = grpc_controller.metric_get()
-    # skip the first metric since its fields are 0
-    next(replies).metric
+    # No r/w IO
+    assert metrics.readThroughput == 0
+    assert metrics.writeThroughput == 0
+    assert metrics.readIOPS == 0
+    assert metrics.writeIOPS == 0
 
-    for i in range(0, 5):
-        base = random.randint(1, SIZE - PAGE_SIZE)
-        offset = (base // PAGE_SIZE) * PAGE_SIZE
-        length = base - offset
-        data = random_string(length)
-        verify_data(rw_dev, offset, data)
+    # Create r/w IO
+    base = random.randint(1, SIZE - PAGE_SIZE)
+    offset = (base // PAGE_SIZE) * PAGE_SIZE
+    length = base - offset
+    data = random_string(length)
+    verify_data(rw_dev, offset, data)
 
-        while 1:
-            try:
-                metric = next(replies).metric
-                # it's hard to confirm the accurate value of metric
-                assert metric.readBandwidth != 0
-                assert metric.writeBandwidth != 0
-                assert metric.iOPS != 0
-                break
-            except StopIteration:
-                time.sleep(1)
+    # metrics update period is 1 second
+    max_iters = 10
+    for i in range(max_iters):
+        try:
+            metrics = grpc_controller.metrics_get()
+            metrics = metrics.metrics
+
+            # it's hard to confirm the accurate value of metric
+            assert metrics.readThroughput != 0
+            assert metrics.writeThroughput != 0
+            assert metrics.readIOPS != 0
+            assert metrics.writeIOPS != 0
+            break
+        except Exception as e:
+            if i == max_iters - 1:
+                raise e
+            time.sleep(0.1)
 
 
 def test_beyond_boundary(dev):  # NOQA
