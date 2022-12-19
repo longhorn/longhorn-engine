@@ -152,8 +152,8 @@ const (
 )
 
 type Metrics struct {
-	Bandwidth    RWMetrics // in byte
-	TotalLatency RWMetrics // in microsecond(us)
+	Throughput   RWMetrics // in byte
+	TotalLatency RWMetrics // in nanoseconds
 	IOPS         RWMetrics
 }
 

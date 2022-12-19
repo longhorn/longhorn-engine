@@ -5,7 +5,6 @@ import (
 	"net"
 	"regexp"
 	"sync"
-	"sync/atomic"
 	"time"
 
 	"github.com/pkg/errors"
@@ -17,6 +16,7 @@ import (
 	"github.com/longhorn/longhorn-engine/pkg/types"
 	"github.com/longhorn/longhorn-engine/pkg/util"
 	diskutil "github.com/longhorn/longhorn-engine/pkg/util/disk"
+	"github.com/longhorn/longhorn-engine/proto/ptypes"
 )
 
 type Controller struct {
@@ -45,6 +45,7 @@ type Controller struct {
 	ShutdownWG sync.WaitGroup
 	lastError  error
 
+	metricsLock   sync.RWMutex
 	latestMetrics *types.Metrics
 	metrics       *types.Metrics
 
@@ -943,7 +944,7 @@ func (c *Controller) handleErrorNoLock(err error) error {
 				// if we still have a good replica, do not return error
 				for _, r := range c.replicas {
 					if r.Mode == types.RW {
-						logrus.Errorf("Ignoring error because %s is mode RW: %v", r.Address, err)
+						logrus.WithError(err).Errorf("Ignoring error because %s is mode RW", r.Address)
 						err = nil
 						break
 					}
@@ -1062,15 +1063,17 @@ func (c *Controller) FrontendState() string {
 }
 
 func (c *Controller) recordMetrics(isRead bool, dataLength int, latency time.Duration) {
-	latencyInUS := uint64(latency.Nanoseconds() / 1000)
+	c.metricsLock.Lock()
+	defer c.metricsLock.Unlock()
+
 	if isRead {
-		atomic.AddUint64(&c.metrics.Bandwidth.Read, uint64(dataLength))
-		atomic.AddUint64(&c.metrics.TotalLatency.Read, latencyInUS)
-		atomic.AddUint64(&c.metrics.IOPS.Read, 1)
+		c.metrics.Throughput.Read += uint64(dataLength)
+		c.metrics.TotalLatency.Read += uint64(latency.Nanoseconds())
+		c.metrics.IOPS.Read++
 	} else {
-		atomic.AddUint64(&c.metrics.Bandwidth.Write, uint64(dataLength))
-		atomic.AddUint64(&c.metrics.TotalLatency.Write, latencyInUS)
-		atomic.AddUint64(&c.metrics.IOPS.Write, 1)
+		c.metrics.Throughput.Write += uint64(dataLength)
+		c.metrics.TotalLatency.Write += uint64(latency.Nanoseconds())
+		c.metrics.IOPS.Write++
 	}
 }
 
@@ -1078,12 +1081,35 @@ func (c *Controller) metricsStart() {
 	go func() {
 		for {
 			time.Sleep(1 * time.Second)
+			c.metricsLock.Lock()
 			c.latestMetrics = c.metrics
 			c.metrics = &types.Metrics{}
+			c.metricsLock.Unlock()
 		}
 	}()
 }
 
-func (c *Controller) GetLatestMetics() *types.Metrics {
-	return c.latestMetrics
+func (c *Controller) GetLatestMetics() *ptypes.Metrics {
+	c.metricsLock.RLock()
+	defer c.metricsLock.RUnlock()
+
+	metrics := &ptypes.Metrics{}
+
+	metrics.ReadThroughput = c.latestMetrics.Throughput.Read
+	metrics.WriteThroughput = c.latestMetrics.Throughput.Write
+	metrics.ReadIOPS = c.latestMetrics.IOPS.Read
+	metrics.WriteIOPS = c.latestMetrics.IOPS.Write
+
+	if c.latestMetrics.IOPS.Read != 0 {
+		metrics.ReadLatency = getAverageLatency(c.latestMetrics.TotalLatency.Read, c.latestMetrics.IOPS.Read)
+	}
+	if c.latestMetrics.IOPS.Write != 0 {
+		metrics.WriteLatency = getAverageLatency(c.latestMetrics.TotalLatency.Write, c.latestMetrics.IOPS.Write)
+	}
+
+	return metrics
+}
+
+func getAverageLatency(totalLatency, iops uint64) uint64 {
+	return totalLatency / iops
 }
