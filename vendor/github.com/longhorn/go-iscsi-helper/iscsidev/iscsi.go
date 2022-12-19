@@ -1,6 +1,7 @@
 package iscsidev
 
 import (
+	"fmt"
 	"strings"
 	"time"
 
@@ -69,8 +70,17 @@ func Volume2ISCSIName(name string) string {
 	return strings.Replace(name, "_", ":", -1)
 }
 
-func GetTargetName(name string) string {
-	return "iqn.2019-10.io.longhorn:" + Volume2ISCSIName(name)
+func GetTargetName(volumeName string) string {
+	return "iqn.2019-10.io.longhorn:" + Volume2ISCSIName(volumeName)
+}
+
+func (dev *Device) ReloadTargetID() error {
+	tid, err := iscsi.GetTargetTid(dev.Target)
+	if err != nil {
+		return err
+	}
+	dev.targetID = tid
+	return nil
 }
 
 func (dev *Device) CreateTarget() (err error) {
@@ -165,6 +175,48 @@ func (dev *Device) StartInitator() error {
 	}
 
 	return nil
+}
+
+// ReloadInitiator does nothing for the iSCSI initiator/target except for
+// updating the timeout. It is mainly responsible for initializing the struct
+// field `dev.KernelDevice`.
+func (dev *Device) ReloadInitiator() error {
+	lock := nsfilelock.NewLockWithTimeout(util.GetHostNamespacePath(HostProc), LockFile, LockTimeout)
+	if err := lock.Lock(); err != nil {
+		return errors.Wrap(err, "failed to lock")
+	}
+	defer lock.Unlock()
+
+	ne, err := util.NewNamespaceExecutor(util.GetHostNamespacePath(HostProc))
+	if err != nil {
+		return err
+	}
+
+	if err := iscsi.CheckForInitiatorExistence(ne); err != nil {
+		return err
+	}
+
+	localIP, err := util.GetIPToHost()
+	if err != nil {
+		return err
+	}
+
+	if err := iscsi.DiscoverTarget(localIP, dev.Target, ne); err != nil {
+		return err
+	}
+
+	if !iscsi.IsTargetDiscovered(localIP, dev.Target, ne) {
+		return fmt.Errorf("failed to discover target %v for the initiator", dev.Target)
+	}
+
+	if err := iscsi.UpdateIscsiDeviceAbortTimeout(dev.Target, dev.IscsiAbortTimeout, ne); err != nil {
+		return err
+	}
+	if dev.KernelDevice, err = iscsi.GetDevice(localIP, dev.Target, TargetLunID, ne); err != nil {
+		return err
+	}
+
+	return iscsi.UpdateScsiDeviceTimeout(dev.KernelDevice.Name, dev.ScsiTimeout, ne)
 }
 
 func (dev *Device) StopInitiator() error {
