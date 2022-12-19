@@ -1,4 +1,3 @@
-import time
 import os
 import grpc
 import pytest
@@ -161,20 +160,3 @@ def test_controller_expand(grpc_controller_client):  # NOQA
 
     v = grpc_controller_client.volume_shutdown()
     assert v.replicaCount == 0
-
-
-def test_metric(grpc_controller_client):  # NOQA
-    replies = grpc_controller_client.metric_get()
-
-    cnt = 0
-    while cnt < 5:
-        try:
-            metric = next(replies).metric
-            assert metric.readBandwidth == 0
-            assert metric.writeBandwidth == 0
-            assert metric.readLatency == 0
-            assert metric.writeLatency == 0
-            assert metric.iOPS == 0
-            cnt = cnt + 1
-        except StopIteration:
-            time.sleep(1)
