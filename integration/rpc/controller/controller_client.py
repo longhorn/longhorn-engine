@@ -70,8 +70,8 @@ class ControllerClient(object):
                 controller_pb2.ControllerReplica(
                     address=controller_pb2.ReplicaAddress(address=address), mode=mode)))
 
-    def metric_get(self):
-        return self.stub.MetricGet(empty_pb2.Empty())
+    def metrics_get(self):
+        return self.stub.MetricsGet(empty_pb2.Empty())
 
     def client_upgrade(self, address):
         self.address = address

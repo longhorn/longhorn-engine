@@ -105,10 +105,10 @@ class ControllerServiceStub(object):
         request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
         response_deserializer=controller__pb2.VersionDetailGetReply.FromString,
         )
-    self.MetricGet = channel.unary_stream(
-        '/ptypes.ControllerService/MetricGet',
+    self.MetricsGet = channel.unary_unary(
+        '/ptypes.ControllerService/MetricsGet',
         request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
-        response_deserializer=controller__pb2.MetricGetReply.FromString,
+        response_deserializer=controller__pb2.MetricsGetReply.FromString,
         )
 
 
@@ -242,7 +242,7 @@ class ControllerServiceServicer(object):
     context.set_details('Method not implemented!')
     raise NotImplementedError('Method not implemented!')
 
-  def MetricGet(self, request, context):
+  def MetricsGet(self, request, context):
     # missing associated documentation comment in .proto file
     pass
     context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -342,10 +342,10 @@ def add_ControllerServiceServicer_to_server(servicer, server):
           request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
           response_serializer=controller__pb2.VersionDetailGetReply.SerializeToString,
       ),
-      'MetricGet': grpc.unary_stream_rpc_method_handler(
-          servicer.MetricGet,
+      'MetricsGet': grpc.unary_unary_rpc_method_handler(
+          servicer.MetricsGet,
           request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
-          response_serializer=controller__pb2.MetricGetReply.SerializeToString,
+          response_serializer=controller__pb2.MetricsGetReply.SerializeToString,
       ),
   }
   generic_handler = grpc.method_handlers_generic_handler(
