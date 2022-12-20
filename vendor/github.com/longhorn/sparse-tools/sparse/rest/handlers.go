@@ -75,7 +75,7 @@ func getQueryInterval(request *http.Request) (sparse.Interval, error) {
 }
 
 func (server *SyncServer) open(writer http.ResponseWriter, request *http.Request) {
-	err := server.doOpen(request)
+	err := server.doOpen(writer, request)
 	if err != nil {
 		log.WithError(err).Error("Failed to open Ssync server")
 		http.Error(writer, err.Error(), http.StatusInternalServerError)
@@ -85,7 +85,7 @@ func (server *SyncServer) open(writer http.ResponseWriter, request *http.Request
 	log.Infof("Ssync server is opened and ready for receiving file %v", server.filePath)
 }
 
-func (server *SyncServer) doOpen(request *http.Request) error {
+func (server *SyncServer) doOpen(writer http.ResponseWriter, request *http.Request) error {
 	// get directIO
 	directIO, err := getQueryDirectIO(request)
 	if err != nil {
@@ -115,6 +115,14 @@ func (server *SyncServer) doOpen(request *http.Request) error {
 
 	// initialize the server file object
 	server.fileIo = fileIo
+
+	outgoingJSON, err := json.Marshal(server.fileAlreadyExists)
+	if err != nil {
+		return errors.Wrap(err, "failed to marshal fileAlreadyExists")
+	}
+
+	writer.Header().Set("Content-Type", "application/json")
+	fmt.Fprint(writer, string(outgoingJSON))
 
 	return nil
 }
@@ -216,7 +224,10 @@ func (server *SyncServer) doGetChecksum(writer http.ResponseWriter, request *htt
 
 	writer.Header().Set("Content-Type", "application/json")
 	fmt.Fprint(writer, string(outgoingJSON))
-	server.syncFileOps.UpdateSyncFileProgress(remoteDataInterval.Len())
+
+	if server.fileAlreadyExists {
+		server.syncFileOps.UpdateSyncFileProgress(remoteDataInterval.Len())
+	}
 
 	return nil
 }
@@ -246,6 +257,10 @@ func (server *SyncServer) doWriteData(request *http.Request) error {
 	err = sparse.WriteDataInterval(server.fileIo, remoteDataInterval, data)
 	if err != nil {
 		return errors.Wrapf(err, "failed to write data interval %+v", remoteDataInterval)
+	}
+
+	if !server.fileAlreadyExists {
+		server.syncFileOps.UpdateSyncFileProgress(remoteDataInterval.Len())
 	}
 
 	return nil
