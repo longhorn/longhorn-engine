@@ -77,6 +77,12 @@ func ControllerCmd() cli.Command {
 				Hidden: false,
 				Usage:  "To enable marking snapshot chain as removed during unmap",
 			},
+			cli.IntFlag{
+				Name:     "file-sync-http-client-timeout",
+				Required: false,
+				Value:    5,
+				Usage:    "HTTP client timeout for replica file sync server",
+			},
 		},
 		Action: func(c *cli.Context) {
 			if err := startController(c); err != nil {
@@ -105,6 +111,7 @@ func startController(c *cli.Context) error {
 	salvageRequested := c.Bool("salvageRequested")
 	unmapMarkSnapChainRemoved := c.Bool("unmap-mark-snap-chain-removed")
 	dataServerProtocol := c.String("data-server-protocol")
+	fileSyncHTTPClientTimeout := c.Int("file-sync-http-client-timeout")
 
 	size := c.String("size")
 	if size == "" {
@@ -153,7 +160,8 @@ func startController(c *cli.Context) error {
 	logrus.Infof("Creating volume %v controller with iSCSI target request timeout %v and engine to replica(s) timeout %v",
 		name, iscsiTargetRequestTimeout, engineReplicaTimeout)
 	control := controller.NewController(name, dynamic.New(factories), frontend, isUpgrade, disableRevCounter, salvageRequested,
-		unmapMarkSnapChainRemoved, iscsiTargetRequestTimeout, engineReplicaTimeout, types.DataServerProtocol(dataServerProtocol))
+		unmapMarkSnapChainRemoved, iscsiTargetRequestTimeout, engineReplicaTimeout, types.DataServerProtocol(dataServerProtocol),
+		fileSyncHTTPClientTimeout)
 
 	// need to wait for Shutdown() completion
 	control.ShutdownWG.Add(1)

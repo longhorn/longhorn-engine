@@ -432,7 +432,7 @@ func (c *ReplicaClient) RenameFile(oldFileName, newFileName string) error {
 	return nil
 }
 
-func (c *ReplicaClient) SendFile(from, host string, port int32, fastSync bool) error {
+func (c *ReplicaClient) SendFile(from, host string, port int32, fileSyncHTTPClientTimeout int, fastSync bool) error {
 	syncAgentServiceClient, err := c.getSyncServiceClient()
 	if err != nil {
 		return err
@@ -441,10 +441,11 @@ func (c *ReplicaClient) SendFile(from, host string, port int32, fastSync bool) e
 	defer cancel()
 
 	if _, err := syncAgentServiceClient.FileSend(ctx, &ptypes.FileSendRequest{
-		FromFileName: from,
-		Host:         host,
-		Port:         port,
-		FastSync:     fastSync,
+		FromFileName:              from,
+		Host:                      host,
+		Port:                      port,
+		FastSync:                  fastSync,
+		FileSyncHttpClientTimeout: int32(fileSyncHTTPClientTimeout),
 	}); err != nil {
 		return errors.Wrapf(err, "failed to send file %v to %v:%v", from, host, port)
 	}
@@ -452,7 +453,7 @@ func (c *ReplicaClient) SendFile(from, host string, port int32, fastSync bool) e
 	return nil
 }
 
-func (c *ReplicaClient) ExportVolume(snapshotName, host string, port int32, exportBackingImageIfExist bool) error {
+func (c *ReplicaClient) ExportVolume(snapshotName, host string, port int32, exportBackingImageIfExist bool, fileSyncHTTPClientTimeout int) error {
 	syncAgentServiceClient, err := c.getSyncServiceClient()
 	if err != nil {
 		return err
@@ -466,6 +467,7 @@ func (c *ReplicaClient) ExportVolume(snapshotName, host string, port int32, expo
 		Host:                      host,
 		Port:                      port,
 		ExportBackingImageIfExist: exportBackingImageIfExist,
+		FileSyncHttpClientTimeout: int32(fileSyncHTTPClientTimeout),
 	}); err != nil {
 		return errors.Wrapf(err, "failed to export snapshot %v to %v:%v", snapshotName, host, port)
 	}
@@ -490,7 +492,7 @@ func (c *ReplicaClient) LaunchReceiver(toFilePath string) (string, int32, error)
 	return c.host, reply.Port, nil
 }
 
-func (c *ReplicaClient) SyncFiles(fromAddress string, list []types.SyncFileInfo, fastSync bool) error {
+func (c *ReplicaClient) SyncFiles(fromAddress string, list []types.SyncFileInfo, fileSyncHTTPClientTimeout int, fastSync bool) error {
 	syncAgentServiceClient, err := c.getSyncServiceClient()
 	if err != nil {
 		return err
@@ -499,10 +501,11 @@ func (c *ReplicaClient) SyncFiles(fromAddress string, list []types.SyncFileInfo,
 	defer cancel()
 
 	if _, err := syncAgentServiceClient.FilesSync(ctx, &ptypes.FilesSyncRequest{
-		FromAddress:      fromAddress,
-		ToHost:           c.host,
-		SyncFileInfoList: syncFileInfoListToSyncAgentGRPCFormat(list),
-		FastSync:         fastSync,
+		FromAddress:               fromAddress,
+		ToHost:                    c.host,
+		SyncFileInfoList:          syncFileInfoListToSyncAgentGRPCFormat(list),
+		FastSync:                  fastSync,
+		FileSyncHttpClientTimeout: int32(fileSyncHTTPClientTimeout),
 	}); err != nil {
 		return errors.Wrapf(err, "failed to sync files %+v from %v", list, fromAddress)
 	}
@@ -668,7 +671,7 @@ func (c *ReplicaClient) ReplicaRebuildStatus() (*ptypes.ReplicaRebuildStatusResp
 	return status, nil
 }
 
-func (c *ReplicaClient) CloneSnapshot(fromAddress, snapshotFileName string, exportBackingImageIfExist bool) error {
+func (c *ReplicaClient) CloneSnapshot(fromAddress, snapshotFileName string, exportBackingImageIfExist bool, fileSyncHTTPClientTimeout int) error {
 	syncAgentServiceClient, err := c.getSyncServiceClient()
 	if err != nil {
 		return err
@@ -681,6 +684,7 @@ func (c *ReplicaClient) CloneSnapshot(fromAddress, snapshotFileName string, expo
 		ToHost:                    c.host,
 		SnapshotFileName:          snapshotFileName,
 		ExportBackingImageIfExist: exportBackingImageIfExist,
+		FileSyncHttpClientTimeout: int32(fileSyncHTTPClientTimeout),
 	}); err != nil {
 		return errors.Wrapf(err, "failed to clone snapshot %v from replica %v to host %v", snapshotFileName, fromAddress, c.host)
 	}

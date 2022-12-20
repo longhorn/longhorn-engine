@@ -33,10 +33,16 @@ func ExportVolumeCmd() cli.Command {
 				Name:  "export-backing-image-if-exist",
 				Usage: "specify if the backing image should be exported if it exists",
 			},
+			cli.IntFlag{
+				Name:     "file-sync-http-client-timeout",
+				Required: false,
+				Value:    5,
+				Usage:    "HTTP client timeout for replica file sync server",
+			},
 		},
 		Action: func(c *cli.Context) {
 			if err := exportVolume(c); err != nil {
-				log.Fatalf("Effor running export volume command: %v", err)
+				log.Fatalf("Error running export volume command: %v", err)
 			}
 		},
 	}
@@ -57,6 +63,7 @@ func exportVolume(c *cli.Context) error {
 		return fmt.Errorf("missing required parameter: receiver-port")
 	}
 	exportBackingImageIfExist := c.Bool("export-backing-image-if-exist")
+	fileSyncHTTPClientTimeout := c.Int("file-sync-http-client-timeout")
 
 	// Get controller url
 	controllerClient, err := getControllerClient(c)
@@ -104,5 +111,5 @@ func exportVolume(c *cli.Context) error {
 
 	logrus.Infof("Exporting snapshot %v of volume %s using replica %v", snapshotName, volume.Name, r.Address)
 
-	return rClient.ExportVolume(snapshotName, receiverAddress, int32(receiverPort), exportBackingImageIfExist)
+	return rClient.ExportVolume(snapshotName, receiverAddress, int32(receiverPort), exportBackingImageIfExist, fileSyncHTTPClientTimeout)
 }

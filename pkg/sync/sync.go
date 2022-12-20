@@ -394,7 +394,7 @@ func (t *Task) VerifyRebuildReplica(address string) error {
 	return nil
 }
 
-func (t *Task) AddReplica(volumeSize, volumeCurrentSize int64, replica string, fastSync bool) error {
+func (t *Task) AddReplica(volumeSize, volumeCurrentSize int64, replica string, fileSyncHTTPClientTimeout int, fastSync bool) error {
 	volume, err := t.client.VolumeGet()
 	if err != nil {
 		return err
@@ -441,7 +441,7 @@ func (t *Task) AddReplica(volumeSize, volumeCurrentSize int64, replica string, f
 		return fmt.Errorf("sync file list shouldn't contain volume head")
 	}
 
-	if err = toClient.SyncFiles(fromAddress, resp, fastSync); err != nil {
+	if err = toClient.SyncFiles(fromAddress, resp, fileSyncHTTPClientTimeout, fastSync); err != nil {
 		return err
 	}
 
@@ -785,7 +785,7 @@ func (t *Task) RebuildStatus() (map[string]*ReplicaRebuildStatus, error) {
 	return replicaStatusMap, nil
 }
 
-func CloneSnapshot(engineControllerClient, fromControllerClient *client.ControllerClient, snapshotFileName string, exportBackingImageIfExist bool) error {
+func CloneSnapshot(engineControllerClient, fromControllerClient *client.ControllerClient, snapshotFileName string, exportBackingImageIfExist bool, fileSyncHTTPClientTimeout int) error {
 	replicas, err := fromControllerClient.ReplicaList()
 	if err != nil {
 		return err
@@ -826,7 +826,7 @@ func CloneSnapshot(engineControllerClient, fromControllerClient *client.Controll
 				return
 			}
 			defer repClient.Close()
-			if err := repClient.CloneSnapshot(sourceReplica.Address, snapshotFileName, exportBackingImageIfExist); err != nil {
+			if err := repClient.CloneSnapshot(sourceReplica.Address, snapshotFileName, exportBackingImageIfExist, fileSyncHTTPClientTimeout); err != nil {
 				syncErrorMap.Store(r.Address, err)
 			}
 		}(r)
