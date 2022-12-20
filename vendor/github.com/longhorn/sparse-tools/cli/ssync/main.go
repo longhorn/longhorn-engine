@@ -39,7 +39,7 @@ func Main() {
 	if *daemon {
 		if len(args) < 1 {
 			log.Error(usage)
-			log.Fatal("missing file path")
+			log.Fatal("Missing file path")
 		}
 		dstPath := args[0]
 
@@ -51,10 +51,10 @@ func Main() {
 	} else {
 		if len(args) < 1 {
 			log.Error(usage)
-			log.Fatal("missing file path")
+			log.Fatal("Missing file path")
 		}
 		srcPath := args[0]
-		log.Infof("Syncing %s to %s:%s...\n", srcPath, *host, *port)
+		log.Infof("Syncing %s to %s:%s...", srcPath, *host, *port)
 
 		err := sparse.SyncFile(srcPath, *host+":"+*port, *timeout, *directIO, *fastSync)
 		if err != nil {
