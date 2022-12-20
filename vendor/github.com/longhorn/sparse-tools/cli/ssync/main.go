@@ -24,7 +24,7 @@ func Main() {
 	verbose := flag.Bool("verbose", false, "verbose mode")
 	daemon := flag.Bool("daemon", false, "daemon mode (run on remote host)")
 	port := flag.String("port", "5000", "optional daemon port")
-	timeout := flag.Int("timeout", 120, "optional daemon/client timeout (seconds)")
+	timeout := flag.Int("timeout", 30, "optional HTTP client timeout (seconds)")
 	host := flag.String("host", "", "remote host of <DstFile> (requires running daemon)")
 	directIO := flag.Bool("directIO", true, "optional client sync file using directIO")
 	fastSync := flag.Bool("fastSync", true, "optional fast synchronization based on file's change time and checksum")
