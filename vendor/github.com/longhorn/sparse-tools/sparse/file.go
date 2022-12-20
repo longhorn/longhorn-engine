@@ -10,6 +10,7 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -17,8 +18,10 @@ type FileIoProcessor interface {
 	// File I/O methods for direct or bufferend I/O
 	ReadAt(data []byte, offset int64) (int, error)
 	WriteAt(data []byte, offset int64) (int, error)
+	UnmapAt(length uint32, offset int64) (int, error)
 	GetFile() *os.File
-	GetDataLayout (ctx context.Context) (<-chan FileInterval, <-chan error, error)
+	GetFieMap() *FiemapFile
+	GetDataLayout(ctx context.Context) (<-chan FileInterval, <-chan error, error)
 	Close() error
 	Sync() error
 	Truncate(size int64) error
@@ -28,7 +31,7 @@ type FileIoProcessor interface {
 }
 
 type BufferedFileIoProcessor struct {
-	*os.File
+	*FiemapFile
 }
 
 func NewBufferedFileIoProcessor(name string, flag int, perm os.FileMode, isCreate ...bool) (*BufferedFileIoProcessor, error) {
@@ -42,18 +45,26 @@ func NewBufferedFileIoProcessor(name string, flag int, perm os.FileMode, isCreat
 		return nil, err
 	}
 
-	return &BufferedFileIoProcessor{file}, nil
+	return &BufferedFileIoProcessor{NewFiemapFile(file)}, nil
 }
 
 func NewBufferedFileIoProcessorByFP(fp *os.File) *BufferedFileIoProcessor {
-	return &BufferedFileIoProcessor{fp}
+	return &BufferedFileIoProcessor{NewFiemapFile(fp)}
+}
+
+func (file *BufferedFileIoProcessor) UnmapAt(length uint32, offset int64) (int, error) {
+	return int(length), file.PunchHole(offset, int64(length))
 }
 
 func (file *BufferedFileIoProcessor) GetFile() *os.File {
 	return file.File
 }
 
-func (file *BufferedFileIoProcessor) GetDataLayout (ctx context.Context) (<-chan FileInterval, <-chan error, error) {
+func (file *BufferedFileIoProcessor) GetFieMap() *FiemapFile {
+	return file.FiemapFile
+}
+
+func (file *BufferedFileIoProcessor) GetDataLayout(ctx context.Context) (<-chan FileInterval, <-chan error, error) {
 	return GetFileLayout(ctx, file)
 }
 
@@ -71,7 +82,7 @@ func (file *BufferedFileIoProcessor) Close() error {
 }
 
 type DirectFileIoProcessor struct {
-	*os.File
+	*FiemapFile
 }
 
 const (
@@ -93,11 +104,11 @@ func NewDirectFileIoProcessor(name string, flag int, perm os.FileMode, isCreate 
 		return nil, err
 	}
 
-	return &DirectFileIoProcessor{file}, nil
+	return &DirectFileIoProcessor{NewFiemapFile(file)}, nil
 }
 
 func NewDirectFileIoProcessorByFP(fp *os.File) *DirectFileIoProcessor {
-	return &DirectFileIoProcessor{fp}
+	return &DirectFileIoProcessor{NewFiemapFile(fp)}
 }
 
 // ReadAt read into unaligned data buffer via direct I/O
@@ -125,11 +136,20 @@ func (file *DirectFileIoProcessor) WriteAt(data []byte, offset int64) (int, erro
 	return n, err
 }
 
+// UnmapAt punches a hole
+func (file *DirectFileIoProcessor) UnmapAt(length uint32, offset int64) (int, error) {
+	return int(length), file.PunchHole(offset, int64(length))
+}
+
 func (file *DirectFileIoProcessor) GetFile() *os.File {
 	return file.File
 }
 
-func (file *DirectFileIoProcessor) GetDataLayout (ctx context.Context) (<-chan FileInterval, <-chan error, error) {
+func (file *DirectFileIoProcessor) GetFieMap() *FiemapFile {
+	return file.FiemapFile
+}
+
+func (file *DirectFileIoProcessor) GetDataLayout(ctx context.Context) (<-chan FileInterval, <-chan error, error) {
 	return GetFileLayout(ctx, file)
 }
 
@@ -170,11 +190,10 @@ func ReadDataInterval(rw ReaderWriterAt, dataInterval Interval) ([]byte, error) 
 	n, err := rw.ReadAt(data, dataInterval.Begin)
 	if err != nil {
 		if err == io.EOF {
-			log.Debugf("have read at the end of file, total read: %d", n)
+			log.Debugf("Have read at the end of file, total read: %d", n)
 		} else {
-			errStr := fmt.Sprintf("File to read interval:%s, error: %s", dataInterval, err)
-			log.Error(errStr)
-			return nil, fmt.Errorf(errStr)
+			log.WithError(err).Errorf("Failed to read interval %+v", dataInterval)
+			return nil, errors.Wrapf(err, "failed to read interval %+v", dataInterval)
 		}
 	}
 	return data[:n], nil
@@ -183,9 +202,9 @@ func ReadDataInterval(rw ReaderWriterAt, dataInterval Interval) ([]byte, error) 
 func WriteDataInterval(file FileIoProcessor, dataInterval Interval, data []byte) error {
 	_, err := file.WriteAt(data, dataInterval.Begin)
 	if err != nil {
-		errStr := fmt.Sprintf("Failed to write file interval:%s, error: %s", dataInterval, err)
-		log.Error(errStr)
-		return fmt.Errorf(errStr)
+		err = errors.Wrapf(err, "failed to write file interval %+v", dataInterval)
+		log.Error(err)
+		return err
 	}
 	return nil
 }
@@ -225,9 +244,9 @@ func GetFileLayout(ctx context.Context, file FileIoProcessor) (<-chan FileInterv
 		startTime := time.Now()
 		totalExtents := 0
 		defer func() {
-			log.Debugf("retrieved extents for file %v, fileSize: %v elapsed: %.2fs, extents: %v",
+			log.Debugf("Retrieved extents for file %v, fileSize %v, elapsed %.2fs, extents %v",
 				fileInfo.Name(), fileInfo.Size(),
-				time.Now().Sub(startTime).Seconds(), totalExtents)
+				time.Since(startTime).Seconds(), totalExtents)
 		}()
 
 		var lastIntervalEnd int64
@@ -323,16 +342,15 @@ func GetFiemapRegionExts(file FileIoProcessor, interval Interval, extCount int) 
 	}
 
 	retrievalStart := time.Now()
-	fiemap := NewFiemapFile(file.GetFile())
-	_, exts, errno := fiemap.FiemapRegion(uint32(extCount), uint64(interval.Begin), uint64(interval.End-interval.Begin))
+	_, exts, errno := file.GetFieMap().FiemapRegion(uint32(extCount), uint64(interval.Begin), uint64(interval.End-interval.Begin))
 	if errno != 0 {
-		log.Error("failed to call fiemap.Fiemap(extCount)")
+		log.Error("Failed to call fiemap.Fiemap(extCount)")
 		return exts, fmt.Errorf(errno.Error())
 	}
 
-	log.Tracef("retrieved %v/%v extents from file %v interval: %v elapsed: %.2fs",
+	log.Tracef("Retrieved %v/%v extents from file %v, interval %+v, elapsed %.2fs",
 		len(exts), extCount, file.Name(), interval,
-		time.Now().Sub(retrievalStart).Seconds())
+		time.Since(retrievalStart).Seconds())
 
 	// The exts returned by File System should be ordered
 	var lastExtStart uint64

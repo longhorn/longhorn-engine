@@ -8,6 +8,7 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
 )
 
@@ -15,11 +16,11 @@ import (
 func PruneFile(parentFileName, childFileName string, ops FileHandlingOperations) error {
 	childFInfo, err := os.Stat(childFileName)
 	if err != nil {
-		return fmt.Errorf("os.Stat(childFileName) failed, error: %v", err)
+		return errors.Wrapf(err, "failed to get file info of child file %v", childFileName)
 	}
 	parentFInfo, err := os.Stat(parentFileName)
 	if err != nil {
-		return fmt.Errorf("os.Stat(parentFileName) failed, error: %v", err)
+		return errors.Wrapf(err, "failed to get file info of parent file %v", parentFileName)
 	}
 
 	// ensure no directory
@@ -33,20 +34,20 @@ func PruneFile(parentFileName, childFileName string, ops FileHandlingOperations)
 			return fmt.Errorf("file sizes are not equal and the parent file is larger than the child file")
 		}
 		if err := os.Truncate(parentFileName, childFInfo.Size()); err != nil {
-			return fmt.Errorf("failed to expand the parent file size before pruning, error: %v", err)
+			return errors.Wrap(err, "failed to expand the parent file size before pruning")
 		}
 	}
 
 	// open child and parent files
 	childFileIo, err := NewDirectFileIoProcessor(childFileName, os.O_RDONLY, 0)
 	if err != nil {
-		return fmt.Errorf("failed to open childFile, error: %v", err)
+		return errors.Wrapf(err, "failed to open child file %v", childFileName)
 	}
 	defer childFileIo.Close()
 
 	parentFileIo, err := NewDirectFileIoProcessor(parentFileName, os.O_RDWR, 0)
 	if err != nil {
-		return fmt.Errorf("failed to open parentFile, error: %v", err)
+		return errors.Wrapf(err, "failed to open parent file %v", parentFileName)
 	}
 	defer parentFileIo.Close()
 
@@ -72,7 +73,7 @@ func prune(parentFileIo, childFileIo FileIoProcessor, fileSize int64, ops FileHa
 	syncStartTime := time.Now()
 	out, errc, err := GetFileLayout(ctx, childFileIo)
 	if err != nil {
-		return fmt.Errorf("failed to retrieve file layout for file %v err: %v", childFileIo.Name(), err)
+		return errors.Wrapf(err, "failed to retrieve file layout for file %v", childFileIo.Name())
 	}
 
 	parentFiemap := NewFiemapFile(parentFileIo.GetFile())
@@ -81,8 +82,8 @@ func prune(parentFileIo, childFileIo FileIoProcessor, fileSize int64, ops FileHa
 		if segment.Kind == SparseData {
 			// punch a hole to the parent to reclaim the space
 			if err := parentFiemap.PunchHole(segment.Begin, segment.Len()); err != nil {
-				return fmt.Errorf("failed to punch a hole to childFile filename: %v, size: %v, at: %v, error: %v",
-					childFileIo.Name(), segment.Begin, segment.Len(), err)
+				return errors.Wrapf(err, "failed to punch a hole to childFile filename: %v, size: %v, at: %v",
+					childFileIo.Name(), segment.Begin, segment.Len())
 			}
 		}
 		newProgress := uint32(float64(segment.End) / float64(fileSize) * 100)
@@ -105,7 +106,8 @@ func prune(parentFileIo, childFileIo FileIoProcessor, fileSize int64, ops FileHa
 		break
 	}
 
-	log.Debugf("finished pruning for parent: %v child: %v size: %v elapsed: %.2fs",
-		parentFileIo.Name(), childFileIo.Name(), fileSize, time.Now().Sub(syncStartTime).Seconds())
+	log.Debugf("Finished pruning for parent %v, child %v, size %v, elapsed %.2fs",
+		parentFileIo.Name(), childFileIo.Name(), fileSize,
+		time.Since(syncStartTime).Seconds())
 	return err
 }

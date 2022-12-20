@@ -9,11 +9,12 @@ func NewRouter(server *SyncServer) *mux.Router {
 	router := mux.NewRouter().StrictSlash(true)
 
 	// Application
-	router.HandleFunc("/v1-ssync/getChecksum", server.getChecksum).Methods("GET")
 	router.HandleFunc("/v1-ssync/open", server.open).Methods("GET")
 	router.HandleFunc("/v1-ssync/close", server.close).Methods("POST")
 	router.HandleFunc("/v1-ssync/sendHole", server.sendHole).Methods("POST")
 	router.HandleFunc("/v1-ssync/writeData", server.writeData).Methods("POST")
+	router.HandleFunc("/v1-ssync/getChecksum", server.getChecksum).Methods("GET")
+	router.HandleFunc("/v1-ssync/getRecordedMetadata", server.getRecordedMetadata).Methods("GET")
 
 	return router
 }
