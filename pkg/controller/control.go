@@ -50,6 +50,8 @@ type Controller struct {
 
 	lastExpansionError    string
 	lastExpansionFailedAt string
+
+	fileSyncHTTPClientTimeout int
 }
 
 const (
@@ -59,7 +61,7 @@ const (
 )
 
 func NewController(name string, factory types.BackendFactory, frontend types.Frontend, isUpgrade, disableRevCounter, salvageRequested, unmapMarkSnapChainRemoved bool,
-	iscsiTargetRequestTimeout, engineReplicaTimeout time.Duration, dataServerProtocol types.DataServerProtocol) *Controller {
+	iscsiTargetRequestTimeout, engineReplicaTimeout time.Duration, dataServerProtocol types.DataServerProtocol, fileSyncHTTPClientTimeout int) *Controller {
 	c := &Controller{
 		factory:       factory,
 		Name:          name,
@@ -75,6 +77,8 @@ func NewController(name string, factory types.BackendFactory, frontend types.Fro
 		iscsiTargetRequestTimeout: iscsiTargetRequestTimeout,
 		engineReplicaTimeout:      engineReplicaTimeout,
 		DataServerProtocol:        dataServerProtocol,
+
+		fileSyncHTTPClientTimeout: fileSyncHTTPClientTimeout,
 	}
 	c.reset()
 	c.metricsStart()

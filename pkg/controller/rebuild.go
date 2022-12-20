@@ -93,7 +93,7 @@ func (c *Controller) VerifyRebuildReplica(address string) error {
 	return nil
 }
 
-func syncFile(from, to string, fromReplica, toReplica *types.Replica, fastSync bool) error {
+func syncFile(from, to string, fromReplica, toReplica *types.Replica, fileSyncHTTPClientTimeout int, fastSync bool) error {
 	if to == "" {
 		to = from
 	}
@@ -118,7 +118,7 @@ func syncFile(from, to string, fromReplica, toReplica *types.Replica, fastSync b
 	strHostPort := net.JoinHostPort(host, strconv.Itoa(int(port)))
 
 	logrus.Infof("Synchronizing %s to %s:%s", from, to, strHostPort)
-	err = fromClient.SendFile(from, host, port, fastSync)
+	err = fromClient.SendFile(from, host, port, fileSyncHTTPClientTimeout, fastSync)
 	if err != nil {
 		logrus.WithError(err).Errorf("failed to synchronize %s to %s:%s", from, to, strHostPort)
 	} else {
@@ -183,7 +183,7 @@ func (c *Controller) PrepareRebuildReplica(address string) ([]types.SyncFileInfo
 	}
 
 	// The lock will block the read/write for this head file sync
-	if err := syncFile(fromHead+".meta", toHead+".meta", rwReplica, replica, false); err != nil {
+	if err := syncFile(fromHead+".meta", toHead+".meta", rwReplica, replica, c.fileSyncHTTPClientTimeout, false); err != nil {
 		return nil, err
 	}
 
