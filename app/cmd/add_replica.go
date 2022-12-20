@@ -35,6 +35,12 @@ func AddReplicaCmd() cli.Command {
 				Required: false,
 				Usage:    "Enable fast file synchronization using change time and checksum",
 			},
+			cli.IntFlag{
+				Name:     "file-sync-http-client-timeout",
+				Required: false,
+				Value:    5,
+				Usage:    "HTTP client timeout for replica file sync server",
+			},
 		},
 		Action: func(c *cli.Context) {
 			if err := addReplica(c); err != nil {
@@ -77,11 +83,12 @@ func addReplica(c *cli.Context) error {
 	}
 
 	fastSync := c.Bool("fast-sync")
+	fileSyncHTTPClientTimeout := c.Int("file-sync-http-client-timeout")
 
 	if c.Bool("restore") {
 		return task.AddRestoreReplica(volumeSize, volumeCurrentSize, replica)
 	}
-	return task.AddReplica(volumeSize, volumeCurrentSize, replica, fastSync)
+	return task.AddReplica(volumeSize, volumeCurrentSize, replica, fileSyncHTTPClientTimeout, fastSync)
 }
 
 func StartWithReplicasCmd() cli.Command {
