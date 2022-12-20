@@ -43,8 +43,6 @@ const (
 	PeriodicRefreshIntervalInSeconds = 2
 
 	GRPCServiceCommonTimeout = 3 * time.Minute
-
-	FileSyncTimeout = 120
 )
 
 type SyncAgentServer struct {
@@ -332,7 +330,7 @@ func (s *SyncAgentServer) FileSend(ctx context.Context, req *ptypes.FileSendRequ
 		directIO = false
 	}
 	logrus.Infof("Syncing file %v to %v", req.FromFileName, address)
-	if err := sparse.SyncFile(req.FromFileName, address, FileSyncTimeout, directIO, req.FastSync); err != nil {
+	if err := sparse.SyncFile(req.FromFileName, address, int(req.FileSyncHttpClientTimeout), directIO, req.FastSync); err != nil {
 		return nil, err
 	}
 	logrus.Infof("Done syncing file %v to %v", req.FromFileName, address)
@@ -363,7 +361,7 @@ func (s *SyncAgentServer) VolumeExport(ctx context.Context, req *ptypes.VolumeEx
 	if err := r.Preload(req.ExportBackingImageIfExist); err != nil {
 		return nil, err
 	}
-	if err := sparse.SyncContent(req.SnapshotFileName, r, r.Info().Size, remoteAddress, FileSyncTimeout, true, false); err != nil {
+	if err := sparse.SyncContent(req.SnapshotFileName, r, r.Info().Size, remoteAddress, int(req.FileSyncHttpClientTimeout), true, false); err != nil {
 		return nil, err
 	}
 
@@ -448,7 +446,7 @@ func (s *SyncAgentServer) FilesSync(ctx context.Context, req *ptypes.FilesSyncRe
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to launch receiver for file %v", info.ToFileName)
 		}
-		if err := fromClient.SendFile(info.FromFileName, req.ToHost, int32(port), req.FastSync); err != nil {
+		if err := fromClient.SendFile(info.FromFileName, req.ToHost, int32(port), int(req.FileSyncHttpClientTimeout), req.FastSync); err != nil {
 			return nil, errors.Wrapf(err, "replica %v failed to send file %v to %v:%v", req.FromAddress, info.ToFileName, req.ToHost, port)
 		}
 	}
@@ -601,7 +599,7 @@ func (s *SyncAgentServer) startCloning(req *ptypes.SnapshotCloneRequest, fromRep
 		return errors.Wrapf(err, "failed to launch receiver for snapshot %v", req.SnapshotFileName)
 	}
 
-	if err := fromReplicaClient.ExportVolume(req.SnapshotFileName, util.GetGRPCAddress(req.ToHost), int32(port), false); err != nil {
+	if err := fromReplicaClient.ExportVolume(req.SnapshotFileName, util.GetGRPCAddress(req.ToHost), int32(port), false, int(req.FileSyncHttpClientTimeout)); err != nil {
 		return errors.Wrapf(err, "failed to export snapshot %v from replica %v to %v:%v", req.SnapshotFileName, req.FromAddress, req.ToHost, port)
 	}
 

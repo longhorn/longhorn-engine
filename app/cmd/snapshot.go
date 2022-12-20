@@ -149,6 +149,12 @@ func SnapshotCloneCmd() cli.Command {
 				Name:  "export-backing-image-if-exist",
 				Usage: "Specify if the backing image should be exported if it exists",
 			},
+			cli.IntFlag{
+				Name:     "file-sync-http-client-timeout",
+				Required: false,
+				Value:    5,
+				Usage:    "HTTP client timeout for replica file sync server",
+			},
 		},
 		Action: func(c *cli.Context) {
 			if err := cloneSnapshot(c); err != nil {
@@ -418,6 +424,7 @@ func cloneSnapshot(c *cli.Context) error {
 		return fmt.Errorf("missing required parameter --from-controller-address")
 	}
 	exportBackingImageIfExist := c.Bool("export-backing-image-if-exist")
+	fileSyncHTTPClientTimeout := c.Int("file-sync-http-client-timeout")
 
 	controllerClient, err := getControllerClient(c)
 	if err != nil {
@@ -431,7 +438,7 @@ func cloneSnapshot(c *cli.Context) error {
 	}
 	defer fromControllerClient.Close()
 
-	if err := sync.CloneSnapshot(controllerClient, fromControllerClient, snapshotName, exportBackingImageIfExist); err != nil {
+	if err := sync.CloneSnapshot(controllerClient, fromControllerClient, snapshotName, exportBackingImageIfExist, fileSyncHTTPClientTimeout); err != nil {
 		return err
 	}
 	return nil
