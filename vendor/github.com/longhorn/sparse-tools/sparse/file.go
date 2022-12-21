@@ -190,11 +190,10 @@ func ReadDataInterval(rw ReaderWriterAt, dataInterval Interval) ([]byte, error) 
 	n, err := rw.ReadAt(data, dataInterval.Begin)
 	if err != nil {
 		if err == io.EOF {
-			log.Debugf("have read at the end of file, total read: %d", n)
+			log.Debugf("Have read at the end of file, total read: %d", n)
 		} else {
-			err = errors.Wrapf(err, "failed to read interval %+v", dataInterval)
-			log.Error(err)
-			return nil, err
+			log.WithError(err).Errorf("Failed to read interval %+v", dataInterval)
+			return nil, errors.Wrapf(err, "failed to read interval %+v", dataInterval)
 		}
 	}
 	return data[:n], nil
@@ -345,7 +344,7 @@ func GetFiemapRegionExts(file FileIoProcessor, interval Interval, extCount int) 
 	retrievalStart := time.Now()
 	_, exts, errno := file.GetFieMap().FiemapRegion(uint32(extCount), uint64(interval.Begin), uint64(interval.End-interval.Begin))
 	if errno != 0 {
-		log.Error("failed to call fiemap.Fiemap(extCount)")
+		log.Error("Failed to call fiemap.Fiemap(extCount)")
 		return exts, fmt.Errorf(errno.Error())
 	}
 
