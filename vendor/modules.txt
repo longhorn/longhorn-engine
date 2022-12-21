@@ -91,7 +91,7 @@ github.com/longhorn/go-iscsi-helper/types
 github.com/longhorn/go-iscsi-helper/util
 # github.com/longhorn/nsfilelock v0.0.0-20200723175406-fa7c83ad0003
 github.com/longhorn/nsfilelock
-# github.com/longhorn/sparse-tools v0.0.0-20221220122901-2677e16def49
+# github.com/longhorn/sparse-tools v0.0.0-20221221020038-f6f1ea623675
 github.com/longhorn/sparse-tools/cli/ssync
 github.com/longhorn/sparse-tools/sparse
 github.com/longhorn/sparse-tools/sparse/rest

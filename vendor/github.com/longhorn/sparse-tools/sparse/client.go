@@ -22,7 +22,7 @@ import (
 )
 
 const (
-	httpClientTimeout = 5
+	fileSyncOpenTimeout = 120
 
 	defaultSyncWorkerCount = 4
 	defaultSyncBatchSize   = 512 * Blocks
@@ -39,7 +39,6 @@ type DataSyncClient interface {
 
 type syncClient struct {
 	remote     string
-	timeout    int
 	sourceName string
 	size       int64
 	rw         ReaderWriterAt
@@ -53,7 +52,8 @@ type syncClient struct {
 	syncBatchSize             int64
 	numSyncWorkers            int
 
-	httpClient *http.Client
+	httpClient        *http.Client
+	httpClientTimeout int
 }
 
 type ReaderWriterAt interface {
@@ -63,28 +63,28 @@ type ReaderWriterAt interface {
 	GetDataLayout(ctx context.Context) (<-chan FileInterval, <-chan error, error)
 }
 
-func newHTTPClient() *http.Client {
+func newHTTPClient(httpClientTimeout int) *http.Client {
 	t := http.DefaultTransport.(*http.Transport).Clone()
 	t.MaxIdleConns = 100
 	t.MaxConnsPerHost = 100
 	t.MaxIdleConnsPerHost = 100
 
 	return &http.Client{
-		Timeout:   httpClientTimeout * time.Second,
+		Timeout:   time.Duration(httpClientTimeout) * time.Second,
 		Transport: t,
 	}
 }
 
-func newSyncClient(remote string, timeout int, sourceName string, size int64, rw ReaderWriterAt, directIO bool,
+func newSyncClient(remote string, sourceName string, size int64, rw ReaderWriterAt, directIO bool, httpClientTimeout int,
 	recordedChangeTime, recordedChecksumMethod, recordedChecksum string, syncBatchSize int64, numSyncWorkers int) *syncClient {
 	return &syncClient{
 		remote:     remote,
-		timeout:    timeout,
 		sourceName: sourceName,
 		size:       size,
 		rw:         rw,
 		directIO:   directIO,
-		httpClient: newHTTPClient(),
+
+		httpClient: newHTTPClient(httpClientTimeout),
 
 		recordedChangeTime:     recordedChangeTime,
 		recordedChecksumMethod: recordedChecksumMethod,
@@ -96,7 +96,7 @@ func newSyncClient(remote string, timeout int, sourceName string, size int64, rw
 }
 
 // SyncFile synchronizes local file to remote host
-func SyncFile(localPath string, remote string, timeout int, directIO, fastSync bool) error {
+func SyncFile(localPath string, remote string, httpClientTimeout int, directIO, fastSync bool) error {
 	fileInfo, err := os.Stat(localPath)
 	if err != nil {
 		log.WithError(err).Errorf("Failed to get file info of source file %s", localPath)
@@ -117,7 +117,7 @@ func SyncFile(localPath string, remote string, timeout int, directIO, fastSync b
 	}
 	defer fileIo.Close()
 
-	return SyncContent(fileIo.Name(), fileIo, fileSize, remote, timeout, directIO, fastSync)
+	return SyncContent(fileIo.Name(), fileIo, fileSize, remote, httpClientTimeout, directIO, fastSync)
 }
 
 func newFileIoProcessor(localPath string, directIO bool) (FileIoProcessor, error) {
@@ -127,7 +127,7 @@ func newFileIoProcessor(localPath string, directIO bool) (FileIoProcessor, error
 	return NewBufferedFileIoProcessor(localPath, os.O_RDONLY, 0)
 }
 
-func SyncContent(sourceName string, rw ReaderWriterAt, fileSize int64, remote string, timeout int, directIO, fastSync bool) (err error) {
+func SyncContent(sourceName string, rw ReaderWriterAt, fileSize int64, remote string, httpClientTimeout int, directIO, fastSync bool) (err error) {
 	defer func() {
 		err = errors.Wrapf(err, "failed to sync content for source file %v", sourceName)
 	}()
@@ -151,9 +151,8 @@ func SyncContent(sourceName string, rw ReaderWriterAt, fileSize int64, remote st
 		}
 	}
 
-	client := newSyncClient(remote, timeout, sourceName, fileSize, rw, directIO,
-		recordedChangeTime, recordedChecksumMethod, recordedChecksum,
-		syncBatchSize, numSyncWorkers)
+	client := newSyncClient(remote, sourceName, fileSize, rw, directIO, httpClientTimeout,
+		recordedChangeTime, recordedChecksumMethod, recordedChecksum, syncBatchSize, numSyncWorkers)
 	defer client.close() // kill the server no matter success or not, best effort
 
 	if fastSync && filepath.Ext(client.sourceName) == types.SnapshotDiskSuffix {
@@ -286,7 +285,7 @@ func (client *syncClient) processSegment(segment FileInterval) error {
 func (client *syncClient) sendHTTPRequest(method string, action string, queries map[string]string, data []byte) (*http.Response, error) {
 	httpClient := client.httpClient
 	if httpClient == nil {
-		httpClient = newHTTPClient()
+		httpClient = newHTTPClient(client.httpClientTimeout)
 	}
 
 	url := fmt.Sprintf("http://%s/v1-ssync/%s", client.remote, action)
@@ -320,7 +319,7 @@ func (client *syncClient) open() error {
 	var resp *http.Response
 
 	timeStart := time.Now()
-	timeStop := timeStart.Add(time.Duration(client.timeout) * time.Second)
+	timeStop := timeStart.Add(time.Duration(fileSyncOpenTimeout) * time.Second)
 	queries := make(map[string]string)
 	queries["begin"] = strconv.FormatInt(0, 10)
 	queries["end"] = strconv.FormatInt(client.size, 10)
