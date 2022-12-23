@@ -1265,7 +1265,12 @@ func (r *Replica) UnmapAt(length uint32, offset int64) (n int, err error) {
 		// For list `unmappableDisks`, the first entry is the volume head,
 		// the second one is the parent of the first entry...
 		unmappableDisks := []string{r.diskPath(r.activeDiskData[len(r.activeDiskData)-1].Name)}
-		for idx := len(r.activeDiskData) - 2; idx > 0; idx-- {
+		indexOfVolumeHeadParent := len(r.activeDiskData) - 2
+		indexOfLastSnapshotDiskFile := 1
+		if r.isBackingFile(int(backingFileIndex)) {
+			indexOfLastSnapshotDiskFile = int(backingFileIndex) + 1
+		}
+		for idx := indexOfVolumeHeadParent; idx >= indexOfLastSnapshotDiskFile; idx-- {
 			disk := r.activeDiskData[idx]
 			if len(r.diskChildrenMap[disk.Name]) > 1 {
 				break
