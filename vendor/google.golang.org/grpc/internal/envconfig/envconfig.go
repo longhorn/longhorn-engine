@@ -25,40 +25,15 @@ import (
 )
 
 const (
-	prefix              = "GRPC_GO_"
-	retryStr            = prefix + "RETRY"
-	requireHandshakeStr = prefix + "REQUIRE_HANDSHAKE"
-)
-
-// RequireHandshakeSetting describes the settings for handshaking.
-type RequireHandshakeSetting int
-
-const (
-	// RequireHandshakeOn indicates to wait for handshake before considering a
-	// connection ready/successful.
-	RequireHandshakeOn RequireHandshakeSetting = iota
-	// RequireHandshakeOff indicates to not wait for handshake before
-	// considering a connection ready/successful.
-	RequireHandshakeOff
+	prefix                  = "GRPC_GO_"
+	txtErrIgnoreStr         = prefix + "IGNORE_TXT_ERRORS"
+	advertiseCompressorsStr = prefix + "ADVERTISE_COMPRESSORS"
 )
 
 var (
-	// Retry is set if retry is explicitly enabled via "GRPC_GO_RETRY=on".
-	Retry = strings.EqualFold(os.Getenv(retryStr), "on")
-	// RequireHandshake is set based upon the GRPC_GO_REQUIRE_HANDSHAKE
-	// environment variable.
-	//
-	// Will be removed after the 1.18 release.
-	RequireHandshake = RequireHandshakeOn
+	// TXTErrIgnore is set if TXT errors should be ignored ("GRPC_GO_IGNORE_TXT_ERRORS" is not "false").
+	TXTErrIgnore = !strings.EqualFold(os.Getenv(txtErrIgnoreStr), "false")
+	// AdvertiseCompressors is set if registered compressor should be advertised
+	// ("GRPC_GO_ADVERTISE_COMPRESSORS" is not "false").
+	AdvertiseCompressors = !strings.EqualFold(os.Getenv(advertiseCompressorsStr), "false")
 )
-
-func init() {
-	switch strings.ToLower(os.Getenv(requireHandshakeStr)) {
-	case "on":
-		fallthrough
-	default:
-		RequireHandshake = RequireHandshakeOn
-	case "off":
-		RequireHandshake = RequireHandshakeOff
-	}
-}
