@@ -42,8 +42,6 @@ type RestoreStatus struct {
 }
 
 func (t *Task) CreateBackup(backupName, snapshot, dest, backingImageName, backingImageChecksum string, labels []string, credential map[string]string) (*BackupCreateInfo, error) {
-	var replica *types.ControllerReplicaInfo
-
 	if snapshot == types.VolumeHeadName {
 		return nil, fmt.Errorf("cannot backup the head disk in the chain")
 	}
@@ -53,27 +51,27 @@ func (t *Task) CreateBackup(backupName, snapshot, dest, backingImageName, backin
 		return nil, err
 	}
 
-	replicas, err := t.client.ReplicaList()
+	replica, err := t.findRWReplica()
 	if err != nil {
 		return nil, err
+	}
+
+	return t.createBackup(replica, backupName, snapshot, dest, volume.Name, backingImageName, backingImageChecksum, labels, credential)
+}
+
+func (t *Task) findRWReplica() (*types.ControllerReplicaInfo, error) {
+	replicas, err := t.client.ReplicaList()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to list replicas for backup")
 	}
 
 	for _, r := range replicas {
 		if r.Mode == types.RW {
-			replica = r
-			break
+			return r, nil
 		}
 	}
 
-	if replica == nil {
-		return nil, fmt.Errorf("cannot find a suitable replica for backup")
-	}
-
-	backup, err := t.createBackup(replica, backupName, snapshot, dest, volume.Name, backingImageName, backingImageChecksum, labels, credential)
-	if err != nil {
-		return nil, err
-	}
-	return backup, nil
+	return nil, fmt.Errorf("cannot find an available replica for backup")
 }
 
 func (t *Task) createBackup(replicaInController *types.ControllerReplicaInfo, backupName, snapshot, dest, volumeName, backingImageName, backingImageChecksum string, labels []string,
