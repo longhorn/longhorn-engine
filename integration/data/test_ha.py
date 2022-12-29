@@ -2,6 +2,8 @@ import random
 import os
 import json
 
+import pytest
+
 import common.cmd as cmd
 
 from common.core import (  # NOQA
@@ -467,6 +469,7 @@ def test_ha_remove_extra_disks(grpc_controller,  # NOQA
     verify_data(dev, data_offset, data)
 
 
+@pytest.mark.expansion
 def test_expansion_with_rebuild(grpc_controller,  # NOQA
                                 grpc_replica1, grpc_replica2):  # NOQA
     address = grpc_controller.address
@@ -552,6 +555,7 @@ def test_expansion_with_rebuild(grpc_controller,  # NOQA
     snap4.verify_data()
 
 
+@pytest.mark.expansion
 def test_expansion_rollback_with_rebuild(
         grpc_controller, grpc_fixed_dir_replica1, grpc_fixed_dir_replica2):  # NOQA
     """
@@ -708,6 +712,7 @@ def test_expansion_rollback_with_rebuild(
     snap4.verify_data()
 
 
+@pytest.mark.expansion
 def test_single_replica_expansion_failed(
         grpc_controller, grpc_fixed_dir_replica1, grpc_fixed_dir_replica2):  # NOQA
     """
