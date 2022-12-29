@@ -319,8 +319,6 @@ func (c *Controller) finishExpansion(expanded bool, size int64) {
 			logrus.Infof("Controller succeeded to expand from size %v to %v", c.size, size)
 		}
 		c.size = size
-		c.lastExpansionError = ""
-		c.lastExpansionFailedAt = ""
 	} else {
 		logrus.Infof("Controller failed to expand from size %v to %v", c.size, size)
 	}
