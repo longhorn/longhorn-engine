@@ -310,8 +310,14 @@ func (c *Controller) finishExpansion(expanded bool, size int64) {
 	defer c.Unlock()
 
 	if expanded {
-		logrus.Infof("Controller succeeded to expand from size %v to %v", c.size, size)
+		if c.lastExpansionError != "" {
+			logrus.Infof("Controller succeeded to expand from size %v to %v but there are some replica expansion failures: %v", c.size, size, c.lastExpansionError)
+		} else {
+			logrus.Infof("Controller succeeded to expand from size %v to %v", c.size, size)
+		}
 		c.size = size
+		c.lastExpansionError = ""
+		c.lastExpansionFailedAt = ""
 	} else {
 		logrus.Infof("Controller failed to expand from size %v to %v", c.size, size)
 	}
