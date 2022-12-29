@@ -49,8 +49,11 @@ type Controller struct {
 	latestMetrics *types.Metrics
 	metrics       *types.Metrics
 
-	lastExpansionError    string
+	// lastExpansionFailedAt indicates if the error belongs to the recent expansion
 	lastExpansionFailedAt string
+	// lastExpansionError indicates the error message.
+	// It may exist even if the expansion succeeded. For exmaple, some of the replica expansions failed.
+	lastExpansionError string
 
 	fileSyncHTTPClientTimeout int
 }
@@ -250,7 +253,7 @@ func (c *Controller) Expand(size int64) error {
 
 		expansionSuccess, errsNeedToBeHandled, errsForRecording := c.backend.Expand(size)
 		if errsForRecording != nil {
-			c.lastExpansionFailedAt = time.Now().UTC().Format(time.RFC3339)
+			c.lastExpansionFailedAt = time.Now().UTC().Format(time.RFC3339Nano)
 			if expansionSuccess {
 				c.lastExpansionError = fmt.Sprintf("the expansion succeeded, but some replica expansion failed: %v", errsForRecording)
 			} else {
@@ -284,7 +287,7 @@ func (c *Controller) startExpansion(size int64) (err error) {
 			c.lastExpansionFailedAt = ""
 			c.lastExpansionError = ""
 		} else if err != nil {
-			c.lastExpansionFailedAt = time.Now().String()
+			c.lastExpansionFailedAt = time.Now().UTC().Format(time.RFC3339Nano)
 			c.lastExpansionError = errors.Wrap(err, "controller failed to start expansion").Error()
 		}
 	}()
