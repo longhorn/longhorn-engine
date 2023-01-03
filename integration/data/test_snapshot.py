@@ -1,5 +1,6 @@
 import random
 import subprocess
+import time
 
 import pytest
 
@@ -23,7 +24,8 @@ from common.constants import (
     VOLUME_HEAD, ENGINE_NAME, ENGINE_BACKING_NAME,
     VOLUME_NAME, VOLUME_BACKING_NAME,
     PAGE_SIZE, SIZE, EXPANDED_SIZE,
-    FRONTEND_TGT_BLOCKDEV
+    FRONTEND_TGT_BLOCKDEV,
+    RETRY_COUNTS_SHORT, RETRY_INTERVAL_SHORT
 )
 
 from data.snapshot_tree import snapshot_tree_build, snapshot_tree_verify_node
@@ -716,42 +718,51 @@ def filesystem_trim_test(dev, address, volume_name, engine_name, fs_type):  # NO
     subprocess.check_call(mount_cmd)
     subprocess.check_call(findmnt_cmd)
 
+    fs_block_size = 4 * 1024
     subprocess.check_call(nsenter_cmd + ["sync"])
-    info = cmd.snapshot_info(address)
+
+    # For ext4, the filesystem metadata contains at least 2 blocks:
+    #     super block + GDT info, inode bitmap.
+    # For xfs, the filesystem metadata contains multiple blocks (> 2 blocks):
+    #     super block, free space B+ tree, inode B+ tree.
+    info = wait_for_snap_size_no_less_than_value(
+        address, VOLUME_HEAD, 2*fs_block_size)
     assert len(info) == 1
-    assert VOLUME_HEAD in info
     fs_meta_size = int(info[VOLUME_HEAD]["size"])
 
-    fs_block_size = 4 * 1024
     length = 3 * 1024
     # create snapshot1 with fs and file 1
     file_path1 = mnt_path + "/test1"
     test1_checksum = write_filesystem_file(length, file_path1)
     subprocess.check_call(nsenter_cmd + ["sync"])
+    # To guarantee that the data is flushed into the file, we need to check
+    # the size before snapshot creation.
+    # It is hard to predict the exact blocks the filesystem would consume
+    # when writing a file. but writing a 3Ki file requires at least 3 blocks:
+    # the data itself, inode info update, and free space info (for xfs)
+    wait_for_snap_size_no_less_than_value(
+        address, VOLUME_HEAD, fs_meta_size + 3*fs_block_size)
     snap1 = cmd.snapshot_create(address)
+
+    info = wait_for_snap_size_no_less_than_value(
+        address, snap1, fs_meta_size + 3*fs_block_size)
+    assert info[snap1]["parent"] == ""
+    assert not info[snap1]["removed"]
+    snap1_size = int(info[snap1]["size"])
 
     # create snapshot-branch with file branch
     file_path_branch = mnt_path + "/test-branch"
     test_branch_checksum = write_filesystem_file(length, file_path_branch)
     subprocess.check_call(nsenter_cmd + ["sync"])
+    wait_for_snap_size_no_less_than_value(
+        address, VOLUME_HEAD, 3*fs_block_size)
     snap_branch = cmd.snapshot_create(address)
 
-    info = cmd.snapshot_info(address)
-    assert snap1 in info
-    assert info[snap1]["parent"] == ""
-    assert snap_branch in info[snap1]["children"]
-    assert not info[snap1]["removed"]
-    # it is hard to predict the exact blocks the filesystem would consume
-    # when writing a file
-    snap1_size = int(info[snap1]["size"])
-    assert snap1_size >= fs_meta_size + fs_block_size
-
-    assert snap_branch in info
+    info = wait_for_snap_size_no_less_than_value(
+        address, snap_branch, 3*fs_block_size)
     assert info[snap_branch]["parent"] == snap1
     assert VOLUME_HEAD in info[snap_branch]["children"]
     assert not info[snap_branch]["removed"]
-    snap_branch_size = int(info[snap_branch]["size"])
-    assert snap_branch_size >= fs_block_size
 
     # revert to snapshot1
     # unmount the volume, since each revert will shutdown the device
@@ -763,29 +774,33 @@ def filesystem_trim_test(dev, address, volume_name, engine_name, fs_type):  # NO
     file_path2 = mnt_path + "/test2"
     write_filesystem_file(length, file_path2)
     subprocess.check_call(nsenter_cmd + ["sync"])
+    wait_for_snap_size_no_less_than_value(
+        address, VOLUME_HEAD, 3*fs_block_size)
     snap2 = cmd.snapshot_create(address)
 
-    info = cmd.snapshot_info(address)
-    assert snap2 in info
+    info = wait_for_snap_size_no_less_than_value(
+        address, snap2, 3*fs_block_size)
     assert info[snap2]["parent"] == snap1
     snap2_size = int(info[snap2]["size"])
-    assert snap2_size >= fs_block_size
 
     # create snapshot3 with file 3
     file_path3 = mnt_path + "/test3"
     write_filesystem_file(length, file_path3)
     subprocess.check_call(nsenter_cmd + ["sync"])
+    wait_for_snap_size_no_less_than_value(
+        address, VOLUME_HEAD, 3*fs_block_size)
     snap3 = cmd.snapshot_create(address)
 
-    info = cmd.snapshot_info(address)
-    assert snap3 in info
+    info = wait_for_snap_size_no_less_than_value(
+        address, snap3, 3*fs_block_size)
     assert info[snap3]["parent"] == snap2
     snap3_size = int(info[snap3]["size"])
-    assert snap3_size >= fs_block_size
 
     # append new data to file 1 in the volume head
     write_filesystem_file(length, file_path1)
     subprocess.check_call(nsenter_cmd + ["sync"])
+    wait_for_snap_size_no_less_than_value(
+        address, VOLUME_HEAD, 3*fs_block_size)
 
     remove_filesystem_file(file_path1)
     remove_filesystem_file(file_path2)
@@ -831,13 +846,14 @@ def filesystem_trim_test(dev, address, volume_name, engine_name, fs_type):  # NO
 
     assert snap2 in info
     assert not info[snap2]["removed"]
-    assert int(info[snap2]["size"]) <= snap2_size
+    assert int(info[snap2]["size"]) == snap2_size
 
     assert snap3 in info
     assert not info[snap3]["removed"]
     assert int(info[snap3]["size"]) == snap3_size
 
     assert VOLUME_HEAD in info
+    # similarly, it's hard to predict the exact trimmed blocks of a filesystem.
     assert int(info[VOLUME_HEAD]["size"]) <= head_size - fs_block_size
 
     cmd.set_unmap_mark_snap_chain_removed(address, True)
@@ -856,7 +872,6 @@ def filesystem_trim_test(dev, address, volume_name, engine_name, fs_type):  # NO
 
     assert snap2 in info
     assert info[snap2]["removed"]
-    # similarly, it's hard to predict the exact trimmed blocks of a filesystem.
     assert int(info[snap2]["size"]) <= snap2_size - fs_block_size
 
     assert snap3 in info
@@ -875,3 +890,14 @@ def filesystem_trim_test(dev, address, volume_name, engine_name, fs_type):  # NO
     assert checksum_filesystem_file(file_path1) == test1_checksum
     assert checksum_filesystem_file(file_path_branch) == test_branch_checksum
     subprocess.check_call(umount_cmd)
+
+
+def wait_for_snap_size_no_less_than_value(controller_addr, snap_name, size):
+    for i in range(RETRY_COUNTS_SHORT):
+        info = cmd.snapshot_info(controller_addr)
+        if snap_name in info and int(info[snap_name]["size"]) >= size:
+            break
+        time.sleep(RETRY_INTERVAL_SHORT)
+    assert snap_name in info
+    assert int(info[snap_name]["size"]) >= size
+    return info
