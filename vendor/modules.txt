@@ -48,6 +48,8 @@ github.com/c9s/goprocinfo/linux
 github.com/cpuguy83/go-md2man/v2/md2man
 # github.com/docker/go-units v0.3.3
 github.com/docker/go-units
+# github.com/felixge/httpsnoop v1.0.1
+github.com/felixge/httpsnoop
 # github.com/gofrs/flock v0.8.1
 github.com/gofrs/flock
 # github.com/golang/protobuf v1.5.2
@@ -62,7 +64,7 @@ github.com/golang/protobuf/ptypes/timestamp
 github.com/google/uuid
 # github.com/gorilla/context v1.1.1
 github.com/gorilla/context
-# github.com/gorilla/handlers v1.4.2
+# github.com/gorilla/handlers v1.5.1
 github.com/gorilla/handlers
 # github.com/gorilla/mux v1.7.3
 github.com/gorilla/mux
