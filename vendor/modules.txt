@@ -46,7 +46,7 @@ github.com/aws/aws-sdk-go/service/sts/stsiface
 github.com/c9s/goprocinfo/linux
 # github.com/cpuguy83/go-md2man/v2 v2.0.0-20190314233015-f79a8a8ca69d
 github.com/cpuguy83/go-md2man/v2/md2man
-# github.com/docker/go-units v0.3.3
+# github.com/docker/go-units v0.5.0
 github.com/docker/go-units
 # github.com/gofrs/flock v0.8.1
 github.com/gofrs/flock
