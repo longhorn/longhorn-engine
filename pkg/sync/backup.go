@@ -7,8 +7,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
-	"github.com/longhorn/backupstore"
-
 	replicaClient "github.com/longhorn/longhorn-engine/pkg/replica/client"
 	"github.com/longhorn/longhorn-engine/pkg/types"
 	"github.com/longhorn/longhorn-engine/pkg/util"
@@ -243,7 +241,21 @@ func (t *Task) RestoreBackup(backup string, credential map[string]string) error 
 		return fmt.Errorf("found more than 1 snapshot in the replicas, hence started to purge snapshots before the restore")
 	}
 
-	backupInfo, err := backupstore.InspectBackup(backup)
+	// backupInfo, err := backupstore.InspectBackup(backup)
+	var activeReplica *types.ControllerReplicaInfo
+	for _, r := range replicas {
+		if r.Mode == types.RW {
+			activeReplica = r
+			break
+		}
+	}
+	repClient, err := replicaClient.NewReplicaClient(activeReplica.Address)
+	if err != nil {
+		return err
+	}
+	defer repClient.Close()
+
+	backupInfo, err := repClient.BackupInfo(backup, credential)
 	if err != nil {
 		return errors.Wrapf(err, "failed to get the current restoring backup info")
 	}

@@ -557,6 +557,26 @@ func (c *ReplicaClient) BackupStatus(backupName string) (*ptypes.BackupStatusRes
 	return resp, nil
 }
 
+func (c *ReplicaClient) BackupInfo(backupName string, credential map[string]string) (*ptypes.BackupInfoResponse, error) {
+	syncAgentServiceClient, err := c.getSyncServiceClient()
+	if err != nil {
+		return nil, err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
+	defer cancel()
+
+	resp, err := syncAgentServiceClient.BackupInfo(ctx, &ptypes.BackupInfoRequest{
+		Backup:     backupName,
+		Credential: credential,
+	})
+
+	if err != nil {
+		return nil, err
+	}
+
+	return resp, nil
+}
+
 func (c *ReplicaClient) RmBackup(backup string) error {
 	syncAgentServiceClient, err := c.getSyncServiceClient()
 	if err != nil {

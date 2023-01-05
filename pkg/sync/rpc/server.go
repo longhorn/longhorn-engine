@@ -758,6 +758,63 @@ func (*SyncAgentServer) BackupRemove(ctx context.Context, req *ptypes.BackupRemo
 	return &empty.Empty{}, nil
 }
 
+func (s *SyncAgentServer) BackupInfo(ctx context.Context, req *ptypes.BackupInfoRequest) (*ptypes.BackupInfoResponse, error) {
+	backup := req.Backup
+	backupType, err := util.CheckBackupType(backup)
+	if err != nil {
+		return nil, err
+	}
+	// set aws credential
+	if backupType == "s3" {
+		credential := req.Credential
+		if credential != nil {
+			if credential[types.AWSAccessKey] == "" && credential[types.AWSSecretKey] != "" {
+				return nil, errors.New("Could not backup to s3 without setting credential access key")
+			}
+			if credential[types.AWSAccessKey] != "" && credential[types.AWSSecretKey] == "" {
+				return nil, errors.New("Could not backup to s3 without setting credential secret access key")
+			}
+			if credential[types.AWSAccessKey] != "" && credential[types.AWSSecretKey] != "" {
+				os.Setenv(types.AWSAccessKey, credential[types.AWSAccessKey])
+				os.Setenv(types.AWSSecretKey, credential[types.AWSSecretKey])
+			}
+
+			os.Setenv(types.AWSEndPoint, credential[types.AWSEndPoint])
+			os.Setenv(types.HTTPSProxy, credential[types.HTTPSProxy])
+			os.Setenv(types.HTTPProxy, credential[types.HTTPProxy])
+			os.Setenv(types.NOProxy, credential[types.NOProxy])
+			os.Setenv(types.VirtualHostedStyle, credential[types.VirtualHostedStyle])
+
+			// set a custom ca cert if available
+			if credential[types.AWSCert] != "" {
+				os.Setenv(types.AWSCert, credential[types.AWSCert])
+			}
+		}
+	}
+
+	backupInfo, err := backupstore.InspectBackup(backup)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to get the current restoring backup info")
+	}
+
+	resp := &ptypes.BackupInfoResponse{
+		Name:                   backupInfo.Name,
+		Url:                    backupInfo.URL,
+		SnapshotName:           backupInfo.SnapshotName,
+		SnpashotCreated:        backupInfo.SnapshotCreated,
+		Created:                backupInfo.Created,
+		Size:                   backupInfo.Size,
+		Labels:                 backupInfo.Labels,
+		IsIncremental:          backupInfo.IsIncremental,
+		VolumeName:             backupInfo.VolumeName,
+		VolumeSize:             backupInfo.VolumeSize,
+		VolumeCreated:          backupInfo.VolumeCreated,
+		VolumeBackingImageName: backupInfo.VolumeBackingImageName,
+	}
+
+	return resp, nil
+}
+
 func (s *SyncAgentServer) waitForRestoreComplete() error {
 	var (
 		restoreProgress int
