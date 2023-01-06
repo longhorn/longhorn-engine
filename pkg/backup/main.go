@@ -22,7 +22,7 @@ var (
 	log     = logrus.WithFields(logrus.Fields{"pkg": "backup"})
 )
 
-type BackupParameters struct {
+type CreateBackupParameters struct {
 	BackupName           string
 	VolumeName           string
 	SnapshotName         string
@@ -69,7 +69,7 @@ func RequiredMissingError(name string) error {
 	return fmt.Errorf("cannot find valid required parameter: %v", name)
 }
 
-func DoBackupCreate(backupParams *BackupParameters) (string, *replica.BackupStatus, error) {
+func DoBackupCreate(backupParams *CreateBackupParameters) (string, *replica.BackupStatus, error) {
 	var err error
 
 	if backupParams.VolumeName == "" || backupParams.SnapshotName == "" || backupParams.DestURL == "" {
