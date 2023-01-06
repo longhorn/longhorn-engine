@@ -174,7 +174,7 @@ func (s *SyncAgentServer) IsRestoring() bool {
 	return s.isRestoring
 }
 
-func (s *SyncAgentServer) StartRestore(backupURL, requestedBackupName, snapshotDiskName string) (err error) {
+func (s *SyncAgentServer) StartRestore(backupURL, requestedBackupName, snapshotDiskName string, concurrentLimit int) (err error) {
 	s.Lock()
 	defer s.Unlock()
 
@@ -227,12 +227,12 @@ func (s *SyncAgentServer) StartRestore(backupURL, requestedBackupName, snapshotD
 	}()
 
 	if newRestoreStatus.LastRestored == "" {
-		if err := backup.DoBackupRestore(backupURL, newRestoreStatus.ToFileName, s.RestoreInfo); err != nil {
+		if err := backup.DoBackupRestore(backupURL, newRestoreStatus.ToFileName, concurrentLimit, s.RestoreInfo); err != nil {
 			return errors.Wrapf(err, "error initiating full backup restore")
 		}
 		logrus.Infof("Successfully initiated full restore for %v to [%v]", backupURL, newRestoreStatus.ToFileName)
 	} else {
-		if err := backup.DoBackupRestoreIncrementally(backupURL, newRestoreStatus.ToFileName, newRestoreStatus.LastRestored, s.RestoreInfo); err != nil {
+		if err := backup.DoBackupRestoreIncrementally(backupURL, newRestoreStatus.ToFileName, newRestoreStatus.LastRestored, concurrentLimit, s.RestoreInfo); err != nil {
 			return errors.Wrapf(err, "error initiating incremental backup restore")
 		}
 		logrus.Infof("Successfully initiated incremental restore for %v to [%v]", backupURL, newRestoreStatus.ToFileName)
@@ -672,6 +672,8 @@ func (s *SyncAgentServer) BackupCreate(ctx context.Context, req *ptypes.BackupCr
 		DestURL:              req.BackupTarget,
 		BackingImageName:     req.BackingImageName,
 		BackingImageChecksum: req.BackingImageChecksum,
+		CompressionMethod:    req.CompressionMethod,
+		ConcurrentLimit:      req.ConcurrentLimit,
 		Labels:               req.Labels,
 	}
 
@@ -856,7 +858,7 @@ func (s *SyncAgentServer) BackupRestore(ctx context.Context, req *ptypes.BackupR
 		return nil, err
 	}
 
-	if err := s.StartRestore(req.Backup, requestedBackupName, req.SnapshotDiskName); err != nil {
+	if err := s.StartRestore(req.Backup, requestedBackupName, req.SnapshotDiskName, int(req.ConcurrentLimit)); err != nil {
 		return nil, errors.Wrapf(err, "error starting backup restore")
 	}
 
