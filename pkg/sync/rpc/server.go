@@ -665,7 +665,7 @@ func (s *SyncAgentServer) BackupCreate(ctx context.Context, req *ptypes.BackupCr
 		return nil, err
 	}
 
-	backupParams := &backup.BackupParameters{
+	backupID, replicaObj, err := backup.DoBackupCreate(&backup.CreateBackupParameters{
 		BackupName:           req.BackupName,
 		VolumeName:           req.VolumeName,
 		SnapshotName:         req.SnapshotFileName,
@@ -675,9 +675,7 @@ func (s *SyncAgentServer) BackupCreate(ctx context.Context, req *ptypes.BackupCr
 		CompressionMethod:    req.CompressionMethod,
 		ConcurrentLimit:      req.ConcurrentLimit,
 		Labels:               req.Labels,
-	}
-
-	backupID, replicaObj, err := backup.DoBackupCreate(backupParams)
+	})
 	if err != nil {
 		logrus.WithError(err).Errorf("Failed to create backup %v", req.BackupName)
 		return nil, err
