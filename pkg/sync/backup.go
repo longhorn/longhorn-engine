@@ -41,7 +41,8 @@ type RestoreStatus struct {
 	CurrentRestoringBackup string `json:"currentRestoringBackup"`
 }
 
-func (t *Task) CreateBackup(backupName, snapshot, dest, backingImageName, backingImageChecksum string, labels []string, credential map[string]string) (*BackupCreateInfo, error) {
+func (t *Task) CreateBackup(backupName, snapshot, dest, backingImageName, backingImageChecksum string,
+	compressionMethod string, concurrentLimit int, labels []string, credential map[string]string) (*BackupCreateInfo, error) {
 	if snapshot == types.VolumeHeadName {
 		return nil, fmt.Errorf("cannot backup the head disk in the chain")
 	}
@@ -56,7 +57,8 @@ func (t *Task) CreateBackup(backupName, snapshot, dest, backingImageName, backin
 		return nil, err
 	}
 
-	return t.createBackup(replica, backupName, snapshot, dest, volume.Name, backingImageName, backingImageChecksum, labels, credential)
+	return t.createBackup(replica, backupName, snapshot, dest, volume.Name, backingImageName, backingImageChecksum,
+		compressionMethod, concurrentLimit, labels, credential)
 }
 
 func (t *Task) findRWReplica() (*types.ControllerReplicaInfo, error) {
@@ -74,8 +76,9 @@ func (t *Task) findRWReplica() (*types.ControllerReplicaInfo, error) {
 	return nil, fmt.Errorf("cannot find an available replica for backup")
 }
 
-func (t *Task) createBackup(replicaInController *types.ControllerReplicaInfo, backupName, snapshot, dest, volumeName, backingImageName, backingImageChecksum string, labels []string,
-	credential map[string]string) (*BackupCreateInfo, error) {
+func (t *Task) createBackup(replicaInController *types.ControllerReplicaInfo, backupName, snapshot, dest, volumeName,
+	backingImageName, backingImageChecksum, compression string, concurrentLimit int,
+	labels []string, credential map[string]string) (*BackupCreateInfo, error) {
 	if replicaInController.Mode != types.RW {
 		return nil, fmt.Errorf("can only create backup from replica in mode RW, got %s", replicaInController.Mode)
 	}
@@ -98,7 +101,8 @@ func (t *Task) createBackup(replicaInController *types.ControllerReplicaInfo, ba
 
 	logrus.Infof("Backing up %s on %s, to %s", snapshot, replicaInController.Address, dest)
 
-	reply, err := repClient.CreateBackup(backupName, snapshot, dest, volumeName, backingImageName, backingImageChecksum, labels, credential)
+	reply, err := repClient.CreateBackup(backupName, snapshot, dest, volumeName, backingImageName, backingImageChecksum,
+		compression, concurrentLimit, labels, credential)
 	if err != nil {
 		return nil, err
 	}
@@ -155,7 +159,7 @@ func FetchBackupStatus(client *replicaClient.ReplicaClient, backupID string, rep
 	}, nil
 }
 
-func (t *Task) RestoreBackup(backup string, credential map[string]string) error {
+func (t *Task) RestoreBackup(backup string, credential map[string]string, concurrentLimit int) error {
 	volume, err := t.client.VolumeGet()
 	if err != nil {
 		return errors.Wrapf(err, "failed to get volume")
@@ -260,7 +264,7 @@ func (t *Task) RestoreBackup(backup string, credential map[string]string) error 
 	for _, r := range replicas {
 		go func(replica *types.ControllerReplicaInfo) {
 			defer wg.Done()
-			err := t.restoreBackup(replica, backup, snapshotDiskName, credential)
+			err := t.restoreBackup(replica, backup, snapshotDiskName, credential, concurrentLimit)
 			if err != nil {
 				syncErrorMap.Store(replica.Address, err)
 			}
@@ -281,7 +285,8 @@ func (t *Task) RestoreBackup(backup string, credential map[string]string) error 
 	return nil
 }
 
-func (t *Task) restoreBackup(replicaInController *types.ControllerReplicaInfo, backup string, snapshotFile string, credential map[string]string) error {
+func (t *Task) restoreBackup(replicaInController *types.ControllerReplicaInfo, backup string, snapshotFile string,
+	credential map[string]string, concurrentLimit int) error {
 	if replicaInController.Mode == types.ERR {
 		return fmt.Errorf("cannot restore backup from replica in mode ERR")
 	}
@@ -292,7 +297,7 @@ func (t *Task) restoreBackup(replicaInController *types.ControllerReplicaInfo, b
 	}
 	defer repClient.Close()
 
-	if err := repClient.RestoreBackup(backup, snapshotFile, credential); err != nil {
+	if err := repClient.RestoreBackup(backup, snapshotFile, credential, concurrentLimit); err != nil {
 		return err
 	}
 

@@ -61,6 +61,16 @@ func BackupCreateCmd() cli.Command {
 				Name:  "backup-name",
 				Usage: "specify the backup name. If it is not set, a random name will be generated automatically",
 			},
+			cli.StringFlag{
+				Name:  "compression-method",
+				Value: "lz4",
+				Usage: "Compression method for backing up blocks",
+			},
+			cli.IntFlag{
+				Name:  "concurrent-limit",
+				Value: 1,
+				Usage: "Concurrent backup worker threads",
+			},
 		},
 		Action: func(c *cli.Context) {
 			if err := createBackup(c); err != nil {
@@ -170,6 +180,13 @@ func BackupRestoreCmd() cli.Command {
 	return cli.Command{
 		Name:  "restore",
 		Usage: "restore a backup to current volume: restore <backup>",
+		Flags: []cli.Flag{
+			cli.IntFlag{
+				Name:  "concurrent-limit",
+				Value: 1,
+				Usage: "Concurrent restore worker threads",
+			},
+		},
 		Action: func(c *cli.Context) {
 			if err := restoreBackup(c); err != nil {
 				errInfo, jsonErr := json.MarshalIndent(err, "", "\t")
@@ -215,6 +232,9 @@ func createBackup(c *cli.Context) error {
 
 	biName := c.String("backing-image-name")
 	biChecksum := c.String("backing-image-checksum")
+	backupName := c.String("backup-name")
+	compressionMethod := c.String("compression-method")
+	concurrentLimit := c.Int("concurrent-limit")
 
 	labels := c.StringSlice("label")
 	if labels != nil {
@@ -223,8 +243,6 @@ func createBackup(c *cli.Context) error {
 			return errors.Wrap(err, "cannot parse backup labels")
 		}
 	}
-
-	backupName := c.String("backup-name")
 
 	credential, err := util.GetBackupCredential(dest)
 	if err != nil {
@@ -239,7 +257,8 @@ func createBackup(c *cli.Context) error {
 		return err
 	}
 
-	backup, err := task.CreateBackup(backupName, snapshot, dest, biName, biChecksum, labels, credential)
+	backup, err := task.CreateBackup(backupName, snapshot, dest, biName, biChecksum,
+		compressionMethod, concurrentLimit, labels, credential)
 	if err != nil {
 		return err
 	}
@@ -271,8 +290,9 @@ func restoreBackup(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	concurrentLimit := c.Int("concurrent-limit")
 
-	if err := task.RestoreBackup(backupURL, credential); err != nil {
+	if err := task.RestoreBackup(backupURL, credential, concurrentLimit); err != nil {
 		return err
 	}
 

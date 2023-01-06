@@ -29,6 +29,8 @@ type BackupParameters struct {
 	DestURL              string
 	BackingImageName     string
 	BackingImageChecksum string
+	CompressionMethod    string
+	ConcurrentLimit      int32
 	Labels               []string
 }
 
@@ -104,6 +106,7 @@ func DoBackupCreate(backupParams *BackupParameters) (string, *replica.BackupStat
 		Labels:               labelMap,
 		BackingImageName:     backupParams.BackingImageName,
 		BackingImageChecksum: backupParams.BackingImageChecksum,
+		CompressionMethod:    backupParams.CompressionMethod,
 		CreatedTime:          util.Now(),
 	}
 
@@ -115,12 +118,13 @@ func DoBackupCreate(backupParams *BackupParameters) (string, *replica.BackupStat
 	log.Infof("Starting backup for %v, snapshot %v, dest %v", volume, snapshot, backupParams.DestURL)
 
 	backupID, isIncremental, err := backupstore.CreateDeltaBlockBackup(&backupstore.DeltaBackupConfig{
-		BackupName: backupParams.BackupName,
-		Volume:     volume,
-		Snapshot:   snapshot,
-		DestURL:    backupParams.DestURL,
-		DeltaOps:   replicaBackup,
-		Labels:     labelMap,
+		BackupName:      backupParams.BackupName,
+		ConcurrentLimit: backupParams.ConcurrentLimit,
+		Volume:          volume,
+		Snapshot:        snapshot,
+		DestURL:         backupParams.DestURL,
+		DeltaOps:        replicaBackup,
+		Labels:          labelMap,
 	})
 	if err != nil {
 		return "", nil, err
@@ -152,28 +156,30 @@ func openBackingFile(backingFilePath string) (*backingfile.BackingFile, error) {
 	return backingfile.OpenBackingFile(backingFilePath)
 }
 
-func DoBackupRestore(backupURL string, toFile string, restoreObj *replica.RestoreStatus) error {
+func DoBackupRestore(backupURL string, toFile string, concurrentLimit int, restoreObj *replica.RestoreStatus) error {
 	backupURL = util.UnescapeURL(backupURL)
 
 	log.Infof("Start restoring from %v into snapshot %v", backupURL, toFile)
 
 	return backupstore.RestoreDeltaBlockBackup(&backupstore.DeltaRestoreConfig{
-		BackupURL: backupURL,
-		DeltaOps:  restoreObj,
-		Filename:  toFile,
+		BackupURL:       backupURL,
+		DeltaOps:        restoreObj,
+		Filename:        toFile,
+		ConcurrentLimit: int32(concurrentLimit),
 	})
 }
 
-func DoBackupRestoreIncrementally(url string, deltaFile string, lastRestored string, restoreObj *replica.RestoreStatus) error {
+func DoBackupRestoreIncrementally(url string, deltaFile string, lastRestored string, concurrentLimit int, restoreObj *replica.RestoreStatus) error {
 	backupURL := util.UnescapeURL(url)
 
 	log.Infof("Start incremental restoring from %v into delta file %v", backupURL, deltaFile)
 
 	return backupstore.RestoreDeltaBlockBackupIncrementally(&backupstore.DeltaRestoreConfig{
-		BackupURL:      backupURL,
-		DeltaOps:       restoreObj,
-		LastBackupName: lastRestored,
-		Filename:       deltaFile,
+		BackupURL:       backupURL,
+		DeltaOps:        restoreObj,
+		LastBackupName:  lastRestored,
+		Filename:        deltaFile,
+		ConcurrentLimit: int32(concurrentLimit),
 	})
 }
 

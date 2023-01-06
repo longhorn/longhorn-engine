@@ -53,6 +53,11 @@ func RestoreToFileCmd() cli.Command {
 				Usage: "format of output file image to produce",
 				Value: DefaultOutputFormat,
 			},
+			cli.IntFlag{
+				Name:  "concurrent-limit",
+				Value: 5,
+				Usage: "Concurrent backup worker threads",
+			},
 		},
 		Action: func(c *cli.Context) {
 			logrus.Infof("Running restore to file command: backup-url=%s backing-file=%s output-file=%s output-format=%s",
@@ -66,7 +71,7 @@ func RestoreToFileCmd() cli.Command {
 	}
 }
 
-func restore(url string) error {
+func restore(url string, concurrentLimit int) error {
 	backupURL := util.UnescapeURL(url)
 	requestedBackupName, _, _, err := backupstore.DecodeBackupURL(backupURL)
 	if err != nil {
@@ -74,9 +79,10 @@ func restore(url string) error {
 	}
 	restoreObj := replica.NewRestore(BackupFilePath, "", backupURL, requestedBackupName)
 	config := &backupstore.DeltaRestoreConfig{
-		BackupURL: backupURL,
-		DeltaOps:  restoreObj,
-		Filename:  BackupFilePath,
+		BackupURL:       backupURL,
+		DeltaOps:        restoreObj,
+		Filename:        BackupFilePath,
+		ConcurrentLimit: int32(concurrentLimit),
 	}
 
 	if err := backupstore.RestoreDeltaBlockBackup(config); err != nil {
@@ -119,6 +125,8 @@ func restoreToFile(c *cli.Context) error {
 		return fmt.Errorf("missing the first argument, it should be backup-url")
 	}
 
+	concurrentLimit := c.Int("concurrent-limit")
+
 	outputFile := c.String("output-file")
 	if outputFile == "" {
 		outputFile = DefaultOutputFileName + "." + outputFormat
@@ -132,7 +140,7 @@ func restoreToFile(c *cli.Context) error {
 	defer CleanupTempFiles(outputFile, BackupFilePath, BackupFileConverted, BackingFileCopy)
 
 	logrus.Infof("Start to restore %s to %s", backupURL, BackupFilePath)
-	if err := restore(backupURL); err != nil {
+	if err := restore(backupURL, concurrentLimit); err != nil {
 		return err
 	}
 	logrus.Infof("Done restoring %s to %s", backupURL, BackupFilePath)
