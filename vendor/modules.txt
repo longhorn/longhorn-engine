@@ -70,7 +70,7 @@ github.com/gorilla/websocket
 github.com/honestbee/jobq
 # github.com/jmespath/go-jmespath v0.3.0
 github.com/jmespath/go-jmespath
-# github.com/longhorn/backupstore v0.0.0-20220913112826-5f5c95274f2a
+# github.com/longhorn/backupstore v0.0.0-20230110025033-9b4a83420a81
 github.com/longhorn/backupstore
 github.com/longhorn/backupstore/cmd
 github.com/longhorn/backupstore/fsops
@@ -78,6 +78,7 @@ github.com/longhorn/backupstore/http
 github.com/longhorn/backupstore/logging
 github.com/longhorn/backupstore/nfs
 github.com/longhorn/backupstore/s3
+github.com/longhorn/backupstore/systembackup
 github.com/longhorn/backupstore/util
 github.com/longhorn/backupstore/vfs
 # github.com/longhorn/go-iscsi-helper v0.0.0-20220805034259-7b59e22574bb
