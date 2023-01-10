@@ -18,7 +18,7 @@ require (
 	github.com/longhorn/sparse-tools v0.0.0-20230110055233-727da1d6548d
 	github.com/mattn/go-colorable v0.1.4 // indirect
 	github.com/mattn/go-runewidth v0.0.5-0.20181218000649-703b5e6b11ae // indirect
-	github.com/moby/moby v20.10.20+incompatible
+	github.com/moby/moby v20.10.22+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
 	github.com/rancher/go-rancher v0.1.1-0.20190307222549-9756097e5e4c
