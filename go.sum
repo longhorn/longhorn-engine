@@ -79,8 +79,8 @@ github.com/jmespath/go-jmespath v0.3.0 h1:OS12ieG61fsCg5+qLJ+SsW9NicxNkg3b25OyT2
 github.com/jmespath/go-jmespath v0.3.0/go.mod h1:9QtRXoHjLGCJ5IBSaohpXITPlowMeeYCZ7fLUTSywik=
 github.com/konsorten/go-windows-terminal-sequences v1.0.1/go.mod h1:T0+1ngSBFLxvqU3pZ+m/2kptfBszLMUkC4ZK/EgS/cQ=
 github.com/kr/fs v0.1.0/go.mod h1:FFnZGqtBN9Gxj7eW1uZ42v5BccTP0vu6NEaFoC2HwRg=
-github.com/longhorn/backupstore v0.0.0-20221114044558-19f4902cd4fd h1:dRGV5NNnYWoxtYHhm48YVwvhioU2U0Dote+vbgcR8WQ=
-github.com/longhorn/backupstore v0.0.0-20221114044558-19f4902cd4fd/go.mod h1:hvIVsrpjPey7KupirAh0WoPMg0ArWnE6fA5bI30X7AI=
+github.com/longhorn/backupstore v0.0.0-20230116054423-7eaab31c108a h1:1IJaLgaJ9GUGsairZbGyoFTxyG6w9QNrJ/2BnxjbNrw=
+github.com/longhorn/backupstore v0.0.0-20230116054423-7eaab31c108a/go.mod h1:73zwYfMYt/JacoG4y86p3Ct6MEzIhHtbxo02AAO+TmA=
 github.com/longhorn/go-iscsi-helper v0.0.0-20221219041640-6c94fb0d483a h1:wyL5quo6Z6PiM2XJJ2ZRmd5Yq1dXoyEZQgL5GGMzcoY=
 github.com/longhorn/go-iscsi-helper v0.0.0-20221219041640-6c94fb0d483a/go.mod h1:9z/y9glKmWEdV50tjlUPxFwi1goQfIrrsoZbnMyIZbY=
 github.com/longhorn/nsfilelock v0.0.0-20200723175406-fa7c83ad0003 h1:Jw9uANsGcHTxp6HcC++/vN17LfeuDmozHI2j6DoZf5E=
@@ -95,6 +95,8 @@ github.com/mattn/go-runewidth v0.0.5-0.20181218000649-703b5e6b11ae h1:575usOHCDz
 github.com/mattn/go-runewidth v0.0.5-0.20181218000649-703b5e6b11ae/go.mod h1:H031xJmbD/WCDINGzjvQ9THkh0rPKHF+m2gUSrubnMI=
 github.com/moby/moby v20.10.22+incompatible h1:KHnFMlxjgGizH7+3fQj8+PjmrwEnilKgahf/TgTQIxI=
 github.com/moby/moby v20.10.22+incompatible/go.mod h1:fDXVQ6+S340veQPv35CzDahGBmHsiclFwfEygB/TWMc=
+github.com/pierrec/lz4/v4 v4.1.17 h1:kV4Ip+/hUBC+8T6+2EgburRtkE9ef4nbY3f4dFhGjMc=
+github.com/pierrec/lz4/v4 v4.1.17/go.mod h1:gZWDp/Ze/IJXGXf23ltt2EXimqmTUXEy0GFuRQyBid4=
 github.com/pkg/errors v0.8.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=
 github.com/pkg/errors v0.9.1 h1:FEBLx1zS214owpjy7qsBeixbURkuhQAwrK5UwLGTwt4=
 github.com/pkg/errors v0.9.1/go.mod h1:bwawxfHBFNV+L2hUp1rHADufV3IMtnDRdf1r5NINEl0=

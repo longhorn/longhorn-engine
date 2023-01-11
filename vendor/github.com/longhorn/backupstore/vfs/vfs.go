@@ -53,14 +53,14 @@ func initFunc(destURL string) (backupstore.BackupStoreDriver, error) {
 	b.path = u.Path
 
 	if b.path == "" {
-		return nil, fmt.Errorf("Cannot find vfs path")
+		return nil, fmt.Errorf("cannot find vfs path")
 	}
 	if _, err := b.List(""); err != nil {
 		return nil, fmt.Errorf("VFS path %v doesn't exist or is not a directory", b.path)
 	}
 
 	b.destURL = KIND + "://" + b.path
-	log.Debugf("Loaded driver for %v", b.destURL)
+	log.Infof("Loaded driver for %v", b.destURL)
 	return b, nil
 }
 
