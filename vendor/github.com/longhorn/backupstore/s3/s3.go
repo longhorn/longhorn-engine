@@ -10,9 +10,10 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go/aws"
+	"github.com/sirupsen/logrus"
+
 	"github.com/longhorn/backupstore"
 	"github.com/longhorn/backupstore/http"
-	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -82,7 +83,7 @@ func initFunc(destURL string) (backupstore.BackupStoreDriver, error) {
 	}
 	b.destURL += "/" + b.path
 
-	log.Debugf("Loaded driver for %v", b.destURL)
+	log.Infof("Loaded driver for %v", b.destURL)
 	return b, nil
 }
 
@@ -114,7 +115,7 @@ func (s *BackupStoreDriver) List(listPath string) ([]string, error) {
 	path := s.updatePath(listPath) + "/"
 	contents, prefixes, err := s.service.ListObjects(path, "/")
 	if err != nil {
-		log.Error("Fail to list s3: ", err)
+		log.WithError(err).Error("Failed to list s3")
 		return result, err
 	}
 
@@ -214,8 +215,5 @@ func (s *BackupStoreDriver) Download(src, dst string) error {
 	defer rc.Close()
 
 	_, err = io.Copy(f, rc)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }

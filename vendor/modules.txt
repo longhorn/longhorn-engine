@@ -74,7 +74,7 @@ github.com/gorilla/websocket
 github.com/honestbee/jobq
 # github.com/jmespath/go-jmespath v0.3.0
 github.com/jmespath/go-jmespath
-# github.com/longhorn/backupstore v0.0.0-20221114044558-19f4902cd4fd
+# github.com/longhorn/backupstore v0.0.0-20230116054423-7eaab31c108a
 github.com/longhorn/backupstore
 github.com/longhorn/backupstore/cmd
 github.com/longhorn/backupstore/fsops
@@ -104,6 +104,12 @@ github.com/longhorn/sparse-tools/util
 github.com/mattn/go-runewidth
 # github.com/moby/moby v20.10.22+incompatible
 github.com/moby/moby/pkg/reexec
+# github.com/pierrec/lz4/v4 v4.1.17
+github.com/pierrec/lz4/v4
+github.com/pierrec/lz4/v4/internal/lz4block
+github.com/pierrec/lz4/v4/internal/lz4errors
+github.com/pierrec/lz4/v4/internal/lz4stream
+github.com/pierrec/lz4/v4/internal/xxh32
 # github.com/pkg/errors v0.9.1
 github.com/pkg/errors
 # github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
@@ -122,6 +128,7 @@ github.com/urfave/cli
 # golang.org/x/net v0.0.0-20220722155237-a158d28d115b
 golang.org/x/net/context
 golang.org/x/net/http/httpguts
+golang.org/x/net/http/httpproxy
 golang.org/x/net/http2
 golang.org/x/net/http2/hpack
 golang.org/x/net/idna

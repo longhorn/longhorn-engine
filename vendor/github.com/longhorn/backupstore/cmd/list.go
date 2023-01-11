@@ -51,7 +51,7 @@ func doBackupList(c *cli.Context) error {
 
 	volumeName := c.String("volume")
 	if volumeName != "" && !util.ValidateName(volumeName) {
-		return fmt.Errorf("Invalid volume name %v for backup", volumeName)
+		return fmt.Errorf("invalid volume name %v for backup", volumeName)
 	}
 
 	volumeOnly := c.Bool("volume-only")
@@ -100,5 +100,5 @@ func ResponseOutput(v interface{}) ([]byte, error) {
 }
 
 func RequiredMissingError(name string) error {
-	return fmt.Errorf("Cannot find valid required parameter: %v", name)
+	return fmt.Errorf("cannot find valid required parameter: %v", name)
 }
