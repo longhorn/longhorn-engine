@@ -661,7 +661,12 @@ func (s *SyncAgentServer) SnapshotCloneStatus(ctx context.Context, req *empty.Em
 }
 
 func (s *SyncAgentServer) BackupCreate(ctx context.Context, req *ptypes.BackupCreateRequest) (*ptypes.BackupCreateResponse, error) {
-	if err := s.setupCredential(req); err != nil {
+	backupType, err := util.CheckBackupType(req.BackupTarget)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := util.SetupCredential(backupType, req.Credential); err != nil {
 		return nil, err
 	}
 
@@ -692,51 +697,6 @@ func (s *SyncAgentServer) BackupCreate(ctx context.Context, req *ptypes.BackupCr
 
 	logrus.Infof("Done initiating backup creation, received backupID: %v", resp.Backup)
 	return resp, nil
-}
-
-func (s *SyncAgentServer) setupCredential(req *ptypes.BackupCreateRequest) error {
-	backupType, err := util.CheckBackupType(req.BackupTarget)
-	if err != nil {
-		return err
-	}
-
-	switch backupType {
-	case "s3":
-		return s.setupS3Credential(req)
-	default:
-		return nil
-	}
-}
-
-func (s *SyncAgentServer) setupS3Credential(req *ptypes.BackupCreateRequest) error {
-	credential := req.Credential
-	if credential == nil {
-		return nil
-	}
-
-	if credential[types.AWSAccessKey] == "" && credential[types.AWSSecretKey] != "" {
-		return errors.New("could not backup to s3 without setting credential access key")
-	}
-	if credential[types.AWSAccessKey] != "" && credential[types.AWSSecretKey] == "" {
-		return errors.New("could not backup to s3 without setting credential secret access key")
-	}
-	if credential[types.AWSAccessKey] != "" && credential[types.AWSSecretKey] != "" {
-		os.Setenv(types.AWSAccessKey, credential[types.AWSAccessKey])
-		os.Setenv(types.AWSSecretKey, credential[types.AWSSecretKey])
-	}
-
-	os.Setenv(types.AWSEndPoint, credential[types.AWSEndPoint])
-	os.Setenv(types.HTTPSProxy, credential[types.HTTPSProxy])
-	os.Setenv(types.HTTPProxy, credential[types.HTTPProxy])
-	os.Setenv(types.NOProxy, credential[types.NOProxy])
-	os.Setenv(types.VirtualHostedStyle, credential[types.VirtualHostedStyle])
-
-	// set a custom ca cert if available
-	if credential[types.AWSCert] != "" {
-		os.Setenv(types.AWSCert, credential[types.AWSCert])
-	}
-
-	return nil
 }
 
 func (s *SyncAgentServer) BackupStatus(ctx context.Context, req *ptypes.BackupStatusRequest) (*ptypes.BackupStatusResponse, error) {
@@ -820,37 +780,16 @@ func (s *SyncAgentServer) BackupRestore(ctx context.Context, req *ptypes.BackupR
 	if req.Backup == "" {
 		return nil, fmt.Errorf("empty backup URL for the restore")
 	}
+
 	backupType, err := util.CheckBackupType(req.Backup)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to check the type for backup %v", req.Backup)
 	}
-	// Check/Set AWS credential
-	if backupType == "s3" {
-		credential := req.Credential
-		if credential != nil {
-			if credential[types.AWSAccessKey] == "" && credential[types.AWSSecretKey] != "" {
-				return nil, errors.New("could not backup to s3 without setting credential access key")
-			}
-			if credential[types.AWSAccessKey] != "" && credential[types.AWSSecretKey] == "" {
-				return nil, errors.New("could not backup to s3 without setting credential secret access key")
-			}
-			if credential[types.AWSAccessKey] != "" && credential[types.AWSSecretKey] != "" {
-				os.Setenv(types.AWSAccessKey, credential[types.AWSAccessKey])
-				os.Setenv(types.AWSSecretKey, credential[types.AWSSecretKey])
-			}
 
-			os.Setenv(types.AWSEndPoint, credential[types.AWSEndPoint])
-			os.Setenv(types.HTTPSProxy, credential[types.HTTPSProxy])
-			os.Setenv(types.HTTPProxy, credential[types.HTTPProxy])
-			os.Setenv(types.NOProxy, credential[types.NOProxy])
-			os.Setenv(types.VirtualHostedStyle, credential[types.VirtualHostedStyle])
-
-			// set a custom ca cert if available
-			if credential[types.AWSCert] != "" {
-				os.Setenv(types.AWSCert, credential[types.AWSCert])
-			}
-		}
+	if err := util.SetupCredential(backupType, req.Credential); err != nil {
+		return nil, errors.Wrapf(err, "failed to setup credential for backup %v", req.Backup)
 	}
+
 	requestedBackupName, _, _, err := backupstore.DecodeBackupURL(util.UnescapeURL(req.Backup))
 	if err != nil {
 		return nil, err
