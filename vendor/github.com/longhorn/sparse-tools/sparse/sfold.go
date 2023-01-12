@@ -8,18 +8,23 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/pkg/errors"
 	log "github.com/sirupsen/logrus"
+)
+
+const (
+	defaultCoalesceWorkerCount = 4
 )
 
 // FoldFile folds child snapshot data into its parent
 func FoldFile(childFileName, parentFileName string, ops FileHandlingOperations) error {
 	childFInfo, err := os.Stat(childFileName)
 	if err != nil {
-		return fmt.Errorf("os.Stat(childFileName) failed, error: %v", err)
+		return errors.Wrapf(err, "failed to get file info of child file %v", childFileName)
 	}
 	parentFInfo, err := os.Stat(parentFileName)
 	if err != nil {
-		return fmt.Errorf("os.Stat(parentFileName) failed, error: %v", err)
+		return errors.Wrapf(err, "failed to get file info of parent file %v", parentFileName)
 	}
 
 	// ensure no directory
@@ -33,20 +38,20 @@ func FoldFile(childFileName, parentFileName string, ops FileHandlingOperations) 
 			return fmt.Errorf("file sizes are not equal and the parent file is larger than the child file")
 		}
 		if err := os.Truncate(parentFileName, childFInfo.Size()); err != nil {
-			return fmt.Errorf("failed to expand the parent file size before coalesce, error: %v", err)
+			return errors.Wrap(err, "failed to expand the parent file size before coalesce")
 		}
 	}
 
 	// open child and parent files
 	childFileIo, err := NewDirectFileIoProcessor(childFileName, os.O_RDONLY, 0)
 	if err != nil {
-		return fmt.Errorf("failed to open childFile, error: %v", err)
+		return errors.Wrap(err, "failed to open childFile")
 	}
 	defer childFileIo.Close()
 
 	parentFileIo, err := NewDirectFileIoProcessor(parentFileName, os.O_WRONLY, 0)
 	if err != nil {
-		return fmt.Errorf("failed to open parentFile, error: %v", err)
+		return errors.Wrap(err, "failed to open parentFile")
 	}
 	defer parentFileIo.Close()
 
@@ -68,7 +73,7 @@ func coalesce(parentFileIo, childFileIo FileIoProcessor, fileSize int64, ops Fil
 
 	blockSize, err := getFileSystemBlockSize(childFileIo)
 	if err != nil {
-		return fmt.Errorf("can't get FS block size, error: %v", err)
+		return errors.Wrap(err, "can't get FS block size")
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -77,7 +82,7 @@ func coalesce(parentFileIo, childFileIo FileIoProcessor, fileSize int64, ops Fil
 	syncStartTime := time.Now()
 	out, errc, err := GetFileLayout(ctx, childFileIo)
 	if err != nil {
-		return fmt.Errorf("failed to retrieve file layout for file %v err: %v", childFileIo.Name(), err)
+		return errors.Wrapf(err, "failed to retrieve file layout for file %v", childFileIo.Name())
 	}
 
 	processSegment := func(segment FileInterval) error {
@@ -95,14 +100,14 @@ func coalesce(parentFileIo, childFileIo FileIoProcessor, fileSize int64, ops Fil
 				// read a batch from child
 				n, err := childFileIo.ReadAt(buffer[:size], offset)
 				if err != nil {
-					return fmt.Errorf("failed to read childFile filename: %v, size: %v, at: %v, error: %v",
-						childFileIo.Name(), size, offset, err)
+					return errors.Wrapf(err, "failed to read childFile filename: %v, size: %v, at: %v",
+						childFileIo.Name(), size, offset)
 				}
 				// write a batch to parent
 				n, err = parentFileIo.WriteAt(buffer[:size], offset)
 				if err != nil {
-					return fmt.Errorf("failed to write to parentFile filename: %v, size: %v, at: %v, error: %v",
-						parentFileIo.Name(), size, offset, err)
+					return errors.Wrapf(err, "failed to write to parentFile filename: %v, size: %v, at: %v",
+						parentFileIo.Name(), size, offset)
 				}
 				offset += int64(n)
 			}
@@ -114,9 +119,8 @@ func coalesce(parentFileIo, childFileIo FileIoProcessor, fileSize int64, ops Fil
 		return nil
 	}
 
-	const WorkerCount = 4
 	errorChannels := []<-chan error{errc}
-	for i := 0; i < WorkerCount; i++ {
+	for i := 0; i < defaultCoalesceWorkerCount; i++ {
 		errorChannels = append(errorChannels, processFileIntervals(ctx, out, processSegment))
 	}
 
@@ -128,7 +132,8 @@ func coalesce(parentFileIo, childFileIo FileIoProcessor, fileSize int64, ops Fil
 		break
 	}
 
-	log.Debugf("finished fold for parent: %v child: %v size: %v elapsed: %.2fs",
-		parentFileIo.Name(), childFileIo.Name(), fileSize, time.Now().Sub(syncStartTime).Seconds())
+	log.Debugf("Finished fold for parent %v, child %v, size %v, elapsed %.2fs",
+		parentFileIo.Name(), childFileIo.Name(), fileSize,
+		time.Since(syncStartTime).Seconds())
 	return err
 }

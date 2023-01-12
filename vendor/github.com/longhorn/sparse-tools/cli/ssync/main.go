@@ -24,9 +24,10 @@ func Main() {
 	verbose := flag.Bool("verbose", false, "verbose mode")
 	daemon := flag.Bool("daemon", false, "daemon mode (run on remote host)")
 	port := flag.String("port", "5000", "optional daemon port")
-	timeout := flag.Int("timeout", 120, "optional daemon/client timeout (seconds)")
+	timeout := flag.Int("timeout", 30, "optional HTTP client timeout (seconds)")
 	host := flag.String("host", "", "remote host of <DstFile> (requires running daemon)")
 	directIO := flag.Bool("directIO", true, "optional client sync file using directIO")
+	fastSync := flag.Bool("fastSync", true, "optional fast synchronization based on file's change time and checksum")
 
 	flag.Parse()
 
@@ -38,26 +39,26 @@ func Main() {
 	if *daemon {
 		if len(args) < 1 {
 			log.Error(usage)
-			log.Fatal("missing file path")
+			log.Fatal("Missing file path")
 		}
 		dstPath := args[0]
 
 		ops := &rest.SyncFileStub{}
 		err := rest.Server(context.Background(), *port, dstPath, ops)
 		if err != nil {
-			log.Fatalf("Ssync server failed, err: %s", err)
+			log.WithError(err).Fatalf("Ssync server failed")
 		}
 	} else {
 		if len(args) < 1 {
 			log.Error(usage)
-			log.Fatal("missing file path")
+			log.Fatal("Missing file path")
 		}
 		srcPath := args[0]
-		log.Infof("Syncing %s to %s:%s...\n", srcPath, *host, *port)
+		log.Infof("Syncing %s to %s:%s...", srcPath, *host, *port)
 
-		err := sparse.SyncFile(srcPath, *host+":"+*port, *timeout, *directIO)
+		err := sparse.SyncFile(srcPath, *host+":"+*port, *timeout, *directIO, *fastSync)
 		if err != nil {
-			log.Fatalf("Ssync client failed, error: %s", err)
+			log.WithError(err).Fatalf("Ssync client failed")
 		}
 		log.Info("Ssync client: exit code 0")
 	}
