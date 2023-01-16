@@ -123,7 +123,7 @@ github.com/russross/blackfriday/v2
 github.com/shurcooL/sanitized_anchor_name
 # github.com/sirupsen/logrus v1.8.1
 github.com/sirupsen/logrus
-# github.com/urfave/cli v1.22.1
+# github.com/urfave/cli v1.22.11
 github.com/urfave/cli
 # golang.org/x/net v0.0.0-20220722155237-a158d28d115b
 golang.org/x/net/context
