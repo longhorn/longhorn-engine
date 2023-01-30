@@ -24,10 +24,10 @@ require (
 	github.com/rancher/go-rancher v0.1.1-0.20190307222549-9756097e5e4c
 	github.com/sirupsen/logrus v1.8.1
 	github.com/urfave/cli v1.22.1
-	golang.org/x/net v0.0.0-20220722155237-a158d28d115b
-	golang.org/x/sys v0.0.0-20220722155257-8c9f86f7a55f
-	google.golang.org/grpc v1.51.0
-	gopkg.in/check.v1 v1.0.0-20160105164936-4f90aeace3a2
+	golang.org/x/net v0.4.0
+	golang.org/x/sys v0.3.0
+	google.golang.org/grpc v1.52.3
+	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127
 	gopkg.in/cheggaaa/pb.v1 v1.0.28 // indirect
 	gopkg.in/cheggaaa/pb.v2 v2.0.0-20190301131520-f907f6f5dd81
 	gotest.tools/v3 v3.4.0 // indirect
