@@ -19,6 +19,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
+	"github.com/longhorn/sparse-tools/sparse"
 	xattrType "github.com/longhorn/sparse-tools/types"
 
 	"github.com/longhorn/longhorn-engine/pkg/types"
@@ -378,7 +379,7 @@ func hashSnapshot(ctx context.Context, snapshotName string) (string, error) {
 
 	path := filepath.Join(dir, diskutil.GenerateSnapshotDiskName(snapshotName))
 
-	f, err := os.OpenFile(path, os.O_RDONLY, 0)
+	f, err := sparse.NewDirectFileIoProcessor(path, os.O_RDONLY, 0)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to open %v", path)
 	}
