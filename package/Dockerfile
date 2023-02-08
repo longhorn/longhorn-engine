@@ -3,7 +3,6 @@ FROM registry.suse.com/bci/bci-base:15.3
 ARG ARCH=amd64
 
 RUN zypper -n addrepo --refresh https://download.opensuse.org/repositories/system:/snappy/SLE_15/system:snappy.repo && \
-    zypper -n addrepo --refresh https://download.opensuse.org/repositories/devel:tools:scm/15.3/devel:tools:scm.repo && \
     zypper -n addrepo --refresh https://download.opensuse.org/repositories/network:utilities/SLE_15_SP3/network:utilities.repo && \
     zypper --gpg-auto-import-keys ref
 
