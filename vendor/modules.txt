@@ -57,6 +57,9 @@ github.com/docker/go-units
 # github.com/felixge/httpsnoop v1.0.1
 ## explicit; go 1.13
 github.com/felixge/httpsnoop
+# github.com/go-logr/logr v1.2.3
+## explicit; go 1.16
+github.com/go-logr/logr
 # github.com/gofrs/flock v0.8.1
 ## explicit
 github.com/gofrs/flock
@@ -69,6 +72,11 @@ github.com/golang/protobuf/ptypes/any
 github.com/golang/protobuf/ptypes/duration
 github.com/golang/protobuf/ptypes/empty
 github.com/golang/protobuf/ptypes/timestamp
+# github.com/google/fscrypt v0.3.3
+## explicit; go 1.11
+github.com/google/fscrypt/filesystem
+github.com/google/fscrypt/metadata
+github.com/google/fscrypt/util
 # github.com/google/uuid v1.3.0
 ## explicit
 github.com/google/uuid
@@ -90,9 +98,13 @@ github.com/honestbee/jobq
 # github.com/jmespath/go-jmespath v0.3.0
 ## explicit; go 1.14
 github.com/jmespath/go-jmespath
-# github.com/longhorn/backupstore v0.0.0-20230116054423-7eaab31c108a
-## explicit; go 1.13
+# github.com/kr/text v0.2.0
+## explicit
+github.com/kr/text
+# github.com/longhorn/backupstore v0.0.0-20230207155604-8dd232a0f511
+## explicit; go 1.17
 github.com/longhorn/backupstore
+github.com/longhorn/backupstore/cifs
 github.com/longhorn/backupstore/cmd
 github.com/longhorn/backupstore/fsops
 github.com/longhorn/backupstore/http
@@ -128,6 +140,12 @@ github.com/mattn/go-runewidth
 # github.com/moby/moby v20.10.22+incompatible
 ## explicit
 github.com/moby/moby/pkg/reexec
+# github.com/moby/sys/mountinfo v0.6.2
+## explicit; go 1.16
+github.com/moby/sys/mountinfo
+# github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e
+## explicit; go 1.12
+github.com/niemeyer/pretty
 # github.com/pierrec/lz4/v4 v4.1.17
 ## explicit; go 1.14
 github.com/pierrec/lz4/v4
@@ -269,7 +287,7 @@ google.golang.org/protobuf/types/known/anypb
 google.golang.org/protobuf/types/known/durationpb
 google.golang.org/protobuf/types/known/emptypb
 google.golang.org/protobuf/types/known/timestamppb
-# gopkg.in/check.v1 v1.0.0-20160105164936-4f90aeace3a2
+# gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f
 ## explicit
 gopkg.in/check.v1
 # gopkg.in/cheggaaa/pb.v1 v1.0.28
@@ -279,3 +297,24 @@ gopkg.in/check.v1
 gopkg.in/cheggaaa/pb.v2
 # gotest.tools/v3 v3.4.0
 ## explicit; go 1.13
+# k8s.io/apimachinery v0.26.0
+## explicit; go 1.19
+k8s.io/apimachinery/pkg/util/runtime
+k8s.io/apimachinery/pkg/util/wait
+# k8s.io/klog/v2 v2.80.1
+## explicit; go 1.13
+k8s.io/klog/v2
+k8s.io/klog/v2/internal/buffer
+k8s.io/klog/v2/internal/clock
+k8s.io/klog/v2/internal/dbg
+k8s.io/klog/v2/internal/serialize
+k8s.io/klog/v2/internal/severity
+# k8s.io/mount-utils v0.26.0
+## explicit; go 1.19
+k8s.io/mount-utils
+# k8s.io/utils v0.0.0-20221107191617-1a15be271d1d
+## explicit; go 1.18
+k8s.io/utils/clock
+k8s.io/utils/exec
+k8s.io/utils/io
+k8s.io/utils/keymutex
