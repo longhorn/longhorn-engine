@@ -61,13 +61,12 @@ func initFunc(destURL string) (backupstore.BackupStoreDriver, error) {
 	}
 
 	// add custom ca to http client that is used by s3 service
-	if customCerts := getCustomCerts(); customCerts != nil {
-		client, err := http.GetClientWithCustomCerts(customCerts)
-		if err != nil {
-			return nil, err
-		}
-		b.service.Client = client
+	customCerts := getCustomCerts()
+	client, err := http.GetClientWithCustomCerts(customCerts)
+	if err != nil {
+		return nil, err
 	}
+	b.service.Client = client
 
 	//Leading '/' can cause mystery problems for s3
 	b.path = strings.TrimLeft(b.path, "/")
