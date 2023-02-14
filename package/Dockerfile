@@ -12,7 +12,7 @@ RUN if [ ${ARCH} == "amd64" ]; then \
 
 RUN zypper -n install cmake kmod curl nfs-client nfs4-acl-tools fuse git gcc \
     libibverbs librdmacm1 rdma-core-devel perl-Config-General libaio1 sg3_utils \
-    iputils telnet iperf qemu-tools wget iproute2 xsltproc docbook-xsl-stylesheets e2fsprogs && \
+    iputils telnet iperf qemu-tools wget iproute2 xsltproc docbook-xsl-stylesheets e2fsprogs cifs-utils && \
     rm -rf /var/cache/zypp/*
 
 # Install grpc_health_probe
