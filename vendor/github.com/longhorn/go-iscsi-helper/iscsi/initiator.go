@@ -36,10 +36,7 @@ func CheckForInitiatorExistence(ne *util.NamespaceExecutor) error {
 		"--version",
 	}
 	_, err := ne.Execute(iscsiBinary, opts)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func DiscoverTarget(ip, target string, ne *util.NamespaceExecutor) error {
@@ -59,10 +56,10 @@ func DiscoverTarget(ip, target string, ne *util.NamespaceExecutor) error {
 	//  iqn.2019-10.io.longhorn:vol9]\n172.18.0.5:3260,1
 	//  iqn.2019-10.io.longhorn:vol9\n"
 	if strings.Contains(output, "Could not") {
-		return fmt.Errorf("Cannot discover target: %s", output)
+		return fmt.Errorf("cannot discover target: %s", output)
 	}
 	if !strings.Contains(output, target) {
-		return fmt.Errorf("Cannot find target %s in discovered targets %s", target, output)
+		return fmt.Errorf("cannot find target %s in discovered targets %s", target, output)
 	}
 	return nil
 }
@@ -77,10 +74,7 @@ func DeleteDiscoveredTarget(ip, target string, ne *util.NamespaceExecutor) error
 		opts = append(opts, "-p", ip)
 	}
 	_, err := ne.Execute(iscsiBinary, opts)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func IsTargetDiscovered(ip, target string, ne *util.NamespaceExecutor) bool {
@@ -92,10 +86,7 @@ func IsTargetDiscovered(ip, target string, ne *util.NamespaceExecutor) bool {
 		opts = append(opts, "-p", ip)
 	}
 	_, err := ne.Execute(iscsiBinary, opts)
-	if err != nil {
-		return false
-	}
-	return true
+	return err == nil
 }
 
 func LoginTarget(ip, target string, ne *util.NamespaceExecutor) error {
@@ -116,9 +107,9 @@ func LoginTarget(ip, target string, ne *util.NamespaceExecutor) error {
 	}
 
 	if scanMode == scanModeManual {
-		logrus.Infof("manually rescan LUNs of the target %v:%v", target, ip)
+		logrus.Infof("Manually rescan LUNs of the target %v:%v", target, ip)
 		if err := manualScanSession(ip, target, ne); err != nil {
-			return errors.Wrapf(err, "Failed to manually rescan iscsi session of target %v:%v", target, ip)
+			return errors.Wrapf(err, "failed to manually rescan iscsi session of target %v:%v", target, ip)
 		}
 	} else {
 		logrus.Infof("default: automatically rescan all LUNs of all iscsi sessions")
@@ -138,10 +129,7 @@ func LogoutTarget(ip, target string, ne *util.NamespaceExecutor) error {
 		opts = append(opts, "-p", ip)
 	}
 	_, err := ne.Execute(iscsiBinary, opts)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func GetDevice(ip, target string, lun int, ne *util.NamespaceExecutor) (*util.KernelDevice, error) {
@@ -278,7 +266,7 @@ func findScsiDevice(ip, target string, lun int, ne *util.NamespaceExecutor) (*ut
 		if inLun {
 			line := scanner.Text()
 			if !strings.Contains(line, diskPrefix) {
-				return nil, fmt.Errorf("Invalid output format, cannot find disk in: %s\n %s", line, output)
+				return nil, fmt.Errorf("invalid output format, cannot find disk in: %s\n %s", line, output)
 			}
 			line = strings.TrimSpace(strings.Split(line, stateLine)[0])
 			line = strings.TrimPrefix(line, diskPrefix)
@@ -288,7 +276,7 @@ func findScsiDevice(ip, target string, lun int, ne *util.NamespaceExecutor) (*ut
 	}
 
 	if name == "" {
-		return nil, fmt.Errorf("Cannot find iscsi device")
+		return nil, fmt.Errorf("cannot find iscsi device")
 	}
 
 	// now that we know the device is mapped, we can get it's (major:minor)
@@ -299,7 +287,7 @@ func findScsiDevice(ip, target string, lun int, ne *util.NamespaceExecutor) (*ut
 
 	dev, known := devices[name]
 	if !known {
-		return nil, fmt.Errorf("Cannot find kernel device for iscsi device: %s", name)
+		return nil, fmt.Errorf("cannot find kernel device for iscsi device: %s", name)
 	}
 
 	return dev, nil
@@ -317,18 +305,18 @@ func CleanupScsiNodes(target string, ne *util.NamespaceExecutor) error {
 		// Remove all empty files in the directory
 		output, err := ne.Execute("find", []string{targetDir})
 		if err != nil {
-			return fmt.Errorf("Failed to search SCSI directory %v: %v", targetDir, err)
+			return errors.Wrapf(err, "failed to search iSCSI directory %v", targetDir)
 		}
 		scanner := bufio.NewScanner(strings.NewReader(output))
 		for scanner.Scan() {
 			file := scanner.Text()
 			output, err := ne.Execute("stat", []string{file})
 			if err != nil {
-				return fmt.Errorf("Failed to check SCSI node file %v: %v", file, err)
+				return errors.Wrapf(err, "failed to check iSCSI node file %v", file)
 			}
 			if strings.Contains(output, "regular empty file") {
 				if _, err := ne.Execute("rm", []string{file}); err != nil {
-					return fmt.Errorf("Failed to cleanup empty SCSI node file %v: %v", file, err)
+					return errors.Wrapf(err, "failed to clean up empty iSCSI node file %v", file)
 				}
 				// We're trying to clean up the upper level directory as well, but won't mind if we fail
 				_, _ = ne.Execute("rmdir", []string{filepath.Dir(file)})
