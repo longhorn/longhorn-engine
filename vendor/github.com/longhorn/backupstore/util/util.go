@@ -329,5 +329,5 @@ func MountWithTimeout(mounter mount.Interface, source string, target string, fst
 	if !mountComplete {
 		return errors.Wrapf(err, "mounting %v share %v on %v timed out", fstype, source, target)
 	}
-	return nil
+	return err
 }
