@@ -101,7 +101,7 @@ github.com/jmespath/go-jmespath
 # github.com/kr/text v0.2.0
 ## explicit
 github.com/kr/text
-# github.com/longhorn/backupstore v0.0.0-20230207155604-8dd232a0f511
+# github.com/longhorn/backupstore v0.0.0-20230215044750-3912081eb7c5
 ## explicit; go 1.17
 github.com/longhorn/backupstore
 github.com/longhorn/backupstore/cifs
