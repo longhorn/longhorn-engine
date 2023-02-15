@@ -42,11 +42,23 @@ github.com/honestbee/jobq v1.0.2/go.mod h1:1HBHIZSF91aV3kLwiHJwoaBvw+ghYyopmYgNh
 github.com/jmespath/go-jmespath v0.3.0 h1:OS12ieG61fsCg5+qLJ+SsW9NicxNkg3b25OyT2yCeUc=
 github.com/jmespath/go-jmespath v0.3.0/go.mod h1:9QtRXoHjLGCJ5IBSaohpXITPlowMeeYCZ7fLUTSywik=
 github.com/konsorten/go-windows-terminal-sequences v1.0.1/go.mod h1:T0+1ngSBFLxvqU3pZ+m/2kptfBszLMUkC4ZK/EgS/cQ=
+<<<<<<< HEAD
 github.com/kr/fs v0.1.0/go.mod h1:FFnZGqtBN9Gxj7eW1uZ42v5BccTP0vu6NEaFoC2HwRg=
 github.com/longhorn/backupstore v0.0.0-20221114044558-19f4902cd4fd h1:dRGV5NNnYWoxtYHhm48YVwvhioU2U0Dote+vbgcR8WQ=
 github.com/longhorn/backupstore v0.0.0-20221114044558-19f4902cd4fd/go.mod h1:hvIVsrpjPey7KupirAh0WoPMg0ArWnE6fA5bI30X7AI=
 github.com/longhorn/go-iscsi-helper v0.0.0-20221219041640-6c94fb0d483a h1:wyL5quo6Z6PiM2XJJ2ZRmd5Yq1dXoyEZQgL5GGMzcoY=
 github.com/longhorn/go-iscsi-helper v0.0.0-20221219041640-6c94fb0d483a/go.mod h1:9z/y9glKmWEdV50tjlUPxFwi1goQfIrrsoZbnMyIZbY=
+=======
+github.com/kr/pretty v0.1.0/go.mod h1:dAy3ld7l9f0ibDNOQOHHMYYIIbhfbHSm3C4ZsoJORNo=
+github.com/kr/pty v1.1.1/go.mod h1:pFQYn66WHrOpPYNljwOMqo10TkYh1fy3cYio2l3bCsQ=
+github.com/kr/text v0.1.0/go.mod h1:4Jbv+DJW3UT/LiOwJeYQe1efqtUx/iVham/4vfdArNI=
+github.com/kr/text v0.2.0 h1:5Nx0Ya0ZqY2ygV366QzturHI13Jq95ApcVaJBhpS+AY=
+github.com/kr/text v0.2.0/go.mod h1:eLer722TekiGuMkidMxC/pM04lWEeraHUUmBw8l2grE=
+github.com/longhorn/backupstore v0.0.0-20230207155604-8dd232a0f511 h1:NWQksVBfMyUu5y0kfGVCEbV4ZlQj8YyHMDke9pFTP3I=
+github.com/longhorn/backupstore v0.0.0-20230207155604-8dd232a0f511/go.mod h1:qep4hpFRg54SpTfmvfEcgz2XXJRu6IhFf41XxM4pVHE=
+github.com/longhorn/go-iscsi-helper v0.0.0-20230214085945-21fed2bd6261 h1:XtxZ34rrCCP+WcC7Tv6miHPo1Xys0eUWtH4W0wDKjFM=
+github.com/longhorn/go-iscsi-helper v0.0.0-20230214085945-21fed2bd6261/go.mod h1:Pc949NvBbdV1zBFdbh4uC5Po8CuxQCwzxI+n7mIyGA0=
+>>>>>>> 46c8f153 (vendor: update go-iscsi-helper)
 github.com/longhorn/nsfilelock v0.0.0-20200723175406-fa7c83ad0003 h1:Jw9uANsGcHTxp6HcC++/vN17LfeuDmozHI2j6DoZf5E=
 github.com/longhorn/nsfilelock v0.0.0-20200723175406-fa7c83ad0003/go.mod h1:0CLeXlf59Lg6C0kjLSDf47ft73Dh37CwymYRKWwAn04=
 github.com/longhorn/sparse-tools v0.0.0-20230110055233-727da1d6548d h1:AHOl62n9aMjLZuDMDuCVdJ8YdB3sXNKJHv47PONi/wk=

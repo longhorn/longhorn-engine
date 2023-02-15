@@ -12,9 +12,14 @@ require (
 	github.com/gorilla/context v1.1.1 // indirect
 	github.com/gorilla/handlers v1.4.2
 	github.com/gorilla/mux v1.7.3
+<<<<<<< HEAD
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/longhorn/backupstore v0.0.0-20221114044558-19f4902cd4fd
 	github.com/longhorn/go-iscsi-helper v0.0.0-20221219041640-6c94fb0d483a
+=======
+	github.com/longhorn/backupstore v0.0.0-20230207155604-8dd232a0f511
+	github.com/longhorn/go-iscsi-helper v0.0.0-20230214085945-21fed2bd6261
+>>>>>>> 46c8f153 (vendor: update go-iscsi-helper)
 	github.com/longhorn/sparse-tools v0.0.0-20230110055233-727da1d6548d
 	github.com/mattn/go-colorable v0.1.4 // indirect
 	github.com/mattn/go-runewidth v0.0.5-0.20181218000649-703b5e6b11ae // indirect
