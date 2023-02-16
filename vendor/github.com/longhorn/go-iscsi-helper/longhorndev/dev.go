@@ -121,7 +121,7 @@ func (d *LonghornDevice) startScsiDevice(startScsiDevice bool) (err error) {
 		// d.scsiDevice.KernelDevice is nil.
 		if startScsiDevice {
 			if d.scsiDevice == nil {
-				return fmt.Errorf("There is no iscsi device during the frontend %v starts", d.frontend)
+				return fmt.Errorf("there is no iscsi device during the frontend %v starts", d.frontend)
 			}
 			if err := d.scsiDevice.CreateTarget(); err != nil {
 				return err
@@ -132,16 +132,14 @@ func (d *LonghornDevice) startScsiDevice(startScsiDevice bool) (err error) {
 			if err := d.createDev(); err != nil {
 				return err
 			}
-			logrus.Infof("device %v: SCSI device %s created", d.name, d.scsiDevice.KernelDevice.Name)
+			logrus.Infof("device %v: iSCSI device %s created", d.name, d.scsiDevice.KernelDevice.Name)
 		}
 
 		d.endpoint = d.getDev()
-
-		break
 	case types.FrontendTGTISCSI:
 		if startScsiDevice {
 			if d.scsiDevice == nil {
-				return fmt.Errorf("There is no iscsi device during the frontend %v starts", d.frontend)
+				return fmt.Errorf("there is no iscsi device during the frontend %v starts", d.frontend)
 			}
 			if err := d.scsiDevice.CreateTarget(); err != nil {
 				return err
@@ -150,8 +148,6 @@ func (d *LonghornDevice) startScsiDevice(startScsiDevice bool) (err error) {
 		}
 
 		d.endpoint = d.scsiDevice.Target
-
-		break
 	default:
 		return fmt.Errorf("unknown frontend %v", d.frontend)
 	}
@@ -184,20 +180,20 @@ func (d *LonghornDevice) shutdownFrontend() error {
 	case types.FrontendTGTBlockDev:
 		dev := d.getDev()
 		if err := util.RemoveDevice(dev); err != nil {
-			return fmt.Errorf("device %v: fail to remove device %s: %v", d.name, dev, err)
+			return fmt.Errorf("device %v: failed to remove device %s: %v", d.name, dev, err)
 		}
 		if err := d.scsiDevice.StopInitiator(); err != nil {
-			return fmt.Errorf("device %v: fail to stop SCSI device: %v", d.name, err)
+			return errors.Wrapf(err, "device %v: failed to stop iSCSI device", d.name)
 		}
 		if err := d.scsiDevice.DeleteTarget(); err != nil {
-			return fmt.Errorf("device %v: fail to delete target %v: %v", d.name, d.scsiDevice.Target, err)
+			return fmt.Errorf("device %v: failed to delete target %v: %v", d.name, d.scsiDevice.Target, err)
 		}
-		logrus.Infof("device %v: SCSI device %v shutdown", d.name, dev)
+		logrus.Infof("device %v: iSCSI device %v shutdown", d.name, dev)
 	case types.FrontendTGTISCSI:
 		if err := d.scsiDevice.DeleteTarget(); err != nil {
-			return fmt.Errorf("device %v: fail to delete target %v: %v", d.name, d.scsiDevice.Target, err)
+			return fmt.Errorf("device %v: failed to delete target %v: %v", d.name, d.scsiDevice.Target, err)
 		}
-		logrus.Infof("device %v: SCSI target %v ", d.name, d.scsiDevice.Target)
+		logrus.Infof("device %v: iSCSI target %v ", d.name, d.scsiDevice.Target)
 	case "":
 		logrus.Infof("device %v: skip shutdown frontend since it's not enabled", d.name)
 	default:

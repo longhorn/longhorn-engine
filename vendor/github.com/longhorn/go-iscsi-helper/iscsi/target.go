@@ -22,6 +22,8 @@ const (
 	tgtBinary = "tgtadm"
 
 	maxTargetID = 4095
+
+	logFile = "/var/log/tgtd.log"
 )
 
 // CreateTarget will create a iSCSI target using the name specified. If name is
@@ -36,10 +38,7 @@ func CreateTarget(tid int, name string) error {
 		"-T", name,
 	}
 	_, err := util.Execute(tgtBinary, opts)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 // DeleteTarget will remove a iSCSI target specified by tid
@@ -51,10 +50,7 @@ func DeleteTarget(tid int) error {
 		"--tid", strconv.Itoa(tid),
 	}
 	_, err := util.Execute(tgtBinary, opts)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 // AddLunBackedByFile will add a LUN in an existing target, which backing by
@@ -69,17 +65,14 @@ func AddLunBackedByFile(tid int, lun int, backingFile string) error {
 		"-b", backingFile,
 	}
 	_, err := util.Execute(tgtBinary, opts)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 // AddLun will add a LUN in an existing target, which backing by
 // specified file, using AIO backing-store
 func AddLun(tid int, lun int, backingFile string, bstype string, bsopts string) error {
 	if !CheckTargetForBackingStore(bstype) {
-		return fmt.Errorf("Backing-store %s is not supported", bstype)
+		return fmt.Errorf("backing-store %s is not supported", bstype)
 	}
 	opts := []string{
 		"--lld", "iscsi",
@@ -94,10 +87,37 @@ func AddLun(tid int, lun int, backingFile string, bstype string, bsopts string) 
 		opts = append(opts, "--bsopts", bsopts)
 	}
 	_, err := util.Execute(tgtBinary, opts)
-	if err != nil {
-		return err
+	return err
+}
+
+// UpdateLun will update parameters for the LUN
+func UpdateLun(tid int, lun int, params map[string]string) error {
+	opts := []string{
+		"--lld", "iscsi",
+		"--op", "update",
+		"--mode", "logicalunit",
+		"--tid", strconv.Itoa(tid),
+		"--lun", strconv.Itoa(lun),
 	}
-	return nil
+	if len(params) != 0 {
+		paramStr := ""
+		for k, v := range params {
+			paramStr += fmt.Sprintf("%s=%s,", k, v)
+		}
+		strings.TrimSuffix(paramStr, ",")
+		opts = append(opts, "--params", paramStr)
+	}
+	_, err := util.Execute(tgtBinary, opts)
+	return err
+}
+
+// DisableWriteCache will set param write-cache to false for the LUN
+func DisableWriteCache(tid int, lun int) error {
+	// Mode page 8 is the caching mode page
+	// Refer to "Caching Mode page (08h)" in SCSI Commands Reference Manual for more information.
+	// https://www.seagate.com/files/staticfiles/support/docs/manual/Interface%20manuals/100293068j.pdf
+	// https://github.com/fujita/tgt/blob/master/scripts/tgt-admin#L418
+	return UpdateLun(tid, lun, map[string]string{"mode_page": "8:0:18:0x10:0:0xff:0xff:0:0:0xff:0xff:0xff:0xff:0x80:0x14:0:0:0:0:0:0"})
 }
 
 // DeleteLun will remove a LUN from an target
@@ -110,10 +130,7 @@ func DeleteLun(tid int, lun int) error {
 		"--lun", strconv.Itoa(lun),
 	}
 	_, err := util.Execute(tgtBinary, opts)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 // BindInitiator will add permission to allow certain initiator(s) to connect to
@@ -127,10 +144,7 @@ func BindInitiator(tid int, initiator string) error {
 		"-I", initiator,
 	}
 	_, err := util.Execute(tgtBinary, opts)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 // UnbindInitiator will remove permission to allow certain initiator(s) to connect to
@@ -144,10 +158,7 @@ func UnbindInitiator(tid int, initiator string) error {
 		"-I", initiator,
 	}
 	_, err := util.Execute(tgtBinary, opts)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 // StartDaemon will start tgtd daemon, prepare for further commands
@@ -157,7 +168,6 @@ func StartDaemon(debug bool) error {
 		return nil
 	}
 
-	logFile := "/var/log/tgtd.log"
 	logf, err := os.OpenFile(logFile, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
 		return err
@@ -174,7 +184,7 @@ func StartDaemon(debug bool) error {
 		time.Sleep(TgtdRetryInterval)
 	}
 	if !daemonIsRunning {
-		return fmt.Errorf("Fail to start tgtd daemon")
+		return fmt.Errorf("failed to start tgtd daemon")
 	}
 	return nil
 }
@@ -243,7 +253,7 @@ func GetTargetTid(name string) (int, error) {
 			tidString := strings.Fields(strings.Split(scanner.Text(), ":")[0])[1]
 			tid, err = strconv.Atoi(tidString)
 			if err != nil {
-				return -1, fmt.Errorf("BUG: Fail to parse %s, %v", tidString, err)
+				return -1, fmt.Errorf("BUG: Failed to parse %s, %v", tidString, err)
 			}
 			break
 		}
@@ -257,10 +267,7 @@ func ShutdownTgtd() error {
 		"--mode", "system",
 	}
 	_, err := util.Execute(tgtBinary, opts)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func GetTargetConnections(tid int) (map[string][]string, error) {
@@ -334,10 +341,7 @@ func CloseConnection(tid int, sid, cid string) error {
 		"--cid", cid,
 	}
 	_, err := util.Execute(tgtBinary, opts)
-	if err != nil {
-		return err
-	}
-	return nil
+	return err
 }
 
 func FindNextAvailableTargetID() (int, error) {
@@ -366,7 +370,7 @@ func FindNextAvailableTargetID() (int, error) {
 			tidString := strings.Fields(strings.Split(scanner.Text(), ":")[0])[1]
 			tid, err = strconv.Atoi(tidString)
 			if err != nil {
-				return -1, fmt.Errorf("BUG: Fail to parse %s, %v", tidString, err)
+				return -1, fmt.Errorf("BUG: Failed to parse %s, %v", tidString, err)
 			}
 			existingTids[tid] = struct{}{}
 		}
