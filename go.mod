@@ -15,7 +15,7 @@ require (
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/longhorn/backupstore v0.0.0-20221114044558-19f4902cd4fd
 	github.com/longhorn/go-iscsi-helper v0.0.0-20230215054929-acb305e1031b
-	github.com/longhorn/sparse-tools v0.0.0-20230110055233-727da1d6548d
+	github.com/longhorn/sparse-tools v0.0.0-20230216042534-6e4173e9def4
 	github.com/mattn/go-colorable v0.1.4 // indirect
 	github.com/mattn/go-runewidth v0.0.5-0.20181218000649-703b5e6b11ae // indirect
 	github.com/moby/moby v20.10.20+incompatible
