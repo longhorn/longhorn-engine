@@ -40,8 +40,6 @@ type BackupStoreDriver struct {
 const (
 	KIND = "cifs"
 
-	MountDir = "/var/lib/longhorn-backupstore-mounts"
-
 	MaxCleanupLevel = 10
 )
 
@@ -73,7 +71,7 @@ func initFunc(destURL string) (backupstore.BackupStoreDriver, error) {
 	b.username = os.Getenv("CIFS_USERNAME")
 	b.password = os.Getenv("CIFS_PASSWORD")
 	b.serverPath = u.Host + u.Path
-	b.mountDir = filepath.Join(MountDir, strings.TrimRight(strings.Replace(u.Host, ".", "_", -1), ":"), u.Path)
+	b.mountDir = filepath.Join(util.MountDir, strings.TrimRight(strings.Replace(u.Host, ".", "_", -1), ":"), u.Path)
 	b.destURL = KIND + "://" + b.serverPath
 
 	if err := b.mount(); err != nil {
@@ -98,6 +96,11 @@ func (b *BackupStoreDriver) mount() error {
 	}
 	if mounted {
 		return nil
+	}
+
+	err = util.CleanUpMountPoints(mounter, log)
+	if err != nil {
+		log.WithError(err).Warnf("Failed to clean up mount points")
 	}
 
 	mountOptions := []string{

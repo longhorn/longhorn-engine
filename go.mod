@@ -46,6 +46,8 @@ require (
 	github.com/pierrec/lz4/v4 v4.1.17 // indirect
 	github.com/russross/blackfriday/v2 v2.0.1 // indirect
 	github.com/shurcooL/sanitized_anchor_name v1.0.0 // indirect
+	go.uber.org/atomic v1.7.0 // indirect
+	go.uber.org/multierr v1.9.0 // indirect
 	golang.org/x/text v0.7.0 // indirect
 	google.golang.org/genproto v0.0.0-20230110181048-76db0878b65f // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
@@ -56,3 +58,5 @@ require (
 	k8s.io/mount-utils v0.26.0 // indirect
 	k8s.io/utils v0.0.0-20221107191617-1a15be271d1d // indirect
 )
+
+replace github.com/longhorn/backupstore v0.0.0-20230215044750-3912081eb7c5 => github.com/derekbit/backupstore v0.0.0-20230216085913-92b2f0a5a96b

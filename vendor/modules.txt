@@ -101,7 +101,7 @@ github.com/jmespath/go-jmespath
 # github.com/kr/text v0.2.0
 ## explicit
 github.com/kr/text
-# github.com/longhorn/backupstore v0.0.0-20230215044750-3912081eb7c5
+# github.com/longhorn/backupstore v0.0.0-20230215044750-3912081eb7c5 => github.com/derekbit/backupstore v0.0.0-20230216085913-92b2f0a5a96b
 ## explicit; go 1.17
 github.com/longhorn/backupstore
 github.com/longhorn/backupstore/cifs
@@ -175,6 +175,12 @@ github.com/sirupsen/logrus
 # github.com/urfave/cli v1.22.1
 ## explicit; go 1.11
 github.com/urfave/cli
+# go.uber.org/atomic v1.7.0
+## explicit; go 1.13
+go.uber.org/atomic
+# go.uber.org/multierr v1.9.0
+## explicit; go 1.19
+go.uber.org/multierr
 # golang.org/x/net v0.6.0
 ## explicit; go 1.17
 golang.org/x/net/context

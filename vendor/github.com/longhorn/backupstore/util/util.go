@@ -12,6 +12,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"regexp"
 	"strings"
 	"syscall"
@@ -22,6 +23,7 @@ import (
 	lz4 "github.com/pierrec/lz4/v4"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
+	"go.uber.org/multierr"
 
 	"k8s.io/apimachinery/pkg/util/wait"
 	mount "k8s.io/mount-utils"
@@ -29,6 +31,8 @@ import (
 
 const (
 	PreservedChecksumLength = 64
+
+	MountDir = "/var/lib/longhorn-backupstore-mounts"
 )
 
 var (
@@ -330,4 +334,34 @@ func MountWithTimeout(mounter mount.Interface, source string, target string, fst
 		return errors.Wrapf(err, "mounting %v share %v on %v timed out", fstype, source, target)
 	}
 	return err
+}
+
+func CleanUpMountPoints(mounter mount.Interface, log logrus.FieldLogger) error {
+	var errs error
+
+	filepath.Walk(MountDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			errs = multierr.Append(errs, errors.Wrapf(err, "failed to get file info of %v", path))
+			return nil
+		}
+
+		if !info.IsDir() {
+			return nil
+		}
+
+		mounted, err := mounter.IsMountPoint(path)
+		if err != nil {
+			errs = multierr.Append(errs, errors.Wrapf(err, "failed to check if %s is mounted", path))
+			return nil
+		}
+
+		if mounted {
+			if err := cleanupMount(path, mounter, log); err != nil {
+				errs = multierr.Append(errs, errors.Wrapf(err, "failed to clean up mount point %v", path))
+			}
+		}
+		return nil
+	})
+
+	return errs
 }
