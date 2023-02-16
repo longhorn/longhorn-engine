@@ -110,7 +110,7 @@ func SyncFile(localPath string, remote string, httpClientTimeout int, directIO, 
 
 	log.Infof("Syncing file %v to %v: size %v, directIO %v, fastSync %v", localPath, remote, fileSize, directIO, fastSync)
 
-	fileIo, err := NewBufferedFileIoProcessor(localPath, os.O_RDONLY, 0)
+	fileIo, err := newFileIoProcessor(localPath, directIO)
 	if err != nil {
 		log.WithError(err).Errorf("Failed to open local source file %v", localPath)
 		return err
@@ -118,6 +118,13 @@ func SyncFile(localPath string, remote string, httpClientTimeout int, directIO, 
 	defer fileIo.Close()
 
 	return SyncContent(fileIo.Name(), fileIo, fileSize, remote, httpClientTimeout, directIO, fastSync)
+}
+
+func newFileIoProcessor(localPath string, directIO bool) (FileIoProcessor, error) {
+	if directIO {
+		return NewDirectFileIoProcessor(localPath, os.O_RDONLY, 0)
+	}
+	return NewBufferedFileIoProcessor(localPath, os.O_RDONLY, 0)
 }
 
 func SyncContent(sourceName string, rw ReaderWriterAt, fileSize int64, remote string, httpClientTimeout int, directIO, fastSync bool) (err error) {
