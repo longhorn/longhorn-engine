@@ -9,7 +9,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.7.3
-	github.com/longhorn/backupstore v0.0.0-20230215044750-3912081eb7c5
+	github.com/longhorn/backupstore v0.0.0-20230217131543-f53a39cbd697
 	github.com/longhorn/go-iscsi-helper v0.0.0-20230214085945-21fed2bd6261
 	github.com/longhorn/sparse-tools v0.0.0-20230216042534-6e4173e9def4
 	github.com/moby/moby v20.10.22+incompatible
@@ -46,6 +46,8 @@ require (
 	github.com/pierrec/lz4/v4 v4.1.17 // indirect
 	github.com/russross/blackfriday/v2 v2.0.1 // indirect
 	github.com/shurcooL/sanitized_anchor_name v1.0.0 // indirect
+	go.uber.org/atomic v1.10.0 // indirect
+	go.uber.org/multierr v1.9.0 // indirect
 	golang.org/x/text v0.7.0 // indirect
 	google.golang.org/genproto v0.0.0-20230110181048-76db0878b65f // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
