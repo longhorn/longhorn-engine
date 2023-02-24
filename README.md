@@ -26,22 +26,22 @@ The following figure illustrates the relationship between the Longhorn block dev
 
 The easiest way to try the Longhorn Engine is to start a controller with a single replica.
 
-Host needs to have `docker` installed. Run following command to make sure:
+Host needs to have `docker` installed. Run the following command to make sure:
 ```
 docker info
 ```
 
-#### With TGT frontend
+#### With tgt-blockdev frontend
 
-User need to make sure the host has `iscsiadm` installed. Run following command to check:
+User needs to make sure the host has `iscsiadm` installed. Run the following command to check:
 ```
 iscsiadm --version
 ```
 
-To start Longhorn Engine with an single replica, run following command:
+To start Longhorn Engine with an single replica, run the following command:
 ```
 docker run --privileged -v /dev:/host/dev -v /proc:/host/proc -v /volume \
-    longhornio/longhorn-engine launch-simple-longhorn vol-name 10g tgt
+    longhornio/longhorn-engine:master-head launch-simple-longhorn vol-name 10g tgt-blockdev
 ```
 
 That will create the device `/dev/longhorn/vol-name`
@@ -62,7 +62,7 @@ docker run --net longhorn-net --ip 172.18.0.3 -v /volume \
     longhornio/longhorn-engine longhorn replica --listen 172.18.0.3:9502 --size 10g /volume
 ```
 
-##### 3. Start the controller. Take TGT for example:
+##### 3. Start the controller. Take tgt-blockdev for example:
 ```
 docker run --net longhorn-net --privileged -v /dev:/host/dev -v /proc:/host/proc \
     longhornio/longhorn-engine longhorn controller --frontend tgt-blockdev \ 
