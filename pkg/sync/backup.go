@@ -245,11 +245,16 @@ func (t *Task) RestoreBackup(backup string, credential map[string]string) error 
 
 	backupInfo, err := backupstore.InspectBackup(backup)
 	if err != nil {
-		return errors.Wrapf(err, "failed to get the current restoring backup info")
+		for _, r := range replicas {
+			taskErr.Append(NewReplicaError(r.Address, errors.Wrapf(err, "failed to get the current restoring backup info")))
+		}
+		return taskErr
 	}
+
 	if backupInfo.VolumeSize < volume.Size {
 		return fmt.Errorf("BUG: The backup volume %v size %v cannot be smaller than the DR volume %v size %v", backupInfo.VolumeName, backupInfo.VolumeSize, volume.Name, volume.Size)
-	} else if backupInfo.VolumeSize > volume.Size {
+	}
+	if backupInfo.VolumeSize > volume.Size {
 		if !isIncremental {
 			return fmt.Errorf("BUG: The backup volume %v size %v cannot be larger than normal restore volume %v size %v", backupInfo.VolumeName, backupInfo.VolumeSize, volume.Name, volume.Size)
 		}
