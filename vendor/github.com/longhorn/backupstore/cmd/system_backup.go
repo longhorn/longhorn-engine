@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"time"
 
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 
@@ -115,7 +116,7 @@ func uploadSystemBackup(c *cli.Context) error {
 
 	sha256sum, err := util.GetFileChecksum(source)
 	if err != nil {
-		return fmt.Errorf("failed to get %v checksum: %w", source, err)
+		return errors.Wrapf(err, "failed to get %v checksum", source)
 	}
 
 	config := &systembackup.Config{
@@ -172,12 +173,7 @@ func downloadSystemBackup(c *cli.Context) error {
 		return err
 	}
 
-	err = systembackup.Download(destination, cfg)
-	if err != nil {
-		return err
-	}
-
-	return nil
+	return systembackup.Download(destination, cfg)
 }
 
 func listSystemBackup(c *cli.Context) error {

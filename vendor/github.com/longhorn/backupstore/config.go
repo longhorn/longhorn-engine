@@ -151,7 +151,7 @@ func getVolumeNames(jobQueues *jobq.WorkerDispatcher, jobQueueTimeout time.Durat
 	volumePathBase := filepath.Join(backupstoreBase, VOLUME_DIRECTORY)
 	lv1Dirs, err := driver.List(volumePathBase)
 	if err != nil {
-		log.Warnf("failed to list first level dirs for path: %v reason: %v", volumePathBase, err)
+		log.WithError(err).Warnf("Failed to list first level dirs for path %v", volumePathBase)
 		return names, err
 	}
 
@@ -165,7 +165,7 @@ func getVolumeNames(jobQueues *jobq.WorkerDispatcher, jobQueueTimeout time.Durat
 		lv1Tracker := jobQueues.QueueTimedFunc(context.Background(), func(ctx context.Context) (interface{}, error) {
 			lv2Dirs, err := driver.List(path)
 			if err != nil {
-				log.Warnf("failed to list second level dirs for path: %v reason: %v", path, err)
+				log.WithError(err).Warnf("Failed to list second level dirs for path %v", path)
 				return nil, err
 			}
 
@@ -191,7 +191,7 @@ func getVolumeNames(jobQueues *jobq.WorkerDispatcher, jobQueueTimeout time.Durat
 			lv2Tracker := jobQueues.QueueTimedFunc(context.Background(), func(ctx context.Context) (interface{}, error) {
 				volumeNames, err := driver.List(path)
 				if err != nil {
-					log.Warnf("failed to list volume names for path: %v reason: %v", path, err)
+					log.WithError(err).Warnf("Failed to list volume names for path %v", path)
 					return nil, err
 				}
 				return volumeNames, nil
@@ -284,6 +284,6 @@ func removeBackup(backup *Backup, bsDriver BackupStoreDriver) error {
 	if err := bsDriver.Remove(filePath); err != nil {
 		return err
 	}
-	log.Debugf("Removed %v on backupstore", filePath)
+	log.Infof("Removed %v on backupstore", filePath)
 	return nil
 }

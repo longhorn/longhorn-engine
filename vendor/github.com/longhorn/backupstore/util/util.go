@@ -171,11 +171,11 @@ func execute(ctx context.Context, binary string, args []string) (string, error) 
 	case <-done:
 		break
 	case <-ctx.Done():
-		return "", fmt.Errorf("Timeout executing: %v %v, output %v, error %v", binary, args, string(output), err)
+		return "", fmt.Errorf("timeout executing: %v %v, output %v, error %v", binary, args, string(output), err)
 	}
 
 	if err != nil {
-		return "", fmt.Errorf("Failed to execute: %v %v, output %v, error %v", binary, args, string(output), err)
+		return "", fmt.Errorf("failed to execute: %v %v, output %v, error %v", binary, args, string(output), err)
 	}
 
 	return string(output), nil
