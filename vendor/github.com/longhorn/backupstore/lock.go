@@ -62,7 +62,7 @@ func (lock *FileLock) canAcquire() bool {
 	canAcquire := true
 	locks := getLocksForVolume(lock.volume, lock.driver)
 	file := getLockFilePath(lock.volume, lock.Name)
-	log.WithField("lock", lock).Debugf("trying to acquire lock %v", file)
+	log.WithField("lock", lock).Debugf("Trying to acquire lock %v", file)
 	log.Debugf("backupstore volume %v contains locks %v", lock.volume, locks)
 
 	for _, serverLock := range locks {
@@ -226,7 +226,7 @@ func getLocksForVolume(volumeName string, driver BackupStoreDriver) []*FileLock 
 		lock, err := loadLock(volumeName, name, driver)
 		if err != nil {
 			file := getLockFilePath(volumeName, name)
-			log.Warnf("failed to load lock %v on backupstore reason %v", file, err)
+			log.WithError(err).Warnf("Failed to load lock %v on backupstore", file)
 			continue
 		}
 		locks = append(locks, lock)
