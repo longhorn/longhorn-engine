@@ -6,6 +6,12 @@ platform:
   os: linux
   arch: amd64
 
+trigger:
+  branch:
+  - master
+  - main
+  - v*
+
 steps:
 - name: fetch
   image: ubuntu:18.04
@@ -23,6 +29,13 @@ steps:
   volumes:
   - name: socket
     path: /var/run/docker.sock
+
+- name: codecov
+  image: robertstettner/drone-codecov
+  settings:
+    token:
+      from_secret: CODECOV_TOKEN
+    debug: true
 
 - name: fossa
   image: registry.suse.com/suse/sle15:15.3.17.8.1
@@ -109,6 +122,12 @@ platform:
   os: linux
   arch: arm64
 
+trigger:
+  branch:
+  - master
+  - main
+  - v*
+
 steps:
 - name: fetch
   image: ubuntu:18.04
@@ -193,6 +212,15 @@ node:
 platform:
   os: linux
   arch: amd64
+
+trigger:
+  event:
+    exclude:
+    - pull_request
+  branch:
+  - master
+  - main
+  - v*
 
 steps:
 - name: fetch
@@ -281,6 +309,15 @@ name: manifest
 platform:
   os: linux
   arch: amd64
+
+trigger:
+  event:
+    exclude:
+    - pull_request
+  branch:
+  - master
+  - main
+  - v*
 
 steps:
 - name: manifest
