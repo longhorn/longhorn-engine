@@ -6,7 +6,6 @@ require (
 	github.com/docker/go-units v0.3.3
 	github.com/gofrs/flock v0.8.1
 	github.com/golang/protobuf v1.5.3
-	github.com/google/uuid v1.3.0
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
 	github.com/longhorn/backupstore v0.0.0-20231025000449-5316e8b5320d
@@ -41,6 +40,7 @@ require (
 	github.com/gammazero/workerpool v1.1.3 // indirect
 	github.com/go-logr/logr v1.2.4 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
+	github.com/google/uuid v1.3.0 // indirect
 	github.com/gorilla/context v1.1.1 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/jmespath/go-jmespath v0.3.0 // indirect

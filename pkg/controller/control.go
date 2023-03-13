@@ -14,6 +14,7 @@ import (
 	"google.golang.org/grpc/codes"
 
 	lhns "github.com/longhorn/go-common-libs/ns"
+	lhutils "github.com/longhorn/go-common-libs/utils"
 
 	"github.com/longhorn/longhorn-engine/pkg/types"
 	"github.com/longhorn/longhorn-engine/pkg/util"
@@ -197,7 +198,7 @@ func (c *Controller) Snapshot(name string, labels map[string]string) (string, er
 	defer c.Unlock()
 
 	if name == "" {
-		name = util.UUID()
+		name = lhutils.UUID()
 	}
 
 	if _, err := c.backend.RemainSnapshots(); err != nil {
@@ -345,7 +346,7 @@ func (c *Controller) addReplicaNoLock(newBackend types.Backend, address string, 
 	}
 
 	if snapshot && mode != types.ERR {
-		uuid := util.UUID()
+		uuid := lhutils.UUID()
 		created := util.Now()
 
 		if _, err := c.backend.RemainSnapshots(); err != nil {
