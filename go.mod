@@ -10,7 +10,6 @@ require (
 	github.com/docker/go-units v0.3.3
 	github.com/gofrs/flock v0.8.1
 	github.com/golang/protobuf v1.5.2
-	github.com/google/uuid v1.3.0
 	github.com/gorilla/handlers v1.4.2
 	github.com/gorilla/mux v1.7.3
 	github.com/longhorn/backupstore v0.0.0-20230606110118-7c0666bcb0cf
@@ -37,6 +36,7 @@ require (
 	github.com/fatih/color v1.7.0 // indirect
 	github.com/go-logr/logr v1.2.3 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
+	github.com/google/uuid v1.3.0 // indirect
 	github.com/gorilla/context v1.1.1 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/honestbee/jobq v1.0.2 // indirect
