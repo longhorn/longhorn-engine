@@ -8,15 +8,12 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
-	"reflect"
 	"regexp"
-	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/gorilla/handlers"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
@@ -27,8 +24,6 @@ import (
 var (
 	MaximumVolumeNameSize = 64
 	validVolumeName       = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.-]+$`)
-
-	HostProc = "/host/proc"
 
 	unixDomainSocketDirectoryInContainer = "/host/var/lib/longhorn/unix-domain-socket/"
 )
@@ -85,10 +80,6 @@ func GetPortFromAddress(address string) (int, error) {
 	return port, nil
 }
 
-func UUID() string {
-	return uuid.New().String()
-}
-
 func Filter(list []string, check func(string) bool) []string {
 	result := make([]string, 0, len(list))
 	for _, i := range list {
@@ -97,15 +88,6 @@ func Filter(list []string, check func(string) bool) []string {
 		}
 	}
 	return result
-}
-
-func Contains(arr []string, val string) bool {
-	for _, a := range arr {
-		if a == val {
-			return true
-		}
-	}
-	return false
 }
 
 type filteredLoggingHandler struct {
@@ -288,14 +270,6 @@ func ResolveBackingFilepath(fileOrDirpath string) (string, error) {
 	}
 
 	return fileOrDirpath, nil
-}
-
-func GetFunctionName(i interface{}) string {
-	return runtime.FuncForPC(reflect.ValueOf(i).Pointer()).Name()
-}
-
-func RandomID(randomIDLenth int) string {
-	return UUID()[:randomIDLenth]
 }
 
 func GetAddresses(volumeName, address string, dataServerProtocol types.DataServerProtocol) (string, string, string, int, error) {
