@@ -4,12 +4,14 @@ import (
 	"fmt"
 	"net"
 	"regexp"
+	"strings"
 	"sync"
 	"time"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 
 	iutil "github.com/longhorn/go-iscsi-helper/util"
 
@@ -694,6 +696,15 @@ func determineCorrectVolumeSize(volumeSize, volumeCurrentSize int64, backendSize
 	return volumeCurrentSize
 }
 
+func isBackendServiceUnavailable(errorCodes map[string]codes.Code) bool {
+	for _, code := range errorCodes {
+		if code == codes.Unavailable {
+			return true
+		}
+	}
+	return false
+}
+
 func (c *Controller) Start(volumeSize, volumeCurrentSize int64, addresses ...string) error {
 	c.Lock()
 	defer c.Unlock()
@@ -714,28 +725,41 @@ func (c *Controller) Start(volumeSize, volumeCurrentSize int64, addresses ...str
 
 	availableBackends := map[string]types.Backend{}
 	backendSizes := map[int64]struct{}{}
+	errorCodes := map[string]codes.Code{}
 	first := true
 	for _, address := range addresses {
 		newBackend, err := c.factory.Create(c.Name, address, c.DataServerProtocol, c.engineReplicaTimeout)
 		if err != nil {
+			if strings.Contains(err.Error(), "rpc error: code = Unavailable") {
+				errorCodes[address] = codes.Unavailable
+			}
 			logrus.WithError(err).Warnf("Failed to create backend with address %v", address)
 			continue
 		}
 
 		newSize, err := newBackend.Size()
 		if err != nil {
+			if strings.Contains(err.Error(), "rpc error: code = Unavailable") {
+				errorCodes[address] = codes.Unavailable
+			}
 			logrus.WithError(err).Warnf("Failed to get the size from the backend address %v", address)
 			continue
 		}
 
 		newSectorSize, err := newBackend.SectorSize()
 		if err != nil {
+			if strings.Contains(err.Error(), "rpc error: code = Unavailable") {
+				errorCodes[address] = codes.Unavailable
+			}
 			logrus.WithError(err).Warnf("Failed to get the sector size from the backend address %v", address)
 			continue
 		}
 
 		state, err := newBackend.GetState()
 		if err != nil {
+			if strings.Contains(err.Error(), "rpc error: code = Unavailable") {
+				errorCodes[address] = codes.Unavailable
+			}
 			logrus.WithError(err).Warnf("Failed to get the state from the backend address %v", address)
 			continue
 		}
@@ -788,7 +812,10 @@ func (c *Controller) Start(volumeSize, volumeCurrentSize int64, addresses ...str
 	}
 
 	if len(availableBackends) == 0 {
-		return fmt.Errorf(ControllerErrorNoBackend+" from the addresses %+v", addresses)
+		if isBackendServiceUnavailable(errorCodes) {
+			return fmt.Errorf(ControllerErrorNoBackendServiceUnavailable+" from the addresses %+v", addresses)
+		}
+		return fmt.Errorf(ControllerErrorNoBackendReplicaError+" from the addresses %+v", addresses)
 	}
 
 	if err := c.checkUnmapMarkSnapChainRemoved(); err != nil {
