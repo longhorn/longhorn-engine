@@ -144,7 +144,7 @@ func startController(c *cli.Context) error {
 			// Most of the time, 1 is the exit code when there's an error.
 			// The exit code will be ENODATA (61) if there is no backend.
 			// The engine controller will then catch the ENODATA.
-			if strings.Contains(err.Error(), controller.ControllerErrorNoBackend) {
+			if strings.Contains(err.Error(), controller.ControllerErrorNoBackendReplicaError) {
 				exitCode = int(syscall.ENODATA)
 			}
 			logrus.Error(err.Error())
