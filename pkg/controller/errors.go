@@ -1,5 +1,6 @@
 package controller
 
 const (
-	ControllerErrorNoBackend = "cannot create an available backend for the engine"
+	ControllerErrorNoBackendServiceUnavailable = "no available backend due to service unavailable"
+	ControllerErrorNoBackendReplicaError       = "no available backend due to replica error"
 )
