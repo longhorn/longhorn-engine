@@ -906,21 +906,26 @@ func (c *Controller) UnmapAt(length uint32, off int64) (int, error) {
 	// TODO: Need to fail unmap requests
 	//  if the volume is purging snapshots or creating backups.
 	c.RLock()
-	defer c.RUnlock()
 
 	if off < 0 || off+int64(length) > c.size {
 		err := fmt.Errorf("EOF: Unmap of %v bytes at offset %v is beyond volume size %v", length, off, c.size)
+		c.RUnlock()
 		return 0, err
 	}
 	if c.hasWOReplica() {
-		return 0, fmt.Errorf("can not unmap volume when there is WO replica")
+		err := fmt.Errorf("can not unmap volume when there is WO replica")
+		c.RUnlock()
+		return 0, err
 	}
 	if c.isExpanding {
-		return 0, fmt.Errorf("can not unmap volume during expansion")
+		err := fmt.Errorf("can not unmap volume during expansion")
+		c.RUnlock()
+		return 0, err
 	}
 
 	// startTime := time.Now()
 	n, err := c.backend.UnmapAt(length, off)
+	c.RUnlock()
 	if err != nil {
 		return n, c.handleError(err)
 	}
