@@ -1,7 +1,6 @@
 package util
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -48,7 +47,7 @@ func (s *TestSuite) TestParseLabels(c *C) {
 }
 
 func createTempDir(c *C) string {
-	dir, err := ioutil.TempDir("", "test")
+	dir, err := os.MkdirTemp("", "test")
 	c.Assert(err, IsNil)
 	return dir
 }
