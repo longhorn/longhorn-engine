@@ -1,7 +1,6 @@
 package replica
 
 import (
-	"io/ioutil"
 	"os"
 	"path"
 
@@ -15,7 +14,7 @@ const (
 )
 
 func (s *TestSuite) TestBackup(c *C) {
-	dir, err := ioutil.TempDir("", "replica")
+	dir, err := os.MkdirTemp("", "replica")
 	c.Assert(err, IsNil)
 	defer os.RemoveAll(dir)
 
@@ -57,7 +56,7 @@ func (s *TestSuite) TestBackupWithBackups(c *C) {
 }
 
 func (s *TestSuite) TestBackupWithBackupsAndBacking(c *C) {
-	dir, err := ioutil.TempDir("", "replica")
+	dir, err := os.MkdirTemp("", "replica")
 	c.Assert(err, IsNil)
 	defer os.RemoveAll(dir)
 
@@ -80,7 +79,7 @@ func (s *TestSuite) TestBackupWithBackupsAndBacking(c *C) {
 }
 
 func (s *TestSuite) testBackupWithBackups(c *C, backingFile *backingfile.BackingFile) {
-	dir, err := ioutil.TempDir("", "replica")
+	dir, err := os.MkdirTemp("", "replica")
 	c.Assert(err, IsNil)
 	defer os.RemoveAll(dir)
 

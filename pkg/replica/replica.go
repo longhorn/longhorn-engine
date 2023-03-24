@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path"
 	"path/filepath"
@@ -1035,7 +1034,7 @@ func (r *Replica) openLiveChain() error {
 func (r *Replica) readMetadata() (bool, error) {
 	r.diskData = make(map[string]*disk)
 
-	files, err := ioutil.ReadDir(r.dir)
+	files, err := os.ReadDir(r.dir)
 	if os.IsNotExist(err) {
 		return false, nil
 	}
@@ -1074,7 +1073,7 @@ func (r *Replica) tryRecoverVolumeMetaFile(head string) error {
 	}
 
 	if r.info.Head == "" {
-		files, err := ioutil.ReadDir(r.dir)
+		files, err := os.ReadDir(r.dir)
 		if err != nil {
 			return err
 		}
