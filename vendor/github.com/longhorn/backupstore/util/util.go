@@ -9,16 +9,15 @@ import (
 	"encoding/hex"
 	"fmt"
 	"io"
-	"io/ioutil"
+	"io/fs"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"regexp"
 	"strings"
-	"syscall"
 	"time"
 
-	fs "github.com/google/fscrypt/filesystem"
+	"github.com/google/fscrypt/filesystem"
 	"github.com/google/uuid"
 	lz4 "github.com/pierrec/lz4/v4"
 	"github.com/pkg/errors"
@@ -111,7 +110,7 @@ func DecompressAndVerify(method string, src io.Reader, checksum string) (io.Read
 		return nil, err
 	}
 	defer r.Close()
-	block, err := ioutil.ReadAll(r)
+	block, err := io.ReadAll(r)
 	if err != nil {
 		return nil, err
 	}
@@ -135,11 +134,11 @@ func newCompressionWriter(method string, buffer io.Writer) (io.WriteCloser, erro
 func newDecompressionReader(method string, r io.Reader) (io.ReadCloser, error) {
 	switch method {
 	case "none":
-		return ioutil.NopCloser(r), nil
+		return io.NopCloser(r), nil
 	case "gzip":
 		return gzip.NewReader(r)
 	case "lz4":
-		return ioutil.NopCloser(lz4.NewReader(r)), nil
+		return io.NopCloser(lz4.NewReader(r)), nil
 	default:
 		return nil, fmt.Errorf("unsupported decompression method: %v", method)
 	}
@@ -289,17 +288,15 @@ func EnsureMountPoint(Kind, mountPoint string, mounter mount.Interface, log logr
 	}()
 
 	notMounted, err := mount.IsNotMountPoint(mounter, mountPoint)
-	if err != nil {
-		if strings.Contains(err.Error(), syscall.ENOENT.Error()) {
-			return false, nil
-		}
+	if err == fs.ErrNotExist {
+		return false, nil
 	}
 
 	IsCorruptedMnt := mount.IsCorruptedMnt(err)
 	if !IsCorruptedMnt {
-		log.Warnf("Mount point %v is trying reading dir to make sure it is healthy", mountPoint)
-		if _, readErr := ioutil.ReadDir(mountPoint); readErr != nil {
-			log.WithError(readErr).Warnf("Mount point %v was identified as corrupt by ReadDir", mountPoint)
+		log.Warnf("Trying reading mount point %v to make sure it is healthy", mountPoint)
+		if _, readErr := os.ReadDir(mountPoint); readErr != nil {
+			log.WithError(readErr).Warnf("Mount point %v was identified as corrupted by ReadDir", mountPoint)
 			IsCorruptedMnt = true
 		}
 	}
@@ -316,7 +313,7 @@ func EnsureMountPoint(Kind, mountPoint string, mounter mount.Interface, log logr
 		return false, nil
 	}
 
-	mnt, err := fs.GetMount(mountPoint)
+	mnt, err := filesystem.GetMount(mountPoint)
 	if err != nil {
 		return true, errors.Wrapf(err, "failed to get mount for %v", mountPoint)
 	}
