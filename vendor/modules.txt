@@ -137,7 +137,7 @@ github.com/longhorn/sparse-tools/util
 # github.com/mattn/go-runewidth v0.0.5-0.20181218000649-703b5e6b11ae
 ## explicit; go 1.9
 github.com/mattn/go-runewidth
-# github.com/moby/moby v20.10.22+incompatible
+# github.com/moby/moby v23.0.1+incompatible
 ## explicit
 github.com/moby/moby/pkg/reexec
 # github.com/moby/sys/mountinfo v0.6.2
