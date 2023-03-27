@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"strconv"
@@ -248,7 +247,7 @@ func (server *SyncServer) doWriteData(request *http.Request) error {
 
 	log.Tracef("writeData: interval %+v", remoteDataInterval)
 
-	data, err := ioutil.ReadAll(io.LimitReader(request.Body, remoteDataInterval.End-remoteDataInterval.Begin))
+	data, err := io.ReadAll(io.LimitReader(request.Body, remoteDataInterval.End-remoteDataInterval.Begin))
 	if err != nil {
 		return errors.Wrap(err, "failed to read request")
 	}
@@ -313,7 +312,7 @@ func (server *SyncServer) getRecordedMetadataFromChecksumFile() ([]byte, error) 
 	}
 	defer f.Close()
 
-	metadata, err := ioutil.ReadAll(f)
+	metadata, err := io.ReadAll(f)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to read checksum file")
 	}
