@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -255,7 +254,7 @@ func getLocalDiskFileChangeTimeAndChecksum(sourceName string) (recordedChangeTim
 	}
 	defer f.Close()
 
-	data, err := ioutil.ReadAll(f)
+	data, err := io.ReadAll(f)
 	if err != nil {
 		return "", "", "", errors.Wrap(err, "failed to read checksum file")
 	}
@@ -341,7 +340,7 @@ func (client *syncClient) open() error {
 	}
 
 	// drain the buffer and close the body
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	_ = resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
@@ -363,7 +362,7 @@ func (client *syncClient) close() {
 	resp, err := client.sendHTTPRequest("POST", "close", queries, nil)
 	if err == nil {
 		// drain the buffer and close the body
-		_, _ = ioutil.ReadAll(resp.Body)
+		_, _ = io.ReadAll(resp.Body)
 		_ = resp.Body.Close()
 	}
 }
@@ -378,7 +377,7 @@ func (client *syncClient) syncHoleInterval(holeInterval Interval) error {
 	}
 
 	// drain the buffer and close the body
-	_, _ = ioutil.ReadAll(resp.Body)
+	_, _ = io.ReadAll(resp.Body)
 	_ = resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
@@ -399,7 +398,7 @@ func (client *syncClient) getServerChecksum(batchInterval Interval) ([]byte, err
 	}
 
 	// drain the buffer and close the body
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	_ = resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
@@ -427,7 +426,7 @@ func (client *syncClient) getServerRecordedMetadata() ([]byte, error) {
 	}
 
 	// drain the buffer and close the body
-	metadata, err := ioutil.ReadAll(resp.Body)
+	metadata, err := io.ReadAll(resp.Body)
 	_ = resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
@@ -448,7 +447,7 @@ func (client *syncClient) writeData(dataInterval Interval, data []byte) error {
 	}
 
 	// drain the buffer and close the body
-	_, _ = ioutil.ReadAll(resp.Body)
+	_, _ = io.ReadAll(resp.Body)
 	_ = resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {

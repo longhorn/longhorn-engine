@@ -51,6 +51,8 @@ github.com/longhorn/nsfilelock v0.0.0-20200723175406-fa7c83ad0003 h1:Jw9uANsGcHT
 github.com/longhorn/nsfilelock v0.0.0-20200723175406-fa7c83ad0003/go.mod h1:0CLeXlf59Lg6C0kjLSDf47ft73Dh37CwymYRKWwAn04=
 github.com/longhorn/sparse-tools v0.0.0-20230216042534-6e4173e9def4 h1:cgz+MUSAZ8tB5IaD2t4mZv3diKyKJqo4zaKxyt0rweE=
 github.com/longhorn/sparse-tools v0.0.0-20230216042534-6e4173e9def4/go.mod h1:Uu0wXGD4l7Wfl+xZrCDZKw0zMvYVpwreFRwieZ6083s=
+github.com/longhorn/sparse-tools v0.0.0-20230327064700-b60b990a105b h1:e0M+P+Zpsmps/nUXVDjonPSchpqRXgcwkVcvRRPQSDM=
+github.com/longhorn/sparse-tools v0.0.0-20230327064700-b60b990a105b/go.mod h1:qhbarWiCtB2FFqg7v3KBSRshU7oQgrabmIuN3Sh0cMo=
 github.com/mattn/go-colorable v0.1.4 h1:snbPLB8fVfU9iwbbo30TPtbLRzwWu6aJS6Xh4eaaviA=
 github.com/mattn/go-colorable v0.1.4/go.mod h1:U0ppj6V5qS13XJ6of8GYAs25YV2eR4EVcfRqFIhoBtE=
 github.com/mattn/go-isatty v0.0.8 h1:HLtExJ+uU2HOZ+wI0Tt5DtUDrx8yhUqDcp7fYERX4CE=

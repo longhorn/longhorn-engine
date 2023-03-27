@@ -11,7 +11,7 @@ require (
 	github.com/gorilla/mux v1.7.3
 	github.com/longhorn/backupstore v0.0.0-20230306041950-1879d9f064bb
 	github.com/longhorn/go-iscsi-helper v0.0.0-20230215054929-acb305e1031b
-	github.com/longhorn/sparse-tools v0.0.0-20230216042534-6e4173e9def4
+	github.com/longhorn/sparse-tools v0.0.0-20230327064700-b60b990a105b
 	github.com/moby/moby v20.10.20+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
