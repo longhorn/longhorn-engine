@@ -79,7 +79,7 @@ func (c *Controller) Revert(name string) error {
 	for address, rClient := range clients {
 		logrus.Infof("Reverting to snapshot %s on %s at %s", name, address, now)
 		if err := rClient.Revert(name, now); err != nil {
-			logrus.Errorf("Error on reverting to %s on %s: %v", name, address, err)
+			logrus.WithError(err).Errorf("Error on reverting to %s on %s", name, address)
 			c.setReplicaModeNoLock(address, types.ERR)
 		} else {
 			minimalSuccess = true
