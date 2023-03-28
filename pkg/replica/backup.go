@@ -9,6 +9,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/longhorn/backupstore"
+	butil "github.com/longhorn/backupstore/util"
 
 	"github.com/longhorn/longhorn-engine/pkg/backingfile"
 	diskutil "github.com/longhorn/longhorn-engine/pkg/util/disk"
@@ -146,6 +147,7 @@ func (status *RestoreStatus) DeepCopy() *RestoreStatus {
 
 type BackupStatus struct {
 	lock          sync.Mutex
+	Name          string
 	backingFile   *backingfile.BackingFile
 	replica       *Replica
 	volumeID      string
@@ -155,24 +157,36 @@ type BackupStatus struct {
 	BackupURL     string
 	State         ProgressState
 	IsIncremental bool
+	IsOpened      bool
 }
 
-func NewBackup(backingFile *backingfile.BackingFile) *BackupStatus {
+func NewBackup(name, volumeID, snapID string, backingFile *backingfile.BackingFile) *BackupStatus {
+	backupName := name
+	if backupName == "" {
+		backupName = butil.GenerateName("backup")
+	}
 	return &BackupStatus{
+		Name:        backupName,
 		backingFile: backingFile,
 		State:       ProgressStateInProgress,
+		volumeID:    volumeID,
+		SnapshotID:  diskutil.GenerateSnapshotDiskName(snapID),
 	}
 }
 
-func (rb *BackupStatus) UpdateBackupStatus(snapID, volumeID string, progress int, url string, errString string) error {
+// UpdateBackupStatus updates the backup status. The state is first-respected, but if
+// - The errString is not empty, the state will be set to error.
+// - The progress is 100, the state will be set to complete.
+func (rb *BackupStatus) UpdateBackupStatus(snapID, volumeID string, state string, progress int, url string, errString string) error {
 	id := diskutil.GenerateSnapshotDiskName(snapID)
 	rb.lock.Lock()
 	defer rb.lock.Unlock()
-	if err := rb.assertOpen(id, volumeID); err != nil {
-		logrus.Errorf("Returning Error from UpdateBackupProgress")
-		return err
+
+	if rb.volumeID != volumeID || rb.SnapshotID != id {
+		return fmt.Errorf("invalid volume [%s] and snapshot [%s], not volume [%s], snapshot [%s]", rb.volumeID, rb.SnapshotID, volumeID, id)
 	}
 
+	rb.State = ProgressState(state)
 	rb.Progress = progress
 	rb.BackupURL = url
 	rb.Error = errString
@@ -204,12 +218,8 @@ func (rb *BackupStatus) OpenSnapshot(snapID, volumeID string) error {
 	id := diskutil.GenerateSnapshotDiskName(snapID)
 	rb.lock.Lock()
 	defer rb.lock.Unlock()
-	if rb.volumeID == volumeID && rb.SnapshotID == id {
+	if rb.IsOpened {
 		return nil
-	}
-
-	if rb.volumeID != "" {
-		return fmt.Errorf("volume %s and snapshot %s are already open, close first", rb.volumeID, rb.SnapshotID)
 	}
 
 	dir, err := os.Getwd()
@@ -224,13 +234,17 @@ func (rb *BackupStatus) OpenSnapshot(snapID, volumeID string) error {
 	rb.replica = r
 	rb.volumeID = volumeID
 	rb.SnapshotID = id
+	rb.IsOpened = true
 
 	return nil
 }
 
 func (rb *BackupStatus) assertOpen(id, volumeID string) error {
 	if rb.volumeID != volumeID || rb.SnapshotID != id {
-		return fmt.Errorf("invalid state volume [%s] and snapshot [%s] are open, not volume [%s], snapshot [%s]", rb.volumeID, rb.SnapshotID, volumeID, id)
+		return fmt.Errorf("invalid volume [%s] and snapshot [%s], not volume [%s], snapshot [%s]", rb.volumeID, rb.SnapshotID, volumeID, id)
+	}
+	if !rb.IsOpened {
+		return fmt.Errorf("volume [%s] and snapshot [%s] are not opened", volumeID, id)
 	}
 	return nil
 }
@@ -262,13 +276,7 @@ func (rb *BackupStatus) CloseSnapshot(snapID, volumeID string) error {
 	err := rb.replica.Close()
 
 	rb.replica = nil
-	rb.volumeID = ""
-	//Keeping the SnapshotID value populated as this will be used by the engine for displaying the progress
-	//associated with this snapshot.
-	//Also, this serves the purpose to ensure if the snapshot file is open or not as assertOpen function will check
-	//for both volumeID and SnapshotID to be ""
-
-	//rb.snapshotID = ""
+	rb.IsOpened = false
 
 	return err
 }
