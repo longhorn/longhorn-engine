@@ -119,7 +119,7 @@ func (t *Socket) startSocketServerListen(rwu types.ReaderWriterUnmapperAt) error
 	for {
 		conn, err := ln.Accept()
 		if err != nil {
-			logrus.Error("Failed to accept socket connection")
+			logrus.WithError(err).Error("Failed to accept socket connection")
 			continue
 		}
 		go t.handleServerConnection(conn, rwu)
@@ -132,7 +132,7 @@ func (t *Socket) handleServerConnection(c net.Conn, rwu types.ReaderWriterUnmapp
 	server := dataconn.NewServer(c, NewDataProcessorWrapper(rwu))
 	logrus.Info("New data socket connection established")
 	if err := server.Handle(); err != nil && err != io.EOF {
-		logrus.Errorf("Failed to handle socket server connection due to %v", err)
+		logrus.WithError(err).Errorf("Failed to handle socket server connection")
 	} else if err == io.EOF {
 		logrus.Warn("Socket server connection closed")
 	}

@@ -869,7 +869,7 @@ func (s *SyncAgentServer) postFullRestoreOperations(restoreStatus *replica.Resto
 	// Check if this full restore is the fallback of the incremental restore
 	if strings.HasSuffix(restoreStatus.ToFileName, ".snap_tmp") {
 		if err := s.extraIncrementalFullRestoreOperations(restoreStatus); err != nil {
-			logrus.Errorf("Failed to complete incremental fallback full restore: %v", err)
+			logrus.WithError(err).Errorf("Failed to complete incremental fallback full restore")
 			return err
 		}
 		logrus.Infof("Done running full restore %v to %v as the fallback of the incremental restore",
