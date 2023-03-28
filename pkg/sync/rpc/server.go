@@ -670,7 +670,14 @@ func (s *SyncAgentServer) BackupCreate(ctx context.Context, req *ptypes.BackupCr
 		return nil, err
 	}
 
-	backupID, replicaObj, err := backup.DoBackupCreate(&backup.CreateBackupParameters{
+	// Mounting NFS is part of the backup initialization, and at this stage, the backup status is not
+	// created and is not added to the BackupList.
+	//
+	// In soft mode, a stuck operation is only retried twice. To prevent the backup monitor being trapped in
+	// an infinite backup status polling loop, the sync agent server needs to record the backup status before executing
+	// the backup. After the retries fail, the state transitions to error. The backup monitor is then aware of the error
+	// and marked the backup failed, and won't poll the backup status infinitely.
+	backupStatus, backupConfig, err := backup.DoBackupInit(&backup.CreateBackupParameters{
 		BackupName:           req.BackupName,
 		VolumeName:           req.VolumeName,
 		SnapshotName:         req.SnapshotFileName,
@@ -682,17 +689,23 @@ func (s *SyncAgentServer) BackupCreate(ctx context.Context, req *ptypes.BackupCr
 		Labels:               req.Labels,
 	})
 	if err != nil {
+		logrus.WithError(err).Errorf("Failed to initialize backup %v", req.BackupName)
+		return nil, err
+	}
+
+	if err := s.BackupList.BackupAdd(backupStatus.Name, backupStatus); err != nil {
+		return nil, errors.Wrapf(err, "failed to add the backup object %v", backupStatus.Name)
+	}
+
+	err = backup.DoBackupCreate(backupStatus, backupConfig)
+	if err != nil {
 		logrus.WithError(err).Errorf("Failed to create backup %v", req.BackupName)
 		return nil, err
 	}
 
 	resp := &ptypes.BackupCreateResponse{
-		Backup:        backupID,
-		IsIncremental: replicaObj.IsIncremental,
-	}
-
-	if err := s.BackupList.BackupAdd(backupID, replicaObj); err != nil {
-		return nil, errors.Wrapf(err, "failed to add the backup object for backup %v", req.BackupName)
+		Backup:        backupStatus.Name,
+		IsIncremental: backupStatus.IsIncremental,
 	}
 
 	logrus.Infof("Done initiating backup creation, received backupID: %v", resp.Backup)

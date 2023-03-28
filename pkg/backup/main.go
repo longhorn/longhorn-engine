@@ -69,70 +69,76 @@ func RequiredMissingError(name string) error {
 	return fmt.Errorf("cannot find valid required parameter: %v", name)
 }
 
-func DoBackupCreate(backupParams *CreateBackupParameters) (string, *replica.BackupStatus, error) {
+func DoBackupInit(params *CreateBackupParameters) (*replica.BackupStatus, *backupstore.DeltaBackupConfig, error) {
+	log.Infof("Initializing backup %v for volume %v snapshot %v", params.BackupName, params.VolumeName, params.SnapshotName)
+
 	var err error
 
-	if backupParams.VolumeName == "" || backupParams.SnapshotName == "" || backupParams.DestURL == "" {
-		return "", nil, fmt.Errorf("missing input parameter")
+	if params.VolumeName == "" || params.SnapshotName == "" || params.DestURL == "" {
+		return nil, nil, fmt.Errorf("missing input parameter")
 	}
 
-	if !util.ValidVolumeName(backupParams.VolumeName) {
-		return "", nil, fmt.Errorf("invalid volume name %v for backup %v", backupParams.VolumeName, backupParams.BackupName)
+	if !util.ValidVolumeName(params.VolumeName) {
+		return nil, nil, fmt.Errorf("invalid volume name %v for backup %v", params.VolumeName, params.BackupName)
 	}
 
 	var labelMap map[string]string
-	if backupParams.Labels != nil {
-		labelMap, err = util.ParseLabels(backupParams.Labels)
+	if params.Labels != nil {
+		labelMap, err = util.ParseLabels(params.Labels)
 		if err != nil {
-			return "", nil, errors.Wrapf(err, "cannot parse backup labels for backup %v", backupParams.BackupName)
+			return nil, nil, errors.Wrapf(err, "cannot parse backup labels for backup %v", params.BackupName)
 		}
 	}
 
 	volumeInfo, err := getVolumeInfoFromVolumeMeta()
 	if err != nil {
-		return "", nil, err
+		return nil, nil, err
 	}
 
 	backingFile, err := openBackingFile(volumeInfo.BackingFilePath)
 	if err != nil {
-		return "", nil, err
+		return nil, nil, err
 	}
 
-	replicaBackup := replica.NewBackup(backingFile)
+	backup := replica.NewBackup(params.BackupName, params.VolumeName, params.SnapshotName, backingFile)
 
 	volume := &backupstore.Volume{
-		Name:                 backupParams.VolumeName,
+		Name:                 params.VolumeName,
 		Size:                 volumeInfo.Size,
 		Labels:               labelMap,
-		BackingImageName:     backupParams.BackingImageName,
-		BackingImageChecksum: backupParams.BackingImageChecksum,
-		CompressionMethod:    backupParams.CompressionMethod,
+		BackingImageName:     params.BackingImageName,
+		BackingImageChecksum: params.BackingImageChecksum,
+		CompressionMethod:    params.CompressionMethod,
 		CreatedTime:          util.Now(),
 	}
 
 	snapshot := &backupstore.Snapshot{
-		Name:        backupParams.SnapshotName,
+		Name:        params.SnapshotName,
 		CreatedTime: util.Now(),
 	}
 
-	log.Infof("Starting backup for %v, snapshot %v, dest %v", volume, snapshot, backupParams.DestURL)
-
-	backupID, isIncremental, err := backupstore.CreateDeltaBlockBackup(&backupstore.DeltaBackupConfig{
-		BackupName:      backupParams.BackupName,
-		ConcurrentLimit: backupParams.ConcurrentLimit,
+	config := &backupstore.DeltaBackupConfig{
+		BackupName:      params.BackupName,
+		ConcurrentLimit: params.ConcurrentLimit,
 		Volume:          volume,
 		Snapshot:        snapshot,
-		DestURL:         backupParams.DestURL,
-		DeltaOps:        replicaBackup,
+		DestURL:         params.DestURL,
+		DeltaOps:        backup,
 		Labels:          labelMap,
-	})
+	}
+	return backup, config, nil
+}
+
+func DoBackupCreate(replicaBackup *replica.BackupStatus, config *backupstore.DeltaBackupConfig) error {
+	log.Infof("Start creating backup %v", replicaBackup.Name)
+
+	isIncremental, err := backupstore.CreateDeltaBlockBackup(replicaBackup.Name, config)
 	if err != nil {
-		return "", nil, err
+		return err
 	}
 
 	replicaBackup.IsIncremental = isIncremental
-
-	return backupID, replicaBackup, nil
+	return nil
 }
 
 func getVolumeInfoFromVolumeMeta() (replica.Info, error) {

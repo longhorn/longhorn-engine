@@ -30,10 +30,10 @@ func (s *TestSuite) TestBackup(c *C) {
 	_, err = r.WriteAt(buf, mb)
 	c.Assert(err, IsNil)
 
-	rb := NewBackup(nil)
 	volume := "test"
 
 	snap := "000"
+	rb := NewBackup("", volume, snap, nil)
 	createdTime := util.Now()
 	err = r.Snapshot(snap, true, createdTime, nil)
 	c.Assert(err, IsNil)
@@ -133,7 +133,7 @@ func (s *TestSuite) testBackupWithBackups(c *C, backingFile *backingfile.Backing
 	_, err = r.WriteAt(buf, 0)
 	c.Assert(err, IsNil)
 
-	rb := NewBackup(backingFile)
+	rb := NewBackup("", volume, snap3, backingFile)
 
 	// Test 003 -> ""
 	c.Assert(err, IsNil)
