@@ -99,7 +99,7 @@ func doReset(c *cli.Context) error {
 	}
 
 	if err := task.Reset(); err != nil {
-		logrus.Error("Failed to reset sync agent server")
+		logrus.WithError(err).Error("Failed to reset sync agent server")
 		return err
 	}
 	logrus.Info("Successfully reset sync agent server")

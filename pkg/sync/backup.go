@@ -336,14 +336,14 @@ func (t *Task) Reset() error {
 	for _, replica := range replicas {
 		repClient, err := replicaClient.NewReplicaClient(replica.Address)
 		if err != nil {
-			logrus.Errorf("Failed to get a replica client: %v for %v", err, replica.Address)
+			logrus.WithError(err).Errorf("Failed to get a replica client for %v", replica.Address)
 			return err
 		}
 		clients = append(clients, repClient)
 
 		logrus.Infof("Performing sync-agent-server-reset for replica %s", replica.Address)
 		if err := repClient.Reset(); err != nil {
-			logrus.Errorf("Failed Resetting restore status for replica %s", replica.Address)
+			logrus.WithError(err).Errorf("Failed Resetting restore status for replica %s", replica.Address)
 			return err
 		}
 	}
