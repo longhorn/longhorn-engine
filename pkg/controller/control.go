@@ -980,7 +980,7 @@ func (c *Controller) handleErrorNoLock(err error) error {
 					// We reject the request, so do not set the replica to ERR if the snapshot is already existing.
 					snapshotExistList[address] = struct{}{}
 				} else {
-					logrus.Errorf("Setting replica %s to ERR due to: %v", address, replicaErr)
+					logrus.WithError(err).Errorf("Setting replica %s to ERR", address)
 					c.setReplicaModeNoLock(address, types.ERR)
 				}
 			}
