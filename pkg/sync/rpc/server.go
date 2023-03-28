@@ -725,7 +725,7 @@ func (s *SyncAgentServer) BackupStatus(ctx context.Context, req *ptypes.BackupSt
 }
 
 func (*SyncAgentServer) BackupRemove(ctx context.Context, req *ptypes.BackupRemoveRequest) (*empty.Empty, error) {
-	cmd := reexec.Command("sbackup", "delete", req.Backup)
+	cmd := reexec.Command("backup", "delete", req.Backup)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Pdeathsig: syscall.SIGKILL,
 	}
@@ -737,11 +737,11 @@ func (*SyncAgentServer) BackupRemove(ctx context.Context, req *ptypes.BackupRemo
 
 	logrus.Infof("Running %s %v", cmd.Path, cmd.Args)
 	if err := cmd.Wait(); err != nil {
-		logrus.Infof("Error running %s %v: %v", "sbackup", cmd.Args, err)
+		logrus.Infof("Error running %s %v: %v", "backup", cmd.Args, err)
 		return nil, err
 	}
 
-	logrus.Infof("Done running %s %v", "sbackup", cmd.Args)
+	logrus.Infof("Done running %s %v", "backup", cmd.Args)
 	return &empty.Empty{}, nil
 }
 
