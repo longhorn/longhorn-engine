@@ -181,7 +181,7 @@ func (rb *BackupStatus) UpdateBackupStatus(snapID, volumeID string, state string
 	rb.lock.Lock()
 	defer rb.lock.Unlock()
 
-	if rb.volumeID != volumeID || rb.SnapshotID != id {
+	if !rb.isVolumeSnapshotMatched(id, volumeID) {
 		return fmt.Errorf("invalid volume [%s] and snapshot [%s], not volume [%s], snapshot [%s]", rb.volumeID, rb.SnapshotID, volumeID, id)
 	}
 
@@ -246,6 +246,13 @@ func (rb *BackupStatus) assertOpen(id, volumeID string) error {
 		return fmt.Errorf("volume [%s] and snapshot [%s] are not opened", volumeID, id)
 	}
 	return nil
+}
+
+func (rb *BackupStatus) isVolumeSnapshotMatched(id, volumeID string) bool {
+	if rb.volumeID != volumeID || rb.SnapshotID != id {
+		return false
+	}
+	return true
 }
 
 func (rb *BackupStatus) ReadSnapshot(snapID, volumeID string, start int64, data []byte) error {
