@@ -19,7 +19,7 @@ require (
 	github.com/sirupsen/logrus v1.8.1
 	github.com/urfave/cli v1.22.1
 	golang.org/x/net v0.7.0
-	golang.org/x/sys v0.5.0
+	golang.org/x/sys v0.7.0
 	google.golang.org/grpc v1.53.0
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f
 	gopkg.in/cheggaaa/pb.v2 v2.0.0-20190301131520-f907f6f5dd81
