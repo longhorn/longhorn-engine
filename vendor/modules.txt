@@ -124,7 +124,7 @@ github.com/longhorn/go-iscsi-helper/util
 # github.com/longhorn/nsfilelock v0.0.0-20200723175406-fa7c83ad0003
 ## explicit
 github.com/longhorn/nsfilelock
-# github.com/longhorn/sparse-tools v0.0.0-20230327064700-b60b990a105b
+# github.com/longhorn/sparse-tools v0.0.0-20230408015858-c849def39d3c
 ## explicit; go 1.17
 github.com/longhorn/sparse-tools/cli/ssync
 github.com/longhorn/sparse-tools/sparse
