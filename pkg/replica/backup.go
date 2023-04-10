@@ -108,9 +108,10 @@ func (status *RestoreStatus) FinishRestore() {
 
 // Revert is used for reverting the current restore status to the previous status.
 // This function will be invoked when:
-//     1. The new restore is failed before the actual restore is performed.
-//     2. The existing files are not modified.
-//     3. The current status has been updated/initialized for the new restore.
+//  1. The new restore is failed before the actual restore is performed.
+//  2. The existing files are not modified.
+//  3. The current status has been updated/initialized for the new restore.
+//
 // If there is no modification applied on the existing replica disk files after the restore failure,
 // it means the replica is still available. In order to make sure the replica work fine
 // for the next restore and the status is not messed up, the revert is indispensable.
