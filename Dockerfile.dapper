@@ -41,8 +41,8 @@ RUN if [ ${ARCH} == "s390x" ]; then \
 # Install Go & tools
 ENV GOLANG_ARCH_amd64=amd64 GOLANG_ARCH_arm64=arm64 GOLANG_ARCH_s390x=s390x GOLANG_ARCH=GOLANG_ARCH_${ARCH} \
     GOPATH=/go PATH=/go/bin:/usr/local/go/bin:${PATH} SHELL=/bin/bash
-RUN wget -O - https://storage.googleapis.com/golang/go1.17.10.linux-${!GOLANG_ARCH}.tar.gz | tar -xzf - -C /usr/local && \
-    go get github.com/rancher/trash && go get -u golang.org/x/lint/golint
+RUN wget -O - https://storage.googleapis.com/golang/go1.20.3.linux-${!GOLANG_ARCH}.tar.gz | tar -xzf - -C /usr/local && \
+    go install golang.org/x/lint/golint@latest
 
 # Minio
 ENV MINIO_URL_amd64=https://dl.min.io/server/minio/release/linux-amd64/archive/minio.RELEASE.2021-12-20T22-07-16Z \
