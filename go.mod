@@ -1,6 +1,6 @@
 module github.com/longhorn/longhorn-engine
 
-go 1.17
+go 1.20
 
 require (
 	github.com/docker/go-units v0.3.3
