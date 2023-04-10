@@ -52,8 +52,6 @@ github.com/cpuguy83/go-md2man/v2/md2man
 # github.com/docker/go-units v0.3.3
 ## explicit
 github.com/docker/go-units
-# github.com/fatih/color v1.7.0
-## explicit
 # github.com/felixge/httpsnoop v1.0.1
 ## explicit; go 1.13
 github.com/felixge/httpsnoop
@@ -134,9 +132,10 @@ github.com/longhorn/sparse-tools/types
 github.com/longhorn/sparse-tools/util
 # github.com/mattn/go-colorable v0.1.4
 ## explicit
-# github.com/mattn/go-runewidth v0.0.5-0.20181218000649-703b5e6b11ae
-## explicit; go 1.9
-github.com/mattn/go-runewidth
+github.com/mattn/go-colorable
+# github.com/mattn/go-isatty v0.0.8
+## explicit
+github.com/mattn/go-isatty
 # github.com/moby/moby v23.0.2+incompatible
 ## explicit
 github.com/moby/moby/pkg/reexec
@@ -293,14 +292,28 @@ google.golang.org/protobuf/types/known/anypb
 google.golang.org/protobuf/types/known/durationpb
 google.golang.org/protobuf/types/known/emptypb
 google.golang.org/protobuf/types/known/timestamppb
+# gopkg.in/VividCortex/ewma.v1 v1.1.1
+## explicit
+gopkg.in/VividCortex/ewma.v1
 # gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f
 ## explicit
 gopkg.in/check.v1
-# gopkg.in/cheggaaa/pb.v1 v1.0.28
-## explicit
-# gopkg.in/cheggaaa/pb.v2 v2.0.0-20190301131520-f907f6f5dd81
+# gopkg.in/cheggaaa/pb.v2 v2.0.7
 ## explicit
 gopkg.in/cheggaaa/pb.v2
+gopkg.in/cheggaaa/pb.v2/termutil
+# gopkg.in/fatih/color.v1 v1.7.0
+## explicit
+gopkg.in/fatih/color.v1
+# gopkg.in/mattn/go-colorable.v0 v0.1.0
+## explicit
+gopkg.in/mattn/go-colorable.v0
+# gopkg.in/mattn/go-isatty.v0 v0.0.4
+## explicit
+gopkg.in/mattn/go-isatty.v0
+# gopkg.in/mattn/go-runewidth.v0 v0.0.4
+## explicit
+gopkg.in/mattn/go-runewidth.v0
 # gotest.tools/v3 v3.4.0
 ## explicit; go 1.13
 # k8s.io/apimachinery v0.26.0
