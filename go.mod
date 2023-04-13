@@ -7,12 +7,21 @@ require (
 	github.com/gofrs/flock v0.8.1
 	github.com/golang/protobuf v1.5.2
 	github.com/google/uuid v1.3.0
+<<<<<<< HEAD
 	github.com/gorilla/handlers v1.4.2
 	github.com/gorilla/mux v1.7.3
 	github.com/longhorn/backupstore v0.0.0-20230324161025-944d6c16dd0c
 	github.com/longhorn/go-iscsi-helper v0.0.0-20230215054929-acb305e1031b
 	github.com/longhorn/sparse-tools v0.0.0-20230327064700-b60b990a105b
 	github.com/moby/moby v20.10.20+incompatible
+=======
+	github.com/gorilla/handlers v1.5.1
+	github.com/gorilla/mux v1.8.0
+	github.com/longhorn/backupstore v0.0.0-20230324160313-e1d0b33c2f82
+	github.com/longhorn/go-iscsi-helper v0.0.0-20230214085945-21fed2bd6261
+	github.com/longhorn/sparse-tools v0.0.0-20230408015858-c849def39d3c
+	github.com/moby/moby v23.0.2+incompatible
+>>>>>>> aeff7b57 (vendor: update sparse-tools (#886))
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
 	github.com/rancher/go-rancher v0.1.1-0.20190307222549-9756097e5e4c
