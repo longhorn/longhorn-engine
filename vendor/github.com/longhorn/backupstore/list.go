@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/honestbee/jobq"
+	"github.com/gammazero/workerpool"
 
 	"github.com/longhorn/backupstore/util"
 )
@@ -90,18 +90,13 @@ func List(volumeName, destURL string, volumeOnly bool) (map[string]*VolumeInfo, 
 		return nil, err
 	}
 
-	jobQueues := jobq.NewWorkerDispatcher(
-		// init #cpu*16 workers
-		jobq.WorkerN(runtime.NumCPU()*16),
-		// init worker pool size to 256 (same as max folders 16*16)
-		jobq.WorkerPoolSize(256),
-	)
-	defer jobQueues.Stop()
+	jobQueues := workerpool.New(runtime.NumCPU() * 16)
+	defer jobQueues.StopWait()
 
 	var resp = make(map[string]*VolumeInfo)
 	volumeNames := []string{volumeName}
 	if volumeName == "" {
-		volumeNames, err = getVolumeNames(jobQueues, jobQueueTimeout, driver)
+		volumeNames, err = getVolumeNames(jobQueues, driver)
 		if err != nil {
 			return nil, err
 		}

@@ -10,8 +10,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/honestbee/jobq"
+	"github.com/gammazero/workerpool"
 	"github.com/sirupsen/logrus"
+	"github.com/slok/goresilience/timeout"
 
 	. "github.com/longhorn/backupstore/logging"
 	"github.com/longhorn/backupstore/util"
@@ -27,6 +28,8 @@ const (
 	BACKUP_CONFIG_PREFIX = "backup_"
 
 	CFG_SUFFIX = ".cfg"
+
+	taskTimeout = 90 * time.Second
 )
 
 func getBackupConfigName(id string) string {
@@ -145,7 +148,7 @@ func getVolumeFilePath(volumeName string) string {
 }
 
 // getVolumeNames returns all volume names based on the folders on the backupstore
-func getVolumeNames(jobQueues *jobq.WorkerDispatcher, jobQueueTimeout time.Duration, driver BackupStoreDriver) ([]string, error) {
+func getVolumeNames(jobQueues *workerpool.WorkerPool, driver BackupStoreDriver) ([]string, error) {
 	names := []string{}
 	volumePathBase := filepath.Join(backupstoreBase, VOLUME_DIRECTORY)
 	lv1Dirs, err := driver.List(volumePathBase)
@@ -154,52 +157,76 @@ func getVolumeNames(jobQueues *jobq.WorkerDispatcher, jobQueueTimeout time.Durat
 		return names, err
 	}
 
-	var (
-		lv1Trackers []jobq.JobTracker
-		lv2Trackers []jobq.JobTracker
-		errs        []string
-	)
+	var errs []string
+	lv1Trackers := make(chan JobResult)
+	lv2Trackers := make(chan JobResult)
+	defer close(lv1Trackers)
+	defer close(lv2Trackers)
+
+	runner := timeout.New(timeout.Config{
+		Timeout: taskTimeout,
+	})
+
 	for _, lv1Dir := range lv1Dirs {
 		path := filepath.Join(volumePathBase, lv1Dir)
-		lv1Tracker := jobQueues.QueueTimedFunc(context.Background(), func(ctx context.Context) (interface{}, error) {
-			lv2Dirs, err := driver.List(path)
+		jobQueues.Submit(func() {
+			lv2Paths := make([]string, 0)
+			err := runner.Run(context.TODO(), func(_ context.Context) error {
+				lv2Dirs, err := driver.List(path)
+				if err != nil {
+					logrus.Warnf("Failed to list second level dirs for path %v", path)
+					return fmt.Errorf("Failed to list second level dirs for path %v: %v", path, err)
+				}
+				for _, lv2Dir := range lv2Dirs {
+					lv2Paths = append(lv2Paths, filepath.Join(path, lv2Dir))
+				}
+				return nil
+			})
 			if err != nil {
-				log.WithError(err).Warnf("Failed to list second level dirs for path %v", path)
-				return nil, err
+				lv1Trackers <- JobResult{nil, err}
+				return
 			}
-
-			lv2Paths := make([]string, len(lv2Dirs))
-			for i := range lv2Dirs {
-				lv2Paths[i] = filepath.Join(path, lv2Dirs[i])
-			}
-			return lv2Paths, nil
-		}, jobQueueTimeout)
-		lv1Trackers = append(lv1Trackers, lv1Tracker)
+			lv1Trackers <- JobResult{lv2Paths, nil}
+			return
+		})
 	}
 
-	for _, lv1Tracker := range lv1Trackers {
-		payload, err := lv1Tracker.Result()
+	lv2PathsNum := 0
+	for i := 0; i < len(lv1Dirs); i++ {
+		lv1Tracker := <-lv1Trackers
+		payload, err := lv1Tracker.payload, lv1Tracker.err
 		if err != nil {
 			errs = append(errs, err.Error())
 			continue
 		}
 
 		lv2Paths := payload.([]string)
+		lv2PathsNum += len(lv2Paths)
 		for _, lv2Path := range lv2Paths {
 			path := lv2Path
-			lv2Tracker := jobQueues.QueueTimedFunc(context.Background(), func(ctx context.Context) (interface{}, error) {
-				volumeNames, err := driver.List(path)
+			jobQueues.Submit(func() {
+				var volumeNames []string
+				err := runner.Run(context.TODO(), func(_ context.Context) error {
+					volumeNames, err = driver.List(path)
+					if err != nil {
+						logrus.Warnf("Failed to list volume names for path %v", path)
+						return fmt.Errorf("Failed to list second level dirs for path %v: %v", path, err)
+					}
+					return nil
+				})
 				if err != nil {
-					log.WithError(err).Warnf("Failed to list volume names for path %v", path)
-					return nil, err
+					lv2Trackers <- JobResult{nil, err}
+					return
 				}
-				return volumeNames, nil
-			}, jobQueueTimeout)
-			lv2Trackers = append(lv2Trackers, lv2Tracker)
+				lv2Trackers <- JobResult{volumeNames, nil}
+				return
+			})
 		}
 	}
-	for _, lv2Tracker := range lv2Trackers {
-		payload, err := lv2Tracker.Result()
+
+	for i := 0; i < lv2PathsNum; i++ {
+		lv2Tracker := <-lv2Trackers
+		payload, err := lv2Tracker.payload, lv2Tracker.err
 		if err != nil {
 			errs = append(errs, err.Error())
 			continue
