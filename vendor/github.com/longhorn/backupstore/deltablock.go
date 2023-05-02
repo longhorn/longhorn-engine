@@ -86,7 +86,7 @@ type DeltaBlockBackupOperations interface {
 	OpenSnapshot(id, volumeID string) error
 	ReadSnapshot(id, volumeID string, start int64, data []byte) error
 	CloseSnapshot(id, volumeID string) error
-	UpdateBackupStatus(id, volumeID string, backupProgress int, backupURL string, err string) error
+	UpdateBackupStatus(id, volumeID string, backupState string, backupProgress int, backupURL string, err string) error
 }
 
 type DeltaRestoreOperations interface {
@@ -106,48 +106,53 @@ const (
 	PROGRESS_PERCENTAGE_BACKUP_TOTAL    = 100
 )
 
-func CreateDeltaBlockBackup(config *DeltaBackupConfig) (backupID string, isIncremental bool, err error) {
+func CreateDeltaBlockBackup(backupName string, config *DeltaBackupConfig) (isIncremental bool, err error) {
 	if config == nil {
-		return "", false, fmt.Errorf("invalid empty config for backup")
+		return false, fmt.Errorf("BUG: invalid empty config for backup")
 	}
-
 	volume := config.Volume
 	snapshot := config.Snapshot
 	destURL := config.DestURL
 	deltaOps := config.DeltaOps
 	if deltaOps == nil {
-		return "", false, fmt.Errorf("missing DeltaBlockBackupOperations")
+		return false, fmt.Errorf("BUG: missing DeltaBlockBackupOperations")
 	}
+
+	defer func() {
+		if err != nil {
+			deltaOps.UpdateBackupStatus(snapshot.Name, volume.Name, string(ProgressStateError), 0, "", err.Error())
+		}
+	}()
 
 	bsDriver, err := GetBackupStoreDriver(destURL)
 	if err != nil {
-		return "", false, err
+		return false, err
 	}
 
 	lock, err := New(bsDriver, volume.Name, BACKUP_LOCK)
 	if err != nil {
-		return "", false, err
+		return false, err
 	}
 
 	defer lock.Unlock()
 	if err := lock.Lock(); err != nil {
-		return "", false, err
+		return false, err
 	}
 
 	if err := addVolume(bsDriver, volume); err != nil {
-		return "", false, err
+		return false, err
 	}
 
 	// Update volume from backupstore
 	volume, err = loadVolume(bsDriver, volume.Name)
 	if err != nil {
-		return "", false, err
+		return false, err
 	}
 
 	config.Volume.CompressionMethod = volume.CompressionMethod
 
 	if err := deltaOps.OpenSnapshot(snapshot.Name, volume.Name); err != nil {
-		return "", false, err
+		return false, err
 	}
 
 	backupRequest := &backupRequest{}
@@ -195,11 +200,11 @@ func CreateDeltaBlockBackup(config *DeltaBackupConfig) (backupID string, isIncre
 	delta, err := deltaOps.CompareSnapshot(snapshot.Name, backupRequest.getLastSnapshotName(), volume.Name)
 	if err != nil {
 		deltaOps.CloseSnapshot(snapshot.Name, volume.Name)
-		return "", backupRequest.isIncrementalBackup(), err
+		return backupRequest.isIncrementalBackup(), err
 	}
 	if delta.BlockSize != DEFAULT_BLOCK_SIZE {
 		deltaOps.CloseSnapshot(snapshot.Name, volume.Name)
-		return "", backupRequest.isIncrementalBackup(),
+		return backupRequest.isIncrementalBackup(),
 			fmt.Errorf("driver doesn't support block sizes other than %v", DEFAULT_BLOCK_SIZE)
 	}
 	log.WithFields(logrus.Fields{
@@ -217,11 +222,6 @@ func CreateDeltaBlockBackup(config *DeltaBackupConfig) (backupID string, isIncre
 		LogFieldSnapshot:   snapshot.Name,
 	}).Debug("Creating backup")
 
-	backupName := config.BackupName
-	if backupName == "" {
-		backupName = util.GenerateName("backup")
-	}
-
 	deltaBackup := &Backup{
 		Name:              backupName,
 		VolumeName:        volume.Name,
@@ -236,19 +236,22 @@ func CreateDeltaBlockBackup(config *DeltaBackupConfig) (backupID string, isIncre
 	// keep lock alive for async go routine.
 	if err := lock.Lock(); err != nil {
 		deltaOps.CloseSnapshot(snapshot.Name, volume.Name)
-		return "", backupRequest.isIncrementalBackup(), err
+		return backupRequest.isIncrementalBackup(), err
 	}
 	go func() {
 		defer deltaOps.CloseSnapshot(snapshot.Name, volume.Name)
 		defer lock.Unlock()
 
+		deltaOps.UpdateBackupStatus(snapshot.Name, volume.Name, string(ProgressStateInProgress), 0, "", "")
+
 		if progress, backup, err := performBackup(bsDriver, config, delta, deltaBackup, backupRequest.lastBackup); err != nil {
-			deltaOps.UpdateBackupStatus(snapshot.Name, volume.Name, progress, "", err.Error())
+			logrus.WithError(err).Errorf("Failed to perform backup for volume %v snapshot %v", volume.Name, snapshot.Name)
+			deltaOps.UpdateBackupStatus(snapshot.Name, volume.Name, string(ProgressStateInProgress), progress, "", err.Error())
 		} else {
-			deltaOps.UpdateBackupStatus(snapshot.Name, volume.Name, progress, backup, "")
+			deltaOps.UpdateBackupStatus(snapshot.Name, volume.Name, string(ProgressStateInProgress), progress, backup, "")
 		}
 	}()
-	return deltaBackup.Name, backupRequest.isIncrementalBackup(), nil
+	return backupRequest.isIncrementalBackup(), nil
 }
 
 func populateMappings(bsDriver BackupStoreDriver, config *DeltaBackupConfig, deltaBackup *Backup, delta *Mappings) (<-chan Mapping, <-chan error) {
@@ -341,7 +344,7 @@ func backupBlock(bsDriver BackupStoreDriver, config *DeltaBackupConfig,
 		deltaBackup.Lock()
 		defer deltaBackup.Unlock()
 		updateBlocksAndProgress(deltaBackup, progress, checksum, newBlock)
-		deltaOps.UpdateBackupStatus(snapshot.Name, volume.Name, progress.progress, "", "")
+		deltaOps.UpdateBackupStatus(snapshot.Name, volume.Name, string(ProgressStateInProgress), progress.progress, "", "")
 	}()
 
 	blkFile := getBlockFilePath(volume.Name, checksum)
