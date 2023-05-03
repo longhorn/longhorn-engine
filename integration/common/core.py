@@ -110,7 +110,7 @@ def create_engine_process(client, name=ENGINE_NAME,
                           binary=LONGHORN_BINARY,
                           listen="", listen_ip="localhost",
                           size=SIZE, frontend=FRONTEND_TGT_BLOCKDEV,
-                          replicas=[], backends=["file"],
+                          replicas=[], backends=["tcp", "file"],
                           disable_revision_counter=False):
     args = ["controller", volume_name]
     if frontend != "":
