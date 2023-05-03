@@ -20,7 +20,7 @@ require (
 	github.com/urfave/cli v1.22.5
 	golang.org/x/net v0.8.0
 	golang.org/x/sys v0.7.0
-	google.golang.org/grpc v1.53.0
+	google.golang.org/grpc v1.54.0
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 	gopkg.in/cheggaaa/pb.v2 v2.0.0-20190301131520-f907f6f5dd81
 )
