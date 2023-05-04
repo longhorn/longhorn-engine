@@ -9,7 +9,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
-	github.com/longhorn/backupstore v0.0.0-20230502155402-f71b33a72840
+	github.com/longhorn/backupstore v0.0.0-20230505015028-a1d4a7b45f7e
 	github.com/longhorn/go-iscsi-helper v0.0.0-20230214085945-21fed2bd6261
 	github.com/longhorn/sparse-tools v0.0.0-20230408015858-c849def39d3c
 	github.com/moby/moby v23.0.2+incompatible
@@ -36,7 +36,6 @@ require (
 	github.com/gammazero/deque v0.2.1 // indirect
 	github.com/gammazero/workerpool v1.1.3 // indirect
 	github.com/go-logr/logr v1.2.4 // indirect
-	github.com/google/fscrypt v0.3.4 // indirect
 	github.com/gorilla/context v1.1.1 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/jmespath/go-jmespath v0.3.0 // indirect

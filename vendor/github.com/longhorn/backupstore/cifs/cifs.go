@@ -98,11 +98,6 @@ func (b *BackupStoreDriver) mount() error {
 		return nil
 	}
 
-	err = util.CleanUpMountPoints(mounter, log)
-	if err != nil {
-		log.WithError(err).Warnf("Failed to clean up mount points")
-	}
-
 	mountOptions := []string{
 		"soft",
 	}
