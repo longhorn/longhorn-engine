@@ -286,7 +286,7 @@ func EnsureMountPoint(Kind, mountPoint string, mounter mount.Interface, log logr
 		return true, errors.Wrapf(err, "failed to statfs for mount point %v", mountPoint)
 	}
 
-	kind, err := fstypeToKind(stat.Type)
+	kind, err := fstypeToKind(int64(stat.Type))
 	if err != nil {
 		return true, errors.Wrapf(err, "failed to get kind for mount point %v", mountPoint)
 	}
