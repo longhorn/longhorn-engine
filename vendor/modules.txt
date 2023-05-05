@@ -108,7 +108,7 @@ github.com/kr/pretty
 # github.com/kr/text v0.2.0
 ## explicit
 github.com/kr/text
-# github.com/longhorn/backupstore v0.0.0-20230505015028-a1d4a7b45f7e
+# github.com/longhorn/backupstore v0.0.0-20230505042557-0f585f513869
 ## explicit; go 1.17
 github.com/longhorn/backupstore
 github.com/longhorn/backupstore/cifs
