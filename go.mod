@@ -9,7 +9,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/handlers v1.4.2
 	github.com/gorilla/mux v1.7.3
-	github.com/longhorn/backupstore v0.0.0-20230503020833-d16486b28076
+	github.com/longhorn/backupstore v0.0.0-20230505020448-631a9fe919eb
 	github.com/longhorn/go-iscsi-helper v0.0.0-20230215054929-acb305e1031b
 	github.com/longhorn/sparse-tools v0.0.0-20230408015858-c849def39d3c
 	github.com/moby/moby v20.10.20+incompatible
@@ -31,7 +31,6 @@ require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.0-20190314233015-f79a8a8ca69d // indirect
 	github.com/fatih/color v1.7.0 // indirect
 	github.com/go-logr/logr v1.2.3 // indirect
-	github.com/google/fscrypt v0.3.4 // indirect
 	github.com/gorilla/context v1.1.1 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/honestbee/jobq v1.0.2 // indirect
