@@ -16,13 +16,14 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"syscall"
 	"time"
 
-	"github.com/google/fscrypt/filesystem"
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"go.uber.org/multierr"
+	"golang.org/x/sys/unix"
 
 	"k8s.io/apimachinery/pkg/util/wait"
 	mount "k8s.io/mount-utils"
@@ -40,6 +41,16 @@ var (
 	forceCleanupMountTimeout = 30 * time.Second
 )
 
+func fstypeToKind(fstype int64) (string, error) {
+	switch fstype {
+	case unix.NFS_SUPER_MAGIC:
+		return "nfs", nil
+	default:
+		return "", fmt.Errorf("unknown fstype %v", fstype)
+	}
+}
+
+// GenerateName generates a 16-byte name
 func GenerateName(prefix string) string {
 	suffix := strings.Replace(NewUUID(), "-", "", -1)
 	return prefix + "-" + suffix[:16]
@@ -269,19 +280,25 @@ func EnsureMountPoint(Kind, mountPoint string, mounter mount.Interface, log logr
 		return false, nil
 	}
 
-	mnt, err := filesystem.GetMount(mountPoint)
-	if err != nil {
-		return true, errors.Wrapf(err, "failed to get mount for %v", mountPoint)
+	var stat syscall.Statfs_t
+
+	if err := syscall.Statfs(mountPoint, &stat); err != nil {
+		return true, errors.Wrapf(err, "failed to statfs for mount point %v", mountPoint)
 	}
 
-	if strings.Contains(mnt.FilesystemType, Kind) {
+	kind, err := fstypeToKind(stat.Type)
+	if err != nil {
+		return true, errors.Wrapf(err, "failed to get kind for mount point %v", mountPoint)
+	}
+
+	if strings.Contains(kind, Kind) {
 		return true, nil
 	}
 
-	log.Warnf("Cleaning up the mount point %v because the fstype %v is changed to %v", mountPoint, mnt.FilesystemType, Kind)
+	log.Warnf("Cleaning up the mount point %v because the fstype %v is changed to %v", mountPoint, kind, Kind)
 
 	if mntErr := cleanupMount(mountPoint, mounter, log); mntErr != nil {
-		return true, errors.Wrapf(mntErr, "failed to clean up mount point %v (%v) for %v protocol", mnt.FilesystemType, mountPoint, Kind)
+		return true, errors.Wrapf(mntErr, "failed to clean up mount point %v (%v) for %v protocol", kind, mountPoint, Kind)
 	}
 
 	return false, nil

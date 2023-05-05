@@ -69,11 +69,6 @@ github.com/golang/protobuf/ptypes/any
 github.com/golang/protobuf/ptypes/duration
 github.com/golang/protobuf/ptypes/empty
 github.com/golang/protobuf/ptypes/timestamp
-# github.com/google/fscrypt v0.3.4
-## explicit; go 1.16
-github.com/google/fscrypt/filesystem
-github.com/google/fscrypt/metadata
-github.com/google/fscrypt/util
 # github.com/google/uuid v1.3.0
 ## explicit
 github.com/google/uuid
@@ -98,7 +93,7 @@ github.com/jmespath/go-jmespath
 # github.com/kr/text v0.2.0
 ## explicit
 github.com/kr/text
-# github.com/longhorn/backupstore v0.0.0-20230503020833-d16486b28076
+# github.com/longhorn/backupstore v0.0.0-20230505020448-631a9fe919eb
 ## explicit; go 1.17
 github.com/longhorn/backupstore
 github.com/longhorn/backupstore/cmd
@@ -233,14 +228,12 @@ google.golang.org/grpc/status
 google.golang.org/grpc/tap
 # google.golang.org/protobuf v1.28.1
 ## explicit; go 1.11
-google.golang.org/protobuf/encoding/protojson
 google.golang.org/protobuf/encoding/prototext
 google.golang.org/protobuf/encoding/protowire
 google.golang.org/protobuf/internal/descfmt
 google.golang.org/protobuf/internal/descopts
 google.golang.org/protobuf/internal/detrand
 google.golang.org/protobuf/internal/encoding/defval
-google.golang.org/protobuf/internal/encoding/json
 google.golang.org/protobuf/internal/encoding/messageset
 google.golang.org/protobuf/internal/encoding/tag
 google.golang.org/protobuf/internal/encoding/text

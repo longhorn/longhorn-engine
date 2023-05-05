@@ -96,12 +96,6 @@ func (b *BackupStoreDriver) mount() error {
 		return nil
 	}
 
-	// To avoid the instability caused by the orphaned mount point, clean up the orphaned mount points
-	err = util.CleanUpMountPoints(mounter, log)
-	if err != nil {
-		log.WithError(err).Warnf("Failed to clean up mount points")
-	}
-
 	retErr := errors.New("cannot mount using NFSv4")
 
 	for _, version := range MinorVersions {
