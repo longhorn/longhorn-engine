@@ -13,6 +13,8 @@ func SetupCredential(backupType string, credential map[string]string) error {
 		return setupS3Credential(credential)
 	case "cifs":
 		return setupCIFSCredential(credential)
+	case "azblob":
+		return setupAZBlobCredential(credential)
 	default:
 		return nil
 	}
@@ -59,15 +61,46 @@ func setupCIFSCredential(credential map[string]string) error {
 	return nil
 }
 
+func setupAZBlobCredential(credential map[string]string) error {
+	if credential == nil {
+		return nil
+	}
+
+	if credential[types.AZBlobAccountName] == "" && credential[types.AZBlobAccountKey] != "" {
+		return errors.New("Azure Blob Storage credential account name not found")
+	}
+	if credential[types.AZBlobAccountName] != "" && credential[types.AZBlobAccountKey] == "" {
+		return errors.New("Azure Blob Storage credential account key not found")
+	}
+
+	os.Setenv(types.AZBlobAccountName, credential[types.AZBlobAccountName])
+	os.Setenv(types.AZBlobAccountKey, credential[types.AZBlobAccountKey])
+	os.Setenv(types.AZBlobEndpoint, credential[types.AZBlobEndpoint])
+
+	return nil
+}
+
 func getCredentialFromEnvVars(backupType string) (map[string]string, error) {
 	switch backupType {
 	case "s3":
 		return getS3CredentialFromEnvVars()
 	case "cifs":
 		return getCIFSCredentialFromEnvVars()
+	case "azblob":
+		return getAZBlobCredentialFromEnvVars()
 	default:
 		return nil, nil
 	}
+}
+
+func getAZBlobCredentialFromEnvVars() (map[string]string, error) {
+	credential := map[string]string{}
+
+	credential[types.AZBlobAccountName] = os.Getenv(types.AZBlobAccountName)
+	credential[types.AZBlobAccountKey] = os.Getenv(types.AZBlobAccountKey)
+	credential[types.AZBlobEndpoint] = os.Getenv(types.AZBlobEndpoint)
+
+	return credential, nil
 }
 
 func getCIFSCredentialFromEnvVars() (map[string]string, error) {
