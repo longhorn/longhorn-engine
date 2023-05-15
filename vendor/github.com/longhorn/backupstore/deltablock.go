@@ -574,6 +574,7 @@ func performBackup(bsDriver BackupStoreDriver, config *DeltaBackupConfig, delta 
 	volume.BackingImageName = config.Volume.BackingImageName
 	volume.BackingImageChecksum = config.Volume.BackingImageChecksum
 	volume.CompressionMethod = config.Volume.CompressionMethod
+	volume.StorageClassName = config.Volume.StorageClassName
 
 	if err := saveVolume(bsDriver, volume); err != nil {
 		return progress.progress, "", err
