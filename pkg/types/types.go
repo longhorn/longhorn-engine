@@ -29,6 +29,7 @@ const (
 	AZBlobAccountName = "AZBLOB_ACCOUNT_NAME"
 	AZBlobAccountKey  = "AZBLOB_ACCOUNT_KEY"
 	AZBlobEndpoint    = "AZBLOB_ENDPOINT"
+	AZBlobCert        = "AZBLOB_CERT"
 
 	HTTPSProxy = "HTTPS_PROXY"
 	HTTPProxy  = "HTTP_PROXY"

@@ -76,6 +76,13 @@ func setupAZBlobCredential(credential map[string]string) error {
 	os.Setenv(types.AZBlobAccountName, credential[types.AZBlobAccountName])
 	os.Setenv(types.AZBlobAccountKey, credential[types.AZBlobAccountKey])
 	os.Setenv(types.AZBlobEndpoint, credential[types.AZBlobEndpoint])
+	os.Setenv(types.HTTPSProxy, credential[types.HTTPSProxy])
+	os.Setenv(types.HTTPProxy, credential[types.HTTPProxy])
+	os.Setenv(types.NOProxy, credential[types.NOProxy])
+
+	if credential[types.AZBlobCert] != "" {
+		os.Setenv(types.AZBlobCert, credential[types.AZBlobCert])
+	}
 
 	return nil
 }
@@ -99,6 +106,10 @@ func getAZBlobCredentialFromEnvVars() (map[string]string, error) {
 	credential[types.AZBlobAccountName] = os.Getenv(types.AZBlobAccountName)
 	credential[types.AZBlobAccountKey] = os.Getenv(types.AZBlobAccountKey)
 	credential[types.AZBlobEndpoint] = os.Getenv(types.AZBlobEndpoint)
+	credential[types.AZBlobCert] = os.Getenv(types.AZBlobCert)
+	credential[types.HTTPSProxy] = os.Getenv(types.HTTPSProxy)
+	credential[types.HTTPProxy] = os.Getenv(types.HTTPProxy)
+	credential[types.NOProxy] = os.Getenv(types.NOProxy)
 
 	return credential, nil
 }
