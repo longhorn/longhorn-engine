@@ -92,6 +92,7 @@ message BackupCreateRequest {
   string backup_name = 8;
   string compression_method = 9;
   int32 concurrent_limit = 10;
+  string storage_class_name = 11;
 }
 
 message BackupCreateResponse {
