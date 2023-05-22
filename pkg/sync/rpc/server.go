@@ -686,6 +686,7 @@ func (s *SyncAgentServer) BackupCreate(ctx context.Context, req *ptypes.BackupCr
 		BackingImageChecksum: req.BackingImageChecksum,
 		CompressionMethod:    req.CompressionMethod,
 		ConcurrentLimit:      req.ConcurrentLimit,
+		StorageClassname:     req.StorageClassName,
 		Labels:               req.Labels,
 	})
 	if err != nil {

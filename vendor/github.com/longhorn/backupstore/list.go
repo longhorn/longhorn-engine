@@ -29,6 +29,7 @@ type VolumeInfo struct {
 
 	BackingImageName     string
 	BackingImageChecksum string
+	StorageClassname     string
 }
 
 type BackupInfo struct {

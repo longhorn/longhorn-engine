@@ -72,6 +72,10 @@ func BackupCreateCmd() cli.Command {
 				Value: 1,
 				Usage: "Concurrent backup worker threads",
 			},
+			cli.IntFlag{
+				Name:  "storage-class-name",
+				Usage: "Storage class name of the pv binding with the volume",
+			},
 		},
 		Action: func(c *cli.Context) {
 			if err := createBackup(c); err != nil {
@@ -236,6 +240,7 @@ func createBackup(c *cli.Context) error {
 	backupName := c.String("backup-name")
 	compressionMethod := c.String("compression-method")
 	concurrentLimit := c.Int("concurrent-limit")
+	storageClassName := c.String("storage-class-name")
 
 	labels := c.StringSlice("label")
 	if labels != nil {
@@ -259,7 +264,7 @@ func createBackup(c *cli.Context) error {
 	}
 
 	backup, err := task.CreateBackup(backupName, snapshot, dest, biName, biChecksum,
-		compressionMethod, concurrentLimit, labels, credential)
+		compressionMethod, concurrentLimit, storageClassName, labels, credential)
 	if err != nil {
 		return err
 	}

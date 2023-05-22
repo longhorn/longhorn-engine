@@ -74,6 +74,7 @@ func fillVolumeInfo(volume *Volume) *VolumeInfo {
 		Backups:              make(map[string]*BackupInfo),
 		BackingImageName:     volume.BackingImageName,
 		BackingImageChecksum: volume.BackingImageChecksum,
+		StorageClassname:     volume.StorageClassName,
 	}
 }
 
