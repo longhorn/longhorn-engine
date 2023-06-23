@@ -35,8 +35,8 @@ func (c *Controller) getCurrentAndRWReplica(address string) (*types.Replica, *ty
 	return current, rwReplica, nil
 }
 
-func (c *Controller) VerifyRebuildReplica(address string) error {
-	// Prevent snapshot happenes at the same time, as well as prevent
+func (c *Controller) VerifyRebuildReplica(address, instanceName string) error {
+	// Prevent snapshot happens at the same time, as well as prevent
 	// writing from happening since we're updating revision counter
 	c.Lock()
 	defer c.Unlock()
@@ -53,12 +53,12 @@ func (c *Controller) VerifyRebuildReplica(address string) error {
 		return fmt.Errorf("invalid mode %v for replica %v to check", replica.Mode, address)
 	}
 
-	fromDisks, _, err := GetReplicaDisksAndHead(rwReplica.Address)
+	fromDisks, _, err := GetReplicaDisksAndHead(rwReplica.Address, c.Name, "")
 	if err != nil {
 		return err
 	}
 
-	toDisks, _, err := GetReplicaDisksAndHead(address)
+	toDisks, _, err := GetReplicaDisksAndHead(address, c.Name, instanceName)
 	if err != nil {
 		return err
 	}
@@ -93,20 +93,20 @@ func (c *Controller) VerifyRebuildReplica(address string) error {
 	return nil
 }
 
-func syncFile(from, to string, fromReplica, toReplica *types.Replica, fileSyncHTTPClientTimeout int, fastSync bool) error {
+func syncFile(from, to, fromAddress, toAddress, volumeName, toInstanceName string, fileSyncHTTPClientTimeout int, fastSync bool) error {
 	if to == "" {
 		to = from
 	}
 
-	fromClient, err := client.NewReplicaClient(fromReplica.Address)
+	fromClient, err := client.NewReplicaClient(fromAddress, volumeName, "")
 	if err != nil {
-		return errors.Wrapf(err, "cannot get replica client for %v", fromReplica.Address)
+		return errors.Wrapf(err, "cannot get replica client for %v", fromAddress)
 	}
 	defer fromClient.Close()
 
-	toClient, err := client.NewReplicaClient(toReplica.Address)
+	toClient, err := client.NewReplicaClient(toAddress, volumeName, toInstanceName)
 	if err != nil {
-		return errors.Wrapf(err, "cannot get replica client for %v", toReplica.Address)
+		return errors.Wrapf(err, "cannot get replica client for %v", toAddress)
 	}
 	defer toClient.Close()
 
@@ -128,7 +128,7 @@ func syncFile(from, to string, fromReplica, toReplica *types.Replica, fileSyncHT
 	return err
 }
 
-func (c *Controller) PrepareRebuildReplica(address string) ([]types.SyncFileInfo, error) {
+func (c *Controller) PrepareRebuildReplica(address, instanceName string) ([]types.SyncFileInfo, error) {
 	c.Lock()
 	defer c.Unlock()
 
@@ -146,12 +146,12 @@ func (c *Controller) PrepareRebuildReplica(address string) ([]types.SyncFileInfo
 		return nil, fmt.Errorf("invalid mode %v for replica %v to prepare rebuild", replica.Mode, address)
 	}
 
-	fromDisks, fromHead, err := GetReplicaDisksAndHead(rwReplica.Address)
+	fromDisks, fromHead, err := GetReplicaDisksAndHead(rwReplica.Address, c.Name, "")
 	if err != nil {
 		return nil, err
 	}
 
-	toDisks, toHead, err := GetReplicaDisksAndHead(address)
+	toDisks, toHead, err := GetReplicaDisksAndHead(address, c.Name, instanceName)
 	if err != nil {
 		return nil, err
 	}
@@ -178,19 +178,20 @@ func (c *Controller) PrepareRebuildReplica(address string) ([]types.SyncFileInfo
 		delete(extraDisks, diskName)
 	}
 
-	if err := removeExtraDisks(extraDisks, address); err != nil {
+	if err := removeExtraDisks(extraDisks, address, c.Name, instanceName); err != nil {
 		return nil, err
 	}
 
 	// The lock will block the read/write for this head file sync
-	if err := syncFile(fromHead+".meta", toHead+".meta", rwReplica, replica, c.fileSyncHTTPClientTimeout, false); err != nil {
+	if err := syncFile(fromHead+".meta", toHead+".meta", rwReplica.Address, address, c.Name, instanceName,
+		c.fileSyncHTTPClientTimeout, false); err != nil {
 		return nil, err
 	}
 
 	return syncFileInfoList, nil
 }
 
-func removeExtraDisks(extraDisks map[string]types.DiskInfo, address string) (err error) {
+func removeExtraDisks(extraDisks map[string]types.DiskInfo, address, volumeName, instanceName string) (err error) {
 	defer func() {
 		err = errors.Wrapf(err, "failed to remove extra disks %v in replica %v", extraDisks, address)
 	}()
@@ -199,7 +200,7 @@ func removeExtraDisks(extraDisks map[string]types.DiskInfo, address string) (err
 		return nil
 	}
 
-	repClient, err := client.NewReplicaClient(address)
+	repClient, err := client.NewReplicaClient(address, volumeName, instanceName)
 	if err != nil {
 		return errors.Wrapf(err, "cannot create replica client for address %v", address)
 	}
