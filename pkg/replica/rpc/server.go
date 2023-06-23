@@ -6,8 +6,10 @@ import (
 
 	"github.com/golang/protobuf/ptypes/empty"
 	"golang.org/x/net/context"
+	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
+	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
 
 	"github.com/longhorn/longhorn-engine/pkg/replica"
@@ -23,10 +25,13 @@ type ReplicaHealthCheckServer struct {
 	rs *ReplicaServer
 }
 
-func NewReplicaServer(s *replica.Server) *ReplicaServer {
-	return &ReplicaServer{
-		s: s,
-	}
+func NewReplicaServer(volumeName, instanceName string, s *replica.Server) *grpc.Server {
+	rs := &ReplicaServer{s: s}
+	server := grpc.NewServer(ptypes.WithIdentityValidationReplicaServerInterceptor(volumeName, instanceName))
+	ptypes.RegisterReplicaServiceServer(server, rs)
+	healthpb.RegisterHealthServer(server, NewReplicaHealthCheckServer(rs))
+	reflection.Register(server)
+	return server
 }
 
 func NewReplicaHealthCheckServer(rs *ReplicaServer) *ReplicaHealthCheckServer {
