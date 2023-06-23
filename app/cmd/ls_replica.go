@@ -30,6 +30,7 @@ func lsReplica(c *cli.Context) error {
 		return err
 	}
 	defer controllerClient.Close()
+	volumeName := c.GlobalString("volume-name")
 
 	reps, err := controllerClient.ReplicaList()
 	if err != nil {
@@ -45,7 +46,7 @@ func lsReplica(c *cli.Context) error {
 			continue
 		}
 		chain := interface{}("")
-		chainList, err := getChain(r.Address)
+		chainList, err := getChain(r.Address, volumeName)
 		if err == nil {
 			chain = chainList
 		}
@@ -56,8 +57,9 @@ func lsReplica(c *cli.Context) error {
 	return nil
 }
 
-func getChain(address string) ([]string, error) {
-	repClient, err := replicaClient.NewReplicaClient(address)
+func getChain(address, volumeName string) ([]string, error) {
+	// We don't know the replica's instanceName, so create a client without it.
+	repClient, err := replicaClient.NewReplicaClient(address, volumeName, "")
 	if err != nil {
 		return nil, err
 	}

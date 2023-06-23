@@ -64,6 +64,7 @@ func exportVolume(c *cli.Context) error {
 	}
 	exportBackingImageIfExist := c.Bool("export-backing-image-if-exist")
 	fileSyncHTTPClientTimeout := c.Int("file-sync-http-client-timeout")
+	volumeName := c.GlobalString("volume-name")
 
 	// Get controller url
 	controllerClient, err := getControllerClient(c)
@@ -92,7 +93,8 @@ func exportVolume(c *cli.Context) error {
 		return fmt.Errorf("cannot find a RW replica for volume exporting")
 	}
 
-	rClient, err := replicaclient.NewReplicaClient(r.Address)
+	// We don't know the replica's instanceName, so create a client without it.
+	rClient, err := replicaclient.NewReplicaClient(r.Address, volumeName, "")
 	if err != nil {
 		return err
 	}
