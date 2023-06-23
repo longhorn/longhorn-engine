@@ -97,6 +97,16 @@ func longhornCli() {
 			Name:  "url",
 			Value: "http://localhost:9501",
 		},
+		cli.StringFlag{
+			Name:     "volume-name",
+			Required: false,
+			Usage:    "Name of the volume (for validation purposes)",
+		},
+		cli.StringFlag{
+			Name:     "engine-instance-name",
+			Required: false,
+			Usage:    "Name of the engine instance (for validation purposes)",
+		},
 		cli.BoolFlag{
 			Name: "debug",
 		},
