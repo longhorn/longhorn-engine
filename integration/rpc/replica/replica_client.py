@@ -4,11 +4,16 @@ import replica_pb2
 import replica_pb2_grpc
 from google.protobuf import empty_pb2
 
+from common.interceptor import IdentityValidationInterceptor
 
 class ReplicaClient(object):
-    def __init__(self, address):
+    def __init__(self, address, volume_name=None, instance_name=None):
         self.address = address
-        self.channel = grpc.insecure_channel(address)
+        channel = grpc.insecure_channel(address)
+        # Default volume_name = instance_name = None disables identity
+        # validation.
+        interceptor = IdentityValidationInterceptor(volume_name, instance_name)
+        self.channel = grpc.intercept_channel(channel, interceptor)
         self.url = "tcp://" + self.address
         self.stub = replica_pb2_grpc.ReplicaServiceStub(self.channel)
 
