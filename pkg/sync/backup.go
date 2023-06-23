@@ -82,7 +82,8 @@ func (t *Task) createBackup(replicaInController *types.ControllerReplicaInfo, ba
 		return nil, fmt.Errorf("can only create backup from replica in mode RW, got %s", replicaInController.Mode)
 	}
 
-	repClient, err := replicaClient.NewReplicaClient(replicaInController.Address)
+	// We don't know the replica's instanceName, so create a client without it.
+	repClient, err := replicaClient.NewReplicaClient(replicaInController.Address, t.volumeName, "")
 	if err != nil {
 		return nil, err
 	}
@@ -109,34 +110,6 @@ func (t *Task) createBackup(replicaInController *types.ControllerReplicaInfo, ba
 		IsIncremental:  reply.IsIncremental,
 		ReplicaAddress: replicaInController.Address,
 	}, nil
-}
-
-// FetchBackupStatus instance method is @deprecated use the free function FetchBackupStatus instead
-func (t *Task) FetchBackupStatus(backupID string, replicaAddr string) (*BackupStatusInfo, error) {
-	repClient, err := replicaClient.NewReplicaClient(replicaAddr)
-	if err != nil {
-		logrus.WithError(err).Errorf("Cannot create a replica client for IP[%v]", replicaAddr)
-		return nil, err
-	}
-	defer repClient.Close()
-
-	bs, err := repClient.BackupStatus(backupID)
-	if err != nil {
-		return &BackupStatusInfo{
-			Error: fmt.Sprintf("Failed to get backup status on %s for %v: %v", replicaAddr, backupID, err),
-		}, nil
-	}
-
-	info := &BackupStatusInfo{
-		Progress:       int(bs.Progress),
-		BackupURL:      bs.BackupUrl,
-		Error:          bs.Error,
-		SnapshotName:   bs.SnapshotName,
-		State:          bs.State,
-		ReplicaAddress: replicaAddr,
-	}
-
-	return info, nil
 }
 
 func FetchBackupStatus(client *replicaClient.ReplicaClient, backupID string, replicaAddr string) (*BackupStatusInfo, error) {
@@ -212,7 +185,7 @@ func (t *Task) RestoreBackup(backup string, credential map[string]string) error 
 		}
 	}
 
-	snapshots, err := GetSnapshotsInfo(replicas)
+	snapshots, err := GetSnapshotsInfo(replicas, t.volumeName)
 	if err != nil {
 		return errors.Wrapf(err, "failed to get snapshot info before the incremental restore")
 	}
@@ -293,7 +266,8 @@ func (t *Task) restoreBackup(replicaInController *types.ControllerReplicaInfo, b
 		return fmt.Errorf("cannot restore backup from replica in mode ERR")
 	}
 
-	repClient, err := replicaClient.NewReplicaClient(replicaInController.Address)
+	// We don't know the replica's instanceName, so create a client without it.
+	repClient, err := replicaClient.NewReplicaClient(replicaInController.Address, t.volumeName, "")
 	if err != nil {
 		return err
 	}
@@ -331,7 +305,8 @@ func (t *Task) Reset() error {
 	}()
 
 	for _, replica := range replicas {
-		repClient, err := replicaClient.NewReplicaClient(replica.Address)
+		// We don't know the replica's instanceName, so create a client without it.
+		repClient, err := replicaClient.NewReplicaClient(replica.Address, t.volumeName, "")
 		if err != nil {
 			logrus.WithError(err).Errorf("Failed to get a replica client for %v", replica.Address)
 			return err
@@ -369,7 +344,8 @@ func (t *Task) RestoreStatus() (map[string]*RestoreStatus, error) {
 			continue
 		}
 
-		repClient, err := replicaClient.NewReplicaClient(replica.Address)
+		// We don't know the replica's instanceName, so create a client without it.
+		repClient, err := replicaClient.NewReplicaClient(replica.Address, t.volumeName, "")
 		if err != nil {
 			return nil, err
 		}

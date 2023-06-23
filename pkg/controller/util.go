@@ -9,8 +9,9 @@ import (
 	"github.com/longhorn/longhorn-engine/pkg/types"
 )
 
-func GetReplicaDisksAndHead(address string) (map[string]types.DiskInfo, string, error) {
-	repClient, err := client.NewReplicaClient(address)
+func GetReplicaDisksAndHead(address, volumeName, instanceName string) (map[string]types.DiskInfo, string, error) {
+	// We may not know the replica instance name. Validation is best effort, so it's fine to pass an empty string.
+	repClient, err := client.NewReplicaClient(address, volumeName, instanceName)
 	if err != nil {
 		return nil, "", errors.Wrapf(err, "cannot get replica client for %v", address)
 	}

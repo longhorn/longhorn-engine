@@ -42,16 +42,13 @@ func NewControllerHealthCheckServer(cs *ControllerServer) *ControllerHealthCheck
 	}
 }
 
-func GetControllerGRPCServer(c *controller.Controller) *grpc.Server {
-	grpcServer := grpc.NewServer()
-
+func GetControllerGRPCServer(volumeName, instanceName string, c *controller.Controller) *grpc.Server {
 	cs := NewControllerServer(c)
-	ptypes.RegisterControllerServiceServer(grpcServer, cs)
-
-	healthpb.RegisterHealthServer(grpcServer, NewControllerHealthCheckServer(cs))
-	reflection.Register(grpcServer)
-
-	return grpcServer
+	server := grpc.NewServer(ptypes.WithIdentityValidationControllerServerInterceptor(volumeName, instanceName))
+	ptypes.RegisterControllerServiceServer(server, cs)
+	healthpb.RegisterHealthServer(server, NewControllerHealthCheckServer(cs))
+	reflection.Register(server)
+	return server
 }
 
 func (cs *ControllerServer) replicaToControllerReplica(r *types.Replica) *ptypes.ControllerReplica {
@@ -217,7 +214,7 @@ func (cs *ControllerServer) ReplicaUpdate(ctx context.Context, req *ptypes.Contr
 }
 
 func (cs *ControllerServer) ReplicaPrepareRebuild(ctx context.Context, req *ptypes.ReplicaAddress) (*ptypes.ReplicaPrepareRebuildReply, error) {
-	list, err := cs.c.PrepareRebuildReplica(req.Address)
+	list, err := cs.c.PrepareRebuildReplica(req.Address, req.InstanceName)
 	if err != nil {
 		return nil, err
 	}
@@ -229,7 +226,7 @@ func (cs *ControllerServer) ReplicaPrepareRebuild(ctx context.Context, req *ptyp
 }
 
 func (cs *ControllerServer) ReplicaVerifyRebuild(ctx context.Context, req *ptypes.ReplicaAddress) (*ptypes.ControllerReplica, error) {
-	if err := cs.c.VerifyRebuildReplica(req.Address); err != nil {
+	if err := cs.c.VerifyRebuildReplica(req.Address, req.InstanceName); err != nil {
 		return nil, err
 	}
 
