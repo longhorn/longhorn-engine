@@ -77,8 +77,14 @@ func BackupStatusCmd() cli.Command {
 		Usage: "query the progress of the backup: status <backupID>",
 		Flags: []cli.Flag{
 			cli.StringFlag{
-				Name:  "replica",
-				Usage: "specify the replica address",
+				Name:     "replica",
+				Required: false,
+				Usage:    "Address of the replica",
+			},
+			cli.StringFlag{
+				Name:     "replica-instance-name",
+				Required: false,
+				Usage:    "Name of the replica instance (for validation purposes)",
 			},
 		},
 		Action: func(c *cli.Context) {
@@ -115,15 +121,22 @@ func checkBackupStatus(c *cli.Context) error {
 		return errors.Wrap(err, "failed to get replica list")
 	}
 
+	volumeName := c.GlobalString("volume-name")
 	replicaAddress := c.String("replica")
+	replicaInstanceName := c.String("replica-instance-name")
+
 	if replicaAddress == "" {
+		// Since we aren't using a particular address, we shouldn't use a particular instance name.
+		replicaInstanceName = ""
+
 		// find a replica which has the corresponding backup
 		for _, replica := range replicas {
 			if replica.Mode != types.RW {
 				continue
 			}
 
-			repClient, err := replicaClient.NewReplicaClient(replica.Address)
+			// We don't know the replica's instanceName, so create a client without it.
+			repClient, err := replicaClient.NewReplicaClient(replica.Address, volumeName, "")
 			if err != nil {
 				logrus.WithError(err).Errorf("Cannot create a replica client for IP[%v]", replicaAddress)
 				return err
@@ -147,7 +160,7 @@ func checkBackupStatus(c *cli.Context) error {
 			replicaAddress, backupID, "unknown replica")
 	}
 
-	repClient, err := replicaClient.NewReplicaClient(replicaAddress)
+	repClient, err := replicaClient.NewReplicaClient(replicaAddress, volumeName, replicaInstanceName)
 	if err != nil {
 		logrus.WithError(err).Errorf("Cannot create a replica client for IP[%v]", replicaAddress)
 		return err
@@ -194,7 +207,6 @@ func RestoreStatusCmd() cli.Command {
 	return cli.Command{
 		Name:  "restore-status",
 		Usage: "Check if restore operation is currently going on",
-
 		Action: func(c *cli.Context) {
 			if err := restoreStatus(c); err != nil {
 				logrus.WithError(err).Fatalf("Error running restore backup command")
@@ -233,9 +245,11 @@ func createBackup(c *cli.Context) error {
 	}
 
 	url := c.GlobalString("url")
+	volumeName := c.GlobalString("volume-name")
+	engineInstanceName := c.GlobalString("engine-instance-name")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	task, err := sync.NewTask(ctx, url)
+	task, err := sync.NewTask(ctx, url, volumeName, engineInstanceName)
 	if err != nil {
 		return err
 	}
@@ -255,9 +269,11 @@ func createBackup(c *cli.Context) error {
 
 func restoreBackup(c *cli.Context) error {
 	url := c.GlobalString("url")
+	volumeName := c.GlobalString("volume-name")
+	engineInstanceName := c.GlobalString("engine-instance-name")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	task, err := sync.NewTask(ctx, url)
+	task, err := sync.NewTask(ctx, url, volumeName, engineInstanceName)
 	if err != nil {
 		return err
 	}
@@ -282,9 +298,11 @@ func restoreBackup(c *cli.Context) error {
 
 func restoreStatus(c *cli.Context) error {
 	url := c.GlobalString("url")
+	volumeName := c.GlobalString("volume-name")
+	engineInstanceName := c.GlobalString("engine-instance-name")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	task, err := sync.NewTask(ctx, url)
+	task, err := sync.NewTask(ctx, url, volumeName, engineInstanceName)
 	if err != nil {
 		return err
 	}

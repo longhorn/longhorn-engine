@@ -35,6 +35,11 @@ func SyncAgentCmd() cli.Command {
 				Name:  "replica",
 				Usage: "specify replica address",
 			},
+			cli.StringFlag{
+				Name:  "replica-instance-name",
+				Value: "",
+				Usage: "Name of the replica instance (for validation purposes)",
+			},
 		},
 		Action: func(c *cli.Context) {
 			if err := startSyncAgent(c); err != nil {
@@ -59,6 +64,8 @@ func startSyncAgent(c *cli.Context) error {
 	listenPort := c.String("listen")
 	portRange := c.String("listen-port-range")
 	replicaAddress := c.String("replica")
+	volumeName := c.GlobalString("volume-name")
+	replicaInstanceName := c.String("replica-instance-name")
 
 	parts := strings.Split(portRange, "-")
 	if len(parts) != 2 {
@@ -81,7 +88,8 @@ func startSyncAgent(c *cli.Context) error {
 	}
 
 	server := grpc.NewServer()
-	ptypes.RegisterSyncAgentServiceServer(server, syncagentrpc.NewSyncAgentServer(start, end, replicaAddress))
+	ptypes.RegisterSyncAgentServiceServer(server, syncagentrpc.NewSyncAgentServer(start, end, replicaAddress,
+		volumeName, replicaInstanceName))
 	reflection.Register(server)
 
 	logrus.Infof("Listening on sync %s", listenPort)
@@ -91,9 +99,11 @@ func startSyncAgent(c *cli.Context) error {
 
 func doReset(c *cli.Context) error {
 	url := c.GlobalString("url")
+	volumeName := c.GlobalString("volume-name")
+	engineInstanceName := c.GlobalString("engine-instance-name")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	task, err := sync.NewTask(ctx, url)
+	task, err := sync.NewTask(ctx, url, volumeName, engineInstanceName)
 	if err != nil {
 		return err
 	}

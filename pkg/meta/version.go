@@ -2,7 +2,11 @@ package meta
 
 const (
 	// CLIAPIVersion used to communicate with user e.g. longhorn-manager
+<<<<<<< HEAD
 	CLIAPIVersion    = 7
+=======
+	CLIAPIVersion    = 9
+>>>>>>> 01300d06 (Add identity validation flags to CLI commands)
 	CLIAPIMinVersion = 3
 
 	// ControllerAPIVersion used to communicate with instance-manager

@@ -37,7 +37,10 @@ func version(c *cli.Context) error {
 	v := VersionOutput{ClientVersion: &clientVersion}
 
 	if !c.Bool("client-only") {
-		controllerClient, err := client.NewControllerClient(c.GlobalString("url"))
+		url := c.GlobalString("url")
+		volumeName := c.GlobalString("volume-name")
+		engineInstanceName := c.GlobalString("engine-instance-name")
+		controllerClient, err := client.NewControllerClient(url, volumeName, engineInstanceName)
 		if err != nil {
 			return err
 		}
