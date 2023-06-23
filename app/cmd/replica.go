@@ -12,9 +12,6 @@ import (
 	"github.com/docker/go-units"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
-	"google.golang.org/grpc"
-	healthpb "google.golang.org/grpc/health/grpc_health_v1"
-	"google.golang.org/grpc/reflection"
 
 	"github.com/longhorn/longhorn-engine/pkg/backingfile"
 	"github.com/longhorn/longhorn-engine/pkg/replica"
@@ -22,7 +19,6 @@ import (
 	"github.com/longhorn/longhorn-engine/pkg/types"
 	"github.com/longhorn/longhorn-engine/pkg/util"
 	diskutil "github.com/longhorn/longhorn-engine/pkg/util/disk"
-	"github.com/longhorn/longhorn-engine/proto/ptypes"
 )
 
 func ReplicaCmd() cli.Command {
@@ -76,6 +72,11 @@ func ReplicaCmd() cli.Command {
 				Hidden: false,
 				Usage:  "To mark the current disk chain as removed before starting unmap",
 			},
+			cli.StringFlag{
+				Name:  "replica-instance-name",
+				Value: "",
+				Usage: "Name of the replica instance (for validation purposes)",
+			},
 		},
 		Action: func(c *cli.Context) {
 			if err := startReplica(c); err != nil {
@@ -115,7 +116,14 @@ func startReplica(c *cli.Context) error {
 		}
 	}
 
-	volumeName := c.String("volume-name")
+	// The --volume-name flag for the replica command (added before the identity validation feature) and the
+	// --volume-name global flag are redundant. Since both are optional, proceed with either one, but do not proceed if
+	// they are different.
+	volumeName, err := resolveVolumeName(c.String("volume-name"), c.GlobalString("volume-name"))
+	if err != nil {
+		return err
+	}
+	replicaInstanceName := c.String("replica-instance-name")
 	dataServerProtocol := c.String("data-server-protocol")
 
 	controlAddress, dataAddress, syncAddress, syncPort, err :=
@@ -134,11 +142,7 @@ func startReplica(c *cli.Context) error {
 			return
 		}
 
-		server := grpc.NewServer()
-		rs := replicarpc.NewReplicaServer(s)
-		ptypes.RegisterReplicaServiceServer(server, rs)
-		healthpb.RegisterHealthServer(server, replicarpc.NewReplicaHealthCheckServer(rs))
-		reflection.Register(server)
+		server := replicarpc.NewReplicaServer(volumeName, replicaInstanceName, s)
 
 		logrus.Infof("Listening on gRPC Replica server %s", controlAddress)
 		err = server.Serve(listen)
@@ -187,4 +191,19 @@ func startReplica(c *cli.Context) error {
 	addShutdown(func() (err error) { return nil })
 
 	return <-resp
+}
+
+// Volume name is specified by two different, optional flags. If volume name is only specified by one flag, use that
+// flag. If it specified differently by both flags, error out.
+func resolveVolumeName(name1, name2 string) (string, error) {
+	if name1 == "" {
+		return name2, nil
+	}
+	if name2 == "" {
+		return name1, nil
+	}
+	if name1 == name2 {
+		return name1, nil
+	}
+	return "", fmt.Errorf("volume names %s and %s are not equal", name1, name2)
 }
