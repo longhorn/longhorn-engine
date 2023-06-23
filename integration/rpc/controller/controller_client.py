@@ -4,11 +4,16 @@ import controller_pb2
 import controller_pb2_grpc
 from google.protobuf import empty_pb2
 
+from common.interceptor import IdentityValidationInterceptor
 
 class ControllerClient(object):
-    def __init__(self, url):
+    def __init__(self, url, volume_name=None, instance_name=None):
         self.address = url
-        self.channel = grpc.insecure_channel(url)
+        channel = grpc.insecure_channel(url)
+        # Default volume_name = instance_name = None disables identity
+        # validation.
+        interceptor = IdentityValidationInterceptor(volume_name, instance_name)
+        self.channel = grpc.intercept_channel(channel, interceptor)
         self.stub = controller_pb2_grpc.ControllerServiceStub(self.channel)
 
     def volume_get(self):
