@@ -41,6 +41,11 @@ func AddReplicaCmd() cli.Command {
 				Value:    5,
 				Usage:    "HTTP client timeout for replica file sync server",
 			},
+			cli.StringFlag{
+				Name:     "replica-instance-name",
+				Required: false,
+				Usage:    "Name of the replica instance (for validation purposes)",
+			},
 		},
 		Action: func(c *cli.Context) {
 			if err := addReplica(c); err != nil {
@@ -57,9 +62,12 @@ func addReplica(c *cli.Context) error {
 	replica := c.Args()[0]
 
 	url := c.GlobalString("url")
+	volumeName := c.GlobalString("volume-name")
+	engineInstanceName := c.GlobalString("engine-instance-name")
+	replicaInstanceName := c.String("replica-instance-name")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	task, err := sync.NewTask(ctx, url)
+	task, err := sync.NewTask(ctx, url, volumeName, engineInstanceName)
 	if err != nil {
 		return err
 	}
@@ -86,9 +94,9 @@ func addReplica(c *cli.Context) error {
 	fileSyncHTTPClientTimeout := c.Int("file-sync-http-client-timeout")
 
 	if c.Bool("restore") {
-		return task.AddRestoreReplica(volumeSize, volumeCurrentSize, replica)
+		return task.AddRestoreReplica(volumeSize, volumeCurrentSize, replica, replicaInstanceName)
 	}
-	return task.AddReplica(volumeSize, volumeCurrentSize, replica, fileSyncHTTPClientTimeout, fastSync)
+	return task.AddReplica(volumeSize, volumeCurrentSize, replica, replicaInstanceName, fileSyncHTTPClientTimeout, fastSync)
 }
 
 func StartWithReplicasCmd() cli.Command {
@@ -120,9 +128,11 @@ func startWithReplicas(c *cli.Context) error {
 	replicas := c.Args()
 
 	url := c.GlobalString("url")
+	volumeName := c.GlobalString("volume-name")
+	engineInstanceName := c.GlobalString("engine-instance-name")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	task, err := sync.NewTask(ctx, url)
+	task, err := sync.NewTask(ctx, url, volumeName, engineInstanceName)
 	if err != nil {
 		return err
 	}
@@ -162,9 +172,11 @@ func RebuildStatusCmd() cli.Command {
 
 func rebuildStatus(c *cli.Context) error {
 	url := c.GlobalString("url")
+	volumeName := c.GlobalString("volume-name")
+	engineInstanceName := c.GlobalString("engine-instance-name")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	task, err := sync.NewTask(ctx, url)
+	task, err := sync.NewTask(ctx, url, volumeName, engineInstanceName)
 	if err != nil {
 		return err
 	}
@@ -199,17 +211,20 @@ func verifyRebuildReplica(c *cli.Context) error {
 	if c.NArg() == 0 {
 		return errors.New("replica address is required")
 	}
-	address := c.Args()[0]
+	replicaAddress := c.Args()[0]
 	url := c.GlobalString("url")
+	volumeName := c.GlobalString("volume-name")
+	engineInstanceName := c.GlobalString("engine-instance-name")
+	replicaInstanceName := c.String("replica-instance-name")
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	task, err := sync.NewTask(ctx, url)
+	task, err := sync.NewTask(ctx, url, volumeName, engineInstanceName)
 	if err != nil {
 		return err
 	}
 
-	if err := task.VerifyRebuildReplica(address); err != nil {
+	if err := task.VerifyRebuildReplica(replicaAddress, replicaInstanceName); err != nil {
 		return err
 	}
 	return nil

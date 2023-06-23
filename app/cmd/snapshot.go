@@ -145,6 +145,11 @@ func SnapshotCloneCmd() cli.Command {
 				Name:  "from-controller-address",
 				Usage: "Specify the address of the engine controller of the source volume",
 			},
+			cli.StringFlag{
+				Name:     "from-controller-instance-name",
+				Required: false,
+				Usage:    "Specify the name of the engine controller instance of the source volume (for validation purposes)",
+			},
 			cli.BoolFlag{
 				Name:  "export-backing-image-if-exist",
 				Usage: "Specify if the backing image should be exported if it exists",
@@ -269,9 +274,11 @@ func revertSnapshot(c *cli.Context) error {
 
 func rmSnapshot(c *cli.Context) error {
 	url := c.GlobalString("url")
+	volumeName := c.GlobalString("volume-name")
+	engineInstanceName := c.GlobalString("engine-instance-name")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	task, err := sync.NewTask(ctx, url)
+	task, err := sync.NewTask(ctx, url, volumeName, engineInstanceName)
 	if err != nil {
 		return err
 	}
@@ -289,9 +296,11 @@ func rmSnapshot(c *cli.Context) error {
 
 func purgeSnapshot(c *cli.Context) error {
 	url := c.GlobalString("url")
+	volumeName := c.GlobalString("volume-name")
+	engineInstanceName := c.GlobalString("engine-instance-name")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	task, err := sync.NewTask(ctx, url)
+	task, err := sync.NewTask(ctx, url, volumeName, engineInstanceName)
 	if err != nil {
 		return err
 	}
@@ -306,9 +315,11 @@ func purgeSnapshot(c *cli.Context) error {
 
 func purgeSnapshotStatus(c *cli.Context) error {
 	url := c.GlobalString("url")
+	volumeName := c.GlobalString("volume-name")
+	engineInstanceName := c.GlobalString("engine-instance-name")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	task, err := sync.NewTask(ctx, url)
+	task, err := sync.NewTask(ctx, url, volumeName, engineInstanceName)
 	if err != nil {
 		return err
 	}
@@ -333,6 +344,7 @@ func lsSnapshot(c *cli.Context) error {
 		return err
 	}
 	defer controllerClient.Close()
+	volumeName := c.GlobalString("volume-name")
 
 	replicas, err := controllerClient.ReplicaList()
 	if err != nil {
@@ -348,7 +360,7 @@ func lsSnapshot(c *cli.Context) error {
 
 		if first {
 			first = false
-			chain, err := getChain(r.Address)
+			chain, err := getChain(r.Address, volumeName)
 			if err != nil {
 				return err
 			}
@@ -361,7 +373,7 @@ func lsSnapshot(c *cli.Context) error {
 			continue
 		}
 
-		chain, err := getChain(r.Address)
+		chain, err := getChain(r.Address, volumeName)
 		if err != nil {
 			return err
 		}
@@ -397,7 +409,8 @@ func infoSnapshot(c *cli.Context) error {
 		return err
 	}
 
-	outputDisks, err := sync.GetSnapshotsInfo(replicas)
+	volumeName := c.GlobalString("volume-name")
+	outputDisks, err := sync.GetSnapshotsInfo(replicas, volumeName)
 	if err != nil {
 		return err
 	}
@@ -432,13 +445,16 @@ func cloneSnapshot(c *cli.Context) error {
 	}
 	defer controllerClient.Close()
 
-	fromControllerClient, err := client.NewControllerClient(fromControllerAddress)
+	volumeName := c.GlobalString("volume-name")
+	fromControllerEngineInstanceName := c.String("from-controller-instance-name")
+	fromControllerClient, err := client.NewControllerClient(fromControllerAddress, volumeName, fromControllerEngineInstanceName)
 	if err != nil {
 		return err
 	}
 	defer fromControllerClient.Close()
 
-	if err := sync.CloneSnapshot(controllerClient, fromControllerClient, snapshotName, exportBackingImageIfExist, fileSyncHTTPClientTimeout); err != nil {
+	if err := sync.CloneSnapshot(controllerClient, fromControllerClient, volumeName, snapshotName,
+		exportBackingImageIfExist, fileSyncHTTPClientTimeout); err != nil {
 		return err
 	}
 	return nil
@@ -451,7 +467,8 @@ func cloneSnapshotStatus(c *cli.Context) error {
 	}
 	defer controllerClient.Close()
 
-	statusMap, err := sync.CloneStatus(controllerClient)
+	volumeName := c.GlobalString("volume-name")
+	statusMap, err := sync.CloneStatus(controllerClient, volumeName)
 	if err != nil {
 		return err
 	}
@@ -473,9 +490,11 @@ func hashSnapshot(c *cli.Context) error {
 	snapshotName := c.Args()[0]
 
 	url := c.GlobalString("url")
+	volumeName := c.GlobalString("volume-name")
+	engineInstanceName := c.GlobalString("engine-instance-name")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	task, err := sync.NewTask(ctx, url)
+	task, err := sync.NewTask(ctx, url, volumeName, engineInstanceName)
 	if err != nil {
 		return err
 	}
@@ -497,9 +516,11 @@ func cancelHashSnapshot(c *cli.Context) error {
 	snapshotName := c.Args()[0]
 
 	url := c.GlobalString("url")
+	volumeName := c.GlobalString("volume-name")
+	engineInstanceName := c.GlobalString("engine-instance-name")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	task, err := sync.NewTask(ctx, url)
+	task, err := sync.NewTask(ctx, url, volumeName, engineInstanceName)
 	if err != nil {
 		return err
 	}
@@ -519,9 +540,11 @@ func hashSnapshotStatus(c *cli.Context) error {
 	snapshotName := c.Args()[0]
 
 	url := c.GlobalString("url")
+	volumeName := c.GlobalString("volume-name")
+	engineInstanceName := c.GlobalString("engine-instance-name")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	task, err := sync.NewTask(ctx, url)
+	task, err := sync.NewTask(ctx, url, volumeName, engineInstanceName)
 	if err != nil {
 		return err
 	}
