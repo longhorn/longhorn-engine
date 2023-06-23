@@ -51,6 +51,8 @@ type ReplicaClient struct {
 	host                string
 	replicaServiceURL   string
 	syncAgentServiceURL string
+	volumeName          string
+	instanceName        string
 
 	replicaServiceContext ReplicaServiceContext
 	syncServiceContext    SyncServiceContext
@@ -62,7 +64,7 @@ func (c *ReplicaClient) Close() error {
 	return nil
 }
 
-func NewReplicaClient(address string) (*ReplicaClient, error) {
+func NewReplicaClient(address, volumeName, instanceName string) (*ReplicaClient, error) {
 	replicaServiceURL := util.GetGRPCAddress(address)
 	host, strPort, err := net.SplitHostPort(replicaServiceURL)
 	if err != nil {
@@ -79,6 +81,8 @@ func NewReplicaClient(address string) (*ReplicaClient, error) {
 		host:                host,
 		replicaServiceURL:   replicaServiceURL,
 		syncAgentServiceURL: syncAgentServiceURL,
+		volumeName:          volumeName,
+		instanceName:        instanceName,
 	}, nil
 }
 
@@ -86,7 +90,8 @@ func NewReplicaClient(address string) (*ReplicaClient, error) {
 // for the longhorn-manager which executes these command as binaries invocations
 func (c *ReplicaClient) getReplicaServiceClient() (ptypes.ReplicaServiceClient, error) {
 	err := c.replicaServiceContext.once.Do(func() error {
-		cc, err := grpc.Dial(c.replicaServiceURL, grpc.WithInsecure())
+		cc, err := grpc.Dial(c.replicaServiceURL, grpc.WithInsecure(),
+			ptypes.WithIdentityValidationClientInterceptor(c.volumeName, c.instanceName))
 		if err != nil {
 			return err
 		}
@@ -106,7 +111,8 @@ func (c *ReplicaClient) getReplicaServiceClient() (ptypes.ReplicaServiceClient, 
 // for the longhorn-manager which executes these command as binaries invocations
 func (c *ReplicaClient) getSyncServiceClient() (ptypes.SyncAgentServiceClient, error) {
 	err := c.syncServiceContext.once.Do(func() error {
-		cc, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure())
+		cc, err := grpc.Dial(c.syncAgentServiceURL, grpc.WithInsecure(),
+			ptypes.WithIdentityValidationClientInterceptor(c.volumeName, c.instanceName))
 		if err != nil {
 			return err
 		}

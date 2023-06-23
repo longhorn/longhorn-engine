@@ -35,7 +35,7 @@ func (c *Controller) Revert(name string) error {
 			continue
 		}
 
-		disks, _, err := GetReplicaDisksAndHead(r.Address)
+		disks, _, err := GetReplicaDisksAndHead(r.Address, c.Name, "")
 		if err != nil {
 			return err
 		}
@@ -120,7 +120,8 @@ func (c *Controller) clientsAndSnapshot(name string) (map[string]*client.Replica
 			return nil, "", fmt.Errorf("backend %s does not support revert", replica.Address)
 		}
 
-		repClient, err = client.NewReplicaClient(replica.Address)
+		// We don't know the replica's instanceName, so create a client without it.
+		repClient, err = client.NewReplicaClient(replica.Address, c.Name, "")
 		if err != nil {
 			return nil, "", err
 		}
