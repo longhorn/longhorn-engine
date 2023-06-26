@@ -176,14 +176,14 @@ func CreateDeltaBlockBackup(backupName string, config *DeltaBackupConfig) (isInc
 				LogFieldObject:   LogObjectSnapshot,
 				LogFieldSnapshot: backup.SnapshotName,
 				LogFieldVolume:   volume.Name,
-			}).Debug("Create full snapshot config")
+			}).Info("Create full snapshot config")
 		} else if backup.SnapshotName != "" && !deltaOps.HasSnapshot(backup.SnapshotName, volume.Name) {
 			log.WithFields(logrus.Fields{
 				LogFieldReason:   LogReasonFallback,
 				LogFieldObject:   LogObjectSnapshot,
 				LogFieldSnapshot: backup.SnapshotName,
 				LogFieldVolume:   volume.Name,
-			}).Debug("Cannot find last snapshot in local storage")
+			}).Info("Cannot find last snapshot in local storage")
 		} else {
 			backupRequest.lastBackup = backup
 		}
@@ -195,7 +195,7 @@ func CreateDeltaBlockBackup(backupName string, config *DeltaBackupConfig) (isInc
 		LogFieldEvent:        LogEventCompare,
 		LogFieldSnapshot:     snapshot.Name,
 		LogFieldLastSnapshot: backupRequest.getLastSnapshotName(),
-	}).Debug("Generating snapshot changed blocks config")
+	}).Info("Generating snapshot changed blocks config")
 
 	delta, err := deltaOps.CompareSnapshot(snapshot.Name, backupRequest.getLastSnapshotName(), volume.Name)
 	if err != nil {
@@ -213,14 +213,14 @@ func CreateDeltaBlockBackup(backupName string, config *DeltaBackupConfig) (isInc
 		LogFieldEvent:        LogEventCompare,
 		LogFieldSnapshot:     snapshot.Name,
 		LogFieldLastSnapshot: backupRequest.getLastSnapshotName(),
-	}).Debug("Generated snapshot changed blocks config")
+	}).Info("Generated snapshot changed blocks config")
 
 	log.WithFields(logrus.Fields{
 		LogFieldReason:     LogReasonStart,
 		LogFieldEvent:      LogEventBackup,
 		LogFieldBackupType: backupRequest.getBackupType(),
 		LogFieldSnapshot:   snapshot.Name,
-	}).Debug("Creating backup")
+	}).Info("Creating backup")
 
 	deltaBackup := &Backup{
 		Name:              backupName,
@@ -617,7 +617,7 @@ func mergeSnapshotMap(deltaBackup, lastBackup *Backup) *Backup {
 		LogFieldObject:     LogObjectBackup,
 		LogFieldBackup:     deltaBackup.Name,
 		LogFieldLastBackup: lastBackup.Name,
-	}).Debugf("Merge backup blocks")
+	}).Info("Merge backup blocks")
 	if d == len(deltaBackup.Blocks) {
 		backup.Blocks = append(backup.Blocks, lastBackup.Blocks[l:]...)
 	} else {
@@ -867,7 +867,7 @@ func RestoreDeltaBlockBackupIncrementally(config *DeltaRestoreConfig) error {
 		LogFieldOrigVolume: srcVolumeName,
 		LogFieldVolumeDev:  volDevName,
 		LogEventBackupURL:  backupURL,
-	}).Debugf("Started incrementally restoring from %v to %v", lastBackup, backup)
+	}).Infof("Started incrementally restoring from %v to %v", lastBackup, backup)
 	// keep lock alive for async go routine.
 	if err := lock.Lock(); err != nil {
 		return err
@@ -1182,7 +1182,7 @@ func DeleteDeltaBlockBackup(backupURL string) error {
 		v.LastBackupAt = ""
 	}
 
-	log.Debug("GC started")
+	log.Info("GC started")
 	deleteBlocks := true
 	backupNames, err := getBackupNamesForVolume(bsDriver, volumeName)
 	if err != nil {
@@ -1281,9 +1281,9 @@ func cleanupBlocks(driver BackupStoreDriver, blockMap map[string]*BlockInfo, vol
 		return fmt.Errorf("failed to delete backup blocks: %v", deletionFailures)
 	}
 
-	log.Debugf("Retained %v blocks for volume %v", activeBlockCount, volume)
-	log.Debugf("Removed %v unused blocks for volume %v", deletedBlockCount, volume)
-	log.Debug("GC completed")
+	log.Infof("Retained %v blocks for volume %v", activeBlockCount, volume)
+	log.Infof("Removed %v unused blocks for volume %v", deletedBlockCount, volume)
+	log.Info("GC completed")
 
 	v, err := loadVolume(driver, volume)
 	if err != nil {
