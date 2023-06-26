@@ -98,7 +98,7 @@ func (b *BackupStoreDriver) mount() error {
 	retErr := errors.New("cannot mount using NFSv4")
 
 	for _, version := range MinorVersions {
-		log.Debugf("Attempting mount for nfs path %v with nfsvers %v", b.serverPath, version)
+		log.Infof("Attempting mount for nfs path %v with nfsvers %v", b.serverPath, version)
 
 		mountOptions := []string{
 			fmt.Sprintf("nfsvers=%v", version),

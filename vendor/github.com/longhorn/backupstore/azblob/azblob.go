@@ -43,7 +43,7 @@ func initFunc(destURL string) (backupstore.BackupStoreDriver, error) {
 	}
 
 	if u.Scheme != KIND {
-		return nil, fmt.Errorf("Wrong driver dispatching %v to %v?", u.Scheme, KIND)
+		return nil, fmt.Errorf("wrong driver dispatching %v to %v?", u.Scheme, KIND)
 	}
 
 	b := &BackupStoreDriver{}
@@ -54,7 +54,7 @@ func initFunc(destURL string) (backupstore.BackupStoreDriver, error) {
 
 	b.path = u.Path
 	if b.service.Container == "" || b.path == "" {
-		return nil, fmt.Errorf("Invalid URL. Must be either azblob://container@serviceurl/path/, or azblob://container/path")
+		return nil, fmt.Errorf("invalid URL. Must be either azblob://container@serviceurl/path/, or azblob://container/path")
 	}
 
 	b.path = strings.TrimLeft(b.path, "/")
