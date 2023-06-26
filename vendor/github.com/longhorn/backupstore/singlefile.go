@@ -44,7 +44,7 @@ func CreateSingleFileBackup(volume *Volume, snapshot *Snapshot, filePath, destUR
 		LogFieldObject:   LogObjectSnapshot,
 		LogFieldSnapshot: snapshot.Name,
 		LogFieldFilepath: filePath,
-	}).Debug("Creating backup")
+	}).Info("Creating backup")
 
 	backup := &Backup{
 		Name:              util.GenerateName("backup"),
@@ -69,7 +69,7 @@ func CreateSingleFileBackup(volume *Volume, snapshot *Snapshot, filePath, destUR
 		LogFieldEvent:    LogEventBackup,
 		LogFieldObject:   LogObjectSnapshot,
 		LogFieldSnapshot: snapshot.Name,
-	}).Debug("Created backup")
+	}).Info("Created backup")
 
 	return EncodeBackupURL(backup.Name, volume.Name, destURL), nil
 }

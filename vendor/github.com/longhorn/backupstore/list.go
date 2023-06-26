@@ -5,14 +5,11 @@ import (
 	"fmt"
 	"runtime"
 	"strings"
-	"time"
 
 	"github.com/gammazero/workerpool"
 
 	"github.com/longhorn/backupstore/util"
 )
-
-const jobQueueTimeout = time.Minute
 
 type VolumeInfo struct {
 	Name           string
