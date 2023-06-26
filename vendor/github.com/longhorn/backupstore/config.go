@@ -4,13 +4,13 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/gammazero/workerpool"
+	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/slok/goresilience/timeout"
 
@@ -174,8 +174,8 @@ func getVolumeNames(jobQueues *workerpool.WorkerPool, driver BackupStoreDriver) 
 			err := runner.Run(context.TODO(), func(_ context.Context) error {
 				lv2Dirs, err := driver.List(path)
 				if err != nil {
-					logrus.Warnf("Failed to list second level dirs for path %v", path)
-					return fmt.Errorf("Failed to list second level dirs for path %v: %v", path, err)
+					logrus.WithError(err).Warnf("Failed to list second level dirs for path %v", path)
+					return errors.Wrapf(err, "failed to list second level dirs for path %v", path)
 				}
 				for _, lv2Dir := range lv2Dirs {
 					lv2Paths = append(lv2Paths, filepath.Join(path, lv2Dir))
@@ -209,8 +209,8 @@ func getVolumeNames(jobQueues *workerpool.WorkerPool, driver BackupStoreDriver) 
 				err := runner.Run(context.TODO(), func(_ context.Context) error {
 					volumeNames, err = driver.List(path)
 					if err != nil {
-						logrus.Warnf("Failed to list volume names for path %v", path)
-						return fmt.Errorf("Failed to list second level dirs for path %v: %v", path, err)
+						logrus.WithError(err).Warnf("Failed to list volume names for path %v", path)
+						return errors.Wrapf(err, "failed to list second level dirs for path %v", path)
 					}
 					return nil
 				})

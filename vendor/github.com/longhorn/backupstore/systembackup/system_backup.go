@@ -59,7 +59,7 @@ func Upload(localFilePath string, cfg *Config) error {
 		log.WithError(err).Errorf("Failed to upload system backup config %v", cfg.Name)
 		return err
 	}
-	log.Debugf("Uploaded system backup config %v", cfg.Name)
+	log.Infof("Uploaded system backup config %v", cfg.Name)
 
 	return nil
 }
