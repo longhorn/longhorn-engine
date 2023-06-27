@@ -118,8 +118,15 @@ func CreateDeltaBlockBackup(backupName string, config *DeltaBackupConfig) (isInc
 		return false, fmt.Errorf("BUG: missing DeltaBlockBackupOperations")
 	}
 
+	log := logrus.WithFields(logrus.Fields{
+		"volume":   volume,
+		"snapshot": snapshot,
+		"destURL":  destURL,
+	})
+
 	defer func() {
 		if err != nil {
+			log.WithError(err).Error("Failed to create delta block backup")
 			deltaOps.UpdateBackupStatus(snapshot.Name, volume.Name, string(ProgressStateError), 0, "", err.Error())
 		}
 	}()
@@ -176,7 +183,7 @@ func CreateDeltaBlockBackup(backupName string, config *DeltaBackupConfig) (isInc
 				LogFieldObject:   LogObjectSnapshot,
 				LogFieldSnapshot: backup.SnapshotName,
 				LogFieldVolume:   volume.Name,
-			}).Info("Create full snapshot config")
+			}).Info("Creating full snapshot config")
 		} else if backup.SnapshotName != "" && !deltaOps.HasSnapshot(backup.SnapshotName, volume.Name) {
 			log.WithFields(logrus.Fields{
 				LogFieldReason:   LogReasonFallback,
@@ -244,6 +251,7 @@ func CreateDeltaBlockBackup(backupName string, config *DeltaBackupConfig) (isInc
 
 		deltaOps.UpdateBackupStatus(snapshot.Name, volume.Name, string(ProgressStateInProgress), 0, "", "")
 
+		log.Info("Performing delta block backup")
 		if progress, backup, err := performBackup(bsDriver, config, delta, deltaBackup, backupRequest.lastBackup); err != nil {
 			logrus.WithError(err).Errorf("Failed to perform backup for volume %v snapshot %v", volume.Name, snapshot.Name)
 			deltaOps.UpdateBackupStatus(snapshot.Name, volume.Name, string(ProgressStateInProgress), progress, "", err.Error())
@@ -708,7 +716,7 @@ func RestoreDeltaBlockBackup(config *DeltaRestoreConfig) error {
 		LogFieldOrigVolume: srcVolumeName,
 		LogFieldVolumeDev:  volDevName,
 		LogEventBackupURL:  backupURL,
-	}).Debug()
+	}).Info("Restoring delta block backup")
 
 	// keep lock alive for async go routine.
 	if err := lock.Lock(); err != nil {
