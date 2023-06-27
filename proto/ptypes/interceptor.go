@@ -30,10 +30,10 @@ func identityValidationServerInterceptor(volumeName, instanceName, serverType st
 					"clientVolumeName": incomingVolumeName[0], "serverVolumeName": volumeName})
 				if incomingVolumeName[0] != volumeName {
 					log.Error("Invalid gRPC metadata")
-					return nil, status.Errorf(codes.FailedPrecondition, "Incorrect volume name; check %s address",
-						serverType)
+					return nil, status.Errorf(codes.FailedPrecondition, "incorrect volume name %s; check %s address",
+						incomingVolumeName[0], serverType)
 				}
-				log.Debug("Valid gRPC metadata")
+				log.Trace("Valid gRPC metadata")
 			}
 
 			incomingInstanceName, ok := md["instance-name"]
@@ -43,10 +43,10 @@ func identityValidationServerInterceptor(volumeName, instanceName, serverType st
 					"clientInstanceName": incomingInstanceName[0], "serverInstanceName": instanceName})
 				if incomingInstanceName[0] != instanceName {
 					log.Error("Invalid gRPC metadata")
-					return nil, status.Errorf(codes.FailedPrecondition, "Incorrect instance name; check %s address",
-						serverType)
+					return nil, status.Errorf(codes.FailedPrecondition, "incorrect instance name %s; check %s address",
+						incomingInstanceName[0], serverType)
 				}
-				log.Debug("Valid gRPC metadata")
+				log.Trace("Valid gRPC metadata")
 			}
 		}
 

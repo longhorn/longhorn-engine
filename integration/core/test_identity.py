@@ -78,7 +78,8 @@ def test_validation_fails_with_client(engine_manager_client,
     with pytest.raises(grpc.RpcError) as e:
         e_client.replica_create('tcp://' + get_process_address(replica))
     assert e.value.code() == grpc.StatusCode.UNKNOWN
-    assert 'Incorrect volume name; check replica address' in e.value.details()
+    assert (f'incorrect volume name {VOLUME_NAME}; check replica address') \
+        in e.value.details()
 
 
 def test_validation_fails_with_cli(bin, engine_manager_client, # NOQA
@@ -97,11 +98,11 @@ def test_validation_fails_with_cli(bin, engine_manager_client, # NOQA
     subprocess.check_call(cmd)
 
     # Run a replica with different identifying information.
-    volume_name = VOLUME_NAME_BASE + 'other'
-    replica_name = REPLICA_NAME_BASE + 'other'
+    v_other_name = VOLUME_NAME_BASE + 'other'
+    r_other_name = REPLICA_NAME_BASE + 'other'
     replica_other = create_replica_process(process_manager_client,
-                                           name=replica_name,
-                                           volume_name=volume_name)
+                                           name=r_other_name,
+                                           volume_name=v_other_name)
     r_other_address = 'tcp://' + get_process_address(replica_other)
 
     # CASE 1:
@@ -111,7 +112,7 @@ def test_validation_fails_with_cli(bin, engine_manager_client, # NOQA
            'info']
     with pytest.raises(subprocess.CalledProcessError) as e:
         subprocess.run(cmd, stderr=subprocess.PIPE, check=True)
-    assert 'Incorrect volume name; check controller address' \
+    assert 'incorrect volume name wrong; check controller address' \
         in str(e.value.stderr)
 
     # CASE 2:
@@ -121,7 +122,7 @@ def test_validation_fails_with_cli(bin, engine_manager_client, # NOQA
            e_address, 'info']
     with pytest.raises(subprocess.CalledProcessError) as e:
         subprocess.run(cmd, stderr=subprocess.PIPE, check=True)
-    assert 'Incorrect instance name; check controller address' in \
+    assert 'incorrect instance name wrong; check controller address' in \
         str(e.value.stderr)
 
     # CASE 3:
@@ -132,7 +133,7 @@ def test_validation_fails_with_cli(bin, engine_manager_client, # NOQA
            r_other_address]
     with pytest.raises(subprocess.CalledProcessError) as e:
         subprocess.run(cmd, stderr=subprocess.PIPE, check=True)
-    assert 'Incorrect volume name; check replica address' \
+    assert f'incorrect volume name {VOLUME_NAME}; check replica address' \
         in str(e.value.stderr)
 
     # CASE 4:
@@ -143,7 +144,7 @@ def test_validation_fails_with_cli(bin, engine_manager_client, # NOQA
            '--replica-instance-name', REPLICA_NAME]
     with pytest.raises(subprocess.CalledProcessError) as e:
         subprocess.run(cmd, stderr=subprocess.PIPE, check=True)
-    assert 'Incorrect instance name; check replica address' \
+    assert f'incorrect instance name {REPLICA_NAME}; check replica address' \
         in str(e.value.stderr)
 
     # CASE 5:
@@ -154,5 +155,5 @@ def test_validation_fails_with_cli(bin, engine_manager_client, # NOQA
            SIZE_STR, '--current-size', SIZE_STR, r_other_address]
     with pytest.raises(subprocess.CalledProcessError) as e:
         subprocess.run(cmd, stderr=subprocess.PIPE, check=True)
-    assert 'Incorrect volume name; check replica address' \
+    assert f'incorrect volume name {VOLUME_NAME}; check replica address' \
         in str(e.value.stderr)
