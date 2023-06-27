@@ -133,7 +133,7 @@ func (lock *FileLock) Lock() error {
 				if lock.Acquired {
 					if err := saveLock(lock); err != nil {
 						// nothing we can do here, that's why the lock acquisition time is 2x lock refresh interval
-						log.Infof("Failed to refresh acquired lock %v type %v", file, lock.Type)
+						log.WithError(err).Warnf("Failed to refresh acquired lock %v type %v", file, lock.Type)
 					}
 				}
 				lock.mutex.Unlock()
