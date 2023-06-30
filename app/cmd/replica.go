@@ -59,10 +59,6 @@ func ReplicaCmd() cli.Command {
 				Usage:  "To disable revision counter for every write",
 			},
 			cli.StringFlag{
-				Name:  "volume-name",
-				Value: "",
-			},
-			cli.StringFlag{
 				Name:  "data-server-protocol",
 				Value: "tcp",
 				Usage: "Specify the data-server protocol. Available options are \"tcp\" and \"unix\"",
@@ -116,13 +112,7 @@ func startReplica(c *cli.Context) error {
 		}
 	}
 
-	// The --volume-name flag for the replica command (added before the identity validation feature) and the
-	// --volume-name global flag are redundant. Since both are optional, proceed with either one, but do not proceed if
-	// they are different.
-	volumeName, err := resolveVolumeName(c.String("volume-name"), c.GlobalString("volume-name"))
-	if err != nil {
-		return err
-	}
+	volumeName := c.GlobalString("volume-name")
 	replicaInstanceName := c.String("replica-instance-name")
 	dataServerProtocol := c.String("data-server-protocol")
 
@@ -191,19 +181,4 @@ func startReplica(c *cli.Context) error {
 	addShutdown(func() (err error) { return nil })
 
 	return <-resp
-}
-
-// Volume name is specified by two different, optional flags. If volume name is only specified by one flag, use that
-// flag. If it specified differently by both flags, error out.
-func resolveVolumeName(name1, name2 string) (string, error) {
-	if name1 == "" {
-		return name2, nil
-	}
-	if name2 == "" {
-		return name1, nil
-	}
-	if name1 == name2 {
-		return name1, nil
-	}
-	return "", fmt.Errorf("volume names %s and %s are not equal", name1, name2)
 }
