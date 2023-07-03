@@ -3,7 +3,8 @@ import pytest
 import subprocess
 
 from common.core import (
-    create_replica_process, create_engine_process, get_process_address
+    create_replica_process, create_engine_process, get_process_address,
+    get_controller_version_detail, get_replica
 )
 
 from common.constants import (
@@ -31,7 +32,7 @@ def test_validation_fails_with_client(engine_manager_client,
     e_client = ControllerClient(get_process_address(engine), 'wrong',
                                 ENGINE_NAME)
     with pytest.raises(grpc.RpcError) as e:
-        e_client.volume_get()
+        get_controller_version_detail(e_client)  # Retries until open socket.
     assert e.value.code() == grpc.StatusCode.FAILED_PRECONDITION
 
     # CASE 2:
@@ -41,7 +42,7 @@ def test_validation_fails_with_client(engine_manager_client,
     e_client = ControllerClient(get_process_address(engine), VOLUME_NAME,
                                 'wrong')
     with pytest.raises(grpc.RpcError) as e:
-        e_client.volume_get()
+        get_controller_version_detail(e_client)  # Retries until open socket.
     assert e.value.code() == grpc.StatusCode.FAILED_PRECONDITION
 
     # CASE 3:
@@ -51,7 +52,7 @@ def test_validation_fails_with_client(engine_manager_client,
     r_client = ReplicaClient(get_process_address(replica), 'wrong',
                              REPLICA_NAME)
     with pytest.raises(grpc.RpcError) as e:
-        r_client.replica_get()
+        get_replica(r_client)  # Retries until open socket.
     assert e.value.code() == grpc.StatusCode.FAILED_PRECONDITION
 
     # CASE 4:
@@ -61,7 +62,7 @@ def test_validation_fails_with_client(engine_manager_client,
     r_client = ReplicaClient(get_process_address(replica), VOLUME_NAME,
                              'wrong')
     with pytest.raises(grpc.RpcError) as e:
-        r_client.replica_get()
+        get_replica(r_client)  # Retries until open socket.
     assert e.value.code() == grpc.StatusCode.FAILED_PRECONDITION
 
     # CASE 5:
@@ -75,6 +76,7 @@ def test_validation_fails_with_client(engine_manager_client,
                                      volume_name=volume_name)
     e_client = ControllerClient(get_process_address(engine), VOLUME_NAME,
                                 ENGINE_NAME)
+    get_controller_version_detail(e_client)  # Retries until open socket.
     with pytest.raises(grpc.RpcError) as e:
         e_client.replica_create('tcp://' + get_process_address(replica))
     assert e.value.code() == grpc.StatusCode.UNKNOWN
