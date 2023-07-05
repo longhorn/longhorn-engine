@@ -10,12 +10,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/reflection"
 
 	"github.com/longhorn/longhorn-engine/pkg/sync"
 	syncagentrpc "github.com/longhorn/longhorn-engine/pkg/sync/rpc"
-	"github.com/longhorn/longhorn-engine/proto/ptypes"
 )
 
 func SyncAgentCmd() cli.Command {
@@ -87,10 +84,7 @@ func startSyncAgent(c *cli.Context) error {
 		return errors.Wrap(err, "failed to listen")
 	}
 
-	server := grpc.NewServer()
-	ptypes.RegisterSyncAgentServiceServer(server, syncagentrpc.NewSyncAgentServer(start, end, replicaAddress,
-		volumeName, replicaInstanceName))
-	reflection.Register(server)
+	server := syncagentrpc.NewSyncAgentServer(start, end, replicaAddress, volumeName, replicaInstanceName)
 
 	logrus.Infof("Listening on sync %s", listenPort)
 

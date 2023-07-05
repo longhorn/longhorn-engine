@@ -160,10 +160,11 @@ func startReplica(c *cli.Context) error {
 		}
 
 		go func() {
-			cmd := exec.Command(exe, "sync-agent", "--listen", syncAddress,
+			cmd := exec.Command(exe, "--volume-name", volumeName, "sync-agent", "--listen", syncAddress,
 				"--replica", controlAddress,
 				"--listen-port-range",
-				fmt.Sprintf("%v-%v", syncPort+1, syncPort+c.Int("sync-agent-port-count")))
+				fmt.Sprintf("%v-%v", syncPort+1, syncPort+c.Int("sync-agent-port-count")),
+				"--replica-instance-name", replicaInstanceName)
 			cmd.SysProcAttr = &syscall.SysProcAttr{
 				Pdeathsig: syscall.SIGKILL,
 			}
