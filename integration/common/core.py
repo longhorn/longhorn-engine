@@ -140,6 +140,12 @@ def create_engine_process(client, name=ENGINE_NAME,
 def get_process_address(p):
     return "localhost:" + str(p.status.port_start)
 
+def get_sync_agent_service_address(p):
+    # The replica GRPC server starts at port_start.
+    # The replica data server starts at port_start + 1.
+    # The replica sync agent server starts at port_start + 2.
+    return "localhost:" + str(p.status.port_start + 2)
+
 
 def cleanup_controller(grpc_client):
     try:
