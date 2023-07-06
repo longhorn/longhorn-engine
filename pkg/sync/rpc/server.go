@@ -423,15 +423,22 @@ func (s *SyncAgentServer) FilesSync(ctx context.Context, req *ptypes.FilesSyncRe
 		if err != nil {
 			s.RebuildStatus.Error = err.Error()
 			s.RebuildStatus.State = types.ProcessStateError
-			logrus.WithError(err).Error("sync agent gRPC server failed to rebuild replica/sync files")
+			logrus.WithError(err).Error("Sync agent gRPC server failed to rebuild replica/sync files")
 		} else {
 			s.RebuildStatus.State = types.ProcessStateComplete
 			logrus.Infof("Sync agent gRPC server finished rebuilding replica/sync files for replica %v", req.ToHost)
 		}
 		s.RebuildStatus.Unlock()
 
-		if err = s.FinishRebuild(); err != nil {
-			logrus.WithError(err).Error("could not finish rebuilding")
+		// We must be careful not to return a nil error if we failed previously but finished successfully.
+		if finishErr := s.FinishRebuild(); finishErr != nil {
+			logrus.WithError(finishErr).Error("Could not finish rebuilding")
+			finishErr = errors.Wrap(finishErr, "could not finish rebuilding")
+			if err == nil {
+				err = finishErr
+			} else {
+				err = errors.Wrap(err, finishErr.Error())
+			}
 		}
 	}()
 
