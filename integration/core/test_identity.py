@@ -4,7 +4,8 @@ import subprocess
 
 from common.core import (
     create_replica_process, create_engine_process, get_process_address,
-    get_controller_version_detail, get_replica
+    get_controller_version_detail, get_replica,
+    get_sync_agent_service_address
 )
 
 from common.constants import (
@@ -16,6 +17,7 @@ from core.test_cli import bin # NOQA
 
 from rpc.controller.controller_client import ControllerClient
 from rpc.replica.replica_client import ReplicaClient
+from rpc.sync.sync_agent_client import SyncAgentClient
 
 
 def test_validation_fails_with_client(engine_manager_client,
@@ -66,23 +68,59 @@ def test_validation_fails_with_client(engine_manager_client,
     assert e.value.code() == grpc.StatusCode.FAILED_PRECONDITION
 
     # CASE 5:
+    # Our sync agent client is created with a different volume name than the
+    # sync agent.
+    # We cannot communicate with the sync agent.
+    s_client = SyncAgentClient(get_sync_agent_service_address(replica),
+                               'wrong', REPLICA_NAME)
+    with pytest.raises(grpc.RpcError) as e:
+        s_client.replica_rebuild_status()
+    assert e.value.code() == grpc.StatusCode.FAILED_PRECONDITION
+
+    # CASE 6:
+    # Our sync agent client is created with a different instance name than the
+    # sync agent.
+    # We cannot communicate with the sync agent.
+    s_client = SyncAgentClient(get_sync_agent_service_address(replica),
+                               VOLUME_NAME, 'wrong')
+    with pytest.raises(grpc.RpcError) as e:
+        s_client.replica_rebuild_status()
+    assert e.value.code() == grpc.StatusCode.FAILED_PRECONDITION
+
+    # CASE 7:
     # Our engine client is right, so we can send it instructions, but it has
     # a different volume name than the replica it is trying to communicate
     # with.
     # The engine cannot communicate with the replica.
     volume_name = VOLUME_NAME_BASE + 'different'
     replica_name = REPLICA_NAME_BASE + 'different'
-    replica = create_replica_process(process_manager_client, name=replica_name,
-                                     volume_name=volume_name)
+    replica_different = create_replica_process(process_manager_client,
+                                               replica_name,
+                                               volume_name=volume_name)
     e_client = ControllerClient(get_process_address(engine), VOLUME_NAME,
                                 ENGINE_NAME)
     get_controller_version_detail(e_client)  # Retries until open socket.
     with pytest.raises(grpc.RpcError) as e:
-        e_client.replica_create('tcp://' + get_process_address(replica))
+        e_client.replica_create('tcp://' +
+                                get_process_address(replica_different))
     assert e.value.code() == grpc.StatusCode.UNKNOWN
     assert (f'incorrect volume name {VOLUME_NAME}; check replica address') \
         in e.value.details()
 
+    # CASE 8:
+    # Our sync agent client is right, so we can send it instructions, but it
+    # has a different volume name than the replica it is trying to communicate
+    # with.
+    # The sync agent cannot communicate with the replica.
+    s_client = SyncAgentClient(get_sync_agent_service_address(replica),
+                               VOLUME_NAME)
+    sync_file_info_tuples = [("some_name", "some_name", 512)]
+    with pytest.raises(grpc.RpcError) as e:
+        s_client.sync_files(get_process_address(replica_different),
+                            sync_file_info_tuples, True, 0)
+    assert e.value.code() == grpc.StatusCode.UNKNOWN
+    assert (f'incorrect volume name {VOLUME_NAME}; check replica address') \
+        in e.value.details()
 
 def test_validation_fails_with_cli(bin, engine_manager_client, # NOQA
                                    process_manager_client):
