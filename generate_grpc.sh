@@ -17,6 +17,7 @@ buf lint
 protoc -I proto/ptypes/ -I proto/vendor/protobuf/src/ proto/ptypes/common.proto --go_out=plugins=grpc:proto/ptypes/
 python3 -m grpc_tools.protoc -I proto/ptypes/ -I proto/vendor/protobuf/src/ --python_out=integration/rpc/controller --grpc_python_out=integration/rpc/controller proto/ptypes/common.proto
 python3 -m grpc_tools.protoc -I proto/ptypes/ -I proto/vendor/protobuf/src/ --python_out=integration/rpc/replica --grpc_python_out=integration/rpc/replica proto/ptypes/common.proto
+python3 -m grpc_tools.protoc -I proto/ptypes/ -I proto/vendor/protobuf/src/ --python_out=integration/rpc/sync --grpc_python_out=integration/rpc/sync proto/ptypes/common.proto
 
 # controller
 protoc -I proto/ptypes/ -I proto/vendor/protobuf/src/ proto/ptypes/controller.proto --go_out=plugins=grpc:proto/ptypes/
@@ -28,3 +29,4 @@ python3 -m grpc_tools.protoc -I proto/ptypes/ -I proto/vendor/protobuf/src/ --py
 
 # sync agent
 protoc -I proto/ptypes/ -I proto/vendor/protobuf/src/ proto/ptypes/syncagent.proto --go_out=plugins=grpc:proto/ptypes/
+python3 -m grpc_tools.protoc -I proto/ptypes/ -I proto/vendor/protobuf/src/ --python_out=integration/rpc/sync --grpc_python_out=integration/rpc/sync proto/ptypes/syncagent.proto
