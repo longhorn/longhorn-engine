@@ -23,28 +23,38 @@ func identityValidationServerInterceptor(volumeName, instanceName, serverType st
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		md, ok := metadata.FromIncomingContext(ctx)
 		if ok {
-			incomingVolumeName, ok := md["volume-name"]
+			var incomingVolumeName string
+			incomingVolumeNames := md.Get("volume-name")
+			if len(incomingVolumeNames) == 1 {
+				// If len > 1, why? There is no legitimate reason, so do not validate.
+				incomingVolumeName = incomingVolumeNames[0]
+			}
 			// Only refuse to serve if both client and server provide validation information.
-			if ok && volumeName != "" {
+			if incomingVolumeName != "" && volumeName != "" {
 				log := logrus.WithFields(logrus.Fields{"method": info.FullMethod,
-					"clientVolumeName": incomingVolumeName[0], "serverVolumeName": volumeName})
-				if incomingVolumeName[0] != volumeName {
+					"clientVolumeName": incomingVolumeName, "serverVolumeName": volumeName})
+				if incomingVolumeName != volumeName {
 					log.Error("Invalid gRPC metadata")
 					return nil, status.Errorf(codes.FailedPrecondition, "incorrect volume name %s; check %s address",
-						incomingVolumeName[0], serverType)
+						incomingVolumeName, serverType)
 				}
 				log.Trace("Valid gRPC metadata")
 			}
 
-			incomingInstanceName, ok := md["instance-name"]
+			var incomingInstanceName string
+			incomingInstanceNames := md.Get("instance-name")
+			if len(incomingInstanceNames) == 1 {
+				// If len > 1, why? There is no legitimate reason, so do not validate.
+				incomingInstanceName = incomingInstanceNames[0]
+			}
 			// Only refuse to serve if both client and server provide validation information.
-			if ok && instanceName != "" {
+			if incomingInstanceName != "" && instanceName != "" {
 				log := logrus.WithFields(logrus.Fields{"method": info.FullMethod,
-					"clientInstanceName": incomingInstanceName[0], "serverInstanceName": instanceName})
-				if incomingInstanceName[0] != instanceName {
+					"clientInstanceName": incomingInstanceName, "serverInstanceName": instanceName})
+				if incomingInstanceName != instanceName {
 					log.Error("Invalid gRPC metadata")
 					return nil, status.Errorf(codes.FailedPrecondition, "incorrect instance name %s; check %s address",
-						incomingInstanceName[0], serverType)
+						incomingInstanceName, serverType)
 				}
 				log.Trace("Valid gRPC metadata")
 			}
