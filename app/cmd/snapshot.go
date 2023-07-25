@@ -146,6 +146,11 @@ func SnapshotCloneCmd() cli.Command {
 				Usage: "Specify the address of the engine controller of the source volume",
 			},
 			cli.StringFlag{
+				Name:     "from-volume-name",
+				Required: false,
+				Usage:    "Specify the name of the source volume (for validation purposes)",
+			},
+			cli.StringFlag{
 				Name:     "from-controller-instance-name",
 				Required: false,
 				Usage:    "Specify the name of the engine controller instance of the source volume (for validation purposes)",
@@ -446,15 +451,17 @@ func cloneSnapshot(c *cli.Context) error {
 	defer controllerClient.Close()
 
 	volumeName := c.GlobalString("volume-name")
-	fromControllerEngineInstanceName := c.String("from-controller-instance-name")
-	fromControllerClient, err := client.NewControllerClient(fromControllerAddress, volumeName, fromControllerEngineInstanceName)
+	fromVolumeName := c.String("from-volume-name")
+	fromControllerInstanceName := c.String("from-controller-instance-name")
+	fromControllerClient, err := client.NewControllerClient(fromControllerAddress, fromVolumeName,
+		fromControllerInstanceName)
 	if err != nil {
 		return err
 	}
 	defer fromControllerClient.Close()
 
-	if err := sync.CloneSnapshot(controllerClient, fromControllerClient, volumeName, snapshotName,
-		exportBackingImageIfExist, fileSyncHTTPClientTimeout); err != nil {
+	if err := sync.CloneSnapshot(controllerClient, fromControllerClient, volumeName, fromVolumeName,
+		snapshotName, exportBackingImageIfExist, fileSyncHTTPClientTimeout); err != nil {
 		return err
 	}
 	return nil
