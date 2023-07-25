@@ -537,7 +537,7 @@ func (s *SyncAgentServer) ReplicaRebuildStatus(ctx context.Context, req *empty.E
 func (s *SyncAgentServer) SnapshotClone(ctx context.Context, req *ptypes.SnapshotCloneRequest) (res *empty.Empty, err error) {
 	// We generally don't know the from replica's instanceName since it is arbitrarily chosen from candidate addresses
 	// stored in the controller. Do don't modify SnapshotCloneRequest to contain it, and create a client without it.
-	fromClient, err := replicaclient.NewReplicaClient(req.FromAddress, s.volumeName, "")
+	fromClient, err := replicaclient.NewReplicaClient(req.FromAddress, req.FromVolumeName, "")
 	if err != nil {
 		return nil, err
 	}

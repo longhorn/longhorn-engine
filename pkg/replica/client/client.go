@@ -677,7 +677,7 @@ func (c *ReplicaClient) ReplicaRebuildStatus() (*ptypes.ReplicaRebuildStatusResp
 	return status, nil
 }
 
-func (c *ReplicaClient) CloneSnapshot(fromAddress, snapshotFileName string, exportBackingImageIfExist bool, fileSyncHTTPClientTimeout int) error {
+func (c *ReplicaClient) CloneSnapshot(fromAddress, fromVolumeName, snapshotFileName string, exportBackingImageIfExist bool, fileSyncHTTPClientTimeout int) error {
 	syncAgentServiceClient, err := c.getSyncServiceClient()
 	if err != nil {
 		return err
@@ -691,6 +691,7 @@ func (c *ReplicaClient) CloneSnapshot(fromAddress, snapshotFileName string, expo
 		SnapshotFileName:          snapshotFileName,
 		ExportBackingImageIfExist: exportBackingImageIfExist,
 		FileSyncHttpClientTimeout: int32(fileSyncHTTPClientTimeout),
+		FromVolumeName:            fromVolumeName,
 	}); err != nil {
 		return errors.Wrapf(err, "failed to clone snapshot %v from replica %v to host %v", snapshotFileName, fromAddress, c.host)
 	}
