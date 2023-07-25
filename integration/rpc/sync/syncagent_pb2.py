@@ -22,7 +22,7 @@ DESCRIPTOR = _descriptor.FileDescriptor(
   package='ptypes',
   syntax='proto3',
   serialized_options=None,
-  serialized_pb=_b('\n\x0fsyncagent.proto\x12\x06ptypes\x1a\x1bgoogle/protobuf/empty.proto\x1a\x0c\x63ommon.proto\"&\n\x11\x46ileRemoveRequest\x12\x11\n\tfile_name\x18\x01 \x01(\t\"A\n\x11\x46ileRenameRequest\x12\x15\n\rold_file_name\x18\x01 \x01(\t\x12\x15\n\rnew_file_name\x18\x02 \x01(\t\"-\n\x15ReceiverLaunchRequest\x12\x14\n\x0cto_file_name\x18\x01 \x01(\t\"&\n\x16ReceiverLaunchResponse\x12\x0c\n\x04port\x18\x01 \x01(\x05\"\x7f\n\x0f\x46ileSendRequest\x12\x16\n\x0e\x66rom_file_name\x18\x01 \x01(\t\x12\x0c\n\x04host\x18\x02 \x01(\t\x12\x0c\n\x04port\x18\x03 \x01(\x05\x12\x11\n\tfast_sync\x18\x04 \x01(\x08\x12%\n\x1d\x66ile_sync_http_client_timeout\x18\x05 \x01(\x05\"\xa6\x01\n\x10\x46ilesSyncRequest\x12\x14\n\x0c\x66rom_address\x18\x01 \x01(\t\x12\x0f\n\x07to_host\x18\x02 \x01(\t\x12\x31\n\x13sync_file_info_list\x18\x03 \x03(\x0b\x32\x14.ptypes.SyncFileInfo\x12\x11\n\tfast_sync\x18\x04 \x01(\x08\x12%\n\x1d\x66ile_sync_http_client_timeout\x18\x05 \x01(\x05\"\xa7\x01\n\x14SnapshotCloneRequest\x12\x14\n\x0c\x66rom_address\x18\x01 \x01(\t\x12\x0f\n\x07to_host\x18\x02 \x01(\t\x12\x1a\n\x12snapshot_file_name\x18\x03 \x01(\t\x12%\n\x1d\x65xport_backing_image_if_exist\x18\x04 \x01(\x08\x12%\n\x1d\x66ile_sync_http_client_timeout\x18\x05 \x01(\x05\"\x9b\x01\n\x13VolumeExportRequest\x12\x1a\n\x12snapshot_file_name\x18\x01 \x01(\t\x12\x0c\n\x04host\x18\x02 \x01(\t\x12\x0c\n\x04port\x18\x03 \x01(\x05\x12%\n\x1d\x65xport_backing_image_if_exist\x18\x04 \x01(\x08\x12%\n\x1d\x66ile_sync_http_client_timeout\x18\x05 \x01(\x05\"\x84\x03\n\x13\x42\x61\x63kupCreateRequest\x12\x1a\n\x12snapshot_file_name\x18\x01 \x01(\t\x12\x15\n\rbackup_target\x18\x02 \x01(\t\x12\x13\n\x0bvolume_name\x18\x03 \x01(\t\x12\x0e\n\x06labels\x18\x04 \x03(\t\x12?\n\ncredential\x18\x05 \x03(\x0b\x32+.ptypes.BackupCreateRequest.CredentialEntry\x12\x1a\n\x12\x62\x61\x63king_image_name\x18\x06 \x01(\t\x12\x1e\n\x16\x62\x61\x63king_image_checksum\x18\x07 \x01(\t\x12\x13\n\x0b\x62\x61\x63kup_name\x18\x08 \x01(\t\x12\x1a\n\x12\x63ompression_method\x18\t \x01(\t\x12\x18\n\x10\x63oncurrent_limit\x18\n \x01(\x05\x12\x1a\n\x12storage_class_name\x18\x0b \x01(\t\x1a\x31\n\x0f\x43redentialEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\">\n\x14\x42\x61\x63kupCreateResponse\x12\x0e\n\x06\x62\x61\x63kup\x18\x01 \x01(\t\x12\x16\n\x0eis_incremental\x18\x02 \x01(\x08\"%\n\x13\x42\x61\x63kupRemoveRequest\x12\x0e\n\x06\x62\x61\x63kup\x18\x01 \x01(\t\"%\n\x13\x42\x61\x63kupStatusRequest\x12\x0e\n\x06\x62\x61\x63kup\x18\x01 \x01(\t\"q\n\x14\x42\x61\x63kupStatusResponse\x12\x10\n\x08progress\x18\x01 \x01(\x05\x12\x12\n\nbackup_url\x18\x02 \x01(\t\x12\r\n\x05\x65rror\x18\x03 \x01(\t\x12\x15\n\rsnapshot_name\x18\x04 \x01(\t\x12\r\n\x05state\x18\x05 \x01(\t\"\xd1\x01\n\x14\x42\x61\x63kupRestoreRequest\x12\x0e\n\x06\x62\x61\x63kup\x18\x01 \x01(\t\x12\x1a\n\x12snapshot_disk_name\x18\x02 \x01(\t\x12@\n\ncredential\x18\x03 \x03(\x0b\x32,.ptypes.BackupRestoreRequest.CredentialEntry\x12\x18\n\x10\x63oncurrent_limit\x18\x04 \x01(\x05\x1a\x31\n\x0f\x43redentialEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xa7\x02\n!BackupRestoreIncrementallyRequest\x12\x0e\n\x06\x62\x61\x63kup\x18\x01 \x01(\t\x12\x17\n\x0f\x64\x65lta_file_name\x18\x02 \x01(\t\x12!\n\x19last_restored_backup_name\x18\x03 \x01(\t\x12\x1a\n\x12snapshot_disk_name\x18\x04 \x01(\t\x12M\n\ncredential\x18\x05 \x03(\x0b\x32\x39.ptypes.BackupRestoreIncrementallyRequest.CredentialEntry\x12\x18\n\x10\x63oncurrent_limit\x18\x06 \x01(\x05\x1a\x31\n\x0f\x43redentialEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xc2\x01\n\x15RestoreStatusResponse\x12\x14\n\x0cis_restoring\x18\x01 \x01(\x08\x12\x15\n\rlast_restored\x18\x02 \x01(\t\x12\x10\n\x08progress\x18\x03 \x01(\x05\x12\r\n\x05\x65rror\x18\x04 \x01(\t\x12\x16\n\x0e\x64\x65st_file_name\x18\x05 \x01(\t\x12\r\n\x05state\x18\x06 \x01(\t\x12\x12\n\nbackup_url\x18\x07 \x01(\t\x12 \n\x18\x63urrent_restoring_backup\x18\x08 \x01(\t\"a\n\x1bSnapshotPurgeStatusResponse\x12\x12\n\nis_purging\x18\x01 \x01(\x08\x12\r\n\x05\x65rror\x18\x02 \x01(\t\x12\x10\n\x08progress\x18\x03 \x01(\x05\x12\r\n\x05state\x18\x04 \x01(\t\"\x83\x01\n\x1cReplicaRebuildStatusResponse\x12\x15\n\ris_rebuilding\x18\x01 \x01(\x08\x12\r\n\x05\x65rror\x18\x02 \x01(\t\x12\x10\n\x08progress\x18\x03 \x01(\x05\x12\r\n\x05state\x18\x04 \x01(\t\x12\x1c\n\x14\x66rom_replica_address\x18\x05 \x01(\t\"\x96\x01\n\x1bSnapshotCloneStatusResponse\x12\x12\n\nis_cloning\x18\x01 \x01(\x08\x12\r\n\x05\x65rror\x18\x02 \x01(\t\x12\x10\n\x08progress\x18\x03 \x01(\x05\x12\r\n\x05state\x18\x04 \x01(\t\x12\x1c\n\x14\x66rom_replica_address\x18\x05 \x01(\t\x12\x15\n\rsnapshot_name\x18\x06 \x01(\t\"<\n\x13SnapshotHashRequest\x12\x15\n\rsnapshot_name\x18\x01 \x01(\t\x12\x0e\n\x06rehash\x18\x02 \x01(\x08\"2\n\x19SnapshotHashStatusRequest\x12\x15\n\rsnapshot_name\x18\x01 \x01(\t\"h\n\x1aSnapshotHashStatusResponse\x12\r\n\x05state\x18\x01 \x01(\t\x12\x10\n\x08\x63hecksum\x18\x02 \x01(\t\x12\r\n\x05\x65rror\x18\x03 \x01(\t\x12\x1a\n\x12silently_corrupted\x18\x04 \x01(\x08\"2\n\x19SnapshotHashCancelRequest\x12\x15\n\rsnapshot_name\x18\x01 \x01(\t\"2\n\x1dSnapshotHashLockStateResponse\x12\x11\n\tis_locked\x18\x01 \x01(\x08\x32\xc4\x0c\n\x10SyncAgentService\x12\x41\n\nFileRemove\x12\x19.ptypes.FileRemoveRequest\x1a\x16.google.protobuf.Empty\"\x00\x12\x41\n\nFileRename\x12\x19.ptypes.FileRenameRequest\x1a\x16.google.protobuf.Empty\"\x00\x12=\n\x08\x46ileSend\x12\x17.ptypes.FileSendRequest\x1a\x16.google.protobuf.Empty\"\x00\x12?\n\tFilesSync\x12\x18.ptypes.FilesSyncRequest\x1a\x16.google.protobuf.Empty\"\x00\x12G\n\rSnapshotClone\x12\x1c.ptypes.SnapshotCloneRequest\x1a\x16.google.protobuf.Empty\"\x00\x12\x45\n\x0cVolumeExport\x12\x1b.ptypes.VolumeExportRequest\x1a\x16.google.protobuf.Empty\"\x00\x12Q\n\x0eReceiverLaunch\x12\x1d.ptypes.ReceiverLaunchRequest\x1a\x1e.ptypes.ReceiverLaunchResponse\"\x00\x12K\n\x0c\x42\x61\x63kupCreate\x12\x1b.ptypes.BackupCreateRequest\x1a\x1c.ptypes.BackupCreateResponse\"\x00\x12\x45\n\x0c\x42\x61\x63kupRemove\x12\x1b.ptypes.BackupRemoveRequest\x1a\x16.google.protobuf.Empty\"\x00\x12G\n\rBackupRestore\x12\x1c.ptypes.BackupRestoreRequest\x1a\x16.google.protobuf.Empty\"\x00\x12K\n\x0c\x42\x61\x63kupStatus\x12\x1b.ptypes.BackupStatusRequest\x1a\x1c.ptypes.BackupStatusResponse\"\x00\x12\x39\n\x05Reset\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.Empty\"\x00\x12H\n\rRestoreStatus\x12\x16.google.protobuf.Empty\x1a\x1d.ptypes.RestoreStatusResponse\"\x00\x12\x41\n\rSnapshotPurge\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.Empty\"\x00\x12T\n\x13SnapshotPurgeStatus\x12\x16.google.protobuf.Empty\x1a#.ptypes.SnapshotPurgeStatusResponse\"\x00\x12V\n\x14ReplicaRebuildStatus\x12\x16.google.protobuf.Empty\x1a$.ptypes.ReplicaRebuildStatusResponse\"\x00\x12T\n\x13SnapshotCloneStatus\x12\x16.google.protobuf.Empty\x1a#.ptypes.SnapshotCloneStatusResponse\"\x00\x12\x45\n\x0cSnapshotHash\x12\x1b.ptypes.SnapshotHashRequest\x1a\x16.google.protobuf.Empty\"\x00\x12]\n\x12SnapshotHashStatus\x12!.ptypes.SnapshotHashStatusRequest\x1a\".ptypes.SnapshotHashStatusResponse\"\x00\x12Q\n\x12SnapshotHashCancel\x12!.ptypes.SnapshotHashCancelRequest\x1a\x16.google.protobuf.Empty\"\x00\x12X\n\x15SnapshotHashLockState\x12\x16.google.protobuf.Empty\x1a%.ptypes.SnapshotHashLockStateResponse\"\x00\x62\x06proto3')
+  serialized_pb=_b('\n\x0fsyncagent.proto\x12\x06ptypes\x1a\x1bgoogle/protobuf/empty.proto\x1a\x0c\x63ommon.proto\"&\n\x11\x46ileRemoveRequest\x12\x11\n\tfile_name\x18\x01 \x01(\t\"A\n\x11\x46ileRenameRequest\x12\x15\n\rold_file_name\x18\x01 \x01(\t\x12\x15\n\rnew_file_name\x18\x02 \x01(\t\"-\n\x15ReceiverLaunchRequest\x12\x14\n\x0cto_file_name\x18\x01 \x01(\t\"&\n\x16ReceiverLaunchResponse\x12\x0c\n\x04port\x18\x01 \x01(\x05\"\x7f\n\x0f\x46ileSendRequest\x12\x16\n\x0e\x66rom_file_name\x18\x01 \x01(\t\x12\x0c\n\x04host\x18\x02 \x01(\t\x12\x0c\n\x04port\x18\x03 \x01(\x05\x12\x11\n\tfast_sync\x18\x04 \x01(\x08\x12%\n\x1d\x66ile_sync_http_client_timeout\x18\x05 \x01(\x05\"\xa6\x01\n\x10\x46ilesSyncRequest\x12\x14\n\x0c\x66rom_address\x18\x01 \x01(\t\x12\x0f\n\x07to_host\x18\x02 \x01(\t\x12\x31\n\x13sync_file_info_list\x18\x03 \x03(\x0b\x32\x14.ptypes.SyncFileInfo\x12\x11\n\tfast_sync\x18\x04 \x01(\x08\x12%\n\x1d\x66ile_sync_http_client_timeout\x18\x05 \x01(\x05\"\xc1\x01\n\x14SnapshotCloneRequest\x12\x14\n\x0c\x66rom_address\x18\x01 \x01(\t\x12\x0f\n\x07to_host\x18\x02 \x01(\t\x12\x1a\n\x12snapshot_file_name\x18\x03 \x01(\t\x12%\n\x1d\x65xport_backing_image_if_exist\x18\x04 \x01(\x08\x12%\n\x1d\x66ile_sync_http_client_timeout\x18\x05 \x01(\x05\x12\x18\n\x10\x66rom_volume_name\x18\x06 \x01(\t\"\x9b\x01\n\x13VolumeExportRequest\x12\x1a\n\x12snapshot_file_name\x18\x01 \x01(\t\x12\x0c\n\x04host\x18\x02 \x01(\t\x12\x0c\n\x04port\x18\x03 \x01(\x05\x12%\n\x1d\x65xport_backing_image_if_exist\x18\x04 \x01(\x08\x12%\n\x1d\x66ile_sync_http_client_timeout\x18\x05 \x01(\x05\"\x84\x03\n\x13\x42\x61\x63kupCreateRequest\x12\x1a\n\x12snapshot_file_name\x18\x01 \x01(\t\x12\x15\n\rbackup_target\x18\x02 \x01(\t\x12\x13\n\x0bvolume_name\x18\x03 \x01(\t\x12\x0e\n\x06labels\x18\x04 \x03(\t\x12?\n\ncredential\x18\x05 \x03(\x0b\x32+.ptypes.BackupCreateRequest.CredentialEntry\x12\x1a\n\x12\x62\x61\x63king_image_name\x18\x06 \x01(\t\x12\x1e\n\x16\x62\x61\x63king_image_checksum\x18\x07 \x01(\t\x12\x13\n\x0b\x62\x61\x63kup_name\x18\x08 \x01(\t\x12\x1a\n\x12\x63ompression_method\x18\t \x01(\t\x12\x18\n\x10\x63oncurrent_limit\x18\n \x01(\x05\x12\x1a\n\x12storage_class_name\x18\x0b \x01(\t\x1a\x31\n\x0f\x43redentialEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\">\n\x14\x42\x61\x63kupCreateResponse\x12\x0e\n\x06\x62\x61\x63kup\x18\x01 \x01(\t\x12\x16\n\x0eis_incremental\x18\x02 \x01(\x08\"%\n\x13\x42\x61\x63kupRemoveRequest\x12\x0e\n\x06\x62\x61\x63kup\x18\x01 \x01(\t\"%\n\x13\x42\x61\x63kupStatusRequest\x12\x0e\n\x06\x62\x61\x63kup\x18\x01 \x01(\t\"q\n\x14\x42\x61\x63kupStatusResponse\x12\x10\n\x08progress\x18\x01 \x01(\x05\x12\x12\n\nbackup_url\x18\x02 \x01(\t\x12\r\n\x05\x65rror\x18\x03 \x01(\t\x12\x15\n\rsnapshot_name\x18\x04 \x01(\t\x12\r\n\x05state\x18\x05 \x01(\t\"\xd1\x01\n\x14\x42\x61\x63kupRestoreRequest\x12\x0e\n\x06\x62\x61\x63kup\x18\x01 \x01(\t\x12\x1a\n\x12snapshot_disk_name\x18\x02 \x01(\t\x12@\n\ncredential\x18\x03 \x03(\x0b\x32,.ptypes.BackupRestoreRequest.CredentialEntry\x12\x18\n\x10\x63oncurrent_limit\x18\x04 \x01(\x05\x1a\x31\n\x0f\x43redentialEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xa7\x02\n!BackupRestoreIncrementallyRequest\x12\x0e\n\x06\x62\x61\x63kup\x18\x01 \x01(\t\x12\x17\n\x0f\x64\x65lta_file_name\x18\x02 \x01(\t\x12!\n\x19last_restored_backup_name\x18\x03 \x01(\t\x12\x1a\n\x12snapshot_disk_name\x18\x04 \x01(\t\x12M\n\ncredential\x18\x05 \x03(\x0b\x32\x39.ptypes.BackupRestoreIncrementallyRequest.CredentialEntry\x12\x18\n\x10\x63oncurrent_limit\x18\x06 \x01(\x05\x1a\x31\n\x0f\x43redentialEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xc2\x01\n\x15RestoreStatusResponse\x12\x14\n\x0cis_restoring\x18\x01 \x01(\x08\x12\x15\n\rlast_restored\x18\x02 \x01(\t\x12\x10\n\x08progress\x18\x03 \x01(\x05\x12\r\n\x05\x65rror\x18\x04 \x01(\t\x12\x16\n\x0e\x64\x65st_file_name\x18\x05 \x01(\t\x12\r\n\x05state\x18\x06 \x01(\t\x12\x12\n\nbackup_url\x18\x07 \x01(\t\x12 \n\x18\x63urrent_restoring_backup\x18\x08 \x01(\t\"a\n\x1bSnapshotPurgeStatusResponse\x12\x12\n\nis_purging\x18\x01 \x01(\x08\x12\r\n\x05\x65rror\x18\x02 \x01(\t\x12\x10\n\x08progress\x18\x03 \x01(\x05\x12\r\n\x05state\x18\x04 \x01(\t\"\x83\x01\n\x1cReplicaRebuildStatusResponse\x12\x15\n\ris_rebuilding\x18\x01 \x01(\x08\x12\r\n\x05\x65rror\x18\x02 \x01(\t\x12\x10\n\x08progress\x18\x03 \x01(\x05\x12\r\n\x05state\x18\x04 \x01(\t\x12\x1c\n\x14\x66rom_replica_address\x18\x05 \x01(\t\"\x96\x01\n\x1bSnapshotCloneStatusResponse\x12\x12\n\nis_cloning\x18\x01 \x01(\x08\x12\r\n\x05\x65rror\x18\x02 \x01(\t\x12\x10\n\x08progress\x18\x03 \x01(\x05\x12\r\n\x05state\x18\x04 \x01(\t\x12\x1c\n\x14\x66rom_replica_address\x18\x05 \x01(\t\x12\x15\n\rsnapshot_name\x18\x06 \x01(\t\"<\n\x13SnapshotHashRequest\x12\x15\n\rsnapshot_name\x18\x01 \x01(\t\x12\x0e\n\x06rehash\x18\x02 \x01(\x08\"2\n\x19SnapshotHashStatusRequest\x12\x15\n\rsnapshot_name\x18\x01 \x01(\t\"h\n\x1aSnapshotHashStatusResponse\x12\r\n\x05state\x18\x01 \x01(\t\x12\x10\n\x08\x63hecksum\x18\x02 \x01(\t\x12\r\n\x05\x65rror\x18\x03 \x01(\t\x12\x1a\n\x12silently_corrupted\x18\x04 \x01(\x08\"2\n\x19SnapshotHashCancelRequest\x12\x15\n\rsnapshot_name\x18\x01 \x01(\t\"2\n\x1dSnapshotHashLockStateResponse\x12\x11\n\tis_locked\x18\x01 \x01(\x08\x32\xc4\x0c\n\x10SyncAgentService\x12\x41\n\nFileRemove\x12\x19.ptypes.FileRemoveRequest\x1a\x16.google.protobuf.Empty\"\x00\x12\x41\n\nFileRename\x12\x19.ptypes.FileRenameRequest\x1a\x16.google.protobuf.Empty\"\x00\x12=\n\x08\x46ileSend\x12\x17.ptypes.FileSendRequest\x1a\x16.google.protobuf.Empty\"\x00\x12?\n\tFilesSync\x12\x18.ptypes.FilesSyncRequest\x1a\x16.google.protobuf.Empty\"\x00\x12G\n\rSnapshotClone\x12\x1c.ptypes.SnapshotCloneRequest\x1a\x16.google.protobuf.Empty\"\x00\x12\x45\n\x0cVolumeExport\x12\x1b.ptypes.VolumeExportRequest\x1a\x16.google.protobuf.Empty\"\x00\x12Q\n\x0eReceiverLaunch\x12\x1d.ptypes.ReceiverLaunchRequest\x1a\x1e.ptypes.ReceiverLaunchResponse\"\x00\x12K\n\x0c\x42\x61\x63kupCreate\x12\x1b.ptypes.BackupCreateRequest\x1a\x1c.ptypes.BackupCreateResponse\"\x00\x12\x45\n\x0c\x42\x61\x63kupRemove\x12\x1b.ptypes.BackupRemoveRequest\x1a\x16.google.protobuf.Empty\"\x00\x12G\n\rBackupRestore\x12\x1c.ptypes.BackupRestoreRequest\x1a\x16.google.protobuf.Empty\"\x00\x12K\n\x0c\x42\x61\x63kupStatus\x12\x1b.ptypes.BackupStatusRequest\x1a\x1c.ptypes.BackupStatusResponse\"\x00\x12\x39\n\x05Reset\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.Empty\"\x00\x12H\n\rRestoreStatus\x12\x16.google.protobuf.Empty\x1a\x1d.ptypes.RestoreStatusResponse\"\x00\x12\x41\n\rSnapshotPurge\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.Empty\"\x00\x12T\n\x13SnapshotPurgeStatus\x12\x16.google.protobuf.Empty\x1a#.ptypes.SnapshotPurgeStatusResponse\"\x00\x12V\n\x14ReplicaRebuildStatus\x12\x16.google.protobuf.Empty\x1a$.ptypes.ReplicaRebuildStatusResponse\"\x00\x12T\n\x13SnapshotCloneStatus\x12\x16.google.protobuf.Empty\x1a#.ptypes.SnapshotCloneStatusResponse\"\x00\x12\x45\n\x0cSnapshotHash\x12\x1b.ptypes.SnapshotHashRequest\x1a\x16.google.protobuf.Empty\"\x00\x12]\n\x12SnapshotHashStatus\x12!.ptypes.SnapshotHashStatusRequest\x1a\".ptypes.SnapshotHashStatusResponse\"\x00\x12Q\n\x12SnapshotHashCancel\x12!.ptypes.SnapshotHashCancelRequest\x1a\x16.google.protobuf.Empty\"\x00\x12X\n\x15SnapshotHashLockState\x12\x16.google.protobuf.Empty\x1a%.ptypes.SnapshotHashLockStateResponse\"\x00\x62\x06proto3')
   ,
   dependencies=[google_dot_protobuf_dot_empty__pb2.DESCRIPTOR,common__pb2.DESCRIPTOR,])
 
@@ -320,6 +320,13 @@ _SNAPSHOTCLONEREQUEST = _descriptor.Descriptor(
       message_type=None, enum_type=None, containing_type=None,
       is_extension=False, extension_scope=None,
       serialized_options=None, file=DESCRIPTOR),
+    _descriptor.FieldDescriptor(
+      name='from_volume_name', full_name='ptypes.SnapshotCloneRequest.from_volume_name', index=5,
+      number=6, type=9, cpp_type=9, label=1,
+      has_default_value=False, default_value=_b("").decode('utf-8'),
+      message_type=None, enum_type=None, containing_type=None,
+      is_extension=False, extension_scope=None,
+      serialized_options=None, file=DESCRIPTOR),
   ],
   extensions=[
   ],
@@ -333,7 +340,7 @@ _SNAPSHOTCLONEREQUEST = _descriptor.Descriptor(
   oneofs=[
   ],
   serialized_start=563,
-  serialized_end=730,
+  serialized_end=756,
 )
 
 
@@ -391,8 +398,8 @@ _VOLUMEEXPORTREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=733,
-  serialized_end=888,
+  serialized_start=759,
+  serialized_end=914,
 )
 
 
@@ -429,8 +436,8 @@ _BACKUPCREATEREQUEST_CREDENTIALENTRY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1230,
-  serialized_end=1279,
+  serialized_start=1256,
+  serialized_end=1305,
 )
 
 _BACKUPCREATEREQUEST = _descriptor.Descriptor(
@@ -529,8 +536,8 @@ _BACKUPCREATEREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=891,
-  serialized_end=1279,
+  serialized_start=917,
+  serialized_end=1305,
 )
 
 
@@ -567,8 +574,8 @@ _BACKUPCREATERESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1281,
-  serialized_end=1343,
+  serialized_start=1307,
+  serialized_end=1369,
 )
 
 
@@ -598,8 +605,8 @@ _BACKUPREMOVEREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1345,
-  serialized_end=1382,
+  serialized_start=1371,
+  serialized_end=1408,
 )
 
 
@@ -629,8 +636,8 @@ _BACKUPSTATUSREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1384,
-  serialized_end=1421,
+  serialized_start=1410,
+  serialized_end=1447,
 )
 
 
@@ -688,8 +695,8 @@ _BACKUPSTATUSRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1423,
-  serialized_end=1536,
+  serialized_start=1449,
+  serialized_end=1562,
 )
 
 
@@ -726,8 +733,8 @@ _BACKUPRESTOREREQUEST_CREDENTIALENTRY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1230,
-  serialized_end=1279,
+  serialized_start=1256,
+  serialized_end=1305,
 )
 
 _BACKUPRESTOREREQUEST = _descriptor.Descriptor(
@@ -777,8 +784,8 @@ _BACKUPRESTOREREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1539,
-  serialized_end=1748,
+  serialized_start=1565,
+  serialized_end=1774,
 )
 
 
@@ -815,8 +822,8 @@ _BACKUPRESTOREINCREMENTALLYREQUEST_CREDENTIALENTRY = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1230,
-  serialized_end=1279,
+  serialized_start=1256,
+  serialized_end=1305,
 )
 
 _BACKUPRESTOREINCREMENTALLYREQUEST = _descriptor.Descriptor(
@@ -880,8 +887,8 @@ _BACKUPRESTOREINCREMENTALLYREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=1751,
-  serialized_end=2046,
+  serialized_start=1777,
+  serialized_end=2072,
 )
 
 
@@ -960,8 +967,8 @@ _RESTORESTATUSRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2049,
-  serialized_end=2243,
+  serialized_start=2075,
+  serialized_end=2269,
 )
 
 
@@ -1012,8 +1019,8 @@ _SNAPSHOTPURGESTATUSRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2245,
-  serialized_end=2342,
+  serialized_start=2271,
+  serialized_end=2368,
 )
 
 
@@ -1071,8 +1078,8 @@ _REPLICAREBUILDSTATUSRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2345,
-  serialized_end=2476,
+  serialized_start=2371,
+  serialized_end=2502,
 )
 
 
@@ -1137,8 +1144,8 @@ _SNAPSHOTCLONESTATUSRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2479,
-  serialized_end=2629,
+  serialized_start=2505,
+  serialized_end=2655,
 )
 
 
@@ -1175,8 +1182,8 @@ _SNAPSHOTHASHREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2631,
-  serialized_end=2691,
+  serialized_start=2657,
+  serialized_end=2717,
 )
 
 
@@ -1206,8 +1213,8 @@ _SNAPSHOTHASHSTATUSREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2693,
-  serialized_end=2743,
+  serialized_start=2719,
+  serialized_end=2769,
 )
 
 
@@ -1258,8 +1265,8 @@ _SNAPSHOTHASHSTATUSRESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2745,
-  serialized_end=2849,
+  serialized_start=2771,
+  serialized_end=2875,
 )
 
 
@@ -1289,8 +1296,8 @@ _SNAPSHOTHASHCANCELREQUEST = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2851,
-  serialized_end=2901,
+  serialized_start=2877,
+  serialized_end=2927,
 )
 
 
@@ -1320,8 +1327,8 @@ _SNAPSHOTHASHLOCKSTATERESPONSE = _descriptor.Descriptor(
   extension_ranges=[],
   oneofs=[
   ],
-  serialized_start=2903,
-  serialized_end=2953,
+  serialized_start=2929,
+  serialized_end=2979,
 )
 
 _FILESSYNCREQUEST.fields_by_name['sync_file_info_list'].message_type = common__pb2._SYNCFILEINFO
@@ -1560,8 +1567,8 @@ _SYNCAGENTSERVICE = _descriptor.ServiceDescriptor(
   file=DESCRIPTOR,
   index=0,
   serialized_options=None,
-  serialized_start=2956,
-  serialized_end=4560,
+  serialized_start=2982,
+  serialized_end=4586,
   methods=[
   _descriptor.MethodDescriptor(
     name='FileRemove',

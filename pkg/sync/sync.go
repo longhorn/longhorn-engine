@@ -798,7 +798,7 @@ func (t *Task) RebuildStatus() (map[string]*ReplicaRebuildStatus, error) {
 	return replicaStatusMap, nil
 }
 
-func CloneSnapshot(engineControllerClient, fromControllerClient *client.ControllerClient, volumeName,
+func CloneSnapshot(engineControllerClient, fromControllerClient *client.ControllerClient, volumeName, fromVolumeName,
 	snapshotFileName string, exportBackingImageIfExist bool, fileSyncHTTPClientTimeout int) error {
 	replicas, err := fromControllerClient.ReplicaList()
 	if err != nil {
@@ -841,7 +841,8 @@ func CloneSnapshot(engineControllerClient, fromControllerClient *client.Controll
 				return
 			}
 			defer repClient.Close()
-			if err := repClient.CloneSnapshot(sourceReplica.Address, snapshotFileName, exportBackingImageIfExist, fileSyncHTTPClientTimeout); err != nil {
+			if err := repClient.CloneSnapshot(sourceReplica.Address, fromVolumeName, snapshotFileName,
+				exportBackingImageIfExist, fileSyncHTTPClientTimeout); err != nil {
 				syncErrorMap.Store(r.Address, err)
 			}
 		}(r)
