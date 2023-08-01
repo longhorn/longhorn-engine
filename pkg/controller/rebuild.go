@@ -53,12 +53,12 @@ func (c *Controller) VerifyRebuildReplica(address, instanceName string) error {
 		return fmt.Errorf("invalid mode %v for replica %v to check", replica.Mode, address)
 	}
 
-	fromDisks, _, err := GetReplicaDisksAndHead(rwReplica.Address, c.Name, "")
+	fromDisks, _, err := GetReplicaDisksAndHead(rwReplica.Address, c.VolumeName, "")
 	if err != nil {
 		return err
 	}
 
-	toDisks, _, err := GetReplicaDisksAndHead(address, c.Name, instanceName)
+	toDisks, _, err := GetReplicaDisksAndHead(address, c.VolumeName, instanceName)
 	if err != nil {
 		return err
 	}
@@ -146,12 +146,12 @@ func (c *Controller) PrepareRebuildReplica(address, instanceName string) ([]type
 		return nil, fmt.Errorf("invalid mode %v for replica %v to prepare rebuild", replica.Mode, address)
 	}
 
-	fromDisks, fromHead, err := GetReplicaDisksAndHead(rwReplica.Address, c.Name, "")
+	fromDisks, fromHead, err := GetReplicaDisksAndHead(rwReplica.Address, c.VolumeName, "")
 	if err != nil {
 		return nil, err
 	}
 
-	toDisks, toHead, err := GetReplicaDisksAndHead(address, c.Name, instanceName)
+	toDisks, toHead, err := GetReplicaDisksAndHead(address, c.VolumeName, instanceName)
 	if err != nil {
 		return nil, err
 	}
@@ -178,12 +178,12 @@ func (c *Controller) PrepareRebuildReplica(address, instanceName string) ([]type
 		delete(extraDisks, diskName)
 	}
 
-	if err := removeExtraDisks(extraDisks, address, c.Name, instanceName); err != nil {
+	if err := removeExtraDisks(extraDisks, address, c.VolumeName, instanceName); err != nil {
 		return nil, err
 	}
 
 	// The lock will block the read/write for this head file sync
-	if err := syncFile(fromHead+".meta", toHead+".meta", rwReplica.Address, address, c.Name, instanceName,
+	if err := syncFile(fromHead+".meta", toHead+".meta", rwReplica.Address, address, c.VolumeName, instanceName,
 		c.fileSyncHTTPClientTimeout, false); err != nil {
 		return nil, err
 	}

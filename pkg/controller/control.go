@@ -23,7 +23,7 @@ import (
 
 type Controller struct {
 	sync.RWMutex
-	Name                      string
+	VolumeName                string
 	size                      int64
 	sectorSize                int64
 	replicas                  []types.Replica
@@ -70,7 +70,7 @@ func NewController(name string, factory types.BackendFactory, frontend types.Fro
 	iscsiTargetRequestTimeout, engineReplicaTimeout time.Duration, dataServerProtocol types.DataServerProtocol, fileSyncHTTPClientTimeout int) *Controller {
 	c := &Controller{
 		factory:       factory,
-		Name:          name,
+		VolumeName:    name,
 		frontend:      frontend,
 		metrics:       &types.Metrics{},
 		latestMetrics: &types.Metrics{},
@@ -164,7 +164,7 @@ func (c *Controller) addReplica(address string, snapshotRequired bool, mode type
 		return err
 	}
 
-	newBackend, err := c.factory.Create(c.Name, address, c.DataServerProtocol, c.engineReplicaTimeout)
+	newBackend, err := c.factory.Create(c.VolumeName, address, c.DataServerProtocol, c.engineReplicaTimeout)
 	if err != nil {
 		return err
 	}
@@ -183,7 +183,7 @@ func (c *Controller) addReplica(address string, snapshotRequired bool, mode type
 // Snapshot will try to freeze the filesystem of the volume if possible
 // and will fallback to a system level sync in all other cases
 func (c *Controller) Snapshot(name string, labels map[string]string) (string, error) {
-	log := logrus.WithFields(logrus.Fields{"volume": c.Name, "snapshot": name})
+	log := logrus.WithFields(logrus.Fields{"volume": c.VolumeName, "snapshot": name})
 	log.Info("Starting snapshot")
 	if ne, err := iutil.NewNamespaceExecutor(util.GetInitiatorNS()); err != nil {
 		log.WithError(err).Errorf("WARNING: continue to snapshot for %v, but cannot sync due to cannot get the namespace executor", name)
@@ -237,11 +237,11 @@ func (c *Controller) Expand(size int64) error {
 		// We perform a system level sync without the lock. Cannot block read/write
 		// Can be improved to only sync the filesystem on the block device later
 		if ne, err := iutil.NewNamespaceExecutor(util.GetInitiatorNS()); err != nil {
-			logrus.WithError(err).Errorf("WARNING: continue to expand to size %v for %v, but cannot sync due to cannot get the namespace executor", size, c.Name)
+			logrus.WithError(err).Errorf("WARNING: continue to expand to size %v for %v, but cannot sync due to cannot get the namespace executor", size, c.VolumeName)
 		} else {
 			if _, err := ne.ExecuteWithTimeout(syncTimeout, "sync", []string{}); err != nil {
 				// sync should never fail though, so it more like due to the nsenter
-				logrus.WithError(err).Errorf("WARNING: continue to expand to size %v for %v, but sync failed", size, c.Name)
+				logrus.WithError(err).Errorf("WARNING: continue to expand to size %v for %v, but sync failed", size, c.VolumeName)
 			}
 		}
 
@@ -298,7 +298,7 @@ func (c *Controller) startExpansion(size int64) (err error) {
 		return fmt.Errorf("requested expansion size %v not multiple of volume sector size %v", size, diskutil.VolumeSectorSize)
 	}
 	if c.size == size {
-		logrus.Infof("controller %v is already expanded to size %v", c.Name, size)
+		logrus.Infof("controller %v is already expanded to size %v", c.VolumeName, size)
 		return nil
 	}
 	if c.size > size {
@@ -449,13 +449,13 @@ func (c *Controller) startFrontend() error {
 	if len(c.replicas) > 0 && c.frontend != nil {
 		if c.isUpgrade {
 			logrus.Info("Upgrading frontend")
-			if err := c.frontend.Upgrade(c.Name, c.size, c.sectorSize, c); err != nil {
+			if err := c.frontend.Upgrade(c.VolumeName, c.size, c.sectorSize, c); err != nil {
 				logrus.WithError(err).Error("Failed to upgrade frontend")
 				return errors.Wrap(err, "failed to upgrade frontend")
 			}
 			return nil
 		}
-		if err := c.frontend.Init(c.Name, c.size, c.sectorSize); err != nil {
+		if err := c.frontend.Init(c.VolumeName, c.size, c.sectorSize); err != nil {
 			logrus.WithError(err).Error("Failed to init frontend")
 			return errors.Wrap(err, "failed to init frontend")
 		}
@@ -728,7 +728,7 @@ func (c *Controller) Start(volumeSize, volumeCurrentSize int64, addresses ...str
 	errorCodes := map[string]codes.Code{}
 	first := true
 	for _, address := range addresses {
-		newBackend, err := c.factory.Create(c.Name, address, c.DataServerProtocol, c.engineReplicaTimeout)
+		newBackend, err := c.factory.Create(c.VolumeName, address, c.DataServerProtocol, c.engineReplicaTimeout)
 		if err != nil {
 			if strings.Contains(err.Error(), "rpc error: code = Unavailable") {
 				errorCodes[address] = codes.Unavailable
