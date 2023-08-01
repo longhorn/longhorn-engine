@@ -30,6 +30,7 @@ func (c ControllerServiceContext) Close() error {
 
 type ControllerClient struct {
 	serviceURL string
+	VolumeName string
 	ControllerServiceContext
 }
 
@@ -63,6 +64,7 @@ func NewControllerClient(address, volumeName, instanceName string) (*ControllerC
 
 	return &ControllerClient{
 		serviceURL:               serviceURL,
+		VolumeName:               volumeName,
 		ControllerServiceContext: serviceContext,
 	}, nil
 }
