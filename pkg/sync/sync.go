@@ -19,8 +19,7 @@ import (
 )
 
 type Task struct {
-	client     *client.ControllerClient
-	volumeName string
+	client *client.ControllerClient
 }
 
 type TaskError struct {
@@ -118,8 +117,7 @@ func NewTask(ctx context.Context, controllerAddress, volumeName, controllerInsta
 	}()
 
 	return &Task{
-		client:     controllerClient,
-		volumeName: volumeName,
+		client: controllerClient,
 	}, nil
 }
 
@@ -189,7 +187,7 @@ func (t *Task) PurgeSnapshots(skip bool) error {
 			defer wg.Done()
 
 			// We don't know the replica's instanceName, so create a client without it.
-			repClient, err := replicaClient.NewReplicaClient(rep.Address, t.volumeName, "")
+			repClient, err := replicaClient.NewReplicaClient(rep.Address, t.client.VolumeName, "")
 			if err != nil {
 				errorMap.Store(rep.Address, errors.Wrapf(err, "failed to get replica client %v before purging", rep.Address))
 				return
@@ -243,7 +241,7 @@ func (t *Task) PurgeSnapshotStatus() (map[string]*SnapshotPurgeStatus, error) {
 		}
 
 		// We don't know the replica's instanceName, so create a client without it.
-		repClient, err := replicaClient.NewReplicaClient(r.Address, t.volumeName, "")
+		repClient, err := replicaClient.NewReplicaClient(r.Address, t.client.VolumeName, "")
 		if err != nil {
 			return nil, err
 		}
@@ -269,7 +267,7 @@ func (t *Task) PurgeSnapshotStatus() (map[string]*SnapshotPurgeStatus, error) {
 
 func (t *Task) isRebuilding(replicaInController *types.ControllerReplicaInfo) (bool, error) {
 	// We don't know the replica's instanceName, so create a client without it.
-	repClient, err := replicaClient.NewReplicaClient(replicaInController.Address, t.volumeName, "")
+	repClient, err := replicaClient.NewReplicaClient(replicaInController.Address, t.client.VolumeName, "")
 	if err != nil {
 		return false, err
 	}
@@ -285,7 +283,7 @@ func (t *Task) isRebuilding(replicaInController *types.ControllerReplicaInfo) (b
 
 func (t *Task) isHashingSnapshot(replicaInController *types.ControllerReplicaInfo) (bool, error) {
 	// We don't know the replica's instanceName, so create a client without it.
-	repClient, err := replicaClient.NewReplicaClient(replicaInController.Address, t.volumeName, "")
+	repClient, err := replicaClient.NewReplicaClient(replicaInController.Address, t.client.VolumeName, "")
 	if err != nil {
 		return false, err
 	}
@@ -301,7 +299,7 @@ func (t *Task) isHashingSnapshot(replicaInController *types.ControllerReplicaInf
 
 func (t *Task) isPurging(replicaInController *types.ControllerReplicaInfo) (bool, error) {
 	// We don't know the replica's instanceName, so create a client without it.
-	repClient, err := replicaClient.NewReplicaClient(replicaInController.Address, t.volumeName, "")
+	repClient, err := replicaClient.NewReplicaClient(replicaInController.Address, t.client.VolumeName, "")
 	if err != nil {
 		return false, err
 	}
@@ -321,7 +319,7 @@ func (t *Task) markSnapshotAsRemoved(replicaInController *types.ControllerReplic
 	}
 
 	// We don't know the replica's instanceName, so create a client without it.
-	repClient, err := replicaClient.NewReplicaClient(replicaInController.Address, t.volumeName, "")
+	repClient, err := replicaClient.NewReplicaClient(replicaInController.Address, t.client.VolumeName, "")
 	if err != nil {
 		return err
 	}
@@ -336,7 +334,7 @@ func (t *Task) markSnapshotAsRemoved(replicaInController *types.ControllerReplic
 
 func (t *Task) cancelSnapshotHashJob(replicaInController *types.ControllerReplicaInfo, snapshot string) error {
 	// We don't know the replica's instanceName, so create a client without it.
-	repClient, err := replicaClient.NewReplicaClient(replicaInController.Address, t.volumeName, "")
+	repClient, err := replicaClient.NewReplicaClient(replicaInController.Address, t.client.VolumeName, "")
 	if err != nil {
 		return err
 	}
@@ -375,7 +373,7 @@ func (t *Task) AddRestoreReplica(volumeSize, volumeCurrentSize int64, address, i
 }
 
 func (t *Task) checkRestoreReplicaSize(address, instanceName string, volumeSize int64) error {
-	replicaCli, err := replicaClient.NewReplicaClient(address, t.volumeName, instanceName)
+	replicaCli, err := replicaClient.NewReplicaClient(address, t.client.VolumeName, instanceName)
 	if err != nil {
 		return err
 	}
@@ -462,7 +460,7 @@ func (t *Task) AddReplica(volumeSize, volumeCurrentSize int64, address, instance
 }
 
 func (t *Task) checkAndResetFailedRebuild(address, instanceName string) error {
-	client, err := replicaClient.NewReplicaClient(address, t.volumeName, instanceName)
+	client, err := replicaClient.NewReplicaClient(address, t.client.VolumeName, instanceName)
 	if err != nil {
 		return err
 	}
@@ -489,7 +487,7 @@ func (t *Task) checkAndResetFailedRebuild(address, instanceName string) error {
 }
 
 func (t *Task) checkAndExpandReplica(address, instanceName string, size int64) error {
-	client, err := replicaClient.NewReplicaClient(address, t.volumeName, instanceName)
+	client, err := replicaClient.NewReplicaClient(address, t.client.VolumeName, instanceName)
 	if err != nil {
 		return err
 	}
@@ -594,7 +592,7 @@ func (t *Task) getFromReplicaClientForTransfer() (*replicaClient.ReplicaClient, 
 			continue
 		}
 		// We don't know the replica's instanceName, so create a client without it.
-		fromClient, err := replicaClient.NewReplicaClient(r.Address, t.volumeName, "")
+		fromClient, err := replicaClient.NewReplicaClient(r.Address, t.client.VolumeName, "")
 		if err != nil {
 			logrus.WithError(err).Warnf("Failed to get the client for replica %v when picking up a transfer-from replica", r.Address)
 			continue
@@ -627,7 +625,7 @@ func (t *Task) getToReplicaClientForTransfer(address, instanceName string) (*rep
 		if r.Mode != types.WO {
 			return nil, "", fmt.Errorf("replica %s is not in mode WO: %s", address, r.Mode)
 		}
-		toClient, err := replicaClient.NewReplicaClient(r.Address, t.volumeName, instanceName)
+		toClient, err := replicaClient.NewReplicaClient(r.Address, t.client.VolumeName, instanceName)
 		if err != nil {
 			return nil, "", err
 		}
@@ -764,7 +762,7 @@ func (t *Task) RebuildStatus() (map[string]*ReplicaRebuildStatus, error) {
 		}
 
 		// We don't know the replica's instanceName, so create a client without it.
-		repClient, err := replicaClient.NewReplicaClient(r.Address, t.volumeName, "")
+		repClient, err := replicaClient.NewReplicaClient(r.Address, t.client.VolumeName, "")
 		if err != nil {
 			return nil, err
 		}
@@ -940,7 +938,7 @@ func (t *Task) HashSnapshot(snapshotName string, rehash bool) error {
 		go func(r *types.ControllerReplicaInfo) {
 			defer wg.Done()
 			// We don't know the replica's instanceName, so create a client without it.
-			repClient, err := replicaClient.NewReplicaClient(r.Address, t.volumeName, "")
+			repClient, err := replicaClient.NewReplicaClient(r.Address, t.client.VolumeName, "")
 			if err != nil {
 				syncErrorMap.Store(r.Address, err)
 				return
@@ -1014,7 +1012,7 @@ func (t *Task) HashSnapshotStatus(snapshotName string) (map[string]*SnapshotHash
 				}
 			}()
 			// We don't know the replica's instanceName, so create a client without it.
-			repClient, err := replicaClient.NewReplicaClient(r.Address, t.volumeName, "")
+			repClient, err := replicaClient.NewReplicaClient(r.Address, t.client.VolumeName, "")
 			if err != nil {
 				err = errors.Wrapf(err, "failed to create replica client to %v", r.Address)
 				return
@@ -1068,7 +1066,7 @@ func (t *Task) HashSnapshotCancel(snapshotName string) error {
 		go func(r *types.ControllerReplicaInfo) {
 			defer wg.Done()
 			// We don't know the replica's instanceName, so create a client without it.
-			repClient, err := replicaClient.NewReplicaClient(r.Address, t.volumeName, "")
+			repClient, err := replicaClient.NewReplicaClient(r.Address, t.client.VolumeName, "")
 			if err != nil {
 				syncErrorMap.Store(r.Address, err)
 				return
