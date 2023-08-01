@@ -83,7 +83,7 @@ func (t *Task) createBackup(replicaInController *types.ControllerReplicaInfo, ba
 	}
 
 	// We don't know the replica's instanceName, so create a client without it.
-	repClient, err := replicaClient.NewReplicaClient(replicaInController.Address, t.volumeName, "")
+	repClient, err := replicaClient.NewReplicaClient(replicaInController.Address, t.client.VolumeName, "")
 	if err != nil {
 		return nil, err
 	}
@@ -185,7 +185,7 @@ func (t *Task) RestoreBackup(backup string, credential map[string]string) error 
 		}
 	}
 
-	snapshots, err := GetSnapshotsInfo(replicas, t.volumeName)
+	snapshots, err := GetSnapshotsInfo(replicas, t.client.VolumeName)
 	if err != nil {
 		return errors.Wrapf(err, "failed to get snapshot info before the incremental restore")
 	}
@@ -267,7 +267,7 @@ func (t *Task) restoreBackup(replicaInController *types.ControllerReplicaInfo, b
 	}
 
 	// We don't know the replica's instanceName, so create a client without it.
-	repClient, err := replicaClient.NewReplicaClient(replicaInController.Address, t.volumeName, "")
+	repClient, err := replicaClient.NewReplicaClient(replicaInController.Address, t.client.VolumeName, "")
 	if err != nil {
 		return err
 	}
@@ -306,7 +306,7 @@ func (t *Task) Reset() error {
 
 	for _, replica := range replicas {
 		// We don't know the replica's instanceName, so create a client without it.
-		repClient, err := replicaClient.NewReplicaClient(replica.Address, t.volumeName, "")
+		repClient, err := replicaClient.NewReplicaClient(replica.Address, t.client.VolumeName, "")
 		if err != nil {
 			logrus.WithError(err).Errorf("Failed to get a replica client for %v", replica.Address)
 			return err
@@ -345,7 +345,7 @@ func (t *Task) RestoreStatus() (map[string]*RestoreStatus, error) {
 		}
 
 		// We don't know the replica's instanceName, so create a client without it.
-		repClient, err := replicaClient.NewReplicaClient(replica.Address, t.volumeName, "")
+		repClient, err := replicaClient.NewReplicaClient(replica.Address, t.client.VolumeName, "")
 		if err != nil {
 			return nil, err
 		}

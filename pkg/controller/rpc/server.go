@@ -79,7 +79,7 @@ func (cs *ControllerServer) syncFileInfoToControllerFormat(info types.SyncFileIn
 func (cs *ControllerServer) getVolume() *ptypes.Volume {
 	lastExpansionError, lastExpansionFailedAt := cs.c.GetExpansionErrorInfo()
 	return &ptypes.Volume{
-		Name:                      cs.c.Name,
+		Name:                      cs.c.VolumeName,
 		Size:                      cs.c.Size(),
 		ReplicaCount:              int32(len(cs.c.ListReplicas())),
 		Endpoint:                  cs.c.Endpoint(),

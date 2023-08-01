@@ -271,9 +271,9 @@ func (s *TestSuite) TestWriteInWOMode(c *C) {
 	readSource := makeByteSliceWithInitialData(dataLength, readSourceInitVal)
 	writeSource := makeByteSliceWithInitialData(dataLength, writeSourceInitVal)
 	controller := Controller{
-		Name:     "test-controller",
-		replicas: []types.Replica{types.Replica{Address: "0.0.0.0", Mode: types.WO}},
-		backend:  newMockReplicator(readSource, writeSource),
+		VolumeName: "test-controller",
+		replicas:   []types.Replica{types.Replica{Address: "0.0.0.0", Mode: types.WO}},
+		backend:    newMockReplicator(readSource, writeSource),
 	}
 
 	for _, t := range testsets {
