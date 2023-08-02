@@ -12,7 +12,8 @@ import (
 	"github.com/urfave/cli"
 	"gopkg.in/cheggaaa/pb.v2"
 
-	iutil "github.com/longhorn/go-iscsi-helper/util"
+	lhexec "github.com/longhorn/go-common-libs/exec"
+	lhtypes "github.com/longhorn/go-common-libs/types"
 
 	"github.com/longhorn/backupstore"
 	"github.com/longhorn/longhorn-engine/pkg/replica"
@@ -187,7 +188,8 @@ func outputFormatSupported(desiredFormat string) bool {
 }
 
 func CheckBackingFileFormat(backingFilePath string) error {
-	output, err := iutil.ExecuteWithoutTimeout(QEMUImageBinary, []string{"info", backingFilePath})
+	exec := lhexec.NewExecutor().Execute
+	output, err := exec(nil, QEMUImageBinary, []string{"info", backingFilePath}, lhtypes.ExecuteNoTimeout)
 	if err != nil {
 		return errors.Wrapf(err, "failed CheckBackingFileFormat %s", backingFilePath)
 	}
@@ -198,7 +200,8 @@ func CheckBackingFileFormat(backingFilePath string) error {
 }
 
 func CopyFile(backingFilepath, outputFile string) error {
-	if _, err := iutil.ExecuteWithoutTimeout("cp", []string{backingFilepath, outputFile}); err != nil {
+	exec := lhexec.NewExecutor().Execute
+	if _, err := exec(nil, "cp", []string{backingFilepath, outputFile}, lhtypes.ExecuteNoTimeout); err != nil {
 		return err
 	}
 	return nil
@@ -229,7 +232,8 @@ func CleanupTempFiles(outputFile string, files ...string) {
 
 func ConvertImage(srcFilepath, dstFilepath, format string) error {
 	logrus.Infof("Start ConvertImage (%s) %s -> %s", format, srcFilepath, dstFilepath)
-	_, err := iutil.ExecuteWithoutTimeout(QEMUImageBinary, []string{"convert", "-O", format, srcFilepath, dstFilepath})
+	exec := lhexec.NewExecutor().Execute
+	_, err := exec(nil, QEMUImageBinary, []string{"convert", "-O", format, srcFilepath, dstFilepath}, lhtypes.ExecuteNoTimeout)
 	if err != nil {
 		return errors.Wrapf(err, "failed convertImage (%s) %s -> %s", format, srcFilepath, dstFilepath)
 	}
@@ -248,7 +252,8 @@ func MergeSnapshotsToBackingFile(snapFilepath, backingFilepath string) error {
 
 func rebaseSnapshot(snapFilepath, backingFilepath string) error {
 	logrus.Infof("Start rebaseSnapshot %s -> %s", snapFilepath, backingFilepath)
-	_, err := iutil.ExecuteWithoutTimeout(QEMUImageBinary, []string{"rebase", "-u", "-b", backingFilepath, "-F", DefaultOutputFormat, snapFilepath})
+	exec := lhexec.NewExecutor().Execute
+	_, err := exec(nil, QEMUImageBinary, []string{"rebase", "-u", "-b", backingFilepath, "-F", DefaultOutputFormat, snapFilepath}, lhtypes.ExecuteNoTimeout)
 	if err != nil {
 		return errors.Wrapf(err, "failed rebaseSnapshot %s -> %s", snapFilepath, backingFilepath)
 	}
@@ -260,7 +265,8 @@ func rebaseSnapshot(snapFilepath, backingFilepath string) error {
 // into a lower-level 'base' image (backingFilepath).
 func commitSnapshot(snapFilepath string) error {
 	logrus.Infof("Start commitSnapshot %s", snapFilepath)
-	_, err := iutil.ExecuteWithoutTimeout(QEMUImageBinary, []string{"commit", snapFilepath})
+	exec := lhexec.NewExecutor().Execute
+	_, err := exec(nil, QEMUImageBinary, []string{"commit", snapFilepath}, lhtypes.ExecuteNoTimeout)
 	if err != nil {
 		return errors.Wrapf(err, "failed commitSnapshot %s", snapFilepath)
 	}
