@@ -12,7 +12,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	"github.com/longhorn/go-iscsi-helper/util"
+	lhtypes "github.com/longhorn/go-common-libs/types"
+	lhutils "github.com/longhorn/go-common-libs/utils"
 )
 
 var (
@@ -39,7 +40,7 @@ func CreateTarget(tid int, name string) error {
 		"--tid", strconv.Itoa(tid),
 		"-T", name,
 	}
-	_, err := util.Execute(tgtBinary, opts)
+	_, err := lhutils.NewExecutor().Execute(nil, tgtBinary, opts, lhtypes.ExecuteDefaultTimeout)
 	return err
 }
 
@@ -51,7 +52,7 @@ func DeleteTarget(tid int) error {
 		"--mode", "target",
 		"--tid", strconv.Itoa(tid),
 	}
-	_, err := util.Execute(tgtBinary, opts)
+	_, err := lhutils.NewExecutor().Execute(nil, tgtBinary, opts, lhtypes.ExecuteDefaultTimeout)
 	return err
 }
 
@@ -66,7 +67,7 @@ func AddLunBackedByFile(tid int, lun int, backingFile string) error {
 		"--lun", strconv.Itoa(lun),
 		"-b", backingFile,
 	}
-	_, err := util.Execute(tgtBinary, opts)
+	_, err := lhutils.NewExecutor().Execute(nil, tgtBinary, opts, lhtypes.ExecuteDefaultTimeout)
 	return err
 }
 
@@ -88,7 +89,7 @@ func AddLun(tid int, lun int, backingFile string, bstype string, bsopts string) 
 	if bsopts != "" {
 		opts = append(opts, "--bsopts", bsopts)
 	}
-	_, err := util.Execute(tgtBinary, opts)
+	_, err := lhutils.NewExecutor().Execute(nil, tgtBinary, opts, lhtypes.ExecuteDefaultTimeout)
 	return err
 }
 
@@ -106,10 +107,9 @@ func UpdateLun(tid int, lun int, params map[string]string) error {
 		for k, v := range params {
 			paramStr += fmt.Sprintf("%s=%s,", k, v)
 		}
-		strings.TrimSuffix(paramStr, ",")
-		opts = append(opts, "--params", paramStr)
+		opts = append(opts, "--params", strings.TrimSuffix(paramStr, ","))
 	}
-	_, err := util.Execute(tgtBinary, opts)
+	_, err := lhutils.NewExecutor().Execute(nil, tgtBinary, opts, lhtypes.ExecuteDefaultTimeout)
 	return err
 }
 
@@ -136,7 +136,7 @@ func DeleteLun(tid int, lun int) error {
 		"--tid", strconv.Itoa(tid),
 		"--lun", strconv.Itoa(lun),
 	}
-	_, err := util.Execute(tgtBinary, opts)
+	_, err := lhutils.NewExecutor().Execute(nil, tgtBinary, opts, lhtypes.ExecuteDefaultTimeout)
 	return err
 }
 
@@ -151,7 +151,7 @@ func ExpandLun(tid, lun int, size int64) error {
 		"--lun", strconv.Itoa(lun),
 		"--params", fmt.Sprintf("bsopts=size=%d", size),
 	}
-	_, err := util.Execute(tgtBinary, opts)
+	_, err := lhutils.NewExecutor().Execute(nil, tgtBinary, opts, lhtypes.ExecuteDefaultTimeout)
 	return err
 }
 
@@ -165,7 +165,7 @@ func BindInitiator(tid int, initiator string) error {
 		"--tid", strconv.Itoa(tid),
 		"-I", initiator,
 	}
-	_, err := util.Execute(tgtBinary, opts)
+	_, err := lhutils.NewExecutor().Execute(nil, tgtBinary, opts, lhtypes.ExecuteDefaultTimeout)
 	return err
 }
 
@@ -179,7 +179,7 @@ func UnbindInitiator(tid int, initiator string) error {
 		"--tid", strconv.Itoa(tid),
 		"-I", initiator,
 	}
-	_, err := util.Execute(tgtBinary, opts)
+	_, err := lhutils.NewExecutor().Execute(nil, tgtBinary, opts, lhtypes.ExecuteDefaultTimeout)
 	return err
 }
 
@@ -241,7 +241,7 @@ func CheckTargetForBackingStore(name string) bool {
 		"--op", "show",
 		"--mode", "system",
 	}
-	output, err := util.Execute(tgtBinary, opts)
+	output, err := lhutils.NewExecutor().Execute(nil, tgtBinary, opts, lhtypes.ExecuteDefaultTimeout)
 	if err != nil {
 		return false
 	}
@@ -256,7 +256,7 @@ func GetTargetTid(name string) (int, error) {
 		"--op", "show",
 		"--mode", "target",
 	}
-	output, err := util.Execute(tgtBinary, opts)
+	output, err := lhutils.NewExecutor().Execute(nil, tgtBinary, opts, lhtypes.ExecuteDefaultTimeout)
 	if err != nil {
 		return -1, err
 	}
@@ -275,7 +275,7 @@ func GetTargetTid(name string) (int, error) {
 			tidString := strings.Fields(strings.Split(scanner.Text(), ":")[0])[1]
 			tid, err = strconv.Atoi(tidString)
 			if err != nil {
-				return -1, errors.Wrapf(err, "BUG: Failed to parse %s, %v", tidString)
+				return -1, errors.Wrapf(err, "BUG: Failed to parse %s", tidString)
 			}
 			break
 		}
@@ -288,7 +288,7 @@ func ShutdownTgtd() error {
 		"--op", "delete",
 		"--mode", "system",
 	}
-	_, err := util.Execute(tgtBinary, opts)
+	_, err := lhutils.NewExecutor().Execute(nil, tgtBinary, opts, lhtypes.ExecuteDefaultTimeout)
 	return err
 }
 
@@ -299,7 +299,7 @@ func GetTargetConnections(tid int) (map[string][]string, error) {
 		"--mode", "conn",
 		"--tid", strconv.Itoa(tid),
 	}
-	output, err := util.Execute(tgtBinary, opts)
+	output, err := lhutils.NewExecutor().Execute(nil, tgtBinary, opts, lhtypes.ExecuteDefaultTimeout)
 	if err != nil {
 		return nil, err
 	}
@@ -362,7 +362,7 @@ func CloseConnection(tid int, sid, cid string) error {
 		"--sid", sid,
 		"--cid", cid,
 	}
-	_, err := util.Execute(tgtBinary, opts)
+	_, err := lhutils.NewExecutor().Execute(nil, tgtBinary, opts, lhtypes.ExecuteDefaultTimeout)
 	return err
 }
 
@@ -373,7 +373,7 @@ func FindNextAvailableTargetID() (int, error) {
 		"--op", "show",
 		"--mode", "target",
 	}
-	output, err := util.Execute(tgtBinary, opts)
+	output, err := lhutils.NewExecutor().Execute(nil, tgtBinary, opts, lhtypes.ExecuteDefaultTimeout)
 	if err != nil {
 		return -1, err
 	}
