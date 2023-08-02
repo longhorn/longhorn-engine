@@ -22,8 +22,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 
-	iutil "github.com/longhorn/go-iscsi-helper/util"
-
 	"github.com/longhorn/longhorn-engine/pkg/types"
 )
 
@@ -321,10 +319,6 @@ func ResolveBackingFilepath(fileOrDirpath string) (string, error) {
 	}
 
 	return fileOrDirpath, nil
-}
-
-func GetInitiatorNS() string {
-	return iutil.GetHostNamespacePath(HostProc)
 }
 
 func GetFunctionName(i interface{}) string {

@@ -14,6 +14,7 @@ require (
 	github.com/gorilla/handlers v1.4.2
 	github.com/gorilla/mux v1.7.3
 	github.com/longhorn/backupstore v0.0.0-20230606110118-7c0666bcb0cf
+	github.com/longhorn/go-common-libs v0.0.0-20230731043935-7ce1fc025098
 	github.com/longhorn/go-iscsi-helper v0.0.0-20230215054929-acb305e1031b
 	github.com/longhorn/sparse-tools v0.0.0-20230408015858-c849def39d3c
 	github.com/moby/moby v20.10.20+incompatible
@@ -42,7 +43,6 @@ require (
 	github.com/jmespath/go-jmespath v0.3.0 // indirect
 	github.com/kr/pretty v0.2.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
-	github.com/longhorn/go-common-libs v0.0.0-20230731043935-7ce1fc025098 // indirect
 	github.com/mattn/go-colorable v0.1.4 // indirect
 	github.com/mattn/go-runewidth v0.0.5-0.20181218000649-703b5e6b11ae // indirect
 	github.com/moby/sys/mountinfo v0.6.2 // indirect
