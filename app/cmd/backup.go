@@ -10,6 +10,7 @@ import (
 	"github.com/urfave/cli"
 
 	"github.com/longhorn/backupstore/cmd"
+	butil "github.com/longhorn/backupstore/util"
 
 	replicaClient "github.com/longhorn/longhorn-engine/pkg/replica/client"
 	"github.com/longhorn/longhorn-engine/pkg/sync"
@@ -262,7 +263,7 @@ func createBackup(c *cli.Context) error {
 		}
 	}
 
-	credential, err := util.GetBackupCredential(dest)
+	credential, err := butil.GetBackupCredential(dest)
 	if err != nil {
 		return err
 	}
@@ -308,7 +309,7 @@ func restoreBackup(c *cli.Context) error {
 	}
 	backupURL := util.UnescapeURL(backup)
 
-	credential, err := util.GetBackupCredential(backup)
+	credential, err := butil.GetBackupCredential(backup)
 	if err != nil {
 		return err
 	}
