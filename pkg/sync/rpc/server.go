@@ -22,6 +22,7 @@ import (
 	"google.golang.org/grpc/reflection"
 
 	"github.com/longhorn/backupstore"
+	butil "github.com/longhorn/backupstore/util"
 	"github.com/longhorn/sparse-tools/sparse"
 	sparserest "github.com/longhorn/sparse-tools/sparse/rest"
 
@@ -681,12 +682,12 @@ func (s *SyncAgentServer) SnapshotCloneStatus(ctx context.Context, req *empty.Em
 }
 
 func (s *SyncAgentServer) BackupCreate(ctx context.Context, req *ptypes.BackupCreateRequest) (*ptypes.BackupCreateResponse, error) {
-	backupType, err := util.CheckBackupType(req.BackupTarget)
+	backupType, err := butil.CheckBackupType(req.BackupTarget)
 	if err != nil {
 		return nil, err
 	}
 
-	if err := util.SetupCredential(backupType, req.Credential); err != nil {
+	if err := butil.SetupCredential(backupType, req.Credential); err != nil {
 		return nil, err
 	}
 
@@ -706,7 +707,7 @@ func (s *SyncAgentServer) BackupCreate(ctx context.Context, req *ptypes.BackupCr
 		BackingImageChecksum: req.BackingImageChecksum,
 		CompressionMethod:    req.CompressionMethod,
 		ConcurrentLimit:      req.ConcurrentLimit,
-		StorageClassname:     req.StorageClassName,
+		StorageClassName:     req.StorageClassName,
 		Labels:               req.Labels,
 	})
 	if err != nil {
@@ -815,12 +816,12 @@ func (s *SyncAgentServer) BackupRestore(ctx context.Context, req *ptypes.BackupR
 		return nil, fmt.Errorf("empty backup URL for the restore")
 	}
 
-	backupType, err := util.CheckBackupType(req.Backup)
+	backupType, err := butil.CheckBackupType(req.Backup)
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to check the type for backup %v", req.Backup)
 	}
 
-	if err := util.SetupCredential(backupType, req.Credential); err != nil {
+	if err := butil.SetupCredential(backupType, req.Credential); err != nil {
 		return nil, errors.Wrapf(err, "failed to setup credential for backup %v", req.Backup)
 	}
 
