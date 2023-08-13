@@ -31,7 +31,7 @@ type CreateBackupParameters struct {
 	BackingImageChecksum string
 	CompressionMethod    string
 	ConcurrentLimit      int32
-	StorageClassname     string
+	StorageClassName     string
 	Labels               []string
 }
 
@@ -110,7 +110,7 @@ func DoBackupInit(params *CreateBackupParameters) (*replica.BackupStatus, *backu
 		BackingImageName:     params.BackingImageName,
 		BackingImageChecksum: params.BackingImageChecksum,
 		CompressionMethod:    params.CompressionMethod,
-		StorageClassName:     params.StorageClassname,
+		StorageClassName:     params.StorageClassName,
 		CreatedTime:          util.Now(),
 	}
 
