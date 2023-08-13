@@ -8,7 +8,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
-	"github.com/longhorn/backupstore"
+	btypes "github.com/longhorn/backupstore/types"
 	butil "github.com/longhorn/backupstore/util"
 
 	"github.com/longhorn/longhorn-engine/pkg/backingfile"
@@ -158,7 +158,7 @@ func (rb *BackupStatus) CloseSnapshot(snapID, volumeID string) error {
 	return err
 }
 
-func (rb *BackupStatus) CompareSnapshot(snapID, compareSnapID, volumeID string) (*backupstore.Mappings, error) {
+func (rb *BackupStatus) CompareSnapshot(snapID, compareSnapID, volumeID string) (*btypes.Mappings, error) {
 	id := diskutil.GenerateSnapshotDiskName(snapID)
 	compareID := ""
 	if compareSnapID != "" {
@@ -184,10 +184,10 @@ func (rb *BackupStatus) CompareSnapshot(snapID, compareSnapID, volumeID string) 
 		return nil, fmt.Errorf("failed to find snapshot %s in chain", compareID)
 	}
 
-	mappings := &backupstore.Mappings{
+	mappings := &btypes.Mappings{
 		BlockSize: snapBlockSize,
 	}
-	mapping := backupstore.Mapping{
+	mapping := btypes.Mapping{
 		Offset: -1,
 	}
 
@@ -201,7 +201,7 @@ func (rb *BackupStatus) CompareSnapshot(snapID, compareSnapID, volumeID string) 
 			// align
 			offset -= (offset % backupBlockSize)
 			if mapping.Offset != offset {
-				mapping = backupstore.Mapping{
+				mapping = btypes.Mapping{
 					Offset: offset,
 					Size:   backupBlockSize,
 				}
