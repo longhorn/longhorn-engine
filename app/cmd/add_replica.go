@@ -199,6 +199,13 @@ func VerifyRebuildReplicaCmd() cli.Command {
 	return cli.Command{
 		Name:      "verify-rebuild-replica",
 		ShortName: "verify-rebuild",
+		Flags: []cli.Flag{
+			cli.StringFlag{
+				Name:     "replica-instance-name",
+				Required: false,
+				Usage:    "Name of the replica instance (for validation purposes)",
+			},
+		},
 		Action: func(c *cli.Context) {
 			if err := verifyRebuildReplica(c); err != nil {
 				logrus.WithError(err).Fatalf("Error running verify rebuild replica command")
