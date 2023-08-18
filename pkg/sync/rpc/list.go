@@ -111,23 +111,23 @@ func (*BackupList) remove(b []*BackupInfo, index int) ([]*BackupInfo, error) {
 }
 
 // Refresh deletes all the old completed backups from the front. Old backups are the completed backups
-// that are created before the number we choose to retain.
+// (finished or error) that were created before the number we choose to retain.
 func (b *BackupList) refresh() error {
 	b.Lock()
 	defer b.Unlock()
 
 	for state, limit := range retainBackupStateCounts {
-		var index, completed int
+		var index, count int
 
 		for index = len(b.infos) - 1; index >= 0; index-- {
 			if b.infos[index].backupStatus.State == state {
-				if completed == limit {
+				if count == limit {
 					break
 				}
-				completed++
+				count++
 			}
 		}
-		if completed == limit {
+		if count == limit {
 			// Remove all the older completed backups in the range backupList[0:index]
 			for ; index >= 0; index-- {
 				if b.infos[index].backupStatus.State == state {
