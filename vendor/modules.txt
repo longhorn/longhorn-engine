@@ -130,12 +130,14 @@ github.com/kr/pretty
 # github.com/kr/text v0.2.0
 ## explicit
 github.com/kr/text
-# github.com/longhorn/backupstore v0.0.0-20230627040634-5b4f2d040e9d
+# github.com/longhorn/backupstore v0.0.0-20230627040634-5b4f2d040e9d => github.com/ChanYiLin/backupstore v0.0.0-20230913072807-57da262c78f8
 ## explicit; go 1.17
 github.com/longhorn/backupstore
 github.com/longhorn/backupstore/azblob
+github.com/longhorn/backupstore/backupbackingimage
 github.com/longhorn/backupstore/cifs
 github.com/longhorn/backupstore/cmd
+github.com/longhorn/backupstore/common
 github.com/longhorn/backupstore/fsops
 github.com/longhorn/backupstore/http
 github.com/longhorn/backupstore/logging

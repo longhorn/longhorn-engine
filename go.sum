@@ -5,6 +5,8 @@ github.com/Azure/azure-sdk-for-go/sdk/internal v0.8.3/go.mod h1:KLF4gFr6DcKFZwSu
 github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v0.3.0 h1:Px2UA+2RvSSvv+RvJNuUB6n7rs5Wsel4dXLe90Um2n4=
 github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v0.3.0/go.mod h1:tPaiy8S5bQ+S5sOiDlINkp7+Ef339+Nz5L5XO+cnOHo=
 github.com/BurntSushi/toml v0.3.1/go.mod h1:xHWCNGjB5oqiDr8zfno3MHue2Ht5sIBksp03qcyfWMU=
+github.com/ChanYiLin/backupstore v0.0.0-20230913072807-57da262c78f8 h1:A/zkVcdq/72FYpVG0yk277Uygo1VcaXlXCzIPKBERzI=
+github.com/ChanYiLin/backupstore v0.0.0-20230913072807-57da262c78f8/go.mod h1:wiEYTbvxEAIUxAAY1DmvMeuFuGqwWmJTzfVhZiBKlNo=
 github.com/aws/aws-sdk-go v1.34.2 h1:9vCknCdTAmmV4ht7lPuda7aJXzllXwEQyCMZKJHjBrM=
 github.com/aws/aws-sdk-go v1.34.2/go.mod h1:5zCpMtNQVjRREroY7sYe8lOMRSxkhG6MZveU8YkpAk0=
 github.com/beorn7/perks v0.0.0-20180321164747-3a771d992973/go.mod h1:Dwedo/Wpr24TaqPxmxbtue+5NUziq4I4S80YR8gNf3Q=
@@ -66,8 +68,6 @@ github.com/kr/pty v1.1.1/go.mod h1:pFQYn66WHrOpPYNljwOMqo10TkYh1fy3cYio2l3bCsQ=
 github.com/kr/text v0.1.0/go.mod h1:4Jbv+DJW3UT/LiOwJeYQe1efqtUx/iVham/4vfdArNI=
 github.com/kr/text v0.2.0 h1:5Nx0Ya0ZqY2ygV366QzturHI13Jq95ApcVaJBhpS+AY=
 github.com/kr/text v0.2.0/go.mod h1:eLer722TekiGuMkidMxC/pM04lWEeraHUUmBw8l2grE=
-github.com/longhorn/backupstore v0.0.0-20230627040634-5b4f2d040e9d h1:sJBr2HsVp61Lpb4zj4dDGLr4RuTQtJwogw/mPe1DBkI=
-github.com/longhorn/backupstore v0.0.0-20230627040634-5b4f2d040e9d/go.mod h1:wiEYTbvxEAIUxAAY1DmvMeuFuGqwWmJTzfVhZiBKlNo=
 github.com/longhorn/go-iscsi-helper v0.0.0-20230802055236-4ec8edae3fad h1:1eZBx9ZSopMM969E/BTTUIhM0O2klBOgh8qnmGnXftA=
 github.com/longhorn/go-iscsi-helper v0.0.0-20230802055236-4ec8edae3fad/go.mod h1:hxy8Ra38KtX4MFmXZRAZUpJZSYcaI1pmnWmKA3ICA2c=
 github.com/longhorn/nsfilelock v0.0.0-20200723175406-fa7c83ad0003 h1:Jw9uANsGcHTxp6HcC++/vN17LfeuDmozHI2j6DoZf5E=
