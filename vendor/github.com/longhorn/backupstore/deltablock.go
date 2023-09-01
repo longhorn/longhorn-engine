@@ -14,6 +14,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	. "github.com/longhorn/backupstore/logging"
+	"github.com/longhorn/backupstore/types"
 	"github.com/longhorn/backupstore/util"
 )
 
@@ -82,7 +83,7 @@ func (r backupRequest) getBackupType() string {
 
 type DeltaBlockBackupOperations interface {
 	HasSnapshot(id, volumeID string) bool
-	CompareSnapshot(id, compareID, volumeID string) (*Mappings, error)
+	CompareSnapshot(id, compareID, volumeID string) (*types.Mappings, error)
 	OpenSnapshot(id, volumeID string) error
 	ReadSnapshot(id, volumeID string, start int64, data []byte) error
 	CloseSnapshot(id, volumeID string) error
@@ -127,7 +128,7 @@ func CreateDeltaBlockBackup(backupName string, config *DeltaBackupConfig) (isInc
 	defer func() {
 		if err != nil {
 			log.WithError(err).Error("Failed to create delta block backup")
-			deltaOps.UpdateBackupStatus(snapshot.Name, volume.Name, string(ProgressStateError), 0, "", err.Error())
+			deltaOps.UpdateBackupStatus(snapshot.Name, volume.Name, string(types.ProgressStateError), 0, "", err.Error())
 		}
 	}()
 
@@ -249,21 +250,21 @@ func CreateDeltaBlockBackup(backupName string, config *DeltaBackupConfig) (isInc
 		defer deltaOps.CloseSnapshot(snapshot.Name, volume.Name)
 		defer lock.Unlock()
 
-		deltaOps.UpdateBackupStatus(snapshot.Name, volume.Name, string(ProgressStateInProgress), 0, "", "")
+		deltaOps.UpdateBackupStatus(snapshot.Name, volume.Name, string(types.ProgressStateInProgress), 0, "", "")
 
 		log.Info("Performing delta block backup")
 		if progress, backup, err := performBackup(bsDriver, config, delta, deltaBackup, backupRequest.lastBackup); err != nil {
 			logrus.WithError(err).Errorf("Failed to perform backup for volume %v snapshot %v", volume.Name, snapshot.Name)
-			deltaOps.UpdateBackupStatus(snapshot.Name, volume.Name, string(ProgressStateInProgress), progress, "", err.Error())
+			deltaOps.UpdateBackupStatus(snapshot.Name, volume.Name, string(types.ProgressStateInProgress), progress, "", err.Error())
 		} else {
-			deltaOps.UpdateBackupStatus(snapshot.Name, volume.Name, string(ProgressStateInProgress), progress, backup, "")
+			deltaOps.UpdateBackupStatus(snapshot.Name, volume.Name, string(types.ProgressStateInProgress), progress, backup, "")
 		}
 	}()
 	return backupRequest.isIncrementalBackup(), nil
 }
 
-func populateMappings(bsDriver BackupStoreDriver, config *DeltaBackupConfig, deltaBackup *Backup, delta *Mappings) (<-chan Mapping, <-chan error) {
-	mappingChan := make(chan Mapping, 1)
+func populateMappings(bsDriver BackupStoreDriver, config *DeltaBackupConfig, deltaBackup *Backup, delta *types.Mappings) (<-chan types.Mapping, <-chan error) {
+	mappingChan := make(chan types.Mapping, 1)
 	errChan := make(chan error, 1)
 
 	go func() {
@@ -352,7 +353,7 @@ func backupBlock(bsDriver BackupStoreDriver, config *DeltaBackupConfig,
 		deltaBackup.Lock()
 		defer deltaBackup.Unlock()
 		updateBlocksAndProgress(deltaBackup, progress, checksum, newBlock)
-		deltaOps.UpdateBackupStatus(snapshot.Name, volume.Name, string(ProgressStateInProgress), progress.progress, "", "")
+		deltaOps.UpdateBackupStatus(snapshot.Name, volume.Name, string(types.ProgressStateInProgress), progress.progress, "", "")
 	}()
 
 	blkFile := getBlockFilePath(volume.Name, checksum)
@@ -372,7 +373,7 @@ func backupBlock(bsDriver BackupStoreDriver, config *DeltaBackupConfig,
 }
 
 func backupMapping(bsDriver BackupStoreDriver, config *DeltaBackupConfig,
-	deltaBackup *Backup, blockSize int64, mapping Mapping, progress *progress) error {
+	deltaBackup *Backup, blockSize int64, mapping types.Mapping, progress *progress) error {
 	volume := config.Volume
 	snapshot := config.Snapshot
 	deltaOps := config.DeltaOps
@@ -400,7 +401,7 @@ func backupMapping(bsDriver BackupStoreDriver, config *DeltaBackupConfig,
 }
 
 func backupMappings(ctx context.Context, bsDriver BackupStoreDriver, config *DeltaBackupConfig,
-	deltaBackup *Backup, blockSize int64, progress *progress, in <-chan Mapping) <-chan error {
+	deltaBackup *Backup, blockSize int64, progress *progress, in <-chan types.Mapping) <-chan error {
 	errChan := make(chan error, 1)
 
 	go func() {
@@ -435,7 +436,7 @@ type progress struct {
 	progress int
 }
 
-func getTotalBackupBlockCounts(delta *Mappings) (int64, error) {
+func getTotalBackupBlockCounts(delta *types.Mappings) (int64, error) {
 	totalBlockCounts := int64(0)
 	for _, d := range delta.Mappings {
 		if d.Size%delta.BlockSize != 0 {
@@ -500,7 +501,7 @@ func sortBackupBlocks(blocks []BlockMapping, volumeSize, blockSize int64) []Bloc
 }
 
 // performBackup if lastBackup is present we will do an incremental backup
-func performBackup(bsDriver BackupStoreDriver, config *DeltaBackupConfig, delta *Mappings, deltaBackup *Backup, lastBackup *Backup) (int, string, error) {
+func performBackup(bsDriver BackupStoreDriver, config *DeltaBackupConfig, delta *types.Mappings, deltaBackup *Backup, lastBackup *Backup) (int, string, error) {
 	volume := config.Volume
 	snapshot := config.Snapshot
 	destURL := config.DestURL

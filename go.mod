@@ -9,7 +9,7 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
-	github.com/longhorn/backupstore v0.0.0-20230627040634-5b4f2d040e9d
+	github.com/longhorn/backupstore v0.0.0-20230830075002-fa25b1a97ffd
 	github.com/longhorn/go-iscsi-helper v0.0.0-20230802055236-4ec8edae3fad
 	github.com/longhorn/sparse-tools v0.0.0-20230408015858-c849def39d3c
 	github.com/moby/moby v23.0.2+incompatible
