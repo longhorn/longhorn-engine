@@ -76,6 +76,7 @@ func fillVolumeInfo(volume *Volume) *VolumeInfo {
 		BackingImageName:     volume.BackingImageName,
 		BackingImageChecksum: volume.BackingImageChecksum,
 		StorageClassname:     volume.StorageClassName,
+		BackendStoreDriver:   volume.BackendStoreDriver,
 	}
 }
 
