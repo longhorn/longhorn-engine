@@ -253,6 +253,7 @@ func createBackup(c *cli.Context) error {
 	compressionMethod := c.String("compression-method")
 	concurrentLimit := c.Int("concurrent-limit")
 	storageClassName := c.String("storage-class-name")
+	objectEndpointBackup := c.String("object-endpoint-backup")
 
 	labels := c.StringSlice("label")
 	if labels != nil {
@@ -278,7 +279,7 @@ func createBackup(c *cli.Context) error {
 	}
 
 	backup, err := task.CreateBackup(backupName, snapshot, dest, biName, biChecksum,
-		compressionMethod, concurrentLimit, storageClassName, labels, credential)
+		compressionMethod, concurrentLimit, storageClassName, objectEndpointBackup, labels, credential)
 	if err != nil {
 		return err
 	}

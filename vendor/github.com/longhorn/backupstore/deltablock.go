@@ -562,6 +562,7 @@ func performBackup(bsDriver BackupStoreDriver, config *DeltaBackupConfig, delta 
 	backup.CreatedTime = util.Now()
 	backup.Size = int64(len(backup.Blocks)) * DEFAULT_BLOCK_SIZE
 	backup.Labels = config.Labels
+	backup.ObjectEndpointBackup = volume.ObjectEndpointBackup
 	backup.IsIncremental = lastBackup != nil
 
 	if err := saveBackup(bsDriver, backup); err != nil {
@@ -583,6 +584,7 @@ func performBackup(bsDriver BackupStoreDriver, config *DeltaBackupConfig, delta 
 	volume.BackingImageChecksum = config.Volume.BackingImageChecksum
 	volume.CompressionMethod = config.Volume.CompressionMethod
 	volume.StorageClassName = config.Volume.StorageClassName
+	volume.ObjectEndpointBackup = config.Volume.ObjectEndpointBackup
 
 	if err := saveVolume(bsDriver, volume); err != nil {
 		return progress.progress, "", err

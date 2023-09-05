@@ -21,6 +21,7 @@ type Volume struct {
 	BackingImageChecksum string `json:",string"`
 	CompressionMethod    string `json:",string"`
 	StorageClassName     string `json:",string"`
+	ObjectEndpointBackup string `json:",string"`
 }
 
 type Snapshot struct {
@@ -35,15 +36,16 @@ type ProcessingBlocks struct {
 
 type Backup struct {
 	sync.Mutex
-	Name              string
-	VolumeName        string
-	SnapshotName      string
-	SnapshotCreatedAt string
-	CreatedTime       string
-	Size              int64 `json:",string"`
-	Labels            map[string]string
-	IsIncremental     bool
-	CompressionMethod string
+	Name                 string
+	VolumeName           string
+	SnapshotName         string
+	SnapshotCreatedAt    string
+	CreatedTime          string
+	Size                 int64 `json:",string"`
+	Labels               map[string]string
+	IsIncremental        bool
+	CompressionMethod    string
+	ObjectEndpointBackup string
 
 	ProcessingBlocks *ProcessingBlocks
 
