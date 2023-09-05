@@ -269,6 +269,9 @@ func loadVolume(driver BackupStoreDriver, volumeName string) (*Volume, error) {
 		log.Infof("Falling back compression method to %v for volume %v", LEGACY_COMPRESSION_METHOD, v.Name)
 		v.CompressionMethod = LEGACY_COMPRESSION_METHOD
 	}
+	if v.BackendStoreDriver == "" {
+		v.BackendStoreDriver = string(BackendStoreDriverV1)
+	}
 	return v, nil
 }
 
