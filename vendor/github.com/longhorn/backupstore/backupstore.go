@@ -23,6 +23,7 @@ type Volume struct {
 	CompressionMethod    string `json:",string"`
 	StorageClassName     string `json:",string"`
 	BackendStoreDriver   string `json:",string"`
+	ObjectStoreBackup    string `json:",string"`
 }
 
 type Snapshot struct {
@@ -46,6 +47,7 @@ type Backup struct {
 	Labels            map[string]string
 	IsIncremental     bool
 	CompressionMethod string
+	ObjectStoreBackup string
 
 	ProcessingBlocks *ProcessingBlocks
 
@@ -112,24 +114,12 @@ func removeVolume(volumeName string, driver BackupStoreDriver) error {
 }
 
 func EncodeBackupURL(backupName, volumeName, destURL string) string {
-	u, err := url.Parse(destURL)
-	if err != nil {
-		return ""
-	}
-
-	v, err := url.ParseQuery(u.RawQuery)
-	if err != nil {
-		// Just start with empty values list then
-		v = url.Values{}
-	}
-
+	v := url.Values{}
 	v.Add("volume", volumeName)
 	if backupName != "" {
 		v.Add("backup", backupName)
 	}
-
-	u.RawQuery = v.Encode()
-	return u.String()
+	return destURL + "?" + v.Encode()
 }
 
 func DecodeBackupURL(backupURL string) (string, string, string, error) {
@@ -146,10 +136,7 @@ func DecodeBackupURL(backupURL string) (string, string, string, error) {
 	if backupName != "" && !util.ValidateName(backupName) {
 		return "", "", "", fmt.Errorf("invalid backup name parsed, got %v", backupName)
 	}
-
-	v.Del("volume")
-	v.Del("backup")
-	u.RawQuery = v.Encode()
+	u.RawQuery = ""
 	destURL := u.String()
 	return backupName, volumeName, destURL, nil
 }

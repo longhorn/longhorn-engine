@@ -520,7 +520,7 @@ func (c *ReplicaClient) SyncFiles(fromAddress string, list []types.SyncFileInfo,
 }
 
 func (c *ReplicaClient) CreateBackup(backupName, snapshot, dest, volume, backingImageName, backingImageChecksum,
-	compressionMethod string, concurrentLimit int, storageClassName string, labels []string, credential map[string]string) (*ptypes.BackupCreateResponse, error) {
+	compressionMethod string, concurrentLimit int, storageClassName, objectStoreBackup string, labels []string, credential map[string]string) (*ptypes.BackupCreateResponse, error) {
 	syncAgentServiceClient, err := c.getSyncServiceClient()
 	if err != nil {
 		return nil, err
@@ -537,6 +537,7 @@ func (c *ReplicaClient) CreateBackup(backupName, snapshot, dest, volume, backing
 		CompressionMethod:    compressionMethod,
 		ConcurrentLimit:      int32(concurrentLimit),
 		StorageClassName:     storageClassName,
+		ObjectStoreBackup:    objectStoreBackup,
 		Labels:               labels,
 		Credential:           credential,
 		BackupName:           backupName,

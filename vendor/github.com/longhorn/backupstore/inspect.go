@@ -77,6 +77,7 @@ func fillVolumeInfo(volume *Volume) *VolumeInfo {
 		BackingImageChecksum: volume.BackingImageChecksum,
 		StorageClassname:     volume.StorageClassName,
 		BackendStoreDriver:   volume.BackendStoreDriver,
+		ObjectStoreBackup:    volume.ObjectStoreBackup,
 	}
 }
 
@@ -91,6 +92,7 @@ func fillBackupInfo(backup *Backup, destURL string) *BackupInfo {
 		Labels:            backup.Labels,
 		IsIncremental:     backup.IsIncremental,
 		CompressionMethod: backup.CompressionMethod,
+		ObjectStoreBackup: backup.ObjectStoreBackup,
 	}
 }
 

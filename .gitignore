@@ -21,3 +21,6 @@ integration/MANIFEST
 .idea/
 *.iml
 *.ipr
+
+#
+venv/

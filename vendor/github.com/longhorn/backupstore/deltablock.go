@@ -532,6 +532,7 @@ func performBackup(bsDriver BackupStoreDriver, config *DeltaBackupConfig, delta 
 	backup.CreatedTime = util.Now()
 	backup.Size = int64(len(backup.Blocks)) * DEFAULT_BLOCK_SIZE
 	backup.Labels = config.Labels
+	backup.ObjectStoreBackup = volume.ObjectStoreBackup
 	backup.IsIncremental = lastBackup != nil
 
 	if err := saveBackup(bsDriver, backup); err != nil {
@@ -554,6 +555,7 @@ func performBackup(bsDriver BackupStoreDriver, config *DeltaBackupConfig, delta 
 	volume.CompressionMethod = config.Volume.CompressionMethod
 	volume.StorageClassName = config.Volume.StorageClassName
 	volume.BackendStoreDriver = config.Volume.BackendStoreDriver
+	volume.ObjectStoreBackup = config.Volume.ObjectStoreBackup
 
 	if err := saveVolume(bsDriver, volume); err != nil {
 		return progress.progress, "", err
@@ -1085,7 +1087,6 @@ func checkBlockReferenceCount(blockInfos map[string]*BlockInfo, backup *Backup, 
 // backup.SnapshotCreatedAt time is greater than the lastBackup
 func getLatestBackup(backup *Backup, lastBackup *Backup) error {
 	if lastBackup.SnapshotCreatedAt == "" {
-		// FIXME - go lint points out that this copies a potentially locked sync.mutex
 		*lastBackup = *backup
 		return nil
 	}
@@ -1101,7 +1102,6 @@ func getLatestBackup(backup *Backup, lastBackup *Backup) error {
 	}
 
 	if backupTime.After(lastBackupTime) {
-		// FIXME - go lint points out that this copies a potentially locked sync.mutex
 		*lastBackup = *backup
 	}
 

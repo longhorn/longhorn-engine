@@ -27,10 +27,9 @@ var (
 )
 
 type BackupStoreDriver struct {
-	destURL      string
-	serverPath   string
-	mountDir     string
-	mountOptions []string
+	destURL    string
+	serverPath string
+	mountDir   string
 
 	username string
 	password string
@@ -72,19 +71,11 @@ func initFunc(destURL string) (backupstore.BackupStoreDriver, error) {
 	b.username = os.Getenv("CIFS_USERNAME")
 	b.password = os.Getenv("CIFS_PASSWORD")
 	b.serverPath = u.Host + u.Path
-	b.destURL = KIND + "://" + b.serverPath
 	b.mountDir = filepath.Join(util.MountDir, strings.TrimRight(strings.Replace(u.Host, ".", "_", -1), ":"), u.Path)
-
-	cifsOptions, exist := u.Query()["cifsOptions"]
-	if exist {
-		b.mountOptions = util.SplitMountOptions(cifsOptions)
-		log.Infof("Overriding CIFS mountOptions:  %v", b.mountOptions)
-	} else {
-		b.mountOptions = []string{"soft"}
-	}
+	b.destURL = KIND + "://" + b.serverPath
 
 	if err := b.mount(); err != nil {
-		return nil, errors.Wrapf(err, "cannot mount CIFS share %v, options %v", b.serverPath, b.mountOptions)
+		return nil, errors.Wrapf(err, "cannot mount CIFS share %v", b.serverPath)
 	}
 
 	if _, err := b.List(""); err != nil {
@@ -107,14 +98,17 @@ func (b *BackupStoreDriver) mount() error {
 		return nil
 	}
 
+	mountOptions := []string{
+		"soft",
+	}
 	sensitiveMountOptions := []string{
 		fmt.Sprintf("username=%v", b.username),
 		fmt.Sprintf("password=%v", b.password),
 	}
 
-	log.Infof("Mounting CIFS share %v on mount point %v with options %+v", b.destURL, b.mountDir, b.mountOptions)
+	log.Infof("Mounting CIFS share %v on mount point %v with options %+v", b.destURL, b.mountDir, mountOptions)
 
-	return util.MountWithTimeout(mounter, "//"+b.serverPath, b.mountDir, KIND, b.mountOptions, sensitiveMountOptions,
+	return util.MountWithTimeout(mounter, "//"+b.serverPath, b.mountDir, KIND, mountOptions, sensitiveMountOptions,
 		defaultMountInterval, defaultMountTimeout)
 }
 
