@@ -4,9 +4,8 @@
 """Generated protocol buffer code."""
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import descriptor_pool as _descriptor_pool
-from google.protobuf import message as _message
-from google.protobuf import reflection as _reflection
 from google.protobuf import symbol_database as _symbol_database
+from google.protobuf.internal import builder as _builder
 # @@protoc_insertion_point(imports)
 
 _sym_db = _symbol_database.Default()
@@ -17,277 +16,9 @@ from google.protobuf import empty_pb2 as google_dot_protobuf_dot_empty__pb2
 
 DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\rreplica.proto\x12\x06ptypes\x1a\x1bgoogle/protobuf/empty.proto\"$\n\x14ReplicaCreateRequest\x12\x0c\n\x04size\x18\x01 \x01(\t\"9\n\x15ReplicaCreateResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\"6\n\x12ReplicaGetResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\"7\n\x13ReplicaOpenResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\"8\n\x14ReplicaCloseResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\"9\n\x15ReplicaReloadResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\"5\n\x14ReplicaRevertRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0f\n\x07\x63reated\x18\x02 \x01(\t\"9\n\x15ReplicaRevertResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\"\xb8\x01\n\x16ReplicaSnapshotRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x14\n\x0cuser_created\x18\x02 \x01(\x08\x12\x0f\n\x07\x63reated\x18\x03 \x01(\t\x12:\n\x06labels\x18\x04 \x03(\x0b\x32*.ptypes.ReplicaSnapshotRequest.LabelsEntry\x1a-\n\x0bLabelsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\";\n\x17ReplicaSnapshotResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\"$\n\x14ReplicaExpandRequest\x12\x0c\n\x04size\x18\x01 \x01(\x03\"9\n\x15ReplicaExpandResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\"0\n\x11\x44iskRemoveRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\r\n\x05\x66orce\x18\x02 \x01(\x08\"6\n\x12\x44iskRemoveResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\"4\n\x12\x44iskReplaceRequest\x12\x0e\n\x06target\x18\x01 \x01(\t\x12\x0e\n\x06source\x18\x02 \x01(\t\"7\n\x13\x44iskReplaceResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\"(\n\x18\x44iskPrepareRemoveRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\"L\n\x19\x44iskPrepareRemoveResponse\x12/\n\noperations\x18\x01 \x03(\x0b\x32\x1b.ptypes.PrepareRemoveAction\"(\n\x18\x44iskMarkAsRemovedRequest\x12\x0c\n\x04name\x18\x01 \x01(\t\"=\n\x19\x44iskMarkAsRemovedResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\"*\n\x14RebuildingSetRequest\x12\x12\n\nrebuilding\x18\x01 \x01(\x08\"9\n\x15RebuildingSetResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\",\n\x19RevisionCounterSetRequest\x12\x0f\n\x07\x63ounter\x18\x01 \x01(\x03\">\n\x1aRevisionCounterSetResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\"6\n#UnmapMarkDiskChainRemovedSetRequest\x12\x0f\n\x07\x65nabled\x18\x01 \x01(\x08\"H\n$UnmapMarkDiskChainRemovedSetResponse\x12 \n\x07replica\x18\x01 \x01(\x0b\x32\x0f.ptypes.Replica\"\xae\x02\n\x08\x44iskInfo\x12\x0c\n\x04name\x18\x01 \x01(\t\x12\x0e\n\x06parent\x18\x02 \x01(\t\x12\x30\n\x08\x63hildren\x18\x03 \x03(\x0b\x32\x1e.ptypes.DiskInfo.ChildrenEntry\x12\x0f\n\x07removed\x18\x04 \x01(\x08\x12\x14\n\x0cuser_created\x18\x05 \x01(\x08\x12\x0f\n\x07\x63reated\x18\x06 \x01(\t\x12\x0c\n\x04size\x18\x07 \x01(\t\x12,\n\x06labels\x18\x08 \x03(\x0b\x32\x1c.ptypes.DiskInfo.LabelsEntry\x1a/\n\rChildrenEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\x08:\x02\x38\x01\x1a-\n\x0bLabelsEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\r\n\x05value\x18\x02 \x01(\t:\x02\x38\x01\"\xbc\x03\n\x07Replica\x12\r\n\x05\x64irty\x18\x01 \x01(\x08\x12\x12\n\nrebuilding\x18\x02 \x01(\x08\x12\x0c\n\x04head\x18\x03 \x01(\t\x12\x0e\n\x06parent\x18\x04 \x01(\t\x12\x0c\n\x04size\x18\x05 \x01(\t\x12\x13\n\x0bsector_size\x18\x06 \x01(\x03\x12\x14\n\x0c\x62\x61\x63king_file\x18\x07 \x01(\t\x12\r\n\x05state\x18\x08 \x01(\t\x12\r\n\x05\x63hain\x18\t \x03(\t\x12)\n\x05\x64isks\x18\n \x03(\x0b\x32\x1a.ptypes.Replica.DisksEntry\x12\x18\n\x10remain_snapshots\x18\x0b \x01(\x05\x12\x18\n\x10revision_counter\x18\x0c \x01(\x03\x12\x18\n\x10last_modify_time\x18\r \x01(\x03\x12\x16\n\x0ehead_file_size\x18\x0e \x01(\x03\x12!\n\x19revision_counter_disabled\x18\x0f \x01(\x08\x12%\n\x1dunmap_mark_disk_chain_removed\x18\x10 \x01(\x08\x1a>\n\nDisksEntry\x12\x0b\n\x03key\x18\x01 \x01(\t\x12\x1f\n\x05value\x18\x02 \x01(\x0b\x32\x10.ptypes.DiskInfo:\x02\x38\x01\"E\n\x13PrepareRemoveAction\x12\x0e\n\x06\x61\x63tion\x18\x01 \x01(\t\x12\x0e\n\x06source\x18\x02 \x01(\t\x12\x0e\n\x06target\x18\x03 \x01(\t2\xaa\n\n\x0eReplicaService\x12N\n\rReplicaCreate\x12\x1c.ptypes.ReplicaCreateRequest\x1a\x1d.ptypes.ReplicaCreateResponse\"\x00\x12\x41\n\rReplicaDelete\x12\x16.google.protobuf.Empty\x1a\x16.google.protobuf.Empty\"\x00\x12\x42\n\nReplicaGet\x12\x16.google.protobuf.Empty\x1a\x1a.ptypes.ReplicaGetResponse\"\x00\x12\x44\n\x0bReplicaOpen\x12\x16.google.protobuf.Empty\x1a\x1b.ptypes.ReplicaOpenResponse\"\x00\x12\x46\n\x0cReplicaClose\x12\x16.google.protobuf.Empty\x1a\x1c.ptypes.ReplicaCloseResponse\"\x00\x12H\n\rReplicaReload\x12\x16.google.protobuf.Empty\x1a\x1d.ptypes.ReplicaReloadResponse\"\x00\x12N\n\rReplicaRevert\x12\x1c.ptypes.ReplicaRevertRequest\x1a\x1d.ptypes.ReplicaRevertResponse\"\x00\x12T\n\x0fReplicaSnapshot\x12\x1e.ptypes.ReplicaSnapshotRequest\x1a\x1f.ptypes.ReplicaSnapshotResponse\"\x00\x12N\n\rReplicaExpand\x12\x1c.ptypes.ReplicaExpandRequest\x1a\x1d.ptypes.ReplicaExpandResponse\"\x00\x12\x45\n\nDiskRemove\x12\x19.ptypes.DiskRemoveRequest\x1a\x1a.ptypes.DiskRemoveResponse\"\x00\x12H\n\x0b\x44iskReplace\x12\x1a.ptypes.DiskReplaceRequest\x1a\x1b.ptypes.DiskReplaceResponse\"\x00\x12Z\n\x11\x44iskPrepareRemove\x12 .ptypes.DiskPrepareRemoveRequest\x1a!.ptypes.DiskPrepareRemoveResponse\"\x00\x12Z\n\x11\x44iskMarkAsRemoved\x12 .ptypes.DiskMarkAsRemovedRequest\x1a!.ptypes.DiskMarkAsRemovedResponse\"\x00\x12N\n\rRebuildingSet\x12\x1c.ptypes.RebuildingSetRequest\x1a\x1d.ptypes.RebuildingSetResponse\"\x00\x12]\n\x12RevisionCounterSet\x12!.ptypes.RevisionCounterSetRequest\x1a\".ptypes.RevisionCounterSetResponse\"\x00\x12{\n\x1cUnmapMarkDiskChainRemovedSet\x12+.ptypes.UnmapMarkDiskChainRemovedSetRequest\x1a,.ptypes.UnmapMarkDiskChainRemovedSetResponse\"\x00\x62\x06proto3')
 
-
-
-_REPLICACREATEREQUEST = DESCRIPTOR.message_types_by_name['ReplicaCreateRequest']
-_REPLICACREATERESPONSE = DESCRIPTOR.message_types_by_name['ReplicaCreateResponse']
-_REPLICAGETRESPONSE = DESCRIPTOR.message_types_by_name['ReplicaGetResponse']
-_REPLICAOPENRESPONSE = DESCRIPTOR.message_types_by_name['ReplicaOpenResponse']
-_REPLICACLOSERESPONSE = DESCRIPTOR.message_types_by_name['ReplicaCloseResponse']
-_REPLICARELOADRESPONSE = DESCRIPTOR.message_types_by_name['ReplicaReloadResponse']
-_REPLICAREVERTREQUEST = DESCRIPTOR.message_types_by_name['ReplicaRevertRequest']
-_REPLICAREVERTRESPONSE = DESCRIPTOR.message_types_by_name['ReplicaRevertResponse']
-_REPLICASNAPSHOTREQUEST = DESCRIPTOR.message_types_by_name['ReplicaSnapshotRequest']
-_REPLICASNAPSHOTREQUEST_LABELSENTRY = _REPLICASNAPSHOTREQUEST.nested_types_by_name['LabelsEntry']
-_REPLICASNAPSHOTRESPONSE = DESCRIPTOR.message_types_by_name['ReplicaSnapshotResponse']
-_REPLICAEXPANDREQUEST = DESCRIPTOR.message_types_by_name['ReplicaExpandRequest']
-_REPLICAEXPANDRESPONSE = DESCRIPTOR.message_types_by_name['ReplicaExpandResponse']
-_DISKREMOVEREQUEST = DESCRIPTOR.message_types_by_name['DiskRemoveRequest']
-_DISKREMOVERESPONSE = DESCRIPTOR.message_types_by_name['DiskRemoveResponse']
-_DISKREPLACEREQUEST = DESCRIPTOR.message_types_by_name['DiskReplaceRequest']
-_DISKREPLACERESPONSE = DESCRIPTOR.message_types_by_name['DiskReplaceResponse']
-_DISKPREPAREREMOVEREQUEST = DESCRIPTOR.message_types_by_name['DiskPrepareRemoveRequest']
-_DISKPREPAREREMOVERESPONSE = DESCRIPTOR.message_types_by_name['DiskPrepareRemoveResponse']
-_DISKMARKASREMOVEDREQUEST = DESCRIPTOR.message_types_by_name['DiskMarkAsRemovedRequest']
-_DISKMARKASREMOVEDRESPONSE = DESCRIPTOR.message_types_by_name['DiskMarkAsRemovedResponse']
-_REBUILDINGSETREQUEST = DESCRIPTOR.message_types_by_name['RebuildingSetRequest']
-_REBUILDINGSETRESPONSE = DESCRIPTOR.message_types_by_name['RebuildingSetResponse']
-_REVISIONCOUNTERSETREQUEST = DESCRIPTOR.message_types_by_name['RevisionCounterSetRequest']
-_REVISIONCOUNTERSETRESPONSE = DESCRIPTOR.message_types_by_name['RevisionCounterSetResponse']
-_UNMAPMARKDISKCHAINREMOVEDSETREQUEST = DESCRIPTOR.message_types_by_name['UnmapMarkDiskChainRemovedSetRequest']
-_UNMAPMARKDISKCHAINREMOVEDSETRESPONSE = DESCRIPTOR.message_types_by_name['UnmapMarkDiskChainRemovedSetResponse']
-_DISKINFO = DESCRIPTOR.message_types_by_name['DiskInfo']
-_DISKINFO_CHILDRENENTRY = _DISKINFO.nested_types_by_name['ChildrenEntry']
-_DISKINFO_LABELSENTRY = _DISKINFO.nested_types_by_name['LabelsEntry']
-_REPLICA = DESCRIPTOR.message_types_by_name['Replica']
-_REPLICA_DISKSENTRY = _REPLICA.nested_types_by_name['DisksEntry']
-_PREPAREREMOVEACTION = DESCRIPTOR.message_types_by_name['PrepareRemoveAction']
-ReplicaCreateRequest = _reflection.GeneratedProtocolMessageType('ReplicaCreateRequest', (_message.Message,), {
-  'DESCRIPTOR' : _REPLICACREATEREQUEST,
-  '__module__' : 'replica_pb2'
-  # @@protoc_insertion_point(class_scope:ptypes.ReplicaCreateRequest)
-  })
-_sym_db.RegisterMessage(ReplicaCreateRequest)
-
-ReplicaCreateResponse = _reflection.GeneratedProtocolMessageType('ReplicaCreateResponse', (_message.Message,), {
-  'DESCRIPTOR' : _REPLICACREATERESPONSE,
-  '__module__' : 'replica_pb2'
-  # @@protoc_insertion_point(class_scope:ptypes.ReplicaCreateResponse)
-  })
-_sym_db.RegisterMessage(ReplicaCreateResponse)
-
-ReplicaGetResponse = _reflection.GeneratedProtocolMessageType('ReplicaGetResponse', (_message.Message,), {
-  'DESCRIPTOR' : _REPLICAGETRESPONSE,
-  '__module__' : 'replica_pb2'
-  # @@protoc_insertion_point(class_scope:ptypes.ReplicaGetResponse)
-  })
-_sym_db.RegisterMessage(ReplicaGetResponse)
-
-ReplicaOpenResponse = _reflection.GeneratedProtocolMessageType('ReplicaOpenResponse', (_message.Message,), {
-  'DESCRIPTOR' : _REPLICAOPENRESPONSE,
-  '__module__' : 'replica_pb2'
-  # @@protoc_insertion_point(class_scope:ptypes.ReplicaOpenResponse)
-  })
-_sym_db.RegisterMessage(ReplicaOpenResponse)
-
-ReplicaCloseResponse = _reflection.GeneratedProtocolMessageType('ReplicaCloseResponse', (_message.Message,), {
-  'DESCRIPTOR' : _REPLICACLOSERESPONSE,
-  '__module__' : 'replica_pb2'
-  # @@protoc_insertion_point(class_scope:ptypes.ReplicaCloseResponse)
-  })
-_sym_db.RegisterMessage(ReplicaCloseResponse)
-
-ReplicaReloadResponse = _reflection.GeneratedProtocolMessageType('ReplicaReloadResponse', (_message.Message,), {
-  'DESCRIPTOR' : _REPLICARELOADRESPONSE,
-  '__module__' : 'replica_pb2'
-  # @@protoc_insertion_point(class_scope:ptypes.ReplicaReloadResponse)
-  })
-_sym_db.RegisterMessage(ReplicaReloadResponse)
-
-ReplicaRevertRequest = _reflection.GeneratedProtocolMessageType('ReplicaRevertRequest', (_message.Message,), {
-  'DESCRIPTOR' : _REPLICAREVERTREQUEST,
-  '__module__' : 'replica_pb2'
-  # @@protoc_insertion_point(class_scope:ptypes.ReplicaRevertRequest)
-  })
-_sym_db.RegisterMessage(ReplicaRevertRequest)
-
-ReplicaRevertResponse = _reflection.GeneratedProtocolMessageType('ReplicaRevertResponse', (_message.Message,), {
-  'DESCRIPTOR' : _REPLICAREVERTRESPONSE,
-  '__module__' : 'replica_pb2'
-  # @@protoc_insertion_point(class_scope:ptypes.ReplicaRevertResponse)
-  })
-_sym_db.RegisterMessage(ReplicaRevertResponse)
-
-ReplicaSnapshotRequest = _reflection.GeneratedProtocolMessageType('ReplicaSnapshotRequest', (_message.Message,), {
-
-  'LabelsEntry' : _reflection.GeneratedProtocolMessageType('LabelsEntry', (_message.Message,), {
-    'DESCRIPTOR' : _REPLICASNAPSHOTREQUEST_LABELSENTRY,
-    '__module__' : 'replica_pb2'
-    # @@protoc_insertion_point(class_scope:ptypes.ReplicaSnapshotRequest.LabelsEntry)
-    })
-  ,
-  'DESCRIPTOR' : _REPLICASNAPSHOTREQUEST,
-  '__module__' : 'replica_pb2'
-  # @@protoc_insertion_point(class_scope:ptypes.ReplicaSnapshotRequest)
-  })
-_sym_db.RegisterMessage(ReplicaSnapshotRequest)
-_sym_db.RegisterMessage(ReplicaSnapshotRequest.LabelsEntry)
-
-ReplicaSnapshotResponse = _reflection.GeneratedProtocolMessageType('ReplicaSnapshotResponse', (_message.Message,), {
-  'DESCRIPTOR' : _REPLICASNAPSHOTRESPONSE,
-  '__module__' : 'replica_pb2'
-  # @@protoc_insertion_point(class_scope:ptypes.ReplicaSnapshotResponse)
-  })
-_sym_db.RegisterMessage(ReplicaSnapshotResponse)
-
-ReplicaExpandRequest = _reflection.GeneratedProtocolMessageType('ReplicaExpandRequest', (_message.Message,), {
-  'DESCRIPTOR' : _REPLICAEXPANDREQUEST,
-  '__module__' : 'replica_pb2'
-  # @@protoc_insertion_point(class_scope:ptypes.ReplicaExpandRequest)
-  })
-_sym_db.RegisterMessage(ReplicaExpandRequest)
-
-ReplicaExpandResponse = _reflection.GeneratedProtocolMessageType('ReplicaExpandResponse', (_message.Message,), {
-  'DESCRIPTOR' : _REPLICAEXPANDRESPONSE,
-  '__module__' : 'replica_pb2'
-  # @@protoc_insertion_point(class_scope:ptypes.ReplicaExpandResponse)
-  })
-_sym_db.RegisterMessage(ReplicaExpandResponse)
-
-DiskRemoveRequest = _reflection.GeneratedProtocolMessageType('DiskRemoveRequest', (_message.Message,), {
-  'DESCRIPTOR' : _DISKREMOVEREQUEST,
-  '__module__' : 'replica_pb2'
-  # @@protoc_insertion_point(class_scope:ptypes.DiskRemoveRequest)
-  })
-_sym_db.RegisterMessage(DiskRemoveRequest)
-
-DiskRemoveResponse = _reflection.GeneratedProtocolMessageType('DiskRemoveResponse', (_message.Message,), {
-  'DESCRIPTOR' : _DISKREMOVERESPONSE,
-  '__module__' : 'replica_pb2'
-  # @@protoc_insertion_point(class_scope:ptypes.DiskRemoveResponse)
-  })
-_sym_db.RegisterMessage(DiskRemoveResponse)
-
-DiskReplaceRequest = _reflection.GeneratedProtocolMessageType('DiskReplaceRequest', (_message.Message,), {
-  'DESCRIPTOR' : _DISKREPLACEREQUEST,
-  '__module__' : 'replica_pb2'
-  # @@protoc_insertion_point(class_scope:ptypes.DiskReplaceRequest)
-  })
-_sym_db.RegisterMessage(DiskReplaceRequest)
-
-DiskReplaceResponse = _reflection.GeneratedProtocolMessageType('DiskReplaceResponse', (_message.Message,), {
-  'DESCRIPTOR' : _DISKREPLACERESPONSE,
-  '__module__' : 'replica_pb2'
-  # @@protoc_insertion_point(class_scope:ptypes.DiskReplaceResponse)
-  })
-_sym_db.RegisterMessage(DiskReplaceResponse)
-
-DiskPrepareRemoveRequest = _reflection.GeneratedProtocolMessageType('DiskPrepareRemoveRequest', (_message.Message,), {
-  'DESCRIPTOR' : _DISKPREPAREREMOVEREQUEST,
-  '__module__' : 'replica_pb2'
-  # @@protoc_insertion_point(class_scope:ptypes.DiskPrepareRemoveRequest)
-  })
-_sym_db.RegisterMessage(DiskPrepareRemoveRequest)
-
-DiskPrepareRemoveResponse = _reflection.GeneratedProtocolMessageType('DiskPrepareRemoveResponse', (_message.Message,), {
-  'DESCRIPTOR' : _DISKPREPAREREMOVERESPONSE,
-  '__module__' : 'replica_pb2'
-  # @@protoc_insertion_point(class_scope:ptypes.DiskPrepareRemoveResponse)
-  })
-_sym_db.RegisterMessage(DiskPrepareRemoveResponse)
-
-DiskMarkAsRemovedRequest = _reflection.GeneratedProtocolMessageType('DiskMarkAsRemovedRequest', (_message.Message,), {
-  'DESCRIPTOR' : _DISKMARKASREMOVEDREQUEST,
-  '__module__' : 'replica_pb2'
-  # @@protoc_insertion_point(class_scope:ptypes.DiskMarkAsRemovedRequest)
-  })
-_sym_db.RegisterMessage(DiskMarkAsRemovedRequest)
-
-DiskMarkAsRemovedResponse = _reflection.GeneratedProtocolMessageType('DiskMarkAsRemovedResponse', (_message.Message,), {
-  'DESCRIPTOR' : _DISKMARKASREMOVEDRESPONSE,
-  '__module__' : 'replica_pb2'
-  # @@protoc_insertion_point(class_scope:ptypes.DiskMarkAsRemovedResponse)
-  })
-_sym_db.RegisterMessage(DiskMarkAsRemovedResponse)
-
-RebuildingSetRequest = _reflection.GeneratedProtocolMessageType('RebuildingSetRequest', (_message.Message,), {
-  'DESCRIPTOR' : _REBUILDINGSETREQUEST,
-  '__module__' : 'replica_pb2'
-  # @@protoc_insertion_point(class_scope:ptypes.RebuildingSetRequest)
-  })
-_sym_db.RegisterMessage(RebuildingSetRequest)
-
-RebuildingSetResponse = _reflection.GeneratedProtocolMessageType('RebuildingSetResponse', (_message.Message,), {
-  'DESCRIPTOR' : _REBUILDINGSETRESPONSE,
-  '__module__' : 'replica_pb2'
-  # @@protoc_insertion_point(class_scope:ptypes.RebuildingSetResponse)
-  })
-_sym_db.RegisterMessage(RebuildingSetResponse)
-
-RevisionCounterSetRequest = _reflection.GeneratedProtocolMessageType('RevisionCounterSetRequest', (_message.Message,), {
-  'DESCRIPTOR' : _REVISIONCOUNTERSETREQUEST,
-  '__module__' : 'replica_pb2'
-  # @@protoc_insertion_point(class_scope:ptypes.RevisionCounterSetRequest)
-  })
-_sym_db.RegisterMessage(RevisionCounterSetRequest)
-
-RevisionCounterSetResponse = _reflection.GeneratedProtocolMessageType('RevisionCounterSetResponse', (_message.Message,), {
-  'DESCRIPTOR' : _REVISIONCOUNTERSETRESPONSE,
-  '__module__' : 'replica_pb2'
-  # @@protoc_insertion_point(class_scope:ptypes.RevisionCounterSetResponse)
-  })
-_sym_db.RegisterMessage(RevisionCounterSetResponse)
-
-UnmapMarkDiskChainRemovedSetRequest = _reflection.GeneratedProtocolMessageType('UnmapMarkDiskChainRemovedSetRequest', (_message.Message,), {
-  'DESCRIPTOR' : _UNMAPMARKDISKCHAINREMOVEDSETREQUEST,
-  '__module__' : 'replica_pb2'
-  # @@protoc_insertion_point(class_scope:ptypes.UnmapMarkDiskChainRemovedSetRequest)
-  })
-_sym_db.RegisterMessage(UnmapMarkDiskChainRemovedSetRequest)
-
-UnmapMarkDiskChainRemovedSetResponse = _reflection.GeneratedProtocolMessageType('UnmapMarkDiskChainRemovedSetResponse', (_message.Message,), {
-  'DESCRIPTOR' : _UNMAPMARKDISKCHAINREMOVEDSETRESPONSE,
-  '__module__' : 'replica_pb2'
-  # @@protoc_insertion_point(class_scope:ptypes.UnmapMarkDiskChainRemovedSetResponse)
-  })
-_sym_db.RegisterMessage(UnmapMarkDiskChainRemovedSetResponse)
-
-DiskInfo = _reflection.GeneratedProtocolMessageType('DiskInfo', (_message.Message,), {
-
-  'ChildrenEntry' : _reflection.GeneratedProtocolMessageType('ChildrenEntry', (_message.Message,), {
-    'DESCRIPTOR' : _DISKINFO_CHILDRENENTRY,
-    '__module__' : 'replica_pb2'
-    # @@protoc_insertion_point(class_scope:ptypes.DiskInfo.ChildrenEntry)
-    })
-  ,
-
-  'LabelsEntry' : _reflection.GeneratedProtocolMessageType('LabelsEntry', (_message.Message,), {
-    'DESCRIPTOR' : _DISKINFO_LABELSENTRY,
-    '__module__' : 'replica_pb2'
-    # @@protoc_insertion_point(class_scope:ptypes.DiskInfo.LabelsEntry)
-    })
-  ,
-  'DESCRIPTOR' : _DISKINFO,
-  '__module__' : 'replica_pb2'
-  # @@protoc_insertion_point(class_scope:ptypes.DiskInfo)
-  })
-_sym_db.RegisterMessage(DiskInfo)
-_sym_db.RegisterMessage(DiskInfo.ChildrenEntry)
-_sym_db.RegisterMessage(DiskInfo.LabelsEntry)
-
-Replica = _reflection.GeneratedProtocolMessageType('Replica', (_message.Message,), {
-
-  'DisksEntry' : _reflection.GeneratedProtocolMessageType('DisksEntry', (_message.Message,), {
-    'DESCRIPTOR' : _REPLICA_DISKSENTRY,
-    '__module__' : 'replica_pb2'
-    # @@protoc_insertion_point(class_scope:ptypes.Replica.DisksEntry)
-    })
-  ,
-  'DESCRIPTOR' : _REPLICA,
-  '__module__' : 'replica_pb2'
-  # @@protoc_insertion_point(class_scope:ptypes.Replica)
-  })
-_sym_db.RegisterMessage(Replica)
-_sym_db.RegisterMessage(Replica.DisksEntry)
-
-PrepareRemoveAction = _reflection.GeneratedProtocolMessageType('PrepareRemoveAction', (_message.Message,), {
-  'DESCRIPTOR' : _PREPAREREMOVEACTION,
-  '__module__' : 'replica_pb2'
-  # @@protoc_insertion_point(class_scope:ptypes.PrepareRemoveAction)
-  })
-_sym_db.RegisterMessage(PrepareRemoveAction)
-
-_REPLICASERVICE = DESCRIPTOR.services_by_name['ReplicaService']
+_globals = globals()
+_builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
+_builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'replica_pb2', _globals)
 if _descriptor._USE_C_DESCRIPTORS == False:
 
   DESCRIPTOR._options = None
@@ -299,72 +30,72 @@ if _descriptor._USE_C_DESCRIPTORS == False:
   _DISKINFO_LABELSENTRY._serialized_options = b'8\001'
   _REPLICA_DISKSENTRY._options = None
   _REPLICA_DISKSENTRY._serialized_options = b'8\001'
-  _REPLICACREATEREQUEST._serialized_start=54
-  _REPLICACREATEREQUEST._serialized_end=90
-  _REPLICACREATERESPONSE._serialized_start=92
-  _REPLICACREATERESPONSE._serialized_end=149
-  _REPLICAGETRESPONSE._serialized_start=151
-  _REPLICAGETRESPONSE._serialized_end=205
-  _REPLICAOPENRESPONSE._serialized_start=207
-  _REPLICAOPENRESPONSE._serialized_end=262
-  _REPLICACLOSERESPONSE._serialized_start=264
-  _REPLICACLOSERESPONSE._serialized_end=320
-  _REPLICARELOADRESPONSE._serialized_start=322
-  _REPLICARELOADRESPONSE._serialized_end=379
-  _REPLICAREVERTREQUEST._serialized_start=381
-  _REPLICAREVERTREQUEST._serialized_end=434
-  _REPLICAREVERTRESPONSE._serialized_start=436
-  _REPLICAREVERTRESPONSE._serialized_end=493
-  _REPLICASNAPSHOTREQUEST._serialized_start=496
-  _REPLICASNAPSHOTREQUEST._serialized_end=680
-  _REPLICASNAPSHOTREQUEST_LABELSENTRY._serialized_start=635
-  _REPLICASNAPSHOTREQUEST_LABELSENTRY._serialized_end=680
-  _REPLICASNAPSHOTRESPONSE._serialized_start=682
-  _REPLICASNAPSHOTRESPONSE._serialized_end=741
-  _REPLICAEXPANDREQUEST._serialized_start=743
-  _REPLICAEXPANDREQUEST._serialized_end=779
-  _REPLICAEXPANDRESPONSE._serialized_start=781
-  _REPLICAEXPANDRESPONSE._serialized_end=838
-  _DISKREMOVEREQUEST._serialized_start=840
-  _DISKREMOVEREQUEST._serialized_end=888
-  _DISKREMOVERESPONSE._serialized_start=890
-  _DISKREMOVERESPONSE._serialized_end=944
-  _DISKREPLACEREQUEST._serialized_start=946
-  _DISKREPLACEREQUEST._serialized_end=998
-  _DISKREPLACERESPONSE._serialized_start=1000
-  _DISKREPLACERESPONSE._serialized_end=1055
-  _DISKPREPAREREMOVEREQUEST._serialized_start=1057
-  _DISKPREPAREREMOVEREQUEST._serialized_end=1097
-  _DISKPREPAREREMOVERESPONSE._serialized_start=1099
-  _DISKPREPAREREMOVERESPONSE._serialized_end=1175
-  _DISKMARKASREMOVEDREQUEST._serialized_start=1177
-  _DISKMARKASREMOVEDREQUEST._serialized_end=1217
-  _DISKMARKASREMOVEDRESPONSE._serialized_start=1219
-  _DISKMARKASREMOVEDRESPONSE._serialized_end=1280
-  _REBUILDINGSETREQUEST._serialized_start=1282
-  _REBUILDINGSETREQUEST._serialized_end=1324
-  _REBUILDINGSETRESPONSE._serialized_start=1326
-  _REBUILDINGSETRESPONSE._serialized_end=1383
-  _REVISIONCOUNTERSETREQUEST._serialized_start=1385
-  _REVISIONCOUNTERSETREQUEST._serialized_end=1429
-  _REVISIONCOUNTERSETRESPONSE._serialized_start=1431
-  _REVISIONCOUNTERSETRESPONSE._serialized_end=1493
-  _UNMAPMARKDISKCHAINREMOVEDSETREQUEST._serialized_start=1495
-  _UNMAPMARKDISKCHAINREMOVEDSETREQUEST._serialized_end=1549
-  _UNMAPMARKDISKCHAINREMOVEDSETRESPONSE._serialized_start=1551
-  _UNMAPMARKDISKCHAINREMOVEDSETRESPONSE._serialized_end=1623
-  _DISKINFO._serialized_start=1626
-  _DISKINFO._serialized_end=1928
-  _DISKINFO_CHILDRENENTRY._serialized_start=1834
-  _DISKINFO_CHILDRENENTRY._serialized_end=1881
-  _DISKINFO_LABELSENTRY._serialized_start=635
-  _DISKINFO_LABELSENTRY._serialized_end=680
-  _REPLICA._serialized_start=1931
-  _REPLICA._serialized_end=2375
-  _REPLICA_DISKSENTRY._serialized_start=2313
-  _REPLICA_DISKSENTRY._serialized_end=2375
-  _PREPAREREMOVEACTION._serialized_start=2377
-  _PREPAREREMOVEACTION._serialized_end=2446
-  _REPLICASERVICE._serialized_start=2449
-  _REPLICASERVICE._serialized_end=3771
+  _globals['_REPLICACREATEREQUEST']._serialized_start=54
+  _globals['_REPLICACREATEREQUEST']._serialized_end=90
+  _globals['_REPLICACREATERESPONSE']._serialized_start=92
+  _globals['_REPLICACREATERESPONSE']._serialized_end=149
+  _globals['_REPLICAGETRESPONSE']._serialized_start=151
+  _globals['_REPLICAGETRESPONSE']._serialized_end=205
+  _globals['_REPLICAOPENRESPONSE']._serialized_start=207
+  _globals['_REPLICAOPENRESPONSE']._serialized_end=262
+  _globals['_REPLICACLOSERESPONSE']._serialized_start=264
+  _globals['_REPLICACLOSERESPONSE']._serialized_end=320
+  _globals['_REPLICARELOADRESPONSE']._serialized_start=322
+  _globals['_REPLICARELOADRESPONSE']._serialized_end=379
+  _globals['_REPLICAREVERTREQUEST']._serialized_start=381
+  _globals['_REPLICAREVERTREQUEST']._serialized_end=434
+  _globals['_REPLICAREVERTRESPONSE']._serialized_start=436
+  _globals['_REPLICAREVERTRESPONSE']._serialized_end=493
+  _globals['_REPLICASNAPSHOTREQUEST']._serialized_start=496
+  _globals['_REPLICASNAPSHOTREQUEST']._serialized_end=680
+  _globals['_REPLICASNAPSHOTREQUEST_LABELSENTRY']._serialized_start=635
+  _globals['_REPLICASNAPSHOTREQUEST_LABELSENTRY']._serialized_end=680
+  _globals['_REPLICASNAPSHOTRESPONSE']._serialized_start=682
+  _globals['_REPLICASNAPSHOTRESPONSE']._serialized_end=741
+  _globals['_REPLICAEXPANDREQUEST']._serialized_start=743
+  _globals['_REPLICAEXPANDREQUEST']._serialized_end=779
+  _globals['_REPLICAEXPANDRESPONSE']._serialized_start=781
+  _globals['_REPLICAEXPANDRESPONSE']._serialized_end=838
+  _globals['_DISKREMOVEREQUEST']._serialized_start=840
+  _globals['_DISKREMOVEREQUEST']._serialized_end=888
+  _globals['_DISKREMOVERESPONSE']._serialized_start=890
+  _globals['_DISKREMOVERESPONSE']._serialized_end=944
+  _globals['_DISKREPLACEREQUEST']._serialized_start=946
+  _globals['_DISKREPLACEREQUEST']._serialized_end=998
+  _globals['_DISKREPLACERESPONSE']._serialized_start=1000
+  _globals['_DISKREPLACERESPONSE']._serialized_end=1055
+  _globals['_DISKPREPAREREMOVEREQUEST']._serialized_start=1057
+  _globals['_DISKPREPAREREMOVEREQUEST']._serialized_end=1097
+  _globals['_DISKPREPAREREMOVERESPONSE']._serialized_start=1099
+  _globals['_DISKPREPAREREMOVERESPONSE']._serialized_end=1175
+  _globals['_DISKMARKASREMOVEDREQUEST']._serialized_start=1177
+  _globals['_DISKMARKASREMOVEDREQUEST']._serialized_end=1217
+  _globals['_DISKMARKASREMOVEDRESPONSE']._serialized_start=1219
+  _globals['_DISKMARKASREMOVEDRESPONSE']._serialized_end=1280
+  _globals['_REBUILDINGSETREQUEST']._serialized_start=1282
+  _globals['_REBUILDINGSETREQUEST']._serialized_end=1324
+  _globals['_REBUILDINGSETRESPONSE']._serialized_start=1326
+  _globals['_REBUILDINGSETRESPONSE']._serialized_end=1383
+  _globals['_REVISIONCOUNTERSETREQUEST']._serialized_start=1385
+  _globals['_REVISIONCOUNTERSETREQUEST']._serialized_end=1429
+  _globals['_REVISIONCOUNTERSETRESPONSE']._serialized_start=1431
+  _globals['_REVISIONCOUNTERSETRESPONSE']._serialized_end=1493
+  _globals['_UNMAPMARKDISKCHAINREMOVEDSETREQUEST']._serialized_start=1495
+  _globals['_UNMAPMARKDISKCHAINREMOVEDSETREQUEST']._serialized_end=1549
+  _globals['_UNMAPMARKDISKCHAINREMOVEDSETRESPONSE']._serialized_start=1551
+  _globals['_UNMAPMARKDISKCHAINREMOVEDSETRESPONSE']._serialized_end=1623
+  _globals['_DISKINFO']._serialized_start=1626
+  _globals['_DISKINFO']._serialized_end=1928
+  _globals['_DISKINFO_CHILDRENENTRY']._serialized_start=1834
+  _globals['_DISKINFO_CHILDRENENTRY']._serialized_end=1881
+  _globals['_DISKINFO_LABELSENTRY']._serialized_start=635
+  _globals['_DISKINFO_LABELSENTRY']._serialized_end=680
+  _globals['_REPLICA']._serialized_start=1931
+  _globals['_REPLICA']._serialized_end=2375
+  _globals['_REPLICA_DISKSENTRY']._serialized_start=2313
+  _globals['_REPLICA_DISKSENTRY']._serialized_end=2375
+  _globals['_PREPAREREMOVEACTION']._serialized_start=2377
+  _globals['_PREPAREREMOVEACTION']._serialized_end=2446
+  _globals['_REPLICASERVICE']._serialized_start=2449
+  _globals['_REPLICASERVICE']._serialized_end=3771
 # @@protoc_insertion_point(module_scope)
