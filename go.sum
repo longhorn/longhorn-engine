@@ -67,10 +67,17 @@ github.com/kr/pty v1.1.1/go.mod h1:pFQYn66WHrOpPYNljwOMqo10TkYh1fy3cYio2l3bCsQ=
 github.com/kr/text v0.1.0/go.mod h1:4Jbv+DJW3UT/LiOwJeYQe1efqtUx/iVham/4vfdArNI=
 github.com/kr/text v0.2.0 h1:5Nx0Ya0ZqY2ygV366QzturHI13Jq95ApcVaJBhpS+AY=
 github.com/kr/text v0.2.0/go.mod h1:eLer722TekiGuMkidMxC/pM04lWEeraHUUmBw8l2grE=
+<<<<<<< HEAD
 github.com/longhorn/backupstore v0.0.0-20230627040634-5b4f2d040e9d h1:sJBr2HsVp61Lpb4zj4dDGLr4RuTQtJwogw/mPe1DBkI=
 github.com/longhorn/backupstore v0.0.0-20230627040634-5b4f2d040e9d/go.mod h1:wiEYTbvxEAIUxAAY1DmvMeuFuGqwWmJTzfVhZiBKlNo=
 github.com/longhorn/go-iscsi-helper v0.0.0-20230214085945-21fed2bd6261 h1:XtxZ34rrCCP+WcC7Tv6miHPo1Xys0eUWtH4W0wDKjFM=
 github.com/longhorn/go-iscsi-helper v0.0.0-20230214085945-21fed2bd6261/go.mod h1:Pc949NvBbdV1zBFdbh4uC5Po8CuxQCwzxI+n7mIyGA0=
+=======
+github.com/longhorn/backupstore v0.0.0-20231025000449-5316e8b5320d h1:WrjW6b0VmaapZWBKLSJTyZ7A5xzN0mciraLbPG9rExE=
+github.com/longhorn/backupstore v0.0.0-20231025000449-5316e8b5320d/go.mod h1:wiEYTbvxEAIUxAAY1DmvMeuFuGqwWmJTzfVhZiBKlNo=
+github.com/longhorn/go-iscsi-helper v0.0.0-20230802055236-4ec8edae3fad h1:1eZBx9ZSopMM969E/BTTUIhM0O2klBOgh8qnmGnXftA=
+github.com/longhorn/go-iscsi-helper v0.0.0-20230802055236-4ec8edae3fad/go.mod h1:hxy8Ra38KtX4MFmXZRAZUpJZSYcaI1pmnWmKA3ICA2c=
+>>>>>>> 8d6d46b7 (Update vendor after backupstore merge)
 github.com/longhorn/nsfilelock v0.0.0-20200723175406-fa7c83ad0003 h1:Jw9uANsGcHTxp6HcC++/vN17LfeuDmozHI2j6DoZf5E=
 github.com/longhorn/nsfilelock v0.0.0-20200723175406-fa7c83ad0003/go.mod h1:0CLeXlf59Lg6C0kjLSDf47ft73Dh37CwymYRKWwAn04=
 github.com/longhorn/sparse-tools v0.0.0-20230408015858-c849def39d3c h1:EAE/cBOWZUL9CDiI4xbOr1IudQUa2e6u/pdScytEcvo=
