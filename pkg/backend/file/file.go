@@ -120,6 +120,10 @@ func (f *Wrapper) SetUnmapMarkSnapChainRemoved(enabled bool) error {
 	return nil
 }
 
+func (f *Wrapper) ResetRebuild() error {
+	return nil
+}
+
 func (ff *Factory) Create(volumeName, address string, dataServerProtocol types.DataServerProtocol, engineToReplicaTimeout time.Duration) (types.Backend, error) {
 	logrus.Infof("Creating file: %s", address)
 	file, err := os.OpenFile(address, os.O_RDWR|os.O_CREATE, 0600)
