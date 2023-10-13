@@ -737,6 +737,20 @@ func (c *Controller) Start(volumeSize, volumeCurrentSize int64, addresses ...str
 			continue
 		}
 
+		// If the instance manager crashes during the execution of [this code block](https://github.com/longhorn/longhorn-engine/blob/v1.5.1/pkg/sync/sync.go#L435-L446)
+		// the volume.meta file will be left with `Rebuilding` set to true. If Longhorn subsequently updates the replica
+		// as healthy, then the old replica will be removed. In scenarios involving multiple replicas, Longhorn will
+		// remove the replica with illegal values, thereby allowing rebuilding from other healthy replicas. However, in
+		// the case of single replicas, we cannot employ the same strategy.
+		// As a result, we will make a best-effort attempt to reset the `Rebuilding` flag for single replica cases.
+		// Ref: https://github.com/longhorn/longhorn/issues/6626
+		if len(addresses) == 1 {
+			err = newBackend.ResetRebuild()
+			if err != nil {
+				logrus.WithError(err).Warnf("Failed to reset invalid rebuild for backend with address %v", address)
+			}
+		}
+
 		newSize, err := newBackend.Size()
 		if err != nil {
 			if strings.Contains(err.Error(), "rpc error: code = Unavailable") {
