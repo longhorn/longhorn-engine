@@ -251,7 +251,7 @@ func (r *Remote) SetUnmapMarkSnapChainRemoved(enabled bool) error {
 
 	conn, err := grpc.Dial(r.replicaServiceURL, grpc.WithInsecure())
 	if err != nil {
-		return fmt.Errorf("cannot connect to ReplicaService %v: %v", r.replicaServiceURL, err)
+		return errors.Wrapf(err, "failed connecting to ReplicaService %v", r.replicaServiceURL)
 	}
 	defer conn.Close()
 	replicaServiceClient := ptypes.NewReplicaServiceClient(conn)
