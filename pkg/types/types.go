@@ -93,6 +93,7 @@ type Backend interface {
 	GetHeadFileSize() (int64, error)
 	GetUnmapMarkSnapChainRemoved() (bool, error)
 	SetUnmapMarkSnapChainRemoved(enabled bool) error
+	ResetRebuild() error
 }
 
 type BackendFactory interface {
