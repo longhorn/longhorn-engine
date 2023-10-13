@@ -177,6 +177,15 @@ func (r *Remote) IsRevisionCounterDisabled() (bool, error) {
 	return replicaInfo.RevisionCounterDisabled, nil
 }
 
+func (r *Remote) IsReplicaRebuilding() (bool, error) {
+	replicaInfo, err := r.info()
+	if err != nil {
+		return false, err
+	}
+
+	return replicaInfo.Rebuilding, nil
+}
+
 func (r *Remote) GetLastModifyTime() (int64, error) {
 	replicaInfo, err := r.info()
 	if err != nil {
@@ -261,6 +270,40 @@ func (r *Remote) SetUnmapMarkSnapChainRemoved(enabled bool) error {
 		Enabled: enabled,
 	}); err != nil {
 		return errors.Wrapf(err, "failed to set UnmapMarkDiskChainRemoved to %v for replica %v from remote", enabled, r.replicaServiceURL)
+	}
+
+	return nil
+}
+
+func (r *Remote) ResetRebuild() error {
+	isRebuilding, err := r.IsReplicaRebuilding()
+	if err != nil {
+		return err
+	}
+
+	if !isRebuilding {
+		return nil
+	}
+
+	logrus.Warnf("Resetting %v rebuild", r.name)
+
+	conn, err := grpc.Dial(r.replicaServiceURL, grpc.WithInsecure(),
+		ptypes.WithIdentityValidationClientInterceptor(r.volumeName, ""))
+	if err != nil {
+		return errors.Wrapf(err, "failed connecting to ReplicaService %v", r.replicaServiceURL)
+	}
+	defer conn.Close()
+
+	replicaServiceClient := ptypes.NewReplicaServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), replicaClient.GRPCServiceCommonTimeout)
+	defer cancel()
+
+	_, err = replicaServiceClient.RebuildingSet(ctx, &ptypes.RebuildingSetRequest{
+		Rebuilding: false,
+	})
+	if err != nil {
+		return errors.Wrapf(err, "failed to set replica %v rebuild to false", r.replicaServiceURL)
 	}
 
 	return nil
