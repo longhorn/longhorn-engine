@@ -1,0 +1,10 @@
+#!/bin/bash
+set -e
+
+cd $(dirname $0)
+
+./prebuild
+./build
+./validate
+./test
+./package
