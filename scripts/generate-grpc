@@ -2,6 +2,9 @@
 
 set -e
 
+# if BUILDER_FLAG is set, then the script will exit with the error code
+: ${BUILDER_FLAG:=0}
+
 cd $(dirname $0)/..
 
 ./generate_grpc.sh
@@ -12,5 +15,5 @@ if [ $? -eq 0 ]
 then
 	echo $output
 	echo GRPC generated code is not up to date
-	exit 1
+	exit $BUILDER_FLAG
 fi

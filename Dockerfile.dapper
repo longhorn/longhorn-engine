@@ -141,5 +141,6 @@ RUN cd /go/src/github.com/longhorn && \
 
 VOLUME /tmp
 ENV TMPDIR /tmp
+ENV DAPPER_OUTPUT ./integration/rpc/controller ./integration/rpc/replica ./proto
 ENTRYPOINT ["./scripts/entry"]
 CMD ["ci"]
