@@ -3,7 +3,7 @@ set -e
 
 cd $(dirname $0)
 
-./prebuild
+BUILDER_FLAG=1 ./generate-grpc
 ./build
 ./validate
 ./test
