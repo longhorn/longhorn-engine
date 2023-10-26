@@ -10,6 +10,7 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
+	"net/url"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -397,8 +398,6 @@ func CleanUpMountPoints(mounter mount.Interface, log logrus.FieldLogger) error {
 
 	return errs
 }
-<<<<<<< HEAD
-=======
 
 func CheckBackupType(backupTarget string) (string, error) {
 	u, err := url.Parse(backupTarget)
@@ -419,4 +418,3 @@ func SplitMountOptions(options []string) []string {
 	// Options in the form "nfsOptions=soft,timeo=450,retrans=3" are more likely, but we must split them.
 	return strings.Split(options[0], ",")
 }
->>>>>>> 8d6d46b7 (Update vendor after backupstore merge)

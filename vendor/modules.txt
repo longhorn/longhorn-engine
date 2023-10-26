@@ -130,11 +130,7 @@ github.com/kr/pretty
 # github.com/kr/text v0.2.0
 ## explicit
 github.com/kr/text
-<<<<<<< HEAD
-# github.com/longhorn/backupstore v0.0.0-20230627040634-5b4f2d040e9d
-=======
 # github.com/longhorn/backupstore v0.0.0-20231025000449-5316e8b5320d
->>>>>>> 8d6d46b7 (Update vendor after backupstore merge)
 ## explicit; go 1.17
 github.com/longhorn/backupstore
 github.com/longhorn/backupstore/azblob
@@ -148,7 +144,7 @@ github.com/longhorn/backupstore/s3
 github.com/longhorn/backupstore/systembackup
 github.com/longhorn/backupstore/util
 github.com/longhorn/backupstore/vfs
-# github.com/longhorn/go-iscsi-helper v0.0.0-20230214085945-21fed2bd6261
+# github.com/longhorn/go-iscsi-helper v0.0.0-20230802055236-4ec8edae3fad
 ## explicit; go 1.13
 github.com/longhorn/go-iscsi-helper/iscsi
 github.com/longhorn/go-iscsi-helper/iscsidev
