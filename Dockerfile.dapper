@@ -10,7 +10,7 @@ ENV PROTOBUF_VER=3.18.0
 ENV PATH /go/bin:$PATH
 ENV DAPPER_DOCKER_SOCKET true
 ENV DAPPER_ENV TAG REPO
-ENV DAPPER_OUTPUT bin coverage.out
+ENV DAPPER_OUTPUT bin integration/rpc coverage.out
 ENV DAPPER_RUN_ARGS --privileged --tmpfs /go/src/github.com/longhorn/longhorn-engine/integration/.venv:exec --tmpfs /go/src/github.com/longhorn/longhorn-engine/integration/.tox:exec -v /dev:/host/dev -v /proc:/host/proc
 ENV DAPPER_SOURCE /go/src/github.com/longhorn/longhorn-engine
 WORKDIR ${DAPPER_SOURCE}
@@ -132,9 +132,9 @@ RUN cd integration && \
 
 # Build longhorn-instance-manager for integration testing
 RUN cd /go/src/github.com/longhorn && \
-    git clone https://github.com/longhorn/longhorn-instance-manager.git && \
+    git clone https://github.com/m-ildefons/longhorn-instance-manager.git && \
     cd longhorn-instance-manager && \
-    git checkout v1_20210731 && \
+    git checkout wip/object-store && \
     go build -o ./longhorn-instance-manager && \
     cp -r integration/rpc/ ${DAPPER_SOURCE}/integration/rpc/ && \
     cp longhorn-instance-manager /usr/local/bin

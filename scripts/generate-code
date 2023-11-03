@@ -1,0 +1,12 @@
+#!/bin/bash
+
+cd "$(dirname "$0")/.."
+
+set -e
+./generate_grpc.sh
+
+# remove the code that was copied from the instance manager for integration
+# testing - we don't want to track it in this repo
+for d in "../longhorn-instance-manager/integration/rpc"/* ; do
+  rm -rf "integration/rpc/$(basename "$d")"
+done
