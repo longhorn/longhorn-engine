@@ -3,6 +3,11 @@ set -e
 
 source $(dirname $0)/version
 
+if [ "$(git rev-parse --abbrev-ref HEAD)" = "master" ]; then
+    COVER="-cover"
+    COVERPKG="-coverpkg=github.com/longhorn/longhorn-engine/..."
+fi
+
 cd $(dirname $0)/..
 
 mkdir -p bin
@@ -11,4 +16,4 @@ go build -tags netgo -ldflags \
 	-X main.GitCommit=$GITCOMMIT \
 	-X main.BuildDate=$BUILDDATE \
 	-linkmode external -extldflags -static" \
-	-o bin/longhorn
+	"$COVER" "$COVERPKG" -o bin/longhorn
