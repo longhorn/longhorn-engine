@@ -3,7 +3,15 @@ set -e
 
 source $(dirname $0)/version
 
-if [ "$(git rev-parse --abbrev-ref HEAD)" = "master" ]; then
+LINKFLAGS="-X main.Version=$VERSION
+           -X main.GitCommit=$GITCOMMIT
+           -X main.BuildDate=$BUILDDATE
+           -linkmode external -extldflags -static"
+
+# add coverage flags if there is no tag and it's on master or a version branch like v1.6.x
+COMMIT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+COMMIT_TAG=$(git tag --points-at HEAD | head -n 1)
+if [[ "$COMMIT_TAG" == "" ]] && [[ "$COMMIT_BRANCH" == master || "$COMMIT_BRANCH" =~ ^v[0-9]+\.[0-9]+\.x$ ]]; then
     COVER="-cover"
     COVERPKG="-coverpkg=github.com/longhorn/longhorn-engine/..."
 fi
@@ -11,9 +19,4 @@ fi
 cd $(dirname $0)/..
 
 mkdir -p bin
-go build -tags netgo -ldflags \
-	"-X main.Version=$VERSION \
-	-X main.GitCommit=$GITCOMMIT \
-	-X main.BuildDate=$BUILDDATE \
-	-linkmode external -extldflags -static" \
-	"$COVER" "$COVERPKG" -o bin/longhorn
+go build -o bin/longhorn -tags netgo -ldflags "$LINKFLAGS" $COVER $COVERPKG
