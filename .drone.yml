@@ -234,7 +234,7 @@ steps:
   pull: default
   image: rancher/dapper:v0.5.8
   commands:
-  - dapper ci-without-it
+  - dapper ci
   privileged: true
   volumes:
   - name: socket
