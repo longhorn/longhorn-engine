@@ -2,8 +2,6 @@ module github.com/longhorn/longhorn-engine
 
 go 1.21
 
-replace github.com/longhorn/backupstore => ../backupstore
-
 require (
 	github.com/docker/go-units v0.3.3
 	github.com/gofrs/flock v0.8.1
