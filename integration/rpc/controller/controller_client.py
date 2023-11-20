@@ -1,7 +1,7 @@
 import grpc
 
-import controller_pb2
-import controller_pb2_grpc
+from github.com.longhorn.longhorn_engine.proto.ptypes import controller_pb2
+from github.com.longhorn.longhorn_engine.proto.ptypes import controller_pb2_grpc
 from google.protobuf import empty_pb2
 
 from common.interceptor import IdentityValidationInterceptor

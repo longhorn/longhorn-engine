@@ -2,6 +2,8 @@ syntax="proto3";
 
 package ptypes;
 
+option go_package = "github.com/longhorn/longhorn-engine/proto/ptypes";
+
 import "google/protobuf/empty.proto";
 
 service ReplicaService {

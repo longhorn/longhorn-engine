@@ -1,8 +1,8 @@
 import grpc
 
-import common_pb2
-import syncagent_pb2
-import syncagent_pb2_grpc
+from github.com.longhorn.longhorn_engine.proto.ptypes import common_pb2
+from github.com.longhorn.longhorn_engine.proto.ptypes import syncagent_pb2
+from github.com.longhorn.longhorn_engine.proto.ptypes import syncagent_pb2_grpc
 from google.protobuf import empty_pb2
 
 from common.interceptor import IdentityValidationInterceptor
