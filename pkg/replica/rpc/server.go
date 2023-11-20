@@ -4,13 +4,13 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/golang/protobuf/ptypes/empty"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/longhorn/longhorn-engine/pkg/replica"
 	"github.com/longhorn/longhorn-engine/pkg/types"
@@ -112,15 +112,15 @@ func (rs *ReplicaServer) ReplicaCreate(ctx context.Context, req *ptypes.ReplicaC
 	return &ptypes.ReplicaCreateResponse{Replica: rs.getReplica()}, nil
 }
 
-func (rs *ReplicaServer) ReplicaDelete(ctx context.Context, req *empty.Empty) (*empty.Empty, error) {
-	return &empty.Empty{}, rs.s.Delete()
+func (rs *ReplicaServer) ReplicaDelete(ctx context.Context, req *emptypb.Empty) (*emptypb.Empty, error) {
+	return &emptypb.Empty{}, rs.s.Delete()
 }
 
-func (rs *ReplicaServer) ReplicaGet(ctx context.Context, req *empty.Empty) (*ptypes.ReplicaGetResponse, error) {
+func (rs *ReplicaServer) ReplicaGet(ctx context.Context, req *emptypb.Empty) (*ptypes.ReplicaGetResponse, error) {
 	return &ptypes.ReplicaGetResponse{Replica: rs.getReplica()}, nil
 }
 
-func (rs *ReplicaServer) ReplicaOpen(ctx context.Context, req *empty.Empty) (*ptypes.ReplicaOpenResponse, error) {
+func (rs *ReplicaServer) ReplicaOpen(ctx context.Context, req *emptypb.Empty) (*ptypes.ReplicaOpenResponse, error) {
 	if err := rs.s.Open(); err != nil {
 		return nil, err
 	}
@@ -128,7 +128,7 @@ func (rs *ReplicaServer) ReplicaOpen(ctx context.Context, req *empty.Empty) (*pt
 	return &ptypes.ReplicaOpenResponse{Replica: rs.getReplica()}, nil
 }
 
-func (rs *ReplicaServer) ReplicaClose(ctx context.Context, req *empty.Empty) (*ptypes.ReplicaCloseResponse, error) {
+func (rs *ReplicaServer) ReplicaClose(ctx context.Context, req *emptypb.Empty) (*ptypes.ReplicaCloseResponse, error) {
 	if err := rs.s.Close(); err != nil {
 		return nil, err
 	}
@@ -136,7 +136,7 @@ func (rs *ReplicaServer) ReplicaClose(ctx context.Context, req *empty.Empty) (*p
 	return &ptypes.ReplicaCloseResponse{Replica: rs.getReplica()}, nil
 }
 
-func (rs *ReplicaServer) ReplicaReload(ctx context.Context, req *empty.Empty) (*ptypes.ReplicaReloadResponse, error) {
+func (rs *ReplicaServer) ReplicaReload(ctx context.Context, req *emptypb.Empty) (*ptypes.ReplicaReloadResponse, error) {
 	if err := rs.s.Reload(); err != nil {
 		return nil, err
 	}

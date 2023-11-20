@@ -3,12 +3,12 @@ package rpc
 import (
 	"time"
 
-	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/longhorn/longhorn-engine/pkg/meta"
 	journal "github.com/longhorn/sparse-tools/stats"
@@ -111,7 +111,7 @@ func (cs *ControllerServer) listControllerReplica() []*ptypes.ControllerReplica 
 	return csList
 }
 
-func (cs *ControllerServer) VolumeGet(ctx context.Context, req *empty.Empty) (*ptypes.Volume, error) {
+func (cs *ControllerServer) VolumeGet(ctx context.Context, req *emptypb.Empty) (*ptypes.Volume, error) {
 	return cs.getVolume(), nil
 }
 
@@ -122,7 +122,7 @@ func (cs *ControllerServer) VolumeStart(ctx context.Context, req *ptypes.VolumeS
 	return cs.getVolume(), nil
 }
 
-func (cs *ControllerServer) VolumeShutdown(ctx context.Context, req *empty.Empty) (*ptypes.Volume, error) {
+func (cs *ControllerServer) VolumeShutdown(ctx context.Context, req *emptypb.Empty) (*ptypes.Volume, error) {
 	if err := cs.c.Shutdown(); err != nil {
 		return nil, err
 	}
@@ -163,7 +163,7 @@ func (cs *ControllerServer) VolumeFrontendStart(ctx context.Context, req *ptypes
 	return cs.getVolume(), nil
 }
 
-func (cs *ControllerServer) VolumeFrontendShutdown(ctx context.Context, req *empty.Empty) (*ptypes.Volume, error) {
+func (cs *ControllerServer) VolumeFrontendShutdown(ctx context.Context, req *emptypb.Empty) (*ptypes.Volume, error) {
 	if err := cs.c.ShutdownFrontend(); err != nil {
 		return nil, err
 	}
@@ -179,7 +179,7 @@ func (cs *ControllerServer) VolumeUnmapMarkSnapChainRemovedSet(ctx context.Conte
 	return cs.getVolume(), nil
 }
 
-func (cs *ControllerServer) ReplicaList(ctx context.Context, req *empty.Empty) (*ptypes.ReplicaListReply, error) {
+func (cs *ControllerServer) ReplicaList(ctx context.Context, req *emptypb.Empty) (*ptypes.ReplicaListReply, error) {
 	return &ptypes.ReplicaListReply{
 		Replicas: cs.listControllerReplica(),
 	}, nil
@@ -197,12 +197,12 @@ func (cs *ControllerServer) ControllerReplicaCreate(ctx context.Context, req *pt
 	return cs.getControllerReplica(req.Address), nil
 }
 
-func (cs *ControllerServer) ReplicaDelete(ctx context.Context, req *ptypes.ReplicaAddress) (*empty.Empty, error) {
+func (cs *ControllerServer) ReplicaDelete(ctx context.Context, req *ptypes.ReplicaAddress) (*emptypb.Empty, error) {
 	if err := cs.c.RemoveReplica(req.Address); err != nil {
 		return nil, err
 	}
 
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
 func (cs *ControllerServer) ReplicaUpdate(ctx context.Context, req *ptypes.ControllerReplica) (*ptypes.ControllerReplica, error) {
@@ -233,13 +233,13 @@ func (cs *ControllerServer) ReplicaVerifyRebuild(ctx context.Context, req *ptype
 	return cs.getControllerReplica(req.Address), nil
 }
 
-func (cs *ControllerServer) JournalList(ctx context.Context, req *ptypes.JournalListRequest) (*empty.Empty, error) {
+func (cs *ControllerServer) JournalList(ctx context.Context, req *ptypes.JournalListRequest) (*emptypb.Empty, error) {
 	//ListJournal flushes operation journal (replica read/write, ping, etc.) accumulated since previous flush
 	journal.PrintLimited(int(req.Limit))
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (cs *ControllerServer) VersionDetailGet(ctx context.Context, req *empty.Empty) (*ptypes.VersionDetailGetReply, error) {
+func (cs *ControllerServer) VersionDetailGet(ctx context.Context, req *emptypb.Empty) (*ptypes.VersionDetailGetReply, error) {
 	version := meta.GetVersion()
 	return &ptypes.VersionDetailGetReply{
 		Version: &ptypes.VersionOutput{
@@ -256,7 +256,7 @@ func (cs *ControllerServer) VersionDetailGet(ctx context.Context, req *empty.Emp
 	}, nil
 }
 
-func (cs *ControllerServer) MetricsGet(ctx context.Context, req *empty.Empty) (*ptypes.MetricsGetReply, error) {
+func (cs *ControllerServer) MetricsGet(ctx context.Context, req *emptypb.Empty) (*ptypes.MetricsGetReply, error) {
 	return &ptypes.MetricsGetReply{
 		Metrics: cs.c.GetLatestMetics(),
 	}, nil
