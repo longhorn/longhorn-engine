@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/gofrs/flock"
-	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/moby/moby/pkg/reexec"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
@@ -21,6 +20,7 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/reflection"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/longhorn/backupstore"
 	butil "github.com/longhorn/backupstore/util"
@@ -293,7 +293,7 @@ func (s *SyncAgentServer) FinishRestore(restoreErr error) (err error) {
 	return nil
 }
 
-func (s *SyncAgentServer) Reset(ctx context.Context, req *empty.Empty) (*empty.Empty, error) {
+func (s *SyncAgentServer) Reset(ctx context.Context, req *emptypb.Empty) (*emptypb.Empty, error) {
 	s.Lock()
 	defer s.Unlock()
 	if s.isRestoring {
@@ -307,10 +307,10 @@ func (s *SyncAgentServer) Reset(ctx context.Context, req *empty.Empty) (*empty.E
 	s.RebuildStatus = &RebuildStatus{}
 	s.PurgeStatus = &PurgeStatus{}
 	s.CloneStatus = &CloneStatus{}
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (*SyncAgentServer) FileRemove(ctx context.Context, req *ptypes.FileRemoveRequest) (*empty.Empty, error) {
+func (*SyncAgentServer) FileRemove(ctx context.Context, req *ptypes.FileRemoveRequest) (*emptypb.Empty, error) {
 	logrus.Infof("Running rm %v", req.FileName)
 
 	if err := os.Remove(req.FileName); err != nil {
@@ -319,10 +319,10 @@ func (*SyncAgentServer) FileRemove(ctx context.Context, req *ptypes.FileRemoveRe
 	}
 
 	logrus.Infof("Done running %s %v", "rm", req.FileName)
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (*SyncAgentServer) FileRename(ctx context.Context, req *ptypes.FileRenameRequest) (*empty.Empty, error) {
+func (*SyncAgentServer) FileRename(ctx context.Context, req *ptypes.FileRenameRequest) (*emptypb.Empty, error) {
 	logrus.Infof("Running rename file from %v to %v", req.OldFileName, req.NewFileName)
 
 	if err := os.Rename(req.OldFileName, req.NewFileName); err != nil {
@@ -331,10 +331,10 @@ func (*SyncAgentServer) FileRename(ctx context.Context, req *ptypes.FileRenameRe
 	}
 
 	logrus.Infof("Done running %s from %v to %v", "rename", req.OldFileName, req.NewFileName)
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (s *SyncAgentServer) FileSend(ctx context.Context, req *ptypes.FileSendRequest) (*empty.Empty, error) {
+func (s *SyncAgentServer) FileSend(ctx context.Context, req *ptypes.FileSendRequest) (*emptypb.Empty, error) {
 	address := net.JoinHostPort(req.Host, strconv.Itoa(int(req.Port)))
 	directIO := true
 	if filepath.Ext(strings.TrimSpace(req.FromFileName)) == ".meta" {
@@ -346,10 +346,10 @@ func (s *SyncAgentServer) FileSend(ctx context.Context, req *ptypes.FileSendRequ
 	}
 	logrus.Infof("Done syncing file %v to %v", req.FromFileName, address)
 
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (s *SyncAgentServer) VolumeExport(ctx context.Context, req *ptypes.VolumeExportRequest) (*empty.Empty, error) {
+func (s *SyncAgentServer) VolumeExport(ctx context.Context, req *ptypes.VolumeExportRequest) (*emptypb.Empty, error) {
 	remoteAddress := net.JoinHostPort(req.Host, strconv.Itoa(int(req.Port)))
 
 	var err error
@@ -378,7 +378,7 @@ func (s *SyncAgentServer) VolumeExport(ctx context.Context, req *ptypes.VolumeEx
 
 	logrus.Infof("Done exporting snapshot %v to %v", req.SnapshotFileName, remoteAddress)
 
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
 func (s *SyncAgentServer) ReceiverLaunch(ctx context.Context, req *ptypes.ReceiverLaunchRequest) (*ptypes.ReceiverLaunchResponse, error) {
@@ -415,7 +415,7 @@ func (s *SyncAgentServer) launchReceiver(processName, toFileName string, ops spa
 	return port, nil
 }
 
-func (s *SyncAgentServer) FilesSync(ctx context.Context, req *ptypes.FilesSyncRequest) (res *empty.Empty, err error) {
+func (s *SyncAgentServer) FilesSync(ctx context.Context, req *ptypes.FilesSyncRequest) (res *emptypb.Empty, err error) {
 	if err := s.PrepareRebuild(req.SyncFileInfoList, req.FromAddress); err != nil {
 		return nil, err
 	}
@@ -471,7 +471,7 @@ func (s *SyncAgentServer) FilesSync(ctx context.Context, req *ptypes.FilesSyncRe
 		}
 	}
 
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
 func (s *SyncAgentServer) PrepareRebuild(list []*ptypes.SyncFileInfo, fromReplicaAddress string) error {
@@ -522,7 +522,7 @@ func (s *SyncAgentServer) IsRebuilding() bool {
 	return s.isRebuilding
 }
 
-func (s *SyncAgentServer) ReplicaRebuildStatus(ctx context.Context, req *empty.Empty) (*ptypes.ReplicaRebuildStatusResponse, error) {
+func (s *SyncAgentServer) ReplicaRebuildStatus(ctx context.Context, req *emptypb.Empty) (*ptypes.ReplicaRebuildStatusResponse, error) {
 	isRebuilding := s.IsRebuilding()
 
 	s.RebuildStatus.RLock()
@@ -536,7 +536,7 @@ func (s *SyncAgentServer) ReplicaRebuildStatus(ctx context.Context, req *empty.E
 	}, nil
 }
 
-func (s *SyncAgentServer) SnapshotClone(ctx context.Context, req *ptypes.SnapshotCloneRequest) (res *empty.Empty, err error) {
+func (s *SyncAgentServer) SnapshotClone(ctx context.Context, req *ptypes.SnapshotCloneRequest) (res *emptypb.Empty, err error) {
 	// We generally don't know the from replica's instanceName since it is arbitrarily chosen from candidate addresses
 	// stored in the controller. Do don't modify SnapshotCloneRequest to contain it, and create a client without it.
 	fromClient, err := replicaclient.NewReplicaClient(req.FromAddress, req.FromVolumeName, "")
@@ -586,7 +586,7 @@ func (s *SyncAgentServer) SnapshotClone(ctx context.Context, req *ptypes.Snapsho
 		return nil, err
 	}
 
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
 func (s *SyncAgentServer) prepareClone(fromReplicaAddress, snapshotName string, snapshotSize int64) error {
@@ -667,7 +667,7 @@ func (s *SyncAgentServer) IsCloning() bool {
 	return s.isCloning
 }
 
-func (s *SyncAgentServer) SnapshotCloneStatus(ctx context.Context, req *empty.Empty) (*ptypes.SnapshotCloneStatusResponse, error) {
+func (s *SyncAgentServer) SnapshotCloneStatus(ctx context.Context, req *emptypb.Empty) (*ptypes.SnapshotCloneStatusResponse, error) {
 	isCloning := s.IsCloning()
 
 	s.CloneStatus.RLock()
@@ -760,7 +760,7 @@ func (s *SyncAgentServer) BackupStatus(ctx context.Context, req *ptypes.BackupSt
 	return resp, nil
 }
 
-func (*SyncAgentServer) BackupRemove(ctx context.Context, req *ptypes.BackupRemoveRequest) (*empty.Empty, error) {
+func (*SyncAgentServer) BackupRemove(ctx context.Context, req *ptypes.BackupRemoveRequest) (*emptypb.Empty, error) {
 	cmd := reexec.Command("backup", "delete", req.Backup)
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Pdeathsig: syscall.SIGKILL,
@@ -778,7 +778,7 @@ func (*SyncAgentServer) BackupRemove(ctx context.Context, req *ptypes.BackupRemo
 	}
 
 	logrus.Infof("Done running %s %v", "backup", cmd.Args)
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
 func (s *SyncAgentServer) waitForRestoreComplete() error {
@@ -808,7 +808,7 @@ func (s *SyncAgentServer) waitForRestoreComplete() error {
 	return nil
 }
 
-func (s *SyncAgentServer) BackupRestore(ctx context.Context, req *ptypes.BackupRestoreRequest) (e *empty.Empty, err error) {
+func (s *SyncAgentServer) BackupRestore(ctx context.Context, req *ptypes.BackupRestoreRequest) (e *emptypb.Empty, err error) {
 	// Check request
 	if req.SnapshotDiskName == "" {
 		return nil, fmt.Errorf("empty snapshot disk name for the restore")
@@ -837,7 +837,7 @@ func (s *SyncAgentServer) BackupRestore(ctx context.Context, req *ptypes.BackupR
 
 	go s.completeBackupRestore()
 
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
 func (s *SyncAgentServer) completeBackupRestore() (err error) {
@@ -977,7 +977,7 @@ func (s *SyncAgentServer) reloadReplica() error {
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
 	defer cancel()
 
-	if _, err := replicaServiceClient.ReplicaReload(ctx, &empty.Empty{}); err != nil {
+	if _, err := replicaServiceClient.ReplicaReload(ctx, &emptypb.Empty{}); err != nil {
 		return errors.Wrapf(err, "failed to reload replica %v", s.replicaAddress)
 	}
 
@@ -1006,7 +1006,7 @@ func (s *SyncAgentServer) replicaRevert(name, created string) error {
 	return nil
 }
 
-func (s *SyncAgentServer) RestoreStatus(ctx context.Context, req *empty.Empty) (*ptypes.RestoreStatusResponse, error) {
+func (s *SyncAgentServer) RestoreStatus(ctx context.Context, req *emptypb.Empty) (*ptypes.RestoreStatusResponse, error) {
 	resp := ptypes.RestoreStatusResponse{
 		IsRestoring: s.IsRestoring(),
 	}
@@ -1026,14 +1026,14 @@ func (s *SyncAgentServer) RestoreStatus(ctx context.Context, req *empty.Empty) (
 	return &resp, nil
 }
 
-func (s *SyncAgentServer) SnapshotPurge(ctx context.Context, req *empty.Empty) (*empty.Empty, error) {
+func (s *SyncAgentServer) SnapshotPurge(ctx context.Context, req *emptypb.Empty) (*emptypb.Empty, error) {
 	if err := s.PreparePurge(); err != nil {
 		return nil, err
 	}
 
 	go s.purgeSnapshots()
 
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
 func (s *SyncAgentServer) purgeSnapshots() (err error) {
@@ -1161,7 +1161,7 @@ func (s *SyncAgentServer) purgeSnapshots() (err error) {
 	return nil
 }
 
-func (s *SyncAgentServer) SnapshotPurgeStatus(ctx context.Context, req *empty.Empty) (*ptypes.SnapshotPurgeStatusResponse, error) {
+func (s *SyncAgentServer) SnapshotPurgeStatus(ctx context.Context, req *emptypb.Empty) (*ptypes.SnapshotPurgeStatusResponse, error) {
 	isPurging := s.IsPurging()
 
 	s.PurgeStatus.RLock()
@@ -1398,7 +1398,7 @@ func (s *SyncAgentServer) rmDisk(disk string) error {
 	return nil
 }
 
-func (s *SyncAgentServer) SnapshotHash(ctx context.Context, req *ptypes.SnapshotHashRequest) (*empty.Empty, error) {
+func (s *SyncAgentServer) SnapshotHash(ctx context.Context, req *ptypes.SnapshotHashRequest) (*emptypb.Empty, error) {
 	if req.SnapshotName == "" {
 		return nil, fmt.Errorf("snapshot name is required")
 	}
@@ -1417,7 +1417,7 @@ func (s *SyncAgentServer) SnapshotHash(ctx context.Context, req *ptypes.Snapshot
 		}
 	}()
 
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
 func checkSnapshotHashStatusFromChecksumFile(snapshotName string) (string, error) {
@@ -1472,7 +1472,7 @@ func (s *SyncAgentServer) SnapshotHashStatus(ctx context.Context, req *ptypes.Sn
 	}, nil
 }
 
-func (s *SyncAgentServer) SnapshotHashCancel(ctx context.Context, req *ptypes.SnapshotHashCancelRequest) (*empty.Empty, error) {
+func (s *SyncAgentServer) SnapshotHashCancel(ctx context.Context, req *ptypes.SnapshotHashCancelRequest) (*emptypb.Empty, error) {
 	if req.SnapshotName == "" {
 		return nil, fmt.Errorf("snapshot name is required")
 	}
@@ -1480,17 +1480,17 @@ func (s *SyncAgentServer) SnapshotHashCancel(ctx context.Context, req *ptypes.Sn
 	task, err := s.SnapshotHashList.Get(req.SnapshotName)
 	if err != nil {
 		if strings.Contains(err.Error(), "not found") {
-			return &empty.Empty{}, nil
+			return &emptypb.Empty{}, nil
 		}
 		return nil, errors.Wrapf(err, "failed to cancel snapshot %v hash task", req.SnapshotName)
 	}
 
 	task.CancelFunc()
 
-	return &empty.Empty{}, nil
+	return &emptypb.Empty{}, nil
 }
 
-func (s *SyncAgentServer) SnapshotHashLockState(ctx context.Context, req *empty.Empty) (*ptypes.SnapshotHashLockStateResponse, error) {
+func (s *SyncAgentServer) SnapshotHashLockState(ctx context.Context, req *emptypb.Empty) (*ptypes.SnapshotHashLockStateResponse, error) {
 	err := os.MkdirAll(replica.FileLockDirectory, 0755)
 	if err != nil {
 		return nil, err

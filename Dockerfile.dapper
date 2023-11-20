@@ -4,7 +4,8 @@ ARG DAPPER_HOST_ARCH=amd64
 ARG http_proxy
 ARG https_proxy
 ENV HOST_ARCH=${DAPPER_HOST_ARCH} ARCH=${DAPPER_HOST_ARCH}
-ENV PROTOBUF_VER=3.18.0
+ENV PROTOBUF_VER=24.3
+ENV PROTOBUF_VER_PY=4.24.3
 
 # Setup environment
 ENV PATH /go/bin:$PATH
@@ -23,11 +24,12 @@ RUN if [ ${ARCH} == "amd64" ]; then \
     zypper -n install autoconf libtool libunwind-devel; \
     fi
 
-RUN zypper -n install cmake wget curl git less file gcc \
-    libkmod-devel libnl3-devel linux-glibc-devel pkg-config psmisc tox qemu-tools fuse python3-devel \
+# TODO: use default python3 if SLE upgrade system python version to python3.11
+RUN zypper -n install cmake wget curl git less file gcc python311 python311-pip python311-devel \
+    libkmod-devel libnl3-devel linux-glibc-devel pkg-config psmisc qemu-tools fuse \
     bash-completion librdmacm1 librdmacm-utils libibverbs xsltproc docbook-xsl-stylesheets \
     perl-Config-General libaio-devel glibc-devel-static glibc-devel sg3_utils iptables libltdl7 \
-    python3-pip uuid-runtime libdevmapper1_03 iproute2 jq unzip zlib-devel zlib-devel-static \
+    uuid-runtime libdevmapper1_03 iproute2 jq unzip zlib-devel zlib-devel-static \
     rpm-build rdma-core-devel gcc-c++ docker && \
     rm -rf rm -rf /var/cache/zypp/*
 
@@ -87,22 +89,22 @@ RUN cd /go/src/github.com/ && \
     cd golang && \
     git clone https://github.com/golang/protobuf.git && \
     cd protobuf && \
-    git checkout v1.3.2 && \
+    git checkout v1.5.3 && \
     cd protoc-gen-go && \
     go build && \
     cp protoc-gen-go /usr/local/bin
 
+# TODO: use default python3 if SLE upgrade system python version to python3.11
+RUN ln -sf /usr/bin/python3.11 /usr/bin/python3 & \
+    ln -sf /usr/bin/pip3.11 /usr/bin/pip3
+
 # python grpc-tools
 RUN if [ "${ARCH}" == "s390x" ]; then \
     zypper -n in libopenssl-devel && \
-    GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=True pip3 install grpcio==1.25.0 grpcio_tools==1.25.0 protobuf==${PROTOBUF_VER}; \
+    GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=True pip3 install grpcio==1.58.0 grpcio_tools==1.58.0 protobuf==${PROTOBUF_VER_PY}; \
     else \
-    pip3 install grpcio==1.25.0 grpcio_tools==1.25.0 protobuf==${PROTOBUF_VER}; \
+    pip3 install grpcio==1.58.0 grpcio_tools==1.58.0 protobuf==${PROTOBUF_VER_PY}; \
     fi
-
-# buf
-ENV GO111MODULE=on
-RUN go install github.com/bufbuild/buf/cmd/buf@v1.4.0
 
 # Build liblonghorn
 RUN cd /usr/src && \
@@ -125,16 +127,18 @@ RUN mkdir integration/
 COPY integration/setup.py integration/tox.ini integration/requirements.txt integration/flake8-requirements.txt integration/
 RUN cd integration && \
     if [ "${ARCH}" == "s390x" ]; then \
+    GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=True pip3 install tox==4.11.3; \
     GRPC_PYTHON_BUILD_SYSTEM_OPENSSL=True tox --notest;\
     else \
+    pip3 install tox==4.11.3; \
     tox --notest; \
     fi
 
 # Build longhorn-instance-manager for integration testing
 RUN cd /go/src/github.com/longhorn && \
-    git clone https://github.com/longhorn/longhorn-instance-manager.git && \
+    git clone https://github.com/FrankYang0529/longhorn-instance-manager.git && \
     cd longhorn-instance-manager && \
-    git checkout v1_20210731 && \
+    git checkout LH-6666 && \
     go build -o ./longhorn-instance-manager && \
     cp -r integration/rpc/ ${DAPPER_SOURCE}/integration/rpc/ && \
     cp longhorn-instance-manager /usr/local/bin

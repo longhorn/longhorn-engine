@@ -6,12 +6,12 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/golang/protobuf/ptypes/empty"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/longhorn/longhorn-engine/pkg/dataconn"
 	replicaClient "github.com/longhorn/longhorn-engine/pkg/replica/client"
@@ -57,7 +57,7 @@ func (r *Remote) Close() error {
 	ctx, cancel := context.WithTimeout(context.Background(), replicaClient.GRPCServiceCommonTimeout)
 	defer cancel()
 
-	if _, err := replicaServiceClient.ReplicaClose(ctx, &empty.Empty{}); err != nil {
+	if _, err := replicaServiceClient.ReplicaClose(ctx, &emptypb.Empty{}); err != nil {
 		return errors.Wrapf(err, "failed to close replica %v from remote", r.replicaServiceURL)
 	}
 
@@ -77,7 +77,7 @@ func (r *Remote) open() error {
 	ctx, cancel := context.WithTimeout(context.Background(), replicaClient.GRPCServiceCommonTimeout)
 	defer cancel()
 
-	if _, err := replicaServiceClient.ReplicaOpen(ctx, &empty.Empty{}); err != nil {
+	if _, err := replicaServiceClient.ReplicaOpen(ctx, &emptypb.Empty{}); err != nil {
 		return errors.Wrapf(err, "failed to open replica %v from remote", r.replicaServiceURL)
 	}
 
@@ -322,7 +322,7 @@ func (r *Remote) info() (*types.ReplicaInfo, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), replicaClient.GRPCServiceCommonTimeout)
 	defer cancel()
 
-	resp, err := replicaServiceClient.ReplicaGet(ctx, &empty.Empty{})
+	resp, err := replicaServiceClient.ReplicaGet(ctx, &emptypb.Empty{})
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to get replica %v info from remote", r.replicaServiceURL)
 	}
