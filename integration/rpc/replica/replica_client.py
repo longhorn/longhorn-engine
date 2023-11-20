@@ -1,7 +1,7 @@
 import grpc
 
-import replica_pb2
-import replica_pb2_grpc
+from github.com.longhorn.longhorn_engine.proto.ptypes import replica_pb2
+from github.com.longhorn.longhorn_engine.proto.ptypes import replica_pb2_grpc
 from google.protobuf import empty_pb2
 
 from common.interceptor import IdentityValidationInterceptor
