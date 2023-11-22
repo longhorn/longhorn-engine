@@ -67,6 +67,12 @@ func ControllerCmd() cli.Command {
 				Value:  int64(controller.DefaultEngineReplicaTimeout.Seconds()),
 				Usage:  "In seconds. Timeout between engine and replica(s)",
 			},
+			cli.IntFlag{
+				Name:     "frontend-streams",
+				Required: false,
+				Value:    1,
+				Usage:    "Number of concurrent streams to the frontend",
+			},
 			cli.StringFlag{
 				Name:  "data-server-protocol",
 				Value: "tcp",
@@ -138,6 +144,11 @@ func startController(c *cli.Context) error {
 	engineReplicaTimeout = controller.DetermineEngineReplicaTimeout(engineReplicaTimeout)
 	iscsiTargetRequestTimeout := controller.DetermineIscsiTargetRequestTimeout(engineReplicaTimeout)
 
+	frontendStreams := c.Int("replica-streams")
+	if frontendStreams < 1 {
+		return errors.New("at least one stream to the frontend is required")
+	}
+
 	factories := map[string]types.BackendFactory{}
 	for _, backend := range backends {
 		switch backend {
@@ -152,7 +163,7 @@ func startController(c *cli.Context) error {
 
 	var frontend types.Frontend
 	if frontendName != "" {
-		f, err := controller.NewFrontend(frontendName, iscsiTargetRequestTimeout)
+		f, err := controller.NewFrontend(frontendName, frontendStreams, iscsiTargetRequestTimeout)
 		if err != nil {
 			return errors.Wrapf(err, "failed to find frontend: %s", frontendName)
 		}
@@ -161,7 +172,7 @@ func startController(c *cli.Context) error {
 
 	logrus.Infof("Creating volume %v controller with iSCSI target request timeout %v and engine to replica(s) timeout %v",
 		volumeName, iscsiTargetRequestTimeout, engineReplicaTimeout)
-	control := controller.NewController(volumeName, dynamic.New(factories), frontend, isUpgrade, disableRevCounter, salvageRequested,
+	control := controller.NewController(volumeName, dynamic.New(factories), frontend, frontendStreams, isUpgrade, disableRevCounter, salvageRequested,
 		unmapMarkSnapChainRemoved, iscsiTargetRequestTimeout, engineReplicaTimeout, types.DataServerProtocol(dataServerProtocol),
 		fileSyncHTTPClientTimeout)
 

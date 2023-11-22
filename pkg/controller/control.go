@@ -30,6 +30,7 @@ type Controller struct {
 	factory                   types.BackendFactory
 	backend                   *replicator
 	frontend                  types.Frontend
+	frontendStreams           int
 	isUpgrade                 bool
 	iscsiTargetRequestTimeout time.Duration
 	engineReplicaTimeout      time.Duration
@@ -66,14 +67,15 @@ const (
 	lastModifyCheckPeriod = 5 * time.Second
 )
 
-func NewController(name string, factory types.BackendFactory, frontend types.Frontend, isUpgrade, disableRevCounter, salvageRequested, unmapMarkSnapChainRemoved bool,
+func NewController(name string, factory types.BackendFactory, frontend types.Frontend, frontendStreams int, isUpgrade, disableRevCounter, salvageRequested, unmapMarkSnapChainRemoved bool,
 	iscsiTargetRequestTimeout, engineReplicaTimeout time.Duration, dataServerProtocol types.DataServerProtocol, fileSyncHTTPClientTimeout int) *Controller {
 	c := &Controller{
-		factory:       factory,
-		VolumeName:    name,
-		frontend:      frontend,
-		metrics:       &types.Metrics{},
-		latestMetrics: &types.Metrics{},
+		factory:         factory,
+		VolumeName:      name,
+		frontend:        frontend,
+		frontendStreams: frontendStreams,
+		metrics:         &types.Metrics{},
+		latestMetrics:   &types.Metrics{},
 
 		isUpgrade:                 isUpgrade,
 		revisionCounterDisabled:   disableRevCounter,
@@ -484,7 +486,7 @@ func (c *Controller) StartFrontend(frontend string) error {
 		}
 	}
 
-	f, err := NewFrontend(frontend, c.iscsiTargetRequestTimeout)
+	f, err := NewFrontend(frontend, c.frontendStreams, c.iscsiTargetRequestTimeout)
 	if err != nil {
 		return errors.Wrapf(err, "failed to find frontend: %s", frontend)
 	}

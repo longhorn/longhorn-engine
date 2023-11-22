@@ -31,11 +31,12 @@ type Nbd struct {
 	isUp           bool
 	socketPath     string
 	nbdDevicePath  string
+	connections    int
 	clients        int
 }
 
-func New() types.Frontend {
-	return &Nbd{}
+func New(frontendStreams int) types.Frontend {
+	return &Nbd{connections: frontendStreams}
 }
 
 func (n *Nbd) FrontendName() string {
@@ -70,7 +71,7 @@ func (n *Nbd) Startup(rwu types.ReaderWriterUnmapperAt) error {
 	if err != nil {
 		return err
 	}
-	args := strings.Fields(fmt.Sprintf("/usr/sbin/nbd-client -u %s -b 4096 %s -C 2", n.GetSocketPath(), n.nbdDevicePath))
+	args := strings.Fields(fmt.Sprintf("/usr/sbin/nbd-client -N %s -u %s -b 4096 %s -C %d", n.Volume, n.socketPath, n.nbdDevicePath, n.connections))
 	cmd := exec.Command(args[0], args[1:]...)
 	if err := cmd.Run(); err != nil {
 		return err
