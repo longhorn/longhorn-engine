@@ -14,6 +14,8 @@ require (
 	github.com/longhorn/sparse-tools v0.0.0-20230408015858-c849def39d3c
 	github.com/moby/moby v23.0.2+incompatible
 	github.com/pkg/errors v0.9.1
+	github.com/pmorjan/kmod v1.1.0
+	github.com/pojntfx/go-nbd v0.3.2
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
 	github.com/rancher/go-rancher v0.1.1-0.20190307222549-9756097e5e4c
 	github.com/sirupsen/logrus v1.9.0
@@ -59,6 +61,7 @@ require (
 	github.com/shurcooL/sanitized_anchor_name v1.0.0 // indirect
 	github.com/slok/goresilience v0.2.0 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
+	golang.org/x/sync v0.4.0 // indirect
 	golang.org/x/text v0.13.0 // indirect
 	google.golang.org/genproto v0.0.0-20230110181048-76db0878b65f // indirect
 	google.golang.org/protobuf v1.30.0 // indirect
@@ -69,3 +72,5 @@ require (
 	k8s.io/mount-utils v0.27.1 // indirect
 	k8s.io/utils v0.0.0-20230406110748-d93618cff8a2 // indirect
 )
+
+replace github.com/pojntfx/go-nbd => github.com/chazapis/go-nbd v0.0.0-20231031233644-40daa63e22c3

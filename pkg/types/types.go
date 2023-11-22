@@ -42,6 +42,7 @@ const (
 
 	EngineFrontendBlockDev = "tgt-blockdev"
 	EngineFrontendISCSI    = "tgt-iscsi"
+	EngineFrontendNbd      = "nbd"
 
 	VolumeHeadName = "volume-head"
 )

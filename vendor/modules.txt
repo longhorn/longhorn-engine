@@ -187,6 +187,14 @@ github.com/pierrec/lz4/v4/internal/xxh32
 # github.com/pkg/errors v0.9.1
 ## explicit
 github.com/pkg/errors
+# github.com/pmorjan/kmod v1.1.0
+## explicit; go 1.18
+github.com/pmorjan/kmod
+# github.com/pojntfx/go-nbd v0.3.2 => github.com/chazapis/go-nbd v0.0.0-20231031233644-40daa63e22c3
+## explicit; go 1.21
+github.com/pojntfx/go-nbd/pkg/backend
+github.com/pojntfx/go-nbd/pkg/protocol
+github.com/pojntfx/go-nbd/pkg/server
 # github.com/prometheus/client_golang v1.15.0
 ## explicit; go 1.17
 github.com/prometheus/client_golang/prometheus
@@ -245,6 +253,9 @@ golang.org/x/net/http2/hpack
 golang.org/x/net/idna
 golang.org/x/net/internal/timeseries
 golang.org/x/net/trace
+# golang.org/x/sync v0.4.0
+## explicit; go 1.17
+golang.org/x/sync/errgroup
 # golang.org/x/sys v0.13.0
 ## explicit; go 1.17
 golang.org/x/sys/unix
@@ -377,3 +388,4 @@ k8s.io/utils/clock
 k8s.io/utils/exec
 k8s.io/utils/io
 k8s.io/utils/keymutex
+# github.com/pojntfx/go-nbd => github.com/chazapis/go-nbd v0.0.0-20231031233644-40daa63e22c3
