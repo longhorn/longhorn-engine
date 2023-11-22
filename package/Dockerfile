@@ -1,4 +1,4 @@
-FROM registry.suse.com/bci/bci-base:15.5
+FROM registry.suse.com/bci/bci-base:15.5 AS builder
 
 ARG ARCH=amd64
 
@@ -6,34 +6,52 @@ RUN zypper -n addrepo --refresh https://download.opensuse.org/repositories/syste
     zypper -n addrepo --refresh https://download.opensuse.org/repositories/network:/utilities/SLE_15_SP5/network:utilities.repo && \
     zypper --gpg-auto-import-keys ref
 
-RUN if [ ${ARCH} == "amd64" ]; then \
-        zypper -n install autoconf libtool libunwind-devel gcc-c++; \
-    fi
-
-RUN zypper -n install cmake kmod curl nfs-client nfs4-acl-tools fuse git gcc \
-    libibverbs librdmacm1 rdma-core-devel perl-Config-General libaio1 sg3_utils \
-    iputils telnet iperf qemu-tools wget iproute2 xsltproc docbook-xsl-stylesheets e2fsprogs cifs-utils && \
+RUN zypper -n install cmake curl git gcc wget xsltproc docbook-xsl-stylesheets && \
     rm -rf /var/cache/zypp/*
+
+# Build liblonghorn
+ENV LIBLONGHORN_COMMIT_ID 53d1c063b95efc8d949b095bd4bf04637230265f
+RUN cd /usr/src && \
+    git clone https://github.com/rancher/liblonghorn.git && \
+    cd liblonghorn && \
+    git checkout ${LIBLONGHORN_COMMIT_ID} && \
+    make; \
+    make install
+
+# Build TGT
+ENV TGT_COMMIT_ID 3a8bc4823b5390e046f7aa8231ed262c0365c42c
+RUN cd /usr/src && \
+    git clone https://github.com/rancher/tgt.git && \
+    cd tgt && \
+    git checkout ${TGT_COMMIT_ID} && \
+    make; \
+    make install
 
 # Install grpc_health_probe
 RUN wget https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/v0.4.21/grpc_health_probe-linux-${ARCH} -O /usr/local/bin/grpc_health_probe && \
     chmod +x /usr/local/bin/grpc_health_probe
 
-# Build liblonghorn
-RUN cd /usr/src && \
-    git clone https://github.com/rancher/liblonghorn.git && \
-    cd liblonghorn && \
-    git checkout 53d1c063b95efc8d949b095bd4bf04637230265f && \
-    make; \
-    make install
+FROM registry.suse.com/bci/bci-base:15.5 AS release
 
-# Build TGT
-RUN cd /usr/src && \
-    git clone https://github.com/rancher/tgt.git && \
-    cd tgt && \
-    git checkout 3a8bc4823b5390e046f7aa8231ed262c0365c42c && \
-    make; \
-    make install
+ARG ARCH=amd64
+
+RUN zypper -n addrepo --refresh https://download.opensuse.org/repositories/system:/snappy/SLE_15/system:snappy.repo && \
+    zypper -n addrepo --refresh https://download.opensuse.org/repositories/network:/utilities/SLE_15_SP5/network:utilities.repo && \
+    zypper --gpg-auto-import-keys ref
+
+RUN zypper -n install nfs-client nfs4-acl-tools cifs-utils libaio1 sg3_utils \
+    iputils iproute2 qemu-tools e2fsprogs && \
+    rm -rf /var/cache/zypp/*
+
+# Copy pre-built binaries from builder
+COPY --from=builder \
+    /usr/local/bin/grpc_health_probe \
+    /usr/sbin/tgt-admin \
+    /usr/sbin/tgt-setup-lun \
+    /usr/sbin/tgtadm \
+    /usr/sbin/tgtd \
+    /usr/sbin/tgtimg \
+    /usr/local/bin/
 
 COPY bin/longhorn bin/longhorn-instance-manager /usr/local/bin/
 
