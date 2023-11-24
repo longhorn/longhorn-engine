@@ -15,6 +15,7 @@ service ControllerService {
     rpc VolumeFrontendStart(VolumeFrontendStartRequest) returns (Volume);
     rpc VolumeFrontendShutdown(google.protobuf.Empty) returns (Volume);
     rpc VolumeUnmapMarkSnapChainRemovedSet(VolumeUnmapMarkSnapChainRemovedSetRequest) returns (Volume);
+    rpc VolumeBench(VolumeBenchRequest) returns (VolumeBenchResponse);
 
     rpc ReplicaList(google.protobuf.Empty) returns (ReplicaListReply);
     rpc ReplicaGet(ReplicaAddress) returns (ControllerReplica);
@@ -99,6 +100,17 @@ message VolumePrepareRestoreRequest {
 
 message VolumeFinishRestoreRequest {
     string currentRestored = 1;
+}
+
+
+message VolumeBenchRequest {
+    string bench_type = 1;
+    int32 thread = 2;
+    int64 size = 3;
+}
+
+message VolumeBenchResponse {
+    string output = 1;
 }
 
 message ReplicaListReply {

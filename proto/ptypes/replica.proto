@@ -15,6 +15,7 @@ service ReplicaService {
   rpc ReplicaSnapshot(ReplicaSnapshotRequest) returns
     (ReplicaSnapshotResponse) {}
   rpc ReplicaExpand(ReplicaExpandRequest) returns (ReplicaExpandResponse) {}
+  rpc ReplicaBench(ReplicaBenchRequest) returns (ReplicaBenchResponse) {}
   rpc DiskRemove(DiskRemoveRequest) returns (DiskRemoveResponse) {}
   rpc DiskReplace(DiskReplaceRequest) returns (DiskReplaceResponse) {}
   rpc DiskPrepareRemove(DiskPrepareRemoveRequest) returns
@@ -78,6 +79,16 @@ message ReplicaExpandRequest {
 
 message ReplicaExpandResponse {
   Replica replica = 1;
+}
+
+message ReplicaBenchRequest {
+  string bench_type = 1;
+  int32 thread = 2;
+  int64 size = 3;
+}
+
+message ReplicaBenchResponse {
+  string output = 1;
 }
 
 message DiskRemoveRequest {
