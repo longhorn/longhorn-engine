@@ -187,6 +187,15 @@ func (rs *ReplicaServer) ReplicaExpand(ctx context.Context, req *ptypes.ReplicaE
 	return &ptypes.ReplicaExpandResponse{Replica: rs.getReplica()}, nil
 }
 
+func (rs *ReplicaServer) ReplicaBench(ctx context.Context, req *ptypes.ReplicaBenchRequest) (*ptypes.ReplicaBenchResponse, error) {
+	output, err := rs.s.Bench(req.BenchType, int(req.Thread), req.Size)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ptypes.ReplicaBenchResponse{Output: output}, nil
+}
+
 func (rs *ReplicaServer) DiskRemove(ctx context.Context, req *ptypes.DiskRemoveRequest) (*ptypes.DiskRemoveResponse, error) {
 	if err := rs.s.RemoveDiffDisk(req.Name, req.Force); err != nil {
 		return nil, err

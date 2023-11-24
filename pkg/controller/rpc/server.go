@@ -179,6 +179,15 @@ func (cs *ControllerServer) VolumeUnmapMarkSnapChainRemovedSet(ctx context.Conte
 	return cs.getVolume(), nil
 }
 
+func (cs *ControllerServer) VolumeBench(ctx context.Context, req *ptypes.VolumeBenchRequest) (*ptypes.VolumeBenchResponse, error) {
+	output, err := cs.c.Bench(req.BenchType, int(req.Thread), req.Size)
+	if err != nil {
+		return nil, err
+	}
+
+	return &ptypes.VolumeBenchResponse{Output: output}, nil
+}
+
 func (cs *ControllerServer) ReplicaList(ctx context.Context, req *empty.Empty) (*ptypes.ReplicaListReply, error) {
 	return &ptypes.ReplicaListReply{
 		Replicas: cs.listControllerReplica(),
@@ -234,7 +243,7 @@ func (cs *ControllerServer) ReplicaVerifyRebuild(ctx context.Context, req *ptype
 }
 
 func (cs *ControllerServer) JournalList(ctx context.Context, req *ptypes.JournalListRequest) (*empty.Empty, error) {
-	//ListJournal flushes operation journal (replica read/write, ping, etc.) accumulated since previous flush
+	// ListJournal flushes operation journal (replica read/write, ping, etc.) accumulated since previous flush
 	journal.PrintLimited(int(req.Limit))
 	return &empty.Empty{}, nil
 }

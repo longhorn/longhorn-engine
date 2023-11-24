@@ -3,6 +3,8 @@ package util
 import (
 	"fmt"
 	"io"
+	"math"
+	"math/rand"
 	"net"
 	"net/http"
 	"net/url"
@@ -13,6 +15,7 @@ import (
 	"runtime"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -315,4 +318,61 @@ func GetAddresses(volumeName, address string, dataServerProtocol types.DataServe
 	default:
 		return "", "", "", -1, fmt.Errorf("unsupported protocol: %v", dataServerProtocol)
 	}
+}
+
+var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+func RandStringRunes(n int) string {
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+	}
+	return string(b)
+}
+
+func Bench(benchType string, thread int, size int64, writeAt, readAt func([]byte, int64) (int, error)) (output string, err error) {
+	lock := sync.Mutex{}
+
+	blockSize := 4096 // 4KB
+
+	blockBytes := []byte(RandStringRunes(blockSize))
+	ChunkSize := int(math.Ceil(float64(size) / float64(thread)))
+
+	wg := sync.WaitGroup{}
+	wg.Add(thread)
+	startTime := time.Now()
+	for i := 0; i < thread; i++ {
+		idx := i
+		go func() {
+			defer wg.Done()
+
+			start := int64(idx) * int64(ChunkSize)
+			end := int64(idx+1) * int64(ChunkSize)
+			for offset := start; offset < end; offset += int64(blockSize) {
+				if offset+int64(blockSize) > end {
+					blockBytes = blockBytes[:end-offset]
+				}
+
+				if _, writeErr := writeAt(blockBytes, offset); writeErr != nil {
+					lock.Lock()
+					err = writeErr
+					lock.Unlock()
+					return
+				}
+			}
+		}()
+	}
+	wg.Wait()
+
+	if err != nil {
+		return "", err
+	}
+
+	duration := time.Since(startTime)
+	switch benchType {
+	case "iops-write":
+		res := int(float64(size) / float64(blockSize) / float64(duration) * 1000000000)
+		output = fmt.Sprintf("instance iops write %v/s, size %v, duration %vs, thread count %v", res, size, duration.Seconds(), thread)
+	}
+	return output, nil
 }
