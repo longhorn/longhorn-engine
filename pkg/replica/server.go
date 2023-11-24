@@ -232,6 +232,19 @@ func (s *Server) Expand(size int64) error {
 	return s.r.Expand(size)
 }
 
+func (s *Server) Bench(benchType string, thread int, size int64) (string, error) {
+	s.Lock()
+	if s.r == nil {
+		s.Unlock()
+		return "", nil
+	}
+	s.Unlock()
+
+	logrus.Infof("Replica server starts to bench %s with %v thread, test size %v", benchType, thread, size)
+
+	return s.r.Bench(benchType, thread, size)
+}
+
 func (s *Server) RemoveDiffDisk(name string, force bool) error {
 	s.Lock()
 	defer s.Unlock()
