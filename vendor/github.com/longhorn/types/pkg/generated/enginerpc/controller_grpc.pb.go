@@ -41,6 +41,7 @@ const (
 	ControllerService_JournalList_FullMethodName                        = "/ptypes.ControllerService/JournalList"
 	ControllerService_VersionDetailGet_FullMethodName                   = "/ptypes.ControllerService/VersionDetailGet"
 	ControllerService_MetricsGet_FullMethodName                         = "/ptypes.ControllerService/MetricsGet"
+	ControllerService_VolumeBench_FullMethodName                        = "/ptypes.ControllerService/VolumeBench"
 )
 
 // ControllerServiceClient is the client API for ControllerService service.
@@ -68,6 +69,7 @@ type ControllerServiceClient interface {
 	JournalList(ctx context.Context, in *JournalListRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	VersionDetailGet(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*VersionDetailGetReply, error)
 	MetricsGet(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*MetricsGetReply, error)
+	VolumeBench(ctx context.Context, in *VolumeBenchRequest, opts ...grpc.CallOption) (*VolumeBenchResponse, error)
 }
 
 type controllerServiceClient struct {
@@ -267,6 +269,15 @@ func (c *controllerServiceClient) MetricsGet(ctx context.Context, in *emptypb.Em
 	return out, nil
 }
 
+func (c *controllerServiceClient) VolumeBench(ctx context.Context, in *VolumeBenchRequest, opts ...grpc.CallOption) (*VolumeBenchResponse, error) {
+	out := new(VolumeBenchResponse)
+	err := c.cc.Invoke(ctx, ControllerService_VolumeBench_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ControllerServiceServer is the server API for ControllerService service.
 // All implementations must embed UnimplementedControllerServiceServer
 // for forward compatibility
@@ -292,6 +303,7 @@ type ControllerServiceServer interface {
 	JournalList(context.Context, *JournalListRequest) (*emptypb.Empty, error)
 	VersionDetailGet(context.Context, *emptypb.Empty) (*VersionDetailGetReply, error)
 	MetricsGet(context.Context, *emptypb.Empty) (*MetricsGetReply, error)
+	VolumeBench(context.Context, *VolumeBenchRequest) (*VolumeBenchResponse, error)
 	mustEmbedUnimplementedControllerServiceServer()
 }
 
@@ -361,6 +373,9 @@ func (UnimplementedControllerServiceServer) VersionDetailGet(context.Context, *e
 }
 func (UnimplementedControllerServiceServer) MetricsGet(context.Context, *emptypb.Empty) (*MetricsGetReply, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method MetricsGet not implemented")
+}
+func (UnimplementedControllerServiceServer) VolumeBench(context.Context, *VolumeBenchRequest) (*VolumeBenchResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method VolumeBench not implemented")
 }
 func (UnimplementedControllerServiceServer) mustEmbedUnimplementedControllerServiceServer() {}
 
@@ -753,6 +768,24 @@ func _ControllerService_MetricsGet_Handler(srv interface{}, ctx context.Context,
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ControllerService_VolumeBench_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(VolumeBenchRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).VolumeBench(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_VolumeBench_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).VolumeBench(ctx, req.(*VolumeBenchRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ControllerService_ServiceDesc is the grpc.ServiceDesc for ControllerService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -843,6 +876,10 @@ var ControllerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "MetricsGet",
 			Handler:    _ControllerService_MetricsGet_Handler,
+		},
+		{
+			MethodName: "VolumeBench",
+			Handler:    _ControllerService_VolumeBench_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

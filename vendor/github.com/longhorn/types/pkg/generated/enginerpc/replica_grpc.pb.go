@@ -38,6 +38,7 @@ const (
 	ReplicaService_UnmapMarkDiskChainRemovedSet_FullMethodName = "/ptypes.ReplicaService/UnmapMarkDiskChainRemovedSet"
 	ReplicaService_SnapshotMaxCountSet_FullMethodName          = "/ptypes.ReplicaService/SnapshotMaxCountSet"
 	ReplicaService_SnapshotMaxSizeSet_FullMethodName           = "/ptypes.ReplicaService/SnapshotMaxSizeSet"
+	ReplicaService_ReplicaBench_FullMethodName                 = "/ptypes.ReplicaService/ReplicaBench"
 )
 
 // ReplicaServiceClient is the client API for ReplicaService service.
@@ -62,6 +63,7 @@ type ReplicaServiceClient interface {
 	UnmapMarkDiskChainRemovedSet(ctx context.Context, in *UnmapMarkDiskChainRemovedSetRequest, opts ...grpc.CallOption) (*UnmapMarkDiskChainRemovedSetResponse, error)
 	SnapshotMaxCountSet(ctx context.Context, in *SnapshotMaxCountSetRequest, opts ...grpc.CallOption) (*SnapshotMaxCountSetResponse, error)
 	SnapshotMaxSizeSet(ctx context.Context, in *SnapshotMaxSizeSetRequest, opts ...grpc.CallOption) (*SnapshotMaxSizeSetResponse, error)
+	ReplicaBench(ctx context.Context, in *ReplicaBenchRequest, opts ...grpc.CallOption) (*ReplicaBenchResponse, error)
 }
 
 type replicaServiceClient struct {
@@ -234,6 +236,15 @@ func (c *replicaServiceClient) SnapshotMaxSizeSet(ctx context.Context, in *Snaps
 	return out, nil
 }
 
+func (c *replicaServiceClient) ReplicaBench(ctx context.Context, in *ReplicaBenchRequest, opts ...grpc.CallOption) (*ReplicaBenchResponse, error) {
+	out := new(ReplicaBenchResponse)
+	err := c.cc.Invoke(ctx, ReplicaService_ReplicaBench_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 // ReplicaServiceServer is the server API for ReplicaService service.
 // All implementations must embed UnimplementedReplicaServiceServer
 // for forward compatibility
@@ -256,6 +267,7 @@ type ReplicaServiceServer interface {
 	UnmapMarkDiskChainRemovedSet(context.Context, *UnmapMarkDiskChainRemovedSetRequest) (*UnmapMarkDiskChainRemovedSetResponse, error)
 	SnapshotMaxCountSet(context.Context, *SnapshotMaxCountSetRequest) (*SnapshotMaxCountSetResponse, error)
 	SnapshotMaxSizeSet(context.Context, *SnapshotMaxSizeSetRequest) (*SnapshotMaxSizeSetResponse, error)
+	ReplicaBench(context.Context, *ReplicaBenchRequest) (*ReplicaBenchResponse, error)
 	mustEmbedUnimplementedReplicaServiceServer()
 }
 
@@ -316,6 +328,9 @@ func (UnimplementedReplicaServiceServer) SnapshotMaxCountSet(context.Context, *S
 }
 func (UnimplementedReplicaServiceServer) SnapshotMaxSizeSet(context.Context, *SnapshotMaxSizeSetRequest) (*SnapshotMaxSizeSetResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SnapshotMaxSizeSet not implemented")
+}
+func (UnimplementedReplicaServiceServer) ReplicaBench(context.Context, *ReplicaBenchRequest) (*ReplicaBenchResponse, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ReplicaBench not implemented")
 }
 func (UnimplementedReplicaServiceServer) mustEmbedUnimplementedReplicaServiceServer() {}
 
@@ -654,6 +669,24 @@ func _ReplicaService_SnapshotMaxSizeSet_Handler(srv interface{}, ctx context.Con
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ReplicaService_ReplicaBench_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReplicaBenchRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ReplicaServiceServer).ReplicaBench(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ReplicaService_ReplicaBench_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ReplicaServiceServer).ReplicaBench(ctx, req.(*ReplicaBenchRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 // ReplicaService_ServiceDesc is the grpc.ServiceDesc for ReplicaService service.
 // It's only intended for direct use with grpc.RegisterService,
 // and not to be introspected or modified (even as a copy)
@@ -732,6 +765,10 @@ var ReplicaService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "SnapshotMaxSizeSet",
 			Handler:    _ReplicaService_SnapshotMaxSizeSet_Handler,
+		},
+		{
+			MethodName: "ReplicaBench",
+			Handler:    _ReplicaService_ReplicaBench_Handler,
 		},
 	},
 	Streams:  []grpc.StreamDesc{},

@@ -2,6 +2,8 @@ module github.com/longhorn/longhorn-engine
 
 go 1.22.2
 
+replace github.com/longhorn/types => github.com/shuo-wu/types v0.0.0-20240429183325-93bff58b40b8
+
 require (
 	github.com/docker/go-units v0.5.0
 	github.com/gofrs/flock v0.8.1
