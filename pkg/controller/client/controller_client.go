@@ -261,6 +261,23 @@ func (c *ControllerClient) VolumeSnapshotMaxSizeSet(size int64) error {
 	return nil
 }
 
+func (c *ControllerClient) VolumeBench(benchType string, thread int, size int64) (string, error) {
+	controllerServiceClient := c.getControllerServiceClient()
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
+	defer cancel()
+
+	resp, err := controllerServiceClient.VolumeBench(ctx, &enginerpc.VolumeBenchRequest{
+		BenchType: benchType,
+		Thread:    int32(thread),
+		Size:      size,
+	})
+	if err != nil {
+		return "", errors.Wrapf(err, "failed to bench %s engine for volume %v", benchType, c.VolumeName)
+	}
+
+	return resp.Output, nil
+}
+
 func (c *ControllerClient) ReplicaList() ([]*types.ControllerReplicaInfo, error) {
 	controllerServiceClient := c.getControllerServiceClient()
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)

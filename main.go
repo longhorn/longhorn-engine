@@ -146,6 +146,7 @@ func longhornCli() {
 		cmd.FrontendCmd(),
 		cmd.SystemBackupCmd(),
 		cmd.ProfilerCmd(),
+		cmd.BenchmarkCmd(),
 		VersionCmd(),
 	}
 	a.CommandNotFound = cmdNotFound
