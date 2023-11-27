@@ -312,18 +312,19 @@ func RandStringRunes(n int) string {
 func Bench(benchType string, thread int, size int64, writeAt, readAt func([]byte, int64) (int, error)) (output string, err error) {
 	lock := sync.Mutex{}
 
-	if thread != 1 && (benchType == "seq-latency-write" || benchType == "rand-latency-write" || benchType == "seq-latency-read" || benchType == "rand-latency-read") {
+	if thread != 1 && strings.Contains(benchType, "-latency-") {
 		logrus.Warnf("Using single thread for latency related benchmark")
 		thread = 1
 	}
 
 	blockSize := 4096 // 4KB
-	if benchType == "bandwidth-read" || benchType == "bandwidth-write" {
+	if strings.Contains(benchType, "-bandwidth-") {
 		blockSize = 1 << 20 // 1MB
 	}
 
 	blockBytes := []byte(RandStringRunes(blockSize))
-	ChunkSize := int(math.Ceil(float64(size) / float64(thread)))
+	chunkSize := int(math.Ceil(float64(size) / float64(thread)))
+	chunkBlocks := int(math.Ceil(float64(chunkSize) / float64(blockSize)))
 
 	wg := sync.WaitGroup{}
 	wg.Add(thread)
@@ -333,13 +334,26 @@ func Bench(benchType string, thread int, size int64, writeAt, readAt func([]byte
 		go func() {
 			defer wg.Done()
 
-			start := int64(idx) * int64(ChunkSize)
-			end := int64(idx+1) * int64(ChunkSize)
-			for offset := start; offset < end; offset += int64(blockSize) {
-				if offset+int64(blockSize) > end {
-					blockBytes = blockBytes[:end-offset]
+			start := int64(idx) * int64(chunkSize)
+			end := int64(idx+1) * int64(chunkSize)
+			offset := start
+			for cnt := 0; cnt < chunkBlocks; cnt++ {
+				if strings.HasPrefix(benchType, "seq-") {
+					offset = start + int64(cnt*blockSize)
+					if offset+int64(blockSize) > end {
+						blockBytes = blockBytes[:end-offset]
+					}
+				} else if strings.HasPrefix(benchType, "rand-") {
+					offset = start + int64(rand.Intn(cnt)*blockSize)
+					if offset+int64(blockSize) > end {
+						offset -= int64(blockSize)
+					}
+				} else {
+					lock.Lock()
+					err = fmt.Errorf("invalid bench type %s", benchType)
+					lock.Unlock()
+					return
 				}
-
 				if _, writeErr := writeAt(blockBytes, offset); writeErr != nil {
 					lock.Lock()
 					err = writeErr
@@ -357,15 +371,21 @@ func Bench(benchType string, thread int, size int64, writeAt, readAt func([]byte
 
 	duration := time.Since(startTime)
 	switch benchType {
-	case "iops-write":
+	case "seq-iops-write":
+		fallthrough
+	case "rand-iops-write":
 		res := int(float64(size) / float64(blockSize) / float64(duration) * 1000000000)
-		output = fmt.Sprintf("instance iops write %v/s, size %v, duration %vs, thread count %v", res, size, duration.Seconds(), thread)
-	case "bandwidth-write":
+		output = fmt.Sprintf("instance %s %v/s, size %v, duration %vs, thread count %v", benchType, res, size, duration.Seconds(), thread)
+	case "seq-bandwidth-write":
+		fallthrough
+	case "rand-bandwidth-write":
 		res := int(float64(size) / float64(duration) * 1000000000 / float64(1<<10))
-		output = fmt.Sprintf("instance bandwidth write %vKB/s, size %v, duration %vs, thread count %v", res, size, duration.Seconds(), thread)
+		output = fmt.Sprintf("instance %s %vKB/s, size %v, duration %vs, thread count %v", benchType, res, size, duration.Seconds(), thread)
 	case "seq-latency-write":
+		fallthrough
+	case "rand-latency-write":
 		res := float64(duration) / 1000 / (float64(size) / float64(blockSize))
-		output = fmt.Sprintf("instance seq latency write %.2fus, size %v, duration %vs, thread count %v", res, size, duration.Seconds(), thread)
+		output = fmt.Sprintf("instance %s %.2fus, size %v, duration %vs, thread count %v", benchType, res, size, duration.Seconds(), thread)
 	}
 	return output, nil
 }
