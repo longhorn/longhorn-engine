@@ -313,6 +313,9 @@ func Bench(benchType string, thread int, size int64, writeAt, readAt func([]byte
 	lock := sync.Mutex{}
 
 	blockSize := 4096 // 4KB
+	if benchType == "bandwidth-read" || benchType == "bandwidth-write" {
+		blockSize = 1 << 20 // 1MB
+	}
 
 	blockBytes := []byte(RandStringRunes(blockSize))
 	ChunkSize := int(math.Ceil(float64(size) / float64(thread)))
@@ -352,6 +355,9 @@ func Bench(benchType string, thread int, size int64, writeAt, readAt func([]byte
 	case "iops-write":
 		res := int(float64(size) / float64(blockSize) / float64(duration) * 1000000000)
 		output = fmt.Sprintf("instance iops write %v/s, size %v, duration %vs, thread count %v", res, size, duration.Seconds(), thread)
+	case "bandwidth-write":
+		res := int(float64(size) / float64(duration) * 1000000000 / float64(1<<10))
+		output = fmt.Sprintf("instance bandwidth write %vKB/s, size %v, duration %vs, thread count %v", res, size, duration.Seconds(), thread)
 	}
 	return output, nil
 }
