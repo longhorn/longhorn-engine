@@ -312,6 +312,11 @@ func RandStringRunes(n int) string {
 func Bench(benchType string, thread int, size int64, writeAt, readAt func([]byte, int64) (int, error)) (output string, err error) {
 	lock := sync.Mutex{}
 
+	if thread != 1 && (benchType == "seq-latency-write" || benchType == "rand-latency-write" || benchType == "seq-latency-read" || benchType == "rand-latency-read") {
+		logrus.Warnf("Using single thread for latency related benchmark")
+		thread = 1
+	}
+
 	blockSize := 4096 // 4KB
 	if benchType == "bandwidth-read" || benchType == "bandwidth-write" {
 		blockSize = 1 << 20 // 1MB
@@ -358,6 +363,9 @@ func Bench(benchType string, thread int, size int64, writeAt, readAt func([]byte
 	case "bandwidth-write":
 		res := int(float64(size) / float64(duration) * 1000000000 / float64(1<<10))
 		output = fmt.Sprintf("instance bandwidth write %vKB/s, size %v, duration %vs, thread count %v", res, size, duration.Seconds(), thread)
+	case "seq-latency-write":
+		res := float64(duration) / 1000 / (float64(size) / float64(blockSize))
+		output = fmt.Sprintf("instance seq latency write %.2fus, size %v, duration %vs, thread count %v", res, size, duration.Seconds(), thread)
 	}
 	return output, nil
 }
