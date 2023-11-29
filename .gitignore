@@ -11,6 +11,14 @@ integration/.tox/
 integration/.venv/
 integration/MANIFEST
 
+# these are automatically generated during the build process but originate from
+# the longhorn-instance-manager, which is why they are ignored here
+integration/rpc/common
+integration/rpc/disk
+integration/rpc/imrpc
+integration/rpc/instance
+integration/rpc/proxy
+
 # Test binary, build with `go test -c`
 *.test
 

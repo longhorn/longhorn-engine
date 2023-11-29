@@ -1087,6 +1087,7 @@ func checkBlockReferenceCount(blockInfos map[string]*BlockInfo, backup *Backup, 
 // backup.SnapshotCreatedAt time is greater than the lastBackup
 func getLatestBackup(backup *Backup, lastBackup *Backup) error {
 	if lastBackup.SnapshotCreatedAt == "" {
+		// FIXME - go lint points out that this copies a potentially locked sync.mutex
 		*lastBackup = *backup
 		return nil
 	}
@@ -1102,6 +1103,7 @@ func getLatestBackup(backup *Backup, lastBackup *Backup) error {
 	}
 
 	if backupTime.After(lastBackupTime) {
+		// FIXME - go lint points out that this copies a potentially locked sync.mutex
 		*lastBackup = *backup
 	}
 

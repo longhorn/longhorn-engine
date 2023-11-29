@@ -407,3 +407,14 @@ func CheckBackupType(backupTarget string) (string, error) {
 
 	return u.Scheme, nil
 }
+
+func SplitMountOptions(options []string) []string {
+	logrus.Infof("Splitting array of %d strings %v ", len(options), options)
+	if len(options) > 1 {
+		// Options in the form "nfsOptions=soft&nfsOptions=timeo=450&nfsOptions=retrans=3" are legal and
+		// are already split by url.Parse.
+		return options
+	}
+	// Options in the form "nfsOptions=soft,timeo=450,retrans=3" are more likely, but we must split them.
+	return strings.Split(options[0], ",")
+}
