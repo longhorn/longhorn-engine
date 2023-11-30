@@ -73,6 +73,12 @@ func ReplicaCmd() cli.Command {
 				Value: "",
 				Usage: "Name of the replica instance (for validation purposes)",
 			},
+			cli.IntFlag{
+				Name:     "nbd-enabled",
+				Required: false,
+				Value:    0,
+				Usage:    "Flag to enable NBD data server",
+			},
 		},
 		Action: func(c *cli.Context) {
 			if err := startReplica(c); err != nil {
@@ -115,6 +121,7 @@ func startReplica(c *cli.Context) error {
 	volumeName := c.GlobalString("volume-name")
 	replicaInstanceName := c.String("replica-instance-name")
 	dataServerProtocol := c.String("data-server-protocol")
+	nbdEnabled := c.Int("nbd-enabled")
 
 	controlAddress, dataAddress, syncAddress, syncPort, err :=
 		util.GetAddresses(volumeName, address, types.DataServerProtocol(dataServerProtocol))
@@ -141,7 +148,7 @@ func startReplica(c *cli.Context) error {
 	}()
 
 	go func() {
-		rpcServer := replicarpc.NewDataServer(types.DataServerProtocol(dataServerProtocol), dataAddress, s)
+		rpcServer := replicarpc.NewDataServer(types.DataServerProtocol(dataServerProtocol), dataAddress, s, nbdEnabled)
 		logrus.Infof("Listening on data server %s", dataAddress)
 		err := rpcServer.ListenAndServe()
 		logrus.WithError(err).Warnf("Replica rest server at %v is down", dataAddress)

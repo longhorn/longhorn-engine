@@ -12,16 +12,18 @@ import (
 )
 
 type DataServer struct {
-	protocol types.DataServerProtocol
-	address  string
-	s        *replica.Server
+	protocol   types.DataServerProtocol
+	address    string
+	s          *replica.Server
+	nbdEnabled int
 }
 
-func NewDataServer(protocol types.DataServerProtocol, address string, s *replica.Server) *DataServer {
+func NewDataServer(protocol types.DataServerProtocol, address string, s *replica.Server, nbdEnabled int) *DataServer {
 	return &DataServer{
-		protocol: protocol,
-		address:  address,
-		s:        s,
+		protocol:   protocol,
+		address:    address,
+		s:          s,
+		nbdEnabled: nbdEnabled,
 	}
 }
 
@@ -56,10 +58,18 @@ func (s *DataServer) listenAndServeTCP() error {
 
 		logrus.Infof("New connection from: %v", conn.RemoteAddr())
 
-		go func(conn net.Conn) {
-			server := dataconn.NewServer(conn, s.s)
-			server.Handle()
-		}(conn)
+		if s.nbdEnabled > 0 {
+			go func() {
+				nbdServer := dataconn.NewNBDServer(conn, s.s)
+				nbdServer.Handle()
+			}()
+		} else {
+			go func(conn net.Conn) {
+				server := dataconn.NewServer(conn, s.s)
+				server.Handle()
+			}(conn)
+		}
+
 	}
 }
 

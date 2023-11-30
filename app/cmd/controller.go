@@ -89,6 +89,12 @@ func ControllerCmd() cli.Command {
 				Value:    5,
 				Usage:    "HTTP client timeout for replica file sync server",
 			},
+			cli.IntFlag{
+				Name:     "nbd-enabled",
+				Required: false,
+				Value:    0,
+				Usage:    "Flag to enable NBD data server. Option 0 to disable, options >0 for number of connections",
+			},
 		},
 		Action: func(c *cli.Context) {
 			if err := startController(c); err != nil {
@@ -120,6 +126,7 @@ func startController(c *cli.Context) error {
 	dataServerProtocol := c.String("data-server-protocol")
 	fileSyncHTTPClientTimeout := c.Int("file-sync-http-client-timeout")
 	engineInstanceName := c.GlobalString("engine-instance-name")
+	nbdEnabled := c.Int("nbd-enabled")
 
 	size := c.String("size")
 	if size == "" {
@@ -144,7 +151,7 @@ func startController(c *cli.Context) error {
 	engineReplicaTimeout = controller.DetermineEngineReplicaTimeout(engineReplicaTimeout)
 	iscsiTargetRequestTimeout := controller.DetermineIscsiTargetRequestTimeout(engineReplicaTimeout)
 
-	frontendStreams := c.Int("replica-streams")
+	frontendStreams := c.Int("frontend-streams")
 	if frontendStreams < 1 {
 		return errors.New("at least one stream to the frontend is required")
 	}
@@ -174,7 +181,7 @@ func startController(c *cli.Context) error {
 		volumeName, iscsiTargetRequestTimeout, engineReplicaTimeout)
 	control := controller.NewController(volumeName, dynamic.New(factories), frontend, frontendStreams, isUpgrade, disableRevCounter, salvageRequested,
 		unmapMarkSnapChainRemoved, iscsiTargetRequestTimeout, engineReplicaTimeout, types.DataServerProtocol(dataServerProtocol),
-		fileSyncHTTPClientTimeout)
+		fileSyncHTTPClientTimeout, nbdEnabled)
 
 	// need to wait for Shutdown() completion
 	control.ShutdownWG.Add(1)

@@ -25,6 +25,7 @@ require (
 	google.golang.org/grpc v1.53.0
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 	gopkg.in/cheggaaa/pb.v2 v2.0.0-20190301131520-f907f6f5dd81
+	libguestfs.org/libnbd v1.13.1
 )
 
 require (

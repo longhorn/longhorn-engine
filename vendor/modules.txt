@@ -388,4 +388,7 @@ k8s.io/utils/clock
 k8s.io/utils/exec
 k8s.io/utils/io
 k8s.io/utils/keymutex
+# libguestfs.org/libnbd v1.13.1
+## explicit; go 1.13
+libguestfs.org/libnbd
 # github.com/pojntfx/go-nbd => github.com/chazapis/go-nbd v0.0.0-20231031233644-40daa63e22c3
