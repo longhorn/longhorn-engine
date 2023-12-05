@@ -25,7 +25,6 @@ steps:
   image: rancher/dapper:v0.5.3
   commands:
   - dapper ci
-  privileged: true
   volumes:
   - name: socket
     path: /var/run/docker.sock
@@ -141,7 +140,6 @@ steps:
   image: rancher/dapper:v0.5.3
   commands:
   - dapper ci
-  privileged: true
   volumes:
   - name: socket
     path: /var/run/docker.sock
