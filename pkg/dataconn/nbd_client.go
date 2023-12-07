@@ -8,7 +8,7 @@ import (
 	"libguestfs.org/libnbd"
 )
 
-type nbdClientWrapper struct {
+type NbdClientWrapper struct {
 	handles        []*libnbd.Libnbd
 	conn           net.Conn
 	maxConnections int
@@ -17,8 +17,8 @@ type nbdClientWrapper struct {
 	end            chan struct{}
 }
 
-func NewNBDClientWrapper(conn net.Conn, engineToReplicaTimeout time.Duration, nbdEnabled int) *nbdClientWrapper {
-	wrapper := &nbdClientWrapper{
+func NewNbdClientWrapper(conn net.Conn, engineToReplicaTimeout time.Duration, nbdEnabled int) *NbdClientWrapper {
+	wrapper := &NbdClientWrapper{
 		handles:        make([]*libnbd.Libnbd, nbdEnabled),
 		conn:           conn,
 		maxConnections: nbdEnabled,
@@ -30,7 +30,7 @@ func NewNBDClientWrapper(conn net.Conn, engineToReplicaTimeout time.Duration, nb
 	return wrapper
 }
 
-func (w *nbdClientWrapper) handle() {
+func (w *NbdClientWrapper) handle() {
 	for i := 0; i < w.maxConnections; i++ {
 		h, err := libnbd.Create()
 		if err != nil {
@@ -51,7 +51,7 @@ func (w *nbdClientWrapper) handle() {
 	}
 }
 
-func (w *nbdClientWrapper) ReadAt(buf []byte, offset int64) (int, error) {
+func (w *NbdClientWrapper) ReadAt(buf []byte, offset int64) (int, error) {
 	w.indexLock.Lock()
 	w.next = (w.next + 1) % w.maxConnections
 	index := w.next
@@ -64,7 +64,7 @@ func (w *nbdClientWrapper) ReadAt(buf []byte, offset int64) (int, error) {
 	return len(buf), nil
 }
 
-func (w *nbdClientWrapper) WriteAt(buf []byte, offset int64) (int, error) {
+func (w *NbdClientWrapper) WriteAt(buf []byte, offset int64) (int, error) {
 	w.indexLock.Lock()
 	w.next = (w.next + 1) % w.maxConnections
 	index := w.next
@@ -77,12 +77,12 @@ func (w *nbdClientWrapper) WriteAt(buf []byte, offset int64) (int, error) {
 	return len(buf), nil
 }
 
-func (w *nbdClientWrapper) UnmapAt(length uint32, offset int64) (int, error) {
+func (w *NbdClientWrapper) UnmapAt(length uint32, offset int64) (int, error) {
 	return int(length), nil
 
 }
 
-func (w *nbdClientWrapper) Close() {
+func (w *NbdClientWrapper) Close() {
 	for i := 0; i < w.maxConnections; i++ {
 		w.handles[i].Close()
 	}

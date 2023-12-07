@@ -9,9 +9,9 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
-	nbd "github.com/pojntfx/go-nbd/pkg/server"
 	"github.com/pmorjan/kmod"
+	nbd "github.com/pojntfx/go-nbd/pkg/server"
+	"github.com/sirupsen/logrus"
 
 	"github.com/longhorn/longhorn-engine/pkg/types"
 )
@@ -24,15 +24,15 @@ const (
 )
 
 type Nbd struct {
-	Volume         string
-	Size           int64
-	SectorSize     int
+	Volume     string
+	Size       int64
+	SectorSize int
 
-	isUp           bool
-	socketPath     string
-	nbdDevicePath  string
-	connections    int
-	clients        int
+	isUp          bool
+	socketPath    string
+	nbdDevicePath string
+	connections   int
+	clients       int
 }
 
 func New(frontendStreams int) types.Frontend {
@@ -105,7 +105,6 @@ func (n *Nbd) getNextFreeNbdDevice() (string, error) {
 	}
 	return "", fmt.Errorf("no more nbd devices")
 }
-
 
 func (n *Nbd) Shutdown() error {
 	if n.Volume == "" || !n.isUp {
@@ -234,31 +233,31 @@ func (n *Nbd) handleServerConnection(conn net.Conn, rwu types.ReaderWriterUnmapp
 	}
 }
 
-type NbdBackend struct {
+type Backend struct {
 	rwu  types.ReaderWriterUnmapperAt
 	size int64
 }
 
-func NewNbdBackend(rwu types.ReaderWriterUnmapperAt, size int64) *NbdBackend {
-	return &NbdBackend{
+func NewNbdBackend(rwu types.ReaderWriterUnmapperAt, size int64) *Backend {
+	return &Backend{
 		rwu:  rwu,
 		size: size,
 	}
 }
 
-func (b *NbdBackend) ReadAt(p []byte, off int64) (n int, err error) {
+func (b *Backend) ReadAt(p []byte, off int64) (n int, err error) {
 	return b.rwu.ReadAt(p, off)
 }
 
-func (b *NbdBackend) WriteAt(p []byte, off int64) (n int, err error) {
+func (b *Backend) WriteAt(p []byte, off int64) (n int, err error) {
 	return b.rwu.WriteAt(p, off)
 }
 
-func (b *NbdBackend) Size() (int64, error) {
+func (b *Backend) Size() (int64, error) {
 	return b.size, nil
 }
 
-func (b *NbdBackend) Sync() error {
+func (b *Backend) Sync() error {
 	return nil
 }
 

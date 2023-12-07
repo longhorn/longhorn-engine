@@ -9,19 +9,19 @@ import (
 	"github.com/pojntfx/go-nbd/pkg/server"
 )
 
-type nbdServer struct {
+type NbdServer struct {
 	conn net.Conn
 	s    *replica.Server
 }
 
-func NewNBDServer(conn net.Conn, s *replica.Server) *nbdServer {
-	return &nbdServer{
+func NewNbdServer(conn net.Conn, s *replica.Server) *NbdServer {
+	return &NbdServer{
 		conn: conn,
 		s:    s,
 	}
 }
 
-func (s *nbdServer) Handle() {
+func (s *NbdServer) Handle() {
 	if err := server.Handle(
 		s.conn,
 		[]*server.Export{
@@ -41,27 +41,27 @@ func (s *nbdServer) Handle() {
 	}
 }
 
-func (b *nbdServer) ReadAt(p []byte, off int64) (n int, err error) {
-	n, err = b.s.ReadAt(p, off)
+func (s *NbdServer) ReadAt(p []byte, off int64) (n int, err error) {
+	n, err = s.s.ReadAt(p, off)
 	return
 }
 
-func (b *nbdServer) WriteAt(p []byte, off int64) (n int, err error) {
-	n, err = b.s.WriteAt(p, off)
+func (s *NbdServer) WriteAt(p []byte, off int64) (n int, err error) {
+	n, err = s.s.WriteAt(p, off)
 	return
 }
 
-func (b *nbdServer) Size() (int64, error) {
-	_, info := b.s.Status()
+func (s *NbdServer) Size() (int64, error) {
+	_, info := s.s.Status()
 	return info.Size, nil
 }
 
-func (b *nbdServer) Sync() error {
+func (s *NbdServer) Sync() error {
 	return nil
 }
 
-func (b *nbdServer) Ping() error {
-	state, info := b.s.Status()
+func (s *NbdServer) Ping() error {
+	state, info := s.s.Status()
 	if state == types.ReplicaStateError {
 		return fmt.Errorf("ping failure due to %v", info.Error)
 	}

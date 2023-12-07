@@ -5,10 +5,10 @@ import (
 	"time"
 
 	devtypes "github.com/longhorn/go-iscsi-helper/types"
+	"github.com/longhorn/longhorn-engine/pkg/frontend/nbd"
 	"github.com/longhorn/longhorn-engine/pkg/frontend/rest"
 	"github.com/longhorn/longhorn-engine/pkg/frontend/socket"
 	"github.com/longhorn/longhorn-engine/pkg/frontend/tgt"
-	"github.com/longhorn/longhorn-engine/pkg/frontend/nbd"
 	"github.com/longhorn/longhorn-engine/pkg/types"
 	"github.com/sirupsen/logrus"
 )

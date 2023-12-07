@@ -60,7 +60,7 @@ func (s *DataServer) listenAndServeTCP() error {
 
 		if s.nbdEnabled > 0 {
 			go func() {
-				nbdServer := dataconn.NewNBDServer(conn, s.s)
+				nbdServer := dataconn.NewNbdServer(conn, s.s)
 				nbdServer.Handle()
 			}()
 		} else {

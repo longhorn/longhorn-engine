@@ -362,7 +362,7 @@ func (rf *Factory) Create(volumeName, address string, dataServerProtocol types.D
 	}
 	var dataConnClient *dataconn.Client
 	if nbdEnabled > 0 {
-		dataConnClientNBD := dataconn.NewNBDClientWrapper(conn, engineToReplicaTimeout, nbdEnabled)
+		dataConnClientNBD := dataconn.NewNbdClientWrapper(conn, engineToReplicaTimeout, nbdEnabled)
 		r.ReaderWriterUnmapperAt = dataConnClientNBD
 	} else {
 		dataConnClient = dataconn.NewClient(conn, engineToReplicaTimeout)
