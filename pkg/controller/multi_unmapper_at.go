@@ -7,6 +7,7 @@ import (
 	"github.com/sirupsen/logrus"
 
 	"github.com/longhorn/longhorn-engine/pkg/types"
+	diskutil "github.com/longhorn/longhorn-engine/pkg/util/disk"
 )
 
 type MultiUnmapperAt struct {
@@ -57,7 +58,11 @@ func (m *MultiUnmapperAt) UnmapAt(length uint32, off int64) (int, error) {
 			if unmappedSize == 0 {
 				unmappedSize = n
 			} else if unmappedSize != n {
-				logrus.Warnf("One of the MultiUnmapper get different size %v from others %v", n, unmappedSize)
+				// Could log at debug level here, but a difference of 4096 is commonplace.  (Why is it?  TBD).
+				// Log anything bigger than that, which is expected to be uncommon.
+				if n > unmappedSize+diskutil.VolumeSectorSize || unmappedSize > n+diskutil.VolumeSectorSize {
+					logrus.Warnf("One of the MultiUnmapper %v got a very different size %v from others %v", u, n, unmappedSize)
+				}
 			}
 		}(i, u)
 	}
