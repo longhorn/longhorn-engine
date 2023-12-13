@@ -10,7 +10,7 @@ RUN zypper -n install cmake curl git gcc wget xsltproc docbook-xsl-stylesheets &
     rm -rf /var/cache/zypp/*
 
 # Install grpc_health_probe
-RUN wget https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/v0.3.2/grpc_health_probe-linux-${ARCH} -O /usr/local/bin/grpc_health_probe && \
+RUN wget https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/v0.4.21/grpc_health_probe-linux-${ARCH} -O /usr/local/bin/grpc_health_probe && \
     chmod +x /usr/local/bin/grpc_health_probe
 
 # Build liblonghorn
