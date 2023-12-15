@@ -6,7 +6,7 @@ source $(dirname $0)/version
 LINKFLAGS="-X main.Version=$VERSION
            -X main.GitCommit=$GITCOMMIT
            -X main.BuildDate=$BUILDDATE
-           -linkmode external -extldflags -static"
+           -linkmode external"
 
 # add coverage flags if there is no tag and it's on master or a version branch like v1.6.x
 COMMIT_BRANCH=$(git rev-parse --abbrev-ref HEAD)

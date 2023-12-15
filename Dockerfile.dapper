@@ -139,6 +139,15 @@ RUN cd /go/src/github.com/longhorn && \
     cp -r integration/rpc/ ${DAPPER_SOURCE}/integration/rpc/ && \
     cp longhorn-instance-manager /usr/local/bin
 
+# Build libnbd
+RUN zypper -n install libxml2-devel
+RUN cd /usr/src && \
+    wget -O - https://download.libguestfs.org/libnbd/1.13-development/libnbd-1.13.1.tar.gz | tar -xzf - && \
+    cd libnbd-1.13.1 && \
+    ./configure --disable-ocaml --disable-python --disable-golang; \
+    make; \
+    make install
+
 VOLUME /tmp
 ENV TMPDIR /tmp
 ENTRYPOINT ["./scripts/entry"]
