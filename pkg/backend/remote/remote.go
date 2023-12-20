@@ -11,7 +11,6 @@ import (
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
 
 	"github.com/longhorn/longhorn-engine/pkg/dataconn"
 	replicaClient "github.com/longhorn/longhorn-engine/pkg/replica/client"
@@ -46,7 +45,7 @@ type Remote struct {
 
 func (r *Remote) Close() error {
 	logrus.Infof("Closing: %s", r.name)
-	conn, err := grpc.Dial(r.replicaServiceURL, grpc.WithTransportCredentials(insecure.NewCredentials()),
+	conn, err := grpc.Dial(r.replicaServiceURL, grpc.WithInsecure(),
 		ptypes.WithIdentityValidationClientInterceptor(r.volumeName, ""))
 	if err != nil {
 		return errors.Wrapf(err, "cannot connect to ReplicaService %v", r.replicaServiceURL)
@@ -66,7 +65,7 @@ func (r *Remote) Close() error {
 
 func (r *Remote) open() error {
 	logrus.Infof("Opening remote: %s", r.name)
-	conn, err := grpc.Dial(r.replicaServiceURL, grpc.WithTransportCredentials(insecure.NewCredentials()),
+	conn, err := grpc.Dial(r.replicaServiceURL, grpc.WithInsecure(),
 		ptypes.WithIdentityValidationClientInterceptor(r.volumeName, ""))
 	if err != nil {
 		return errors.Wrapf(err, "cannot connect to ReplicaService %v", r.replicaServiceURL)
@@ -87,7 +86,7 @@ func (r *Remote) open() error {
 func (r *Remote) Snapshot(name string, userCreated bool, created string, labels map[string]string) error {
 	logrus.Infof("Starting to snapshot: %s %s UserCreated %v Created at %v, Labels %v",
 		r.name, name, userCreated, created, labels)
-	conn, err := grpc.Dial(r.replicaServiceURL, grpc.WithTransportCredentials(insecure.NewCredentials()),
+	conn, err := grpc.Dial(r.replicaServiceURL, grpc.WithInsecure(),
 		ptypes.WithIdentityValidationClientInterceptor(r.volumeName, ""))
 	if err != nil {
 		return errors.Wrapf(err, "cannot connect to ReplicaService %v", r.replicaServiceURL)
@@ -117,7 +116,7 @@ func (r *Remote) Expand(size int64) (err error) {
 		err = types.WrapError(err, "failed to expand replica %v from remote", r.replicaServiceURL)
 	}()
 
-	conn, err := grpc.Dial(r.replicaServiceURL, grpc.WithTransportCredentials(insecure.NewCredentials()),
+	conn, err := grpc.Dial(r.replicaServiceURL, grpc.WithInsecure(),
 		ptypes.WithIdentityValidationClientInterceptor(r.volumeName, ""))
 	if err != nil {
 		return errors.Wrapf(err, "cannot connect to ReplicaService %v", r.replicaServiceURL)
@@ -140,7 +139,7 @@ func (r *Remote) Expand(size int64) (err error) {
 func (r *Remote) SetRevisionCounter(counter int64) error {
 	logrus.Infof("Set revision counter of %s to : %v", r.name, counter)
 
-	conn, err := grpc.Dial(r.replicaServiceURL, grpc.WithTransportCredentials(insecure.NewCredentials()),
+	conn, err := grpc.Dial(r.replicaServiceURL, grpc.WithInsecure(),
 		ptypes.WithIdentityValidationClientInterceptor(r.volumeName, ""))
 	if err != nil {
 		return errors.Wrapf(err, "cannot connect to ReplicaService %v", r.replicaServiceURL)
@@ -256,7 +255,7 @@ func (r *Remote) GetUnmapMarkSnapChainRemoved() (bool, error) {
 func (r *Remote) SetUnmapMarkSnapChainRemoved(enabled bool) error {
 	logrus.Infof("Setting UnmapMarkSnapChainRemoved of %s to : %v", r.name, enabled)
 
-	conn, err := grpc.Dial(r.replicaServiceURL, grpc.WithTransportCredentials(insecure.NewCredentials()),
+	conn, err := grpc.Dial(r.replicaServiceURL, grpc.WithInsecure(),
 		ptypes.WithIdentityValidationClientInterceptor(r.volumeName, ""))
 	if err != nil {
 		return errors.Wrapf(err, "failed connecting to ReplicaService %v", r.replicaServiceURL)
@@ -288,7 +287,7 @@ func (r *Remote) ResetRebuild() error {
 
 	logrus.Warnf("Resetting %v rebuild", r.name)
 
-	conn, err := grpc.Dial(r.replicaServiceURL, grpc.WithTransportCredentials(insecure.NewCredentials()),
+	conn, err := grpc.Dial(r.replicaServiceURL, grpc.WithInsecure(),
 		ptypes.WithIdentityValidationClientInterceptor(r.volumeName, ""))
 	if err != nil {
 		return errors.Wrapf(err, "failed connecting to ReplicaService %v", r.replicaServiceURL)
@@ -311,7 +310,7 @@ func (r *Remote) ResetRebuild() error {
 }
 
 func (r *Remote) info() (*types.ReplicaInfo, error) {
-	conn, err := grpc.Dial(r.replicaServiceURL, grpc.WithTransportCredentials(insecure.NewCredentials()),
+	conn, err := grpc.Dial(r.replicaServiceURL, grpc.WithInsecure(),
 		ptypes.WithIdentityValidationClientInterceptor(r.volumeName, ""))
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot connect to ReplicaService %v", r.replicaServiceURL)
