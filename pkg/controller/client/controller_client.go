@@ -8,8 +8,6 @@ import (
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-	"google.golang.org/grpc/credentials/insecure"
-
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
 	"github.com/longhorn/longhorn-engine/pkg/meta"
@@ -46,7 +44,7 @@ const (
 
 func NewControllerClient(address, volumeName, instanceName string) (*ControllerClient, error) {
 	getControllerServiceContext := func(serviceUrl string) (ControllerServiceContext, error) {
-		connection, err := grpc.Dial(serviceUrl, grpc.WithTransportCredentials(insecure.NewCredentials()),
+		connection, err := grpc.Dial(serviceUrl, grpc.WithInsecure(),
 			ptypes.WithIdentityValidationClientInterceptor(volumeName, instanceName))
 		if err != nil {
 			return ControllerServiceContext{}, errors.Wrapf(err, "cannot connect to ControllerService %v", serviceUrl)
@@ -381,7 +379,7 @@ func (c *ControllerClient) VersionDetailGet() (*meta.VersionOutput, error) {
 }
 
 func (c *ControllerClient) Check() error {
-	conn, err := grpc.Dial(c.serviceURL, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.Dial(c.serviceURL, grpc.WithInsecure())
 	if err != nil {
 		return errors.Wrapf(err, "cannot connect to ControllerService %v", c.serviceURL)
 	}
