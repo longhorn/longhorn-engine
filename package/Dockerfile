@@ -27,6 +27,23 @@ RUN cd /usr/src && \
     make; \
     make install
 
+RUN wget -O - https://s3-us-west-1.amazonaws.com/rancher-longhorn/libqcow-alpha-20181117.tar.gz | tar xvzf - -C /usr/src
+RUN cd /usr/src/libqcow-20181117 && \
+    ./configure
+RUN cd /usr/src/libqcow-20181117 && \
+    make -j$(nproc) && \
+    make install
+
+RUN zypper -n install libxml2-devel nbd
+RUN cd /usr/src && \
+    wget -O - https://download.libguestfs.org/libnbd/1.13-development/libnbd-1.13.1.tar.gz | tar -xzf - && \
+    cd libnbd-1.13.1 && \
+    ./configure --disable-ocaml --disable-python --disable-golang; \
+    make; \
+    make install
+
+RUN ldconfig
+
 # Install grpc_health_probe
 RUN wget https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/v0.4.21/grpc_health_probe-linux-${ARCH} -O /usr/local/bin/grpc_health_probe && \
     chmod +x /usr/local/bin/grpc_health_probe
@@ -39,7 +56,7 @@ RUN zypper -n addrepo --refresh https://download.opensuse.org/repositories/syste
     zypper -n addrepo --refresh https://download.opensuse.org/repositories/network:/utilities/SLE_15_SP5/network:utilities.repo && \
     zypper --gpg-auto-import-keys ref
 
-RUN zypper -n install nfs-client nfs4-acl-tools cifs-utils libaio1 sg3_utils \
+RUN zypper -n install nfs-client nfs4-acl-tools cifs-utils libaio1 sg3_utils nbd \
     iputils iproute2 qemu-tools e2fsprogs && \
     rm -rf /var/cache/zypp/*
 
@@ -56,6 +73,10 @@ COPY --from=builder \
 COPY bin/longhorn bin/longhorn-instance-manager /usr/local/bin/
 
 COPY package/launch-simple-longhorn package/engine-manager package/launch-simple-file /usr/local/bin/
+
+COPY --from=builder /usr/sbin/nbd-client /usr/sbin/nbd-client
+COPY --from=builder /usr/local/lib /usr/local/lib
+ENV LD_LIBRARY_PATH=/usr/local/lib
 
 VOLUME /usr/local/bin
 

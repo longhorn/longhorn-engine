@@ -218,7 +218,7 @@ func (n *Nbd) handleServerConnection(conn net.Conn, rwu types.ReaderWriterUnmapp
 		conn,
 		[]*nbd.Export{
 			{
-				Name:        "",
+				Name:        n.Volume,
 				Description: "Longhorn volume",
 				Backend:     b,
 			},
