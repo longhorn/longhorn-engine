@@ -1,4 +1,4 @@
-FROM registry.suse.com/bci/bci-base:15.4
+FROM registry.suse.com/bci/bci-base:15.5
 
 ARG DAPPER_HOST_ARCH=amd64
 ARG http_proxy

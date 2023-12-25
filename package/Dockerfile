@@ -1,9 +1,9 @@
-FROM registry.suse.com/bci/bci-base:15.4 AS builder
+FROM registry.suse.com/bci/bci-base:15.5 AS builder
 
 ARG ARCH=amd64
 
 RUN zypper -n addrepo --refresh https://download.opensuse.org/repositories/system:/snappy/SLE_15/system:snappy.repo && \
-    zypper -n addrepo --refresh https://download.opensuse.org/repositories/network:/utilities/SLE_15_SP4/network:utilities.repo && \
+    zypper -n addrepo --refresh https://download.opensuse.org/repositories/network:/utilities/SLE_15_SP5/network:utilities.repo && \
     zypper --gpg-auto-import-keys ref
 
 RUN zypper -n install cmake curl git gcc wget xsltproc docbook-xsl-stylesheets && \
