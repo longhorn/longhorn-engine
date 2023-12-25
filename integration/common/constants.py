@@ -1,14 +1,13 @@
 import os
 
 INSTANCE_MANAGER_REPLICA = "localhost:8500"
-INSTANCE_MANAGER_ENGINE = "localhost:8501"
+INSTANCE_MANAGER_ENGINE = "localhost:8505"
 
 INSTANCE_MANAGER_TYPE_ENGINE = "engine"
 INSTANCE_MANAGER_TYPE_REPLICA = "replica"
 
-LONGHORN_BINARY = "./bin/longhorn"
-BINARY_PATH_IN_TEST = "../bin/longhorn"
-LONGHORN_UPGRADE_BINARY = '/opt/longhorn'
+LONGHORN_BINARY = "/engine-binaries/bin/longhorn"
+LONGHORN_UPGRADE_BINARY = '/engine-binaries/opt/longhorn'
 
 LONGHORN_DEV_DIR = '/dev/longhorn'
 LONGHORN_SOCKET_DIR = '/var/run'
