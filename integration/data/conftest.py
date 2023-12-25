@@ -17,7 +17,7 @@ from common.constants import FRONTEND_TGT_BLOCKDEV
 from common.constants import FIXED_REPLICA_PATH1
 from common.constants import FIXED_REPLICA_PATH2
 from common.constants import \
-    BACKING_FILE_QCOW2_PATH1, BACKING_FILE_QCOW2_PATH2,\
+    BACKING_FILE_QCOW2_PATH1, BACKING_FILE_QCOW2_PATH2, \
     BACKING_FILE_RAW_PATH1, BACKING_FILE_RAW_PATH2
 
 from common.core import cleanup_replica
@@ -30,7 +30,7 @@ from common.core import get_dev
 from common.core import get_controller_version_detail
 
 
-from rpc.instance_manager.process_manager_client import ProcessManagerClient
+from rpc.imrpc.process_manager_client import ProcessManagerClient
 from rpc.replica.replica_client import ReplicaClient
 from rpc.controller.controller_client import ControllerClient
 
