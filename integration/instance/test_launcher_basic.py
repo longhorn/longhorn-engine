@@ -1,11 +1,12 @@
 import tempfile
 
 import pytest
+import grpc
 
 from common.core import (
     create_replica_process, create_engine_process,
     delete_process,
-    wait_for_process_running, wait_for_process_error,
+    wait_for_process_running,
     wait_for_process_deletion,
     check_dev_existence, wait_for_dev_deletion,
     upgrade_engine,
@@ -17,7 +18,6 @@ from common.core import (
 from common.constants import (
     LONGHORN_UPGRADE_BINARY, SIZE,
     PROC_STATE_RUNNING, PROC_STATE_STOPPING, PROC_STATE_STOPPED,
-    PROC_STATE_ERROR,
     VOLUME_NAME_BASE, ENGINE_NAME_BASE, REPLICA_NAME_BASE,
     REPLICA_NAME, REPLICA_2_NAME, SIZE_STR,
     INSTANCE_MANAGER_REPLICA,
@@ -29,7 +29,7 @@ from common.cli import (  # NOQA
 
 from rpc.controller.controller_client import ControllerClient
 from rpc.replica.replica_client import ReplicaClient
-from rpc.instance_manager.process_manager_client import ProcessManagerClient
+from rpc.imrpc.process_manager_client import ProcessManagerClient
 
 
 def test_start_stop_replicas(pm_client):  # NOQA
@@ -82,26 +82,11 @@ def test_process_creation_failure(pm_client):  # NOQA
         name = REPLICA_NAME_BASE + str(i)
 
         args = ["replica", tmp_dir, "--size", str(SIZE)]
-        pm_client.process_create(
-            name=name, binary="/opt/non-existing-binary", args=args,
-            port_count=15, port_args=["--listen,localhost:"])
-        wait_for_process_error(pm_client, name)
-
-        r = pm_client.process_get(name=name)
-        assert r.spec.name == name
-        assert r.status.state == PROC_STATE_ERROR
-        assert "no such file or directory" in r.status.error_msg
-
-    for i in range(count):
-        rs = pm_client.process_list()
-        assert len(rs) == (count-i)
-
-        name = REPLICA_NAME_BASE + str(i)
-        pm_client.process_delete(name=name)
-        wait_for_process_deletion(pm_client, name)
-
-        rs = pm_client.process_list()
-        assert len(rs) == (count-1-i)
+        with pytest.raises(grpc.RpcError) as e:
+            pm_client.process_create(
+                name=name, binary="/engine-binaries/opt/non-existing-binary",
+                args=args, port_count=15, port_args=["--listen,localhost:"])
+        assert e.value.code() == grpc.StatusCode.INVALID_ARGUMENT
 
     rs = pm_client.process_list()
     assert len(rs) == 0

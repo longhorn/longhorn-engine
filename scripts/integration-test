@@ -94,12 +94,19 @@ qemu-img convert -f raw -O qcow2 $backing_raw $backing_qcow2
 cp $backing_qcow2 $backing_dir1
 cp $backing_qcow2 $backing_dir2
 
-# for live upgrade test
-cp -a ./bin/longhorn /opt/
+# longhorn only accept binaries from dictories /engine-binaries/ and /host/var/lib/longhorn/engine-binaries/
+# ref: https://github.com/longhorn/longhorn-instance-manager/blob/3e8877e77b2238cec06636c5932e41e719840c03/pkg/process/process_manager.go#L129-L136
+mkdir -p /engine-binaries/bin/
+cp -a ./bin/longhorn /engine-binaries/bin/
 
-/usr/local/bin/longhorn-instance-manager --debug daemon &
+# for live upgrade test
+mkdir -p /engine-binaries/opt/
+cp -a ./bin/longhorn /engine-binaries/opt/
+
+/usr/local/bin/longhorn-instance-manager --debug daemon --listen localhost:8500 &
 pid_imr=$!
-/usr/local/bin/longhorn-instance-manager --debug daemon --listen localhost:8501 --port-range 30001-32000 &
+# longhorn-instance-manager use 5 ports, so the second instance manager starts from 8505
+/usr/local/bin/longhorn-instance-manager --debug daemon --listen localhost:8505 --port-range 30001-32000 &
 pid_ime=$!
 
 # make sure everything is running before continue integration test

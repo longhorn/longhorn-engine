@@ -8,7 +8,7 @@ from common.constants import (
     INSTANCE_MANAGER_REPLICA, INSTANCE_MANAGER_ENGINE,
 )
 
-from rpc.instance_manager.process_manager_client import ProcessManagerClient
+from rpc.imrpc.process_manager_client import ProcessManagerClient
 
 
 @pytest.fixture()
