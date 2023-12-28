@@ -8,7 +8,7 @@ require (
 	github.com/golang/protobuf v1.5.3
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
-	github.com/longhorn/backupstore v0.0.0-20231025000449-5316e8b5320d
+	github.com/longhorn/backupstore v0.0.0-20231227154627-8a80904e9077
 	github.com/longhorn/go-common-libs v0.0.0-20231201083854-bf0165ef3a22
 	github.com/longhorn/go-iscsi-helper v0.0.0-20231220091133-38e296e68ad2
 	github.com/longhorn/sparse-tools v0.0.0-20230408015858-c849def39d3c

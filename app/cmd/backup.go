@@ -34,6 +34,9 @@ func BackupCmd() cli.Command {
 			cmd.InspectVolumeCmd(),
 			cmd.InspectBackupCmd(),
 			cmd.GetConfigMetadataCmd(),
+			cmd.BackupBackingImageListCmd(),
+			cmd.BackupBackingImageRemoveCmd(),
+			cmd.InspectBackingImageCmd(),
 		},
 	}
 }

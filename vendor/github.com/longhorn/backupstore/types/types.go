@@ -49,3 +49,7 @@ type JobResult struct {
 	Payload interface{}
 	Err     error
 }
+
+const (
+	BackupBackingImageLockName = "BACKINGIMAGE"
+)
