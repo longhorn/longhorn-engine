@@ -168,7 +168,7 @@ func CreateDeltaBlockBackup(backupName string, config *DeltaBackupConfig) (isInc
 	}
 
 	config.Volume.CompressionMethod = volume.CompressionMethod
-	config.Volume.BackendStoreDriver = volume.BackendStoreDriver
+	config.Volume.DataEngine = volume.DataEngine
 
 	if err := deltaOps.OpenSnapshot(snapshot.Name, volume.Name); err != nil {
 		return false, err
@@ -553,7 +553,7 @@ func performBackup(bsDriver BackupStoreDriver, config *DeltaBackupConfig, delta 
 	volume.BackingImageChecksum = config.Volume.BackingImageChecksum
 	volume.CompressionMethod = config.Volume.CompressionMethod
 	volume.StorageClassName = config.Volume.StorageClassName
-	volume.BackendStoreDriver = config.Volume.BackendStoreDriver
+	volume.DataEngine = config.Volume.DataEngine
 
 	if err := saveVolume(bsDriver, volume); err != nil {
 		return progress.progress, "", err
