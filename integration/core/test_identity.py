@@ -101,10 +101,12 @@ def test_validation_fails_with_client(engine_manager_client,
                                 ENGINE_NAME)
     get_controller_version_detail(e_client)  # Retries until open socket.
     with pytest.raises(grpc.RpcError) as e:
-        e_client.replica_create('tcp://' + get_process_address(replica_different))
+        e_client.replica_create(
+            'tcp://' + get_process_address(replica_different))
 
     assert e.value.code() == grpc.StatusCode.FAILED_PRECONDITION
-    assert f'incorrect volume name {VOLUME_NAME}; check replica address' in e.value.details()
+    assert f'incorrect volume name {VOLUME_NAME}; check replica address' in \
+        e.value.details()
 
     # CASE 8:
     # Our sync agent client is right, so we can send it instructions, but it
@@ -121,7 +123,8 @@ def test_validation_fails_with_client(engine_manager_client,
                             0)
 
     assert e.value.code() == grpc.StatusCode.FAILED_PRECONDITION
-    assert f'incorrect volume name {VOLUME_NAME}; check replica address' in e.value.details()
+    assert f'incorrect volume name {VOLUME_NAME}; check replica address' in \
+        e.value.details()
 
 def test_validation_fails_with_cli(bin, engine_manager_client, # NOQA
                                    process_manager_client):
