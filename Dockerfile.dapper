@@ -140,7 +140,8 @@ RUN cd /go/src/github.com/longhorn && \
     cd longhorn-instance-manager && \
     go build -o ./longhorn-instance-manager && \
     cp -r integration/rpc/ ${DAPPER_SOURCE}/integration/rpc/ && \
-    cp longhorn-instance-manager /usr/local/bin
+    cp longhorn-instance-manager /usr/local/bin && \
+    cd ../ && rm -rf longhorn-instance-manager
 
 VOLUME /tmp
 ENV TMPDIR /tmp
