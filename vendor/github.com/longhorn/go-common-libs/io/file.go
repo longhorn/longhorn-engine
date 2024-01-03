@@ -235,8 +235,8 @@ func GetDiskStat(path string) (diskStat types.DiskStat, err error) {
 		Type:             usage.Fstype,
 		FreeBlocks:       int64(statfs.Bfree),
 		TotalBlocks:      int64(statfs.Blocks),
-		BlockSize:        int64(statfs.Bsize),
-		StorageMaximum:   int64(statfs.Blocks) * int64(statfs.Bsize),
-		StorageAvailable: int64(statfs.Bfree) * int64(statfs.Bsize),
+		BlockSize:        statfs.Bsize,
+		StorageMaximum:   int64(statfs.Blocks) * statfs.Bsize,
+		StorageAvailable: int64(statfs.Bfree) * statfs.Bsize,
 	}, nil
 }
