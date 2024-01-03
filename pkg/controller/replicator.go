@@ -4,7 +4,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"math"
 	"strings"
 	"sync"
 
@@ -354,33 +353,60 @@ type backendWrapper struct {
 	mode    types.Mode
 }
 
-func (r *replicator) RemainSnapshots() (int, error) {
-	// addReplica may call here even without any backend
-	if len(r.backends) == 0 {
-		return 1, nil
-	}
-
-	ret := math.MaxInt32
+func (r *replicator) GetSnapshotCountAndSizeUsage() (countUsage int, sizeUsage int64, err error) {
+	var (
+		count     int
+		size      int64
+		hasResult bool
+	)
 	for _, backend := range r.backends {
 		if backend.mode == types.ERR {
 			continue
 		}
-		// ignore error and try next one. We can deal with all
-		// error situation later
-		if remain, err := backend.backend.RemainSnapshots(); err == nil {
-			if remain < ret {
-				ret = remain
-			}
+		// ignore error and try next one
+		count, size, err = backend.backend.GetSnapshotCountAndSizeUsage()
+		if err != nil {
+			logrus.Errorf("Failed to get snapshot count and size usage: %v", err)
+			continue
+		}
+		hasResult = true
+		if countUsage < count {
+			countUsage = count
+		}
+		if sizeUsage < size {
+			sizeUsage = size
 		}
 	}
-	if ret == math.MaxInt32 {
-		return 0, fmt.Errorf("cannot get valid result for remain snapshot")
+
+	if !hasResult {
+		return 0, 0, fmt.Errorf("cannot get an valid result for snapshot usage")
 	}
-	if ret <= 0 {
-		return 0, fmt.Errorf("too many snapshots created")
+	return countUsage, sizeUsage, nil
+}
+
+func (r *replicator) GetHeadFileSize() (int64, error) {
+	sizeUsage := int64(0)
+	hasResult := false
+	for _, backend := range r.backends {
+		if backend.mode == types.ERR {
+			continue
+		}
+		// ignore error and try next one
+		size, err := backend.backend.GetHeadFileSize()
+		if err != nil {
+			logrus.Errorf("Failed to get head file size usage: %v", err)
+			continue
+		}
+		hasResult = true
+		if sizeUsage < size {
+			sizeUsage = size
+		}
 	}
 
-	return ret, nil
+	if !hasResult {
+		return 0, fmt.Errorf("cannot get valid result for head file size")
+	}
+	return sizeUsage, nil
 }
 
 func (r *replicator) SetRevisionCounter(address string, counter int64) error {
@@ -441,4 +467,34 @@ func (r *replicator) GetUnmapMarkSnapChainRemoved(address string) (bool, error) 
 	logrus.Infof("Got backend %s UnmapMarkSnapChainRemoved %v", address, enabled)
 
 	return enabled, nil
+}
+
+func (r *replicator) SetSnapshotMaxCount(address string, count int) error {
+	backend, ok := r.backends[address]
+	if !ok {
+		return fmt.Errorf("cannot find backend %v", address)
+	}
+
+	if err := backend.backend.SetSnapshotMaxCount(count); err != nil {
+		return err
+	}
+
+	logrus.Infof("Set backend %s SnapshotMaxCount to %d", address, count)
+
+	return nil
+}
+
+func (r *replicator) SetSnapshotMaxSize(address string, size int64) error {
+	backend, ok := r.backends[address]
+	if !ok {
+		return fmt.Errorf("cannot find backend %v", address)
+	}
+
+	if err := backend.backend.SetSnapshotMaxSize(size); err != nil {
+		return err
+	}
+
+	logrus.Infof("Set backend %s SnapshotMaxSize to %d", address, size)
+
+	return nil
 }

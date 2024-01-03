@@ -79,6 +79,8 @@ func (rs *ReplicaServer) getReplica() (replica *ptypes.Replica) {
 		chain, _ := r.DisplayChain()
 		replica.Chain = chain
 		replica.RemainSnapshots = int32(r.GetRemainSnapshotCounts())
+		replica.SnapshotCountUsage = int32(r.GetSnapshotCountUsage())
+		replica.SnapshotSizeUsage = r.GetSnapshotSizeUsage()
 		if !r.IsRevCounterDisabled() {
 			replica.RevisionCounter = r.GetRevisionCounter()
 			replica.RevisionCounterDisabled = false
@@ -246,6 +248,16 @@ func (rs *ReplicaServer) RevisionCounterSet(ctx context.Context, req *ptypes.Rev
 func (rs *ReplicaServer) UnmapMarkDiskChainRemovedSet(ctx context.Context, req *ptypes.UnmapMarkDiskChainRemovedSetRequest) (*ptypes.UnmapMarkDiskChainRemovedSetResponse, error) {
 	rs.s.SetUnmapMarkDiskChainRemoved(req.Enabled)
 	return &ptypes.UnmapMarkDiskChainRemovedSetResponse{Replica: rs.getReplica()}, nil
+}
+
+func (rs *ReplicaServer) SnapshotMaxCountSet(ctx context.Context, req *ptypes.SnapshotMaxCountSetRequest) (*ptypes.SnapshotMaxCountSetResponse, error) {
+	rs.s.SetSnapshotMaxCount(int(req.Count))
+	return &ptypes.SnapshotMaxCountSetResponse{Replica: rs.getReplica()}, nil
+}
+
+func (rs *ReplicaServer) SnapshotMaxSizeSet(ctx context.Context, req *ptypes.SnapshotMaxSizeSetRequest) (*ptypes.SnapshotMaxSizeSetResponse, error) {
+	rs.s.SetSnapshotMaxSize(req.Size)
+	return &ptypes.SnapshotMaxSizeSetResponse{Replica: rs.getReplica()}, nil
 }
 
 func (hc *ReplicaHealthCheckServer) Check(context.Context, *healthpb.HealthCheckRequest) (*healthpb.HealthCheckResponse, error) {

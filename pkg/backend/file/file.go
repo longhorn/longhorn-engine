@@ -100,8 +100,8 @@ func (f *Wrapper) SectorSize() (int64, error) {
 	return 4096, nil
 }
 
-func (f *Wrapper) RemainSnapshots() (int, error) {
-	return 1, nil
+func (f *Wrapper) GetSnapshotCountAndSizeUsage() (int, int64, error) {
+	return 1, 0, nil
 }
 
 func (f *Wrapper) GetRevisionCounter() (int64, error) {
@@ -121,6 +121,14 @@ func (f *Wrapper) SetUnmapMarkSnapChainRemoved(enabled bool) error {
 }
 
 func (f *Wrapper) ResetRebuild() error {
+	return nil
+}
+
+func (f *Wrapper) SetSnapshotMaxCount(count int) error {
+	return nil
+}
+
+func (f *Wrapper) SetSnapshotMaxSize(size int64) error {
 	return nil
 }
 

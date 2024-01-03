@@ -166,6 +166,8 @@ func GetReplicaInfo(r *ptypes.Replica) *types.ReplicaInfo {
 		HeadFileSize:              r.HeadFileSize,
 		RevisionCounterDisabled:   r.RevisionCounterDisabled,
 		UnmapMarkDiskChainRemoved: r.UnmapMarkDiskChainRemoved,
+		SnapshotCountUsage:        int(r.SnapshotCountUsage),
+		SnapshotSizeUsage:         r.SnapshotSizeUsage,
 	}
 
 	for diskName, diskInfo := range r.Disks {

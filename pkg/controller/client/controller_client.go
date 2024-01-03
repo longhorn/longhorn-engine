@@ -83,6 +83,8 @@ func GetVolumeInfo(v *ptypes.Volume) *types.VolumeInfo {
 		LastExpansionError:        v.LastExpansionError,
 		LastExpansionFailedAt:     v.LastExpansionFailedAt,
 		UnmapMarkSnapChainRemoved: v.UnmapMarkSnapChainRemoved,
+		SnapshotMaxCount:          int(v.SnapshotMaxCount),
+		SnapshotMaxSize:           v.SnapshotMaxSize,
 	}
 }
 
@@ -226,6 +228,34 @@ func (c *ControllerClient) VolumeUnmapMarkSnapChainRemovedSet(enabled bool) erro
 		Enabled: enabled,
 	}); err != nil {
 		return errors.Wrapf(err, "failed to set UnmapMarkSnapChainRemoved to %v for volume %v", enabled, c.serviceURL)
+	}
+
+	return nil
+}
+
+func (c *ControllerClient) VolumeSnapshotMaxCountSet(count int) error {
+	controllerServiceClient := c.getControllerServiceClient()
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
+	defer cancel()
+
+	if _, err := controllerServiceClient.VolumeSnapshotMaxCountSet(ctx, &ptypes.VolumeSnapshotMaxCountSetRequest{
+		Count: int32(count),
+	}); err != nil {
+		return errors.Wrapf(err, "failed to set SnapshotMaxCount to %d for volume %s", count, c.serviceURL)
+	}
+
+	return nil
+}
+
+func (c *ControllerClient) VolumeSnapshotMaxSizeSet(size int64) error {
+	controllerServiceClient := c.getControllerServiceClient()
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
+	defer cancel()
+
+	if _, err := controllerServiceClient.VolumeSnapshotMaxSizeSet(ctx, &ptypes.VolumeSnapshotMaxSizeSetRequest{
+		Size: size,
+	}); err != nil {
+		return errors.Wrapf(err, "failed to set SnapshotMaxSize to %d for volume %s", size, c.serviceURL)
 	}
 
 	return nil

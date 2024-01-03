@@ -19,15 +19,19 @@ type Server struct {
 	backing                   *backingfile.BackingFile
 	revisionCounterDisabled   bool
 	unmapMarkDiskChainRemoved bool
+	snapshotMaxCount          int
+	snapshotMaxSize           int64
 }
 
-func NewServer(dir string, backing *backingfile.BackingFile, sectorSize int64, disableRevCounter, unmapMarkDiskChainRemoved bool) *Server {
+func NewServer(dir string, backing *backingfile.BackingFile, sectorSize int64, disableRevCounter, unmapMarkDiskChainRemoved bool, snapshotMaxCount int, snapshotMaxSize int64) *Server {
 	return &Server{
 		dir:                       dir,
 		backing:                   backing,
 		sectorSize:                sectorSize,
 		revisionCounterDisabled:   disableRevCounter,
 		unmapMarkDiskChainRemoved: unmapMarkDiskChainRemoved,
+		snapshotMaxCount:          snapshotMaxCount,
+		snapshotMaxSize:           snapshotMaxSize,
 	}
 }
 
@@ -50,7 +54,7 @@ func (s *Server) Create(size int64) error {
 	sectorSize := s.getSectorSize()
 
 	logrus.Infof("Creating replica %s, size %d/%d", s.dir, size, sectorSize)
-	r, err := New(size, sectorSize, s.dir, s.backing, s.revisionCounterDisabled, s.unmapMarkDiskChainRemoved)
+	r, err := New(size, sectorSize, s.dir, s.backing, s.revisionCounterDisabled, s.unmapMarkDiskChainRemoved, s.snapshotMaxCount, s.snapshotMaxSize)
 	if err != nil {
 		return err
 	}
@@ -70,7 +74,7 @@ func (s *Server) Open() error {
 	sectorSize := s.getSectorSize()
 
 	logrus.Infof("Opening replica: dir %s, size %d, sector size %d", s.dir, info.Size, sectorSize)
-	r, err := New(info.Size, sectorSize, s.dir, s.backing, s.revisionCounterDisabled, s.unmapMarkDiskChainRemoved)
+	r, err := New(info.Size, sectorSize, s.dir, s.backing, s.revisionCounterDisabled, s.unmapMarkDiskChainRemoved, s.snapshotMaxCount, s.snapshotMaxSize)
 	if err != nil {
 		return err
 	}
@@ -193,6 +197,26 @@ func (s *Server) SetUnmapMarkDiskChainRemoved(enabled bool) {
 	}
 
 	return
+}
+
+func (s *Server) SetSnapshotMaxCount(count int) {
+	s.Lock()
+	defer s.Unlock()
+
+	s.snapshotMaxCount = count
+	if s.r != nil {
+		s.r.SetSnapshotMaxCount(count)
+	}
+}
+
+func (s *Server) SetSnapshotMaxSize(size int64) {
+	s.Lock()
+	defer s.Unlock()
+
+	s.snapshotMaxSize = size
+	if s.r != nil {
+		s.r.SetSnapshotMaxSize(size)
+	}
 }
 
 func (s *Server) Expand(size int64) error {

@@ -211,16 +211,16 @@ func (r *Remote) SectorSize() (int64, error) {
 	return replicaInfo.SectorSize, nil
 }
 
-func (r *Remote) RemainSnapshots() (int, error) {
+func (r *Remote) GetSnapshotCountAndSizeUsage() (int, int64, error) {
 	replicaInfo, err := r.info()
 	if err != nil {
-		return 0, err
+		return 0, 0, err
 	}
 	switch replicaInfo.State {
 	case "open", "dirty", "rebuilding":
-		return replicaInfo.RemainSnapshots, nil
+		return replicaInfo.SnapshotCountUsage, replicaInfo.SnapshotSizeUsage, nil
 	}
-	return 0, fmt.Errorf("invalid state %v for counting snapshots", replicaInfo.State)
+	return 0, 0, fmt.Errorf("invalid state %v for counting snapshots", replicaInfo.State)
 }
 
 func (r *Remote) GetRevisionCounter() (int64, error) {
@@ -305,6 +305,54 @@ func (r *Remote) ResetRebuild() error {
 	})
 	if err != nil {
 		return errors.Wrapf(err, "failed to set replica %v rebuild to false", r.replicaServiceURL)
+	}
+
+	return nil
+}
+
+func (r *Remote) SetSnapshotMaxCount(count int) error {
+	logrus.Infof("Setting SnapshotMaxCount of %s to : %d", r.name, count)
+
+	conn, err := grpc.Dial(r.replicaServiceURL,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		ptypes.WithIdentityValidationClientInterceptor(r.volumeName, ""))
+	if err != nil {
+		return errors.Wrapf(err, "cannot connect to ReplicaService %s", r.replicaServiceURL)
+	}
+	defer conn.Close()
+	replicaServiceClient := ptypes.NewReplicaServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), replicaClient.GRPCServiceCommonTimeout)
+	defer cancel()
+
+	if _, err := replicaServiceClient.SnapshotMaxCountSet(ctx, &ptypes.SnapshotMaxCountSetRequest{
+		Count: int32(count),
+	}); err != nil {
+		return errors.Wrapf(err, "failed to set SnapshotMaxCount to %d for replica %s from remote", count, r.replicaServiceURL)
+	}
+
+	return nil
+}
+
+func (r *Remote) SetSnapshotMaxSize(size int64) error {
+	logrus.Infof("Setting SnapshotMaxSize of %s to : %d", r.name, size)
+
+	conn, err := grpc.Dial(r.replicaServiceURL,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		ptypes.WithIdentityValidationClientInterceptor(r.volumeName, ""))
+	if err != nil {
+		return errors.Wrapf(err, "cannot connect to ReplicaService %s", r.replicaServiceURL)
+	}
+	defer conn.Close()
+	replicaServiceClient := ptypes.NewReplicaServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), replicaClient.GRPCServiceCommonTimeout)
+	defer cancel()
+
+	if _, err := replicaServiceClient.SnapshotMaxSizeSet(ctx, &ptypes.SnapshotMaxSizeSetRequest{
+		Size: size,
+	}); err != nil {
+		return errors.Wrapf(err, "failed to set SnapshotMaxSize to %d for replica %s from remote", size, r.replicaServiceURL)
 	}
 
 	return nil

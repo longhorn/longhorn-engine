@@ -14,17 +14,15 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/rancher/go-fibmap"
-
 	"github.com/pkg/errors"
+	"github.com/rancher/go-fibmap"
 	"github.com/sirupsen/logrus"
-
-	"github.com/longhorn/sparse-tools/sparse"
 
 	"github.com/longhorn/longhorn-engine/pkg/backingfile"
 	"github.com/longhorn/longhorn-engine/pkg/types"
 	"github.com/longhorn/longhorn-engine/pkg/util"
 	diskutil "github.com/longhorn/longhorn-engine/pkg/util/disk"
+	"github.com/longhorn/sparse-tools/sparse"
 )
 
 const (
@@ -62,6 +60,9 @@ type Replica struct {
 	revisionCounterDisabled bool
 
 	unmapMarkDiskChainRemoved bool
+
+	snapshotMaxCount int
+	snapshotMaxSize  int64
 }
 
 type Info struct {
@@ -141,16 +142,17 @@ func ReadInfo(dir string) (Info, error) {
 	return info, err
 }
 
-func New(size, sectorSize int64, dir string, backingFile *backingfile.BackingFile, disableRevCounter, unmapMarkDiskChainRemoved bool) (*Replica, error) {
-	return construct(false, size, sectorSize, dir, "", backingFile, disableRevCounter, unmapMarkDiskChainRemoved)
+func New(size, sectorSize int64, dir string, backingFile *backingfile.BackingFile, disableRevCounter, unmapMarkDiskChainRemoved bool, snapshotMaxCount int, SnapshotMaxSize int64) (*Replica, error) {
+	return construct(false, size, sectorSize, dir, "", backingFile, disableRevCounter, unmapMarkDiskChainRemoved, snapshotMaxCount, SnapshotMaxSize)
 }
 
 func NewReadOnly(dir, head string, backingFile *backingfile.BackingFile) (*Replica, error) {
 	// size and sectorSize don't matter because they will be read from metadata
-	return construct(true, 0, diskutil.ReplicaSectorSize, dir, head, backingFile, false, false)
+	// snapshotMaxCount and SnapshotMaxSize don't matter because readonly replica can't create a new disk
+	return construct(true, 0, diskutil.ReplicaSectorSize, dir, head, backingFile, false, false, 250, 0)
 }
 
-func construct(readonly bool, size, sectorSize int64, dir, head string, backingFile *backingfile.BackingFile, disableRevCounter, unmapMarkDiskChainRemoved bool) (*Replica, error) {
+func construct(readonly bool, size, sectorSize int64, dir, head string, backingFile *backingfile.BackingFile, disableRevCounter, unmapMarkDiskChainRemoved bool, snapshotMaxCount int, snapshotMaxSize int64) (*Replica, error) {
 	if size%sectorSize != 0 {
 		return nil, fmt.Errorf("size %d not a multiple of sector size %d", size, sectorSize)
 	}
@@ -167,6 +169,8 @@ func construct(readonly bool, size, sectorSize int64, dir, head string, backingF
 		readOnly:                  readonly,
 		revisionCounterDisabled:   disableRevCounter,
 		unmapMarkDiskChainRemoved: unmapMarkDiskChainRemoved,
+		snapshotMaxCount:          snapshotMaxCount,
+		snapshotMaxSize:           snapshotMaxSize,
 	}
 	r.info.Size = size
 	r.info.SectorSize = sectorSize
@@ -285,7 +289,7 @@ func (r *Replica) SetRebuilding(rebuilding bool) error {
 }
 
 func (r *Replica) Reload() (*Replica, error) {
-	newReplica, err := New(r.info.Size, r.info.SectorSize, r.dir, r.info.BackingFile, r.revisionCounterDisabled, r.unmapMarkDiskChainRemoved)
+	newReplica, err := New(r.info.Size, r.info.SectorSize, r.dir, r.info.BackingFile, r.revisionCounterDisabled, r.unmapMarkDiskChainRemoved, r.snapshotMaxCount, r.snapshotMaxSize)
 	if err != nil {
 		return nil, err
 	}
@@ -585,6 +589,28 @@ func (r *Replica) Chain() ([]string, error) {
 	return result, nil
 }
 
+func (r *Replica) GetSnapshotSizeUsage() int64 {
+	r.RLock()
+	defer r.RUnlock()
+
+	var (
+		backingDiskName   string
+		totalSnapshotSize int64
+	)
+	// index 0 is nil or backing file
+	if r.activeDiskData[0] != nil {
+		backingDiskName = r.activeDiskData[0].Name
+	}
+	for _, disk := range r.activeDiskData {
+		// exclude volume head, backing disk, and removed disks
+		if disk == nil || disk.Removed || disk.Name == backingDiskName || disk.Name == r.info.Head {
+			continue
+		}
+		totalSnapshotSize += r.getDiskSize(disk.Name)
+	}
+	return totalSnapshotSize
+}
+
 func (r *Replica) writeVolumeMetaData(dirty, rebuilding bool) error {
 	info := r.info
 	info.Dirty = dirty
@@ -865,8 +891,8 @@ func (r *Replica) createDisk(name string, userCreated bool, created string, labe
 		return fmt.Errorf("cannot create disk on read-only replica")
 	}
 
-	if len(r.activeDiskData)+1 > maximumChainLength {
-		return fmt.Errorf("too many active disks: %v", len(r.activeDiskData)+1)
+	if r.getRemainSnapshotCounts() <= 0 {
+		return fmt.Errorf("too many active disks: %v", len(r.activeDiskData)-2+1)
 	}
 
 	oldHead := r.info.Head
@@ -1189,6 +1215,24 @@ func (r *Replica) SetUnmapMarkDiskChainRemoved(enabled bool) {
 	logrus.Infof("Set replica flag unmapMarkDiskChainRemoved to %v", enabled)
 }
 
+func (r *Replica) SetSnapshotMaxCount(count int) {
+	r.Lock()
+	defer r.Unlock()
+
+	r.snapshotMaxCount = count
+
+	logrus.Infof("Set replica flag snapshotMaxCount to %d", count)
+}
+
+func (r *Replica) SetSnapshotMaxSize(size int64) {
+	r.Lock()
+	defer r.Unlock()
+
+	r.snapshotMaxSize = size
+
+	logrus.Infof("Set replica flag SnapshotMaxSize to %d", size)
+}
+
 func (r *Replica) Expand(size int64) (err error) {
 	if size%diskutil.VolumeSectorSize != 0 {
 		return fmt.Errorf("failed to expend volume replica size %v, because it is not multiple of volume sector size %v", size, diskutil.VolumeSectorSize)
@@ -1326,11 +1370,42 @@ func (r *Replica) ListDisks() map[string]DiskInfo {
 	return result
 }
 
+func (r *Replica) GetSnapshotCountUsage() int {
+	r.RLock()
+	defer r.RUnlock()
+
+	return r.getSnapshotCountUsage()
+}
+
+func (r *Replica) getSnapshotCountUsage() int {
+	var (
+		backingDiskName string
+		snapshotCount   int
+	)
+	// index 0 is nil or backing file
+	if r.activeDiskData[0] != nil {
+		backingDiskName = r.activeDiskData[0].Name
+	}
+
+	for _, disk := range r.diskData {
+		// exclude volume head, backing disk, and removed disks
+		if disk == nil || disk.Removed || disk.Name == backingDiskName || disk.Name == r.info.Head {
+			continue
+		}
+		snapshotCount++
+	}
+	return snapshotCount
+}
+
 func (r *Replica) GetRemainSnapshotCounts() int {
 	r.RLock()
 	defer r.RUnlock()
 
-	return maximumChainLength - len(r.activeDiskData)
+	return r.getRemainSnapshotCounts()
+}
+
+func (r *Replica) getRemainSnapshotCounts() int {
+	return r.snapshotMaxCount - r.getSnapshotCountUsage()
 }
 
 func (r *Replica) getDiskSize(disk string) int64 {
