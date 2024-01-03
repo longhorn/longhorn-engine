@@ -60,6 +60,16 @@ class ControllerServiceStub(object):
                 request_serializer=github_dot_com_dot_longhorn_dot_longhorn__engine_dot_proto_dot_ptypes_dot_controller__pb2.VolumeUnmapMarkSnapChainRemovedSetRequest.SerializeToString,
                 response_deserializer=github_dot_com_dot_longhorn_dot_longhorn__engine_dot_proto_dot_ptypes_dot_controller__pb2.Volume.FromString,
                 )
+        self.VolumeSnapshotMaxCountSet = channel.unary_unary(
+                '/ptypes.ControllerService/VolumeSnapshotMaxCountSet',
+                request_serializer=github_dot_com_dot_longhorn_dot_longhorn__engine_dot_proto_dot_ptypes_dot_controller__pb2.VolumeSnapshotMaxCountSetRequest.SerializeToString,
+                response_deserializer=github_dot_com_dot_longhorn_dot_longhorn__engine_dot_proto_dot_ptypes_dot_controller__pb2.Volume.FromString,
+                )
+        self.VolumeSnapshotMaxSizeSet = channel.unary_unary(
+                '/ptypes.ControllerService/VolumeSnapshotMaxSizeSet',
+                request_serializer=github_dot_com_dot_longhorn_dot_longhorn__engine_dot_proto_dot_ptypes_dot_controller__pb2.VolumeSnapshotMaxSizeSetRequest.SerializeToString,
+                response_deserializer=github_dot_com_dot_longhorn_dot_longhorn__engine_dot_proto_dot_ptypes_dot_controller__pb2.Volume.FromString,
+                )
         self.ReplicaList = channel.unary_unary(
                 '/ptypes.ControllerService/ReplicaList',
                 request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
@@ -164,6 +174,18 @@ class ControllerServiceServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def VolumeUnmapMarkSnapChainRemovedSet(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def VolumeSnapshotMaxCountSet(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def VolumeSnapshotMaxSizeSet(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -275,6 +297,16 @@ def add_ControllerServiceServicer_to_server(servicer, server):
             'VolumeUnmapMarkSnapChainRemovedSet': grpc.unary_unary_rpc_method_handler(
                     servicer.VolumeUnmapMarkSnapChainRemovedSet,
                     request_deserializer=github_dot_com_dot_longhorn_dot_longhorn__engine_dot_proto_dot_ptypes_dot_controller__pb2.VolumeUnmapMarkSnapChainRemovedSetRequest.FromString,
+                    response_serializer=github_dot_com_dot_longhorn_dot_longhorn__engine_dot_proto_dot_ptypes_dot_controller__pb2.Volume.SerializeToString,
+            ),
+            'VolumeSnapshotMaxCountSet': grpc.unary_unary_rpc_method_handler(
+                    servicer.VolumeSnapshotMaxCountSet,
+                    request_deserializer=github_dot_com_dot_longhorn_dot_longhorn__engine_dot_proto_dot_ptypes_dot_controller__pb2.VolumeSnapshotMaxCountSetRequest.FromString,
+                    response_serializer=github_dot_com_dot_longhorn_dot_longhorn__engine_dot_proto_dot_ptypes_dot_controller__pb2.Volume.SerializeToString,
+            ),
+            'VolumeSnapshotMaxSizeSet': grpc.unary_unary_rpc_method_handler(
+                    servicer.VolumeSnapshotMaxSizeSet,
+                    request_deserializer=github_dot_com_dot_longhorn_dot_longhorn__engine_dot_proto_dot_ptypes_dot_controller__pb2.VolumeSnapshotMaxSizeSetRequest.FromString,
                     response_serializer=github_dot_com_dot_longhorn_dot_longhorn__engine_dot_proto_dot_ptypes_dot_controller__pb2.Volume.SerializeToString,
             ),
             'ReplicaList': grpc.unary_unary_rpc_method_handler(
@@ -486,6 +518,40 @@ class ControllerService(object):
             metadata=None):
         return grpc.experimental.unary_unary(request, target, '/ptypes.ControllerService/VolumeUnmapMarkSnapChainRemovedSet',
             github_dot_com_dot_longhorn_dot_longhorn__engine_dot_proto_dot_ptypes_dot_controller__pb2.VolumeUnmapMarkSnapChainRemovedSetRequest.SerializeToString,
+            github_dot_com_dot_longhorn_dot_longhorn__engine_dot_proto_dot_ptypes_dot_controller__pb2.Volume.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def VolumeSnapshotMaxCountSet(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/ptypes.ControllerService/VolumeSnapshotMaxCountSet',
+            github_dot_com_dot_longhorn_dot_longhorn__engine_dot_proto_dot_ptypes_dot_controller__pb2.VolumeSnapshotMaxCountSetRequest.SerializeToString,
+            github_dot_com_dot_longhorn_dot_longhorn__engine_dot_proto_dot_ptypes_dot_controller__pb2.Volume.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def VolumeSnapshotMaxSizeSet(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/ptypes.ControllerService/VolumeSnapshotMaxSizeSet',
+            github_dot_com_dot_longhorn_dot_longhorn__engine_dot_proto_dot_ptypes_dot_controller__pb2.VolumeSnapshotMaxSizeSetRequest.SerializeToString,
             github_dot_com_dot_longhorn_dot_longhorn__engine_dot_proto_dot_ptypes_dot_controller__pb2.Volume.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
