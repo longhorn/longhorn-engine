@@ -95,6 +95,16 @@ class ReplicaServiceStub(object):
                 request_serializer=github_dot_com_dot_longhorn_dot_longhorn__engine_dot_proto_dot_ptypes_dot_replica__pb2.UnmapMarkDiskChainRemovedSetRequest.SerializeToString,
                 response_deserializer=github_dot_com_dot_longhorn_dot_longhorn__engine_dot_proto_dot_ptypes_dot_replica__pb2.UnmapMarkDiskChainRemovedSetResponse.FromString,
                 )
+        self.SnapshotMaxCountSet = channel.unary_unary(
+                '/ptypes.ReplicaService/SnapshotMaxCountSet',
+                request_serializer=github_dot_com_dot_longhorn_dot_longhorn__engine_dot_proto_dot_ptypes_dot_replica__pb2.SnapshotMaxCountSetRequest.SerializeToString,
+                response_deserializer=github_dot_com_dot_longhorn_dot_longhorn__engine_dot_proto_dot_ptypes_dot_replica__pb2.SnapshotMaxCountSetResponse.FromString,
+                )
+        self.SnapshotMaxSizeSet = channel.unary_unary(
+                '/ptypes.ReplicaService/SnapshotMaxSizeSet',
+                request_serializer=github_dot_com_dot_longhorn_dot_longhorn__engine_dot_proto_dot_ptypes_dot_replica__pb2.SnapshotMaxSizeSetRequest.SerializeToString,
+                response_deserializer=github_dot_com_dot_longhorn_dot_longhorn__engine_dot_proto_dot_ptypes_dot_replica__pb2.SnapshotMaxSizeSetResponse.FromString,
+                )
 
 
 class ReplicaServiceServicer(object):
@@ -196,6 +206,18 @@ class ReplicaServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def SnapshotMaxCountSet(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def SnapshotMaxSizeSet(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
 
 def add_ReplicaServiceServicer_to_server(servicer, server):
     rpc_method_handlers = {
@@ -278,6 +300,16 @@ def add_ReplicaServiceServicer_to_server(servicer, server):
                     servicer.UnmapMarkDiskChainRemovedSet,
                     request_deserializer=github_dot_com_dot_longhorn_dot_longhorn__engine_dot_proto_dot_ptypes_dot_replica__pb2.UnmapMarkDiskChainRemovedSetRequest.FromString,
                     response_serializer=github_dot_com_dot_longhorn_dot_longhorn__engine_dot_proto_dot_ptypes_dot_replica__pb2.UnmapMarkDiskChainRemovedSetResponse.SerializeToString,
+            ),
+            'SnapshotMaxCountSet': grpc.unary_unary_rpc_method_handler(
+                    servicer.SnapshotMaxCountSet,
+                    request_deserializer=github_dot_com_dot_longhorn_dot_longhorn__engine_dot_proto_dot_ptypes_dot_replica__pb2.SnapshotMaxCountSetRequest.FromString,
+                    response_serializer=github_dot_com_dot_longhorn_dot_longhorn__engine_dot_proto_dot_ptypes_dot_replica__pb2.SnapshotMaxCountSetResponse.SerializeToString,
+            ),
+            'SnapshotMaxSizeSet': grpc.unary_unary_rpc_method_handler(
+                    servicer.SnapshotMaxSizeSet,
+                    request_deserializer=github_dot_com_dot_longhorn_dot_longhorn__engine_dot_proto_dot_ptypes_dot_replica__pb2.SnapshotMaxSizeSetRequest.FromString,
+                    response_serializer=github_dot_com_dot_longhorn_dot_longhorn__engine_dot_proto_dot_ptypes_dot_replica__pb2.SnapshotMaxSizeSetResponse.SerializeToString,
             ),
     }
     generic_handler = grpc.method_handlers_generic_handler(
@@ -558,5 +590,39 @@ class ReplicaService(object):
         return grpc.experimental.unary_unary(request, target, '/ptypes.ReplicaService/UnmapMarkDiskChainRemovedSet',
             github_dot_com_dot_longhorn_dot_longhorn__engine_dot_proto_dot_ptypes_dot_replica__pb2.UnmapMarkDiskChainRemovedSetRequest.SerializeToString,
             github_dot_com_dot_longhorn_dot_longhorn__engine_dot_proto_dot_ptypes_dot_replica__pb2.UnmapMarkDiskChainRemovedSetResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def SnapshotMaxCountSet(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/ptypes.ReplicaService/SnapshotMaxCountSet',
+            github_dot_com_dot_longhorn_dot_longhorn__engine_dot_proto_dot_ptypes_dot_replica__pb2.SnapshotMaxCountSetRequest.SerializeToString,
+            github_dot_com_dot_longhorn_dot_longhorn__engine_dot_proto_dot_ptypes_dot_replica__pb2.SnapshotMaxCountSetResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def SnapshotMaxSizeSet(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/ptypes.ReplicaService/SnapshotMaxSizeSet',
+            github_dot_com_dot_longhorn_dot_longhorn__engine_dot_proto_dot_ptypes_dot_replica__pb2.SnapshotMaxSizeSetRequest.SerializeToString,
+            github_dot_com_dot_longhorn_dot_longhorn__engine_dot_proto_dot_ptypes_dot_replica__pb2.SnapshotMaxSizeSetResponse.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
