@@ -185,7 +185,7 @@ func (rb *BackupStatus) CompareSnapshot(snapID, compareSnapID, volumeID string) 
 	}
 
 	mappings := &btypes.Mappings{
-		BlockSize: snapBlockSize,
+		BlockSize: backupBlockSize,
 	}
 	mapping := btypes.Mapping{
 		Offset: -1,
