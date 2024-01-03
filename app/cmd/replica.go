@@ -24,7 +24,7 @@ import (
 func ReplicaCmd() cli.Command {
 	return cli.Command{
 		Name:      "replica",
-		UsageText: "longhorn controller DIRECTORY SIZE",
+		UsageText: "longhorn replica DIRECTORY",
 		Flags: []cli.Flag{
 			cli.StringFlag{
 				Name:  "listen",
@@ -73,6 +73,15 @@ func ReplicaCmd() cli.Command {
 				Value: "",
 				Usage: "Name of the replica instance (for validation purposes)",
 			},
+			cli.IntFlag{
+				Name:  "snapshot-max-count",
+				Value: 250,
+				Usage: "Maximum number of snapshots to keep",
+			},
+			cli.StringFlag{
+				Name:  "snapshot-max-size",
+				Usage: "Maximum total snapshot size in bytes or human readable 42kb, 42mb, 42gb",
+			},
 		},
 		Action: func(c *cli.Context) {
 			if err := startReplica(c); err != nil {
@@ -96,7 +105,17 @@ func startReplica(c *cli.Context) error {
 	disableRevCounter := c.Bool("disableRevCounter")
 	unmapMarkDiskChainRemoved := c.Bool("unmap-mark-disk-chain-removed")
 
-	s := replica.NewServer(dir, backingFile, diskutil.ReplicaSectorSize, disableRevCounter, unmapMarkDiskChainRemoved)
+	snapshotMaxCount := c.Int("snapshot-max-count")
+	snapshotMaxSize := int64(0)
+	snapshotMaxSizeString := c.String("snapshot-max-size")
+	if snapshotMaxSizeString != "" {
+		snapshotMaxSize, err = units.RAMInBytes(snapshotMaxSizeString)
+		if err != nil {
+			return err
+		}
+	}
+
+	s := replica.NewServer(dir, backingFile, diskutil.ReplicaSectorSize, disableRevCounter, unmapMarkDiskChainRemoved, snapshotMaxCount, snapshotMaxSize)
 
 	address := c.String("listen")
 

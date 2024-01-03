@@ -83,6 +83,15 @@ func ControllerCmd() cli.Command {
 				Value:    5,
 				Usage:    "HTTP client timeout for replica file sync server",
 			},
+			cli.IntFlag{
+				Name:  "snapshot-max-count",
+				Value: 250,
+				Usage: "Maximum number of snapshots to keep",
+			},
+			cli.StringFlag{
+				Name:  "snapshot-max-size",
+				Usage: "Maximum total snapshot size in bytes or human readable 42kb, 42mb, 42gb",
+			},
 		},
 		Action: func(c *cli.Context) {
 			if err := startController(c); err != nil {
@@ -138,6 +147,16 @@ func startController(c *cli.Context) error {
 	engineReplicaTimeout = controller.DetermineEngineReplicaTimeout(engineReplicaTimeout)
 	iscsiTargetRequestTimeout := controller.DetermineIscsiTargetRequestTimeout(engineReplicaTimeout)
 
+	snapshotMaxCount := c.Int("snapshot-max-count")
+	snapshotMaxSize := int64(0)
+	snapshotMaxSizeString := c.String("snapshot-max-size")
+	if snapshotMaxSizeString != "" {
+		snapshotMaxSize, err = units.RAMInBytes(snapshotMaxSizeString)
+		if err != nil {
+			return err
+		}
+	}
+
 	factories := map[string]types.BackendFactory{}
 	for _, backend := range backends {
 		switch backend {
@@ -163,7 +182,7 @@ func startController(c *cli.Context) error {
 		volumeName, iscsiTargetRequestTimeout, engineReplicaTimeout)
 	control := controller.NewController(volumeName, dynamic.New(factories), frontend, isUpgrade, disableRevCounter, salvageRequested,
 		unmapMarkSnapChainRemoved, iscsiTargetRequestTimeout, engineReplicaTimeout, types.DataServerProtocol(dataServerProtocol),
-		fileSyncHTTPClientTimeout)
+		fileSyncHTTPClientTimeout, snapshotMaxCount, snapshotMaxSize)
 
 	// need to wait for Shutdown() completion
 	control.ShutdownWG.Add(1)
