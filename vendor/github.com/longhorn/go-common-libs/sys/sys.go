@@ -1,6 +1,7 @@
 package sys
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -82,6 +83,23 @@ func getSystemBlockDeviceInfo(readDirFn func(string) ([]os.DirEntry, error), rea
 	for _, device := range devices {
 		deviceName := device.Name()
 		devicePath := filepath.Join(types.SysClassBlockDirectory, deviceName, "dev")
+
+		if _, err := os.Stat(devicePath); os.IsNotExist(err) {
+			// If the device path does not exist, check if the device path exists in the "device" directory.
+			// Some devices such as "nvme0cn1" created from SPDK do not have "dev" file under their sys/class/block directory.
+			alternativeDevicePath := filepath.Join(types.SysClassBlockDirectory, deviceName, "device", "dev")
+			if _, altErr := os.Stat(alternativeDevicePath); os.IsNotExist(altErr) {
+				errs := fmt.Errorf("primary error: %w; alternative error: %w", err, altErr)
+				logrus.WithFields(logrus.Fields{
+					"device":          deviceName,
+					"primaryPath":     devicePath,
+					"alternativePath": alternativeDevicePath,
+				}).WithError(errs).Debugf("failed to find dev file in either primary or alternative path")
+				continue
+			}
+
+			devicePath = alternativeDevicePath
+		}
 
 		data, err := readFileFn(devicePath)
 		if err != nil {

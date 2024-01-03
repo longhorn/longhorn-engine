@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/c9s/goprocinfo/linux"
 	"github.com/mitchellh/go-ps"
@@ -174,4 +175,36 @@ func FindProcessByName(name string) (*os.Process, error) {
 	}
 
 	return nil, fmt.Errorf("process %s is not found", name)
+}
+
+// FindProcessByCmdline finds the processes with matching cmdline
+func FindProcessByCmdline(cmdline string) ([]*os.Process, error) {
+	processes, err := ps.Processes()
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to list processes")
+	}
+
+	var foundProcesses []*os.Process
+
+	for _, process := range processes {
+		cmdlinePath := filepath.Join("/proc", strconv.Itoa(process.Pid()), "cmdline")
+		cmdlineContent, err := os.ReadFile(cmdlinePath)
+		if err != nil {
+			continue
+		}
+
+		if strings.HasPrefix(string(cmdlineContent), cmdline) {
+			process, err := os.FindProcess(process.Pid())
+			if err != nil {
+				return nil, err
+			}
+			foundProcesses = append(foundProcesses, process)
+		}
+	}
+
+	if len(foundProcesses) == 0 {
+		return nil, fmt.Errorf("process with cmdline %s is not found", cmdline)
+	}
+
+	return foundProcesses, nil
 }

@@ -1,11 +1,14 @@
 package utils
 
 import (
+	"crypto/rand"
+	"math/big"
 	"path/filepath"
 	"reflect"
 	"runtime"
 
 	"github.com/google/uuid"
+	"github.com/pkg/errors"
 
 	"github.com/longhorn/go-common-libs/types"
 )
@@ -75,4 +78,23 @@ func RandomID(randomIDLenth int) string {
 // UUID returns a random UUID string.
 func UUID() string {
 	return uuid.New().String()
+}
+
+// GenerateRandomNumber generates a random positive number between lower and upper.
+// The return value should be between [lower, upper), and error is nil when success.
+// If the error is not nil, the return value is 0.
+func GenerateRandomNumber(lower, upper int64) (int64, error) {
+	if lower > upper {
+		return 0, errors.Errorf("invalid boundary: [%v, %v)", lower, upper)
+	}
+
+	if lower == upper {
+		return lower, nil
+	}
+
+	randNum, err := rand.Int(rand.Reader, big.NewInt(upper-lower))
+	if err != nil {
+		return 0, err
+	}
+	return (lower + randNum.Int64()), nil
 }
