@@ -15,6 +15,9 @@ import (
 	"github.com/longhorn/longhorn-engine/pkg/replica"
 	"github.com/longhorn/longhorn-engine/pkg/types"
 	"github.com/longhorn/longhorn-engine/proto/ptypes"
+
+	"github.com/longhorn/go-common-libs/generated/profilerpb"
+	"github.com/longhorn/go-common-libs/profiler"
 )
 
 type ReplicaServer struct {
@@ -31,6 +34,7 @@ func NewReplicaServer(volumeName, instanceName string, s *replica.Server) *grpc.
 	ptypes.RegisterReplicaServiceServer(server, rs)
 	healthpb.RegisterHealthServer(server, NewReplicaHealthCheckServer(rs))
 	reflection.Register(server)
+	profilerpb.RegisterProfilerServer(server, profiler.NewServer(volumeName))
 	return server
 }
 
