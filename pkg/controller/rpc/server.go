@@ -16,6 +16,9 @@ import (
 	"github.com/longhorn/longhorn-engine/pkg/controller"
 	"github.com/longhorn/longhorn-engine/pkg/types"
 	"github.com/longhorn/longhorn-engine/proto/ptypes"
+
+	"github.com/longhorn/go-common-libs/generated/profilerpb"
+	"github.com/longhorn/go-common-libs/profiler"
 )
 
 const (
@@ -48,6 +51,7 @@ func GetControllerGRPCServer(volumeName, instanceName string, c *controller.Cont
 	ptypes.RegisterControllerServiceServer(server, cs)
 	healthpb.RegisterHealthServer(server, NewControllerHealthCheckServer(cs))
 	reflection.Register(server)
+	profilerpb.RegisterProfilerServer(server, profiler.NewServer(volumeName))
 	return server
 }
 
