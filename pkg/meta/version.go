@@ -2,7 +2,7 @@ package meta
 
 const (
 	// CLIAPIVersion used to communicate with user e.g. longhorn-manager
-	CLIAPIVersion    = 9
+	CLIAPIVersion    = 10
 	CLIAPIMinVersion = 8
 
 	// ControllerAPIVersion used to communicate with instance-manager
