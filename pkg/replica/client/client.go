@@ -506,7 +506,7 @@ func (c *ReplicaClient) LaunchReceiver(toFilePath string) (string, int32, error)
 	return c.host, reply.Port, nil
 }
 
-func (c *ReplicaClient) SyncFiles(fromAddress string, list []types.SyncFileInfo, fileSyncHTTPClientTimeout int, fastSync bool, grpcTimeoutSeconds int64) error {
+func (c *ReplicaClient) SyncFiles(fromAddress string, list []types.SyncFileInfo, fileSyncHTTPClientTimeout int, fastSync bool, grpcTimeoutSeconds int64, localSync *types.FileLocalSync) error {
 	syncAgentServiceClient, err := c.getSyncServiceClient()
 	if err != nil {
 		return err
@@ -518,14 +518,23 @@ func (c *ReplicaClient) SyncFiles(fromAddress string, list []types.SyncFileInfo,
 	ctx, cancel := context.WithTimeout(context.Background(), grpcTimeout)
 	defer cancel()
 
-	if _, err := syncAgentServiceClient.FilesSync(ctx, &enginerpc.FilesSyncRequest{
+	fileSyncRequest := &enginerpc.FilesSyncRequest{
 		FromAddress:               fromAddress,
 		ToHost:                    c.host,
 		SyncFileInfoList:          syncFileInfoListToSyncAgentGRPCFormat(list),
 		FastSync:                  fastSync,
 		FileSyncHttpClientTimeout: int32(fileSyncHTTPClientTimeout),
 		GrpcTimeoutSeconds:        grpcTimeoutSeconds,
-	}); err != nil {
+	}
+
+	if localSync != nil {
+		fileSyncRequest.LocalSync = &enginerpc.FileLocalSync{
+			SourcePath: localSync.SourcePath,
+			TargetPath: localSync.TargetPath,
+		}
+	}
+
+	if _, err := syncAgentServiceClient.FilesSync(ctx, fileSyncRequest); err != nil {
 		return errors.Wrapf(err, "failed to sync files %+v from %v", list, fromAddress)
 	}
 
