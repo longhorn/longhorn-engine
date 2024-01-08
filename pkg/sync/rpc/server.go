@@ -27,6 +27,8 @@ import (
 	"github.com/longhorn/sparse-tools/sparse"
 	sparserest "github.com/longhorn/sparse-tools/sparse/rest"
 
+	lhio "github.com/longhorn/go-common-libs/io"
+
 	"github.com/longhorn/longhorn-engine/pkg/backup"
 	"github.com/longhorn/longhorn-engine/pkg/replica"
 	replicaclient "github.com/longhorn/longhorn-engine/pkg/replica/client"
@@ -444,16 +446,72 @@ func (s *SyncAgentServer) FilesSync(ctx context.Context, req *ptypes.FilesSyncRe
 		}
 	}()
 
+	if req.LocalSync != nil {
+		err := s.fileSyncLocal(ctx, req)
+		if err == nil {
+			return &emptypb.Empty{}, nil
+		}
+
+		logrus.WithError(err).Warn("Falling back to remote sync")
+	}
+
+	return &emptypb.Empty{}, s.fileSyncRemote(ctx, req)
+}
+
+func (s *SyncAgentServer) fileSyncLocal(ctx context.Context, req *ptypes.FilesSyncRequest) error {
+	var targetPaths []string
+	var err error
+
+	log := logrus.WithFields(logrus.Fields{
+		"source": req.LocalSync.Source,
+		"target": req.LocalSync.Target,
+	})
+
+	log.Info("Syncing files locally")
+
+	// Defer function to handle cleanup of files if an error occurs
+	defer func() {
+		if err == nil {
+			log.Info("Done syncing files locally")
+		} else {
+			log.WithError(err).Warn("Failed to sync files locally, reverting changes")
+
+			for _, targetPath := range targetPaths {
+				if removeErr := os.Remove(targetPath); removeErr != nil && removeErr != os.ErrNotExist {
+					log.WithError(removeErr).Warnf("Failed to remove file %v", targetPath)
+				}
+			}
+		}
+	}()
+
+	for _, info := range req.SyncFileInfoList {
+		sourcePath := filepath.Join("/host", req.LocalSync.Source, info.FromFileName)
+		targetPath := filepath.Join("/host", req.LocalSync.Target, info.ToFileName)
+		targetPaths = append(targetPaths, targetPath)
+
+		log.Tracef("Copying file %v to %v", sourcePath, targetPath)
+
+		err = lhio.CopyFile(sourcePath, targetPath, true)
+		if err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+func (s *SyncAgentServer) fileSyncRemote(ctx context.Context, req *ptypes.FilesSyncRequest) error {
 	// We generally don't know the from replica's instanceName since it is arbitrarily chosen from candidate addresses
 	// stored in the controller. Don't modify FilesSyncRequest to contain it, and create a client without it.
 	fromClient, err := replicaclient.NewReplicaClient(req.FromAddress, s.volumeName, "")
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer fromClient.Close()
 
 	var ops sparserest.SyncFileOperations
 	fileStub := &sparserest.SyncFileStub{}
+
 	for _, info := range req.SyncFileInfoList {
 		// Do not count size for disk meta file or empty disk file.
 		if info.ActualSize == 0 {
@@ -464,14 +522,13 @@ func (s *SyncAgentServer) FilesSync(ctx context.Context, req *ptypes.FilesSyncRe
 
 		port, err := s.launchReceiver("FilesSync", info.ToFileName, ops)
 		if err != nil {
-			return nil, errors.Wrapf(err, "failed to launch receiver for file %v", info.ToFileName)
+			return errors.Wrapf(err, "failed to launch receiver for file %v", info.ToFileName)
 		}
 		if err := fromClient.SendFile(info.FromFileName, req.ToHost, int32(port), int(req.FileSyncHttpClientTimeout), req.FastSync); err != nil {
-			return nil, errors.Wrapf(err, "replica %v failed to send file %v to %v:%v", req.FromAddress, info.ToFileName, req.ToHost, port)
+			return errors.Wrapf(err, "replica %v failed to send file %v to %v:%v", req.FromAddress, info.ToFileName, req.ToHost, port)
 		}
 	}
-
-	return &emptypb.Empty{}, nil
+	return nil
 }
 
 func (s *SyncAgentServer) PrepareRebuild(list []*ptypes.SyncFileInfo, fromReplicaAddress string) error {
