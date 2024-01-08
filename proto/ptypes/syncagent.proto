@@ -65,6 +65,12 @@ message FilesSyncRequest {
   repeated SyncFileInfo sync_file_info_list = 3;
   bool fast_sync = 4;
   int32 file_sync_http_client_timeout = 5;
+  FileLocalSync local_sync = 6;
+}
+
+message FileLocalSync{
+	string source = 1;
+	string target = 2;
 }
 
 message SnapshotCloneRequest {
