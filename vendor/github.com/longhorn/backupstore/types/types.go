@@ -3,9 +3,11 @@ package types
 type ProgressState string
 
 const (
+	ProgressStateUndefined  = ProgressState("")
 	ProgressStateInProgress = ProgressState("in_progress")
 	ProgressStateComplete   = ProgressState("complete")
 	ProgressStateError      = ProgressState("error")
+	ProgressStateCanceled   = ProgressState("canceled")
 )
 
 const (
@@ -51,5 +53,15 @@ type JobResult struct {
 }
 
 const (
+	// This is used for all the BackingImages since they all share the same block pool.
+	// For lock mechanism, please refer to: https://github.com/longhorn/longhorn/blob/master/enhancements/20200701-backupstore-file-locks.md#proposal
+	// Currently the lock file is stored in each BackupVolume folder.
+	// For BackingImage Lock it is also stored there with the folder name "BACKINGIMAGE" defined here.
+	// To prevent Longhorn from accidently considering it as another normal BackupVolume,
+	// we use upppercase here so it will be filtered out when listing.
 	BackupBackingImageLockName = "BACKINGIMAGE"
+)
+
+const (
+	ErrorMsgRestoreCancelled = "backup restoration is cancelled"
 )

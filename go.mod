@@ -7,7 +7,7 @@ require (
 	github.com/gofrs/flock v0.8.1
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
-	github.com/longhorn/backupstore v0.0.0-20231229024807-ccb82ae17a0e
+	github.com/longhorn/backupstore v0.0.0-20240110081942-bd231cfb0c7b
 	github.com/longhorn/go-common-libs v0.0.0-20240109042507-23627e6416b7
 	github.com/longhorn/go-iscsi-helper v0.0.0-20231220091133-38e296e68ad2
 	github.com/longhorn/sparse-tools v0.0.0-20230408015858-c849def39d3c
