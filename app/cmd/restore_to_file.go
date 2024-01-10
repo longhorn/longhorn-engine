@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -85,7 +86,7 @@ func restore(url string, concurrentLimit int) error {
 		ConcurrentLimit: int32(concurrentLimit),
 	}
 
-	if err := backupstore.RestoreDeltaBlockBackup(config); err != nil {
+	if err := backupstore.RestoreDeltaBlockBackup(context.Background(), config); err != nil {
 		return err
 	}
 
