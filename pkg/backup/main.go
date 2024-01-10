@@ -1,6 +1,7 @@
 package backup
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -169,12 +170,13 @@ func DoBackupRestore(backupURL string, toFile string, concurrentLimit int, resto
 
 	log.Infof("Start restoring from %v into snapshot %v", backupURL, toFile)
 
-	return backupstore.RestoreDeltaBlockBackup(&backupstore.DeltaRestoreConfig{
-		BackupURL:       backupURL,
-		DeltaOps:        restoreObj,
-		Filename:        toFile,
-		ConcurrentLimit: int32(concurrentLimit),
-	})
+	return backupstore.RestoreDeltaBlockBackup(context.Background(),
+		&backupstore.DeltaRestoreConfig{
+			BackupURL:       backupURL,
+			DeltaOps:        restoreObj,
+			Filename:        toFile,
+			ConcurrentLimit: int32(concurrentLimit),
+		})
 }
 
 func DoBackupRestoreIncrementally(url string, deltaFile string, lastRestored string, concurrentLimit int, restoreObj *replica.RestoreStatus) error {
@@ -182,13 +184,14 @@ func DoBackupRestoreIncrementally(url string, deltaFile string, lastRestored str
 
 	log.Infof("Start incremental restoring from %v into delta file %v", backupURL, deltaFile)
 
-	return backupstore.RestoreDeltaBlockBackupIncrementally(&backupstore.DeltaRestoreConfig{
-		BackupURL:       backupURL,
-		DeltaOps:        restoreObj,
-		LastBackupName:  lastRestored,
-		Filename:        deltaFile,
-		ConcurrentLimit: int32(concurrentLimit),
-	})
+	return backupstore.RestoreDeltaBlockBackupIncrementally(context.Background(),
+		&backupstore.DeltaRestoreConfig{
+			BackupURL:       backupURL,
+			DeltaOps:        restoreObj,
+			LastBackupName:  lastRestored,
+			Filename:        deltaFile,
+			ConcurrentLimit: int32(concurrentLimit),
+		})
 }
 
 func CreateNewSnapshotMetafile(file string) error {
