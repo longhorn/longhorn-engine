@@ -7,6 +7,8 @@ mount --rbind /host/dev /dev
 volume=$1
 size=$2
 frontend=$3
+frontendStreams=$4
+nbdEnabled=$5
 
 if [ -z $volume ]
 then
@@ -28,6 +30,23 @@ then
         frontend="tgt-blockdev"
 fi
 
+if [ -z $frontendStreams ]
+then
+        echo  Use default frontend streams. No frontend nbd streams
+        frontendStreams=""
+else
+        frontendStreams="--frontend-streams "$frontendStreams
+fi
+
+if [ -z $nbdEnabled ]
+then
+        echo  Use default dataserver. Dataconn dataserver
+        nbdEnabled=""
+else
+        nbdEnabled="--nbd-enabled "$nbdEnabled
+fi
+
+
 function start() {
     set +e
     while true;
@@ -44,12 +63,12 @@ function start() {
 
     tgtd -f 2>&1 | tee /var/log/tgtd.log &
 
-    longhorn-instance-manager process create --name "$volume-r" --binary /usr/local/bin/longhorn --port-count 15 --port-args "--listen,localhost:" -- replica /volume/ "--size" $size
+    longhorn-instance-manager process create --name "$volume-r" --binary /usr/local/bin/longhorn --port-count 15 --port-args "--listen,localhost:" -- replica /volume/ "--size" $size $nbdEnabled
 
     # wait for the replica to be started
     sleep 5
 
-    longhorn-instance-manager process create --name "$volume-e" --binary /usr/local/bin/longhorn --port-count 1 --port-args "--listen,localhost:" -- controller $volume --frontend $frontend "--size" $size "--current-size" $size --replica tcp://localhost:10000
+    longhorn-instance-manager process create --name "$volume-e" --binary /usr/local/bin/longhorn --port-count 1 --port-args "--listen,localhost:" -- controller $volume --frontend $frontend "--size" $size "--current-size" $size --replica tcp://localhost:10000 $nbdEnabled $frontendStreams 
 }
 
 start &
