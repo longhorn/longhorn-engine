@@ -3,6 +3,7 @@ package replica
 import (
 	"crypto/md5"
 	"fmt"
+	"io"
 	"os"
 	"path"
 	"strconv"
@@ -691,6 +692,103 @@ func (s *TestSuite) TestRead(c *C) {
 	_, err = r.ReadAt(buf, 0)
 	c.Assert(err, IsNil)
 	byteEquals(c, buf, make([]byte, 3*b))
+}
+
+func (s *TestSuite) TestReadBackingFileSmallerThanVolume(c *C) {
+	dir, err := os.MkdirTemp("", "replica")
+	c.Assert(err, IsNil)
+	defer os.RemoveAll(dir)
+
+	// Test read from BackingImage which is smaller than Volume
+	// BackinImage: [0:3b], Volume: [0:5b]
+	buf := make([]byte, 3*b)
+	fill(buf, 3)
+
+	f, err := NewTestBackingFile(path.Join(dir, "backing"))
+	c.Assert(err, IsNil)
+	defer f.Close()
+	_, err = f.Write(buf)
+	c.Assert(err, IsNil)
+
+	backing := &backingfile.BackingFile{
+		Path: "backing",
+		Disk: f,
+	}
+
+	r, err := New(5*b, b, dir, backing, false, false, 250, 0)
+	c.Assert(err, IsNil)
+	defer r.Close()
+
+	// Test Case 1: read within BackingImage boundary (read [1b:3b])
+	expectedData := make([]byte, 2*b)
+	fill(expectedData, 3)
+
+	data := make([]byte, 2*b)
+	n, err := r.ReadAt(data, 1*b)
+	c.Assert(err, IsNil)
+	c.Assert(n, Equals, 2*b)
+	byteEquals(c, expectedData, data)
+
+	// Test Case 2: read half within BackingImage boundary (read [2b:4b])
+	expectedData = make([]byte, 2*b)
+	fill(expectedData[0:b], 3)
+
+	data = make([]byte, 2*b)
+	n, err = r.ReadAt(data, 2*b)
+	c.Assert(err, IsNil)
+	c.Assert(n, Equals, 2*b)
+	byteEquals(c, expectedData, data)
+
+	// Test Case 3: read out of BackingImage boundary but within Volume boundary (read [3b:5b])
+	expectedData = make([]byte, 2*b)
+	fill(expectedData, 0)
+
+	data = make([]byte, 2*b)
+	n, err = r.ReadAt(data, 3*b)
+	c.Assert(err, IsNil)
+	c.Assert(n, Equals, 2*b)
+	byteEquals(c, expectedData, data)
+
+	// Test Case 4: read half within Volume boundary (read [4b:6b])
+	expectedData = make([]byte, 2*b)
+	fill(expectedData, 0)
+
+	data = make([]byte, 2*b)
+	n, err = r.ReadAt(data, 4*b)
+	c.Assert(err, Equals, io.ErrUnexpectedEOF)
+	c.Assert(n, Equals, b)
+	byteEquals(c, expectedData, data)
+
+	// Test Case 5: read out of Volume boundary (read [5b:7b])
+	expectedData = make([]byte, 2*b)
+	fill(expectedData, 0)
+
+	data = make([]byte, 2*b)
+	n, err = r.ReadAt(data, 5*b)
+	c.Assert(err, Equals, io.ErrUnexpectedEOF)
+	c.Assert(n, Equals, 0)
+	byteEquals(c, expectedData, data)
+
+	// Test Case 6: read [2b:6b]
+	expectedData = make([]byte, 4*b)
+	fill(expectedData[0:b], 3)
+	fill(expectedData[b:4*b], 0)
+
+	data = make([]byte, 4*b)
+	n, err = r.ReadAt(data, 2*b)
+	c.Assert(err, Equals, io.ErrUnexpectedEOF)
+	c.Assert(n, Equals, 3*b)
+	byteEquals(c, expectedData, data)
+
+	// Test Case 6: read [3b:6b]
+	expectedData = make([]byte, 3*b)
+	fill(expectedData[b:3*b], 0)
+
+	data = make([]byte, 3*b)
+	n, err = r.ReadAt(data, 3*b)
+	c.Assert(err, Equals, io.ErrUnexpectedEOF)
+	c.Assert(n, Equals, 2*b)
+	byteEquals(c, expectedData, data)
 }
 
 func (s *TestSuite) TestWrite(c *C) {
