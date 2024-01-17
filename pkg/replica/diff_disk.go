@@ -220,32 +220,42 @@ func (d *diffDisk) fullReadAt(buf []byte, offset int64) (int, error) {
 	return count, nil
 }
 
-func (d *diffDisk) read(target byte, buf []byte, startOffset int64, startSector int64, sectors int64) (int, error) {
+// read called by fullReadAt reads the data from the target disk into buf
+// offset is the offset of the whole volume
+// startSector indicates the sector in the buffer from which the data should be read from the target disk.
+// sectors indicates how many sectors we are going to read
+func (d *diffDisk) read(target byte, buf []byte, offset int64, startSector int64, sectors int64) (int, error) {
 	bufStart := startSector * d.sectorSize
 	bufLength := sectors * d.sectorSize
-	offset := startOffset + bufStart
-	size, err := d.files[target].Size()
+	diskReadStartOffset := offset + bufStart
+	diskReadEndOffset := diskReadStartOffset + bufLength
+	diskSize, err := d.files[target].Size()
 	if err != nil {
 		return 0, err
 	}
+	volumeSize := d.size
 
-	// Reading the out-of-bound part is not allowed
-	if bufLength > d.size-offset {
-		logrus.Warn("Trying to read the out-of-bound part")
-		return 0, io.ErrUnexpectedEOF
+	count := 0
+
+	if diskReadStartOffset < diskSize {
+		newBuf := buf[bufStart : bufStart+min(bufLength, diskSize-diskReadStartOffset)]
+		n, err := d.files[target].ReadAt(newBuf, diskReadStartOffset)
+		if err != nil {
+			return n, err
+		}
+		count += n
+	}
+	if diskReadEndOffset <= diskSize {
+		return count, nil
 	}
 
-	// May read the expanded part
-	if offset >= size {
-		return 0, nil
+	// Read out of disk boundary but still in Volume boundary, we should remain the valid range with 0 and return the correct count
+	if diskReadEndOffset <= volumeSize {
+		return count + int(diskReadEndOffset-max(diskSize, diskReadStartOffset)), nil
 	}
-	var newBuf []byte
-	if bufLength > size-offset {
-		newBuf = buf[bufStart : bufStart+size-offset]
-	} else {
-		newBuf = buf[bufStart : bufStart+bufLength]
-	}
-	return d.files[target].ReadAt(newBuf, offset)
+
+	// Read out of Volume boundary, we should remain the valid range with 0 and return the correct count with EOF error
+	return count + int(volumeSize-max(diskSize, diskReadStartOffset)), io.ErrUnexpectedEOF
 }
 
 func (d *diffDisk) lookup(sector int64) (byte, error) {
