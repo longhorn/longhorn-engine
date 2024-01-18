@@ -715,7 +715,7 @@ func (s *TestSuite) TestReadBackingFileSmallerThanVolume(c *C) {
 		Disk: f,
 	}
 
-	r, err := New(5*b, b, dir, backing, false, false, 250, 0)
+	r, err := New(5*b, b, dir, backing, false, false)
 	c.Assert(err, IsNil)
 	defer r.Close()
 
