@@ -528,7 +528,7 @@ func (c *Controller) salvageRevisionCounterDisabledReplicas() error {
 			return err
 		}
 
-		repHeadFileSize, err := c.backend.backends[r.Address].backend.GetLastModifyTime()
+		repHeadFileSize, err := c.backend.backends[r.Address].backend.GetHeadFileSize()
 		if err != nil {
 			return err
 		}
