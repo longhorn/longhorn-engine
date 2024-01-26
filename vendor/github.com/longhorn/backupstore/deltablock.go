@@ -1051,12 +1051,6 @@ func DeleteBackupVolume(volumeName string, destURL string) error {
 	if err != nil {
 		return err
 	}
-
-	// no need to lock and remove volume if it does not exist
-	if !volumeExists(bsDriver, volumeName) {
-		return nil
-	}
-
 	lock, err := New(bsDriver, volumeName, DELETION_LOCK)
 	if err != nil {
 		return err
