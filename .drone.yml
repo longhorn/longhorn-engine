@@ -30,6 +30,21 @@ steps:
   - name: socket
     path: /var/run/docker.sock
 
+- name: build-with-skip-tasks
+  pull: default
+  image: rancher/dapper:v0.5.3
+  commands:
+  - dapper ci
+  environment:
+    SKIP_TASKS: integration-test
+  volumes:
+  - name: socket
+    path: /var/run/docker.sock
+  when:
+    event:
+      exclude:
+      - pull_request
+
 - name: codecov
   image: robertstettner/drone-codecov
   settings:
@@ -44,19 +59,19 @@ steps:
     FOSSA_API_KEY:
       from_secret: FOSSA_API_KEY
   commands:
-    - zypper -n install curl unzip
-    - "curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/spectrometer/master/install.sh | sh"
-    - fossa analyze
-    - fossa test
+  - zypper -n install curl unzip
+  - "curl -H 'Cache-Control: no-cache' https://raw.githubusercontent.com/fossas/spectrometer/master/install.sh | sh"
+  - fossa analyze
+  - fossa test
   when:
     instance:
-      - drone-publish.longhorn.io
+    - drone-publish.longhorn.io
     ref:
       include:
-        - "refs/heads/master"
+      - "refs/heads/master"
     event:
-      - push
-      - tag
+    - push
+    - tag
 
 - name: publish-image
   image: plugins/docker
@@ -107,7 +122,7 @@ steps:
       include:
       - drone-publish.longhorn.io
     status:
-      - failure
+    - failure
 
 volumes:
 - name: socket
@@ -145,6 +160,21 @@ steps:
   volumes:
   - name: socket
     path: /var/run/docker.sock
+
+- name: build-with-skip-tasks
+  pull: default
+  image: rancher/dapper:v0.5.3
+  commands:
+  - dapper ci
+  environment:
+    SKIP_TASKS: integration-test
+  volumes:
+  - name: socket
+    path: /var/run/docker.sock
+  when:
+    event:
+      exclude:
+      - pull_request
 
 - name: publish-image
   image: plugins/docker
@@ -195,7 +225,7 @@ steps:
       include:
       - drone-publish.longhorn.io
     status:
-      - failure
+    - failure
 
 volumes:
 - name: socket
@@ -228,8 +258,8 @@ steps:
     password:
       from_secret: docker_password
     platforms:
-      - linux/amd64
-      - linux/arm64
+    - linux/amd64
+    - linux/arm64
     target: "longhornio/longhorn-engine:${DRONE_BRANCH}-head"
     template: "longhornio/longhorn-engine:${DRONE_BRANCH}-head-ARCH"
   when:
@@ -246,8 +276,8 @@ steps:
     password:
       from_secret: docker_password
     platforms:
-      - linux/amd64
-      - linux/arm64
+    - linux/amd64
+    - linux/arm64
     target: "longhornio/longhorn-engine:${DRONE_TAG}"
     template: "longhornio/longhorn-engine:${DRONE_TAG}-ARCH"
   when:
