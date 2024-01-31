@@ -1,11 +1,21 @@
 #!/bin/bash
+
 set -e
 
-cd $(dirname $0)
+cd "$(dirname "$0")"
 
-./prebuild
-./build
-./validate
-./test
-./integration-test
-./package
+SKIP_TASKS=${SKIP_TASKS:-}
+IFS=' ' read -ra skip_tasks <<<"$SKIP_TASKS"
+
+tasks=("prebuild" "build" "validate" "test" "integration-test" "package")
+
+for task in "${tasks[@]}"; do
+  for skip_task in "${skip_tasks[@]}"; do
+    if [ "$task" = "$skip_task" ]; then
+      continue 2
+    fi
+  done
+
+  ./"$task"
+done
+
