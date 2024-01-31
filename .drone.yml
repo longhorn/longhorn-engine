@@ -29,6 +29,9 @@ steps:
   volumes:
   - name: socket
     path: /var/run/docker.sock
+  when:
+    event:
+    - pull_request
 
 - name: build-with-skip-tasks
   pull: default
@@ -160,6 +163,9 @@ steps:
   volumes:
   - name: socket
     path: /var/run/docker.sock
+  when:
+    event:
+    - pull_request
 
 - name: build-with-skip-tasks
   pull: default
