@@ -5,8 +5,9 @@ import (
 	"net/url"
 	"sync"
 
-	"github.com/longhorn/backupstore/util"
 	"github.com/pkg/errors"
+
+	"github.com/longhorn/backupstore/util"
 )
 
 type Volume struct {
@@ -21,6 +22,7 @@ type Volume struct {
 	BackingImageChecksum string `json:",string"`
 	CompressionMethod    string `json:",string"`
 	StorageClassName     string `json:",string"`
+	BackendStoreDriver   string `json:",string"`
 }
 
 type Snapshot struct {
