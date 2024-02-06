@@ -106,8 +106,7 @@ func UpdateLun(tid int, lun int, params map[string]string) error {
 		for k, v := range params {
 			paramStr += fmt.Sprintf("%s=%s,", k, v)
 		}
-		strings.TrimSuffix(paramStr, ",")
-		opts = append(opts, "--params", paramStr)
+		opts = append(opts, "--params", strings.TrimSuffix(paramStr, ","))
 	}
 	_, err := util.Execute(tgtBinary, opts)
 	return err
@@ -275,7 +274,7 @@ func GetTargetTid(name string) (int, error) {
 			tidString := strings.Fields(strings.Split(scanner.Text(), ":")[0])[1]
 			tid, err = strconv.Atoi(tidString)
 			if err != nil {
-				return -1, errors.Wrapf(err, "BUG: Failed to parse %s, %v", tidString)
+				return -1, errors.Wrapf(err, "BUG: Failed to parse %s", tidString)
 			}
 			break
 		}
