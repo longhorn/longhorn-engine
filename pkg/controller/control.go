@@ -1051,17 +1051,28 @@ func (c *Controller) UnmapAt(length uint32, off int64) (int, error) {
 	c.RLock()
 
 	if off < 0 || off+int64(length) > c.size {
-		err := fmt.Errorf("EOF: Unmap of %v bytes at offset %v is beyond volume size %v", length, off, c.size)
+		// This is a legitimate error (which is handled by tgt/liblonghorn at a higher level). Since tgt/liblonghorn
+		// does not actually print the error, print it here.
+		err := fmt.Errorf("EOF: unmap of %v bytes at offset %v is beyond volume size %v", length, off, c.size)
+		logrus.WithError(err).Error("Failed to unmap")
 		c.RUnlock()
 		return 0, err
 	}
 	if c.hasWOReplica() {
-		err := fmt.Errorf("can not unmap volume when there is WO replica")
+		// Cannot unmap during rebuilding. See https://github.com/longhorn/longhorn/issues/7103 for context. It is legal
+		// to not complete the unmap operation, so simply respond that 0 blocks were unmapped. Otherwise, VM workloads
+		// will remain paused for the entire duration of the rebuild.
+		err := fmt.Errorf("cannot unmap %v bytes at offset %v while rebuilding is in progress", length, off)
+		logrus.WithError(err).Warn("Failed to unmap")
 		c.RUnlock()
-		return 0, err
+		return 0, nil
 	}
 	if c.isExpanding {
-		err := fmt.Errorf("can not unmap volume during expansion")
+		// Cannot unmap during expansion. We could return no error (as we do in the rebuilding case), but expansion
+		// should be fast. It is better to return the error, letting the filesystem know that blocks have not been
+		// trimmed, so it can try again.
+		err := fmt.Errorf("cannot unmap %v bytes at offset %v while expansion in is progress", length, off)
+		logrus.WithError(err).Error("Failed to unmap")
 		c.RUnlock()
 		return 0, err
 	}
