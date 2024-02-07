@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -137,6 +138,27 @@ func SaveBackupStoreToLocalFile(driver BackupStoreDriver, backupStoreFileURL, lo
 
 func volumeExists(driver BackupStoreDriver, volumeName string) bool {
 	return driver.FileExists(getVolumeFilePath(volumeName))
+}
+
+// volumeFolderExists checks if volume folder exists on backupstore
+// by listing all the backup volume name based on the folders on the backupstore
+// since s3 does not support checking folder exist.
+func volumeFolderExists(driver BackupStoreDriver, volumeName string) (bool, error) {
+	jobQueues := workerpool.New(runtime.NumCPU() * 16)
+	defer jobQueues.StopWait()
+
+	volumeNames, err := getVolumeNames(jobQueues, driver)
+	if err != nil {
+		return false, err
+	}
+
+	for _, name := range volumeNames {
+		if volumeName == name {
+			return true, nil
+		}
+	}
+
+	return false, nil
 }
 
 func getVolumePath(volumeName string) string {
