@@ -1,10 +1,10 @@
 name: Codespell
 
 on:
-  push:
   pull_request:
     branches:
     - master
+    - main
     - "v*.*.*"
 
 jobs:
@@ -20,4 +20,4 @@ jobs:
       with:
         check_filenames: true
         ignore_words_file: .codespellignore
-        skip: "*/**.yaml,*/**.yml,./scripts,./vendor,MAINTAINERS,LICENSE,go.mod,go.sum"
+        skip: "./proto,*/**.yaml,*/**.yml,./scripts,./vendor,MAINTAINERS,LICENSE,go.mod,go.sum"
