@@ -7,6 +7,7 @@ import (
 	"github.com/longhorn/longhorn-engine/pkg/replica"
 	"github.com/longhorn/longhorn-engine/pkg/types"
 	"github.com/pojntfx/go-nbd/pkg/server"
+	"github.com/sirupsen/logrus"
 )
 
 type NbdServer struct {
@@ -37,18 +38,16 @@ func (s *NbdServer) Handle() {
 			PreferredBlockSize: uint32(512),
 			MaximumBlockSize:   uint32(512),
 		}); err != nil {
-		panic(err)
+		logrus.WithError(err).Errorf("Failed to handle dataconn nbd connection")
 	}
 }
 
 func (s *NbdServer) ReadAt(p []byte, off int64) (n int, err error) {
-	n, err = s.s.ReadAt(p, off)
-	return
+	return s.s.ReadAt(p, off)
 }
 
 func (s *NbdServer) WriteAt(p []byte, off int64) (n int, err error) {
-	n, err = s.s.WriteAt(p, off)
-	return
+	return s.s.WriteAt(p, off)
 }
 
 func (s *NbdServer) Size() (int64, error) {

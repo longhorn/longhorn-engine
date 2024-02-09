@@ -15,6 +15,7 @@ type NbdClientWrapper struct {
 	next           int
 	indexLock      sync.Mutex
 	end            chan struct{}
+	handlesAlive   chan struct{}
 }
 
 func NewNbdClientWrapper(conn net.Conn, engineToReplicaTimeout time.Duration, nbdEnabled int) *NbdClientWrapper {
@@ -24,9 +25,10 @@ func NewNbdClientWrapper(conn net.Conn, engineToReplicaTimeout time.Duration, nb
 		maxConnections: nbdEnabled,
 		next:           0,
 		end:            make(chan struct{}),
+		handlesAlive:   make(chan struct{}),
 	}
 	go wrapper.handle()
-
+	<-wrapper.handlesAlive
 	return wrapper
 }
 
@@ -44,7 +46,7 @@ func (w *NbdClientWrapper) handle() {
 			panic(err)
 		}
 	}
-
+	w.handlesAlive <- struct{}{}
 	for {
 		<-w.end
 		return
