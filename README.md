@@ -8,7 +8,7 @@ Longhorn Engine implements a lightweight block device storage controller capable
 1. The replicas function like a networked disk, supporting read/write operations over a network protocol.
 1. The frontend (only Open-iSCSI/tgt are supported at this moment) is a kernel driver that translates read/write operations on the Longhorn block device (mapped at `/dev/longhorn/vol-name`) to user-level network requests on the controller.
 1. Each Longhorn block device is backed by its own dedicated controller.
-1. The controller sychronously replicates write operations to all replicas.
+1. The controller synchronously replicates write operations to all replicas.
 1. The controller detects faulty replicas and rebuilds replicas.
 1. The controller coordinates snapshot and backup operations.
 1. Controllers and replicas are packaged as Docker containers.
@@ -48,7 +48,7 @@ That will create the device `/dev/longhorn/vol-name`
 
 ## Running a controller with multiple replicas
 
-In order to start Longhorn Engine with multiple replicas, you need to setup a network between replica container and controller container. Here we use Docker network feature to demostrate that:
+In order to start Longhorn Engine with multiple replicas, you need to setup a network between replica container and controller container. Here we use Docker network feature to demonstrate that:
 
 ##### 1. Create a network named `longhorn-net`
 ```
@@ -65,7 +65,7 @@ docker run --net longhorn-net --ip 172.18.0.3 -v /volume \
 ##### 3. Start the controller. Take tgt-blockdev for example:
 ```
 docker run --net longhorn-net --privileged -v /dev:/host/dev -v /proc:/host/proc \
-    longhornio/longhorn-engine longhorn controller --frontend tgt-blockdev \ 
+    longhornio/longhorn-engine longhorn controller --frontend tgt-blockdev \
     --replica tcp://172.18.0.2:9502 --replica tcp://172.18.0.3:9502 vol-name
 ```
 Now you will have device `/dev/longhorn/vol-name`.

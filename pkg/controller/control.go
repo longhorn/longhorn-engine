@@ -58,7 +58,7 @@ type Controller struct {
 	// lastExpansionFailedAt indicates if the error belongs to the recent expansion
 	lastExpansionFailedAt string
 	// lastExpansionError indicates the error message.
-	// It may exist even if the expansion succeeded. For exmaple, some of the replica expansions failed.
+	// It may exist even if the expansion succeeded. For example, some of the replica expansions failed.
 	lastExpansionError string
 
 	fileSyncHTTPClientTimeout int
