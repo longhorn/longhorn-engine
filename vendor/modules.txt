@@ -74,15 +74,15 @@ github.com/c9s/goprocinfo/linux
 # github.com/cespare/xxhash/v2 v2.2.0
 ## explicit; go 1.11
 github.com/cespare/xxhash/v2
-# github.com/cpuguy83/go-md2man/v2 v2.0.0-20190314233015-f79a8a8ca69d
-## explicit; go 1.12
+# github.com/cpuguy83/go-md2man/v2 v2.0.2
+## explicit; go 1.11
 github.com/cpuguy83/go-md2man/v2/md2man
 # github.com/docker/go-units v0.3.3
 ## explicit
 github.com/docker/go-units
 # github.com/fatih/color v1.7.0
 ## explicit
-# github.com/felixge/httpsnoop v1.0.1
+# github.com/felixge/httpsnoop v1.0.3
 ## explicit; go 1.13
 github.com/felixge/httpsnoop
 # github.com/gammazero/deque v0.2.1
@@ -112,11 +112,11 @@ github.com/google/uuid
 # github.com/gorilla/context v1.1.1
 ## explicit
 github.com/gorilla/context
-# github.com/gorilla/handlers v1.5.1
-## explicit; go 1.14
+# github.com/gorilla/handlers v1.5.2
+## explicit; go 1.20
 github.com/gorilla/handlers
-# github.com/gorilla/mux v1.8.0
-## explicit; go 1.12
+# github.com/gorilla/mux v1.8.1
+## explicit; go 1.20
 github.com/gorilla/mux
 # github.com/gorilla/websocket v1.4.2
 ## explicit; go 1.12
@@ -130,12 +130,14 @@ github.com/kr/pretty
 # github.com/kr/text v0.2.0
 ## explicit
 github.com/kr/text
-# github.com/longhorn/backupstore v0.0.0-20231114103026-af339bb498d3
+# github.com/longhorn/backupstore v0.0.0-20240219094812-3a87ee02df77
 ## explicit; go 1.21
 github.com/longhorn/backupstore
 github.com/longhorn/backupstore/azblob
+github.com/longhorn/backupstore/backupbackingimage
 github.com/longhorn/backupstore/cifs
 github.com/longhorn/backupstore/cmd
+github.com/longhorn/backupstore/common
 github.com/longhorn/backupstore/fsops
 github.com/longhorn/backupstore/http
 github.com/longhorn/backupstore/logging
@@ -161,7 +163,7 @@ github.com/longhorn/go-iscsi-helper/util
 # github.com/longhorn/nsfilelock v0.0.0-20200723175406-fa7c83ad0003
 ## explicit
 github.com/longhorn/nsfilelock
-# github.com/longhorn/sparse-tools v0.0.0-20230408015858-c849def39d3c
+# github.com/longhorn/sparse-tools v0.0.0-20240222053258-01fc48087406
 ## explicit; go 1.17
 github.com/longhorn/sparse-tools/cli/ssync
 github.com/longhorn/sparse-tools/sparse
@@ -171,13 +173,16 @@ github.com/longhorn/sparse-tools/types
 github.com/longhorn/sparse-tools/util
 # github.com/mattn/go-colorable v0.1.4
 ## explicit
+github.com/mattn/go-colorable
+# github.com/mattn/go-isatty v0.0.8
+## explicit
+github.com/mattn/go-isatty
 # github.com/mattn/go-runewidth v0.0.5-0.20181218000649-703b5e6b11ae
 ## explicit; go 1.9
-github.com/mattn/go-runewidth
 # github.com/matttproud/golang_protobuf_extensions v1.0.4
 ## explicit; go 1.9
 github.com/matttproud/golang_protobuf_extensions/pbutil
-# github.com/moby/moby v23.0.2+incompatible
+# github.com/moby/moby v23.0.9+incompatible
 ## explicit
 github.com/moby/moby/pkg/reexec
 # github.com/moby/sys/mountinfo v0.6.2
@@ -220,12 +225,11 @@ github.com/rancher/go-rancher/client
 # github.com/rogpeppe/go-internal v1.9.0
 ## explicit; go 1.17
 github.com/rogpeppe/go-internal/fmtsort
-# github.com/russross/blackfriday/v2 v2.0.1
+# github.com/russross/blackfriday/v2 v2.1.0
 ## explicit
 github.com/russross/blackfriday/v2
 # github.com/shurcooL/sanitized_anchor_name v1.0.0
 ## explicit
-github.com/shurcooL/sanitized_anchor_name
 # github.com/sirupsen/logrus v1.9.3
 ## explicit; go 1.13
 github.com/sirupsen/logrus
@@ -235,7 +239,7 @@ github.com/slok/goresilience
 github.com/slok/goresilience/errors
 github.com/slok/goresilience/metrics
 github.com/slok/goresilience/timeout
-# github.com/urfave/cli v1.22.5
+# github.com/urfave/cli v1.22.14
 ## explicit; go 1.11
 github.com/urfave/cli
 # go.uber.org/multierr v1.11.0
@@ -358,14 +362,30 @@ google.golang.org/protobuf/types/known/anypb
 google.golang.org/protobuf/types/known/durationpb
 google.golang.org/protobuf/types/known/emptypb
 google.golang.org/protobuf/types/known/timestamppb
+# gopkg.in/VividCortex/ewma.v1 v1.1.1
+## explicit
+gopkg.in/VividCortex/ewma.v1
 # gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 ## explicit; go 1.11
 gopkg.in/check.v1
 # gopkg.in/cheggaaa/pb.v1 v1.0.28
 ## explicit
-# gopkg.in/cheggaaa/pb.v2 v2.0.0-20190301131520-f907f6f5dd81
+# gopkg.in/cheggaaa/pb.v2 v2.0.7
 ## explicit
 gopkg.in/cheggaaa/pb.v2
+gopkg.in/cheggaaa/pb.v2/termutil
+# gopkg.in/fatih/color.v1 v1.7.0
+## explicit
+gopkg.in/fatih/color.v1
+# gopkg.in/mattn/go-colorable.v0 v0.1.0
+## explicit
+gopkg.in/mattn/go-colorable.v0
+# gopkg.in/mattn/go-isatty.v0 v0.0.4
+## explicit
+gopkg.in/mattn/go-isatty.v0
+# gopkg.in/mattn/go-runewidth.v0 v0.0.4
+## explicit
+gopkg.in/mattn/go-runewidth.v0
 # gotest.tools/v3 v3.4.0
 ## explicit; go 1.13
 # k8s.io/apimachinery v0.27.1
