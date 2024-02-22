@@ -3,7 +3,7 @@ module github.com/longhorn/longhorn-engine
 go 1.21
 
 require (
-	github.com/docker/go-units v0.3.3
+	github.com/docker/go-units v0.5.0
 	github.com/gofrs/flock v0.8.1
 	github.com/gorilla/handlers v1.5.1
 	github.com/gorilla/mux v1.8.0
@@ -17,9 +17,9 @@ require (
 	github.com/rancher/go-rancher v0.1.1-0.20190307222549-9756097e5e4c
 	github.com/sirupsen/logrus v1.9.3
 	github.com/urfave/cli v1.22.5
-	golang.org/x/net v0.20.0
-	golang.org/x/sys v0.16.0
-	google.golang.org/grpc v1.60.1
+	golang.org/x/net v0.21.0
+	golang.org/x/sys v0.17.0
+	google.golang.org/grpc v1.62.0
 	google.golang.org/protobuf v1.32.0
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 	gopkg.in/cheggaaa/pb.v2 v2.0.0-20190301131520-f907f6f5dd81
@@ -41,7 +41,7 @@ require (
 	github.com/go-logr/logr v1.2.4 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
-	github.com/google/uuid v1.5.0 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/context v1.1.1 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/jmespath/go-jmespath v0.3.0 // indirect
@@ -66,7 +66,7 @@ require (
 	github.com/yusufpapurcu/wmi v1.2.3 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240108191215-35c7eff3a6b1 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240123012728-ef4313101c80 // indirect
 	gopkg.in/cheggaaa/pb.v1 v1.0.28 // indirect
 	gotest.tools/v3 v3.4.0 // indirect
 	k8s.io/apimachinery v0.27.1 // indirect
