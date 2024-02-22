@@ -6,4 +6,4 @@ grpcio==1.58.0
 flake8
 pytest==6.2.5
 
-libqcow-python==20210419
+libqcow-python==20231125
