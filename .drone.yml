@@ -14,7 +14,7 @@ trigger:
 
 steps:
 - name: fetch
-  image: ubuntu:18.04
+  image: ubuntu:22.04
   commands:
   - apt-get update
   - apt-get install -y git
@@ -147,7 +147,7 @@ trigger:
 
 steps:
 - name: fetch
-  image: ubuntu:18.04
+  image: ubuntu:22.04
   commands:
   - apt-get update
   - apt-get install -y git
