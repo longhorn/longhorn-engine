@@ -1,7 +1,7 @@
 cattle==0.5.4
 directio==1.2
 protobuf==3.17.3
-grpcio==1.25.0
+grpcio==1.62.0
 
 flake8
 pytest==5.4.3
