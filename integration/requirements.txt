@@ -1,5 +1,5 @@
 cattle==0.5.4
-directio==1.2
+directio==1.3
 protobuf==3.17.3
 grpcio==1.25.0
 
