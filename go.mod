@@ -12,7 +12,7 @@ require (
 	github.com/longhorn/backupstore v0.0.0-20240219094812-3a87ee02df77
 	github.com/longhorn/go-common-libs v0.0.0-20240219094750-e7176c332156
 	github.com/longhorn/go-iscsi-helper v0.0.0-20230802055236-4ec8edae3fad
-	github.com/longhorn/sparse-tools v0.0.0-20240222053258-01fc48087406
+	github.com/longhorn/sparse-tools v0.0.0-20240228120902-ce8c4c2e71ca
 	github.com/moby/moby v23.0.9+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
