@@ -4,6 +4,8 @@ import (
 	"io"
 	"strings"
 	"time"
+
+	"github.com/longhorn/types/pkg/enginerpc"
 )
 
 const (
@@ -175,4 +177,28 @@ type RWMetrics struct {
 
 func IsAlreadyPurgingError(err error) bool {
 	return strings.Contains(err.Error(), "already purging")
+}
+
+func ReplicaModeToGRPCReplicaMode(mode Mode) enginerpc.ReplicaMode {
+	switch mode {
+	case WO:
+		return enginerpc.ReplicaMode_WO
+	case RW:
+		return enginerpc.ReplicaMode_RW
+	case ERR:
+		return enginerpc.ReplicaMode_ERR
+	}
+	return enginerpc.ReplicaMode_ERR
+}
+
+func GRPCReplicaModeToReplicaMode(replicaMode enginerpc.ReplicaMode) Mode {
+	switch replicaMode {
+	case enginerpc.ReplicaMode_WO:
+		return WO
+	case enginerpc.ReplicaMode_RW:
+		return RW
+	case enginerpc.ReplicaMode_ERR:
+		return ERR
+	}
+	return ERR
 }

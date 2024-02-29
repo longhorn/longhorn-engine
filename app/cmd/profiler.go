@@ -10,7 +10,7 @@ import (
 	"github.com/urfave/cli"
 	"google.golang.org/grpc"
 
-	"github.com/longhorn/longhorn-engine/proto/ptypes"
+	"github.com/longhorn/longhorn-engine/pkg/interceptor"
 )
 
 const (
@@ -39,7 +39,7 @@ func getProfilerClient(c *cli.Context) (*profiler.Client, error) {
 	url := c.GlobalString("url")
 	volumeName := c.GlobalString("volume-name")
 	engineInstanceName := c.GlobalString("engine-instance-name")
-	dialOpts := []grpc.DialOption{ptypes.WithIdentityValidationClientInterceptor(volumeName, engineInstanceName)}
+	dialOpts := []grpc.DialOption{interceptor.WithIdentityValidationClientInterceptor(volumeName, engineInstanceName)}
 	return profiler.NewClient(url, volumeName, dialOpts...)
 }
 
