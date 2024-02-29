@@ -173,6 +173,9 @@ github.com/longhorn/sparse-tools/sparse/rest
 github.com/longhorn/sparse-tools/stats
 github.com/longhorn/sparse-tools/types
 github.com/longhorn/sparse-tools/util
+# github.com/longhorn/types v0.0.0-00010101000000-000000000000 => github.com/FrankYang0529/types v0.0.0-20240229024041-25f1b5bbec5b
+## explicit; go 1.21.7
+github.com/longhorn/types/pkg/enginerpc
 # github.com/mattn/go-colorable v0.1.4
 ## explicit
 # github.com/mattn/go-runewidth v0.0.5-0.20181218000649-703b5e6b11ae
@@ -407,3 +410,4 @@ k8s.io/utils/clock
 k8s.io/utils/exec
 k8s.io/utils/io
 k8s.io/utils/keymutex
+# github.com/longhorn/types => github.com/FrankYang0529/types v0.0.0-20240229024041-25f1b5bbec5b
