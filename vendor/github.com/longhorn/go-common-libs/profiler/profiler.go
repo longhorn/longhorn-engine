@@ -151,7 +151,7 @@ func (s *Server) EnableProfiler(portNumber int32) (string, error) {
 	s.lock.Lock()
 	defer s.lock.Unlock()
 
-	logrus.Info("Prepareing to enable the profiler")
+	logrus.Info("Preparing to enable the profiler")
 
 	if s.server != nil {
 		return "", fmt.Errorf("profiler server is already running at %v", s.server.Addr)
@@ -164,33 +164,46 @@ func (s *Server) EnableProfiler(portNumber int32) (string, error) {
 	}
 
 	profilerAddr := fmt.Sprintf(":%d", profilerPort)
-	s.server = &http.Server{
+	newServer := &http.Server{
 		Addr:              profilerAddr,
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 	go func() {
-		if err := s.server.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
-			logrus.WithError(err).Warnf("Get error when start profiler server %v", s.server.Addr)
-			s.server = nil
+		if err := newServer.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+			logrus.WithError(err).Warnf("Get error when start profiler server %v", newServer.Addr)
 			s.errMsg = err.Error()
 			return
 		}
-		logrus.Infof("Profiler server (%v) is closed", s.server.Addr)
+		logrus.Infof("Profiler server (%v) is closed", newServer.Addr)
 	}()
 
-	logrus.Infof("Waiting the profiler server(%v) to start", s.server.Addr)
+	logrus.Infof("Waiting the profiler server(%v) to start", newServer.Addr)
 	// Wait for the profiler server to start, and check the profiler server.
+	var retryErr error
 	retryCount := 3
 	for i := 0; i < retryCount; i++ {
-		conn, err := net.DialTimeout("tcp", s.server.Addr, 1*time.Second)
+		conn, err := net.DialTimeout("tcp", newServer.Addr, 1*time.Second)
 		if err == nil {
 			_ = conn.Close()
+			retryErr = nil
 			break
 		}
+
+		retryErr = err
 	}
-	if s.server == nil {
+
+	if retryErr != nil {
+		_ = newServer.Close()
+		return retryErr.Error(), fmt.Errorf("timeout connecting to profiler server(%v)", profilerAddr)
+	}
+
+	if s.errMsg != "" {
+		_ = newServer.Close()
 		return s.errMsg, fmt.Errorf("failed to start profiler server(%v)", profilerAddr)
 	}
+
+	s.server = newServer
+
 	defer func() {
 		s.errMsg = ""
 	}()
