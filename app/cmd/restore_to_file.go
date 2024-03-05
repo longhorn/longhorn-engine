@@ -94,6 +94,7 @@ func restore(url string, concurrentLimit int) error {
 	bar := pb.StartNew(100)
 	periodicChecker := time.NewTicker(PeriodicRefreshIntervalInSeconds * time.Second)
 
+	progressKeyName := requestedBackupName + util.RandomID()
 	for range periodicChecker.C {
 		restoreObj.Lock()
 		restoreProgress := restoreObj.Progress
@@ -101,7 +102,7 @@ func restore(url string, concurrentLimit int) error {
 		restoreObj.Unlock()
 
 		if restoreProgress == 100 {
-			bar.Set(restoreProgress)
+			bar.Set(progressKeyName, restoreProgress)
 			bar.Finish()
 			periodicChecker.Stop()
 			return nil
@@ -111,7 +112,7 @@ func restore(url string, concurrentLimit int) error {
 			periodicChecker.Stop()
 			return fmt.Errorf("%v", restoreError)
 		}
-		bar.Set(restoreProgress)
+		bar.Set(progressKeyName, restoreProgress)
 	}
 	return nil
 }
