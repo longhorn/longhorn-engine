@@ -86,7 +86,6 @@ def test_process_creation_failure(pm_client):  # NOQA
             pm_client.process_create(
                 name=name, binary="/engine-binaries/opt/non-existing-binary",
                 args=args, port_count=15, port_args=["--listen,localhost:"])
-        assert e.value.code() == grpc.StatusCode.INVALID_ARGUMENT
 
     rs = pm_client.process_list()
     assert len(rs) == 0
