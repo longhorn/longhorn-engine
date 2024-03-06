@@ -1,7 +1,6 @@
 import tempfile
 
 import pytest
-import grpc
 
 from common.core import (
     create_replica_process, create_engine_process,
@@ -18,6 +17,7 @@ from common.core import (
 from common.constants import (
     LONGHORN_UPGRADE_BINARY, SIZE,
     PROC_STATE_RUNNING, PROC_STATE_STOPPING, PROC_STATE_STOPPED,
+    PROC_STATE_ERROR,
     VOLUME_NAME_BASE, ENGINE_NAME_BASE, REPLICA_NAME_BASE,
     REPLICA_NAME, REPLICA_2_NAME, SIZE_STR,
     INSTANCE_MANAGER_REPLICA,
@@ -80,17 +80,15 @@ def test_process_creation_failure(pm_client):  # NOQA
     for i in range(count):
         tmp_dir = tempfile.mkdtemp()
         name = REPLICA_NAME_BASE + str(i)
-
         args = ["replica", tmp_dir, "--size", str(SIZE)]
-        with pytest.raises(grpc.RpcError) as e:
-            pm_client.process_create(
-                name=name, binary="/engine-binaries/opt/non-existing-binary",
-                args=args, port_count=15, port_args=["--listen,localhost:"])
-        assert e.value.code() == grpc.StatusCode.INVALID_ARGUMENT
+        pm_client.process_create(
+            name=name, binary="/engine-binaries/opt/non-existing-binary",
+            args=args, port_count=15, port_args=["--listen,localhost:"])
 
     rs = pm_client.process_list()
-    assert len(rs) == 0
-
+    assert len(rs) == 5
+    for name, r in rs.items():
+        assert r.status.state == PROC_STATE_ERROR
 
 def test_one_volume(pm_client, em_client):  # NOQA
     rs = pm_client.process_list()
