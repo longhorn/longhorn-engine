@@ -84,6 +84,9 @@ func DuplicateDevice(dev *lhtypes.BlockDeviceInfo, dest string) error {
 	if err := os.Chmod(dest, 0660); err != nil {
 		return errors.Wrapf(err, "cannot change permission of the device %s", dest)
 	}
+	if err := os.Chown(dest, 0, 6); err != nil {
+		return errors.Wrapf(err, "cannot change onwership of the device %s", dest)
+	}
 	return nil
 }
 
