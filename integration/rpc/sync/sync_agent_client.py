@@ -1,8 +1,8 @@
 import grpc
 
-from github.com.longhorn.longhorn_engine.proto.ptypes import common_pb2
-from github.com.longhorn.longhorn_engine.proto.ptypes import syncagent_pb2
-from github.com.longhorn.longhorn_engine.proto.ptypes import syncagent_pb2_grpc
+from ptypes import common_pb2
+from ptypes import syncagent_pb2
+from ptypes import syncagent_pb2_grpc
 from google.protobuf import empty_pb2
 
 from common.interceptor import IdentityValidationInterceptor
@@ -18,12 +18,12 @@ class SyncAgentClient(object):
         self.channel = grpc.intercept_channel(channel, interceptor)
         self.stub = syncagent_pb2_grpc.SyncAgentServiceStub(self.channel)
 
-    # Only two client methods have been implemented in service of 
+    # Only two client methods have been implemented in service of
     # test_validation_fails_with_client. Additional methods are TODO.
 
     def replica_rebuild_status(self):
         return self.stub.ReplicaRebuildStatus(empty_pb2.Empty())
-    
+
     def sync_files(self, from_address, sync_file_info_tuples, fast_sync,
                    file_sync_http_client_timeout):
 
@@ -35,16 +35,16 @@ class SyncAgentClient(object):
             sync_file_info_list.append(info)
 
         return self.stub.FilesSync(syncagent_pb2.FilesSyncRequest(
-            from_address=from_address, to_host='localhost', 
+            from_address=from_address, to_host='localhost',
             sync_file_info_list=sync_file_info_list,
-            fast_sync=fast_sync, 
+            fast_sync=fast_sync,
             file_sync_http_client_timeout=file_sync_http_client_timeout
         ))
-    
-    def file_send(self, from_file_name, host, port, fast_sync, 
+
+    def file_send(self, from_file_name, host, port, fast_sync,
                   file_sync_http_client_timeout):
         return self.stub.FileSend(syncagent_pb2.FileSendRequest(
-            from_file_name=from_file_name, host=host, port=port, 
-            fast_sync=fast_sync, 
+            from_file_name=from_file_name, host=host, port=port,
+            fast_sync=fast_sync,
             file_sync_http_client_timeout=file_sync_http_client_timeout
         ))

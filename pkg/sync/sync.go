@@ -15,7 +15,7 @@ import (
 	replicaClient "github.com/longhorn/longhorn-engine/pkg/replica/client"
 	"github.com/longhorn/longhorn-engine/pkg/types"
 	diskutil "github.com/longhorn/longhorn-engine/pkg/util/disk"
-	"github.com/longhorn/longhorn-engine/proto/ptypes"
+	"github.com/longhorn/types/pkg/enginerpc"
 )
 
 type Task struct {
@@ -992,7 +992,7 @@ func (t *Task) HashSnapshotStatus(snapshotName string) (map[string]*SnapshotHash
 			defer wg.Done()
 
 			var err error
-			var status *ptypes.SnapshotHashStatusResponse
+			var status *enginerpc.SnapshotHashStatusResponse
 
 			defer func() {
 				lock.Lock()

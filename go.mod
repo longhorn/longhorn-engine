@@ -1,6 +1,6 @@
 module github.com/longhorn/longhorn-engine
 
-go 1.21
+go 1.21.7
 
 require (
 	github.com/docker/go-units v0.5.0
@@ -11,6 +11,7 @@ require (
 	github.com/longhorn/go-common-libs v0.0.0-20240109042507-23627e6416b7
 	github.com/longhorn/go-iscsi-helper v0.0.0-20231220091133-38e296e68ad2
 	github.com/longhorn/sparse-tools v0.0.0-20230408015858-c849def39d3c
+	github.com/longhorn/types v0.0.0-00010101000000-000000000000
 	github.com/moby/moby v24.0.9+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
@@ -74,3 +75,5 @@ require (
 	k8s.io/mount-utils v0.27.1 // indirect
 	k8s.io/utils v0.0.0-20230406110748-d93618cff8a2 // indirect
 )
+
+replace github.com/longhorn/types => github.com/FrankYang0529/types v0.0.0-20240229024041-25f1b5bbec5b

@@ -30,7 +30,7 @@ from common.core import get_dev
 from common.core import get_controller_version_detail
 
 
-from rpc.imrpc.process_manager_client import ProcessManagerClient
+from rpc.process_manager.process_manager_client import ProcessManagerClient
 from rpc.replica.replica_client import ReplicaClient
 from rpc.controller.controller_client import ControllerClient
 
