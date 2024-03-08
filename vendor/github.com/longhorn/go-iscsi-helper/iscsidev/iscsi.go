@@ -337,7 +337,7 @@ func (dev *Device) DeleteTarget() error {
 
 		// UnbindInitiator can return tgtadmSuccess, tgtadmAclNoexist or tgtadmNoTarget
 		// Target is deleted in the last step, so tgtadmNoTarget error should not occur here.
-		// Just ingore tgtadmAclNoexist and continue working on the remaining tasks.
+		// Just ignore tgtadmAclNoexist and continue working on the remaining tasks.
 		if err := iscsi.UnbindInitiator(tid, "ALL"); err != nil {
 			if !strings.Contains(err.Error(), types.TgtadmAclNoexist) {
 				return err

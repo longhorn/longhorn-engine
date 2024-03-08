@@ -74,15 +74,15 @@ github.com/c9s/goprocinfo/linux
 # github.com/cespare/xxhash/v2 v2.2.0
 ## explicit; go 1.11
 github.com/cespare/xxhash/v2
-# github.com/cpuguy83/go-md2man/v2 v2.0.0-20190314233015-f79a8a8ca69d
-## explicit; go 1.12
+# github.com/cpuguy83/go-md2man/v2 v2.0.2
+## explicit; go 1.11
 github.com/cpuguy83/go-md2man/v2/md2man
 # github.com/docker/go-units v0.5.0
 ## explicit
 github.com/docker/go-units
 # github.com/fatih/color v1.7.0
 ## explicit
-# github.com/felixge/httpsnoop v1.0.1
+# github.com/felixge/httpsnoop v1.0.3
 ## explicit; go 1.13
 github.com/felixge/httpsnoop
 # github.com/gammazero/deque v0.2.1
@@ -91,9 +91,10 @@ github.com/gammazero/deque
 # github.com/gammazero/workerpool v1.1.3
 ## explicit; go 1.18
 github.com/gammazero/workerpool
-# github.com/go-logr/logr v1.2.4
-## explicit; go 1.16
+# github.com/go-logr/logr v1.3.0
+## explicit; go 1.18
 github.com/go-logr/logr
+github.com/go-logr/logr/slogr
 # github.com/go-ole/go-ole v1.2.6
 ## explicit; go 1.12
 github.com/go-ole/go-ole
@@ -111,11 +112,11 @@ github.com/google/uuid
 # github.com/gorilla/context v1.1.1
 ## explicit
 github.com/gorilla/context
-# github.com/gorilla/handlers v1.5.1
-## explicit; go 1.14
+# github.com/gorilla/handlers v1.5.2
+## explicit; go 1.20
 github.com/gorilla/handlers
-# github.com/gorilla/mux v1.8.0
-## explicit; go 1.12
+# github.com/gorilla/mux v1.8.1
+## explicit; go 1.20
 github.com/gorilla/mux
 # github.com/gorilla/websocket v1.4.2
 ## explicit; go 1.12
@@ -129,7 +130,7 @@ github.com/kr/pretty
 # github.com/kr/text v0.2.0
 ## explicit
 github.com/kr/text
-# github.com/longhorn/backupstore v0.0.0-20240207023845-915898cee71c
+# github.com/longhorn/backupstore v0.0.0-20240219094812-3a87ee02df77
 ## explicit; go 1.21
 github.com/longhorn/backupstore
 github.com/longhorn/backupstore/azblob
@@ -146,7 +147,7 @@ github.com/longhorn/backupstore/systembackup
 github.com/longhorn/backupstore/types
 github.com/longhorn/backupstore/util
 github.com/longhorn/backupstore/vfs
-# github.com/longhorn/go-common-libs v0.0.0-20240109042507-23627e6416b7
+# github.com/longhorn/go-common-libs v0.0.0-20240307063052-6e77996eda29
 ## explicit; go 1.21
 github.com/longhorn/go-common-libs/exec
 github.com/longhorn/go-common-libs/generated/profilerpb
@@ -158,14 +159,14 @@ github.com/longhorn/go-common-libs/sync
 github.com/longhorn/go-common-libs/sys
 github.com/longhorn/go-common-libs/types
 github.com/longhorn/go-common-libs/utils
-# github.com/longhorn/go-iscsi-helper v0.0.0-20231220091133-38e296e68ad2
+# github.com/longhorn/go-iscsi-helper v0.0.0-20240308033847-bc3aab599425
 ## explicit; go 1.21
 github.com/longhorn/go-iscsi-helper/iscsi
 github.com/longhorn/go-iscsi-helper/iscsidev
 github.com/longhorn/go-iscsi-helper/longhorndev
 github.com/longhorn/go-iscsi-helper/types
 github.com/longhorn/go-iscsi-helper/util
-# github.com/longhorn/sparse-tools v0.0.0-20230408015858-c849def39d3c
+# github.com/longhorn/sparse-tools v0.0.0-20240228120902-ce8c4c2e71ca
 ## explicit; go 1.17
 github.com/longhorn/sparse-tools/cli/ssync
 github.com/longhorn/sparse-tools/sparse
@@ -175,9 +176,12 @@ github.com/longhorn/sparse-tools/types
 github.com/longhorn/sparse-tools/util
 # github.com/mattn/go-colorable v0.1.4
 ## explicit
+github.com/mattn/go-colorable
+# github.com/mattn/go-isatty v0.0.8
+## explicit
+github.com/mattn/go-isatty
 # github.com/mattn/go-runewidth v0.0.5-0.20181218000649-703b5e6b11ae
 ## explicit; go 1.9
-github.com/mattn/go-runewidth
 # github.com/matttproud/golang_protobuf_extensions v1.0.4
 ## explicit; go 1.9
 github.com/matttproud/golang_protobuf_extensions/pbutil
@@ -227,20 +231,19 @@ github.com/rancher/go-fibmap
 ## explicit
 github.com/rancher/go-rancher/api
 github.com/rancher/go-rancher/client
-# github.com/rogpeppe/go-internal v1.9.0
-## explicit; go 1.17
+# github.com/rogpeppe/go-internal v1.10.0
+## explicit; go 1.19
 github.com/rogpeppe/go-internal/fmtsort
-# github.com/russross/blackfriday/v2 v2.0.1
+# github.com/russross/blackfriday/v2 v2.1.0
 ## explicit
 github.com/russross/blackfriday/v2
-# github.com/shirou/gopsutil/v3 v3.23.7
+# github.com/shirou/gopsutil/v3 v3.24.2
 ## explicit; go 1.15
 github.com/shirou/gopsutil/v3/common
 github.com/shirou/gopsutil/v3/disk
 github.com/shirou/gopsutil/v3/internal/common
 # github.com/shurcooL/sanitized_anchor_name v1.0.0
 ## explicit
-github.com/shurcooL/sanitized_anchor_name
 # github.com/sirupsen/logrus v1.9.3
 ## explicit; go 1.13
 github.com/sirupsen/logrus
@@ -250,10 +253,10 @@ github.com/slok/goresilience
 github.com/slok/goresilience/errors
 github.com/slok/goresilience/metrics
 github.com/slok/goresilience/timeout
-# github.com/urfave/cli v1.22.5
+# github.com/urfave/cli v1.22.14
 ## explicit; go 1.11
 github.com/urfave/cli
-# github.com/yusufpapurcu/wmi v1.2.3
+# github.com/yusufpapurcu/wmi v1.2.4
 ## explicit; go 1.16
 github.com/yusufpapurcu/wmi
 # go.uber.org/multierr v1.11.0
@@ -283,7 +286,7 @@ golang.org/x/text/unicode/norm
 # google.golang.org/genproto/googleapis/rpc v0.0.0-20240123012728-ef4313101c80
 ## explicit; go 1.19
 google.golang.org/genproto/googleapis/rpc/status
-# google.golang.org/grpc v1.62.0
+# google.golang.org/grpc v1.62.1
 ## explicit; go 1.19
 google.golang.org/grpc
 google.golang.org/grpc/attributes
@@ -378,21 +381,37 @@ google.golang.org/protobuf/types/known/anypb
 google.golang.org/protobuf/types/known/durationpb
 google.golang.org/protobuf/types/known/emptypb
 google.golang.org/protobuf/types/known/timestamppb
+# gopkg.in/VividCortex/ewma.v1 v1.1.1
+## explicit
+gopkg.in/VividCortex/ewma.v1
 # gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 ## explicit; go 1.11
 gopkg.in/check.v1
 # gopkg.in/cheggaaa/pb.v1 v1.0.28
 ## explicit
-# gopkg.in/cheggaaa/pb.v2 v2.0.0-20190301131520-f907f6f5dd81
+# gopkg.in/cheggaaa/pb.v2 v2.0.7
 ## explicit
 gopkg.in/cheggaaa/pb.v2
+gopkg.in/cheggaaa/pb.v2/termutil
+# gopkg.in/fatih/color.v1 v1.7.0
+## explicit
+gopkg.in/fatih/color.v1
+# gopkg.in/mattn/go-colorable.v0 v0.1.0
+## explicit
+gopkg.in/mattn/go-colorable.v0
+# gopkg.in/mattn/go-isatty.v0 v0.0.4
+## explicit
+gopkg.in/mattn/go-isatty.v0
+# gopkg.in/mattn/go-runewidth.v0 v0.0.4
+## explicit
+gopkg.in/mattn/go-runewidth.v0
 # gotest.tools/v3 v3.4.0
 ## explicit; go 1.13
 # k8s.io/apimachinery v0.27.1
 ## explicit; go 1.20
 k8s.io/apimachinery/pkg/util/runtime
 k8s.io/apimachinery/pkg/util/wait
-# k8s.io/klog/v2 v2.100.1
+# k8s.io/klog/v2 v2.110.1
 ## explicit; go 1.13
 k8s.io/klog/v2
 k8s.io/klog/v2/internal/buffer
@@ -400,10 +419,11 @@ k8s.io/klog/v2/internal/clock
 k8s.io/klog/v2/internal/dbg
 k8s.io/klog/v2/internal/serialize
 k8s.io/klog/v2/internal/severity
-# k8s.io/mount-utils v0.27.1
-## explicit; go 1.20
+k8s.io/klog/v2/internal/sloghandler
+# k8s.io/mount-utils v0.29.2
+## explicit; go 1.21
 k8s.io/mount-utils
-# k8s.io/utils v0.0.0-20230406110748-d93618cff8a2
+# k8s.io/utils v0.0.0-20230726121419-3b25d923346b
 ## explicit; go 1.18
 k8s.io/utils/clock
 k8s.io/utils/exec

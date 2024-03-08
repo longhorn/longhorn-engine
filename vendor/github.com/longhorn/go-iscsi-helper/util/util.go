@@ -84,6 +84,11 @@ func DuplicateDevice(dev *lhtypes.BlockDeviceInfo, dest string) error {
 	if err := os.Chmod(dest, 0660); err != nil {
 		return errors.Wrapf(err, "cannot change permission of the device %s", dest)
 	}
+	// We use the group 6 by default because this is common group for disks
+	// See more at https://github.com/longhorn/longhorn/issues/8088#issuecomment-1982300242
+	if err := os.Chown(dest, 0, 6); err != nil {
+		return errors.Wrapf(err, "cannot change ownership of the device %s", dest)
+	}
 	return nil
 }
 
