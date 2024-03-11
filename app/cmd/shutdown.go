@@ -7,7 +7,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/longhorn/longhorn-engine/pkg/util"
+	lhutils "github.com/longhorn/go-common-libs/utils"
 )
 
 var (
@@ -20,7 +20,7 @@ func addShutdown(f func() (err error)) {
 	}
 
 	hooks = append(hooks, f)
-	logrus.Debugf("Added shutdown func %v", util.GetFunctionName(f))
+	logrus.Debugf("Added shutdown func %v", lhutils.GetFunctionPath(f))
 }
 
 func registerShutdown() {
@@ -31,9 +31,9 @@ func registerShutdown() {
 			logrus.Warnf("Received signal %v to shutdown", s)
 			exitCode := 0
 			for _, hook := range hooks {
-				logrus.Warnf("Starting to execute registered shutdown func %v", util.GetFunctionName(hook))
+				logrus.Warnf("Starting to execute registered shutdown func %v", lhutils.GetFunctionPath(hook))
 				if err := hook(); err != nil {
-					logrus.WithError(err).Warnf("Failed to execute hook %v", util.GetFunctionName(hook))
+					logrus.WithError(err).Warnf("Failed to execute hook %v", lhutils.GetFunctionPath(hook))
 					exitCode = 1
 				}
 			}
