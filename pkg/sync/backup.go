@@ -9,9 +9,11 @@ import (
 
 	"github.com/longhorn/backupstore"
 
-	replicaClient "github.com/longhorn/longhorn-engine/pkg/replica/client"
+	lhutils "github.com/longhorn/go-common-libs/utils"
+
 	"github.com/longhorn/longhorn-engine/pkg/types"
-	"github.com/longhorn/longhorn-engine/pkg/util"
+
+	replicaClient "github.com/longhorn/longhorn-engine/pkg/replica/client"
 	diskutil "github.com/longhorn/longhorn-engine/pkg/util/disk"
 )
 
@@ -198,7 +200,7 @@ func (t *Task) RestoreBackup(backup string, credential map[string]string, concur
 			return fmt.Errorf("BUG: replicas %+v of DR volume should contains at least 2 disk files: the volume head and a snapshot storing restore data", replicas)
 		}
 		if snapshotDiskName == "" {
-			snapshotDiskName = diskutil.GenerateSnapshotDiskName(util.UUID())
+			snapshotDiskName = diskutil.GenerateSnapshotDiskName(lhutils.UUID())
 		}
 	case 2: // the volume head and the only system snapshot.
 		for _, s := range snapshots {

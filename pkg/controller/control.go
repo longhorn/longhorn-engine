@@ -13,12 +13,14 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 
-	iutil "github.com/longhorn/go-iscsi-helper/util"
+	lhns "github.com/longhorn/go-common-libs/ns"
+	lhutils "github.com/longhorn/go-common-libs/utils"
 
 	"github.com/longhorn/longhorn-engine/pkg/types"
 	"github.com/longhorn/longhorn-engine/pkg/util"
-	diskutil "github.com/longhorn/longhorn-engine/pkg/util/disk"
 	"github.com/longhorn/longhorn-engine/proto/ptypes"
+
+	diskutil "github.com/longhorn/longhorn-engine/pkg/util/disk"
 )
 
 type Controller struct {
@@ -185,21 +187,18 @@ func (c *Controller) addReplica(address string, snapshotRequired bool, mode type
 func (c *Controller) Snapshot(name string, labels map[string]string) (string, error) {
 	log := logrus.WithFields(logrus.Fields{"volume": c.VolumeName, "snapshot": name})
 	log.Info("Starting snapshot")
-	if ne, err := iutil.NewNamespaceExecutor(util.GetInitiatorNS()); err != nil {
-		log.WithError(err).Errorf("WARNING: continue to snapshot for %v, but cannot sync due to cannot get the namespace executor", name)
-	} else {
-		log.Info("Requesting system sync before snapshot")
-		if _, err := ne.ExecuteWithTimeout(syncTimeout, "sync", []string{}); err != nil {
-			// sync should never fail though, so it more like due to the nsenter
-			log.WithError(err).Errorf("WARNING: failed to sync continuing with snapshot for %v", name)
-		}
+
+	log.Info("Requesting system sync before snapshot")
+	if err := lhns.Sync(); err != nil {
+		// sync should never fail though, so it more like due to the nsenter
+		log.WithError(err).Errorf("WARNING: failed to sync continuing with snapshot for %v", name)
 	}
 
 	c.Lock()
 	defer c.Unlock()
 
 	if name == "" {
-		name = util.UUID()
+		name = lhutils.UUID()
 	}
 
 	if _, err := c.backend.RemainSnapshots(); err != nil {
@@ -236,13 +235,9 @@ func (c *Controller) Expand(size int64) error {
 
 		// We perform a system level sync without the lock. Cannot block read/write
 		// Can be improved to only sync the filesystem on the block device later
-		if ne, err := iutil.NewNamespaceExecutor(util.GetInitiatorNS()); err != nil {
-			logrus.WithError(err).Errorf("WARNING: continue to expand to size %v for %v, but cannot sync due to cannot get the namespace executor", size, c.VolumeName)
-		} else {
-			if _, err := ne.ExecuteWithTimeout(syncTimeout, "sync", []string{}); err != nil {
-				// sync should never fail though, so it more like due to the nsenter
-				logrus.WithError(err).Errorf("WARNING: continue to expand to size %v for %v, but sync failed", size, c.VolumeName)
-			}
+		if err := lhns.Sync(); err != nil {
+			// sync should never fail though, so it more like due to the nsenter
+			logrus.WithError(err).Errorf("WARNING: continue to expand to size %v for %v, but sync failed", size, c.VolumeName)
 		}
 
 		// Should block R/W during the expansion.
@@ -351,7 +346,7 @@ func (c *Controller) addReplicaNoLock(newBackend types.Backend, address string, 
 	}
 
 	if snapshot && mode != types.ERR {
-		uuid := util.UUID()
+		uuid := lhutils.UUID()
 		created := util.Now()
 
 		if _, err := c.backend.RemainSnapshots(); err != nil {

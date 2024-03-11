@@ -12,6 +12,8 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 
+	lhutils "github.com/longhorn/go-common-libs/utils"
+
 	"github.com/longhorn/longhorn-engine/pkg/controller/client"
 	"github.com/longhorn/longhorn-engine/pkg/sync"
 	"github.com/longhorn/longhorn-engine/pkg/types"
@@ -384,7 +386,7 @@ func lsSnapshot(c *cli.Context) error {
 		}
 
 		snapshots = util.Filter(snapshots, func(i string) bool {
-			return util.Contains(chain, i)
+			return lhutils.Contains(chain, i)
 		})
 	}
 
