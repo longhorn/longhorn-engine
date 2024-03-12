@@ -55,7 +55,7 @@ steps:
     debug: true
 
 - name: fossa
-  image: registry.suse.com/suse/sle15:15.5.36.11.9
+  image: registry.suse.com/bci/bci-base:15.6
   failure: ignore
   environment:
     FOSSA_API_KEY:
