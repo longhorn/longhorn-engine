@@ -72,7 +72,7 @@ func (w *Wire) Read() (*Message, error) {
 
 	msg.MagicVersion = binary.LittleEndian.Uint16(w.readHeader[offset:])
 	if msg.MagicVersion != MagicVersion {
-		return nil, fmt.Errorf("wrong API version received: 0x%x", &msg.MagicVersion)
+		return nil, fmt.Errorf("wrong API version received: 0x%x", msg.MagicVersion)
 	}
 	offset += int(unsafe.Sizeof(msg.MagicVersion))
 
