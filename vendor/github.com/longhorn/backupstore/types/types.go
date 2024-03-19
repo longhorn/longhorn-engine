@@ -1,5 +1,7 @@
 package types
 
+import "fmt"
+
 type ProgressState string
 
 const (
@@ -29,6 +31,16 @@ const (
 	NOProxy    = "NO_PROXY"
 
 	VirtualHostedStyle = "VIRTUAL_HOSTED_STYLE"
+
+	LonghornLabelKeyPrefix = "longhorn.io"
+)
+
+const (
+	LonghornBackupOptionBackupMode = "backup-mode"
+	LonghornBackupModeFull         = "full"
+	LonghornBackupModeIncremental  = "incremental"
+
+	LonghornBackupOptionFullBackupInterval = "full-backup-interval"
 )
 
 type Mapping struct {
@@ -65,3 +77,7 @@ const (
 const (
 	ErrorMsgRestoreCancelled = "backup restoration is cancelled"
 )
+
+func GetLonghornLabelKey(name string) string {
+	return fmt.Sprintf("%s/%s", LonghornLabelKeyPrefix, name)
+}

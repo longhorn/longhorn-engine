@@ -175,7 +175,7 @@ func CreateDeltaBlockBackup(backupName string, config *DeltaBackupConfig) (isInc
 	}
 
 	backupRequest := &backupRequest{}
-	if volume.LastBackupName != "" {
+	if volume.LastBackupName != "" && !isFullBackup(config) {
 		lastBackupName := volume.LastBackupName
 		var backup, err = loadBackup(bsDriver, lastBackupName, volume.Name)
 		if err != nil {
@@ -207,6 +207,9 @@ func CreateDeltaBlockBackup(backupName string, config *DeltaBackupConfig) (isInc
 			backupRequest.lastBackup = backup
 		}
 	}
+
+	logrus.Infof("[DEBUG] isFullBackup(config): %v", isFullBackup(config))
+	logrus.Infof("[DEBUG] backupRequest.lastBackup: %v", backupRequest.lastBackup)
 
 	log.WithFields(logrus.Fields{
 		LogFieldReason:       LogReasonStart,
@@ -368,7 +371,7 @@ func backupBlock(bsDriver BackupStoreDriver, config *DeltaBackupConfig,
 	}()
 
 	blkFile := getBlockFilePath(volume.Name, checksum)
-	if bsDriver.FileExists(blkFile) {
+	if bsDriver.FileExists(blkFile) && !isFullBackup(config) {
 		log.Debugf("Found existing block matching at %v", blkFile)
 		return nil
 	}
@@ -554,6 +557,7 @@ func performBackup(bsDriver BackupStoreDriver, config *DeltaBackupConfig, delta 
 	volume.CompressionMethod = config.Volume.CompressionMethod
 	volume.StorageClassName = config.Volume.StorageClassName
 	volume.DataEngine = config.Volume.DataEngine
+	volume.BackupCount = volume.BackupCount + 1
 
 	if err := saveVolume(bsDriver, volume); err != nil {
 		return progress.progress, "", err
@@ -1302,4 +1306,13 @@ func getBlockNamesForVolume(driver BackupStoreDriver, volumeName string) ([]stri
 	}
 
 	return util.ExtractNames(names, "", BLK_SUFFIX), nil
+}
+
+func isFullBackup(config *DeltaBackupConfig) bool {
+	if config.Labels != nil {
+		if backupMode, exist := config.Labels[types.GetLonghornLabelKey(types.LonghornBackupOptionBackupMode)]; exist {
+			return backupMode == types.LonghornBackupModeFull
+		}
+	}
+	return false
 }
