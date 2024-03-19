@@ -9,11 +9,14 @@ var FileLockDefaultTimeout = 24 * time.Hour
 type DiskDriver string
 
 const (
-	DiskDriverNone       = DiskDriver("")
-	DiskDriverAio        = DiskDriver("aio")
-	DiskDriverNvme       = DiskDriver("nvme")
-	DiskDriverVirtioScsi = DiskDriver("virtio-scsi")
-	DiskDriverVirtioBlk  = DiskDriver("virtio-blk")
+	DiskDriverNone          = DiskDriver("")
+	DiskDriverAuto          = DiskDriver("auto")
+	DiskDriverAio           = DiskDriver("aio")
+	DiskDriverNvme          = DiskDriver("nvme")
+	DiskDriverVirtioScsi    = DiskDriver("virtio-scsi")
+	DiskDriverVirtioBlk     = DiskDriver("virtio-blk")
+	DiskDriverVirtioPci     = DiskDriver("virtio-pci")
+	DiskDriverUioPciGeneric = DiskDriver("uio_pci_generic")
 )
 
 type DiskStat struct {
