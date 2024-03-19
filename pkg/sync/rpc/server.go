@@ -710,6 +710,7 @@ func (s *SyncAgentServer) BackupCreate(ctx context.Context, req *ptypes.BackupCr
 		ConcurrentLimit:      req.ConcurrentLimit,
 		StorageClassName:     req.StorageClassName,
 		Labels:               req.Labels,
+		Parameters:           req.Parameters,
 	})
 	if err != nil {
 		logrus.WithError(err).Errorf("Failed to initialize backup %v", req.BackupName)

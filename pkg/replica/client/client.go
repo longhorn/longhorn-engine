@@ -523,7 +523,7 @@ func (c *ReplicaClient) SyncFiles(fromAddress string, list []types.SyncFileInfo,
 }
 
 func (c *ReplicaClient) CreateBackup(backupName, snapshot, dest, volume, backingImageName, backingImageChecksum,
-	compressionMethod string, concurrentLimit int, storageClassName string, labels []string, credential map[string]string) (*ptypes.BackupCreateResponse, error) {
+	compressionMethod string, concurrentLimit int, storageClassName string, labels []string, credential, parameters map[string]string) (*ptypes.BackupCreateResponse, error) {
 	syncAgentServiceClient, err := c.getSyncServiceClient()
 	if err != nil {
 		return nil, err
@@ -543,6 +543,7 @@ func (c *ReplicaClient) CreateBackup(backupName, snapshot, dest, volume, backing
 		Labels:               labels,
 		Credential:           credential,
 		BackupName:           backupName,
+		Parameters:           parameters,
 	})
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to create backup to %v for volume %v", dest, volume)

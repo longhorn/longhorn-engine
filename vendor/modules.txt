@@ -80,8 +80,6 @@ github.com/cpuguy83/go-md2man/v2/md2man
 # github.com/docker/go-units v0.5.0
 ## explicit
 github.com/docker/go-units
-# github.com/fatih/color v1.7.0
-## explicit
 # github.com/felixge/httpsnoop v1.0.3
 ## explicit; go 1.13
 github.com/felixge/httpsnoop
@@ -130,7 +128,7 @@ github.com/kr/pretty
 # github.com/kr/text v0.2.0
 ## explicit
 github.com/kr/text
-# github.com/longhorn/backupstore v0.0.0-20240219094812-3a87ee02df77
+# github.com/longhorn/backupstore v0.0.0-20240219094812-3a87ee02df77 => github.com/ChanYiLin/backupstore v0.0.0-20240402075357-cefced175927
 ## explicit; go 1.21
 github.com/longhorn/backupstore
 github.com/longhorn/backupstore/azblob
@@ -147,8 +145,9 @@ github.com/longhorn/backupstore/systembackup
 github.com/longhorn/backupstore/types
 github.com/longhorn/backupstore/util
 github.com/longhorn/backupstore/vfs
-# github.com/longhorn/go-common-libs v0.0.0-20240307063052-6e77996eda29
+# github.com/longhorn/go-common-libs v0.0.0-20240319112414-b75404dc7fbc => github.com/ChanYiLin/go-common-libs v0.0.0-20240329072435-638753f76305
 ## explicit; go 1.21
+github.com/longhorn/go-common-libs/backup
 github.com/longhorn/go-common-libs/exec
 github.com/longhorn/go-common-libs/generated/profilerpb
 github.com/longhorn/go-common-libs/io
@@ -180,8 +179,6 @@ github.com/mattn/go-colorable
 # github.com/mattn/go-isatty v0.0.8
 ## explicit
 github.com/mattn/go-isatty
-# github.com/mattn/go-runewidth v0.0.5-0.20181218000649-703b5e6b11ae
-## explicit; go 1.9
 # github.com/matttproud/golang_protobuf_extensions v1.0.4
 ## explicit; go 1.9
 github.com/matttproud/golang_protobuf_extensions/pbutil
@@ -242,8 +239,6 @@ github.com/russross/blackfriday/v2
 github.com/shirou/gopsutil/v3/common
 github.com/shirou/gopsutil/v3/disk
 github.com/shirou/gopsutil/v3/internal/common
-# github.com/shurcooL/sanitized_anchor_name v1.0.0
-## explicit
 # github.com/sirupsen/logrus v1.9.3
 ## explicit; go 1.13
 github.com/sirupsen/logrus
@@ -387,8 +382,6 @@ gopkg.in/VividCortex/ewma.v1
 # gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 ## explicit; go 1.11
 gopkg.in/check.v1
-# gopkg.in/cheggaaa/pb.v1 v1.0.28
-## explicit
 # gopkg.in/cheggaaa/pb.v2 v2.0.7
 ## explicit
 gopkg.in/cheggaaa/pb.v2
@@ -420,7 +413,7 @@ k8s.io/klog/v2/internal/dbg
 k8s.io/klog/v2/internal/serialize
 k8s.io/klog/v2/internal/severity
 k8s.io/klog/v2/internal/sloghandler
-# k8s.io/mount-utils v0.29.2
+# k8s.io/mount-utils v0.29.3
 ## explicit; go 1.21
 k8s.io/mount-utils
 # k8s.io/utils v0.0.0-20230726121419-3b25d923346b

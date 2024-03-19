@@ -16,6 +16,7 @@ import (
 	. "github.com/longhorn/backupstore/logging"
 	"github.com/longhorn/backupstore/types"
 	"github.com/longhorn/backupstore/util"
+	lhbackup "github.com/longhorn/go-common-libs/backup"
 )
 
 type DeltaBackupConfig struct {
@@ -26,6 +27,7 @@ type DeltaBackupConfig struct {
 	DeltaOps        DeltaBlockBackupOperations
 	Labels          map[string]string
 	ConcurrentLimit int32
+	Parameters      map[string]string
 }
 
 type DeltaRestoreConfig struct {
@@ -175,7 +177,7 @@ func CreateDeltaBlockBackup(backupName string, config *DeltaBackupConfig) (isInc
 	}
 
 	backupRequest := &backupRequest{}
-	if volume.LastBackupName != "" {
+	if volume.LastBackupName != "" && !isFullBackup(config) {
 		lastBackupName := volume.LastBackupName
 		var backup, err = loadBackup(bsDriver, lastBackupName, volume.Name)
 		if err != nil {
@@ -368,19 +370,37 @@ func backupBlock(bsDriver BackupStoreDriver, config *DeltaBackupConfig,
 	}()
 
 	blkFile := getBlockFilePath(volume.Name, checksum)
+	reUpload := false
 	if bsDriver.FileExists(blkFile) {
-		log.Debugf("Found existing block matching at %v", blkFile)
-		return nil
+		if !isFullBackup(config) {
+			log.Debugf("Found existing block matching at %v", blkFile)
+			return nil
+		}
+		log.Debugf("Reupload existing block matching at %v", blkFile)
+		reUpload = true
 	}
 
-	log.Tracef("Creating new block file at %v", blkFile)
-	newBlock = true
+	updateUploadDataSize(reUpload, deltaBackup)
+
+	log.Tracef("Uploading block file at %v", blkFile)
+	newBlock = !reUpload
 	rs, err := util.CompressData(deltaBackup.CompressionMethod, block)
 	if err != nil {
 		return err
 	}
 
 	return bsDriver.Write(blkFile, rs)
+}
+
+func updateUploadDataSize(reUpload bool, deltaBackup *Backup) {
+	deltaBackup.Lock()
+	defer deltaBackup.Unlock()
+
+	if reUpload {
+		deltaBackup.ReUploadedDataSize += DEFAULT_BLOCK_SIZE
+	} else {
+		deltaBackup.NewlyUploadedDataSize += DEFAULT_BLOCK_SIZE
+	}
 }
 
 func backupMapping(bsDriver BackupStoreDriver, config *DeltaBackupConfig,
@@ -532,7 +552,10 @@ func performBackup(bsDriver BackupStoreDriver, config *DeltaBackupConfig, delta 
 	backup.CreatedTime = util.Now()
 	backup.Size = int64(len(backup.Blocks)) * DEFAULT_BLOCK_SIZE
 	backup.Labels = config.Labels
+	backup.Parameters = config.Parameters
 	backup.IsIncremental = lastBackup != nil
+	backup.NewlyUploadedDataSize = deltaBackup.NewlyUploadedDataSize
+	backup.ReUploadedDataSize = deltaBackup.ReUploadedDataSize
 
 	if err := saveBackup(bsDriver, backup); err != nil {
 		return progress.progress, "", err
@@ -554,6 +577,7 @@ func performBackup(bsDriver BackupStoreDriver, config *DeltaBackupConfig, delta 
 	volume.CompressionMethod = config.Volume.CompressionMethod
 	volume.StorageClassName = config.Volume.StorageClassName
 	volume.DataEngine = config.Volume.DataEngine
+	volume.BackupCount = volume.BackupCount + 1
 
 	if err := saveVolume(bsDriver, volume); err != nil {
 		return progress.progress, "", err
@@ -1302,4 +1326,13 @@ func getBlockNamesForVolume(driver BackupStoreDriver, volumeName string) ([]stri
 	}
 
 	return util.ExtractNames(names, "", BLK_SUFFIX), nil
+}
+
+func isFullBackup(config *DeltaBackupConfig) bool {
+	if config.Parameters != nil {
+		if backupMode, exist := config.Parameters[lhbackup.LonghornBackupParameterBackupMode]; exist {
+			return backupMode == lhbackup.LonghornBackupModeFull
+		}
+	}
+	return false
 }

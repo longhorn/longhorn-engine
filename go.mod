@@ -2,13 +2,18 @@ module github.com/longhorn/longhorn-engine
 
 go 1.21
 
+replace github.com/longhorn/backupstore v0.0.0-20240219094812-3a87ee02df77 => github.com/ChanYiLin/backupstore v0.0.0-20240402075357-cefced175927
+
+replace github.com/longhorn/go-common-libs v0.0.0-20240319112414-b75404dc7fbc => github.com/ChanYiLin/go-common-libs v0.0.0-20240329072435-638753f76305
+
 require (
 	github.com/docker/go-units v0.5.0
 	github.com/gofrs/flock v0.8.1
+	github.com/google/uuid v1.6.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
 	github.com/longhorn/backupstore v0.0.0-20240219094812-3a87ee02df77
-	github.com/longhorn/go-common-libs v0.0.0-20240307063052-6e77996eda29
+	github.com/longhorn/go-common-libs v0.0.0-20240319112414-b75404dc7fbc
 	github.com/longhorn/go-iscsi-helper v0.0.0-20240308033847-bc3aab599425
 	github.com/longhorn/sparse-tools v0.0.0-20240228120902-ce8c4c2e71ca
 	github.com/moby/moby v24.0.9+incompatible
@@ -34,14 +39,12 @@ require (
 	github.com/c9s/goprocinfo v0.0.0-20210130143923-c95fcf8c64a8 // indirect
 	github.com/cespare/xxhash/v2 v2.2.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
-	github.com/fatih/color v1.7.0 // indirect
 	github.com/felixge/httpsnoop v1.0.3 // indirect
 	github.com/gammazero/deque v0.2.1 // indirect
 	github.com/gammazero/workerpool v1.1.3 // indirect
 	github.com/go-logr/logr v1.3.0 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/golang/protobuf v1.5.3 // indirect
-	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/context v1.1.1 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/jmespath/go-jmespath v0.3.0 // indirect
@@ -49,7 +52,6 @@ require (
 	github.com/kr/text v0.2.0 // indirect
 	github.com/mattn/go-colorable v0.1.4 // indirect
 	github.com/mattn/go-isatty v0.0.8 // indirect
-	github.com/mattn/go-runewidth v0.0.5-0.20181218000649-703b5e6b11ae // indirect
 	github.com/matttproud/golang_protobuf_extensions v1.0.4 // indirect
 	github.com/mitchellh/go-ps v1.0.0 // indirect
 	github.com/moby/sys/mountinfo v0.6.2 // indirect
@@ -62,14 +64,12 @@ require (
 	github.com/rogpeppe/go-internal v1.10.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/shirou/gopsutil/v3 v3.24.2 // indirect
-	github.com/shurcooL/sanitized_anchor_name v1.0.0 // indirect
 	github.com/slok/goresilience v0.2.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240123012728-ef4313101c80 // indirect
 	gopkg.in/VividCortex/ewma.v1 v1.1.1 // indirect
-	gopkg.in/cheggaaa/pb.v1 v1.0.28 // indirect
 	gopkg.in/fatih/color.v1 v1.7.0 // indirect
 	gopkg.in/mattn/go-colorable.v0 v0.1.0 // indirect
 	gopkg.in/mattn/go-isatty.v0 v0.0.4 // indirect
@@ -77,6 +77,6 @@ require (
 	gotest.tools/v3 v3.4.0 // indirect
 	k8s.io/apimachinery v0.27.1 // indirect
 	k8s.io/klog/v2 v2.110.1 // indirect
-	k8s.io/mount-utils v0.29.2 // indirect
+	k8s.io/mount-utils v0.29.3 // indirect
 	k8s.io/utils v0.0.0-20230726121419-3b25d923346b // indirect
 )
