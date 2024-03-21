@@ -290,10 +290,11 @@ func (d *diffDisk) lookup(sector int64) (byte, error) {
 }
 
 func (d *diffDisk) UnmapAt(unmappableDisks []string, length uint32, offset int64) (int, error) {
-	if length == 0 {
+	if length < uint32(d.sectorSize) {
 		return 0, nil
 	}
 
+	origLength := length
 	startSectorOffset := offset % d.sectorSize
 	endSectorOffset := (int64(length) + offset) % d.sectorSize
 
@@ -304,8 +305,15 @@ func (d *diffDisk) UnmapAt(unmappableDisks []string, length uint32, offset int64
 	if endSectorOffset != 0 {
 		length -= uint32(endSectorOffset)
 	}
-	if length <= 0 {
+	if length == 0 {
 		return 0, nil
+	}
+
+	// The the final length must be smaller than original length. The following case should not happen.
+	// The only case is the length is calculated to a negative number and then overflows a large number.
+	// This protection mechanism avoids unmapping the abnormal length and returns errors.
+	if origLength < length {
+		return 0, fmt.Errorf("final unmap length(%v) should not be larger than original length(%v)", length, origLength)
 	}
 
 	var unmappedSizeErr error
