@@ -146,7 +146,7 @@ github.com/longhorn/backupstore/systembackup
 github.com/longhorn/backupstore/types
 github.com/longhorn/backupstore/util
 github.com/longhorn/backupstore/vfs
-# github.com/longhorn/go-common-libs v0.0.0-20240315062830-5aa0ac1dac62
+# github.com/longhorn/go-common-libs v0.0.0-20240319112414-b75404dc7fbc
 ## explicit; go 1.21
 github.com/longhorn/go-common-libs/exec
 github.com/longhorn/go-common-libs/generated/profilerpb
@@ -185,7 +185,7 @@ github.com/matttproud/golang_protobuf_extensions/pbutil
 # github.com/mitchellh/go-ps v1.0.0
 ## explicit; go 1.13
 github.com/mitchellh/go-ps
-# github.com/moby/moby v23.0.9+incompatible
+# github.com/moby/moby v23.0.10+incompatible
 ## explicit
 github.com/moby/moby/pkg/reexec
 # github.com/moby/sys/mountinfo v0.6.2
@@ -413,7 +413,7 @@ k8s.io/klog/v2/internal/dbg
 k8s.io/klog/v2/internal/serialize
 k8s.io/klog/v2/internal/severity
 k8s.io/klog/v2/internal/sloghandler
-# k8s.io/mount-utils v0.29.2
+# k8s.io/mount-utils v0.29.3
 ## explicit; go 1.21
 k8s.io/mount-utils
 # k8s.io/utils v0.0.0-20230726121419-3b25d923346b
