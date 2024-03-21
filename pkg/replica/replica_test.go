@@ -1119,3 +1119,65 @@ func (s *TestSuite) TestUnmapMarkDiskRemoved(c *C) {
 	c.Assert(r.activeDiskData[1].Removed, Equals, false)
 	c.Assert(r.activeDiskData[1].Parent, Equals, "")
 }
+
+func (s *TestSuite) TestUnmap(c *C) {
+	dir, err := os.MkdirTemp("", "replica")
+	c.Assert(err, IsNil)
+	defer os.RemoveAll(dir)
+
+	r, err := New(8*b, b, dir, nil, false, false)
+	c.Assert(err, IsNil)
+	defer r.Close()
+
+	buf := make([]byte, 8*b)
+	fill(buf, 1)
+	_, err = r.WriteAt(buf, 0)
+	c.Assert(err, IsNil)
+
+	// default sector size is 4096, we follow this assumption in the test
+	// offset = 0, unmap length = 0: 0 sectors can be unmapped
+	ret, err := r.UnmapAt(0, 0)
+	c.Assert(err, IsNil)
+	c.Assert(ret, Equals, 0)
+
+	// offset = 0, unmap length = 512: 0 sectors can be unmapped
+	ret, err = r.UnmapAt(512, 0)
+	c.Assert(err, IsNil)
+	c.Assert(ret, Equals, 0)
+
+	// offset = 0, unmap length = 4096: 1 sector can be unmapped
+	ret, err = r.UnmapAt(b, 0)
+	c.Assert(err, IsNil)
+	c.Assert(ret, Equals, 4096)
+	_, err = r.WriteAt(buf, 0)
+	c.Assert(err, IsNil)
+
+	// offset = 0, unmap length = 4097: 1 sector can be unmapped
+	ret, err = r.UnmapAt(b+1, 0)
+	c.Assert(err, IsNil)
+	c.Assert(ret, Equals, 4096)
+	_, err = r.WriteAt(buf, 0)
+	c.Assert(err, IsNil)
+
+	// offset = 1, unmap length = 512: 0 sectors can be unmapped
+	ret, err = r.UnmapAt(512, 1)
+	c.Assert(err, IsNil)
+	c.Assert(ret, Equals, 0)
+
+	// offset = 1, unmap length = 4096: 0 sector can be unmapped
+	ret, err = r.UnmapAt(b, 1)
+	c.Assert(err, IsNil)
+	c.Assert(ret, Equals, 0)
+
+	// offset = 2048, unmap length = 8192: 1 sector can be unmapped
+	ret, err = r.UnmapAt(2*b, 2048)
+	c.Assert(err, IsNil)
+	c.Assert(ret, Equals, 4096)
+	_, err = r.WriteAt(buf, 0)
+	c.Assert(err, IsNil)
+
+	// offset = 2048, unmap length = 3072: 0 sector can be unmapped
+	ret, err = r.UnmapAt(b+1024, 2048)
+	c.Assert(err, IsNil)
+	c.Assert(ret, Equals, 0)
+}
