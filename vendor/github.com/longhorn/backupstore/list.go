@@ -29,6 +29,7 @@ type VolumeInfo struct {
 	BackingImageChecksum string
 	StorageClassname     string
 	DataEngine           string
+	BackupCount          int64 `json:",string"`
 }
 
 type BackupInfo struct {

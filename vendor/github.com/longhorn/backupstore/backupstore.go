@@ -23,6 +23,10 @@ type Volume struct {
 	CompressionMethod    string `json:",string"`
 	StorageClassName     string `json:",string"`
 	DataEngine           string `json:",string"`
+
+	// It is not the count of the current backup on the backupstore,
+	// but how many backups of the volume have been created before.
+	BackupCount int64 `json:",string"`
 }
 
 type Snapshot struct {
@@ -73,6 +77,9 @@ func addVolume(driver BackupStoreDriver, volume *Volume) error {
 	if !util.ValidateName(volume.Name) {
 		return fmt.Errorf("invalid volume name %v", volume.Name)
 	}
+
+	// first time create backup volume means first time create backup on this backupstore
+	volume.BackupCount = 0
 
 	if err := saveVolume(driver, volume); err != nil {
 		log.WithError(err).Errorf("Failed to add volume %v", volume.Name)
