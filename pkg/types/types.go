@@ -176,3 +176,8 @@ type RWMetrics struct {
 func IsAlreadyPurgingError(err error) bool {
 	return strings.Contains(err.Error(), "already purging")
 }
+
+type FileLocalSync struct {
+	Source string
+	Target string
+}

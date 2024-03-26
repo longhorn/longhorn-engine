@@ -401,7 +401,7 @@ func (t *Task) VerifyRebuildReplica(address, instanceName string) error {
 	return nil
 }
 
-func (t *Task) AddReplica(volumeSize, volumeCurrentSize int64, address, instanceName string, fileSyncHTTPClientTimeout int, fastSync bool) error {
+func (t *Task) AddReplica(volumeSize, volumeCurrentSize int64, address, instanceName string, fileSyncHTTPClientTimeout int, fastSync bool, localSync *types.FileLocalSync) error {
 	volume, err := t.client.VolumeGet()
 	if err != nil {
 		return err
@@ -448,7 +448,7 @@ func (t *Task) AddReplica(volumeSize, volumeCurrentSize int64, address, instance
 		return fmt.Errorf("sync file list shouldn't contain volume head")
 	}
 
-	if err = toClient.SyncFiles(fromAddress, resp, fileSyncHTTPClientTimeout, fastSync); err != nil {
+	if err = toClient.SyncFiles(fromAddress, resp, fileSyncHTTPClientTimeout, fastSync, localSync); err != nil {
 		return err
 	}
 
