@@ -15,7 +15,7 @@ from common.constants import (
 
 from rpc.controller.controller_client import ControllerClient
 from rpc.replica.replica_client import ReplicaClient
-from rpc.imrpc.process_manager_client import ProcessManagerClient
+from rpc.process_manager.process_manager_client import ProcessManagerClient
 
 
 @pytest.fixture

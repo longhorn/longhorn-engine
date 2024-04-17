@@ -15,11 +15,10 @@ import (
 
 	lhns "github.com/longhorn/go-common-libs/ns"
 	lhutils "github.com/longhorn/go-common-libs/utils"
+	"github.com/longhorn/types/pkg/generated/enginerpc"
 
 	"github.com/longhorn/longhorn-engine/pkg/types"
 	"github.com/longhorn/longhorn-engine/pkg/util"
-	"github.com/longhorn/longhorn-engine/proto/ptypes"
-
 	diskutil "github.com/longhorn/longhorn-engine/pkg/util/disk"
 )
 
@@ -1262,11 +1261,11 @@ func (c *Controller) metricsStart() {
 	}()
 }
 
-func (c *Controller) GetLatestMetics() *ptypes.Metrics {
+func (c *Controller) GetLatestMetics() *enginerpc.Metrics {
 	c.metricsLock.RLock()
 	defer c.metricsLock.RUnlock()
 
-	metrics := &ptypes.Metrics{}
+	metrics := &enginerpc.Metrics{}
 
 	metrics.ReadThroughput = c.latestMetrics.Throughput.Read
 	metrics.WriteThroughput = c.latestMetrics.Throughput.Write
