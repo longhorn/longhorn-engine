@@ -329,9 +329,8 @@ func (r *Remote) info() (*types.ReplicaInfo, error) {
 	return replicaClient.GetReplicaInfo(resp.Replica), nil
 }
 
-func (rf *Factory) Create(volumeName, address string, dataServerProtocol types.DataServerProtocol, engineToReplicaTimeout time.Duration) (types.Backend, error) {
+func (rf *Factory) Create(volumeName, address string, dataServerProtocol types.DataServerProtocol, engineToReplicaTimeout time.Duration, replicaStreams int) (types.Backend, error) {
 	logrus.Infof("Connecting to remote: %s (%v)", address, dataServerProtocol)
-
 	controlAddress, dataAddress, _, _, err := util.GetAddresses(volumeName, address, dataServerProtocol)
 	if err != nil {
 		return nil, err
@@ -356,19 +355,29 @@ func (rf *Factory) Create(volumeName, address string, dataServerProtocol types.D
 		return nil, fmt.Errorf("replica must be closed, cannot add in state: %s", replica.State)
 	}
 
-	conn, err := connect(dataServerProtocol, dataAddress)
-	if err != nil {
-		return nil, err
-	}
+	var clients []*dataconn.Client
+	for i := 0; i < replicaStreams; i++ {
+		conn, err := connect(dataServerProtocol, dataAddress)
+		if err != nil {
+			return nil, err
+		}
 
-	dataConnClient := dataconn.NewClient(conn, engineToReplicaTimeout)
-	r.ReaderWriterUnmapperAt = dataConnClient
+		dataConnClient := dataconn.NewClient(conn, engineToReplicaTimeout)
+		clients = append(clients, dataConnClient)
+	}
+	if replicaStreams == 1 {
+		r.ReaderWriterUnmapperAt = clients[0]
+	} else {
+		r.ReaderWriterUnmapperAt = dataconn.NewMultiClient(clients)
+	}
 
 	if err := r.open(); err != nil {
 		return nil, err
 	}
 
-	go r.monitorPing(dataConnClient)
+	for i := 0; i < replicaStreams; i++ {
+		go r.monitorPing(clients[i])
+	}
 
 	return r, nil
 }

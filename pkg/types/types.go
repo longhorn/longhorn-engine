@@ -105,7 +105,7 @@ type Backend interface {
 }
 
 type BackendFactory interface {
-	Create(volumeName, address string, dataServerProtocol DataServerProtocol, engineReplicaTimeout time.Duration) (Backend, error)
+	Create(volumeName, address string, dataServerProtocol DataServerProtocol, engineReplicaTimeout time.Duration, replicaStreams int) (Backend, error)
 }
 
 type Controller interface {

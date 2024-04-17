@@ -6,6 +6,8 @@ RUN zypper -n addrepo --refresh https://download.opensuse.org/repositories/syste
     zypper -n addrepo --refresh https://download.opensuse.org/repositories/network:/utilities/SLE_15_SP5/network:utilities.repo && \
     zypper --gpg-auto-import-keys ref
 
+RUN zypper -n install autoconf automake libtool gcc-c++
+
 RUN zypper -n install cmake curl git gcc wget xsltproc docbook-xsl-stylesheets && \
     rm -rf /var/cache/zypp/*
 
@@ -24,6 +26,22 @@ RUN cd /usr/src && \
     git clone https://github.com/rancher/tgt.git && \
     cd tgt && \
     git checkout ${TGT_COMMIT_ID} && \
+    make; \
+    make install
+
+# Build ubdsrv
+ENV UBD_COMMIT_ID 19d3b2133baf1af8ae3a5fe300c962567fb7b0ce
+RUN git clone --depth 1 --branch liburing-2.5 https://github.com/axboe/liburing.git /usr/src/liburing && \
+    cd /usr/src/liburing && \
+    ./configure --cc=gcc --cxx=g++ && \
+    make -j$(nproc) && \
+    make installgit clone https://github.com/Kampadais/ubdsrv.git && \
+    cd ubdsrv && \
+    git checkout ${UBD_COMMIT_ID} && \
+    export LIBURING_CFLAGS="-I/usr/include/liburing" && \
+    export LIBURING_LIBS="-Lusr/lib/pkgconfig -luring"cd /usr/src && \
+    ls;autoreconf -i && \
+    ./configure && \
     make; \
     make install
 
