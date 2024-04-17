@@ -4,12 +4,10 @@ set -e
 
 cd "$(dirname "$0")"
 
-BUILDER_FLAG=1 ./generate-grpc
-
 SKIP_TASKS=${SKIP_TASKS:-}
 IFS=' ' read -ra skip_tasks <<<"$SKIP_TASKS"
 
-tasks=("build" "validate" "test" "integration-test" "package")
+tasks=("build" "validate" "sync-grpc-py" "test" "integration-test" "package")
 
 for task in "${tasks[@]}"; do
   for skip_task in "${skip_tasks[@]}"; do

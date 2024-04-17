@@ -1,10 +1,11 @@
 import grpc
 
-from github.com.longhorn.longhorn_engine.proto.ptypes import controller_pb2
-from github.com.longhorn.longhorn_engine.proto.ptypes import controller_pb2_grpc
+from ptypes import controller_pb2
+from ptypes import controller_pb2_grpc
 from google.protobuf import empty_pb2
 
 from common.interceptor import IdentityValidationInterceptor
+
 
 class ControllerClient(object):
     def __init__(self, url, volume_name=None, instance_name=None):

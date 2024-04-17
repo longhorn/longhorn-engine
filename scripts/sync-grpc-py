@@ -1,0 +1,19 @@
+#!/bin/bash
+
+set -e
+
+cd $(dirname $0)/..
+set +e
+
+git clone https://github.com/longhorn/types.git tmp-longhorn-types
+cp -r tmp-longhorn-types/generated-py/ integration/rpc
+rm -rf tmp-longhorn-types
+echo "Synced longhorn/types/generated-py to integration/rpc"
+
+output=`git diff --stat|grep -e "_pb2.py" -e "_pb2_grpc.py"`
+if [ $? -eq 0 ]
+then
+	echo $output
+	echo Python GRPC generated code is not up to date
+	exit 1
+fi
