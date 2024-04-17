@@ -6,10 +6,9 @@ require (
 	github.com/docker/go-units v0.3.3
 	github.com/gofrs/flock v0.8.1
 	github.com/golang/protobuf v1.5.4
-	github.com/google/uuid v1.6.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
-	github.com/longhorn/backupstore v0.0.0-20240219094812-3a87ee02df77
+	github.com/longhorn/backupstore v0.0.0-20240417071544-3bd377eeefeb
 	github.com/longhorn/go-common-libs v0.0.0-20240319112414-b75404dc7fbc
 	github.com/longhorn/go-iscsi-helper v0.0.0-20240308033847-bc3aab599425
 	github.com/longhorn/sparse-tools v0.0.0-20240228120902-ce8c4c2e71ca
@@ -40,6 +39,7 @@ require (
 	github.com/gammazero/workerpool v1.1.3 // indirect
 	github.com/go-logr/logr v1.3.0 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
+	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/context v1.1.1 // indirect
 	github.com/gorilla/websocket v1.4.2 // indirect
 	github.com/jmespath/go-jmespath v0.3.0 // indirect
