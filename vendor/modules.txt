@@ -172,6 +172,9 @@ github.com/longhorn/sparse-tools/sparse/rest
 github.com/longhorn/sparse-tools/stats
 github.com/longhorn/sparse-tools/types
 github.com/longhorn/sparse-tools/util
+# github.com/longhorn/types v0.0.0-20240417064442-e7df610ea802
+## explicit; go 1.21
+github.com/longhorn/types/pkg/generated/enginerpc
 # github.com/mattn/go-colorable v0.1.4
 ## explicit
 github.com/mattn/go-colorable
