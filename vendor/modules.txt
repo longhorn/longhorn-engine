@@ -80,8 +80,6 @@ github.com/cpuguy83/go-md2man/v2/md2man
 # github.com/docker/go-units v0.3.3
 ## explicit
 github.com/docker/go-units
-# github.com/fatih/color v1.7.0
-## explicit
 # github.com/felixge/httpsnoop v1.0.3
 ## explicit; go 1.13
 github.com/felixge/httpsnoop
@@ -130,7 +128,7 @@ github.com/kr/pretty
 # github.com/kr/text v0.2.0
 ## explicit
 github.com/kr/text
-# github.com/longhorn/backupstore v0.0.0-20240219094812-3a87ee02df77
+# github.com/longhorn/backupstore v0.0.0-20240417071544-3bd377eeefeb
 ## explicit; go 1.21
 github.com/longhorn/backupstore
 github.com/longhorn/backupstore/azblob
@@ -180,8 +178,6 @@ github.com/mattn/go-colorable
 # github.com/mattn/go-isatty v0.0.8
 ## explicit
 github.com/mattn/go-isatty
-# github.com/mattn/go-runewidth v0.0.5-0.20181218000649-703b5e6b11ae
-## explicit; go 1.9
 # github.com/matttproud/golang_protobuf_extensions v1.0.4
 ## explicit; go 1.9
 github.com/matttproud/golang_protobuf_extensions/pbutil
@@ -242,8 +238,6 @@ github.com/russross/blackfriday/v2
 github.com/shirou/gopsutil/v3/common
 github.com/shirou/gopsutil/v3/disk
 github.com/shirou/gopsutil/v3/internal/common
-# github.com/shurcooL/sanitized_anchor_name v1.0.0
-## explicit
 # github.com/sirupsen/logrus v1.9.3
 ## explicit; go 1.13
 github.com/sirupsen/logrus
@@ -387,8 +381,6 @@ gopkg.in/VividCortex/ewma.v1
 # gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 ## explicit; go 1.11
 gopkg.in/check.v1
-# gopkg.in/cheggaaa/pb.v1 v1.0.28
-## explicit
 # gopkg.in/cheggaaa/pb.v2 v2.0.7
 ## explicit
 gopkg.in/cheggaaa/pb.v2
