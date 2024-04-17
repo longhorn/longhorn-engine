@@ -482,9 +482,11 @@ func restoreBlockToFile(bsDriver backupstore.BackupStoreDriver, backingImageFile
 		return err
 	}
 	defer rc.Close()
-	r, err := util.DecompressAndVerify(decompression, rc, blk.BlockChecksum)
+	r, err := util.DecompressAndVerifyWithFallback(decompression, rc, blk.BlockChecksum)
 	if err != nil {
-		return err
+		if r == nil {
+			return err
+		}
 	}
 
 	if _, err := backingImageFile.Seek(blk.Offset, 0); err != nil {
