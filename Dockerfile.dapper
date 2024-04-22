@@ -136,7 +136,7 @@ RUN cd integration && \
 
 # Build longhorn-instance-manager for integration testing
 RUN cd /go/src/github.com/longhorn && \
-    git clone https://github.com/longhorn/longhorn-instance-manager.git && \
+    git clone https://github.com/longhorn/longhorn-instance-manager.git -b v1.6.x && \
     cd longhorn-instance-manager && \
     go build -o ./longhorn-instance-manager -tags netgo -ldflags "-linkmode external -extldflags -static" && \
     cp -r integration/rpc/ ${DAPPER_SOURCE}/integration/rpc/ && \
