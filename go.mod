@@ -1,6 +1,8 @@
 module github.com/longhorn/longhorn-engine
 
-go 1.21
+go 1.22.0
+
+toolchain go1.22.2
 
 require (
 	github.com/docker/go-units v0.3.3
@@ -9,8 +11,8 @@ require (
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
 	github.com/longhorn/backupstore v0.0.0-20240417071544-3bd377eeefeb
-	github.com/longhorn/go-common-libs v0.0.0-20240411093823-b8862efb8e03
-	github.com/longhorn/go-iscsi-helper v0.0.0-20240329081212-26b6406b3b2b
+	github.com/longhorn/go-common-libs v0.0.0-20240422073843-1578e42a50bd
+	github.com/longhorn/go-iscsi-helper v0.0.0-20240417063713-e20db15bb989
 	github.com/longhorn/sparse-tools v0.0.0-20240228120902-ce8c4c2e71ca
 	github.com/moby/moby v23.0.10+incompatible
 	github.com/pkg/errors v0.9.1
@@ -38,7 +40,7 @@ require (
 	github.com/felixge/httpsnoop v1.0.3 // indirect
 	github.com/gammazero/deque v0.2.1 // indirect
 	github.com/gammazero/workerpool v1.1.3 // indirect
-	github.com/go-logr/logr v1.3.0 // indirect
+	github.com/go-logr/logr v1.4.1 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/golang/protobuf v1.5.4 // indirect
 	github.com/gorilla/context v1.1.1 // indirect
@@ -72,7 +74,7 @@ require (
 	gopkg.in/mattn/go-runewidth.v0 v0.0.4 // indirect
 	gotest.tools/v3 v3.4.0 // indirect
 	k8s.io/apimachinery v0.27.1 // indirect
-	k8s.io/klog/v2 v2.110.1 // indirect
-	k8s.io/mount-utils v0.29.3 // indirect
+	k8s.io/klog/v2 v2.120.1 // indirect
+	k8s.io/mount-utils v0.30.0 // indirect
 	k8s.io/utils v0.0.0-20230726121419-3b25d923346b // indirect
 )
