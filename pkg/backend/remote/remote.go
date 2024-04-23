@@ -20,7 +20,8 @@ import (
 )
 
 const (
-	PingInterval = 2 * time.Second
+	PingInterval        = 2 * time.Second
+	NumberOfConnections = 2
 )
 
 func New() types.BackendFactory {
@@ -356,12 +357,16 @@ func (rf *Factory) Create(volumeName, address string, dataServerProtocol types.D
 		return nil, fmt.Errorf("replica must be closed, cannot add in state: %s", replica.State)
 	}
 
-	conn, err := connect(dataServerProtocol, dataAddress)
-	if err != nil {
-		return nil, err
+	var conns []net.Conn
+	for i := 0; i < NumberOfConnections; i++ {
+		conn, err := connect(dataServerProtocol, dataAddress)
+		if err != nil {
+			return nil, err
+		}
+		conns = append(conns, conn)
 	}
 
-	dataConnClient := dataconn.NewClient(conn, engineToReplicaTimeout)
+	dataConnClient := dataconn.NewClient(conns, engineToReplicaTimeout)
 	r.ReaderWriterUnmapperAt = dataConnClient
 
 	if err := r.open(); err != nil {
