@@ -24,16 +24,20 @@ type Client struct {
 	responses chan *Message
 	seq       uint32
 	messages  map[uint32]*Message
-	wire      *Wire
+	wires     []*Wire
 	peerAddr  string
 	opTimeout time.Duration
 }
 
 // NewClient replica client
-func NewClient(conn net.Conn, engineToReplicaTimeout time.Duration) *Client {
+func NewClient(conns []net.Conn, engineToReplicaTimeout time.Duration) *Client {
+	var wires []*Wire
+	for _, conn := range conns {
+		wires = append(wires, NewWire(conn))
+	}
 	c := &Client{
-		wire:      NewWire(conn),
-		peerAddr:  conn.RemoteAddr().String(),
+		wires:     wires,
+		peerAddr:  conns[0].RemoteAddr().String(),
 		end:       make(chan struct{}, 1024),
 		requests:  make(chan *Message, 1024),
 		send:      make(chan *Message, 1024),
@@ -42,8 +46,8 @@ func NewClient(conn net.Conn, engineToReplicaTimeout time.Duration) *Client {
 		opTimeout: engineToReplicaTimeout,
 	}
 	go c.loop()
-	go c.write()
-	go c.read()
+	c.write()
+	c.read()
 	return c
 }
 
@@ -111,7 +115,9 @@ func (c *Client) operation(op uint32, buf []byte, length uint32, offset int64) (
 
 // Close replica client
 func (c *Client) Close() {
-	c.wire.Close()
+	for _, wire := range c.wires {
+		wire.Close()
+	}
 	c.end <- struct{}{}
 }
 
@@ -236,25 +242,33 @@ func (c *Client) handleResponse(resp *Message) {
 }
 
 func (c *Client) write() {
-	for msg := range c.send {
-		if err := c.wire.Write(msg); err != nil {
-			c.responses <- &Message{
-				transportErr: err,
+	for _, wire := range c.wires {
+		go func(w *Wire) {
+			for msg := range c.send {
+				if err := w.Write(msg); err != nil {
+					c.responses <- &Message{
+						transportErr: err,
+					}
+				}
 			}
-		}
+		}(wire)
 	}
 }
 
 func (c *Client) read() {
-	for {
-		msg, err := c.wire.Read()
-		if err != nil {
-			logrus.WithError(err).Errorf("Error reading from wire %v", c.peerAddr)
-			c.responses <- &Message{
-				transportErr: err,
+	for _, wire := range c.wires {
+		go func(w *Wire) {
+			for {
+				msg, err := w.Read()
+				if err != nil {
+					logrus.WithError(err).Errorf("Error reading from wire %v", c.peerAddr)
+					c.responses <- &Message{
+						transportErr: err,
+					}
+					break
+				}
+				c.responses <- msg
 			}
-			break
-		}
-		c.responses <- msg
+		}(wire)
 	}
 }
