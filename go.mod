@@ -25,6 +25,7 @@ require (
 	google.golang.org/protobuf v1.33.0
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 	gopkg.in/cheggaaa/pb.v2 v2.0.7
+	k8s.io/mount-utils v0.30.0
 )
 
 require (
@@ -74,6 +75,7 @@ require (
 	gotest.tools/v3 v3.4.0 // indirect
 	k8s.io/apimachinery v0.27.1 // indirect
 	k8s.io/klog/v2 v2.120.1 // indirect
-	k8s.io/mount-utils v0.30.0 // indirect
 	k8s.io/utils v0.0.0-20230726121419-3b25d923346b // indirect
 )
+
+replace github.com/longhorn/types => github.com/ejweber/types v0.0.0-20240429162331-ac822e968757

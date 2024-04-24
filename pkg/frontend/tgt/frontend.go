@@ -4,10 +4,14 @@ import (
 	"time"
 
 	"github.com/sirupsen/logrus"
+	"k8s.io/mount-utils"
+
+	lhexec "github.com/longhorn/go-common-libs/exec"
 
 	"github.com/longhorn/go-iscsi-helper/longhorndev"
 	"github.com/longhorn/longhorn-engine/pkg/frontend/socket"
 	"github.com/longhorn/longhorn-engine/pkg/types"
+	"github.com/longhorn/longhorn-engine/pkg/util"
 )
 
 const (
@@ -70,10 +74,18 @@ func (t *Tgt) Startup(rwu types.ReaderWriterUnmapperAt) error {
 
 	t.isUp = true
 
+	// If the engine failed during a snapshot, we may have left a frozen file system. This is a good opportunity to
+	// attempt to unfreeze it.
+	t.attemptUnfreezeFileSystem()
+
 	return nil
 }
 
 func (t *Tgt) Shutdown() error {
+	// If the engine is shutting down during a snapshot (in the preparation phase, before the snapshot operation obtains
+	// a lock) we may have left a frozen file system. This is a good opportunity to unfreeze it.
+	t.attemptUnfreezeFileSystem()
+
 	if t.dev != nil {
 		if err := t.dev.Shutdown(); err != nil {
 			return err
@@ -137,4 +149,29 @@ func (t *Tgt) Expand(size int64) error {
 		return t.dev.Expand(size)
 	}
 	return nil
+}
+
+// attemptUnfreezeFileSystem attempts to identify a mountPoint for the Longhorn device and unfreeze it. Under normal
+// conditions, it will not find a file system, and if it finds a file system, it will not be frozen.
+// attemptUnfreezeFileSystem is only relevant for volumes run with a tgt-blockdev frontend, as only these volumes have a
+// Longhorn device on the node to format and mount.
+func (t *Tgt) attemptUnfreezeFileSystem() {
+	// We do not need to switch to the host mount namespace to get mount points here. Usually, longhorn-engine runs in a
+	// container that has / bind mounted to /host with at least HostToContainer (rslave) propagation.
+	// - If it does not, we likely can't do a namespace swap anyway, since we don't have access to /host/proc.
+	// - If it does, we just need to know where in the container we can access the mount points to unfreeze.
+	if t.frontendName == types.EngineFrontendBlockDev {
+		mounter := mount.New("")
+		mountPoints, err := mounter.List()
+		if err != nil {
+			logrus.WithError(err).Warn("Failed to list mount points while deciding whether or not unfreeze")
+		}
+		endpoint := t.Endpoint()
+		for _, mountPoint := range mountPoints {
+			if mountPoint.Device == endpoint {
+				util.AttemptUnfreezeFileSystem(mountPoint.Path, lhexec.NewExecutor(), false, logrus.New())
+				break
+			}
+		}
+	}
 }

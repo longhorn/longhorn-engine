@@ -52,7 +52,11 @@ func SnapshotCreateCmd() cli.Command {
 		Flags: []cli.Flag{
 			cli.StringSliceFlag{
 				Name:  "label",
-				Usage: "specify labels, in the format of `--label key1=value1 --label key2=value2`",
+				Usage: "Specify labels, in the format of `--label key1=value1 --label key2=value2`",
+			},
+			cli.BoolFlag{
+				Name:  "freeze-fs",
+				Usage: "Freeze the file system on the root partition before taking the snapshot",
 			},
 		},
 		Action: func(c *cli.Context) {
@@ -245,13 +249,15 @@ func createSnapshot(c *cli.Context) error {
 		}
 	}
 
+	freezeFS := c.Bool("freeze-fs")
+
 	controllerClient, err := getControllerClient(c)
 	if err != nil {
 		return err
 	}
 	defer controllerClient.Close()
 
-	id, err := controllerClient.VolumeSnapshot(name, labelMap)
+	id, err := controllerClient.VolumeSnapshot(name, labelMap, freezeFS)
 	if err != nil {
 		return err
 	}
