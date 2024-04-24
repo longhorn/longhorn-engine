@@ -115,7 +115,7 @@ RUN cd integration && \
 
 # Build longhorn-instance-manager for integration testing
 RUN cd /go/src/github.com/longhorn && \
-    git clone https://github.com/longhorn/longhorn-instance-manager.git && \
+    git clone https://github.com/ejweber/longhorn-instance-manager.git -b 2187-fsfreeze && \
     cd longhorn-instance-manager && \
     go build -o ./longhorn-instance-manager -tags netgo -ldflags "-linkmode external -extldflags -static" && \
     install longhorn-instance-manager /usr/local/bin
