@@ -2,8 +2,7 @@ pull_request_rules:
 - name: Automatically merge PRs
   conditions:
   - check-success=continuous-integration/drone/pr
-  - check-success=DCO
-  - "#approved-reviews-by>=1"
+  - "#approved-reviews-by>=2"
   - approved-reviews-by=@longhorn/maintainer
   actions:
     merge:
