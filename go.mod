@@ -1,6 +1,8 @@
 module github.com/longhorn/longhorn-engine
 
-go 1.21
+go 1.22.0
+
+toolchain go1.22.2
 
 require (
 	github.com/docker/go-units v0.3.3
@@ -8,19 +10,19 @@ require (
 	github.com/golang/protobuf v1.5.4
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
-	github.com/longhorn/backupstore v0.0.0-20240417071544-3bd377eeefeb
-	github.com/longhorn/go-common-libs v0.0.0-20240319112414-b75404dc7fbc
-	github.com/longhorn/go-iscsi-helper v0.0.0-20240308033847-bc3aab599425
-	github.com/longhorn/sparse-tools v0.0.0-20240228120902-ce8c4c2e71ca
+	github.com/longhorn/backupstore v0.0.0-20240424161249-e41df5df41b8
+	github.com/longhorn/go-common-libs v0.0.0-20240424161136-9c8ac100115e
+	github.com/longhorn/go-iscsi-helper v0.0.0-20240424161154-ba59a8776a78
+	github.com/longhorn/sparse-tools v0.0.0-20240424162924-2651ad40ad19
 	github.com/moby/moby v23.0.10+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
 	github.com/rancher/go-rancher v0.1.1-0.20190307222549-9756097e5e4c
 	github.com/sirupsen/logrus v1.9.3
 	github.com/urfave/cli v1.22.14
-	golang.org/x/net v0.20.0
-	golang.org/x/sys v0.18.0
-	google.golang.org/grpc v1.62.1
+	golang.org/x/net v0.21.0
+	golang.org/x/sys v0.19.0
+	google.golang.org/grpc v1.63.2
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 	gopkg.in/cheggaaa/pb.v2 v2.0.7
 )
@@ -37,7 +39,7 @@ require (
 	github.com/felixge/httpsnoop v1.0.3 // indirect
 	github.com/gammazero/deque v0.2.1 // indirect
 	github.com/gammazero/workerpool v1.1.3 // indirect
-	github.com/go-logr/logr v1.3.0 // indirect
+	github.com/go-logr/logr v1.4.1 // indirect
 	github.com/go-ole/go-ole v1.2.6 // indirect
 	github.com/google/uuid v1.6.0 // indirect
 	github.com/gorilla/context v1.1.1 // indirect
@@ -58,12 +60,12 @@ require (
 	github.com/prometheus/procfs v0.9.0 // indirect
 	github.com/rogpeppe/go-internal v1.10.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	github.com/shirou/gopsutil/v3 v3.24.2 // indirect
+	github.com/shirou/gopsutil/v3 v3.24.3 // indirect
 	github.com/slok/goresilience v0.2.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20240123012728-ef4313101c80 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20240227224415-6ceb2ff114de // indirect
 	google.golang.org/protobuf v1.33.0 // indirect
 	gopkg.in/VividCortex/ewma.v1 v1.1.1 // indirect
 	gopkg.in/fatih/color.v1 v1.7.0 // indirect
@@ -72,7 +74,7 @@ require (
 	gopkg.in/mattn/go-runewidth.v0 v0.0.4 // indirect
 	gotest.tools/v3 v3.4.0 // indirect
 	k8s.io/apimachinery v0.27.1 // indirect
-	k8s.io/klog/v2 v2.110.1 // indirect
-	k8s.io/mount-utils v0.29.3 // indirect
+	k8s.io/klog/v2 v2.120.1 // indirect
+	k8s.io/mount-utils v0.30.0 // indirect
 	k8s.io/utils v0.0.0-20230726121419-3b25d923346b // indirect
 )
