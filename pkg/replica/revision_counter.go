@@ -36,14 +36,21 @@ func (r *Replica) readRevisionCounter() (int64, error) {
 	return counter, nil
 }
 
+var revisionCounterBuf = sparse.AllocateAligned(revisionBlockSize)
+
 func (r *Replica) writeRevisionCounter(counter int64) error {
 	if r.revisionFile == nil {
 		return fmt.Errorf("BUG: revision file wasn't initialized")
 	}
 
-	buf := make([]byte, revisionBlockSize)
-	copy(buf, []byte(strconv.FormatInt(counter, 10)))
-	_, err := r.revisionFile.WriteAt(buf, 0)
+	counterBytes := []byte(strconv.FormatInt(counter, 10))
+	copy(revisionCounterBuf, counterBytes)
+	// Need to clear the part of the slice left over from the previous function call.
+	// The maximum length of the string representation of an int64 is 20 bytes so only need to clear upto 20 bytes
+	for i := len(counterBytes); i < 20; i++ {
+		revisionCounterBuf[i] = 0
+	}
+	_, err := r.revisionFile.WriteAt(revisionCounterBuf, 0)
 	if err != nil {
 		return errors.Wrap(err, "failed to write to revision counter file")
 	}
