@@ -45,8 +45,10 @@ type Controller struct {
 	salvageRequested        bool
 
 	unmapMarkSnapChainRemoved bool
-	snapshotMaxCount          int
-	SnapshotMaxSize           int64
+
+	snapshotFreezeLock sync.Mutex
+	snapshotMaxCount   int
+	SnapshotMaxSize    int64
 
 	GRPCAddress string
 	GRPCServer  *grpc.Server
@@ -200,14 +202,14 @@ func (c *Controller) Snapshot(name string, labels map[string]string, shouldFreez
 	log.Info("Starting snapshot")
 
 	var endpoint string
-	c.Lock()
+	c.RLock()
 	// Check now to avoid freezing or syncing unnecessarily. Also check again later as originally designed.
 	err := c.canDoSnapshot()
 	if c.frontend.FrontendName() == types.EngineFrontendBlockDev {
 		// It is meaningless to try to freeze file systems for a tgt-iscsi endpoint.
 		endpoint = c.Endpoint()
 	}
-	c.Unlock()
+	c.RUnlock()
 	if err != nil {
 		return "", err
 	}
@@ -230,6 +232,13 @@ func (c *Controller) Snapshot(name string, labels map[string]string, shouldFreez
 	// by us, so we can be confident it is safe to freeze. This approach is preferable to locking some source mount
 	// point with an open file descriptor because it cannot be circumvented by a lazy unmount at the source.
 	if shouldFreeze && endpoint != "" {
+		if !c.snapshotFreezeLock.TryLock() {
+			// Two simultaneous freeze attempts could cause weird behaviors (e.g. the second operation could bind mount
+			// on top of the bind mount created by the first). There is no particular reason we should support multiple
+			// snapshots in quick succession, so just return.
+			return "", errors.New("file system is already being frozen for a different snapshot")
+		}
+		defer c.snapshotFreezeLock.Unlock()
 		mounted, frozen, err = tryFreeze(endpoint, freezePoint, mounter, exec, log)
 		if err != nil {
 			return "", err
@@ -250,6 +259,10 @@ func (c *Controller) Snapshot(name string, labels map[string]string, shouldFreez
 
 	c.Lock()
 	defer c.Unlock()
+	if err := c.canDoSnapshot(); err != nil {
+		return "", err
+	}
+
 	created := util.Now()
 	if err := c.handleErrorNoLock(c.backend.Snapshot(name, true, created, labels)); err != nil {
 		return "", err
