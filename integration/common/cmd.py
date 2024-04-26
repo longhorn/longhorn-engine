@@ -27,8 +27,9 @@ def info_get(url):
     return json.loads(subprocess.check_output(cmd, encoding='utf-8'))
 
 
-def snapshot_create(url):
-    cmd = [_bin(), '--url', url, '--debug', 'snapshot', 'create']
+def snapshot_create(url, freeze_fs = False):
+    cmd = [_bin(), '--url', url, '--debug', 'snapshot', 'create',
+           f'--freeze-fs={freeze_fs}']
     return subprocess.check_output(cmd, encoding='utf-8').strip()
 
 

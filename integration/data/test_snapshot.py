@@ -28,6 +28,8 @@ from common.constants import (
     RETRY_COUNTS_SHORT, RETRY_INTERVAL_SHORT
 )
 
+from common.util import get_process_log_lines
+
 from data.snapshot_tree import snapshot_tree_build, snapshot_tree_verify_node
 
 
@@ -402,7 +404,7 @@ def test_snapshot_mounted_filesystem(grpc_controller,  # NOQA
     6. Take snapshot 2 (test file included)
     7. Overwrite test file on the filesystem
     8. Take snapshot 3 (test file changed)
-    9. Observe that logs of engine `Filesystem frozen / unfrozen`
+    9. Observe that logs of engine include "Freezing" and "Unfreezing"
     10. Validate snapshots are created
     11. Restore snapshot 1, validate test file missing
     12. Restore snapshot 2, validate test file original content
@@ -415,7 +417,9 @@ def test_snapshot_mounted_filesystem(grpc_controller,  # NOQA
 
 def snapshot_mounted_filesystem_test(volume_name, dev, address, engine_name):  # NOQA
     dev_path = dev.dev
-    mnt_path = "/tmp/mnt-" + volume_name
+    # /tmp is bind mounted into the container at /host/tmp. This simulates
+    # the typical running environment of instance-manager with "-v /:/host".
+    mnt_path = "/tmp/" + volume_name
     test_file = mnt_path + "/test"
     length = 128
 
@@ -435,15 +439,29 @@ def snapshot_mounted_filesystem_test(volume_name, dev, address, engine_name):  #
     # create snapshot1 with empty fs
     # NOTE: we cannot use checksum_dev since it assumes
     #  asci data for device data instead of raw bytes
-    snap1 = cmd.snapshot_create(address)
+    snap1 = cmd.snapshot_create(address, True)
 
     # create snapshot2 with a new test file
     test2_checksum = write_filesystem_file(length, test_file)
-    snap2 = cmd.snapshot_create(address)
+    snap2 = cmd.snapshot_create(address, True)
 
     # create snapshot3 overwriting the test file
     test3_checksum = write_filesystem_file(length, test_file)
-    snap3 = cmd.snapshot_create(address)
+    snap3 = cmd.snapshot_create(address, True)
+
+    # Observe that logs of engine include "Freezing" and "Unfreezing"
+    freeze_lines_count = unfreeze_lines_count = 0
+    for line in get_process_log_lines(engine_name):
+        if 'Freezing file system' in line:
+            freeze_lines_count += 1
+        if 'Unfreezing file system' in line:
+            unfreeze_lines_count += 1
+    # We only log these if we have detected a mounted Longhorn file system,
+    # done a bind mount, and are immediately preparing to freeze. If we did
+    # this for all three snapshots (and the snapshots themselves didn't fail),
+    # it's a good guarantee that whole of the freezing logic is working.
+    assert freeze_lines_count == 3
+    assert unfreeze_lines_count == 3
 
     # verify existence of the snapshots
     snapshots = cmd.snapshot_ls(address)

@@ -79,3 +79,5 @@ EXPANSION_DISK_TMP_META_NAME = \
 EXPANSION_DISK_NAME = "volume-snap-expand-%d.img" % EXPANDED_SIZE
 
 MESSAGE_TYPE_ERROR = "error"
+
+LOGS_DIR = "/var/log/instances/"

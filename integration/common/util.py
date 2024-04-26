@@ -1,6 +1,7 @@
 import os
 import hashlib
 
+from common.constants import LOGS_DIR
 
 def file(f):
     return os.path.join(_base(), '../../{}'.format(f))
@@ -37,3 +38,10 @@ def read_file(file_path, offset, length):
 
 def checksum_data(data):
     return hashlib.sha512(data).hexdigest()
+
+def get_process_log_lines(process_name):
+    file_path = LOGS_DIR + process_name + '.log'
+    assert os.path.exists(file_path)
+    with open(file_path, 'r') as file:
+        lines = file.readlines()
+        return lines
