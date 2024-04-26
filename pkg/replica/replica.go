@@ -1278,6 +1278,15 @@ func (r *Replica) WriteAt(buf []byte, offset int64) (int, error) {
 		return 0, fmt.Errorf("cannot write on read-only replica")
 	}
 
+	// Increase the revision counter optimistically in a separate goroutine since most of the time write operations will succeed.
+	// Once the write operation fails, the revision counter will be wrongly increased by 1. It means that the revision counter is not accurate.
+	// Actually, the revision counter is not accurate even without this optimistic increment since we cannot make data write operation and the revision counter increment atomic.
+	go func() {
+		if !r.revisionCounterDisabled {
+			r.revisionCounterReqChan <- true
+		}
+	}()
+
 	r.RLock()
 	r.info.Dirty = true
 	c, err := r.volume.WriteAt(buf, offset)
@@ -1287,7 +1296,6 @@ func (r *Replica) WriteAt(buf []byte, offset int64) (int, error) {
 	}
 
 	if !r.revisionCounterDisabled {
-		r.revisionCounterReqChan <- true
 		err = <-r.revisionCounterAckChan
 	}
 
@@ -1310,6 +1318,12 @@ func (r *Replica) UnmapAt(length uint32, offset int64) (n int, err error) {
 	if r.readOnly {
 		return 0, fmt.Errorf("can not unmap on read-only replica")
 	}
+
+	go func() {
+		if !r.revisionCounterDisabled {
+			r.revisionCounterReqChan <- true
+		}
+	}()
 
 	unmappedSize, err := func() (int, error) {
 		r.Lock()
@@ -1348,7 +1362,6 @@ func (r *Replica) UnmapAt(length uint32, offset int64) (n int, err error) {
 	}
 
 	if !r.revisionCounterDisabled {
-		r.revisionCounterReqChan <- true
 		err = <-r.revisionCounterAckChan
 	}
 
