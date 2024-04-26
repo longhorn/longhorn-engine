@@ -12,6 +12,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"syscall"
 
 	"github.com/pkg/errors"
@@ -53,11 +54,11 @@ type Replica struct {
 	activeDiskData []*disk
 	readOnly       bool
 
-	revisionLock            sync.Mutex
-	revisionCache           int64
+	revisionCache           atomic.Int64
 	revisionFile            *sparse.DirectFileIoProcessor
-	revisionRefreshed       bool
 	revisionCounterDisabled bool
+	revisionCounterReqChan  chan bool
+	revisionCounterAckChan  chan error
 
 	unmapMarkDiskChainRemoved bool
 
@@ -168,6 +169,8 @@ func construct(readonly bool, size, sectorSize int64, dir, head string, backingF
 		diskChildrenMap:           map[string]map[string]bool{},
 		readOnly:                  readonly,
 		revisionCounterDisabled:   disableRevCounter,
+		revisionCounterReqChan:    make(chan bool, 1024), // Buffered channel to avoid blocking
+		revisionCounterAckChan:    make(chan error),
 		unmapMarkDiskChainRemoved: unmapMarkDiskChainRemoved,
 		snapshotMaxCount:          snapshotMaxCount,
 		snapshotMaxSize:           snapshotMaxSize,
@@ -1284,12 +1287,11 @@ func (r *Replica) WriteAt(buf []byte, offset int64) (int, error) {
 	}
 
 	if !r.revisionCounterDisabled {
-		if err := r.increaseRevisionCounter(); err != nil {
-			return c, err
-		}
+		r.revisionCounterReqChan <- true
+		err = <-r.revisionCounterAckChan
 	}
 
-	return c, nil
+	return c, err
 }
 
 func (r *Replica) ReadAt(buf []byte, offset int64) (int, error) {
@@ -1346,12 +1348,11 @@ func (r *Replica) UnmapAt(length uint32, offset int64) (n int, err error) {
 	}
 
 	if !r.revisionCounterDisabled {
-		if err := r.increaseRevisionCounter(); err != nil {
-			return 0, err
-		}
+		r.revisionCounterReqChan <- true
+		err = <-r.revisionCounterAckChan
 	}
 
-	return unmappedSize, nil
+	return unmappedSize, err
 }
 
 func (r *Replica) ListDisks() map[string]DiskInfo {
