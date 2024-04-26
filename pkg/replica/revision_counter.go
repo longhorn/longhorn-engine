@@ -8,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/pkg/errors"
-	"github.com/sirupsen/logrus"
 
 	"github.com/longhorn/sparse-tools/sparse"
 )
@@ -68,9 +67,6 @@ func (r *Replica) initRevisionCounter() error {
 		return nil
 	}
 
-	r.revisionLock.Lock()
-	defer r.revisionLock.Unlock()
-
 	if _, err := os.Stat(r.diskPath(revisionCounterFile)); err != nil {
 		if !os.IsNotExist(err) {
 			return err
@@ -90,11 +86,29 @@ func (r *Replica) initRevisionCounter() error {
 	if err != nil {
 		return err
 	}
-	// Don't use r.revisionCache directly
-	// r.revisionCache is an internal cache, to avoid read from disk
-	// every time when counter needs to be updated.
-	// And it's protected by revisionLock
-	r.revisionCache = counter
+	// To avoid read from disk, apply atomic operations against the internal cache r.revisionCache every time counter needs to be updated
+	r.revisionCache.Swap(counter)
+
+	go func() {
+		if r.revisionCounterDisabled {
+			return
+		}
+		var err error
+		for {
+			select {
+			case <-r.revisionCounterReqChan:
+				err = r.writeRevisionCounter(r.revisionCache.Load() + 1)
+				r.revisionCounterAckChan <- err
+				if err != nil {
+					close(r.revisionCounterAckChan)
+					return
+				} else {
+					r.revisionCache.Add(1)
+				}
+			}
+		}
+	}()
+
 	return nil
 }
 
@@ -103,50 +117,17 @@ func (r *Replica) IsRevCounterDisabled() bool {
 }
 
 func (r *Replica) GetRevisionCounter() int64 {
-	r.revisionLock.Lock()
-	defer r.revisionLock.Unlock()
-
-	counter, err := r.readRevisionCounter()
-	if err != nil {
-		logrus.WithError(err).Error("Failed to get revision counter")
-		// -1 will result in the replica to be discarded
-		return -1
-	}
-	r.revisionCache = counter
-	return counter
+	return r.revisionCache.Load()
 }
 
+// SetRevisionCounter can be invoked only when there is no pending IO.
+// Typically, its caller, the engine process, will hold the lock before calling this function.
+// And the engine lock holding means all writable replicas finished their IO.
+// In other words, the engine lock holding means there is no pending IO.
 func (r *Replica) SetRevisionCounter(counter int64) error {
-	r.revisionLock.Lock()
-	defer r.revisionLock.Unlock()
-
 	if err := r.writeRevisionCounter(counter); err != nil {
 		return err
 	}
-
-	r.revisionCache = counter
-	return nil
-}
-
-func (r *Replica) increaseRevisionCounter() error {
-	r.revisionLock.Lock()
-	defer r.revisionLock.Unlock()
-
-	if !r.revisionRefreshed {
-		counter, err := r.readRevisionCounter()
-		if err != nil {
-			return err
-		}
-		logrus.Infof("Reloading the revision counter before processing the first write, the current revision cache is %v, the latest revision counter in file is %v",
-			r.revisionCache, counter)
-		r.revisionCache = counter
-		r.revisionRefreshed = true
-	}
-
-	if err := r.writeRevisionCounter(r.revisionCache + 1); err != nil {
-		return err
-	}
-
-	r.revisionCache++
+	r.revisionCache.Swap(counter)
 	return nil
 }
