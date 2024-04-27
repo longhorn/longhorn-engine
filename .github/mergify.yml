@@ -18,6 +18,7 @@ pull_request_rules:
 
 - name: Automatically approve Renovate PRs
   conditions:
+  - check-success=continuous-integration/drone/pr
   - author = renovate[bot]
   actions:
     review:
