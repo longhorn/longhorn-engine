@@ -10,10 +10,10 @@ require (
 	github.com/golang/protobuf v1.5.4
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
-	github.com/longhorn/backupstore v0.0.0-20240426093637-ac3867f121c0
-	github.com/longhorn/go-common-libs v0.0.0-20240426033718-77710d2242df
-	github.com/longhorn/go-iscsi-helper v0.0.0-20240426065530-1ff1e567f43d
-	github.com/longhorn/sparse-tools v0.0.0-20240424162924-2651ad40ad19
+	github.com/longhorn/backupstore v0.0.0-20240427164602-c8721e8ea31a
+	github.com/longhorn/go-common-libs v0.0.0-20240427164621-70d1933bfa90
+	github.com/longhorn/go-iscsi-helper v0.0.0-20240427164656-e9439c0018ce
+	github.com/longhorn/sparse-tools v0.0.0-20240427164751-a7b9f1b2c8a8
 	github.com/moby/moby v23.0.10+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
