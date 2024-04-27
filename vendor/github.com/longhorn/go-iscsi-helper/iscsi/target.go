@@ -12,8 +12,8 @@ import (
 
 	"github.com/pkg/errors"
 
-	lhtypes "github.com/longhorn/go-common-libs/types"
 	lhexec "github.com/longhorn/go-common-libs/exec"
+	lhtypes "github.com/longhorn/go-common-libs/types"
 )
 
 var (
@@ -385,12 +385,11 @@ func FindNextAvailableTargetID() (int, error) {
 		System information:
 		...
 	*/
-	tid := -1
 	scanner := bufio.NewScanner(strings.NewReader(output))
 	for scanner.Scan() {
 		if strings.HasPrefix(scanner.Text(), "Target ") {
 			tidString := strings.Fields(strings.Split(scanner.Text(), ":")[0])[1]
-			tid, err = strconv.Atoi(tidString)
+			tid, err := strconv.Atoi(tidString)
 			if err != nil {
 				return -1, errors.Wrapf(err, "BUG: Failed to parse %s", tidString)
 			}

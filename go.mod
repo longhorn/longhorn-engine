@@ -10,9 +10,9 @@ require (
 	github.com/golang/protobuf v1.5.4
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
-	github.com/longhorn/backupstore v0.0.0-20240424161249-e41df5df41b8
-	github.com/longhorn/go-common-libs v0.0.0-20240424161136-9c8ac100115e
-	github.com/longhorn/go-iscsi-helper v0.0.0-20240424161154-ba59a8776a78
+	github.com/longhorn/backupstore v0.0.0-20240426093637-ac3867f121c0
+	github.com/longhorn/go-common-libs v0.0.0-20240426033718-77710d2242df
+	github.com/longhorn/go-iscsi-helper v0.0.0-20240426065530-1ff1e567f43d
 	github.com/longhorn/sparse-tools v0.0.0-20240424162924-2651ad40ad19
 	github.com/moby/moby v23.0.10+incompatible
 	github.com/pkg/errors v0.9.1
@@ -20,7 +20,7 @@ require (
 	github.com/rancher/go-rancher v0.1.1-0.20190307222549-9756097e5e4c
 	github.com/sirupsen/logrus v1.9.3
 	github.com/urfave/cli v1.22.14
-	golang.org/x/net v0.21.0
+	golang.org/x/net v0.23.0
 	golang.org/x/sys v0.19.0
 	google.golang.org/grpc v1.63.2
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c

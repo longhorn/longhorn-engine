@@ -220,7 +220,6 @@ func getVolumeNames(jobQueues *workerpool.WorkerPool, driver BackupStoreDriver) 
 				Payload: lv2Paths,
 				Err:     nil,
 			}
-			return
 		})
 	}
 
@@ -258,7 +257,6 @@ func getVolumeNames(jobQueues *workerpool.WorkerPool, driver BackupStoreDriver) 
 					Payload: volumeNames,
 					Err:     nil,
 				}
-				return
 			})
 		}
 	}
