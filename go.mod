@@ -10,17 +10,17 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
-	github.com/longhorn/backupstore v0.0.0-20240417071544-3bd377eeefeb
-	github.com/longhorn/go-common-libs v0.0.0-20240422073843-1578e42a50bd
-	github.com/longhorn/go-iscsi-helper v0.0.0-20240417063713-e20db15bb989
-	github.com/longhorn/sparse-tools v0.0.0-20240228120902-ce8c4c2e71ca
+	github.com/longhorn/backupstore v0.0.0-20240426093637-ac3867f121c0
+	github.com/longhorn/go-common-libs v0.0.0-20240426033718-77710d2242df
+	github.com/longhorn/go-iscsi-helper v0.0.0-20240426065530-1ff1e567f43d
+	github.com/longhorn/sparse-tools v0.0.0-20240424162924-2651ad40ad19
 	github.com/moby/moby v23.0.10+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
 	github.com/rancher/go-rancher v0.1.1-0.20190307222549-9756097e5e4c
 	github.com/sirupsen/logrus v1.9.3
 	github.com/urfave/cli v1.22.14
-	golang.org/x/net v0.21.0
+	golang.org/x/net v0.23.0
 	golang.org/x/sys v0.19.0
 	google.golang.org/grpc v1.63.2
 	google.golang.org/protobuf v1.33.0
