@@ -308,6 +308,7 @@ func (d *LonghornDevice) FinishUpgrade() (err error) {
 			err = errors.Wrapf(err, "error waiting for the socket")
 		}
 		break
+	default:
 	}
 	close(stopCh)
 	close(socketError)
@@ -448,17 +449,14 @@ func (d *LonghornDevice) Expand(size int64) (err error) {
 			return fmt.Errorf("device %v: fail to refresh iSCSI initiator: %v", d.name, err)
 		}
 		logrus.Infof("Device %v: Expanded frontend %v size to %d", d.name, d.frontend, size)
-		break
 	case types.FrontendTGTISCSI:
 		logrus.Infof("Device %v: Frontend is expanding the target %v", d.name, d.scsiDevice.Target)
 		if err := d.scsiDevice.ExpandTarget(size); err != nil {
 			return fmt.Errorf("device %v: fail to expand target %v: %v", d.name, d.scsiDevice.Target, err)
 		}
 		logrus.Infof("Device %v: Expanded frontend %v size to %d, users need to refresh/rescan the initiator by themselves", d.name, d.frontend, size)
-		break
 	case "":
 		logrus.Infof("Device %v: skip expansion since the frontend not enabled", d.name)
-		break
 	default:
 		return fmt.Errorf("failed to expand device %v: unknown frontend %v", d.name, d.frontend)
 	}

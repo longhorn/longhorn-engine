@@ -333,7 +333,7 @@ func EnsureMountPoint(Kind, mountPoint string, mounter mount.Interface, log logr
 		}
 	}()
 
-	notMounted, err := mount.IsNotMountPoint(mounter, mountPoint)
+	isMoundPoint, err := mounter.IsMountPoint(mountPoint)
 	if err == fs.ErrNotExist {
 		return false, nil
 	}
@@ -352,10 +352,10 @@ func EnsureMountPoint(Kind, mountPoint string, mounter mount.Interface, log logr
 		if mntErr := cleanupMount(mountPoint, mounter, log); mntErr != nil {
 			return true, errors.Wrapf(mntErr, "failed to clean up corrupted mount point %v", mountPoint)
 		}
-		notMounted = true
+		isMoundPoint = false
 	}
 
-	if notMounted {
+	if !isMoundPoint {
 		return false, nil
 	}
 
@@ -400,36 +400,30 @@ func MountWithTimeout(mounter mount.Interface, source string, target string, fst
 
 // CleanUpMountPoints tries to clean up all existing mount points for existing backup stores
 func CleanUpMountPoints(mounter mount.Interface, log logrus.FieldLogger) error {
-	var errs error
-
-	filepath.Walk(MountDir, func(path string, info os.FileInfo, err error) error {
+	return filepath.Walk(MountDir, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			errs = multierr.Append(errs, errors.Wrapf(err, "failed to get file info of %v", path))
-			return nil
+			return errors.Wrapf(err, "failed to get file info of %v", path)
 		}
 
 		if !info.IsDir() {
 			return nil
 		}
 
-		notMounted, err := mount.IsNotMountPoint(mounter, path)
+		isMountPoint, err := mounter.IsMountPoint(path)
 		if err != nil {
-			errs = multierr.Append(errs, errors.Wrapf(err, "failed to check if %s is not mounted", path))
-			return nil
+			return errors.Wrapf(err, "failed to check if %s is not mounted", path)
 		}
 
-		if notMounted {
+		if !isMountPoint {
 			return nil
 		}
 
 		if err := cleanupMount(path, mounter, log); err != nil {
-			errs = multierr.Append(errs, errors.Wrapf(err, "failed to clean up mount point %v", path))
+			return errors.Wrapf(err, "failed to clean up mount point %v", path)
 		}
 
 		return nil
 	})
-
-	return errs
 }
 
 func CheckBackupType(backupTarget string) (string, error) {
