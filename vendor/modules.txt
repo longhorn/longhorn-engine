@@ -74,7 +74,7 @@ github.com/c9s/goprocinfo/linux
 # github.com/cespare/xxhash/v2 v2.2.0
 ## explicit; go 1.11
 github.com/cespare/xxhash/v2
-# github.com/cpuguy83/go-md2man/v2 v2.0.2
+# github.com/cpuguy83/go-md2man/v2 v2.0.4
 ## explicit; go 1.11
 github.com/cpuguy83/go-md2man/v2/md2man
 # github.com/docker/go-units v0.3.3
@@ -246,7 +246,7 @@ github.com/slok/goresilience
 github.com/slok/goresilience/errors
 github.com/slok/goresilience/metrics
 github.com/slok/goresilience/timeout
-# github.com/urfave/cli v1.22.14
+# github.com/urfave/cli v1.22.15
 ## explicit; go 1.11
 github.com/urfave/cli
 # github.com/yusufpapurcu/wmi v1.2.4
