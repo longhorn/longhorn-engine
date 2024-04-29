@@ -190,8 +190,8 @@ func (c *Controller) addReplica(address string, snapshotRequired bool, mode type
 	return c.addReplicaNoLock(newBackend, address, snapshotRequired, mode)
 }
 
-// If shouldFreeze, Snapshot attempts to freeze the mounted file system on the volume's root partition. If it fails to
-// do so, Snapshot attempts to clean up and returns an error. If not shouldFreeze or if a mounted file system is not
+// If shouldFreeze, Snapshot attempts to freeze the mounted filesystem on the volume's root partition. If it fails to
+// do so, Snapshot attempts to clean up and returns an error. If not shouldFreeze or if a mounted filesystem is not
 // detected on the volume's root partition, Snapshot does a best effort sync and takes a snapshot.
 func (c *Controller) Snapshot(name string, labels map[string]string, shouldFreeze bool) (string, error) {
 	if name == "" {
@@ -206,7 +206,7 @@ func (c *Controller) Snapshot(name string, labels map[string]string, shouldFreez
 	// Check now to avoid freezing or syncing unnecessarily. Also check again later as originally designed.
 	err := c.canDoSnapshot()
 	if c.frontend.FrontendName() == types.EngineFrontendBlockDev {
-		// It is meaningless to try to freeze file systems for a tgt-iscsi endpoint.
+		// It is meaningless to try to freeze filesystems for a tgt-iscsi endpoint.
 		endpoint = c.Endpoint()
 	}
 	c.RUnlock()
@@ -220,10 +220,10 @@ func (c *Controller) Snapshot(name string, labels map[string]string, shouldFreez
 	exec := lhexec.NewExecutor()
 	defer func() {
 		if frozen {
-			util.AttemptUnfreezeFileSystem(freezePoint, exec, true, log)
+			util.AttemptUnfreezeFilesystem(freezePoint, exec, true, log)
 		}
 		if mounted {
-			attemptUnmountFileSystem(freezePoint, mounter, log)
+			attemptUnmountFilesystem(freezePoint, mounter, log)
 		}
 	}()
 
@@ -236,7 +236,7 @@ func (c *Controller) Snapshot(name string, labels map[string]string, shouldFreez
 			// Two simultaneous freeze attempts could cause weird behaviors (e.g. the second operation could bind mount
 			// on top of the bind mount created by the first). There is no particular reason we should support multiple
 			// snapshots in quick succession, so just return.
-			return "", errors.New("file system is already being frozen for a different snapshot")
+			return "", errors.New("filesystem is already being frozen for a different snapshot")
 		}
 		defer c.snapshotFreezeLock.Unlock()
 		mounted, frozen, err = tryFreeze(endpoint, freezePoint, mounter, exec, log)
@@ -244,7 +244,7 @@ func (c *Controller) Snapshot(name string, labels map[string]string, shouldFreez
 			return "", err
 		}
 		if !frozen {
-			log.Debug("Did not detect mounted file system while snapshotting; continuing without freeze")
+			log.Debug("Did not detect mounted filesystem while snapshotting; continuing without freeze")
 		}
 	}
 	if !frozen {
@@ -1346,7 +1346,7 @@ func getAverageLatency(totalLatency, iops uint64) uint64 {
 	return totalLatency / iops
 }
 
-// tryFreeze attempts to bind mount an existing mount point to freezePoint, then freeze the file system from
+// tryFreeze attempts to bind mount an existing mount point to freezePoint, then freeze the filesystem from
 // freezePoint. tryFreeze returns booleans mounted and frozen so the caller can attempt to clean up depending on its
 // progress. tryFreeze does not return an error if there are no eligible mount points to freeze.
 func tryFreeze(devicePath string, freezePoint string, mounter mount.Interface, exec lhexec.ExecuteInterface,
@@ -1362,18 +1362,18 @@ func tryFreeze(devicePath string, freezePoint string, mounter mount.Interface, e
 
 	for _, sourcePoint := range sourcePoints {
 		if sourcePoint.Device != devicePath {
-			continue // We are iterating through the list of all mounted file systems.
+			continue // We are iterating through the list of all mounted filesystems.
 		}
-		log.Debugf("Mounting file system to %v", freezePoint)
-		if err = attemptBindMountFileSystem(sourcePoint.Path, freezePoint, mounter); err != nil {
+		log.Debugf("Mounting filesystem to %v", freezePoint)
+		if err = attemptBindMountFilesystem(sourcePoint.Path, freezePoint, mounter); err != nil {
 			// There's no particular reason to think we will be successful with a different sourcePoint.
-			err = errors.Wrapf(err, "failed to bind mount file system from %v to %v", sourcePoint, freezePoint)
+			err = errors.Wrapf(err, "failed to bind mount filesystem from %v to %v", sourcePoint, freezePoint)
 			return
 		}
 		mounted = true
 
-		// We must verify it is still save to freeze the file system. If the source mount was unmounted by someone else
-		// before we bind mounted, the bind mount could refer to the root file system.
+		// We must verify it is still save to freeze the filesystem. If the source mount was unmounted by someone else
+		// before we bind mounted, the bind mount could refer to the root filesystem.
 		var device string
 		device, _, err = mount.GetDeviceNameFromMount(mounter, freezePoint)
 		if err != nil || device != devicePath {
@@ -1383,8 +1383,8 @@ func tryFreeze(devicePath string, freezePoint string, mounter mount.Interface, e
 			return
 		}
 
-		log.Infof("Freezing file system mounted at %v", freezePoint)
-		if err = util.AttemptFreezeFileSystem(freezePoint, exec); err == nil {
+		log.Infof("Freezing filesystem mounted at %v", freezePoint)
+		if err = util.AttemptFreezeFilesystem(freezePoint, exec); err == nil {
 			frozen = true
 		}
 		break
@@ -1393,10 +1393,10 @@ func tryFreeze(devicePath string, freezePoint string, mounter mount.Interface, e
 	return
 }
 
-// attemptBindMountFileSystem attempts to bind mount sourcePoint to mountPoint. attemptBindMountFileSystem considers it
-// an error if mountPoint already has a file system mounted. This likely indicates another freeze is in progress. We do
+// attemptBindMountFilesystem attempts to bind mount sourcePoint to mountPoint. attemptBindMountFilesystem considers it
+// an error if mountPoint already has a filesystem mounted. This likely indicates another freeze is in progress. We do
 // not want to double mount, etc.
-func attemptBindMountFileSystem(sourcePoint, mountPoint string, mounter mount.Interface) error {
+func attemptBindMountFilesystem(sourcePoint, mountPoint string, mounter mount.Interface) error {
 	if err := os.MkdirAll(mountPoint, 0700); err != nil {
 		return err
 	}
@@ -1406,17 +1406,17 @@ func attemptBindMountFileSystem(sourcePoint, mountPoint string, mounter mount.In
 		return err
 	}
 	if isMountPoint {
-		return errors.Wrapf(err, "file system is already mounted to %v", mountPoint)
+		return errors.Wrapf(err, "filesystem is already mounted to %v", mountPoint)
 	}
 
 	return mounter.Mount(sourcePoint, mountPoint, "", []string{"bind"})
 }
 
-// attemptUnmountFileSystem attempts to unmount the file system mounted at mountPoint. Returns success or failure.
-func attemptUnmountFileSystem(mountPoint string, mounter mount.Interface, log logrus.FieldLogger) bool {
-	log.Debugf("Unmounting file system mounted at %v", mountPoint)
+// attemptUnmountFilesystem attempts to unmount the filesystem mounted at mountPoint. Returns success or failure.
+func attemptUnmountFilesystem(mountPoint string, mounter mount.Interface, log logrus.FieldLogger) bool {
+	log.Debugf("Unmounting filesystem mounted at %v", mountPoint)
 	if err := mounter.Unmount(mountPoint); err != nil {
-		log.WithError(err).Warnf("Failed to unmount file system mounted at %v", mountPoint)
+		log.WithError(err).Warnf("Failed to unmount filesystem mounted at %v", mountPoint)
 		return false
 	}
 	return true

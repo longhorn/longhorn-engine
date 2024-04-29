@@ -452,11 +452,11 @@ def snapshot_mounted_filesystem_test(volume_name, dev, address, engine_name):  #
     # Observe that logs of engine include "Freezing" and "Unfreezing"
     freeze_lines_count = unfreeze_lines_count = 0
     for line in get_process_log_lines(engine_name):
-        if 'Freezing file system' in line:
+        if 'Freezing filesystem' in line:
             freeze_lines_count += 1
-        if 'Unfreezing file system' in line:
+        if 'Unfreezing filesystem' in line:
             unfreeze_lines_count += 1
-    # We only log these if we have detected a mounted Longhorn file system,
+    # We only log these if we have detected a mounted Longhorn filesystem,
     # done a bind mount, and are immediately preparing to freeze. If we did
     # this for all three snapshots (and the snapshots themselves didn't fail),
     # it's a good guarantee that whole of the freezing logic is working.

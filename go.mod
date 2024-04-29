@@ -78,4 +78,4 @@ require (
 	k8s.io/utils v0.0.0-20230726121419-3b25d923346b // indirect
 )
 
-replace github.com/longhorn/types => github.com/ejweber/types v0.0.0-20240429162331-ac822e968757
+replace github.com/longhorn/types => github.com/ejweber/types v0.0.0-20240429165354-56f775b2d017

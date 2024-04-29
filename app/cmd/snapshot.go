@@ -56,7 +56,7 @@ func SnapshotCreateCmd() cli.Command {
 			},
 			cli.BoolFlag{
 				Name:  "freeze-fs",
-				Usage: "Freeze the file system on the root partition before taking the snapshot",
+				Usage: "Freeze the filesystem on the root partition before taking the snapshot",
 			},
 		},
 		Action: func(c *cli.Context) {
@@ -249,7 +249,7 @@ func createSnapshot(c *cli.Context) error {
 		}
 	}
 
-	freezeFS := c.Bool("freeze-fs")
+	freezeFilesystem := c.Bool("freeze-fs")
 
 	controllerClient, err := getControllerClient(c)
 	if err != nil {
@@ -257,7 +257,7 @@ func createSnapshot(c *cli.Context) error {
 	}
 	defer controllerClient.Close()
 
-	id, err := controllerClient.VolumeSnapshot(name, labelMap, freezeFS)
+	id, err := controllerClient.VolumeSnapshot(name, labelMap, freezeFilesystem)
 	if err != nil {
 		return err
 	}

@@ -74,17 +74,17 @@ func (t *Tgt) Startup(rwu types.ReaderWriterUnmapperAt) error {
 
 	t.isUp = true
 
-	// If the engine failed during a snapshot, we may have left a frozen file system. This is a good opportunity to
+	// If the engine failed during a snapshot, we may have left a frozen filesystem. This is a good opportunity to
 	// attempt to unfreeze it.
-	t.attemptUnfreezeFileSystem()
+	t.attemptUnfreezeFilesystem()
 
 	return nil
 }
 
 func (t *Tgt) Shutdown() error {
 	// If the engine is shutting down during a snapshot (in the preparation phase, before the snapshot operation obtains
-	// a lock) we may have left a frozen file system. This is a good opportunity to unfreeze it.
-	t.attemptUnfreezeFileSystem()
+	// a lock) we may have left a frozen filesystem. This is a good opportunity to unfreeze it.
+	t.attemptUnfreezeFilesystem()
 
 	if t.dev != nil {
 		if err := t.dev.Shutdown(); err != nil {
@@ -151,11 +151,11 @@ func (t *Tgt) Expand(size int64) error {
 	return nil
 }
 
-// attemptUnfreezeFileSystem attempts to identify a mountPoint for the Longhorn device and unfreeze it. Under normal
-// conditions, it will not find a file system, and if it finds a file system, it will not be frozen.
-// attemptUnfreezeFileSystem is only relevant for volumes run with a tgt-blockdev frontend, as only these volumes have a
+// attemptUnfreezeFilesystem attempts to identify a mountPoint for the Longhorn device and unfreeze it. Under normal
+// conditions, it will not find a filesystem, and if it finds a filesystem, it will not be frozen.
+// attemptUnfreezeFilesystem is only relevant for volumes run with a tgt-blockdev frontend, as only these volumes have a
 // Longhorn device on the node to format and mount.
-func (t *Tgt) attemptUnfreezeFileSystem() {
+func (t *Tgt) attemptUnfreezeFilesystem() {
 	// We do not need to switch to the host mount namespace to get mount points here. Usually, longhorn-engine runs in a
 	// container that has / bind mounted to /host with at least HostToContainer (rslave) propagation.
 	// - If it does not, we likely can't do a namespace swap anyway, since we don't have access to /host/proc.
@@ -169,7 +169,7 @@ func (t *Tgt) attemptUnfreezeFileSystem() {
 		endpoint := t.Endpoint()
 		for _, mountPoint := range mountPoints {
 			if mountPoint.Device == endpoint {
-				util.AttemptUnfreezeFileSystem(mountPoint.Path, lhexec.NewExecutor(), false, logrus.New())
+				util.AttemptUnfreezeFilesystem(mountPoint.Path, lhexec.NewExecutor(), false, logrus.New())
 				break
 			}
 		}
