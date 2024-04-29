@@ -40,7 +40,7 @@ RUN zypper -n addrepo --refresh https://download.opensuse.org/repositories/syste
     zypper --gpg-auto-import-keys ref
 
 RUN zypper -n install nfs-client nfs4-acl-tools cifs-utils libaio1 sg3_utils \
-    iputils iproute2 qemu-tools e2fsprogs && \
+    iputils iproute2 qemu-tools e2fsprogs jq && \
     rm -rf /var/cache/zypp/*
 
 # Copy pre-built binaries from builder
