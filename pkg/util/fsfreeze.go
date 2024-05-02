@@ -8,15 +8,12 @@ import (
 	"github.com/sirupsen/logrus"
 
 	lhexec "github.com/longhorn/go-common-libs/exec"
+	"github.com/longhorn/go-common-libs/types"
 )
 
 const (
 	binaryFsfreeze          = "fsfreeze"
 	notFrozenErrorSubstring = "Invalid argument"
-
-	// fsfreeze cannot be cancelled. Once it is started, we must wait for it to complete. If we do not, unfreeze will
-	// wait for it anyway.
-	freezeTimeout = -1
 
 	// If the block device is functioning and the filesystem is frozen, fsfreeze -u immediately returns successfully.
 	// If the block device is NOT functioning, fsfreeze does not return until I/O errors occur (which can take a long
@@ -37,7 +34,10 @@ func AttemptFreezeFilesystem(freezePoint string, exec lhexec.ExecuteInterface) e
 	if exec == nil {
 		exec = lhexec.NewExecutor()
 	}
-	_, err := exec.Execute([]string{}, binaryFsfreeze, []string{"-f", freezePoint}, freezeTimeout)
+
+	// fsfreeze cannot be cancelled. Once it is started, we must wait for it to complete. If we do not, unfreeze will
+	// wait for it anyway.
+	_, err := exec.Execute([]string{}, binaryFsfreeze, []string{"-f", freezePoint}, types.ExecuteNoTimeout)
 	if err != nil {
 		return err
 	}
