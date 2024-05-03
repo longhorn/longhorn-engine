@@ -51,8 +51,6 @@ type SnapshotHashJob struct {
 	SnapshotName string
 	Rehash       bool
 
-	file *os.File
-
 	SnapshotHashStatus
 }
 
@@ -95,7 +93,12 @@ func (t *SnapshotHashJob) LockFile() (fileLock *flock.Flock, err error) {
 }
 
 func (t *SnapshotHashJob) UnlockFile(fileLock *flock.Flock) {
-	fileLock.Unlock()
+	if err := fileLock.Unlock(); err != nil {
+		logrus.WithError(err).WithFields(logrus.Fields{
+			"snapshot": t.SnapshotName,
+			"file":     fileLock.Path(),
+		}).Warn("Failed to unlock the file lock")
+	}
 }
 
 func (t *SnapshotHashJob) Execute() (err error) {
@@ -120,15 +123,18 @@ func (t *SnapshotHashJob) Execute() (err error) {
 				return
 			}
 
-			SetSnapshotHashInfoToChecksumFile(t.SnapshotName, &xattrType.SnapshotHashInfo{
+			if err = SetSnapshotHashInfoToChecksumFile(t.SnapshotName, &xattrType.SnapshotHashInfo{
 				Method:            defaultHashMethod,
 				Checksum:          checksum,
 				ChangeTime:        changeTime,
 				LastHashedAt:      lastHashedAt,
 				SilentlyCorrupted: silentlyCorrupted,
-			})
+			}); err != nil {
+				logrus.WithError(err).Warnf("failed to set snapshot %s hash info to checksum file", t.SnapshotName)
+			}
 
-			remain, err := t.isChangeTimeRemain(changeTime)
+			var remain bool
+			remain, err = t.isChangeTimeRemain(changeTime)
 			if !remain {
 				if err == nil {
 					err = fmt.Errorf("snapshot %v modification time is changed", t.SnapshotName)
@@ -136,7 +142,9 @@ func (t *SnapshotHashJob) Execute() (err error) {
 				// Do the best to delete the useless checksum file.
 				// The deletion failure is acceptable, because the mismatching timestamps
 				// will trigger the rehash in the next hash request.
-				DeleteSnapshotHashInfoChecksumFile(t.SnapshotName)
+				if deleteErr := DeleteSnapshotHashInfoChecksumFile(t.SnapshotName); deleteErr != nil {
+					logrus.WithError(deleteErr).Warnf("failed to delete snapshot %v hash info checksum file", t.SnapshotName)
+				}
 			}
 		}
 
@@ -172,8 +180,8 @@ func (t *SnapshotHashJob) Execute() (err error) {
 		return nil
 	}
 
-	requireRehash := true
 	if !t.Rehash {
+		var requireRehash bool
 		requireRehash, checksum, err = t.isRehashRequired(changeTime)
 		if err != nil {
 			return err

@@ -870,12 +870,16 @@ func (r *Replica) revertDisk(parentDiskFileName, created string) (*Replica, erro
 	info.Parent = newHeadDisk.Parent
 
 	if _, err := r.encodeToFile(&info, volumeMetaData); err != nil {
-		r.encodeToFile(&r.info, volumeMetaData)
+		if _, err = r.encodeToFile(&r.info, volumeMetaData); err != nil {
+			return nil, err
+		}
 		return nil, err
 	}
 
 	// Need to execute before r.Reload() to update r.diskChildrenMap
-	r.rmDisk(oldHead)
+	if err = r.rmDisk(oldHead); err != nil {
+		return nil, err
+	}
 
 	rNew, err := r.Reload()
 	if err != nil {
@@ -911,7 +915,8 @@ func (r *Replica) createDisk(name string, userCreated bool, created string, labe
 	rollbackFuncList := []func() error{}
 	defer func() {
 		if err == nil {
-			r.rmDisk(oldHead)
+			err = r.rmDisk(oldHead)
+			logrus.WithError(err).Errorf("Failed to remove old head %v", oldHead)
 			return
 		}
 
@@ -1176,12 +1181,18 @@ func (r *Replica) Delete() error {
 
 	for name := range r.diskData {
 		if name != r.info.BackingFilePath {
-			r.rmDisk(name)
+			if err := r.rmDisk(name); err != nil {
+				logrus.WithError(err).WithFields(logrus.Fields{"disk": name}).Warn("Failed to remove disk")
+			}
 		}
 	}
 
-	os.Remove(r.diskPath(volumeMetaData))
-	os.Remove(r.diskPath(revisionCounterFile))
+	if err := os.Remove(r.diskPath(volumeMetaData)); err != nil {
+		logrus.WithError(err).Warnf("Failed to remove %s", volumeMetaData)
+	}
+	if err := os.Remove(r.diskPath(revisionCounterFile)); err != nil {
+		logrus.WithError(err).Warnf("Failed to remove %s", revisionCounterFile)
+	}
 	return nil
 }
 

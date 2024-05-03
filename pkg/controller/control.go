@@ -1208,7 +1208,9 @@ func (c *Controller) monitoring(address string, backend types.Backend) {
 	err := <-monitorChan
 	if err != nil {
 		logrus.WithError(err).Errorf("Backend %v monitoring failed, mark as ERR", address)
-		c.SetReplicaMode(address, types.ERR)
+		if err = c.SetReplicaMode(address, types.ERR); err != nil {
+			logrus.WithError(err).Warnf("Failed to set replica %v to ERR", address)
+		}
 	}
 	logrus.Infof("Monitoring stopped %v", address)
 }
