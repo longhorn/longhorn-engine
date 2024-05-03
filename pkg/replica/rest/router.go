@@ -6,6 +6,7 @@ import (
 	"github.com/gorilla/mux"
 	"github.com/rancher/go-rancher/api"
 	"github.com/rancher/go-rancher/client"
+	"github.com/sirupsen/logrus"
 
 	// add pprof endpoint
 	_ "net/http/pprof"
@@ -37,7 +38,9 @@ func NewRouter(s *Server) *mux.Router {
 	f := HandleError
 
 	router.Methods("GET").Path("/ping").Handler(http.HandlerFunc(func(rw http.ResponseWriter, req *http.Request) {
-		rw.Write([]byte("pong"))
+		if _, err := rw.Write([]byte("pong")); err != nil {
+			logrus.WithError(err).Warn("Failed to write response")
+		}
 	}))
 
 	// API framework routes

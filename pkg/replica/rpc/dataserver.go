@@ -58,7 +58,9 @@ func (s *DataServer) listenAndServeTCP() error {
 
 		go func(conn net.Conn) {
 			server := dataconn.NewServer(conn, s.s)
-			server.Handle()
+			if err = server.Handle(); err != nil {
+				logrus.WithError(err).Warn("failed to handle data server")
+			}
 		}(conn)
 	}
 }
@@ -83,7 +85,9 @@ func (s *DataServer) listenAndServeUNIX() error {
 		logrus.Infof("New connection from: %v", conn.RemoteAddr())
 		go func(conn net.Conn) {
 			server := dataconn.NewServer(conn, s.s)
-			server.Handle()
+			if err = server.Handle(); err != nil {
+				logrus.WithError(err).Warn("failed to handle data server")
+			}
 		}(conn)
 	}
 }

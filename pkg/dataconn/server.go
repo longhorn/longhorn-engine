@@ -132,7 +132,9 @@ func (s *Server) write() {
 				Type: TypeClose,
 			}
 			//Best effort to notify client to close connection
-			s.wire.Write(msg)
+			if err := s.wire.Write(msg); err != nil {
+				logrus.WithError(err).Warn("Failed to write")
+			}
 		}
 	}
 }

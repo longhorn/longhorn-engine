@@ -372,26 +372,37 @@ func (t *Task) AddRestoreReplica(volumeSize, volumeCurrentSize int64, address, i
 	return nil
 }
 
-func (t *Task) checkRestoreReplicaSize(address, instanceName string, volumeSize int64) error {
-	replicaCli, err := replicaClient.NewReplicaClient(address, t.client.VolumeName, instanceName)
+func (t *Task) checkRestoreReplicaSize(address, instanceName string, volumeSize int64) (err error) {
+	var (
+		replicaCli  *replicaClient.ReplicaClient
+		replicaInfo *types.ReplicaInfo
+	)
+	replicaCli, err = replicaClient.NewReplicaClient(address, t.client.VolumeName, instanceName)
 	if err != nil {
-		return err
+		return
 	}
-	defer replicaCli.CloseReplica()
+	defer func() {
+		if closeErr := replicaCli.CloseReplica(); closeErr != nil {
+			if err == nil {
+				err = closeErr
+			} else {
+				err = fmt.Errorf("original error: %w, close error: %v", err, closeErr)
+			}
+		}
+	}()
 
-	replicaInfo, err := replicaCli.GetReplica()
+	replicaInfo, err = replicaCli.GetReplica()
 	if err != nil {
-		return err
+		return
 	}
 	replicaSize, err := strconv.ParseInt(replicaInfo.Size, 10, 64)
 	if err != nil {
-		return err
+		return
 	}
 	if replicaSize != volumeSize {
-		return fmt.Errorf("rebuilding replica size %v is not the same as volume size %v", replicaSize, volumeSize)
+		err = fmt.Errorf("rebuilding replica size %v is not the same as volume size %v", replicaSize, volumeSize)
 	}
-
-	return nil
+	return
 }
 
 func (t *Task) VerifyRebuildReplica(address, instanceName string) error {
@@ -1028,10 +1039,10 @@ func (t *Task) HashSnapshotStatus(snapshotName string) (map[string]*SnapshotHash
 			}
 
 			if ok, err := t.isRebuilding(r); err != nil {
-				err = errors.Wrapf(err, "cannot get snapshot hashing status of %v", r.Address)
+				err = errors.Wrapf(err, "cannot get snapshot hashing status of %v", r.Address) // nolint: ineffassign,staticcheck
 				return
 			} else if ok {
-				err = fmt.Errorf("replica %v is rebuilding", r.Address)
+				err = fmt.Errorf("replica %v is rebuilding", r.Address) // nolint: ineffassign,staticcheck
 				return
 			}
 

@@ -67,7 +67,9 @@ func (d *Device) start() error {
 	log.Infof("Rest Frontend listening on %s", listen)
 
 	go func() {
-		http.ListenAndServe(listen, router)
+		if err := http.ListenAndServe(listen, router); err != nil {
+			logrus.WithError(err).Warn("Failed to start Rest Frontend server")
+		}
 	}()
 	return nil
 }
