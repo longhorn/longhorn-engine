@@ -191,7 +191,8 @@ func (c *Controller) addReplica(address string, snapshotRequired bool, mode type
 // If shouldFreeze, Snapshot attempts to freeze the mounted filesystem on the volume's root partition. If it fails to
 // do so, Snapshot attempts to clean up and returns an error. If not shouldFreeze or if a mounted filesystem is not
 // detected on the volume's root partition, Snapshot does a best effort sync and takes a snapshot.
-func (c *Controller) Snapshot(name string, labels map[string]string, shouldFreeze bool) (string, error) {
+func (c *Controller) Snapshot(inputName string, labels map[string]string, shouldFreeze bool) (name string, err error) {
+	name = inputName
 	if name == "" {
 		name = lhutils.UUID()
 	}
@@ -199,10 +200,17 @@ func (c *Controller) Snapshot(name string, labels map[string]string, shouldFreez
 	log := logrus.WithFields(logrus.Fields{"volume": c.VolumeName, "snapshot": name})
 	log.Info("Starting snapshot")
 
+	defer func() {
+		if err != nil {
+			// The gRPC server returns, but does not log, errors.
+			log.WithError(err).Errorf("Failed to snapshot")
+		}
+	}()
+
 	var endpoint string
 	c.RLock()
 	// Check now to avoid freezing or syncing unnecessarily. Also check again later as originally designed.
-	err := c.canDoSnapshot()
+	err = c.canDoSnapshot()
 	if c.frontend.FrontendName() == types.EngineFrontendBlockDev {
 		// It is meaningless to try to freeze filesystems for a tgt-iscsi endpoint.
 		endpoint = c.Endpoint()
@@ -266,12 +274,12 @@ func (c *Controller) Snapshot(name string, labels map[string]string, shouldFreez
 
 	c.Lock()
 	defer c.Unlock()
-	if err := c.canDoSnapshot(); err != nil {
+	if err = c.canDoSnapshot(); err != nil {
 		return "", err
 	}
 
 	created := util.Now()
-	if err := c.handleErrorNoLock(c.backend.Snapshot(name, true, created, labels)); err != nil {
+	if err = c.handleErrorNoLock(c.backend.Snapshot(name, true, created, labels)); err != nil {
 		return "", err
 	}
 	log.Info("Finished snapshot")
