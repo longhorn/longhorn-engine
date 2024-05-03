@@ -833,11 +833,13 @@ func (s *TestSuite) TestSnapshotReadWrite(c *C) {
 	fill(buf[b:2*b], 2)
 	count, err = r.WriteAt(buf[b:2*b], b)
 	c.Assert(count, Equals, b)
+	c.Assert(err, IsNil)
 	err = r.Snapshot("001", true, getNow(), nil)
 	c.Assert(err, IsNil)
 
 	fill(buf[:b], 1)
 	count, err = r.WriteAt(buf[:b], 0)
+	c.Assert(err, IsNil)
 	c.Assert(count, Equals, b)
 	err = r.Snapshot("002", true, getNow(), nil)
 	c.Assert(err, IsNil)

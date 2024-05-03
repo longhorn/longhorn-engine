@@ -11,20 +11,8 @@ echo Packages: ${PACKAGES}
 echo Running: go vet
 go vet ${PACKAGES}
 
-if [ ! -z "${DRONE_REPO}" ] && [ ! -z "${DRONE_PULL_REQUEST}" ]; then
-	wget https://github.com/$DRONE_REPO/pull/$DRONE_PULL_REQUEST.patch
-	echo "Running: golangci-lint run --new-from-patch=${DRONE_PULL_REQUEST}.patch"
-	golangci-lint run --new-from-patch="${DRONE_PULL_REQUEST}.patch"
-	rm "${DRONE_PULL_REQUEST}.patch"
-elif [ ! -z "${DRONE_COMMIT_REF}" ]; then
-	echo "Running: golangci-lint run --new-from-rev=${DRONE_COMMIT_REF}"
-	golangci-lint run --new-from-rev=${DRONE_COMMIT_REF}
-else
-	git symbolic-ref -q HEAD && REV="origin/HEAD" || REV="HEAD^"
-	headSHA=$(git rev-parse --short=12 ${REV})
-	echo "Running: golangci-lint run --new-from-rev=${headSHA}"
-	golangci-lint run --new-from-rev=${headSHA}
-fi
+echo "Running: golangci-lint"
+golangci-lint run --timeout=5m
 
 echo Running: go fmt
 test -z "$(go fmt ${PACKAGES} | tee /dev/stderr)"

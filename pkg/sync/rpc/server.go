@@ -835,7 +835,11 @@ func (s *SyncAgentServer) BackupRestore(ctx context.Context, req *ptypes.BackupR
 		return nil, errors.Wrapf(err, "error starting backup restore")
 	}
 
-	go s.completeBackupRestore()
+	go func() {
+		if completeErr := s.completeBackupRestore(); completeErr != nil {
+			logrus.WithError(completeErr).Warn("Failed to complete backup restore")
+		}
+	}()
 
 	return &emptypb.Empty{}, nil
 }
@@ -1031,7 +1035,11 @@ func (s *SyncAgentServer) SnapshotPurge(ctx context.Context, req *emptypb.Empty)
 		return nil, err
 	}
 
-	go s.purgeSnapshots()
+	go func() {
+		if purgeErr := s.purgeSnapshots(); purgeErr != nil {
+			logrus.WithError(purgeErr).Warn("Failed to purge snapshots")
+		}
+	}()
 
 	return &emptypb.Empty{}, nil
 }
@@ -1502,7 +1510,13 @@ func (s *SyncAgentServer) SnapshotHashLockState(ctx context.Context, req *emptyp
 	if err != nil {
 		return nil, errors.Wrapf(err, "failed to try lock %v", fileLock)
 	}
-	defer fileLock.Unlock()
+	defer func() {
+		if unlockErr := fileLock.Unlock(); unlockErr != nil {
+			logrus.WithError(unlockErr).WithFields(logrus.Fields{
+				"file": fileLock.Path(),
+			}).Warn("Failed to unlock file")
+		}
+	}()
 
 	return &ptypes.SnapshotHashLockStateResponse{
 		IsLocked: !isLocked,

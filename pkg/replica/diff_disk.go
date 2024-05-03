@@ -58,7 +58,6 @@ func (d *diffDisk) Expand(size int64) {
 
 	d.location = append(d.location, make([]byte, newLocationSize-len(d.location))...)
 	d.size = size
-	return
 }
 
 func (d *diffDisk) WriteAt(buf []byte, offset int64) (int, error) {

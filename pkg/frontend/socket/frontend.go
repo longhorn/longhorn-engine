@@ -105,7 +105,11 @@ func (t *Socket) startSocketServer(rwu types.ReaderWriterUnmapperAt) error {
 	}
 
 	t.socketPath = socketPath
-	go t.startSocketServerListen(rwu)
+	go func() {
+		if err := t.startSocketServerListen(rwu); err != nil {
+			logrus.WithError(err).Warn("Failed to start socket server")
+		}
+	}()
 	return nil
 }
 

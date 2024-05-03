@@ -210,7 +210,9 @@ func startController(c *cli.Context) error {
 	control.GRPCAddress = util.GetGRPCAddress(listen)
 	control.GRPCServer = controllerrpc.GetControllerGRPCServer(volumeName, engineInstanceName, control)
 
-	control.StartGRPCServer()
+	if err = control.StartGRPCServer(); err != nil {
+		logrus.WithError(err).Warn("Failed to start GRPC server")
+	}
 	return control.WaitForShutdown()
 }
 

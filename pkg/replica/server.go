@@ -195,8 +195,6 @@ func (s *Server) SetUnmapMarkDiskChainRemoved(enabled bool) {
 	if s.r != nil {
 		s.r.SetUnmapMarkDiskChainRemoved(enabled)
 	}
-
-	return
 }
 
 func (s *Server) SetSnapshotMaxCount(count int) {

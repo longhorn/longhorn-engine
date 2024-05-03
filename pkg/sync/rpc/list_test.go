@@ -23,9 +23,10 @@ func (s *TestSuite) TestSnapshotHashListCRUD(c *C) {
 	snapshotName := "snapshot0"
 	ctx, cancel := context.WithCancel(context.Background())
 	task := replica.NewSnapshotHashJob(ctx, cancel, snapshotName, false)
-	list.Add(snapshotName, task)
+	err := list.Add(snapshotName, task)
+	c.Assert(err, IsNil)
 
-	_, err := list.Get(snapshotName)
+	_, err = list.Get(snapshotName)
 	c.Assert(err, IsNil)
 
 	_, err = list.Get("nonexistence")
@@ -49,7 +50,8 @@ func (s *TestSuite) TestSnapshotHashListRefreshTriggerByAdd(c *C) {
 		task := replica.NewSnapshotHashJob(ctx, cancel, snapshotName, false)
 		task.State = replica.ProgressStateComplete
 
-		list.Add(snapshotName, task)
+		err := list.Add(snapshotName, task)
+		c.Assert(err, IsNil)
 
 		size := list.GetSize()
 		if i < MaxSnapshotHashJobSize {
@@ -68,7 +70,8 @@ func (s *TestSuite) TestSnapshotHashListRefreshTriggerByGet(c *C) {
 		snapshotName := "snapshot" + strconv.Itoa(i)
 		ctx, cancel := context.WithCancel(context.Background())
 		task := replica.NewSnapshotHashJob(ctx, cancel, snapshotName, false)
-		list.Add(snapshotName, task)
+		err := list.Add(snapshotName, task)
+		c.Assert(err, IsNil)
 	}
 
 	for i := 0; i < numSnapshots; i++ {
