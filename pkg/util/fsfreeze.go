@@ -1,20 +1,25 @@
 package util
 
 import (
+	"io/fs"
 	"path/filepath"
 	"strings"
 	"time"
 
+	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 	"k8s.io/mount-utils"
 
 	lhexec "github.com/longhorn/go-common-libs/exec"
 	"github.com/longhorn/go-common-libs/types"
+	"github.com/longhorn/go-iscsi-helper/longhorndev"
 )
 
 const (
 	binaryFsfreeze          = "fsfreeze"
 	notFrozenErrorSubstring = "Invalid argument"
 	freezePointDirectory    = "/var/lib/longhorn/freeze" // We expect this to be INSIDE the container namespace.
+	DevicePathPrefix        = longhorndev.DevPath
 
 	// If the block device is functioning and the filesystem is frozen, fsfreeze -u immediately returns successfully.
 	// If the block device is NOT functioning, fsfreeze does not return until I/O errors occur (which can take a long
@@ -23,14 +28,25 @@ const (
 	unfreezeTimeout = 5 * time.Second
 )
 
-// GetFreezePointFromEndpoint returns the absolute path to the canonical location we will try to mount a filesystem to
-// before freezing it.
-func GetFreezePointFromEndpoint(endpoint string) string {
-	return filepath.Join(freezePointDirectory, filepath.Base(endpoint))
+// GetFreezePointFromDevicePath returns the absolute path to the canonical location we will try to mount a filesystem to
+// before freezeing it.
+func GetFreezePointFromDevicePath(devicePath string) string {
+	return GetFreezePointFromVolumeName(filepath.Base(devicePath))
 }
 
-// AttemptFreezeFilesystem attempts to freeze the filesystem mounted at freezePoint.
-func AttemptFreezeFilesystem(freezePoint string, exec lhexec.ExecuteInterface) error {
+// GetFreezePointFromVolumeName returns the absolute path to the canonical location we will try to mount a filesystem to
+// before freezeing it.
+func GetFreezePointFromVolumeName(volumeName string) string {
+	return filepath.Join(freezePointDirectory, volumeName)
+}
+
+// GetDevicePathFromVolumeName mirrors longhorndev.getDev. It returns the device path that go-iscsi-helper will use.
+func GetDevicePathFromVolumeName(volumeName string) string {
+	return filepath.Join(longhorndev.DevPath, volumeName)
+}
+
+// FreezeFilesystem attempts to freeze the filesystem mounted at freezePoint.
+func FreezeFilesystem(freezePoint string, exec lhexec.ExecuteInterface) error {
 	if exec == nil {
 		exec = lhexec.NewExecutor()
 	}
@@ -80,4 +96,49 @@ func UnfreezeAndUnmountFilesystem(freezePoint string, exec lhexec.ExecuteInterfa
 		return unfroze, err
 	}
 	return unfroze, mount.CleanupMountPoint(freezePoint, mounter, false)
+}
+
+// UnfreezeFilesystemForDevice attempts to identify a mountPoint for the Longhorn volume and unfreeze it. Under normal
+// conditions, it will not find a filesystem, and if it finds a filesystem, it will not be frozen.
+// UnfreezeFilesystemForDevice does not return an error if there is nothing to do. UnfreezeFilesystemForDevice is only
+// relevant for volumes run with a tgt-blockdev frontend, as only these volumes have a Longhorn device on the node to
+// format and mount.
+func UnfreezeFilesystemForDevice(devicePath string) error {
+	// We do not need to switch to the host mount namespace to get mount points here. Usually, longhorn-engine runs in a
+	// container that has / bind mounted to /host with at least HostToContainer (rslave) propagation.
+	// - If it does not, we likely can't do a namespace swap anyway, since we don't have access to /host/proc.
+	// - If it does, we just need to know where in the container we can access the mount points to unfreeze.
+	mounter := mount.New("")
+	freezePoint := GetFreezePointFromDevicePath(devicePath)
+
+	// First, try to unfreeze and unmount the expected mount point.
+	freezePointIsMountPoint, err := mounter.IsMountPoint(freezePoint)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		logrus.WithError(err).Warnf("Failed to determine if %s is a mount point while deciding whether or not to unfreeze", freezePoint)
+	}
+	if freezePointIsMountPoint {
+		unfroze, err := UnfreezeAndUnmountFilesystem(freezePoint, nil, mounter)
+		if unfroze {
+			logrus.Warnf("Unfroze filesystem mounted at %v", freezePoint)
+		}
+		return err
+	}
+
+	// If a filesystem is not mounted at the expected mount point, try any other mount point of the device.
+	mountPoints, err := mounter.List()
+	if err != nil {
+		return errors.Wrap(err, "failed to list mount points while deciding whether or not unfreeze")
+	}
+	for _, mountPoint := range mountPoints {
+		if mountPoint.Device == devicePath {
+			// This one is not ours to unmount.
+			unfroze, err := UnfreezeFilesystem(mountPoint.Path, nil)
+			if unfroze {
+				logrus.Warnf("Unfroze filesystem mounted at %v", freezePoint)
+			}
+			return err
+		}
+	}
+
+	return nil
 }

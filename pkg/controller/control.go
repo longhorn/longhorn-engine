@@ -221,7 +221,7 @@ func (c *Controller) Snapshot(inputName string, labels map[string]string, should
 	}
 
 	var mounted, frozen bool
-	freezePoint := util.GetFreezePointFromEndpoint(endpoint)
+	freezePoint := util.GetFreezePointFromDevicePath(endpoint)
 	mounter := mount.New("")
 	exec := lhexec.NewExecutor()
 	defer func() {
@@ -1396,7 +1396,7 @@ func tryFreeze(devicePath string, freezePoint string, mounter mount.Interface, e
 		}
 
 		log.Infof("Freezing filesystem mounted at %v", freezePoint)
-		if err = util.AttemptFreezeFilesystem(freezePoint, exec); err == nil {
+		if err = util.FreezeFilesystem(freezePoint, exec); err == nil {
 			frozen = true
 		}
 		break
