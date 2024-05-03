@@ -32,6 +32,10 @@ from common.util import get_process_log_lines
 
 from data.snapshot_tree import snapshot_tree_build, snapshot_tree_verify_node
 
+from tempfile import mkdtemp
+
+from os.path import relpath
+
 
 def snapshot_revert_test(dev, address, engine_name):  # NOQA
     existings = {}
@@ -419,20 +423,26 @@ def snapshot_mounted_filesystem_test(volume_name, dev, address, engine_name):  #
     dev_path = dev.dev
     # /tmp is bind mounted into the container at /host/tmp. This simulates
     # the typical running environment of instance-manager with "-v /:/host".
-    mnt_path = "/tmp/" + volume_name
-    test_file = mnt_path + "/test"
+    # Use mkdtemp to create a temporary directory that the container sees at
+    # /host/tmp/... and the host sees at /tmp/... (and avoid Codefactor
+    # warnings for the use of a hard coded /tmp directory name).
+    mnt_path_in_container = mkdtemp(dir="/host/tmp/", prefix=volume_name)
+    mnt_path_on_host = relpath(mnt_path_in_container, "/host")
+    test_file_on_host = mnt_path_on_host + "/test"
     length = 128
 
     print("dev_path: " + dev_path + "\n")
-    print("mnt_path: " + mnt_path + "\n")
+    print("mnt_path_in_container: " + mnt_path_in_container + "\n")
+    print("mnt_path_on_host: " + mnt_path_on_host + "\n")
 
     # create & mount a ext4 filesystem on dev
     nsenter_cmd = get_nsenter_cmd()
-    mount_cmd = nsenter_cmd + ["mount", "--make-shared", dev_path, mnt_path]
-    umount_cmd = nsenter_cmd + ["umount", mnt_path]
+    mount_cmd = nsenter_cmd + ["mount", "--make-shared", dev_path,
+                               mnt_path_on_host]
+    umount_cmd = nsenter_cmd + ["umount", mnt_path_on_host]
     findmnt_cmd = nsenter_cmd + ["findmnt", dev_path]
     subprocess.check_call(nsenter_cmd + ["mkfs.ext4", dev_path])
-    subprocess.check_call(nsenter_cmd + ["mkdir", "-p", mnt_path])
+    subprocess.check_call(nsenter_cmd + ["mkdir", "-p", mnt_path_on_host])
     subprocess.check_call(mount_cmd)
     subprocess.check_call(findmnt_cmd)
 
@@ -442,11 +452,11 @@ def snapshot_mounted_filesystem_test(volume_name, dev, address, engine_name):  #
     snap1 = cmd.snapshot_create(address, True)
 
     # create snapshot2 with a new test file
-    test2_checksum = write_filesystem_file(length, test_file)
+    test2_checksum = write_filesystem_file(length, test_file_on_host)
     snap2 = cmd.snapshot_create(address, True)
 
     # create snapshot3 overwriting the test file
-    test3_checksum = write_filesystem_file(length, test_file)
+    test3_checksum = write_filesystem_file(length, test_file_on_host)
     snap3 = cmd.snapshot_create(address, True)
 
     # Observe that logs of engine include "Freezing" and "Unfreezing"
@@ -480,25 +490,25 @@ def snapshot_mounted_filesystem_test(volume_name, dev, address, engine_name):  #
     # should error since the file does not exist in snapshot 1
     with pytest.raises(subprocess.CalledProcessError):
         print("is expected error, since the file does not exist.")
-        checksum_filesystem_file(test_file)
+        checksum_filesystem_file(test_file_on_host)
     subprocess.check_call(umount_cmd)
 
     print("\nsnapshot_revert_with_frontend snap2 begin")
     snapshot_revert_with_frontend(address, engine_name, snap2)
     print("snapshot_revert_with_frontend snap2 finish\n")
     subprocess.check_call(mount_cmd)
-    assert checksum_filesystem_file(test_file) == test2_checksum
+    assert checksum_filesystem_file(test_file_on_host) == test2_checksum
     subprocess.check_call(umount_cmd)
 
     print("\nsnapshot_revert_with_frontend snap3 begin")
     snapshot_revert_with_frontend(address, engine_name, snap3)
     print("snapshot_revert_with_frontend snap3 finish\n")
     subprocess.check_call(mount_cmd)
-    assert checksum_filesystem_file(test_file) == test3_checksum
+    assert checksum_filesystem_file(test_file_on_host) == test3_checksum
     subprocess.check_call(umount_cmd)
 
     # remove the created mount folder
-    subprocess.check_call(nsenter_cmd + ["rmdir", mnt_path])
+    subprocess.check_call(nsenter_cmd + ["rmdir", mnt_path_on_host])
 
 
 def test_snapshot_prune(grpc_controller, grpc_replica1, grpc_replica2):  # NOQA
