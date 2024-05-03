@@ -1,11 +1,11 @@
 package util
 
 import (
-	"io"
+	"path/filepath"
 	"strings"
 	"time"
 
-	"github.com/sirupsen/logrus"
+	"k8s.io/mount-utils"
 
 	lhexec "github.com/longhorn/go-common-libs/exec"
 	"github.com/longhorn/go-common-libs/types"
@@ -14,6 +14,7 @@ import (
 const (
 	binaryFsfreeze          = "fsfreeze"
 	notFrozenErrorSubstring = "Invalid argument"
+	freezePointDirectory    = "/var/lib/longhorn/freeze" // We expect this to be INSIDE the container namespace.
 
 	// If the block device is functioning and the filesystem is frozen, fsfreeze -u immediately returns successfully.
 	// If the block device is NOT functioning, fsfreeze does not return until I/O errors occur (which can take a long
@@ -22,14 +23,13 @@ const (
 	unfreezeTimeout = 5 * time.Second
 )
 
-func NewDiscardLogger() *logrus.Logger {
-	logger := logrus.New()
-	logger.Out = io.Discard
-	return logger
+// GetFreezePointFromEndpoint returns the absolute path to the canonical location we will try to mount a filesystem to
+// before freezing it.
+func GetFreezePointFromEndpoint(endpoint string) string {
+	return filepath.Join(freezePointDirectory, filepath.Base(endpoint))
 }
 
-// AttemptFreezeFilesystem attempts to freeze the filesystem mounted at freezePoint. If it fails, it logs, attempts to
-// unfreeze the filesystem, and returns false.
+// AttemptFreezeFilesystem attempts to freeze the filesystem mounted at freezePoint.
 func AttemptFreezeFilesystem(freezePoint string, exec lhexec.ExecuteInterface) error {
 	if exec == nil {
 		exec = lhexec.NewExecutor()
@@ -44,37 +44,40 @@ func AttemptFreezeFilesystem(freezePoint string, exec lhexec.ExecuteInterface) e
 	return nil
 }
 
-// AttemptUnfreezeFilesystem attempts to unfreeze the filesystem mounted at freezePoint. There isn't really anything we
-// can do about it if it fails, so log and return.
-// AttemptUnfreezeFilesystem logs to the provided logger to simplify calling code. Pass nil instead to disable this
-// behavior. expectSuccess controls the type of event and level AttemptUnfreezeFilesystem logs on.
-func AttemptUnfreezeFilesystem(freezePoint string, exec lhexec.ExecuteInterface, expectSuccess bool,
-	log logrus.FieldLogger) {
+// UnfreezeFilesystem attempts to unfreeze the filesystem mounted at freezePoint. It returns true if it
+// successfully unfreezes a filesystem, false if there is no need to unfreeze a filesystem, and an error otherwise.
+func UnfreezeFilesystem(freezePoint string, exec lhexec.ExecuteInterface) (bool, error) {
 	if exec == nil {
 		exec = lhexec.NewExecutor()
 	}
-	if log == nil {
-		log = NewDiscardLogger()
-	}
-
-	if expectSuccess {
-		log.Infof("Unfreezing filesystem mounted at %v", freezePoint)
-	} else {
-		log.Debugf("Attempting to unfreeze filesystem mounted at %v", freezePoint)
-	}
 
 	_, err := exec.Execute([]string{}, binaryFsfreeze, []string{"-u", freezePoint}, unfreezeTimeout)
-	if err != nil {
-		if strings.Contains(err.Error(), notFrozenErrorSubstring) {
-			log.Debugf("Failed to unfreeze already unfrozen system mounted at %v", freezePoint)
-		} else {
-			// It the error message is related to a timeout, there is a decent chance the unfreeze will eventually be
-			// successful. While we stop waiting for the unfreeze to complete, the unfreeze process itself cannot be
-			// killed. This usually indicates the kernel is locked up waiting for I/O errors to be returned for an iSCSI
-			// device that can no longer be reached.
-			log.WithError(err).Warnf("Failed to unfreeze filesystem mounted at %v", freezePoint)
-		}
-	} else if !expectSuccess {
-		log.Warnf("Unfroze filesystem mounted at %v", freezePoint)
+	if err == nil {
+		return true, nil
 	}
+	if strings.Contains(err.Error(), notFrozenErrorSubstring) {
+		return false, nil
+	}
+	// It the error message is related to a timeout, there is a decent chance the unfreeze will eventually be
+	// successful. While we stop waiting for the unfreeze to complete, the unfreeze process itself cannot be killed.
+	// This usually indicates the kernel is locked up waiting for I/O errors to be returned for an iSCSI device that can
+	// no longer be reached.
+	return false, err
+}
+
+// UnfreezeAndUnmountFilesystem attempts to unfreeze the filesystem mounted at freezePoint.
+func UnfreezeAndUnmountFilesystem(freezePoint string, exec lhexec.ExecuteInterface,
+	mounter mount.Interface) (bool, error) {
+	if exec == nil {
+		exec = lhexec.NewExecutor()
+	}
+	if mounter == nil {
+		mounter = mount.New("")
+	}
+
+	unfroze, err := UnfreezeFilesystem(freezePoint, exec)
+	if err != nil {
+		return unfroze, err
+	}
+	return unfroze, mount.CleanupMountPoint(freezePoint, mounter, false)
 }

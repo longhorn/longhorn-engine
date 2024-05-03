@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"net"
 	"os"
-	"path/filepath"
 	"regexp"
 	"strings"
 	"sync"
@@ -71,7 +70,6 @@ type Controller struct {
 
 const (
 	lastModifyCheckPeriod = 5 * time.Second
-	freezePointDirectory  = "/var/lib/longhorn/freeze" // We generally expect this to be INSIDE the container namespace.
 )
 
 func NewController(name string, factory types.BackendFactory, frontend types.Frontend, isUpgrade, disableRevCounter, salvageRequested, unmapMarkSnapChainRemoved bool,
@@ -215,15 +213,21 @@ func (c *Controller) Snapshot(name string, labels map[string]string, shouldFreez
 	}
 
 	var mounted, frozen bool
-	freezePoint := filepath.Join(freezePointDirectory, filepath.Base(endpoint))
+	freezePoint := util.GetFreezePointFromEndpoint(endpoint)
 	mounter := mount.New("")
 	exec := lhexec.NewExecutor()
 	defer func() {
 		if frozen {
-			util.AttemptUnfreezeFilesystem(freezePoint, exec, true, log)
+			log.Infof("Unfreezing filesystem mounted at %v", freezePoint)
+			if _, err := util.UnfreezeFilesystem(freezePoint, exec); err != nil {
+				log.WithError(err).Warnf("Failed to unfreeze filesystem mounted at %v", freezePoint)
+			}
 		}
 		if mounted {
-			attemptUnmountFilesystem(freezePoint, mounter, log)
+			log.Debugf("Unmounting filesystem mounted at %v", freezePoint)
+			if err := mount.CleanupMountPoint(freezePoint, mounter, false); err != nil {
+				log.WithError(err).Warnf("Failed to unmount filesystem mounted at %v", freezePoint)
+			}
 		}
 	}()
 
@@ -1410,14 +1414,4 @@ func attemptBindMountFilesystem(sourcePoint, mountPoint string, mounter mount.In
 	}
 
 	return mounter.Mount(sourcePoint, mountPoint, "", []string{"bind"})
-}
-
-// attemptUnmountFilesystem attempts to unmount the filesystem mounted at mountPoint. Returns success or failure.
-func attemptUnmountFilesystem(mountPoint string, mounter mount.Interface, log logrus.FieldLogger) bool {
-	log.Debugf("Unmounting filesystem mounted at %v", mountPoint)
-	if err := mounter.Unmount(mountPoint); err != nil {
-		log.WithError(err).Warnf("Failed to unmount filesystem mounted at %v", mountPoint)
-		return false
-	}
-	return true
 }
