@@ -78,10 +78,7 @@ func (rb *BackupStatus) HasSnapshot(snapID, volumeID string) bool {
 	}
 	id := diskutil.GenerateSnapshotDiskName(snapID)
 	to := rb.findIndex(id)
-	if to < 0 {
-		return false
-	}
-	return true
+	return to >= 0
 }
 
 func (rb *BackupStatus) OpenSnapshot(snapID, volumeID string) error {

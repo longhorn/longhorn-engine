@@ -229,7 +229,6 @@ func CleanupTempFiles(outputFile string, files ...string) {
 			continue
 		}
 	}
-	return
 }
 
 func ConvertImage(srcFilepath, dstFilepath, format string) error {
