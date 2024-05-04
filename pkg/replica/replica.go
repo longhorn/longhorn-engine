@@ -44,6 +44,7 @@ var (
 
 type Replica struct {
 	sync.RWMutex
+	ctx             context.Context
 	volume          diffDisk
 	dir             string
 	info            Info
@@ -130,7 +131,7 @@ func OpenSnapshot(dir string, snapshotName string) (*Replica, error) {
 		}
 	}
 
-	r, err := NewReadOnly(dir, snapshotDiskName, backingFile)
+	r, err := NewReadOnly(context.Background(), dir, snapshotDiskName, backingFile)
 	if err != nil {
 		return nil, err
 	}
@@ -143,17 +144,17 @@ func ReadInfo(dir string) (Info, error) {
 	return info, err
 }
 
-func New(size, sectorSize int64, dir string, backingFile *backingfile.BackingFile, disableRevCounter, unmapMarkDiskChainRemoved bool, snapshotMaxCount int, SnapshotMaxSize int64) (*Replica, error) {
-	return construct(false, size, sectorSize, dir, "", backingFile, disableRevCounter, unmapMarkDiskChainRemoved, snapshotMaxCount, SnapshotMaxSize)
+func New(ctx context.Context, size, sectorSize int64, dir string, backingFile *backingfile.BackingFile, disableRevCounter, unmapMarkDiskChainRemoved bool, snapshotMaxCount int, SnapshotMaxSize int64) (*Replica, error) {
+	return construct(ctx, false, size, sectorSize, dir, "", backingFile, disableRevCounter, unmapMarkDiskChainRemoved, snapshotMaxCount, SnapshotMaxSize)
 }
 
-func NewReadOnly(dir, head string, backingFile *backingfile.BackingFile) (*Replica, error) {
+func NewReadOnly(ctx context.Context, dir, head string, backingFile *backingfile.BackingFile) (*Replica, error) {
 	// size and sectorSize don't matter because they will be read from metadata
 	// snapshotMaxCount and SnapshotMaxSize don't matter because readonly replica can't create a new disk
-	return construct(true, 0, diskutil.ReplicaSectorSize, dir, head, backingFile, false, false, 250, 0)
+	return construct(ctx, true, 0, diskutil.ReplicaSectorSize, dir, head, backingFile, false, false, 250, 0)
 }
 
-func construct(readonly bool, size, sectorSize int64, dir, head string, backingFile *backingfile.BackingFile, disableRevCounter, unmapMarkDiskChainRemoved bool, snapshotMaxCount int, snapshotMaxSize int64) (*Replica, error) {
+func construct(ctx context.Context, readonly bool, size, sectorSize int64, dir, head string, backingFile *backingfile.BackingFile, disableRevCounter, unmapMarkDiskChainRemoved bool, snapshotMaxCount int, snapshotMaxSize int64) (*Replica, error) {
 	if size%sectorSize != 0 {
 		return nil, fmt.Errorf("size %d not a multiple of sector size %d", size, sectorSize)
 	}
@@ -163,6 +164,7 @@ func construct(readonly bool, size, sectorSize int64, dir, head string, backingF
 	}
 
 	r := &Replica{
+		ctx:                       ctx,
 		dir:                       dir,
 		activeDiskData:            make([]*disk, 1),
 		diskData:                  make(map[string]*disk),
@@ -198,7 +200,7 @@ func construct(readonly bool, size, sectorSize int64, dir, head string, backingF
 	}
 
 	if !r.revisionCounterDisabled {
-		if err := r.initRevisionCounter(); err != nil {
+		if err := r.initRevisionCounter(ctx); err != nil {
 			return nil, err
 		}
 	}
@@ -292,7 +294,7 @@ func (r *Replica) SetRebuilding(rebuilding bool) error {
 }
 
 func (r *Replica) Reload() (*Replica, error) {
-	newReplica, err := New(r.info.Size, r.info.SectorSize, r.dir, r.info.BackingFile, r.revisionCounterDisabled, r.unmapMarkDiskChainRemoved, r.snapshotMaxCount, r.snapshotMaxSize)
+	newReplica, err := New(r.ctx, r.info.Size, r.info.SectorSize, r.dir, r.info.BackingFile, r.revisionCounterDisabled, r.unmapMarkDiskChainRemoved, r.snapshotMaxCount, r.snapshotMaxSize)
 	if err != nil {
 		return nil, err
 	}

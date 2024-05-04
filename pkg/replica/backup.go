@@ -1,6 +1,7 @@
 package replica
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"sync"
@@ -93,7 +94,7 @@ func (rb *BackupStatus) OpenSnapshot(snapID, volumeID string) error {
 	if err != nil {
 		return errors.Wrap(err, "cannot get working directory")
 	}
-	r, err := NewReadOnly(dir, id, rb.backingFile)
+	r, err := NewReadOnly(context.Background(), dir, id, rb.backingFile)
 	if err != nil {
 		return err
 	}

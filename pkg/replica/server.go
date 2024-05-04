@@ -1,6 +1,7 @@
 package replica
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"sync"
@@ -13,6 +14,7 @@ import (
 
 type Server struct {
 	sync.RWMutex
+	ctx                       context.Context
 	r                         *Replica
 	dir                       string
 	sectorSize                int64
@@ -23,8 +25,9 @@ type Server struct {
 	snapshotMaxSize           int64
 }
 
-func NewServer(dir string, backing *backingfile.BackingFile, sectorSize int64, disableRevCounter, unmapMarkDiskChainRemoved bool, snapshotMaxCount int, snapshotMaxSize int64) *Server {
+func NewServer(ctx context.Context, dir string, backing *backingfile.BackingFile, sectorSize int64, disableRevCounter, unmapMarkDiskChainRemoved bool, snapshotMaxCount int, snapshotMaxSize int64) *Server {
 	return &Server{
+		ctx:                       ctx,
 		dir:                       dir,
 		backing:                   backing,
 		sectorSize:                sectorSize,
@@ -54,7 +57,7 @@ func (s *Server) Create(size int64) error {
 	sectorSize := s.getSectorSize()
 
 	logrus.Infof("Creating replica %s, size %d/%d", s.dir, size, sectorSize)
-	r, err := New(size, sectorSize, s.dir, s.backing, s.revisionCounterDisabled, s.unmapMarkDiskChainRemoved, s.snapshotMaxCount, s.snapshotMaxSize)
+	r, err := New(s.ctx, size, sectorSize, s.dir, s.backing, s.revisionCounterDisabled, s.unmapMarkDiskChainRemoved, s.snapshotMaxCount, s.snapshotMaxSize)
 	if err != nil {
 		return err
 	}
@@ -74,7 +77,7 @@ func (s *Server) Open() error {
 	sectorSize := s.getSectorSize()
 
 	logrus.Infof("Opening replica: dir %s, size %d, sector size %d", s.dir, info.Size, sectorSize)
-	r, err := New(info.Size, sectorSize, s.dir, s.backing, s.revisionCounterDisabled, s.unmapMarkDiskChainRemoved, s.snapshotMaxCount, s.snapshotMaxSize)
+	r, err := New(s.ctx, info.Size, sectorSize, s.dir, s.backing, s.revisionCounterDisabled, s.unmapMarkDiskChainRemoved, s.snapshotMaxCount, s.snapshotMaxSize)
 	if err != nil {
 		return err
 	}

@@ -1,6 +1,7 @@
 package replica
 
 import (
+	"context"
 	"fmt"
 	"io"
 	"os"
@@ -62,7 +63,7 @@ func (r *Replica) openRevisionFile(isCreate bool) error {
 	return err
 }
 
-func (r *Replica) initRevisionCounter() error {
+func (r *Replica) initRevisionCounter(ctx context.Context) error {
 	if r.readOnly {
 		return nil
 	}
@@ -96,6 +97,8 @@ func (r *Replica) initRevisionCounter() error {
 		var err error
 		for {
 			select {
+			case <-ctx.Done():
+				return
 			case <-r.revisionCounterReqChan:
 				err = r.writeRevisionCounter(r.revisionCache.Load() + 1)
 				r.revisionCounterAckChan <- err
