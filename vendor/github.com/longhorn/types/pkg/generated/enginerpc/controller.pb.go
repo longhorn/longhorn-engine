@@ -1360,6 +1360,116 @@ func (x *MetricsGetReply) GetMetrics() *Metrics {
 	return nil
 }
 
+type VolumeBenchRequest struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	BenchType string `protobuf:"bytes,1,opt,name=bench_type,json=benchType,proto3" json:"bench_type,omitempty"`
+	Thread    int32  `protobuf:"varint,2,opt,name=thread,proto3" json:"thread,omitempty"`
+	Size      int64  `protobuf:"varint,3,opt,name=size,proto3" json:"size,omitempty"`
+}
+
+func (x *VolumeBenchRequest) Reset() {
+	*x = VolumeBenchRequest{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_ptypes_controller_proto_msgTypes[22]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *VolumeBenchRequest) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VolumeBenchRequest) ProtoMessage() {}
+
+func (x *VolumeBenchRequest) ProtoReflect() protoreflect.Message {
+	mi := &file_ptypes_controller_proto_msgTypes[22]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VolumeBenchRequest.ProtoReflect.Descriptor instead.
+func (*VolumeBenchRequest) Descriptor() ([]byte, []int) {
+	return file_ptypes_controller_proto_rawDescGZIP(), []int{22}
+}
+
+func (x *VolumeBenchRequest) GetBenchType() string {
+	if x != nil {
+		return x.BenchType
+	}
+	return ""
+}
+
+func (x *VolumeBenchRequest) GetThread() int32 {
+	if x != nil {
+		return x.Thread
+	}
+	return 0
+}
+
+func (x *VolumeBenchRequest) GetSize() int64 {
+	if x != nil {
+		return x.Size
+	}
+	return 0
+}
+
+type VolumeBenchResponse struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Output string `protobuf:"bytes,1,opt,name=output,proto3" json:"output,omitempty"`
+}
+
+func (x *VolumeBenchResponse) Reset() {
+	*x = VolumeBenchResponse{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_ptypes_controller_proto_msgTypes[23]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *VolumeBenchResponse) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*VolumeBenchResponse) ProtoMessage() {}
+
+func (x *VolumeBenchResponse) ProtoReflect() protoreflect.Message {
+	mi := &file_ptypes_controller_proto_msgTypes[23]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use VolumeBenchResponse.ProtoReflect.Descriptor instead.
+func (*VolumeBenchResponse) Descriptor() ([]byte, []int) {
+	return file_ptypes_controller_proto_rawDescGZIP(), []int{23}
+}
+
+func (x *VolumeBenchResponse) GetOutput() string {
+	if x != nil {
+		return x.Output
+	}
+	return ""
+}
+
 var File_ptypes_controller_proto protoreflect.FileDescriptor
 
 var file_ptypes_controller_proto_rawDesc = []byte{
@@ -1533,10 +1643,19 @@ var file_ptypes_controller_proto_rawDesc = []byte{
 	0x69, 0x63, 0x73, 0x47, 0x65, 0x74, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x12, 0x29, 0x0a, 0x07, 0x6d,
 	0x65, 0x74, 0x72, 0x69, 0x63, 0x73, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0f, 0x2e, 0x70,
 	0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x4d, 0x65, 0x74, 0x72, 0x69, 0x63, 0x73, 0x52, 0x07, 0x6d,
-	0x65, 0x74, 0x72, 0x69, 0x63, 0x73, 0x2a, 0x26, 0x0a, 0x0b, 0x52, 0x65, 0x70, 0x6c, 0x69, 0x63,
+	0x65, 0x74, 0x72, 0x69, 0x63, 0x73, 0x22, 0x5f, 0x0a, 0x12, 0x56, 0x6f, 0x6c, 0x75, 0x6d, 0x65,
+	0x42, 0x65, 0x6e, 0x63, 0x68, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x12, 0x1d, 0x0a, 0x0a,
+	0x62, 0x65, 0x6e, 0x63, 0x68, 0x5f, 0x74, 0x79, 0x70, 0x65, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
+	0x52, 0x09, 0x62, 0x65, 0x6e, 0x63, 0x68, 0x54, 0x79, 0x70, 0x65, 0x12, 0x16, 0x0a, 0x06, 0x74,
+	0x68, 0x72, 0x65, 0x61, 0x64, 0x18, 0x02, 0x20, 0x01, 0x28, 0x05, 0x52, 0x06, 0x74, 0x68, 0x72,
+	0x65, 0x61, 0x64, 0x12, 0x12, 0x0a, 0x04, 0x73, 0x69, 0x7a, 0x65, 0x18, 0x03, 0x20, 0x01, 0x28,
+	0x03, 0x52, 0x04, 0x73, 0x69, 0x7a, 0x65, 0x22, 0x2d, 0x0a, 0x13, 0x56, 0x6f, 0x6c, 0x75, 0x6d,
+	0x65, 0x42, 0x65, 0x6e, 0x63, 0x68, 0x52, 0x65, 0x73, 0x70, 0x6f, 0x6e, 0x73, 0x65, 0x12, 0x16,
+	0x0a, 0x06, 0x6f, 0x75, 0x74, 0x70, 0x75, 0x74, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x52, 0x06,
+	0x6f, 0x75, 0x74, 0x70, 0x75, 0x74, 0x2a, 0x26, 0x0a, 0x0b, 0x52, 0x65, 0x70, 0x6c, 0x69, 0x63,
 	0x61, 0x4d, 0x6f, 0x64, 0x65, 0x12, 0x06, 0x0a, 0x02, 0x57, 0x4f, 0x10, 0x00, 0x12, 0x06, 0x0a,
-	0x02, 0x52, 0x57, 0x10, 0x01, 0x12, 0x07, 0x0a, 0x03, 0x45, 0x52, 0x52, 0x10, 0x02, 0x32, 0xfc,
-	0x0b, 0x0a, 0x11, 0x43, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x53, 0x65, 0x72,
+	0x02, 0x52, 0x57, 0x10, 0x01, 0x12, 0x07, 0x0a, 0x03, 0x45, 0x52, 0x52, 0x10, 0x02, 0x32, 0xc4,
+	0x0c, 0x0a, 0x11, 0x43, 0x6f, 0x6e, 0x74, 0x72, 0x6f, 0x6c, 0x6c, 0x65, 0x72, 0x53, 0x65, 0x72,
 	0x76, 0x69, 0x63, 0x65, 0x12, 0x33, 0x0a, 0x09, 0x56, 0x6f, 0x6c, 0x75, 0x6d, 0x65, 0x47, 0x65,
 	0x74, 0x12, 0x16, 0x2e, 0x67, 0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f,
 	0x62, 0x75, 0x66, 0x2e, 0x45, 0x6d, 0x70, 0x74, 0x79, 0x1a, 0x0e, 0x2e, 0x70, 0x74, 0x79, 0x70,
@@ -1631,11 +1750,16 @@ var file_ptypes_controller_proto_rawDesc = []byte{
 	0x0a, 0x0a, 0x4d, 0x65, 0x74, 0x72, 0x69, 0x63, 0x73, 0x47, 0x65, 0x74, 0x12, 0x16, 0x2e, 0x67,
 	0x6f, 0x6f, 0x67, 0x6c, 0x65, 0x2e, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x62, 0x75, 0x66, 0x2e, 0x45,
 	0x6d, 0x70, 0x74, 0x79, 0x1a, 0x17, 0x2e, 0x70, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x4d, 0x65,
-	0x74, 0x72, 0x69, 0x63, 0x73, 0x47, 0x65, 0x74, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x42, 0x33, 0x5a,
-	0x31, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e, 0x63, 0x6f, 0x6d, 0x2f, 0x6c, 0x6f, 0x6e, 0x67,
-	0x68, 0x6f, 0x72, 0x6e, 0x2f, 0x74, 0x79, 0x70, 0x65, 0x73, 0x2f, 0x70, 0x6b, 0x67, 0x2f, 0x67,
-	0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64, 0x2f, 0x65, 0x6e, 0x67, 0x69, 0x6e, 0x65, 0x72,
-	0x70, 0x63, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x33,
+	0x74, 0x72, 0x69, 0x63, 0x73, 0x47, 0x65, 0x74, 0x52, 0x65, 0x70, 0x6c, 0x79, 0x12, 0x46, 0x0a,
+	0x0b, 0x56, 0x6f, 0x6c, 0x75, 0x6d, 0x65, 0x42, 0x65, 0x6e, 0x63, 0x68, 0x12, 0x1a, 0x2e, 0x70,
+	0x74, 0x79, 0x70, 0x65, 0x73, 0x2e, 0x56, 0x6f, 0x6c, 0x75, 0x6d, 0x65, 0x42, 0x65, 0x6e, 0x63,
+	0x68, 0x52, 0x65, 0x71, 0x75, 0x65, 0x73, 0x74, 0x1a, 0x1b, 0x2e, 0x70, 0x74, 0x79, 0x70, 0x65,
+	0x73, 0x2e, 0x56, 0x6f, 0x6c, 0x75, 0x6d, 0x65, 0x42, 0x65, 0x6e, 0x63, 0x68, 0x52, 0x65, 0x73,
+	0x70, 0x6f, 0x6e, 0x73, 0x65, 0x42, 0x33, 0x5a, 0x31, 0x67, 0x69, 0x74, 0x68, 0x75, 0x62, 0x2e,
+	0x63, 0x6f, 0x6d, 0x2f, 0x6c, 0x6f, 0x6e, 0x67, 0x68, 0x6f, 0x72, 0x6e, 0x2f, 0x74, 0x79, 0x70,
+	0x65, 0x73, 0x2f, 0x70, 0x6b, 0x67, 0x2f, 0x67, 0x65, 0x6e, 0x65, 0x72, 0x61, 0x74, 0x65, 0x64,
+	0x2f, 0x65, 0x6e, 0x67, 0x69, 0x6e, 0x65, 0x72, 0x70, 0x63, 0x62, 0x06, 0x70, 0x72, 0x6f, 0x74,
+	0x6f, 0x33,
 }
 
 var (
@@ -1651,7 +1775,7 @@ func file_ptypes_controller_proto_rawDescGZIP() []byte {
 }
 
 var file_ptypes_controller_proto_enumTypes = make([]protoimpl.EnumInfo, 1)
-var file_ptypes_controller_proto_msgTypes = make([]protoimpl.MessageInfo, 23)
+var file_ptypes_controller_proto_msgTypes = make([]protoimpl.MessageInfo, 25)
 var file_ptypes_controller_proto_goTypes = []interface{}{
 	(ReplicaMode)(0),                                  // 0: ptypes.ReplicaMode
 	(*Volume)(nil),                                    // 1: ptypes.Volume
@@ -1676,32 +1800,34 @@ var file_ptypes_controller_proto_goTypes = []interface{}{
 	(*VersionDetailGetReply)(nil),                     // 20: ptypes.VersionDetailGetReply
 	(*Metrics)(nil),                                   // 21: ptypes.Metrics
 	(*MetricsGetReply)(nil),                           // 22: ptypes.MetricsGetReply
-	nil,                                               // 23: ptypes.VolumeSnapshotRequest.LabelsEntry
-	(*SyncFileInfo)(nil),                              // 24: ptypes.SyncFileInfo
-	(*emptypb.Empty)(nil),                             // 25: google.protobuf.Empty
+	(*VolumeBenchRequest)(nil),                        // 23: ptypes.VolumeBenchRequest
+	(*VolumeBenchResponse)(nil),                       // 24: ptypes.VolumeBenchResponse
+	nil,                                               // 25: ptypes.VolumeSnapshotRequest.LabelsEntry
+	(*SyncFileInfo)(nil),                              // 26: ptypes.SyncFileInfo
+	(*emptypb.Empty)(nil),                             // 27: google.protobuf.Empty
 }
 var file_ptypes_controller_proto_depIdxs = []int32{
 	2,  // 0: ptypes.ControllerReplica.address:type_name -> ptypes.ReplicaAddress
 	0,  // 1: ptypes.ControllerReplica.mode:type_name -> ptypes.ReplicaMode
-	23, // 2: ptypes.VolumeSnapshotRequest.labels:type_name -> ptypes.VolumeSnapshotRequest.LabelsEntry
+	25, // 2: ptypes.VolumeSnapshotRequest.labels:type_name -> ptypes.VolumeSnapshotRequest.LabelsEntry
 	3,  // 3: ptypes.ReplicaListReply.replicas:type_name -> ptypes.ControllerReplica
 	0,  // 4: ptypes.ControllerReplicaCreateRequest.mode:type_name -> ptypes.ReplicaMode
 	3,  // 5: ptypes.ReplicaPrepareRebuildReply.replica:type_name -> ptypes.ControllerReplica
-	24, // 6: ptypes.ReplicaPrepareRebuildReply.sync_file_info_list:type_name -> ptypes.SyncFileInfo
+	26, // 6: ptypes.ReplicaPrepareRebuildReply.sync_file_info_list:type_name -> ptypes.SyncFileInfo
 	19, // 7: ptypes.VersionDetailGetReply.version:type_name -> ptypes.VersionOutput
 	21, // 8: ptypes.MetricsGetReply.metrics:type_name -> ptypes.Metrics
-	25, // 9: ptypes.ControllerService.VolumeGet:input_type -> google.protobuf.Empty
+	27, // 9: ptypes.ControllerService.VolumeGet:input_type -> google.protobuf.Empty
 	4,  // 10: ptypes.ControllerService.VolumeStart:input_type -> ptypes.VolumeStartRequest
-	25, // 11: ptypes.ControllerService.VolumeShutdown:input_type -> google.protobuf.Empty
+	27, // 11: ptypes.ControllerService.VolumeShutdown:input_type -> google.protobuf.Empty
 	5,  // 12: ptypes.ControllerService.VolumeSnapshot:input_type -> ptypes.VolumeSnapshotRequest
 	7,  // 13: ptypes.ControllerService.VolumeRevert:input_type -> ptypes.VolumeRevertRequest
 	8,  // 14: ptypes.ControllerService.VolumeExpand:input_type -> ptypes.VolumeExpandRequest
 	9,  // 15: ptypes.ControllerService.VolumeFrontendStart:input_type -> ptypes.VolumeFrontendStartRequest
-	25, // 16: ptypes.ControllerService.VolumeFrontendShutdown:input_type -> google.protobuf.Empty
+	27, // 16: ptypes.ControllerService.VolumeFrontendShutdown:input_type -> google.protobuf.Empty
 	10, // 17: ptypes.ControllerService.VolumeUnmapMarkSnapChainRemovedSet:input_type -> ptypes.VolumeUnmapMarkSnapChainRemovedSetRequest
 	11, // 18: ptypes.ControllerService.VolumeSnapshotMaxCountSet:input_type -> ptypes.VolumeSnapshotMaxCountSetRequest
 	12, // 19: ptypes.ControllerService.VolumeSnapshotMaxSizeSet:input_type -> ptypes.VolumeSnapshotMaxSizeSetRequest
-	25, // 20: ptypes.ControllerService.ReplicaList:input_type -> google.protobuf.Empty
+	27, // 20: ptypes.ControllerService.ReplicaList:input_type -> google.protobuf.Empty
 	2,  // 21: ptypes.ControllerService.ReplicaGet:input_type -> ptypes.ReplicaAddress
 	16, // 22: ptypes.ControllerService.ControllerReplicaCreate:input_type -> ptypes.ControllerReplicaCreateRequest
 	2,  // 23: ptypes.ControllerService.ReplicaDelete:input_type -> ptypes.ReplicaAddress
@@ -1709,31 +1835,33 @@ var file_ptypes_controller_proto_depIdxs = []int32{
 	2,  // 25: ptypes.ControllerService.ReplicaPrepareRebuild:input_type -> ptypes.ReplicaAddress
 	2,  // 26: ptypes.ControllerService.ReplicaVerifyRebuild:input_type -> ptypes.ReplicaAddress
 	18, // 27: ptypes.ControllerService.JournalList:input_type -> ptypes.JournalListRequest
-	25, // 28: ptypes.ControllerService.VersionDetailGet:input_type -> google.protobuf.Empty
-	25, // 29: ptypes.ControllerService.MetricsGet:input_type -> google.protobuf.Empty
-	1,  // 30: ptypes.ControllerService.VolumeGet:output_type -> ptypes.Volume
-	1,  // 31: ptypes.ControllerService.VolumeStart:output_type -> ptypes.Volume
-	1,  // 32: ptypes.ControllerService.VolumeShutdown:output_type -> ptypes.Volume
-	6,  // 33: ptypes.ControllerService.VolumeSnapshot:output_type -> ptypes.VolumeSnapshotReply
-	1,  // 34: ptypes.ControllerService.VolumeRevert:output_type -> ptypes.Volume
-	1,  // 35: ptypes.ControllerService.VolumeExpand:output_type -> ptypes.Volume
-	1,  // 36: ptypes.ControllerService.VolumeFrontendStart:output_type -> ptypes.Volume
-	1,  // 37: ptypes.ControllerService.VolumeFrontendShutdown:output_type -> ptypes.Volume
-	1,  // 38: ptypes.ControllerService.VolumeUnmapMarkSnapChainRemovedSet:output_type -> ptypes.Volume
-	1,  // 39: ptypes.ControllerService.VolumeSnapshotMaxCountSet:output_type -> ptypes.Volume
-	1,  // 40: ptypes.ControllerService.VolumeSnapshotMaxSizeSet:output_type -> ptypes.Volume
-	15, // 41: ptypes.ControllerService.ReplicaList:output_type -> ptypes.ReplicaListReply
-	3,  // 42: ptypes.ControllerService.ReplicaGet:output_type -> ptypes.ControllerReplica
-	3,  // 43: ptypes.ControllerService.ControllerReplicaCreate:output_type -> ptypes.ControllerReplica
-	25, // 44: ptypes.ControllerService.ReplicaDelete:output_type -> google.protobuf.Empty
-	3,  // 45: ptypes.ControllerService.ReplicaUpdate:output_type -> ptypes.ControllerReplica
-	17, // 46: ptypes.ControllerService.ReplicaPrepareRebuild:output_type -> ptypes.ReplicaPrepareRebuildReply
-	3,  // 47: ptypes.ControllerService.ReplicaVerifyRebuild:output_type -> ptypes.ControllerReplica
-	25, // 48: ptypes.ControllerService.JournalList:output_type -> google.protobuf.Empty
-	20, // 49: ptypes.ControllerService.VersionDetailGet:output_type -> ptypes.VersionDetailGetReply
-	22, // 50: ptypes.ControllerService.MetricsGet:output_type -> ptypes.MetricsGetReply
-	30, // [30:51] is the sub-list for method output_type
-	9,  // [9:30] is the sub-list for method input_type
+	27, // 28: ptypes.ControllerService.VersionDetailGet:input_type -> google.protobuf.Empty
+	27, // 29: ptypes.ControllerService.MetricsGet:input_type -> google.protobuf.Empty
+	23, // 30: ptypes.ControllerService.VolumeBench:input_type -> ptypes.VolumeBenchRequest
+	1,  // 31: ptypes.ControllerService.VolumeGet:output_type -> ptypes.Volume
+	1,  // 32: ptypes.ControllerService.VolumeStart:output_type -> ptypes.Volume
+	1,  // 33: ptypes.ControllerService.VolumeShutdown:output_type -> ptypes.Volume
+	6,  // 34: ptypes.ControllerService.VolumeSnapshot:output_type -> ptypes.VolumeSnapshotReply
+	1,  // 35: ptypes.ControllerService.VolumeRevert:output_type -> ptypes.Volume
+	1,  // 36: ptypes.ControllerService.VolumeExpand:output_type -> ptypes.Volume
+	1,  // 37: ptypes.ControllerService.VolumeFrontendStart:output_type -> ptypes.Volume
+	1,  // 38: ptypes.ControllerService.VolumeFrontendShutdown:output_type -> ptypes.Volume
+	1,  // 39: ptypes.ControllerService.VolumeUnmapMarkSnapChainRemovedSet:output_type -> ptypes.Volume
+	1,  // 40: ptypes.ControllerService.VolumeSnapshotMaxCountSet:output_type -> ptypes.Volume
+	1,  // 41: ptypes.ControllerService.VolumeSnapshotMaxSizeSet:output_type -> ptypes.Volume
+	15, // 42: ptypes.ControllerService.ReplicaList:output_type -> ptypes.ReplicaListReply
+	3,  // 43: ptypes.ControllerService.ReplicaGet:output_type -> ptypes.ControllerReplica
+	3,  // 44: ptypes.ControllerService.ControllerReplicaCreate:output_type -> ptypes.ControllerReplica
+	27, // 45: ptypes.ControllerService.ReplicaDelete:output_type -> google.protobuf.Empty
+	3,  // 46: ptypes.ControllerService.ReplicaUpdate:output_type -> ptypes.ControllerReplica
+	17, // 47: ptypes.ControllerService.ReplicaPrepareRebuild:output_type -> ptypes.ReplicaPrepareRebuildReply
+	3,  // 48: ptypes.ControllerService.ReplicaVerifyRebuild:output_type -> ptypes.ControllerReplica
+	27, // 49: ptypes.ControllerService.JournalList:output_type -> google.protobuf.Empty
+	20, // 50: ptypes.ControllerService.VersionDetailGet:output_type -> ptypes.VersionDetailGetReply
+	22, // 51: ptypes.ControllerService.MetricsGet:output_type -> ptypes.MetricsGetReply
+	24, // 52: ptypes.ControllerService.VolumeBench:output_type -> ptypes.VolumeBenchResponse
+	31, // [31:53] is the sub-list for method output_type
+	9,  // [9:31] is the sub-list for method input_type
 	9,  // [9:9] is the sub-list for extension type_name
 	9,  // [9:9] is the sub-list for extension extendee
 	0,  // [0:9] is the sub-list for field type_name
@@ -2010,6 +2138,30 @@ func file_ptypes_controller_proto_init() {
 				return nil
 			}
 		}
+		file_ptypes_controller_proto_msgTypes[22].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*VolumeBenchRequest); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_ptypes_controller_proto_msgTypes[23].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*VolumeBenchResponse); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
 	}
 	type x struct{}
 	out := protoimpl.TypeBuilder{
@@ -2017,7 +2169,7 @@ func file_ptypes_controller_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_ptypes_controller_proto_rawDesc,
 			NumEnums:      1,
-			NumMessages:   23,
+			NumMessages:   25,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

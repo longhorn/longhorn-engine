@@ -202,6 +202,15 @@ func (cs *ControllerServer) VolumeSnapshotMaxSizeSet(ctx context.Context, req *e
 	return cs.getVolume(), nil
 }
 
+func (cs *ControllerServer) VolumeBench(ctx context.Context, req *enginerpc.VolumeBenchRequest) (*enginerpc.VolumeBenchResponse, error) {
+	output, err := cs.c.Bench(req.BenchType, int(req.Thread), req.Size)
+	if err != nil {
+		return nil, err
+	}
+
+	return &enginerpc.VolumeBenchResponse{Output: output}, nil
+}
+
 func (cs *ControllerServer) ReplicaList(ctx context.Context, req *emptypb.Empty) (*enginerpc.ReplicaListReply, error) {
 	return &enginerpc.ReplicaListReply{
 		Replicas: cs.listControllerReplica(),

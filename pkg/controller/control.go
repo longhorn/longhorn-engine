@@ -1287,3 +1287,14 @@ func (c *Controller) GetLatestMetics() *enginerpc.Metrics {
 func getAverageLatency(totalLatency, iops uint64) uint64 {
 	return totalLatency / iops
 }
+
+func (c *Controller) Bench(benchType string, thread int, size int64) (output string, err error) {
+	if size%4096 != 0 {
+		return "", fmt.Errorf("failed to bench volume engine with size %v, because it is not multiple of volume block size 4096", size)
+	}
+	if size > c.size {
+		return "", fmt.Errorf("failed to bench volume engine with size %v, because it is greater than the engine size %v", size, c.size)
+	}
+
+	return util.Bench(benchType, thread, size, c.WriteAt, c.ReadAt)
+}

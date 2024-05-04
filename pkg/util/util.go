@@ -3,6 +3,8 @@ package util
 import (
 	"fmt"
 	"io"
+	"math"
+	"math/rand"
 	"net"
 	"net/http"
 	"net/url"
@@ -11,6 +13,7 @@ import (
 	"regexp"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -286,4 +289,130 @@ func UUID() string {
 
 func RandomID() string {
 	return UUID()[:randomIDLenth]
+}
+
+var letterRunes = []rune("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ")
+
+func RandStringRunes(n int) string {
+	b := make([]rune, n)
+	for i := range b {
+		b[i] = letterRunes[rand.Intn(len(letterRunes))]
+	}
+	return string(b)
+}
+
+func Bench(benchType string, thread int, size int64, writeAt, readAt func([]byte, int64) (int, error)) (output string, err error) {
+	benchTypeInList := strings.Split(benchType, "-")
+	if len(benchTypeInList) != 3 ||
+		(benchTypeInList[0] != "seq" && benchTypeInList[0] != "rand") ||
+		(benchTypeInList[1] != "iops" && benchTypeInList[1] != "bandwidth" && benchTypeInList[1] != "latency") ||
+		(benchTypeInList[2] != "read" && benchTypeInList[2] != "write") {
+		return "", fmt.Errorf("invalid bench type %s", benchType)
+	}
+
+	if thread != 1 && strings.Contains(benchType, "-latency-") {
+		logrus.Warnf("Using single thread for latency related benchmark")
+		thread = 1
+	}
+
+	blockSize := 4096 // 4KB
+	if strings.Contains(benchType, "-bandwidth-") {
+		blockSize = 1 << 20 // 1MB
+	}
+
+	var duration time.Duration
+
+	// Prepare data before read
+	if benchTypeInList[2] == "read" {
+		// Typically 4-thread write is enough
+		if _, err := dataIOWithMultipleThread(false, 4, 1<<20, size, writeAt); err != nil {
+			return "", err
+		}
+
+		if duration, err = dataIOWithMultipleThread(benchTypeInList[0] == "rand", thread, blockSize, size, readAt); err != nil {
+			return "", err
+		}
+	}
+
+	if benchTypeInList[2] == "write" {
+		if duration, err = dataIOWithMultipleThread(benchTypeInList[0] == "rand", thread, blockSize, size, writeAt); err != nil {
+			return "", err
+		}
+	}
+
+	switch benchTypeInList[1] {
+	case "iops":
+		res := int(float64(size) / float64(blockSize) / float64(duration) * 1000000000)
+		output = fmt.Sprintf("instance %s %v/s, size %v, duration %vs, thread count %v", benchType, res, size, duration.Seconds(), thread)
+	case "bandwidth":
+		res := int(float64(size) / float64(duration) * 1000000000 / float64(1<<10))
+		output = fmt.Sprintf("instance %s %vKB/s, size %v, duration %vs, thread count %v", benchType, res, size, duration.Seconds(), thread)
+	case "latency":
+		res := float64(duration) / 1000 / (float64(size) / float64(blockSize))
+		output = fmt.Sprintf("instance %s %.2fus, size %v, duration %vs, thread count %v", benchType, res, size, duration.Seconds(), thread)
+	}
+	return output, nil
+}
+
+func dataIOWithMultipleThread(isRandomIO bool, thread, blockSize int, size int64, ioAt func([]byte, int64) (int, error)) (duration time.Duration, err error) {
+	lock := sync.Mutex{}
+
+	chunkSize := int(math.Ceil(float64(size) / float64(thread)))
+	chunkBlocks := int(math.Ceil(float64(chunkSize) / float64(blockSize)))
+	var sequenceList []int
+	if isRandomIO {
+		sequenceList = make([]int, chunkBlocks)
+		for i := 0; i < chunkBlocks; i++ {
+			sequenceList[i] = i
+		}
+		rand.Shuffle(chunkBlocks, func(i, j int) { sequenceList[i], sequenceList[j] = sequenceList[j], sequenceList[i] })
+	}
+
+	if chunkSize < blockSize {
+		return 0, fmt.Errorf("the io thread count is too much so that each thread cannot operate a single block")
+	}
+
+	wg := sync.WaitGroup{}
+	wg.Add(thread)
+
+	startTime := time.Now()
+	defer func() {
+		duration = time.Since(startTime)
+	}()
+
+	for i := 0; i < thread; i++ {
+		idx := i
+		go func() {
+			defer wg.Done()
+
+			// Ignore this randomly generate data if the ioAt is readAt
+			blockBytes := []byte(RandStringRunes(blockSize))
+
+			start := int64(idx) * int64(chunkSize)
+			end := int64(idx+1) * int64(chunkSize)
+			offset := start
+			for cnt := 0; cnt < chunkBlocks; cnt++ {
+				if isRandomIO {
+					offset = start + int64(sequenceList[cnt]*blockSize)
+					if offset+int64(blockSize) > end {
+						offset -= int64(blockSize)
+					}
+				} else {
+					offset = start + int64(cnt*blockSize)
+					if offset+int64(blockSize) > end {
+						blockBytes = blockBytes[:end-offset]
+					}
+				}
+				if _, ioErr := ioAt(blockBytes, offset); ioErr != nil {
+					lock.Lock()
+					err = ioErr
+					lock.Unlock()
+					return
+				}
+			}
+		}()
+	}
+	wg.Wait()
+
+	return
 }

@@ -1270,6 +1270,17 @@ func (r *Replica) Expand(size int64) (err error) {
 	return nil
 }
 
+func (r *Replica) Bench(benchType string, thread int, size int64) (output string, err error) {
+	if size%diskutil.VolumeSectorSize != 0 {
+		return "", fmt.Errorf("failed to bench volume replica with size %v, because it is not multiple of volume sector size %v", size, diskutil.VolumeSectorSize)
+	}
+	if size > r.info.Size {
+		return "", fmt.Errorf("failed to bench volume replica with size %v, because it is greater than the replica size %v", size, r.info.Size)
+	}
+
+	return util.Bench(benchType, thread, size, r.WriteAt, r.ReadAt)
+}
+
 func (r *Replica) WriteAt(buf []byte, offset int64) (int, error) {
 	if r.readOnly {
 		return 0, fmt.Errorf("cannot write on read-only replica")

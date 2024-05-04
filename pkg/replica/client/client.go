@@ -790,3 +790,23 @@ func (c *ReplicaClient) SnapshotHashLockState() (bool, error) {
 
 	return resp.IsLocked, nil
 }
+
+func (c *ReplicaClient) Bench(benchType string, thread int, size int64) (string, error) {
+	replicaServiceClient, err := c.getReplicaServiceClient()
+	if err != nil {
+		return "", err
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
+	defer cancel()
+
+	resp, err := replicaServiceClient.ReplicaBench(ctx, &enginerpc.ReplicaBenchRequest{
+		BenchType: benchType,
+		Thread:    int32(thread),
+		Size:      size,
+	})
+	if err != nil {
+		return "", errors.Wrapf(err, "failed to bench replica %v", c.replicaServiceURL)
+	}
+
+	return resp.Output, nil
+}
