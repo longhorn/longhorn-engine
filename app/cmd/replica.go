@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"net"
@@ -91,7 +92,7 @@ func ReplicaCmd() cli.Command {
 	}
 }
 
-func startReplica(c *cli.Context) error {
+func startReplica(c *cli.Context) (err error) {
 	if c.NArg() != 1 {
 		return errors.New("directory name is required")
 	}
@@ -115,7 +116,14 @@ func startReplica(c *cli.Context) error {
 		}
 	}
 
-	s := replica.NewServer(dir, backingFile, diskutil.ReplicaSectorSize, disableRevCounter, unmapMarkDiskChainRemoved, snapshotMaxCount, snapshotMaxSize)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer func() {
+		if err != nil {
+			cancel()
+		}
+	}()
+
+	s := replica.NewServer(ctx, dir, backingFile, diskutil.ReplicaSectorSize, disableRevCounter, unmapMarkDiskChainRemoved, snapshotMaxCount, snapshotMaxSize)
 
 	address := c.String("listen")
 
@@ -144,6 +152,8 @@ func startReplica(c *cli.Context) error {
 	resp := make(chan error)
 
 	go func() {
+		defer cancel()
+
 		listen, err := net.Listen("tcp", controlAddress)
 		if err != nil {
 			logrus.WithError(err).Warnf("Failed to listen %v", controlAddress)
@@ -160,6 +170,8 @@ func startReplica(c *cli.Context) error {
 	}()
 
 	go func() {
+		defer cancel()
+
 		rpcServer := replicarpc.NewDataServer(types.DataServerProtocol(dataServerProtocol), dataAddress, s)
 		logrus.Infof("Listening on data server %s", dataAddress)
 		err := rpcServer.ListenAndServe()
@@ -179,6 +191,8 @@ func startReplica(c *cli.Context) error {
 		}
 
 		go func() {
+			defer cancel()
+
 			cmd := exec.Command(exe, "--volume-name", volumeName, "sync-agent", "--listen", syncAddress,
 				"--replica", controlAddress,
 				"--listen-port-range",

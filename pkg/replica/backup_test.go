@@ -1,6 +1,7 @@
 package replica
 
 import (
+	"context"
 	"os"
 	"path"
 
@@ -21,7 +22,7 @@ func (s *TestSuite) TestBackup(c *C) {
 	err = os.Chdir(dir)
 	c.Assert(err, IsNil)
 
-	r, err := New(10*mb, bs, dir, nil, false, false, 250, 0)
+	r, err := New(context.Background(), 10*mb, bs, dir, nil, false, false, 250, 0)
 	c.Assert(err, IsNil)
 	defer r.Close()
 
@@ -87,7 +88,7 @@ func (s *TestSuite) testBackupWithBackups(c *C, backingFile *backingfile.Backing
 	c.Assert(err, IsNil)
 	volume := "test"
 
-	r, err := New(10*mb, bs, dir, backingFile, false, false, 250, 0)
+	r, err := New(context.Background(), 10*mb, bs, dir, backingFile, false, false, 250, 0)
 	c.Assert(err, IsNil)
 	defer r.Close()
 
