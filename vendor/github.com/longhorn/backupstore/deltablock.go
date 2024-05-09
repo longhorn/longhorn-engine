@@ -775,17 +775,9 @@ func RestoreDeltaBlockBackup(ctx context.Context, config *DeltaRestoreConfig) er
 
 func restoreBlockToFile(bsDriver BackupStoreDriver, volumeName string, volDev *os.File, decompression string, blk BlockMapping) error {
 	blkFile := getBlockFilePath(volumeName, blk.BlockChecksum)
-	rc, err := bsDriver.Read(blkFile)
+	r, err := DecompressAndVerifyWithFallback(bsDriver, blkFile, decompression, blk.BlockChecksum)
 	if err != nil {
-		return errors.Wrapf(err, "failed to read block %v with checksum %v", blkFile, blk.BlockChecksum)
-	}
-	defer rc.Close()
-
-	r, err := util.DecompressAndVerifyWithFallback(decompression, rc, blk.BlockChecksum)
-	if err != nil {
-		if r == nil {
-			return err
-		}
+		return errors.Wrapf(err, "failed to decompress and verify block %v with checksum %v", blkFile, blk.BlockChecksum)
 	}
 
 	if _, err := volDev.Seek(blk.Offset, 0); err != nil {
