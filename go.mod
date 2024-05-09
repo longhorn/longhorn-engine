@@ -10,7 +10,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
-	github.com/longhorn/backupstore v0.0.0-20240427164602-c8721e8ea31a
+	github.com/longhorn/backupstore v0.0.0-20240509144945-3bce6e69af15
 	github.com/longhorn/go-common-libs v0.0.0-20240427164621-70d1933bfa90
 	github.com/longhorn/go-iscsi-helper v0.0.0-20240427164656-e9439c0018ce
 	github.com/longhorn/sparse-tools v0.0.0-20240427164751-a7b9f1b2c8a8
@@ -64,7 +64,6 @@ require (
 	github.com/shirou/gopsutil/v3 v3.24.3 // indirect
 	github.com/slok/goresilience v0.2.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
-	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240227224415-6ceb2ff114de // indirect
 	gopkg.in/VividCortex/ewma.v1 v1.1.1 // indirect
