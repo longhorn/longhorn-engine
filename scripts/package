@@ -31,6 +31,7 @@ if [ ! -x ./bin/longhorn ]; then
 fi
 
 cp /usr/local/bin/longhorn-instance-manager ./bin/
+cp -r ./bin ./package/
 
 # update base image to get latest changes
 grep FROM package/Dockerfile | awk '{print $2}' | while read -r BASE_IMAGE
