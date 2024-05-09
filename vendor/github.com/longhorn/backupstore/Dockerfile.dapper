@@ -22,7 +22,7 @@ RUN wget -O - https://storage.googleapis.com/golang/go1.21.3.linux-${!GOLANG_ARC
 RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.55.2
 
 ENV DAPPER_SOURCE /go/src/github.com/longhorn/backupstore
-ENV DAPPER_OUTPUT ./bin
+ENV DAPPER_OUTPUT ./bin coverage.out
 ENV DAPPER_DOCKER_SOCKET true
 ENV DAPPER_ENV IMAGE REPO VERSION TAG DRONE_REPO DRONE_PULL_REQUEST DRONE_COMMIT_REF
 ENV DAPPER_RUN_ARGS --privileged --tmpfs /go/src/github.com/longhorn/longhorn/integration/.venv:exec --tmpfs /go/src/github.com/longhorn/longhorn/integration/.tox:exec -v /dev:/host/dev
