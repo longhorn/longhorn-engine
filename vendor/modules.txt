@@ -171,7 +171,7 @@ github.com/longhorn/sparse-tools/sparse/rest
 github.com/longhorn/sparse-tools/stats
 github.com/longhorn/sparse-tools/types
 github.com/longhorn/sparse-tools/util
-# github.com/longhorn/types v0.0.0-20240427164854-38dbed8528d3 => github.com/ejweber/types v0.0.0-20240429165354-56f775b2d017
+# github.com/longhorn/types v0.0.0-20240510221052-ab949bbedea3
 ## explicit; go 1.21
 github.com/longhorn/types/pkg/generated/enginerpc
 # github.com/mattn/go-colorable v0.1.4
@@ -424,4 +424,3 @@ k8s.io/utils/clock
 k8s.io/utils/exec
 k8s.io/utils/io
 k8s.io/utils/keymutex
-# github.com/longhorn/types => github.com/ejweber/types v0.0.0-20240429165354-56f775b2d017
