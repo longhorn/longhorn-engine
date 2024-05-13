@@ -195,10 +195,8 @@ func (client *syncClient) syncContent() error {
 	// the below select will exit once all error channels are closed, or a single
 	// channel has run into an error, which will lead to the ctx being cancelled
 	mergedErrc := mergeErrorChannels(ctx, errorChannels...)
-	select {
-	case err = <-mergedErrc:
-		break
-	}
+	err = <-mergedErrc
+
 	return err
 }
 

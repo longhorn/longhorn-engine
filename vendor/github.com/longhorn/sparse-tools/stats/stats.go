@@ -15,7 +15,7 @@ const (
 	defaultBufferSize = 4 * 1000 // sample buffer size (cyclic)
 )
 
-//SampleOp operation
+// SampleOp operation
 type SampleOp int
 
 const (
@@ -202,7 +202,7 @@ func resetStats(size int) {
 	initStats(size)
 }
 
-//OpID pending operation id
+// OpID pending operation id
 type OpID int
 
 var (
@@ -211,7 +211,7 @@ var (
 	mutexPendingOps    sync.Mutex
 )
 
-//InsertPendingOp starts tracking of a pending operation
+// InsertPendingOp starts tracking of a pending operation
 func InsertPendingOp(timestamp time.Time, targetID string, op SampleOp, size int) OpID {
 	mutexPendingOps.Lock()
 	defer mutexPendingOps.Unlock()
@@ -229,7 +229,7 @@ func InsertPendingOp(timestamp time.Time, targetID string, op SampleOp, size int
 	return OpID(id)
 }
 
-//RemovePendingOp removes tracking of a completed operation
+// RemovePendingOp removes tracking of a completed operation
 func RemovePendingOp(id OpID, status bool) error {
 	log.Debug("RemovePendingOp id=", id)
 	mutexPendingOps.Lock()
@@ -248,7 +248,7 @@ func RemovePendingOp(id OpID, status bool) error {
 	}
 
 	// Update the duration and store in the recent stats
-	pendingOps[i].duration = time.Now().Sub(pendingOps[i].timestamp)
+	pendingOps[i].duration = time.Since(pendingOps[i].timestamp)
 	pendingOps[i].status = status
 	storeSample(pendingOps[i])
 
