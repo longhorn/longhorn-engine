@@ -2,7 +2,7 @@ package rest
 
 import "github.com/gorilla/mux"
 
-//NewRouter creates and configures a mux router
+// NewRouter creates and configures a mux router
 func NewRouter(server *SyncServer) *mux.Router {
 
 	// API framework routes
