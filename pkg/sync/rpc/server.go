@@ -912,13 +912,13 @@ func (s *SyncAgentServer) extraIncrementalFullRestoreOperations(restoreStatus *r
 
 	defer func() {
 		// try to clean up tmp files
-		if _, err := s.FileRemove(nil, &ptypes.FileRemoveRequest{
+		if _, err := s.FileRemove(context.TODO(), &ptypes.FileRemoveRequest{
 			FileName: tmpSnapshotDiskName,
 		}); err != nil {
 			logrus.WithError(err).Warnf("Failed to clean up delta file %s", tmpSnapshotDiskName)
 		}
 
-		if _, err := s.FileRemove(nil, &ptypes.FileRemoveRequest{
+		if _, err := s.FileRemove(context.TODO(), &ptypes.FileRemoveRequest{
 			FileName: tmpSnapshotDiskMetaName,
 		}); err != nil {
 			logrus.WithError(err).Warnf("Failed to clean up delta file %s", tmpSnapshotDiskMetaName)
@@ -947,7 +947,7 @@ func (s *SyncAgentServer) postIncrementalRestoreOperations(restoreStatus *replic
 	deltaFileName := restoreStatus.ToFileName
 	logrus.Info("Cleaning up incremental restore by Coalescing and removing the delta file")
 	defer func() {
-		if _, err := s.FileRemove(nil, &ptypes.FileRemoveRequest{
+		if _, err := s.FileRemove(context.TODO(), &ptypes.FileRemoveRequest{
 			FileName: deltaFileName,
 		}); err != nil {
 			logrus.WithError(err).Warnf("Failed to clean up delta file %s", deltaFileName)
