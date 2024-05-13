@@ -78,7 +78,7 @@ func (t *Tgt) Shutdown() error {
 	// If the engine is shutting down during a snapshot (in the preparation phase, before the snapshot operation obtains
 	// a lock) we may have left a frozen filesystem. This is a good opportunity to unfreeze it.
 	if err := util.UnfreezeFilesystemForDevice(t.Endpoint()); err != nil {
-		logrus.WithError(err).Errorf("Failed to clean up frozen file system during shutdown")
+		logrus.WithError(err).Errorf("Failed to clean up frozen file system; will continue tgt shutdown")
 	}
 
 	if t.dev != nil {

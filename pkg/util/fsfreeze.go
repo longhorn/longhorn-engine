@@ -31,17 +31,26 @@ const (
 // GetFreezePointFromDevicePath returns the absolute path to the canonical location we will try to mount a filesystem to
 // before freezeing it.
 func GetFreezePointFromDevicePath(devicePath string) string {
+	if devicePath == "" {
+		return ""
+	}
 	return GetFreezePointFromVolumeName(filepath.Base(devicePath))
 }
 
 // GetFreezePointFromVolumeName returns the absolute path to the canonical location we will try to mount a filesystem to
 // before freezeing it.
 func GetFreezePointFromVolumeName(volumeName string) string {
+	if volumeName == "" {
+		return ""
+	}
 	return filepath.Join(freezePointDirectory, volumeName)
 }
 
 // GetDevicePathFromVolumeName mirrors longhorndev.getDev. It returns the device path that go-iscsi-helper will use.
 func GetDevicePathFromVolumeName(volumeName string) string {
+	if volumeName == "" {
+		return ""
+	}
 	return filepath.Join(longhorndev.DevPath, volumeName)
 }
 

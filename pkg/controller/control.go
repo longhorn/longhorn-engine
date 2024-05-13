@@ -1382,7 +1382,8 @@ func tryFreeze(devicePath string, freezePoint string, mounter mount.Interface, e
 		mounted = true
 
 		// We must verify it is still safe to freeze the filesystem. If the source mount was unmounted by someone else
-		// before we bind mounted, the bind mount could refer to the root filesystem.
+		// before we bind mounted, the bind mount could refer to the root filesystem. It does not matter if the source
+		// mount is unmounted AFTER our bind mount, as the bind mount is not affected.
 		var device string
 		device, _, err = mount.GetDeviceNameFromMount(mounter, freezePoint)
 		if err != nil || device != devicePath {
