@@ -2,7 +2,7 @@ module github.com/longhorn/longhorn-engine
 
 go 1.22.0
 
-toolchain go1.22.2
+toolchain go1.22.3
 
 require (
 	github.com/docker/go-units v0.3.3
@@ -10,18 +10,18 @@ require (
 	github.com/golang/protobuf v1.5.4
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
-	github.com/longhorn/backupstore v0.0.0-20240427164602-c8721e8ea31a
-	github.com/longhorn/go-common-libs v0.0.0-20240427164621-70d1933bfa90
-	github.com/longhorn/go-iscsi-helper v0.0.0-20240427164656-e9439c0018ce
-	github.com/longhorn/sparse-tools v0.0.0-20240427164751-a7b9f1b2c8a8
-	github.com/moby/moby v23.0.10+incompatible
+	github.com/longhorn/backupstore v0.0.0-20240509144945-3bce6e69af15
+	github.com/longhorn/go-common-libs v0.0.0-20240511041328-e68a6cd889d4
+	github.com/longhorn/go-iscsi-helper v0.0.0-20240513041205-7a18d2fd85bf
+	github.com/longhorn/sparse-tools v0.0.0-20240513025352-ed49dd3f93eb
+	github.com/moby/moby v23.0.11+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
 	github.com/rancher/go-rancher v0.1.1-0.20190307222549-9756097e5e4c
 	github.com/sirupsen/logrus v1.9.3
 	github.com/urfave/cli v1.22.15
 	golang.org/x/net v0.23.0
-	golang.org/x/sys v0.19.0
+	golang.org/x/sys v0.20.0
 	google.golang.org/grpc v1.63.2
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 	gopkg.in/cheggaaa/pb.v2 v2.0.7
@@ -60,13 +60,12 @@ require (
 	github.com/prometheus/procfs v0.9.0 // indirect
 	github.com/rogpeppe/go-internal v1.10.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	github.com/shirou/gopsutil/v3 v3.24.3 // indirect
+	github.com/shirou/gopsutil/v3 v3.24.4 // indirect
 	github.com/slok/goresilience v0.2.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
-	go.uber.org/multierr v1.11.0 // indirect
 	golang.org/x/text v0.14.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240227224415-6ceb2ff114de // indirect
-	google.golang.org/protobuf v1.33.0 // indirect
+	google.golang.org/protobuf v1.34.1 // indirect
 	gopkg.in/VividCortex/ewma.v1 v1.1.1 // indirect
 	gopkg.in/fatih/color.v1 v1.7.0 // indirect
 	gopkg.in/mattn/go-colorable.v0 v0.1.0 // indirect
