@@ -269,9 +269,6 @@ func (c *Controller) Snapshot(inputName string, labels map[string]string, should
 		}
 	}
 
-	log.Warn("Pause for debugging")
-	time.Sleep(10 * time.Second)
-
 	c.Lock()
 	defer c.Unlock()
 	if err = c.canDoSnapshot(); err != nil {
