@@ -1,6 +1,6 @@
 FROM registry.suse.com/bci/bci-base:15.6
 
-ARG DAPPER_HOST_ARCH=amd64
+ARG DAPPER_HOST_ARCH
 ARG http_proxy
 ARG https_proxy
 ENV HOST_ARCH=${DAPPER_HOST_ARCH} ARCH=${DAPPER_HOST_ARCH}
@@ -33,7 +33,7 @@ RUN zypper -n install cmake wget curl git less file gcc python311 python311-pip 
     bash-completion librdmacm1 librdmacm-utils libibverbs xsltproc docbook-xsl-stylesheets \
     perl-Config-General libaio-devel glibc-devel-static glibc-devel sg3_utils iptables libltdl7 \
     libdevmapper1_03 iproute2 jq unzip zlib-devel zlib-devel-static \
-    rpm-build rdma-core-devel gcc-c++ docker && \
+    rpm-build rdma-core-devel gcc-c++ docker open-iscsi && \
     rm -rf /var/cache/zypp/*
 
 # needed for ${!var} substitution

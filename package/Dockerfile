@@ -53,7 +53,8 @@ COPY --from=builder \
     /usr/sbin/tgtimg \
     /usr/local/bin/
 
-COPY bin/longhorn bin/longhorn-instance-manager /usr/local/bin/
+COPY package/bin/longhorn /usr/local/bin/
+COPY package/bin/longhorn-instance-manager /usr/local/bin/
 
 COPY package/launch-simple-longhorn package/engine-manager package/launch-simple-file /usr/local/bin/
 
