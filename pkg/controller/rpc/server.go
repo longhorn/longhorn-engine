@@ -137,7 +137,7 @@ func (cs *ControllerServer) VolumeShutdown(ctx context.Context, req *emptypb.Emp
 }
 
 func (cs *ControllerServer) VolumeSnapshot(ctx context.Context, req *enginerpc.VolumeSnapshotRequest) (*enginerpc.VolumeSnapshotReply, error) {
-	name, err := cs.c.Snapshot(req.Name, req.Labels)
+	name, err := cs.c.Snapshot(req.Name, req.Labels, req.FreezeFilesystem)
 	if err != nil {
 		return nil, err
 	}

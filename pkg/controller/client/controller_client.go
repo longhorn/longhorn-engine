@@ -149,14 +149,15 @@ func (c *ControllerClient) VolumeStart(size, currentSize int64, replicas ...stri
 	return nil
 }
 
-func (c *ControllerClient) VolumeSnapshot(name string, labels map[string]string) (string, error) {
+func (c *ControllerClient) VolumeSnapshot(name string, labels map[string]string, freezeFilesystem bool) (string, error) {
 	controllerServiceClient := c.getControllerServiceClient()
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
 	defer cancel()
 
 	reply, err := controllerServiceClient.VolumeSnapshot(ctx, &enginerpc.VolumeSnapshotRequest{
-		Name:   name,
-		Labels: labels,
+		Name:             name,
+		Labels:           labels,
+		FreezeFilesystem: freezeFilesystem,
 	})
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to create snapshot %v for volume %v", name, c.serviceURL)

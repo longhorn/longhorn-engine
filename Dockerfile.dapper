@@ -12,7 +12,10 @@ ENV PATH /go/bin:$PATH
 ENV DAPPER_DOCKER_SOCKET true
 ENV DAPPER_ENV TAG REPO DRONE_REPO DRONE_PULL_REQUEST DRONE_COMMIT_REF SKIP_TASKS
 ENV DAPPER_OUTPUT bin coverage.out
-ENV DAPPER_RUN_ARGS --privileged --tmpfs /go/src/github.com/longhorn/longhorn-engine/integration/.venv:exec --tmpfs /go/src/github.com/longhorn/longhorn-engine/integration/.tox:exec -v /dev:/host/dev -v /proc:/host/proc
+# For filesystem freeze tests, our container must be able to see the filesystem mounted in the host mount namespace.
+# Usually, instance-manager runs with the equivalent of "-v /:/host". For integration testing, use "-v /tmp:/host/tmp"
+# and mount filesystems to /tmp to simulate this without bind mounting everything.
+ENV DAPPER_RUN_ARGS --privileged --tmpfs /go/src/github.com/longhorn/longhorn-engine/integration/.venv:exec --tmpfs /go/src/github.com/longhorn/longhorn-engine/integration/.tox:exec -v /dev:/host/dev -v /proc:/host/proc --mount type=bind,source=/tmp,destination=/host/tmp,bind-propagation=rslave
 ENV DAPPER_SOURCE /go/src/github.com/longhorn/longhorn-engine
 WORKDIR ${DAPPER_SOURCE}
 

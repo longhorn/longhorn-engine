@@ -28,7 +28,13 @@ from common.constants import (
     RETRY_COUNTS_SHORT, RETRY_INTERVAL_SHORT
 )
 
+from common.util import get_process_log_lines
+
 from data.snapshot_tree import snapshot_tree_build, snapshot_tree_verify_node
+
+from tempfile import mkdtemp
+
+from os.path import relpath
 
 
 def snapshot_revert_test(dev, address, engine_name):  # NOQA
@@ -402,7 +408,7 @@ def test_snapshot_mounted_filesystem(grpc_controller,  # NOQA
     6. Take snapshot 2 (test file included)
     7. Overwrite test file on the filesystem
     8. Take snapshot 3 (test file changed)
-    9. Observe that logs of engine `Filesystem frozen / unfrozen`
+    9. Observe that logs of engine include "Freezing" and "Unfreezing"
     10. Validate snapshots are created
     11. Restore snapshot 1, validate test file missing
     12. Restore snapshot 2, validate test file original content
@@ -415,35 +421,57 @@ def test_snapshot_mounted_filesystem(grpc_controller,  # NOQA
 
 def snapshot_mounted_filesystem_test(volume_name, dev, address, engine_name):  # NOQA
     dev_path = dev.dev
-    mnt_path = "/tmp/mnt-" + volume_name
-    test_file = mnt_path + "/test"
+    # /tmp is bind mounted into the container at /host/tmp. This simulates
+    # the typical running environment of instance-manager with "-v /:/host".
+    # Use mkdtemp to create a temporary directory that the container sees at
+    # /host/tmp/... and the host sees at /tmp/... (and avoid Codefactor
+    # warnings for the use of a hard coded /tmp directory name).
+    mnt_path_in_container = mkdtemp(dir="/host/tmp/", prefix=volume_name)
+    mnt_path_on_host = relpath(mnt_path_in_container, "/host")
+    test_file_on_host = mnt_path_on_host + "/test"
     length = 128
 
     print("dev_path: " + dev_path + "\n")
-    print("mnt_path: " + mnt_path + "\n")
+    print("mnt_path_in_container: " + mnt_path_in_container + "\n")
+    print("mnt_path_on_host: " + mnt_path_on_host + "\n")
 
     # create & mount a ext4 filesystem on dev
     nsenter_cmd = get_nsenter_cmd()
-    mount_cmd = nsenter_cmd + ["mount", "--make-shared", dev_path, mnt_path]
-    umount_cmd = nsenter_cmd + ["umount", mnt_path]
+    mount_cmd = nsenter_cmd + ["mount", "--make-shared", dev_path,
+                               mnt_path_on_host]
+    umount_cmd = nsenter_cmd + ["umount", mnt_path_on_host]
     findmnt_cmd = nsenter_cmd + ["findmnt", dev_path]
     subprocess.check_call(nsenter_cmd + ["mkfs.ext4", dev_path])
-    subprocess.check_call(nsenter_cmd + ["mkdir", "-p", mnt_path])
+    subprocess.check_call(nsenter_cmd + ["mkdir", "-p", mnt_path_on_host])
     subprocess.check_call(mount_cmd)
     subprocess.check_call(findmnt_cmd)
 
     # create snapshot1 with empty fs
     # NOTE: we cannot use checksum_dev since it assumes
     #  asci data for device data instead of raw bytes
-    snap1 = cmd.snapshot_create(address)
+    snap1 = cmd.snapshot_create(address, True)
 
     # create snapshot2 with a new test file
-    test2_checksum = write_filesystem_file(length, test_file)
-    snap2 = cmd.snapshot_create(address)
+    test2_checksum = write_filesystem_file(length, test_file_on_host)
+    snap2 = cmd.snapshot_create(address, True)
 
     # create snapshot3 overwriting the test file
-    test3_checksum = write_filesystem_file(length, test_file)
-    snap3 = cmd.snapshot_create(address)
+    test3_checksum = write_filesystem_file(length, test_file_on_host)
+    snap3 = cmd.snapshot_create(address, True)
+
+    # Observe that logs of engine include "Freezing" and "Unfreezing"
+    freeze_lines_count = unfreeze_lines_count = 0
+    for line in get_process_log_lines(engine_name):
+        if 'Freezing filesystem' in line:
+            freeze_lines_count += 1
+        if 'Unfreezing filesystem' in line:
+            unfreeze_lines_count += 1
+    # We only log these if we have detected a mounted Longhorn filesystem,
+    # done a bind mount, and are immediately preparing to freeze. If we did
+    # this for all three snapshots (and the snapshots themselves didn't fail),
+    # it's a good guarantee that whole of the freezing logic is working.
+    assert freeze_lines_count == 3
+    assert unfreeze_lines_count == 3
 
     # verify existence of the snapshots
     snapshots = cmd.snapshot_ls(address)
@@ -462,25 +490,25 @@ def snapshot_mounted_filesystem_test(volume_name, dev, address, engine_name):  #
     # should error since the file does not exist in snapshot 1
     with pytest.raises(subprocess.CalledProcessError):
         print("is expected error, since the file does not exist.")
-        checksum_filesystem_file(test_file)
+        checksum_filesystem_file(test_file_on_host)
     subprocess.check_call(umount_cmd)
 
     print("\nsnapshot_revert_with_frontend snap2 begin")
     snapshot_revert_with_frontend(address, engine_name, snap2)
     print("snapshot_revert_with_frontend snap2 finish\n")
     subprocess.check_call(mount_cmd)
-    assert checksum_filesystem_file(test_file) == test2_checksum
+    assert checksum_filesystem_file(test_file_on_host) == test2_checksum
     subprocess.check_call(umount_cmd)
 
     print("\nsnapshot_revert_with_frontend snap3 begin")
     snapshot_revert_with_frontend(address, engine_name, snap3)
     print("snapshot_revert_with_frontend snap3 finish\n")
     subprocess.check_call(mount_cmd)
-    assert checksum_filesystem_file(test_file) == test3_checksum
+    assert checksum_filesystem_file(test_file_on_host) == test3_checksum
     subprocess.check_call(umount_cmd)
 
     # remove the created mount folder
-    subprocess.check_call(nsenter_cmd + ["rmdir", mnt_path])
+    subprocess.check_call(nsenter_cmd + ["rmdir", mnt_path_on_host])
 
 
 def test_snapshot_prune(grpc_controller, grpc_replica1, grpc_replica2):  # NOQA

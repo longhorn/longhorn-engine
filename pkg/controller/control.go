@@ -3,6 +3,7 @@ package controller
 import (
 	"fmt"
 	"net"
+	"os"
 	"regexp"
 	"strings"
 	"sync"
@@ -12,7 +13,9 @@ import (
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"k8s.io/mount-utils"
 
+	lhexec "github.com/longhorn/go-common-libs/exec"
 	lhns "github.com/longhorn/go-common-libs/ns"
 	lhutils "github.com/longhorn/go-common-libs/utils"
 	"github.com/longhorn/types/pkg/generated/enginerpc"
@@ -41,8 +44,10 @@ type Controller struct {
 	salvageRequested        bool
 
 	unmapMarkSnapChainRemoved bool
-	snapshotMaxCount          int
-	SnapshotMaxSize           int64
+
+	snapshotFreezeLock sync.Mutex
+	snapshotMaxCount   int
+	SnapshotMaxSize    int64
 
 	GRPCAddress string
 	GRPCServer  *grpc.Server
@@ -64,8 +69,6 @@ type Controller struct {
 }
 
 const (
-	freezeTimeout         = 60 * time.Minute // qemu uses 60 minute timeouts for freezing
-	syncTimeout           = 60 * time.Minute
 	lastModifyCheckPeriod = 5 * time.Second
 )
 
@@ -185,31 +188,95 @@ func (c *Controller) addReplica(address string, snapshotRequired bool, mode type
 	return c.addReplicaNoLock(newBackend, address, snapshotRequired, mode)
 }
 
-// Snapshot will try to freeze the filesystem of the volume if possible
-// and will fallback to a system level sync in all other cases
-func (c *Controller) Snapshot(name string, labels map[string]string) (string, error) {
-	log := logrus.WithFields(logrus.Fields{"volume": c.VolumeName, "snapshot": name})
-	log.Info("Starting snapshot")
-
-	log.Info("Requesting system sync before snapshot")
-	if err := lhns.Sync(); err != nil {
-		// sync should never fail though, so it more like due to the nsenter
-		log.WithError(err).Errorf("WARNING: failed to sync continuing with snapshot for %v", name)
-	}
-
-	c.Lock()
-	defer c.Unlock()
-
+// If shouldFreeze, Snapshot attempts to freeze the mounted filesystem on the volume's root partition. If it fails to
+// do so, Snapshot attempts to clean up and returns an error. If not shouldFreeze or if a mounted filesystem is not
+// detected on the volume's root partition, Snapshot does a best effort sync and takes a snapshot.
+func (c *Controller) Snapshot(inputName string, labels map[string]string, shouldFreeze bool) (name string, err error) {
+	name = inputName
 	if name == "" {
 		name = lhutils.UUID()
 	}
 
-	if err := c.canDoSnapshot(); err != nil {
+	log := logrus.WithFields(logrus.Fields{"volume": c.VolumeName, "snapshot": name})
+	log.Info("Starting snapshot")
+
+	defer func() {
+		if err != nil {
+			// The gRPC server returns, but does not log, errors.
+			log.WithError(err).Errorf("Failed to snapshot")
+		}
+	}()
+
+	var endpoint string
+	c.RLock()
+	// Check now to avoid freezing or syncing unnecessarily. Also check again later as originally designed.
+	err = c.canDoSnapshot()
+	if c.frontend.FrontendName() == types.EngineFrontendBlockDev {
+		// It is meaningless to try to freeze filesystems for a tgt-iscsi endpoint.
+		endpoint = c.Endpoint()
+	}
+	c.RUnlock()
+	if err != nil {
+		return "", err
+	}
+
+	var mounted, frozen bool
+	freezePoint := util.GetFreezePointFromDevicePath(endpoint)
+	mounter := mount.New("")
+	exec := lhexec.NewExecutor()
+	defer func() {
+		if frozen {
+			log.Infof("Unfreezing filesystem mounted at %v", freezePoint)
+			if _, err := util.UnfreezeFilesystem(freezePoint, exec); err != nil {
+				log.WithError(err).Warnf("Failed to unfreeze filesystem mounted at %v", freezePoint)
+			}
+		}
+		if mounted {
+			log.Debugf("Unmounting filesystem mounted at %v", freezePoint)
+			if err := mount.CleanupMountPoint(freezePoint, mounter, false); err != nil {
+				log.WithError(err).Warnf("Failed to unmount filesystem mounted at %v", freezePoint)
+			}
+		}
+	}()
+
+	// We create a bind mount of one of the discovered mount points (it does not matter which one) inside the container
+	// mount namespace (assuming longhorn-engine is running in a container). The mount point cannot be unmounted except
+	// by us, so we can be confident it is safe to freeze. This approach is preferable to locking some source mount
+	// point with an open file descriptor because it cannot be circumvented by a lazy unmount at the source.
+	if shouldFreeze && endpoint != "" {
+		if !c.snapshotFreezeLock.TryLock() {
+			// Two simultaneous freeze attempts could cause weird behaviors (e.g. the second operation could bind mount
+			// on top of the bind mount created by the first). There is no particular reason we should support multiple
+			// snapshots in quick succession, so just return.
+			return "", errors.New("filesystem is already being frozen for a different snapshot")
+		}
+		defer c.snapshotFreezeLock.Unlock()
+		mounted, frozen, err = tryFreeze(endpoint, freezePoint, mounter, exec, log)
+		if err != nil {
+			return "", err
+		}
+		if !frozen {
+			log.Debug("Did not detect mounted filesystem while snapshotting; continuing without freeze")
+		}
+	}
+	if !frozen {
+		// Revert to the previous/default behavior of syncing before taking a snapshot.
+		log.Info("Requesting system sync before snapshot")
+		if err := lhns.Sync(); err != nil {
+			// Sync should never fail, so it is likely due to the nsenter. To maintain existing behavior, we do not
+			// refuse to take a snapshot if sync fails.
+			log.WithError(err).Errorf("WARNING: failed to sync before snapshot; continuing without freeze or sync")
+		}
+	}
+
+	c.Lock()
+	defer c.Unlock()
+	if err = c.canDoSnapshot(); err != nil {
 		return "", err
 	}
 
 	created := util.Now()
-	if err := c.handleErrorNoLock(c.backend.Snapshot(name, true, created, labels)); err != nil {
+	if err = c.handleErrorNoLock(c.backend.Snapshot(name, true, created, labels)); err != nil {
 		return "", err
 	}
 	log.Info("Finished snapshot")
@@ -1286,4 +1353,71 @@ func (c *Controller) GetLatestMetics() *enginerpc.Metrics {
 
 func getAverageLatency(totalLatency, iops uint64) uint64 {
 	return totalLatency / iops
+}
+
+// tryFreeze attempts to bind mount an existing mount point to freezePoint, then freeze the filesystem from
+// freezePoint. tryFreeze returns booleans mounted and frozen so the caller can attempt to clean up depending on its
+// progress. tryFreeze does not return an error if there are no eligible mount points to freeze.
+func tryFreeze(devicePath string, freezePoint string, mounter mount.Interface, exec lhexec.ExecuteInterface,
+	log logrus.FieldLogger) (mounted, frozen bool, err error) {
+	// We do not need to switch to the host mount namespace to get mount points here. Usually, longhorn-engine runs in a
+	// container that has / bind mounted to /host with at least HostToContainer (rslave) propagation.
+	// - If it does not, we likely can't do a namespace swap anyway, since we don't have access to /host/proc.
+	// - If it does, we just need to know where in the container we can access the mount points to create a bind mount.
+	sourcePoints, err := mounter.List()
+	if err != nil {
+		log.WithError(err).Warn("Failed to list mount points while deciding whether or not to freeze")
+	}
+
+	for _, sourcePoint := range sourcePoints {
+		if sourcePoint.Device != devicePath {
+			continue // We are iterating through the list of all mounted filesystems.
+		}
+		log.Debugf("Mounting filesystem to %v", freezePoint)
+		if err = attemptBindMountFilesystem(sourcePoint.Path, freezePoint, mounter); err != nil {
+			// There's no particular reason to think we will be successful with a different sourcePoint.
+			err = errors.Wrapf(err, "failed to bind mount filesystem from %v to %v", sourcePoint, freezePoint)
+			return
+		}
+		mounted = true
+
+		// We must verify it is still safe to freeze the filesystem. If the source mount was unmounted by someone else
+		// before we bind mounted, the bind mount could refer to the root filesystem. It does not matter if the source
+		// mount is unmounted AFTER our bind mount, as the bind mount is not affected.
+		var device string
+		device, _, err = mount.GetDeviceNameFromMount(mounter, freezePoint)
+		if err != nil || device != devicePath {
+			// This would likely only happen if an upper layer unmounted the volume. If that is the case, we are
+			// probably being torn down. Trying other sourcePoints will likely lead to a pointless race.
+			err = errors.Wrapf(err, "cannot verify mount point %v refers to volume", freezePoint)
+			return
+		}
+
+		log.Infof("Freezing filesystem mounted at %v", freezePoint)
+		if err = util.FreezeFilesystem(freezePoint, exec); err == nil {
+			frozen = true
+		}
+		break
+	}
+
+	return
+}
+
+// attemptBindMountFilesystem attempts to bind mount sourcePoint to mountPoint. attemptBindMountFilesystem considers it
+// an error if mountPoint already has a filesystem mounted. This likely indicates another freeze is in progress. We do
+// not want to double mount, etc.
+func attemptBindMountFilesystem(sourcePoint, mountPoint string, mounter mount.Interface) error {
+	if err := os.MkdirAll(mountPoint, 0700); err != nil {
+		return err
+	}
+
+	isMountPoint, err := mounter.IsMountPoint(mountPoint)
+	if err != nil {
+		return err
+	}
+	if isMountPoint {
+		return errors.Wrapf(err, "filesystem is already mounted to %v", mountPoint)
+	}
+
+	return mounter.Mount(sourcePoint, mountPoint, "", []string{"bind"})
 }

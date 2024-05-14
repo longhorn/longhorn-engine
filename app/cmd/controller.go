@@ -178,6 +178,14 @@ func startController(c *cli.Context) error {
 		frontend = f
 	}
 
+	// If the engine failed during a snapshot, we may have left a frozen filesystem. We attempt to unfreeze here because
+	// we may not reach frontend startup (e.g. if there are no available backends). An unfreeze command may get stuck
+	// here for reasons unrelated to a frozen filesystem (e.g. there are outstanding I/Os to a crashed volume). Log a
+	// failure (e.g. a timeout), but continue.
+	if err := util.UnfreezeFilesystemForDevice(util.GetDevicePathFromVolumeName(volumeName)); err != nil {
+		logrus.WithError(err).Warn("Failed to unfreeze filesystem")
+	}
+
 	logrus.Infof("Creating volume %v controller with iSCSI target request timeout %v and engine to replica(s) timeout %v",
 		volumeName, iscsiTargetRequestTimeout, engineReplicaTimeout)
 	control := controller.NewController(volumeName, dynamic.New(factories), frontend, isUpgrade, disableRevCounter, salvageRequested,
