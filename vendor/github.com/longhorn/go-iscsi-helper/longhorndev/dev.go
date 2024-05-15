@@ -301,15 +301,12 @@ func (d *LonghornDevice) FinishUpgrade() (err error) {
 
 	stopCh := make(chan struct{})
 	socketError := d.WaitForSocket(stopCh)
-	select {
-	case err = <-socketError:
-		if err != nil {
-			logrus.Errorf("error waiting for the socket %v", err)
-			err = errors.Wrapf(err, "error waiting for the socket")
-		}
-		break
-	default:
+	err = <-socketError
+	if err != nil {
+		err = errors.Wrap(err, "error waiting for the socket")
+		logrus.Error(err)
 	}
+
 	close(stopCh)
 	close(socketError)
 
