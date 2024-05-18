@@ -145,7 +145,7 @@ github.com/longhorn/backupstore/systembackup
 github.com/longhorn/backupstore/types
 github.com/longhorn/backupstore/util
 github.com/longhorn/backupstore/vfs
-# github.com/longhorn/go-common-libs v0.0.0-20240511041328-e68a6cd889d4
+# github.com/longhorn/go-common-libs v0.0.0-20240514074907-351459694cbf
 ## explicit; go 1.22.0
 github.com/longhorn/go-common-libs/exec
 github.com/longhorn/go-common-libs/generated/profilerpb
