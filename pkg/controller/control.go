@@ -551,6 +551,7 @@ func (c *Controller) salvageRevisionCounterDisabledReplicas() error {
 		if t.Add(lastModifyCheckPeriod).After(lastTime) {
 			if salvageReplica.HeadFileSize >= largestSize {
 				bestCandidate = r
+				largestSize = salvageReplica.HeadFileSize
 			}
 		}
 	}
