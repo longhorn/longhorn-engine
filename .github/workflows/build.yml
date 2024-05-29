@@ -33,13 +33,15 @@ jobs:
 
   build-arm64-binaries:
     name: Build ARM64 binaries
-    runs-on: oracle-aarch64-4cpu-16gb
+    runs-on: longhorn-infra-arm64-runners
     steps:
+    - name: Install make curl git
+      run: |
+        sudo apt update
+        sudo apt-get -y install make curl git
+
     - name: Checkout code
       uses: actions/checkout@v4
-
-    - name: Install make
-      run: sudo apt-get install make
 
     # Build binaries
     - name: Run make build
@@ -127,14 +129,16 @@ jobs:
 
   build-push-arm64-images:
     name: Build and push ARM64 images
-    runs-on: oracle-aarch64-4cpu-16gb
+    runs-on: longhorn-infra-arm64-runners
     needs: build-arm64-binaries
     steps:
+    - name: Install make curl git
+      run: |
+        sudo apt update
+        sudo apt-get -y install make curl git
+
     - name: Checkout code
       uses: actions/checkout@v4
-
-    - name: Install make
-      run: sudo apt-get install make
 
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v3
