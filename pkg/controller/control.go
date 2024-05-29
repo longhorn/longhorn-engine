@@ -606,31 +606,32 @@ func (c *Controller) checkReplicaRevCounterSettingMatch() error {
 	return nil
 }
 
-// salvageRevisionCounterDisabledReplicas will find best replica
+// salvageRevisionCounterDisabledReplicas will find the best replica
 // for salvage recovering, based on lastModifyTime and HeadFileSize.
 func (c *Controller) salvageRevisionCounterDisabledReplicas() error {
-	replicaCandidates := make(map[types.Replica]types.ReplicaSalvageInfo)
-	var lastModifyTime int64
+	var replicaCandidates []*types.ReplicaSalvageInfo
+	var lastModifyTime time.Time
 	for _, r := range c.replicas {
 		if r.Mode == types.ERR {
 			continue
 		}
-		repLastModifyTime, err := c.backend.backends[r.Address].backend.GetLastModifyTime()
+		repLastModifyTimeInt, err := c.backend.backends[r.Address].backend.GetLastModifyTime()
 		if err != nil {
 			return err
 		}
+		repLastModifyTime := time.Unix(0, repLastModifyTimeInt)
 
 		repHeadFileSize, err := c.backend.backends[r.Address].backend.GetHeadFileSize()
 		if err != nil {
 			return err
 		}
 
-		replicaCandidates[r] = types.ReplicaSalvageInfo{
+		replicaCandidates = append(replicaCandidates, &types.ReplicaSalvageInfo{
+			Address:        r.Address,
 			LastModifyTime: repLastModifyTime,
 			HeadFileSize:   repHeadFileSize,
-		}
-		if lastModifyTime == 0 ||
-			repLastModifyTime > lastModifyTime {
+		})
+		if lastModifyTime.IsZero() || repLastModifyTime.After(lastModifyTime) {
 			lastModifyTime = repLastModifyTime
 		}
 	}
@@ -638,22 +639,19 @@ func (c *Controller) salvageRevisionCounterDisabledReplicas() error {
 	if len(replicaCandidates) == 0 {
 		return fmt.Errorf("cannot find any replica for salvage")
 	}
-	var bestCandidate types.Replica
-	lastTime := time.Unix(0, lastModifyTime)
-	var largestSize int64
-	for r, salvageReplica := range replicaCandidates {
-		t := time.Unix(0, salvageReplica.LastModifyTime)
-		// Any replica within 5 seconds before lastModifyTime
-		// can be good replica.
-		if t.Add(lastModifyCheckPeriod).After(lastTime) {
-			if salvageReplica.HeadFileSize >= largestSize {
-				bestCandidate = r
-				largestSize = salvageReplica.HeadFileSize
+	var bestCandidate *types.ReplicaSalvageInfo
+	for _, salvageReplica := range replicaCandidates {
+		if salvageReplica.LastModifyTime.Add(lastModifyCheckPeriod).After(lastModifyTime) {
+			if bestCandidate == nil ||
+				salvageReplica.HeadFileSize > bestCandidate.HeadFileSize ||
+				(salvageReplica.HeadFileSize == bestCandidate.HeadFileSize &&
+					salvageReplica.LastModifyTime.After(bestCandidate.LastModifyTime)) {
+				bestCandidate = salvageReplica
 			}
 		}
 	}
 
-	if bestCandidate == (types.Replica{}) {
+	if bestCandidate == nil {
 		return fmt.Errorf("BUG: Should find one candidate for salvage")
 	}
 
