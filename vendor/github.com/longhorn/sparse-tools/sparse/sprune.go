@@ -101,10 +101,7 @@ func prune(parentFileIo, childFileIo FileIoProcessor, fileSize int64, ops FileHa
 	// the below select will exit once all error channels are closed, or a single
 	// channel has run into an error, which will lead to the ctx being cancelled
 	mergedErrc := mergeErrorChannels(ctx, errorChannels...)
-	select {
-	case err = <-mergedErrc:
-		break
-	}
+	err = <-mergedErrc
 
 	log.Debugf("Finished pruning for parent %v, child %v, size %v, elapsed %.2fs",
 		parentFileIo.Name(), childFileIo.Name(), fileSize,

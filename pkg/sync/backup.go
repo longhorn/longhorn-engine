@@ -44,7 +44,7 @@ type RestoreStatus struct {
 }
 
 func (t *Task) CreateBackup(backupName, snapshot, dest, backingImageName, backingImageChecksum string,
-	compressionMethod string, concurrentLimit int, storageClassName string, labels []string, credential map[string]string) (*BackupCreateInfo, error) {
+	compressionMethod string, concurrentLimit int, storageClassName string, labels []string, credential map[string]string, parameters map[string]string) (*BackupCreateInfo, error) {
 	if snapshot == types.VolumeHeadName {
 		return nil, fmt.Errorf("cannot backup the head disk in the chain")
 	}
@@ -60,7 +60,7 @@ func (t *Task) CreateBackup(backupName, snapshot, dest, backingImageName, backin
 	}
 
 	return t.createBackup(replica, backupName, snapshot, dest, volume.Name, backingImageName, backingImageChecksum,
-		compressionMethod, concurrentLimit, storageClassName, labels, credential)
+		compressionMethod, concurrentLimit, storageClassName, labels, credential, parameters)
 }
 
 func (t *Task) findRWReplica() (*types.ControllerReplicaInfo, error) {
@@ -80,7 +80,7 @@ func (t *Task) findRWReplica() (*types.ControllerReplicaInfo, error) {
 
 func (t *Task) createBackup(replicaInController *types.ControllerReplicaInfo, backupName, snapshot, dest, volumeName,
 	backingImageName, backingImageChecksum, compression string, concurrentLimit int, storageClassName string,
-	labels []string, credential map[string]string) (*BackupCreateInfo, error) {
+	labels []string, credential map[string]string, parameters map[string]string) (*BackupCreateInfo, error) {
 	if replicaInController.Mode != types.RW {
 		return nil, fmt.Errorf("can only create backup from replica in mode RW, got %s", replicaInController.Mode)
 	}
@@ -105,7 +105,7 @@ func (t *Task) createBackup(replicaInController *types.ControllerReplicaInfo, ba
 	logrus.Infof("Backing up %s on %s, to %s", snapshot, replicaInController.Address, dest)
 
 	reply, err := repClient.CreateBackup(backupName, snapshot, dest, volumeName, backingImageName, backingImageChecksum,
-		compression, concurrentLimit, storageClassName, labels, credential)
+		compression, concurrentLimit, storageClassName, labels, credential, parameters)
 	if err != nil {
 		return nil, err
 	}

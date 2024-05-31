@@ -77,7 +77,9 @@ func (file *BufferedFileIoProcessor) Size() (int64, error) {
 }
 
 func (file *BufferedFileIoProcessor) Close() error {
-	file.File.Sync()
+	if err := file.File.Sync(); err != nil {
+		return err
+	}
 	return file.File.Close()
 }
 

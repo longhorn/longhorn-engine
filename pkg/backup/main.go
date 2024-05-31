@@ -34,6 +34,7 @@ type CreateBackupParameters struct {
 	ConcurrentLimit      int32
 	StorageClassName     string
 	Labels               []string
+	Parameters           map[string]string
 }
 
 type ErrorResponse struct {
@@ -128,6 +129,7 @@ func DoBackupInit(params *CreateBackupParameters) (*replica.BackupStatus, *backu
 		DestURL:         params.DestURL,
 		DeltaOps:        backup,
 		Labels:          labelMap,
+		Parameters:      params.Parameters,
 	}
 	return backup, config, nil
 }

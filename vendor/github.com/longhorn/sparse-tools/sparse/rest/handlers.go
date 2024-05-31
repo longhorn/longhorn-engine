@@ -158,7 +158,7 @@ func (server *SyncServer) close(writer http.ResponseWriter, request *http.Reques
 		}
 
 		if err != nil {
-			log.WithError(err).Warnf("Failed ot set snapshot hash info to checksum file %v", server.filePath)
+			log.WithError(err).Warnf("Failed to set snapshot hash info to checksum file %v", server.filePath)
 		}
 	}
 
@@ -207,6 +207,9 @@ func (server *SyncServer) doGetChecksum(writer http.ResponseWriter, request *htt
 
 	// For the region to have valid data, it can only has one extent covering the whole region
 	exts, err := sparse.GetFiemapRegionExts(server.fileIo, remoteDataInterval, 2)
+	if err != nil {
+		return errors.Wrapf(err, "failed to get fiemap region exts %+v", remoteDataInterval)
+	}
 	if len(exts) == 1 && int64(exts[0].Logical) <= remoteDataInterval.Begin &&
 		int64(exts[0].Logical+exts[0].Length) >= remoteDataInterval.End {
 

@@ -117,6 +117,6 @@ func Server(ctx context.Context, port string, filePath string, syncFileOps SyncF
 }
 
 // TestServer daemon serves only one connection for each test then exits
-func TestServer(ctx context.Context, port string, filePath string, timeout int) {
-	Server(ctx, port, filePath, &SyncFileStub{})
+func TestServer(ctx context.Context, port string, filePath string, timeout int) error {
+	return Server(ctx, port, filePath, &SyncFileStub{})
 }
