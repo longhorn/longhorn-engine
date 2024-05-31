@@ -266,6 +266,8 @@ func createBackup(c *cli.Context) error {
 		}
 	}
 
+	parameters := map[string]string{}
+
 	credential, err := butil.GetBackupCredential(dest)
 	if err != nil {
 		return err
@@ -282,7 +284,7 @@ func createBackup(c *cli.Context) error {
 	}
 
 	backup, err := task.CreateBackup(backupName, snapshot, dest, biName, biChecksum,
-		compressionMethod, concurrentLimit, storageClassName, labels, credential)
+		compressionMethod, concurrentLimit, storageClassName, labels, credential, parameters)
 	if err != nil {
 		return err
 	}
