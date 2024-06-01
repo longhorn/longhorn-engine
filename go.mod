@@ -14,7 +14,7 @@ require (
 	github.com/longhorn/go-common-libs v0.0.0-20240514074907-351459694cbf
 	github.com/longhorn/go-iscsi-helper v0.0.0-20240513041205-7a18d2fd85bf
 	github.com/longhorn/sparse-tools v0.0.0-20240513025352-ed49dd3f93eb
-	github.com/moby/moby v23.0.11+incompatible
+	github.com/moby/moby v23.0.12+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
 	github.com/rancher/go-rancher v0.1.1-0.20190307222549-9756097e5e4c

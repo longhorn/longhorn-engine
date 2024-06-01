@@ -183,7 +183,7 @@ github.com/matttproud/golang_protobuf_extensions/pbutil
 # github.com/mitchellh/go-ps v1.0.0
 ## explicit; go 1.13
 github.com/mitchellh/go-ps
-# github.com/moby/moby v23.0.11+incompatible
+# github.com/moby/moby v23.0.12+incompatible
 ## explicit
 github.com/moby/moby/pkg/reexec
 # github.com/moby/sys/mountinfo v0.6.2
