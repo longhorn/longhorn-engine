@@ -144,10 +144,9 @@ github.com/longhorn/backupstore/systembackup
 github.com/longhorn/backupstore/types
 github.com/longhorn/backupstore/util
 github.com/longhorn/backupstore/vfs
-# github.com/longhorn/go-common-libs v0.0.0-20240427164621-70d1933bfa90
-## explicit; go 1.22
+# github.com/longhorn/go-common-libs v0.0.0-20240605094403-68743dacbcb1
+## explicit; go 1.22.0
 github.com/longhorn/go-common-libs/exec
-github.com/longhorn/go-common-libs/generated/profilerpb
 github.com/longhorn/go-common-libs/io
 github.com/longhorn/go-common-libs/ns
 github.com/longhorn/go-common-libs/proc
@@ -171,9 +170,10 @@ github.com/longhorn/sparse-tools/sparse/rest
 github.com/longhorn/sparse-tools/stats
 github.com/longhorn/sparse-tools/types
 github.com/longhorn/sparse-tools/util
-# github.com/longhorn/types v0.0.0-20240510221052-ab949bbedea3
+# github.com/longhorn/types v0.0.0-20240605091135-ef450e1c04cd
 ## explicit; go 1.21
 github.com/longhorn/types/pkg/generated/enginerpc
+github.com/longhorn/types/pkg/generated/profilerrpc
 # github.com/mattn/go-colorable v0.1.4
 ## explicit
 github.com/mattn/go-colorable
@@ -235,7 +235,7 @@ github.com/rogpeppe/go-internal/fmtsort
 # github.com/russross/blackfriday/v2 v2.1.0
 ## explicit
 github.com/russross/blackfriday/v2
-# github.com/shirou/gopsutil/v3 v3.24.3
+# github.com/shirou/gopsutil/v3 v3.24.4
 ## explicit; go 1.15
 github.com/shirou/gopsutil/v3/common
 github.com/shirou/gopsutil/v3/disk

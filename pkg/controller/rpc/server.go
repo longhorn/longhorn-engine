@@ -10,10 +10,10 @@ import (
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	"github.com/longhorn/go-common-libs/generated/profilerpb"
 	"github.com/longhorn/go-common-libs/profiler"
 	journal "github.com/longhorn/sparse-tools/stats"
 	"github.com/longhorn/types/pkg/generated/enginerpc"
+	"github.com/longhorn/types/pkg/generated/profilerrpc"
 
 	"github.com/longhorn/longhorn-engine/pkg/controller"
 	"github.com/longhorn/longhorn-engine/pkg/interceptor"
@@ -52,7 +52,7 @@ func GetControllerGRPCServer(volumeName, instanceName string, c *controller.Cont
 	enginerpc.RegisterControllerServiceServer(server, cs)
 	healthpb.RegisterHealthServer(server, NewControllerHealthCheckServer(cs))
 	reflection.Register(server)
-	profilerpb.RegisterProfilerServer(server, profiler.NewServer(volumeName))
+	profilerrpc.RegisterProfilerServer(server, profiler.NewServer(volumeName))
 	return server
 }
 
