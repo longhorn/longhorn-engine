@@ -9,10 +9,10 @@ require (
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
 	github.com/longhorn/backupstore v0.0.0-20240509144945-3bce6e69af15
-	github.com/longhorn/go-common-libs v0.0.0-20240427164621-70d1933bfa90
+	github.com/longhorn/go-common-libs v0.0.0-20240605094403-68743dacbcb1
 	github.com/longhorn/go-iscsi-helper v0.0.0-20240427164656-e9439c0018ce
 	github.com/longhorn/sparse-tools v0.0.0-20240427164751-a7b9f1b2c8a8
-	github.com/longhorn/types v0.0.0-20240510221052-ab949bbedea3
+	github.com/longhorn/types v0.0.0-20240605091135-ef450e1c04cd
 	github.com/moby/moby v24.0.9+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
@@ -61,7 +61,7 @@ require (
 	github.com/prometheus/procfs v0.9.0 // indirect
 	github.com/rogpeppe/go-internal v1.10.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	github.com/shirou/gopsutil/v3 v3.24.3 // indirect
+	github.com/shirou/gopsutil/v3 v3.24.4 // indirect
 	github.com/slok/goresilience v0.2.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	golang.org/x/text v0.14.0 // indirect
