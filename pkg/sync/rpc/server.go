@@ -467,7 +467,7 @@ func (s *SyncAgentServer) FilesSync(ctx context.Context, req *enginerpc.FilesSyn
 		if err != nil {
 			return nil, errors.Wrapf(err, "failed to launch receiver for file %v", info.ToFileName)
 		}
-		if err := fromClient.SendFile(info.FromFileName, req.ToHost, int32(port), int(req.FileSyncHttpClientTimeout), req.FastSync); err != nil {
+		if err := fromClient.SendFile(info.FromFileName, req.ToHost, int32(port), int(req.FileSyncHttpClientTimeout), req.FastSync, req.GrpcTimeoutSeconds); err != nil {
 			return nil, errors.Wrapf(err, "replica %v failed to send file %v to %v:%v", req.FromAddress, info.ToFileName, req.ToHost, port)
 		}
 	}

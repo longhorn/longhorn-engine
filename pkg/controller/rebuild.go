@@ -118,7 +118,7 @@ func syncFile(from, to, fromAddress, toAddress, volumeName, toInstanceName strin
 	strHostPort := net.JoinHostPort(host, strconv.Itoa(int(port)))
 
 	logrus.Infof("Synchronizing %s to %s:%s", from, to, strHostPort)
-	err = fromClient.SendFile(from, host, port, fileSyncHTTPClientTimeout, fastSync)
+	err = fromClient.SendFile(from, host, port, fileSyncHTTPClientTimeout, fastSync, 0)
 	if err != nil {
 		logrus.WithError(err).Errorf("failed to synchronize %s to %s:%s", from, to, strHostPort)
 	} else {
