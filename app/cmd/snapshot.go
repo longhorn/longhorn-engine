@@ -171,6 +171,12 @@ func SnapshotCloneCmd() cli.Command {
 				Value:    5,
 				Usage:    "HTTP client timeout for replica file sync server",
 			},
+			cli.IntFlag{
+				Name:     "grpc-timeout-seconds",
+				Required: false,
+				Value:    0,
+				Usage:    "Specify the gRPC timeout for snapshot clone. If specify a value <= 0, we will use 24h timeout",
+			},
 		},
 		Action: func(c *cli.Context) {
 			if err := cloneSnapshot(c); err != nil {
@@ -451,6 +457,7 @@ func cloneSnapshot(c *cli.Context) error {
 	}
 	exportBackingImageIfExist := c.Bool("export-backing-image-if-exist")
 	fileSyncHTTPClientTimeout := c.Int("file-sync-http-client-timeout")
+	grpcTimeoutSeconds := c.Int64("grpc-timeout-seconds")
 
 	controllerClient, err := getControllerClient(c)
 	if err != nil {
@@ -469,7 +476,7 @@ func cloneSnapshot(c *cli.Context) error {
 	defer fromControllerClient.Close()
 
 	if err := sync.CloneSnapshot(controllerClient, fromControllerClient, volumeName, fromVolumeName,
-		snapshotName, exportBackingImageIfExist, fileSyncHTTPClientTimeout); err != nil {
+		snapshotName, exportBackingImageIfExist, fileSyncHTTPClientTimeout, grpcTimeoutSeconds); err != nil {
 		return err
 	}
 	return nil
