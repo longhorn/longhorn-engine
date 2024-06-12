@@ -46,7 +46,7 @@ const (
 
 func NewControllerClient(address, volumeName, instanceName string) (*ControllerClient, error) {
 	getControllerServiceContext := func(serviceUrl string) (ControllerServiceContext, error) {
-		connection, err := grpc.Dial(serviceUrl, grpc.WithTransportCredentials(insecure.NewCredentials()),
+		connection, err := grpc.NewClient(serviceUrl, grpc.WithTransportCredentials(insecure.NewCredentials()),
 			interceptor.WithIdentityValidationClientInterceptor(volumeName, instanceName))
 		if err != nil {
 			return ControllerServiceContext{}, errors.Wrapf(err, "cannot connect to ControllerService %v", serviceUrl)
@@ -412,7 +412,7 @@ func (c *ControllerClient) VersionDetailGet() (*meta.VersionOutput, error) {
 }
 
 func (c *ControllerClient) Check() error {
-	conn, err := grpc.Dial(c.serviceURL, grpc.WithTransportCredentials(insecure.NewCredentials()))
+	conn, err := grpc.NewClient(c.serviceURL, grpc.WithTransportCredentials(insecure.NewCredentials()))
 	if err != nil {
 		return errors.Wrapf(err, "cannot connect to ControllerService %v", c.serviceURL)
 	}
