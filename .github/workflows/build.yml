@@ -100,7 +100,7 @@ jobs:
         context: .
         push: false
         platforms: linux/amd64
-        tags: longhornio/longhorn-engine:${{ env.branch }}-head-amd64
+        tags: longhornio/longhorn-engine:dry-build
         file: package/Dockerfile
         build-args: |
           ARCH=amd64
@@ -176,7 +176,7 @@ jobs:
         context: .
         push: false
         platforms: linux/arm64
-        tags: longhornio/longhorn-engine:${{ env.branch }}-head-arm64
+        tags: longhornio/longhorn-engine:dry-build
         file: package/Dockerfile
         build-args: |
           ARCH=arm64
