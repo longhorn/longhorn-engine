@@ -11,8 +11,8 @@ require (
 	github.com/longhorn/backupstore v0.0.0-20240624084713-e98e31ebcebb
 	github.com/longhorn/go-common-libs v0.0.0-20240627075631-d78642cff5e1
 	github.com/longhorn/go-iscsi-helper v0.0.0-20240624090318-a8ef86edd9a5
-	github.com/longhorn/sparse-tools v0.0.0-20240513025352-ed49dd3f93eb
-	github.com/longhorn/types v0.0.0-20240624083620-f11ba48bf396
+	github.com/longhorn/sparse-tools v0.0.0-20240703010727-92451e38077a
+	github.com/longhorn/types v0.0.0-20240702051453-949485b24d0a
 	github.com/moby/moby v26.1.4+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
