@@ -74,10 +74,10 @@ github.com/longhorn/go-common-libs v0.0.0-20240627075631-d78642cff5e1 h1:VGSNK9A
 github.com/longhorn/go-common-libs v0.0.0-20240627075631-d78642cff5e1/go.mod h1:wpLEAlsDCnqBA7QfZg0gxYeR8MmLbWHbdidWYwnRbyM=
 github.com/longhorn/go-iscsi-helper v0.0.0-20240624090318-a8ef86edd9a5 h1:X2D6tZjl8y99di1oo4XAbsgNpRTcw+C3DAK5760uQyI=
 github.com/longhorn/go-iscsi-helper v0.0.0-20240624090318-a8ef86edd9a5/go.mod h1:tdKlSNcBEJR0ueHqcYW9xL2Yn01liqKNpAHDEBiX/to=
-github.com/longhorn/sparse-tools v0.0.0-20240513025352-ed49dd3f93eb h1:Kh89s6i5T1W6BT1Aq9W1YHXojbbcTXlDieWC5KWAs/E=
-github.com/longhorn/sparse-tools v0.0.0-20240513025352-ed49dd3f93eb/go.mod h1:vFvENahNfkr2VAyROaGHnZrLWuXwZJ0DHj8mBIh2miI=
-github.com/longhorn/types v0.0.0-20240624083620-f11ba48bf396 h1:dvrppUjQ5i9wPOuU1qnanksHe82cSaNckGaWzn3f8QY=
-github.com/longhorn/types v0.0.0-20240624083620-f11ba48bf396/go.mod h1:fonrC6SwGpvt+YVlfJ3xMmg0MlOH94T1Qx2+ZEy8n3U=
+github.com/longhorn/sparse-tools v0.0.0-20240703010727-92451e38077a h1:+o63c0oh7ZNKeQdc0Hawfzz5vRa4LiDvLOtJYjegtnk=
+github.com/longhorn/sparse-tools v0.0.0-20240703010727-92451e38077a/go.mod h1:iUJCZtOKG/9xv2rfrUAYZntFTzP5dZtvy4Kwe6dMcUc=
+github.com/longhorn/types v0.0.0-20240702051453-949485b24d0a h1:qutBOTJH2Jlh0gq2sl9nbBohacgcnDZqxEvnZG8jOnU=
+github.com/longhorn/types v0.0.0-20240702051453-949485b24d0a/go.mod h1:fonrC6SwGpvt+YVlfJ3xMmg0MlOH94T1Qx2+ZEy8n3U=
 github.com/mattn/go-colorable v0.1.13 h1:fFA4WZxdEF4tXPZVKMLwD8oUnCTTo08duU7wxecdEvA=
 github.com/mattn/go-colorable v0.1.13/go.mod h1:7S9/ev0klgBDR4GtXTXX8a3vIGJpMovkB8vQcUbaXHg=
 github.com/mattn/go-isatty v0.0.16/go.mod h1:kYGgaQfpe5nmfYZH+SKPsOc2e4SrIfOl2e/yFXSvRLM=
