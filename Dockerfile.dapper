@@ -1,8 +1,4 @@
-<<<<<<< HEAD
-FROM registry.suse.com/bci/bci-base:15.5
-=======
 FROM registry.suse.com/bci/golang:1.22
->>>>>>> f73b9380 (ci: use golang bci instead of manual download)
 
 ARG DAPPER_HOST_ARCH
 ARG http_proxy
@@ -36,21 +32,7 @@ RUN zypper -n install cmake curl git less file gcc python311 python311-pip pytho
     rpm-build rdma-core-devel gcc-c++ docker open-iscsi && \
     rm -rf /var/cache/zypp/*
 
-<<<<<<< HEAD
-# needed for ${!var} substitution
-RUN rm -f /bin/sh && ln -s /bin/bash /bin/sh
-
-RUN if [ ${ARCH} == "s390x" ]; then \
-    ln -s /usr/bin/gcc /usr/bin/s390x-linux-gnu-gcc;\
-    fi
-
-# Install Go & tools
-ENV GOLANG_ARCH_amd64=amd64 GOLANG_ARCH_arm64=arm64 GOLANG_ARCH_s390x=s390x GOLANG_ARCH=GOLANG_ARCH_${ARCH} \
-    GOPATH=/go PATH=/go/bin:/usr/local/go/bin:${PATH} SHELL=/bin/bash
-RUN wget -O - https://storage.googleapis.com/golang/go1.21.3.linux-${!GOLANG_ARCH}.tar.gz | tar -xzf - -C /usr/local
-=======
 # Install golangci-lint
->>>>>>> f73b9380 (ci: use golang bci instead of manual download)
 RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin v1.55.2
 
 # Install Minio
@@ -74,27 +56,6 @@ ENV GRPC_HEALTH_PROBE_amd64=https://github.com/grpc-ecosystem/grpc-health-probe/
 
 RUN curl -sSfL ${!GRPC_HEALTH_PROBE} -o /usr/local/bin/grpc_health_probe && \
     chmod +x /usr/local/bin/grpc_health_probe
-
-# protoc
-ENV PROTOC_amd64=https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOBUF_VER}/protoc-${PROTOBUF_VER}-linux-x86_64.zip \
-    PROTOC_arm64=https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOBUF_VER}/protoc-${PROTOBUF_VER}-linux-aarch_64.zip \
-    PROTOC_s390x=https://github.com/protocolbuffers/protobuf/releases/download/v${PROTOBUF_VER}/protoc-${PROTOBUF_VER}-linux-s390_64.zip \
-    PROTOC=PROTOC_${ARCH}
-
-RUN cd /usr/src && \
-    wget ${!PROTOC} -O protoc_${ARCH}.zip && \
-    unzip protoc_${ARCH}.zip -d /usr/local/
-
-# protoc-gen-go
-RUN cd /go/src/github.com/ && \
-    mkdir golang/ && \
-    cd golang && \
-    git clone https://github.com/golang/protobuf.git && \
-    cd protobuf && \
-    git checkout v1.5.3 && \
-    cd protoc-gen-go && \
-    go build && \
-    cp protoc-gen-go /usr/local/bin
 
 # TODO: use default python3 if SLE upgrade system python version to python3.11
 RUN ln -sf /usr/bin/python3.11 /usr/bin/python3 & \
