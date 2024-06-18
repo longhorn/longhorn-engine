@@ -64,7 +64,7 @@ ENV PROTOC_amd64=https://github.com/protocolbuffers/protobuf/releases/download/v
     PROTOC=PROTOC_${ARCH}
 
 RUN cd /usr/src && \
-    wget ${!PROTOC} -O protoc_${ARCH}.zip && \
+    curl -sSfL ${!PROTOC} -o protoc_${ARCH}.zip && \
     unzip protoc_${ARCH}.zip -d /usr/local/
 
 # protoc-gen-go
