@@ -61,8 +61,6 @@ COPY package/bin/longhorn-instance-manager /usr/local/bin/
 
 COPY package/launch-simple-longhorn package/engine-manager package/launch-simple-file /usr/local/bin/
 
-VOLUME /usr/local/bin
-
 # Add Tini
 ENV TINI_VERSION v0.19.0
 ADD https://github.com/krallin/tini/releases/download/${TINI_VERSION}/tini-${ARCH} /tini
