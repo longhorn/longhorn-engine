@@ -1,7 +1,8 @@
 pull_request_rules:
 - name: Automatically merge PRs
   conditions:
-  - check-success=continuous-integration/drone/pr
+  - check-success="Build AMD64 binaries"
+  - check-success="Build ARM64 binaries"
   - "#approved-reviews-by>=2"
   - approved-reviews-by=@longhorn/maintainer
   actions:
@@ -10,7 +11,8 @@ pull_request_rules:
       
 - name: Automatically merge Renovate PRs
   conditions:
-  - check-success=continuous-integration/drone/pr
+  - check-success="Build AMD64 binaries"
+  - check-success="Build ARM64 binaries"
   - author = renovate[bot]
   actions:
     merge:
@@ -18,7 +20,8 @@ pull_request_rules:
 
 - name: Automatically approve Renovate PRs
   conditions:
-  - check-success=continuous-integration/drone/pr
+  - check-success="Build AMD64 binaries"
+  - check-success="Build ARM64 binaries"
   - author = renovate[bot]
   actions:
     review:
