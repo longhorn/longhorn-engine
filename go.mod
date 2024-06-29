@@ -4,7 +4,7 @@ go 1.22.2
 
 require (
 	github.com/docker/go-units v0.5.0
-	github.com/gofrs/flock v0.8.1
+	github.com/gofrs/flock v0.9.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
