@@ -1,5 +1,7 @@
-// Copyright 2019 Tim Heckman. All rights reserved. Use of this source code is
-// governed by the BSD 3-Clause license that can be found in the LICENSE file.
+// Copyright 2015 Tim Heckman. All rights reserved.
+// Copyright 2018-2024 The Gofrs. All rights reserved.
+// Use of this source code is governed by the BSD 3-Clause
+// license that can be found in the LICENSE file.
 
 // Copyright 2018 The Go Authors. All rights reserved.
 // Use of this source code is governed by a BSD-style
@@ -13,7 +15,7 @@
 // This code is adapted from the Go package:
 // cmd/go/internal/lockedfile/internal/filelock
 
-//go:build aix
+//go:build aix || solaris
 
 package flock
 
@@ -151,7 +153,6 @@ func (f *Flock) doLock(cmd cmdType, lt lockType, blocking bool) (bool, error) {
 	}
 
 	err = setlkw(f.fh.Fd(), cmd, lt)
-
 	if err != nil {
 		f.doUnlock()
 		if cmd == tryLock && err == unix.EACCES {
