@@ -80,7 +80,7 @@ func NewClient(address, name string, dialOpts ...grpc.DialOption) (*Client, erro
 		}
 	}
 	getContext := func(serviceURL string) (ClientContext, error) {
-		connection, err := grpc.Dial(serviceURL, opts...)
+		connection, err := grpc.NewClient(serviceURL, opts...)
 		if err != nil {
 			return ClientContext{}, fmt.Errorf("cannot connect to ProfilerServer %v", serviceURL)
 		}
