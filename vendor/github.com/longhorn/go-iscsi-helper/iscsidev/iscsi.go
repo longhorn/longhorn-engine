@@ -301,7 +301,7 @@ func LogoutTarget(target string, nsexec *lhns.Executor) error {
 		 * "Could not execute operation on all records: encountered
 		 * iSCSI database failure" in iscsiadm
 		 *
-		 * This happenes especially there are other iscsiadm db
+		 * This happens especially there are other iscsiadm db
 		 * operations go on at the same time.
 		 * Retry to workaround this issue. Also treat "exit status
 		 * 21"(no record found) as valid result

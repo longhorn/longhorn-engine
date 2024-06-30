@@ -9,11 +9,11 @@ require (
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
 	github.com/longhorn/backupstore v0.0.0-20240624084713-e98e31ebcebb
-	github.com/longhorn/go-common-libs v0.0.0-20240605094403-68743dacbcb1
-	github.com/longhorn/go-iscsi-helper v0.0.0-20240513041205-7a18d2fd85bf
+	github.com/longhorn/go-common-libs v0.0.0-20240627075631-d78642cff5e1
+	github.com/longhorn/go-iscsi-helper v0.0.0-20240624090318-a8ef86edd9a5
 	github.com/longhorn/sparse-tools v0.0.0-20240513025352-ed49dd3f93eb
 	github.com/longhorn/types v0.0.0-20240624083620-f11ba48bf396
-	github.com/moby/moby v26.1.3+incompatible
+	github.com/moby/moby v26.1.4+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
 	github.com/rancher/go-rancher v0.1.1-0.20190307222549-9756097e5e4c
@@ -25,7 +25,7 @@ require (
 	google.golang.org/protobuf v1.34.2
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 	gopkg.in/cheggaaa/pb.v2 v2.0.7
-	k8s.io/mount-utils v0.30.1
+	k8s.io/mount-utils v0.30.2
 )
 
 require (
@@ -61,7 +61,7 @@ require (
 	github.com/prometheus/procfs v0.9.0 // indirect
 	github.com/rogpeppe/go-internal v1.12.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
-	github.com/shirou/gopsutil/v3 v3.24.4 // indirect
+	github.com/shirou/gopsutil/v3 v3.24.5 // indirect
 	github.com/slok/goresilience v0.2.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	golang.org/x/text v0.16.0 // indirect
@@ -72,7 +72,7 @@ require (
 	gopkg.in/mattn/go-isatty.v0 v0.0.4 // indirect
 	gopkg.in/mattn/go-runewidth.v0 v0.0.4 // indirect
 	gotest.tools/v3 v3.4.0 // indirect
-	k8s.io/apimachinery v0.27.1 // indirect
+	k8s.io/apimachinery v0.30.2 // indirect
 	k8s.io/klog/v2 v2.120.1 // indirect
 	k8s.io/utils v0.0.0-20240502163921-fe8a2dddb1d0 // indirect
 )
