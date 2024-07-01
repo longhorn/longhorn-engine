@@ -492,7 +492,7 @@ func (s *SyncAgentServer) fileSyncLocal(ctx context.Context, req *enginerpc.File
 
 		log.Tracef("Copying file %v to %v", sourcePath, targetPath)
 
-		err = lhio.CopyFile(sourcePath, targetPath, true)
+		err = sparse.SyncLocalFile(sourcePath, targetPath)
 		if err != nil {
 			return err
 		}
