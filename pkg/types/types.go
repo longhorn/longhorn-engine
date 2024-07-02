@@ -203,3 +203,8 @@ func GRPCReplicaModeToReplicaMode(replicaMode enginerpc.ReplicaMode) Mode {
 	}
 	return ERR
 }
+
+type FileLocalSync struct {
+	SourcePath string
+	TargetPath string
+}

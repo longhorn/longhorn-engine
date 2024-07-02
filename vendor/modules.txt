@@ -163,7 +163,7 @@ github.com/longhorn/go-iscsi-helper/iscsidev
 github.com/longhorn/go-iscsi-helper/longhorndev
 github.com/longhorn/go-iscsi-helper/types
 github.com/longhorn/go-iscsi-helper/util
-# github.com/longhorn/sparse-tools v0.0.0-20240513025352-ed49dd3f93eb
+# github.com/longhorn/sparse-tools v0.0.0-20240513025352-ed49dd3f93eb => github.com/c3y1huang/sparse-tools v0.0.0-20240702044850-d4118bb9f2da
 ## explicit; go 1.22
 github.com/longhorn/sparse-tools/cli/ssync
 github.com/longhorn/sparse-tools/sparse
@@ -171,7 +171,7 @@ github.com/longhorn/sparse-tools/sparse/rest
 github.com/longhorn/sparse-tools/stats
 github.com/longhorn/sparse-tools/types
 github.com/longhorn/sparse-tools/util
-# github.com/longhorn/types v0.0.0-20240624083620-f11ba48bf396
+# github.com/longhorn/types v0.0.0-20240624083620-f11ba48bf396 => github.com/c3y1huang/types v0.0.0-20240701065019-3f48d762923b
 ## explicit; go 1.21
 github.com/longhorn/types/pkg/generated/enginerpc
 github.com/longhorn/types/pkg/generated/profilerrpc
@@ -425,3 +425,5 @@ k8s.io/utils/clock
 k8s.io/utils/exec
 k8s.io/utils/io
 k8s.io/utils/keymutex
+# github.com/longhorn/types => github.com/c3y1huang/types v0.0.0-20240701065019-3f48d762923b
+# github.com/longhorn/sparse-tools => github.com/c3y1huang/sparse-tools v0.0.0-20240702044850-d4118bb9f2da

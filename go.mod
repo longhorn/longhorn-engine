@@ -2,6 +2,10 @@ module github.com/longhorn/longhorn-engine
 
 go 1.22.2
 
+replace github.com/longhorn/types => github.com/c3y1huang/types v0.0.0-20240701065019-3f48d762923b
+
+replace github.com/longhorn/sparse-tools => github.com/c3y1huang/sparse-tools v0.0.0-20240702044850-d4118bb9f2da
+
 require (
 	github.com/docker/go-units v0.5.0
 	github.com/gofrs/flock v0.10.0
