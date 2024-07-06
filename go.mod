@@ -4,7 +4,7 @@ go 1.22.2
 
 require (
 	github.com/docker/go-units v0.5.0
-	github.com/gofrs/flock v0.10.0
+	github.com/gofrs/flock v0.12.0
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
@@ -19,9 +19,9 @@ require (
 	github.com/rancher/go-rancher v0.1.1-0.20190307222549-9756097e5e4c
 	github.com/sirupsen/logrus v1.9.3
 	github.com/urfave/cli v1.22.15
-	golang.org/x/net v0.26.0
-	golang.org/x/sys v0.21.0
-	google.golang.org/grpc v1.64.0
+	golang.org/x/net v0.27.0
+	golang.org/x/sys v0.22.0
+	google.golang.org/grpc v1.65.0
 	google.golang.org/protobuf v1.34.2
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 	gopkg.in/cheggaaa/pb.v2 v2.0.7
