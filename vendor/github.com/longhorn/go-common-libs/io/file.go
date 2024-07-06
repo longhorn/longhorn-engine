@@ -327,7 +327,8 @@ func IsDirectoryEmpty(directory string) (bool, error) {
 	return false, nil
 }
 
-// CheckIsFileSizeSame verifies if all files in the provided paths have the same size.
+// CheckIsFileSizeSame verifies if all files in the provided paths have the same
+// apparent and actual size.
 // It returns an error if any file is a directory, does not exist, or has a different size.
 func CheckIsFileSizeSame(paths ...string) error {
 	referenceInfo, err := os.Stat(paths[0])
@@ -339,7 +340,12 @@ func CheckIsFileSizeSame(paths ...string) error {
 		return errors.Errorf("file %v is a directory", paths[0])
 	}
 
-	referenceSize := referenceInfo.Size()
+	referenceApparentSize := referenceInfo.Size()
+
+	referenceActualSize, err := getFileBlockSizeEstimate(paths[0])
+	if err != nil {
+		return err
+	}
 
 	for _, path := range paths {
 		fileInfo, err := os.Stat(path)
@@ -352,10 +358,28 @@ func CheckIsFileSizeSame(paths ...string) error {
 
 		}
 
-		if fileInfo.Size() != referenceSize {
-			return errors.Errorf("file %v size %v is not equal to %v", path, fileInfo.Size(), referenceSize)
+		if fileInfo.Size() != referenceApparentSize {
+			return errors.Errorf("file %v apparent size %v is not equal to %v", path, fileInfo.Size(), referenceApparentSize)
+		}
+
+		actualSize, err := getFileBlockSizeEstimate(path)
+		if err != nil {
+			return err
+		}
+
+		if actualSize != referenceActualSize {
+			return errors.Errorf("file %v actual size %v is not equal to %v", path, actualSize, referenceActualSize)
 		}
 	}
 
 	return nil
+}
+
+func getFileBlockSizeEstimate(path string) (uint64, error) {
+	var stat syscall.Stat_t
+	if err := syscall.Stat(path, &stat); err != nil {
+		return 0, err
+	}
+
+	return uint64(stat.Blocks) * uint64(stat.Blksize), nil
 }
