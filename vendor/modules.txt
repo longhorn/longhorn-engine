@@ -144,7 +144,7 @@ github.com/longhorn/backupstore/systembackup
 github.com/longhorn/backupstore/types
 github.com/longhorn/backupstore/util
 github.com/longhorn/backupstore/vfs
-# github.com/longhorn/go-common-libs v0.0.0-20240702014532-ad3e7f0caf5c
+# github.com/longhorn/go-common-libs v0.0.0-20240706152523-ac799085128f
 ## explicit; go 1.22.0
 github.com/longhorn/go-common-libs/backup
 github.com/longhorn/go-common-libs/exec
@@ -156,7 +156,7 @@ github.com/longhorn/go-common-libs/sync
 github.com/longhorn/go-common-libs/sys
 github.com/longhorn/go-common-libs/types
 github.com/longhorn/go-common-libs/utils
-# github.com/longhorn/go-iscsi-helper v0.0.0-20240704044155-b96e547a3b54
+# github.com/longhorn/go-iscsi-helper v0.0.0-20240706152726-9dbb9c7bdf30
 ## explicit; go 1.22.0
 github.com/longhorn/go-iscsi-helper/iscsi
 github.com/longhorn/go-iscsi-helper/iscsidev
@@ -171,7 +171,7 @@ github.com/longhorn/sparse-tools/sparse/rest
 github.com/longhorn/sparse-tools/stats
 github.com/longhorn/sparse-tools/types
 github.com/longhorn/sparse-tools/util
-# github.com/longhorn/types v0.0.0-20240704070509-4b97f699508e
+# github.com/longhorn/types v0.0.0-20240706151541-33cb010c3544
 ## explicit; go 1.21
 github.com/longhorn/types/pkg/generated/enginerpc
 github.com/longhorn/types/pkg/generated/profilerrpc
