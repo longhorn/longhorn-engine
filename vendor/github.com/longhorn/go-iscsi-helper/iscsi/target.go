@@ -284,12 +284,41 @@ func GetTargetTid(name string) (int, error) {
 }
 
 func ShutdownTgtd() error {
-	opts := []string{
-		"--op", "delete",
-		"--mode", "system",
+	// Step 1: Show all targets
+	showOpts := []string{"--op", "show", "--mode", "target"}
+	output, err := lhexec.NewExecutor().Execute(nil, tgtBinary, showOpts, lhtypes.ExecuteDefaultTimeout)
+	if err != nil {
+
+		return fmt.Errorf("failed to show targets: %v", err)
 	}
-	_, err := lhexec.NewExecutor().Execute(nil, tgtBinary, opts, lhtypes.ExecuteDefaultTimeout)
-	return err
+
+	// Step 2: Parse target IDs
+	scanner := bufio.NewScanner(strings.NewReader(output))
+	var targetIDs []string
+	for scanner.Scan() {
+		line := scanner.Text()
+		if strings.HasPrefix(line, "Target") {
+			fields := strings.Fields(line)
+			if len(fields) >= 2 {
+				targetIDs = append(targetIDs, fields[1])
+			}
+		}
+	}
+
+	if err := scanner.Err(); err != nil {
+		return errors.Wrapf(err, "failed to parse targets")
+	}
+
+	// Step 3: Delete each target
+	for _, tid := range targetIDs {
+		deleteOpts := []string{"--op", "delete", "--mode", "target", "--tid", tid}
+		_, err := lhexec.NewExecutor().Execute(nil, tgtBinary, deleteOpts, lhtypes.ExecuteDefaultTimeout)
+		if err != nil {
+			return errors.Wrapf(err, "failed to delete target %s", tid)
+		}
+	}
+
+	return nil
 }
 
 func GetTargetConnections(tid int) (map[string][]string, error) {
