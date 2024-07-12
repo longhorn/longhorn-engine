@@ -29,7 +29,7 @@ RUN zypper -n install cmake curl git less file gcc python311 python311-pip pytho
     libkmod-devel libnl3-devel linux-glibc-devel pkg-config psmisc qemu-tools fuse \
     bash-completion librdmacm1 librdmacm-utils libibverbs xsltproc docbook-xsl-stylesheets \
     perl-Config-General libaio-devel glibc-devel-static glibc-devel sg3_utils iptables libltdl7 \
-    uuid-runtime libdevmapper1_03 iproute2 jq unzip zlib-devel zlib-devel-static \
+    libdevmapper1_03 iproute2 jq unzip zlib-devel zlib-devel-static \
     rpm-build rdma-core-devel gcc-c++ docker open-iscsi && \
     rm -rf /var/cache/zypp/*
 
