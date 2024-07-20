@@ -2,6 +2,10 @@ module github.com/longhorn/longhorn-engine
 
 go 1.22.2
 
+replace github.com/longhorn/go-common-libs v0.0.0-20240707062002-b9354601827e => github.com/chanyilin/go-common-libs v0.0.0-20240716074450-cdf55483e4fc
+
+replace github.com/longhorn/backupstore v0.0.0-20240709004445-1cadf9073de3 => github.com/chanyilin/backupstore v0.0.0-20240716083705-c30b8fd2d973
+
 require (
 	github.com/docker/go-units v0.5.0
 	github.com/gofrs/flock v0.12.0
