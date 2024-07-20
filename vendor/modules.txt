@@ -144,7 +144,7 @@ github.com/longhorn/backupstore/systembackup
 github.com/longhorn/backupstore/types
 github.com/longhorn/backupstore/util
 github.com/longhorn/backupstore/vfs
-# github.com/longhorn/go-common-libs v0.0.0-20240707062002-b9354601827e
+# github.com/longhorn/go-common-libs v0.0.0-20240718091042-aff867b55212
 ## explicit; go 1.22.0
 github.com/longhorn/go-common-libs/backup
 github.com/longhorn/go-common-libs/exec
@@ -416,7 +416,7 @@ k8s.io/klog/v2/internal/dbg
 k8s.io/klog/v2/internal/serialize
 k8s.io/klog/v2/internal/severity
 k8s.io/klog/v2/internal/sloghandler
-# k8s.io/mount-utils v0.30.2
+# k8s.io/mount-utils v0.30.3
 ## explicit; go 1.22.0
 k8s.io/mount-utils
 # k8s.io/utils v0.0.0-20240502163921-fe8a2dddb1d0
