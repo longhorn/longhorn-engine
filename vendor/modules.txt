@@ -96,7 +96,7 @@ github.com/go-logr/logr
 ## explicit; go 1.12
 github.com/go-ole/go-ole
 github.com/go-ole/go-ole/oleutil
-# github.com/gofrs/flock v0.12.0
+# github.com/gofrs/flock v0.12.1
 ## explicit; go 1.21.0
 github.com/gofrs/flock
 # github.com/golang/protobuf v1.5.4
@@ -127,7 +127,7 @@ github.com/kr/pretty
 # github.com/kr/text v0.2.0
 ## explicit
 github.com/kr/text
-# github.com/longhorn/backupstore v0.0.0-20240709004445-1cadf9073de3
+# github.com/longhorn/backupstore v0.0.0-20240720163059-56c90cd23634
 ## explicit; go 1.22.0
 github.com/longhorn/backupstore
 github.com/longhorn/backupstore/azblob
