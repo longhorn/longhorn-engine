@@ -9,8 +9,8 @@ require (
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
 	github.com/longhorn/backupstore v0.0.0-20240720163059-56c90cd23634
-	github.com/longhorn/go-common-libs v0.0.0-20240726063909-5c0987bc30d8
-	github.com/longhorn/go-iscsi-helper v0.0.0-20240723045123-4e61e0b7ecd8
+	github.com/longhorn/go-common-libs v0.0.0-20240727052403-b543ea3732fe
+	github.com/longhorn/go-iscsi-helper v0.0.0-20240727052644-d2442a50e906
 	github.com/longhorn/sparse-tools v0.0.0-20240703010727-92451e38077a
 	github.com/longhorn/types v0.0.0-20240725040629-473d671316c4
 	github.com/moby/moby v26.1.5+incompatible
