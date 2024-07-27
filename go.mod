@@ -9,11 +9,11 @@ require (
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
 	github.com/longhorn/backupstore v0.0.0-20240720163059-56c90cd23634
-	github.com/longhorn/go-common-libs v0.0.0-20240720044518-32fc527fe868
-	github.com/longhorn/go-iscsi-helper v0.0.0-20240720064937-c6ce82d67032
+	github.com/longhorn/go-common-libs v0.0.0-20240726063909-5c0987bc30d8
+	github.com/longhorn/go-iscsi-helper v0.0.0-20240723045123-4e61e0b7ecd8
 	github.com/longhorn/sparse-tools v0.0.0-20240703010727-92451e38077a
-	github.com/longhorn/types v0.0.0-20240706151541-33cb010c3544
-	github.com/moby/moby v26.1.4+incompatible
+	github.com/longhorn/types v0.0.0-20240725040629-473d671316c4
+	github.com/moby/moby v26.1.5+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
 	github.com/rancher/go-rancher v0.1.1-0.20190307222549-9756097e5e4c
