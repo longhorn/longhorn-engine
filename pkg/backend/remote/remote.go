@@ -22,7 +22,10 @@ import (
 )
 
 const (
-	PingInterval        = 2 * time.Second
+	// PingInterval is the time between one successful ping and the next attempt. It is NOT a timeout. The engine will
+	// NOT mark a replica as ERR if it fails to receive a response within PingInterval. See monitorPing for details.
+	PingInterval = 2 * time.Second
+
 	NumberOfConnections = 2
 )
 
@@ -443,6 +446,15 @@ func connect(dataServerProtocol types.DataServerProtocol, address string) (net.C
 	}
 }
 
+// monitorPing sends a TypePing message and waits for a response. It sends additional TypePing messages PingInterval
+// after each success. As of https://github.com/longhorn/longhorn-engine/pull/652, the engine will NOT mark a replica as
+// ERR if it fails to receive a response within PingInterval.
+//   - If there is I/O in flight, then we rely on engine-replica-timeout to prompt marking the replica ERR in the
+//     dataconn client loop.
+//   - Even if there is no I/O in flight, if there is a problem with the dataconn connection, then we rely on TCP
+//     keepalives (15s + 15s * 9 = 150s) or a closing of the connection from the replica side to prompt marking the
+//     replica ERR. In the keepalive case, another Longhorn component (e.g. the engine monitor in longhorn-manager) may
+//     detect the problem first.
 func (r *Remote) monitorPing(client *dataconn.Client) {
 	ticker := time.NewTicker(PingInterval)
 	defer ticker.Stop()
