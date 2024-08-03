@@ -127,7 +127,7 @@ github.com/kr/pretty
 # github.com/kr/text v0.2.0
 ## explicit
 github.com/kr/text
-# github.com/longhorn/backupstore v0.0.0-20240720163059-56c90cd23634
+# github.com/longhorn/backupstore v0.0.0-20240729142451-d8ab2fde0c6c
 ## explicit; go 1.22.0
 github.com/longhorn/backupstore
 github.com/longhorn/backupstore/azblob
@@ -144,7 +144,7 @@ github.com/longhorn/backupstore/systembackup
 github.com/longhorn/backupstore/types
 github.com/longhorn/backupstore/util
 github.com/longhorn/backupstore/vfs
-# github.com/longhorn/go-common-libs v0.0.0-20240727052403-b543ea3732fe
+# github.com/longhorn/go-common-libs v0.0.0-20240729132251-9e1e0e6045c6
 ## explicit; go 1.22.0
 github.com/longhorn/go-common-libs/backup
 github.com/longhorn/go-common-libs/exec
@@ -156,14 +156,14 @@ github.com/longhorn/go-common-libs/sync
 github.com/longhorn/go-common-libs/sys
 github.com/longhorn/go-common-libs/types
 github.com/longhorn/go-common-libs/utils
-# github.com/longhorn/go-iscsi-helper v0.0.0-20240727052644-d2442a50e906
+# github.com/longhorn/go-iscsi-helper v0.0.0-20240729144704-39760a81bd33
 ## explicit; go 1.22.0
 github.com/longhorn/go-iscsi-helper/iscsi
 github.com/longhorn/go-iscsi-helper/iscsidev
 github.com/longhorn/go-iscsi-helper/longhorndev
 github.com/longhorn/go-iscsi-helper/types
 github.com/longhorn/go-iscsi-helper/util
-# github.com/longhorn/sparse-tools v0.0.0-20240703010727-92451e38077a
+# github.com/longhorn/sparse-tools v0.0.0-20240729132735-18b207e459ff
 ## explicit; go 1.22.0
 github.com/longhorn/sparse-tools/cli/ssync
 github.com/longhorn/sparse-tools/sparse
