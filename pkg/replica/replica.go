@@ -915,8 +915,9 @@ func (r *Replica) createDisk(name string, userCreated bool, created string, labe
 	rollbackFuncList := []func() error{}
 	defer func() {
 		if err == nil {
-			err = r.rmDisk(oldHead)
-			logrus.WithError(err).Errorf("Failed to remove old head %v", oldHead)
+			if errRm := r.rmDisk(oldHead); errRm != nil {
+				logrus.WithError(errRm).Warnf("Failed to remove old head %v", oldHead)
+			}
 			return
 		}
 
