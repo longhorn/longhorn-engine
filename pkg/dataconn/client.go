@@ -8,6 +8,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 
+	"github.com/longhorn/longhorn-engine/pkg/types"
 	journal "github.com/longhorn/sparse-tools/stats"
 )
 
@@ -18,32 +19,32 @@ var (
 
 // Client replica client
 type Client struct {
-	end       chan struct{}
-	requests  chan *Message
-	send      chan *Message
-	responses chan *Message
-	seq       uint32
-	messages  map[uint32]*Message
-	wires     []*Wire
-	peerAddr  string
-	opTimeout time.Duration
+	end            chan struct{}
+	requests       chan *Message
+	send           chan *Message
+	responses      chan *Message
+	seq            uint32
+	messages       map[uint32]*Message
+	wires          []*Wire
+	peerAddr       string
+	sharedTimeouts types.SharedTimeouts
 }
 
 // NewClient replica client
-func NewClient(conns []net.Conn, engineToReplicaTimeout time.Duration) *Client {
+func NewClient(conns []net.Conn, sharedTimeouts types.SharedTimeouts) *Client {
 	var wires []*Wire
 	for _, conn := range conns {
 		wires = append(wires, NewWire(conn))
 	}
 	c := &Client{
-		wires:     wires,
-		peerAddr:  conns[0].RemoteAddr().String(),
-		end:       make(chan struct{}, 1024),
-		requests:  make(chan *Message, 1024),
-		send:      make(chan *Message, 1024),
-		responses: make(chan *Message, 1024),
-		messages:  map[uint32]*Message{},
-		opTimeout: engineToReplicaTimeout,
+		wires:          wires,
+		peerAddr:       conns[0].RemoteAddr().String(),
+		end:            make(chan struct{}, 1024),
+		requests:       make(chan *Message, 1024),
+		send:           make(chan *Message, 1024),
+		responses:      make(chan *Message, 1024),
+		messages:       map[uint32]*Message{},
+		sharedTimeouts: sharedTimeouts,
 	}
 	go c.loop()
 	c.write()
@@ -128,7 +129,16 @@ func (c *Client) loop() {
 
 	var clientError error
 	var ioInflight int
-	var ioDeadline time.Time
+	var timeOfLastActivity time.Time
+
+	decremented := false
+	c.sharedTimeouts.Increment()
+	// Ensure we always decrement the sharedTimeouts counter regardless of how we leave this loop.
+	defer func() {
+		if !decremented {
+			c.sharedTimeouts.Decrement()
+		}
+	}()
 
 	// handleClientError cleans up all in flight messages
 	// also stores the error so that future requests/responses get errored immediately.
@@ -139,7 +149,7 @@ func (c *Client) loop() {
 		}
 
 		ioInflight = 0
-		ioDeadline = time.Time{}
+		timeOfLastActivity = time.Time{}
 	}
 
 	for {
@@ -147,13 +157,17 @@ func (c *Client) loop() {
 		case <-c.end:
 			return
 		case <-ticker.C:
-			if ioDeadline.IsZero() || time.Now().Before(ioDeadline) {
+			if timeOfLastActivity.IsZero() || ioInflight == 0 {
 				continue
 			}
 
-			logrus.Errorf("R/W Timeout. No response received in %v", c.opTimeout)
-			handleClientError(ErrRWTimeout)
-			journal.PrintLimited(1000)
+			exceededTimeout := c.sharedTimeouts.CheckAndDecrement(time.Since(timeOfLastActivity))
+			if exceededTimeout > 0 {
+				decremented = true
+				logrus.Errorf("R/W Timeout. No response received in %v", exceededTimeout)
+				handleClientError(ErrRWTimeout)
+				journal.PrintLimited(1000)
+			}
 		case req := <-c.requests:
 			if clientError != nil {
 				c.replyError(req, clientError)
@@ -162,7 +176,8 @@ func (c *Client) loop() {
 
 			if req.Type == TypeRead || req.Type == TypeWrite || req.Type == TypeUnmap {
 				if ioInflight == 0 {
-					ioDeadline = time.Now().Add(c.opTimeout)
+					// If nothing is in-flight, we should get a fresh timeout.
+					timeOfLastActivity = time.Now()
 				}
 				ioInflight++
 			}
@@ -182,11 +197,7 @@ func (c *Client) loop() {
 
 			if req.Type == TypeRead || req.Type == TypeWrite || req.Type == TypeUnmap {
 				ioInflight--
-				if ioInflight > 0 {
-					ioDeadline = time.Now().Add(c.opTimeout)
-				} else if ioInflight == 0 {
-					ioDeadline = time.Time{}
-				}
+				timeOfLastActivity = time.Now()
 			}
 
 			if clientError != nil {

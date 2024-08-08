@@ -1,9 +1,13 @@
 package util
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 
 	. "gopkg.in/check.v1"
 )
@@ -96,4 +100,59 @@ func (s *TestSuite) TestResolveFilepathSubdirectory(c *C) {
 
 	_, err = ResolveBackingFilepath(dirpath)
 	c.Assert(err, ErrorMatches, ".*found a subdirectory")
+}
+
+func (s *TestSuite) TestSharedTimeouts(c *C) {
+	shortTimeout := 8 * time.Second
+	longTimeout := 16 * time.Second
+	sharedTimeouts := NewSharedTimeouts(shortTimeout, longTimeout)
+
+	// Increment the SharedTimeouts in multiple goroutines.
+	wg := new(sync.WaitGroup)
+	for i := 0; i < 3; i++ {
+		wg.Add(1)
+		go func() {
+			sharedTimeouts.Increment()
+			wg.Done()
+		}()
+	}
+	wg.Wait()
+	c.Assert(sharedTimeouts.numConsumers, Equals, 3)
+
+	// CheckAndDecrement with a duration smaller than shortTimeout.
+	exceededTimeout := sharedTimeouts.CheckAndDecrement(4 * time.Second)
+	c.Assert(exceededTimeout, Equals, time.Duration(0))
+	c.Assert(sharedTimeouts.numConsumers, Equals, 3)
+
+	// Decrement the SharedTimeouts.
+	sharedTimeouts.Decrement()
+	c.Assert(sharedTimeouts.numConsumers, Equals, 2)
+
+	// Simultaneously CheckAndDecrement a duration larger than shortTimeout but smaller than longTimeout. One goroutine
+	// "exceeds" the timeout. The other does not.
+	numExceeded := &atomic.Int64{}
+	timeoutExceeded := &atomic.Int64{}
+	wg = new(sync.WaitGroup)
+	for i := 0; i < 2; i++ {
+		wg.Add(1)
+		go func() {
+			exceededTimeout := sharedTimeouts.CheckAndDecrement(12 * time.Second)
+			fmt.Println(exceededTimeout)
+			if exceededTimeout > time.Duration(0) {
+				fmt.Println(exceededTimeout)
+				numExceeded.Add(1)
+				timeoutExceeded.Store(int64(exceededTimeout))
+			}
+			wg.Done()
+		}()
+	}
+	wg.Wait()
+	c.Assert(int(numExceeded.Load()), Equals, 1)
+	c.Assert(time.Duration(timeoutExceeded.Load()), Equals, shortTimeout)
+	c.Assert(sharedTimeouts.numConsumers, Equals, 1)
+
+	// CheckAndDecrement with a duration larger than longTimeout.
+	exceededTimeout = sharedTimeouts.CheckAndDecrement(20 * time.Second)
+	c.Assert(exceededTimeout, Equals, longTimeout)
+	c.Assert(sharedTimeouts.numConsumers, Equals, 0)
 }

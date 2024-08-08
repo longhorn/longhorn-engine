@@ -51,6 +51,12 @@ type Remote struct {
 
 func (r *Remote) Close() error {
 	logrus.Infof("Closing: %s", r.name)
+
+	// Close the dataconn client to avoid orphaning goroutines.
+	if dataconnClient, ok := r.ReaderWriterUnmapperAt.(*dataconn.Client); ok {
+		dataconnClient.Close()
+	}
+
 	conn, err := grpc.NewClient(r.replicaServiceURL, grpc.WithTransportCredentials(insecure.NewCredentials()),
 		interceptor.WithIdentityValidationClientInterceptor(r.volumeName, ""))
 	if err != nil {
@@ -383,7 +389,8 @@ func (r *Remote) info() (*types.ReplicaInfo, error) {
 	return replicaClient.GetReplicaInfo(resp.Replica), nil
 }
 
-func (rf *Factory) Create(volumeName, address string, dataServerProtocol types.DataServerProtocol, engineToReplicaTimeout time.Duration) (types.Backend, error) {
+func (rf *Factory) Create(volumeName, address string, dataServerProtocol types.DataServerProtocol,
+	sharedTimeouts types.SharedTimeouts) (types.Backend, error) {
 	logrus.Infof("Connecting to remote: %s (%v)", address, dataServerProtocol)
 
 	controlAddress, dataAddress, _, _, err := util.GetAddresses(volumeName, address, dataServerProtocol)
@@ -419,7 +426,7 @@ func (rf *Factory) Create(volumeName, address string, dataServerProtocol types.D
 		conns = append(conns, conn)
 	}
 
-	dataConnClient := dataconn.NewClient(conns, engineToReplicaTimeout)
+	dataConnClient := dataconn.NewClient(conns, sharedTimeouts)
 	r.ReaderWriterUnmapperAt = dataConnClient
 
 	if err := r.open(); err != nil {

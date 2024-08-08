@@ -143,9 +143,13 @@ func startController(c *cli.Context) error {
 	}
 
 	timeout := c.Int64("engine-replica-timeout")
-	engineReplicaTimeout := time.Duration(timeout) * time.Second
-	engineReplicaTimeout = controller.DetermineEngineReplicaTimeout(engineReplicaTimeout)
-	iscsiTargetRequestTimeout := controller.DetermineIscsiTargetRequestTimeout(engineReplicaTimeout)
+	engineReplicaTimeoutShort := time.Duration(timeout) * time.Second
+	engineReplicaTimeoutShort = controller.DetermineEngineReplicaTimeout(engineReplicaTimeoutShort)
+	// At the conclusion of https://github.com/longhorn/longhorn/issues/8711 we should have a strategy for determining
+	// engineReplicaTimeoutLong. For now, we set it to engineReplicaTimeoutShort to maintain existing behavior and
+	// modify it here for testing.
+	engineReplicaTimeoutLong := engineReplicaTimeoutShort
+	iscsiTargetRequestTimeout := controller.DetermineIscsiTargetRequestTimeout(engineReplicaTimeoutLong)
 
 	snapshotMaxCount := c.Int("snapshot-max-count")
 	snapshotMaxSize := int64(0)
@@ -187,10 +191,11 @@ func startController(c *cli.Context) error {
 	}
 
 	logrus.Infof("Creating volume %v controller with iSCSI target request timeout %v and engine to replica(s) timeout %v",
-		volumeName, iscsiTargetRequestTimeout, engineReplicaTimeout)
-	control := controller.NewController(volumeName, dynamic.New(factories), frontend, isUpgrade, disableRevCounter, salvageRequested,
-		unmapMarkSnapChainRemoved, iscsiTargetRequestTimeout, engineReplicaTimeout, types.DataServerProtocol(dataServerProtocol),
-		fileSyncHTTPClientTimeout, snapshotMaxCount, snapshotMaxSize)
+		volumeName, iscsiTargetRequestTimeout, engineReplicaTimeoutShort)
+	control := controller.NewController(volumeName, dynamic.New(factories), frontend, isUpgrade, disableRevCounter,
+		salvageRequested, unmapMarkSnapChainRemoved, iscsiTargetRequestTimeout, engineReplicaTimeoutShort,
+		engineReplicaTimeoutLong, types.DataServerProtocol(dataServerProtocol), fileSyncHTTPClientTimeout,
+		snapshotMaxCount, snapshotMaxSize)
 
 	// need to wait for Shutdown() completion
 	control.ShutdownWG.Add(1)
