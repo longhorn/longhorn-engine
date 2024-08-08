@@ -51,6 +51,12 @@ type Remote struct {
 
 func (r *Remote) Close() error {
 	logrus.Infof("Closing: %s", r.name)
+
+	// Close the dataconn client to avoid orphaning goroutines.
+	if dataconnClient, ok := r.ReaderWriterUnmapperAt.(*dataconn.Client); ok {
+		dataconnClient.Close()
+	}
+
 	conn, err := grpc.NewClient(r.replicaServiceURL, grpc.WithTransportCredentials(insecure.NewCredentials()),
 		interceptor.WithIdentityValidationClientInterceptor(r.volumeName, ""))
 	if err != nil {
