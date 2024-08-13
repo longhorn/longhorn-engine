@@ -20,7 +20,7 @@ type diffDisk struct {
 	// we don't know the location yet.
 	location []byte
 	// list of files in grandparent, parent, child, etc order.
-	// index 0 is nil or backing file and index n-1 is the active write layer
+	// index 0 is nil, index 1 is backing file, and index n-1 is the active write layer
 	files      []types.DiffDisk
 	sectorSize int64
 	// current size of the head file.
@@ -372,9 +372,14 @@ func (d *diffDisk) initializeSectorLocation(value byte) {
 	}
 }
 
-func (d *diffDisk) preload() error {
+func (d *diffDisk) preload(isThereBackingFile bool) error {
 	for i, f := range d.files {
 		if i == 0 {
+			continue
+		}
+
+		// Skip loading the backingFile if it exists
+		if i == int(backingFileIndex) && isThereBackingFile {
 			continue
 		}
 

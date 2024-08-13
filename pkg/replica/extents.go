@@ -11,11 +11,6 @@ const MaxExtentsBuffer = 1024
 func LoadDiffDiskLocationList(diffDisk *diffDisk, disk types.DiffDisk, currentFileIndex byte) error {
 	fd := disk.Fd()
 
-	// The backing file will have a Fd of 0
-	if fd == 0 {
-		return nil
-	}
-
 	start := uint64(0)
 	end := uint64(len(diffDisk.location)) * uint64(diffDisk.sectorSize)
 	for {
