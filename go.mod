@@ -10,11 +10,11 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
-	github.com/longhorn/backupstore v0.0.0-20240509144945-3bce6e69af15
-	github.com/longhorn/go-common-libs v0.0.0-20240514074907-351459694cbf
-	github.com/longhorn/go-iscsi-helper v0.0.0-20240513041205-7a18d2fd85bf
-	github.com/longhorn/sparse-tools v0.0.0-20240513025352-ed49dd3f93eb
-	github.com/moby/moby v23.0.12+incompatible
+	github.com/longhorn/backupstore 5c2b7879457f
+	github.com/longhorn/go-common-libs b6ddc3efb72e
+	github.com/longhorn/go-iscsi-helper df8de353dd58
+	github.com/longhorn/sparse-tools 18b207e459ff
+	github.com/moby/moby v23.0.13+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
 	github.com/rancher/go-rancher v0.1.1-0.20190307222549-9756097e5e4c
@@ -23,7 +23,7 @@ require (
 	golang.org/x/net v0.23.0
 	golang.org/x/sys v0.20.0
 	google.golang.org/grpc v1.63.2
-	google.golang.org/protobuf v1.34.1
+	google.golang.org/protobuf v1.34.2
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 	gopkg.in/cheggaaa/pb.v2 v2.0.7
 )
