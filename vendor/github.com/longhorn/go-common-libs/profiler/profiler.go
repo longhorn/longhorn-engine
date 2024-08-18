@@ -10,11 +10,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/longhorn/types/pkg/generated/profilerrpc"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 
-	"github.com/longhorn/go-common-libs/generated/profilerpb"
 	"github.com/longhorn/go-common-libs/utils"
 )
 
@@ -24,7 +24,7 @@ import (
 //   - service: the ProfilerClient
 type ClientContext struct {
 	conn    *grpc.ClientConn
-	service profilerpb.ProfilerClient
+	service profilerrpc.ProfilerClient
 }
 
 // Close closes the connection for the gRPC server
@@ -43,7 +43,7 @@ func (c ClientContext) Close() error {
 //   - server: the http server for the profiler
 //   - lock: the RW lock for the server
 type Server struct {
-	profilerpb.UnimplementedProfilerServer
+	profilerrpc.UnimplementedProfilerServer
 
 	name   string
 	errMsg string
@@ -80,14 +80,14 @@ func NewClient(address, name string, dialOpts ...grpc.DialOption) (*Client, erro
 		}
 	}
 	getContext := func(serviceURL string) (ClientContext, error) {
-		connection, err := grpc.Dial(serviceURL, opts...)
+		connection, err := grpc.NewClient(serviceURL, opts...)
 		if err != nil {
 			return ClientContext{}, fmt.Errorf("cannot connect to ProfilerServer %v", serviceURL)
 		}
 
 		return ClientContext{
 			conn:    connection,
-			service: profilerpb.NewProfilerClient(connection),
+			service: profilerrpc.NewProfilerClient(connection),
 		}, nil
 	}
 
@@ -106,20 +106,20 @@ func NewClient(address, name string, dialOpts ...grpc.DialOption) (*Client, erro
 }
 
 // ProfilerOP is the gRPC function to provide the entry point for the profiler operations
-func (s *Server) ProfilerOP(_ context.Context, req *profilerpb.ProfilerOPRequest) (*profilerpb.ProfilerOPResponse, error) {
+func (s *Server) ProfilerOP(_ context.Context, req *profilerrpc.ProfilerOPRequest) (*profilerrpc.ProfilerOPResponse, error) {
 	logrus.Infof("Profiler operation: %v, port: %v", req.RequestOp, req.PortNumber)
 	var err error
 	switch req.RequestOp {
-	case profilerpb.Op_SHOW:
-		reply := &profilerpb.ProfilerOPResponse{}
+	case profilerrpc.Op_SHOW:
+		reply := &profilerrpc.ProfilerOPResponse{}
 		reply.ProfilerAddr, err = s.ShowProfiler()
 		return reply, err
-	case profilerpb.Op_ENABLE:
-		reply := &profilerpb.ProfilerOPResponse{}
+	case profilerrpc.Op_ENABLE:
+		reply := &profilerrpc.ProfilerOPResponse{}
 		reply.ProfilerAddr, err = s.EnableProfiler(req.PortNumber)
 		return reply, err
-	case profilerpb.Op_DISABLE:
-		reply := &profilerpb.ProfilerOPResponse{}
+	case profilerrpc.Op_DISABLE:
+		reply := &profilerrpc.ProfilerOPResponse{}
 		reply.ProfilerAddr, err = s.DisableProfiler()
 		return reply, err
 	default:
@@ -210,7 +210,7 @@ func (s *Server) EnableProfiler(portNumber int32) (string, error) {
 	return s.server.Addr, nil
 }
 
-// DisableProfiler disables the profilerpb.
+// DisableProfiler disables the profilerrpc.
 // It will return the error when fails to shut down the profiler server.
 func (s *Server) DisableProfiler() (string, error) {
 	s.lock.Lock()
@@ -236,20 +236,20 @@ func (s *Server) DisableProfiler() (string, error) {
 // ProfilerOP will call the doProfilerOP for the ProfilerServer.
 // It will convert the hunam readable op to internal usage and is the entry point for the profiler operations.
 func (c *Client) ProfilerOP(op string, portNumber int32) (string, error) {
-	opValue, exists := profilerpb.Op_value[op]
+	opValue, exists := profilerrpc.Op_value[op]
 	if !exists {
 		return "", fmt.Errorf("invalid operation: %v", op)
 	}
-	return c.doProfilerOP(profilerpb.Op(opValue), portNumber)
+	return c.doProfilerOP(profilerrpc.Op(opValue), portNumber)
 }
 
 // doProfilerOP is the internal function to call the ProfilerOP for the ProfilerServer.
-func (c *Client) doProfilerOP(op profilerpb.Op, portNumber int32) (string, error) {
+func (c *Client) doProfilerOP(op profilerrpc.Op, portNumber int32) (string, error) {
 	controllerServiceClient := c.getProfilerServiceClient()
 	ctx, cancel := context.WithTimeout(context.Background(), utils.GRPCServiceTimeout)
 	defer cancel()
 
-	reply, err := controllerServiceClient.ProfilerOP(ctx, &profilerpb.ProfilerOPRequest{
+	reply, err := controllerServiceClient.ProfilerOP(ctx, &profilerrpc.ProfilerOPRequest{
 		RequestOp:  op,
 		PortNumber: portNumber,
 	})
@@ -260,6 +260,6 @@ func (c *Client) doProfilerOP(op profilerpb.Op, portNumber int32) (string, error
 }
 
 // getProfilerServiceClient returns the ProfilerClient (internal function)
-func (c *Client) getProfilerServiceClient() profilerpb.ProfilerClient {
+func (c *Client) getProfilerServiceClient() profilerrpc.ProfilerClient {
 	return c.service
 }
