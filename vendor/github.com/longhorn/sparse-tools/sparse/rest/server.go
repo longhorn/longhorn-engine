@@ -50,8 +50,8 @@ func (it *IdleTimer) ConnState(conn net.Conn, state http.ConnState) {
 	}
 }
 
-func (t *IdleTimer) Done() <-chan time.Time {
-	return t.timer.C
+func (it *IdleTimer) Done() <-chan time.Time {
+	return it.timer.C
 }
 
 type DataSyncServer interface {
