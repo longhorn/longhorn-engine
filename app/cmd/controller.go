@@ -145,10 +145,10 @@ func startController(c *cli.Context) error {
 	timeout := c.Int64("engine-replica-timeout")
 	engineReplicaTimeoutShort := time.Duration(timeout) * time.Second
 	engineReplicaTimeoutShort = controller.DetermineEngineReplicaTimeout(engineReplicaTimeoutShort)
-	// At the conclusion of https://github.com/longhorn/longhorn/issues/8711 we should have a strategy for determining
-	// engineReplicaTimeoutLong. For now, we set it to engineReplicaTimeoutShort to maintain existing behavior and
-	// modify it here for testing.
-	engineReplicaTimeoutLong := engineReplicaTimeoutShort
+	// In https://github.com/longhorn/longhorn/issues/8711 we decided to allow the last replica twice as long as the
+	// others before a timeout. We can optionally adjust this strategy (e.g. to a fixed sixty seconds or some
+	// configurable value) in the future.
+	engineReplicaTimeoutLong := 2 * engineReplicaTimeoutShort
 	iscsiTargetRequestTimeout := controller.DetermineIscsiTargetRequestTimeout(engineReplicaTimeoutLong)
 
 	snapshotMaxCount := c.Int("snapshot-max-count")
