@@ -1,5 +1,5 @@
-//go:build go1.16
-// +build go1.16
+//go:build go1.18
+// +build go1.18
 
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
@@ -8,37 +8,16 @@ package shared
 
 import (
 	"context"
-	"encoding/json"
-	"errors"
-	"io"
-	"io/ioutil"
+	"fmt"
 	"net/http"
-	"net/url"
+	"reflect"
+	"regexp"
 	"strconv"
-	"strings"
 	"time"
 )
 
-// TokenRequestOptions contain specific parameter that may be used by credentials types when attempting to get a token.
-type TokenRequestOptions struct {
-	// Scopes contains the list of permission scopes required for the token.
-	Scopes []string
-	// TenantID contains the tenant ID to use in a multi-tenant authentication scenario, if TenantID is set
-	// it will override the tenant ID that was added at credential creation time.
-	TenantID string
-}
-
-// TokenCredential represents a credential capable of providing an OAuth token.
-type TokenCredential interface {
-	// GetToken requests an access token for the specified set of scopes.
-	GetToken(ctx context.Context, options TokenRequestOptions) (*AccessToken, error)
-}
-
-// AccessToken represents an Azure service bearer access token with expiry information.
-type AccessToken struct {
-	Token     string
-	ExpiresOn time.Time
-}
+// NOTE: when adding a new context key type, it likely needs to be
+// added to the deny-list of key types in ContextWithDeniedValues
 
 // CtxWithHTTPHeaderKey is used as a context key for adding/retrieving http.Header.
 type CtxWithHTTPHeaderKey struct{}
@@ -46,18 +25,14 @@ type CtxWithHTTPHeaderKey struct{}
 // CtxWithRetryOptionsKey is used as a context key for adding/retrieving RetryOptions.
 type CtxWithRetryOptionsKey struct{}
 
-type nopCloser struct {
-	io.ReadSeeker
-}
+// CtxWithCaptureResponse is used as a context key for retrieving the raw response.
+type CtxWithCaptureResponse struct{}
 
-func (n nopCloser) Close() error {
-	return nil
-}
+// CtxWithTracingTracer is used as a context key for adding/retrieving tracing.Tracer.
+type CtxWithTracingTracer struct{}
 
-// NopCloser returns a ReadSeekCloser with a no-op close method wrapping the provided io.ReadSeeker.
-func NopCloser(rs io.ReadSeeker) io.ReadSeekCloser {
-	return nopCloser{rs}
-}
+// CtxAPINameKey is used as a context key for adding/retrieving the API name.
+type CtxAPINameKey struct{}
 
 // Delay waits for the duration to elapse or the context to be cancelled.
 func Delay(ctx context.Context, delay time.Duration) error {
@@ -69,156 +44,106 @@ func Delay(ctx context.Context, delay time.Duration) error {
 	}
 }
 
-// ErrNoBody is returned if the response didn't contain a body.
-var ErrNoBody = errors.New("the response did not contain a body")
-
-// GetJSON reads the response body into a raw JSON object.
-// It returns ErrNoBody if there was no content.
-func GetJSON(resp *http.Response) (map[string]interface{}, error) {
-	body, err := Payload(resp)
-	if err != nil {
-		return nil, err
-	}
-	if len(body) == 0 {
-		return nil, ErrNoBody
-	}
-	// unmarshall the body to get the value
-	var jsonBody map[string]interface{}
-	if err = json.Unmarshal(body, &jsonBody); err != nil {
-		return nil, err
-	}
-	return jsonBody, nil
-}
-
-// RetryAfter returns non-zero if the response contains a Retry-After header value.
+// RetryAfter returns non-zero if the response contains one of the headers with a "retry after" value.
+// Headers are checked in the following order: retry-after-ms, x-ms-retry-after-ms, retry-after
 func RetryAfter(resp *http.Response) time.Duration {
 	if resp == nil {
 		return 0
 	}
-	ra := resp.Header.Get(HeaderRetryAfter)
-	if ra == "" {
-		return 0
+
+	type retryData struct {
+		header string
+		units  time.Duration
+
+		// custom is used when the regular algorithm failed and is optional.
+		// the returned duration is used verbatim (units is not applied).
+		custom func(string) time.Duration
 	}
-	// retry-after values are expressed in either number of
-	// seconds or an HTTP-date indicating when to try again
-	if retryAfter, _ := strconv.Atoi(ra); retryAfter > 0 {
-		return time.Duration(retryAfter) * time.Second
-	} else if t, err := time.Parse(time.RFC1123, ra); err == nil {
-		return time.Until(t)
+
+	nop := func(string) time.Duration { return 0 }
+
+	// the headers are listed in order of preference
+	retries := []retryData{
+		{
+			header: HeaderRetryAfterMS,
+			units:  time.Millisecond,
+			custom: nop,
+		},
+		{
+			header: HeaderXMSRetryAfterMS,
+			units:  time.Millisecond,
+			custom: nop,
+		},
+		{
+			header: HeaderRetryAfter,
+			units:  time.Second,
+
+			// retry-after values are expressed in either number of
+			// seconds or an HTTP-date indicating when to try again
+			custom: func(ra string) time.Duration {
+				t, err := time.Parse(time.RFC1123, ra)
+				if err != nil {
+					return 0
+				}
+				return time.Until(t)
+			},
+		},
 	}
+
+	for _, retry := range retries {
+		v := resp.Header.Get(retry.header)
+		if v == "" {
+			continue
+		}
+		if retryAfter, _ := strconv.Atoi(v); retryAfter > 0 {
+			return time.Duration(retryAfter) * retry.units
+		} else if d := retry.custom(v); d > 0 {
+			return d
+		}
+	}
+
 	return 0
 }
 
-// HasStatusCode returns true if the Response's status code is one of the specified values.
-func HasStatusCode(resp *http.Response, statusCodes ...int) bool {
-	if resp == nil {
-		return false
+// TypeOfT returns the type of the generic type param.
+func TypeOfT[T any]() reflect.Type {
+	// you can't, at present, obtain the type of
+	// a type parameter, so this is the trick
+	return reflect.TypeOf((*T)(nil)).Elem()
+}
+
+// TransportFunc is a helper to use a first-class func to satisfy the Transporter interface.
+type TransportFunc func(*http.Request) (*http.Response, error)
+
+// Do implements the Transporter interface for the TransportFunc type.
+func (pf TransportFunc) Do(req *http.Request) (*http.Response, error) {
+	return pf(req)
+}
+
+// ValidateModVer verifies that moduleVersion is a valid semver 2.0 string.
+func ValidateModVer(moduleVersion string) error {
+	modVerRegx := regexp.MustCompile(`^v\d+\.\d+\.\d+(?:-[a-zA-Z0-9_.-]+)?$`)
+	if !modVerRegx.MatchString(moduleVersion) {
+		return fmt.Errorf("malformed moduleVersion param value %s", moduleVersion)
 	}
-	for _, sc := range statusCodes {
-		if resp.StatusCode == sc {
-			return true
-		}
-	}
-	return false
-}
-
-// Payload reads and returns the response body or an error.
-// On a successful read, the response body is cached.
-// Subsequent reads will access the cached value.
-func Payload(resp *http.Response) ([]byte, error) {
-	// r.Body won't be a nopClosingBytesReader if downloading was skipped
-	if buf, ok := resp.Body.(*NopClosingBytesReader); ok {
-		return buf.Bytes(), nil
-	}
-	bytesBody, err := ioutil.ReadAll(resp.Body)
-	resp.Body.Close()
-	if err != nil {
-		return nil, err
-	}
-	resp.Body = &NopClosingBytesReader{s: bytesBody, i: 0}
-	return bytesBody, nil
-}
-
-// NopClosingBytesReader is an io.ReadSeekCloser around a byte slice.
-// It also provides direct access to the byte slice to avoid rereading.
-type NopClosingBytesReader struct {
-	s []byte
-	i int64
-}
-
-// NewNopClosingBytesReader creates a new NopClosingBytesReader around the specified byte slice.
-func NewNopClosingBytesReader(data []byte) *NopClosingBytesReader {
-	return &NopClosingBytesReader{s: data}
-}
-
-// Bytes returns the underlying byte slice.
-func (r *NopClosingBytesReader) Bytes() []byte {
-	return r.s
-}
-
-// Close implements the io.Closer interface.
-func (*NopClosingBytesReader) Close() error {
 	return nil
 }
 
-// Read implements the io.Reader interface.
-func (r *NopClosingBytesReader) Read(b []byte) (n int, err error) {
-	if r.i >= int64(len(r.s)) {
-		return 0, io.EOF
-	}
-	n = copy(b, r.s[r.i:])
-	r.i += int64(n)
-	return
+// ContextWithDeniedValues wraps an existing [context.Context], denying access to certain context values.
+// Pipeline policies that create new requests to be sent down their own pipeline MUST wrap the caller's
+// context with an instance of this type. This is to prevent context values from flowing across disjoint
+// requests which can have unintended side-effects.
+type ContextWithDeniedValues struct {
+	context.Context
 }
 
-// Set replaces the existing byte slice with the specified byte slice and resets the reader.
-func (r *NopClosingBytesReader) Set(b []byte) {
-	r.s = b
-	r.i = 0
-}
-
-// Seek implements the io.Seeker interface.
-func (r *NopClosingBytesReader) Seek(offset int64, whence int) (int64, error) {
-	var i int64
-	switch whence {
-	case io.SeekStart:
-		i = offset
-	case io.SeekCurrent:
-		i = r.i + offset
-	case io.SeekEnd:
-		i = int64(len(r.s)) + offset
+// Value implements part of the [context.Context] interface.
+// It acts as a deny-list for certain context keys.
+func (c *ContextWithDeniedValues) Value(key any) any {
+	switch key.(type) {
+	case CtxAPINameKey, CtxWithCaptureResponse, CtxWithHTTPHeaderKey, CtxWithRetryOptionsKey, CtxWithTracingTracer:
+		return nil
 	default:
-		return 0, errors.New("nopClosingBytesReader: invalid whence")
+		return c.Context.Value(key)
 	}
-	if i < 0 {
-		return 0, errors.New("nopClosingBytesReader: negative position")
-	}
-	r.i = i
-	return i, nil
-}
-
-const defaultScope = "/.default"
-const chinaCloudARMScope = "https://management.core.chinacloudapi.cn/" + defaultScope
-const publicCloudARMScope = "https://management.core.windows.net/" + defaultScope
-const usGovCloudARMScope = "https://management.core.usgovcloudapi.net/" + defaultScope
-
-// EndpointToScope converts the provided URL endpoint to its default scope.
-func EndpointToScope(endpoint string) string {
-	parsed, err := url.Parse(endpoint)
-	if err == nil {
-		host := parsed.Hostname()
-		switch {
-		case strings.HasSuffix(host, "management.azure.com"):
-			return publicCloudARMScope
-		case strings.HasSuffix(host, "management.usgovcloudapi.net"):
-			return usGovCloudARMScope
-		case strings.HasSuffix(host, "management.chinacloudapi.cn"):
-			return chinaCloudARMScope
-		}
-	}
-	// fall back to legacy behavior when endpoint doesn't parse or match a known cloud's ARM endpoint
-	if endpoint[len(endpoint)-1] != '/' {
-		endpoint += "/"
-	}
-	return endpoint + defaultScope
 }

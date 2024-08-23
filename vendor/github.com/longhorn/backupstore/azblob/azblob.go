@@ -194,6 +194,7 @@ func (s *BackupStoreDriver) Download(src, dst string) error {
 	if err != nil {
 		return err
 	}
+	defer rc.Close()
 
 	_, err = io.Copy(f, rc)
 	return err
