@@ -8,8 +8,9 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/longhorn/longhorn-engine/pkg/types"
 	journal "github.com/longhorn/sparse-tools/stats"
+
+	"github.com/longhorn/longhorn-engine/pkg/types"
 )
 
 var (
