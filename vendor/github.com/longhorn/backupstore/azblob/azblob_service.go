@@ -8,9 +8,13 @@ import (
 	"os"
 	"strings"
 
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/streaming"
-	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/blob"
+	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/container"
 	"github.com/pkg/errors"
+
+	azblobsvc "github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/service"
 
 	"github.com/longhorn/backupstore/http"
 )
@@ -21,14 +25,12 @@ const (
 	blobEndpoint       = "BlobEndpoint=%s;"
 	blobEndpointScheme = "DefaultEndpointsProtocol=%s;"
 	blobEndpointSuffix = "EndpointSuffix=%s;"
-
-	downloadMaxRetryRequests = 1024
 )
 
 type service struct {
 	Container       string
 	EndpointSuffix  string
-	ContainerClient azblob.ContainerClient
+	ContainerClient *container.Client
 }
 
 func newService(u *url.URL) (*service, error) {
@@ -63,8 +65,8 @@ func newService(u *url.URL) (*service, error) {
 	if err != nil {
 		return nil, err
 	}
-	opts := azblob.ClientOptions{Transporter: httpClient}
-	serviceClient, err := azblob.NewServiceClientFromConnectionString(connStr, &opts)
+	opts := azblobsvc.ClientOptions{ClientOptions: azcore.ClientOptions{Transport: httpClient}}
+	serviceClient, err := azblobsvc.NewClientFromConnectionString(connStr, &opts)
 	if err != nil {
 		return nil, err
 	}
@@ -84,28 +86,27 @@ func getCustomCerts() []byte {
 }
 
 func (s *service) listBlobs(prefix, delimiter string) (*[]string, error) {
-	listOptions := &azblob.ContainerListBlobHierarchySegmentOptions{Prefix: &prefix}
-	pager := s.ContainerClient.ListBlobsHierarchy(delimiter, listOptions)
+	listOptions := &container.ListBlobsHierarchyOptions{Prefix: &prefix}
+	pager := s.ContainerClient.NewListBlobsHierarchyPager(delimiter, listOptions)
 
 	var blobs []string
-	for pager.NextPage(context.Background()) {
-		resp := pager.PageResponse()
-		for _, v := range resp.ContainerListBlobHierarchySegmentResult.Segment.BlobItems {
+	for pager.More() {
+		page, err := pager.NextPage(context.Background())
+		if err != nil {
+			return nil, err
+		}
+		for _, v := range page.Segment.BlobItems {
 			blobs = append(blobs, *v.Name)
 		}
-		for _, v := range resp.ContainerListBlobHierarchySegmentResult.Segment.BlobPrefixes {
+		for _, v := range page.Segment.BlobPrefixes {
 			blobs = append(blobs, *v.Name)
 		}
-	}
-
-	if err := pager.Err(); err != nil {
-		return nil, err
 	}
 
 	return &blobs, nil
 }
 
-func (s *service) getBlobProperties(blob string) (*azblob.GetBlobPropertiesResponse, error) {
+func (s *service) getBlobProperties(blob string) (*blob.GetPropertiesResponse, error) {
 	blobClient := s.ContainerClient.NewBlockBlobClient(blob)
 
 	response, err := blobClient.GetProperties(context.Background(), nil)
@@ -130,12 +131,12 @@ func (s *service) putBlob(blob string, reader io.ReadSeeker) error {
 func (s *service) getBlob(blob string) (io.ReadCloser, error) {
 	blobClient := s.ContainerClient.NewBlockBlobClient(blob)
 
-	response, err := blobClient.Download(context.Background(), nil)
+	response, err := blobClient.DownloadStream(context.Background(), nil)
 	if err != nil {
 		return nil, err
 	}
 
-	return response.Body(&azblob.RetryReaderOptions{MaxRetryRequests: downloadMaxRetryRequests}), nil
+	return response.Body, nil
 }
 
 func (s *service) deleteBlobs(blob string) error {

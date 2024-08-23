@@ -1,5 +1,5 @@
-//go:build go1.16
-// +build go1.16
+//go:build go1.18
+// +build go1.18
 
 // Copyright (c) Microsoft Corporation. All rights reserved.
 // Licensed under the MIT License.
@@ -8,30 +8,62 @@ package azcore
 
 import (
 	"reflect"
+	"sync"
 
-	"github.com/Azure/azure-sdk-for-go/sdk/azcore/internal/pollers"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/internal/exported"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/internal/shared"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/policy"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/runtime"
+	"github.com/Azure/azure-sdk-for-go/sdk/azcore/tracing"
 )
 
 // AccessToken represents an Azure service bearer access token with expiry information.
-type AccessToken = shared.AccessToken
+type AccessToken = exported.AccessToken
 
 // TokenCredential represents a credential capable of providing an OAuth token.
-type TokenCredential = shared.TokenCredential
+type TokenCredential = exported.TokenCredential
+
+// KeyCredential contains an authentication key used to authenticate to an Azure service.
+type KeyCredential = exported.KeyCredential
+
+// NewKeyCredential creates a new instance of [KeyCredential] with the specified values.
+//   - key is the authentication key
+func NewKeyCredential(key string) *KeyCredential {
+	return exported.NewKeyCredential(key)
+}
+
+// SASCredential contains a shared access signature used to authenticate to an Azure service.
+type SASCredential = exported.SASCredential
+
+// NewSASCredential creates a new instance of [SASCredential] with the specified values.
+//   - sas is the shared access signature
+func NewSASCredential(sas string) *SASCredential {
+	return exported.NewSASCredential(sas)
+}
 
 // holds sentinel values used to send nulls
-var nullables map[reflect.Type]interface{} = map[reflect.Type]interface{}{}
+var nullables map[reflect.Type]any = map[reflect.Type]any{}
+var nullablesMu sync.RWMutex
 
 // NullValue is used to send an explicit 'null' within a request.
 // This is typically used in JSON-MERGE-PATCH operations to delete a value.
-func NullValue(v interface{}) interface{} {
-	t := reflect.TypeOf(v)
-	if k := t.Kind(); k != reflect.Ptr && k != reflect.Slice && k != reflect.Map {
-		// t is not of pointer type, make it be of pointer type
-		t = reflect.PtrTo(t)
-	}
+func NullValue[T any]() T {
+	t := shared.TypeOfT[T]()
+
+	nullablesMu.RLock()
 	v, found := nullables[t]
+	nullablesMu.RUnlock()
+
+	if found {
+		// return the sentinel object
+		return v.(T)
+	}
+
+	// promote to exclusive lock and check again (double-checked locking pattern)
+	nullablesMu.Lock()
+	defer nullablesMu.Unlock()
+	v, found = nullables[t]
+
 	if !found {
 		var o reflect.Value
 		if k := t.Kind(); k == reflect.Map {
@@ -48,18 +80,17 @@ func NullValue(v interface{}) interface{} {
 		nullables[t] = v
 	}
 	// return the sentinel object
-	return v
+	return v.(T)
 }
 
 // IsNullValue returns true if the field contains a null sentinel value.
 // This is used by custom marshallers to properly encode a null value.
-func IsNullValue(v interface{}) bool {
+func IsNullValue[T any](v T) bool {
 	// see if our map has a sentinel object for this *T
 	t := reflect.TypeOf(v)
-	if k := t.Kind(); k != reflect.Ptr && k != reflect.Slice && k != reflect.Map {
-		// v isn't a pointer type so it can never be a null
-		return false
-	}
+	nullablesMu.RLock()
+	defer nullablesMu.RUnlock()
+
 	if o, found := nullables[t]; found {
 		o1 := reflect.ValueOf(o)
 		v1 := reflect.ValueOf(v)
@@ -72,8 +103,71 @@ func IsNullValue(v interface{}) bool {
 	return false
 }
 
-// ClientOptions contains configuration settings for a client's pipeline.
+// ClientOptions contains optional settings for a client's pipeline.
+// Instances can be shared across calls to SDK client constructors when uniform configuration is desired.
+// Zero-value fields will have their specified default values applied during use.
 type ClientOptions = policy.ClientOptions
 
-// Poller encapsulates state and logic for polling on long-running operations.
-type Poller = pollers.Poller
+// Client is a basic HTTP client.  It consists of a pipeline and tracing provider.
+type Client struct {
+	pl runtime.Pipeline
+	tr tracing.Tracer
+
+	// cached on the client to support shallow copying with new values
+	tp        tracing.Provider
+	modVer    string
+	namespace string
+}
+
+// NewClient creates a new Client instance with the provided values.
+//   - moduleName - the fully qualified name of the module where the client is defined; used by the telemetry policy and tracing provider.
+//   - moduleVersion - the semantic version of the module; used by the telemetry policy and tracing provider.
+//   - plOpts - pipeline configuration options; can be the zero-value
+//   - options - optional client configurations; pass nil to accept the default values
+func NewClient(moduleName, moduleVersion string, plOpts runtime.PipelineOptions, options *ClientOptions) (*Client, error) {
+	if options == nil {
+		options = &ClientOptions{}
+	}
+
+	if !options.Telemetry.Disabled {
+		if err := shared.ValidateModVer(moduleVersion); err != nil {
+			return nil, err
+		}
+	}
+
+	pl := runtime.NewPipeline(moduleName, moduleVersion, plOpts, options)
+
+	tr := options.TracingProvider.NewTracer(moduleName, moduleVersion)
+	if tr.Enabled() && plOpts.Tracing.Namespace != "" {
+		tr.SetAttributes(tracing.Attribute{Key: shared.TracingNamespaceAttrName, Value: plOpts.Tracing.Namespace})
+	}
+
+	return &Client{
+		pl:        pl,
+		tr:        tr,
+		tp:        options.TracingProvider,
+		modVer:    moduleVersion,
+		namespace: plOpts.Tracing.Namespace,
+	}, nil
+}
+
+// Pipeline returns the pipeline for this client.
+func (c *Client) Pipeline() runtime.Pipeline {
+	return c.pl
+}
+
+// Tracer returns the tracer for this client.
+func (c *Client) Tracer() tracing.Tracer {
+	return c.tr
+}
+
+// WithClientName returns a shallow copy of the Client with its tracing client name changed to clientName.
+// Note that the values for module name and version will be preserved from the source Client.
+//   - clientName - the fully qualified name of the client ("package.Client"); this is used by the tracing provider when creating spans
+func (c *Client) WithClientName(clientName string) *Client {
+	tr := c.tp.NewTracer(clientName, c.modVer)
+	if tr.Enabled() && c.namespace != "" {
+		tr.SetAttributes(tracing.Attribute{Key: shared.TracingNamespaceAttrName, Value: c.namespace})
+	}
+	return &Client{pl: c.pl, tr: tr, tp: c.tp, modVer: c.modVer, namespace: c.namespace}
+}
