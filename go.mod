@@ -8,7 +8,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
-	github.com/longhorn/backupstore v0.0.0-20240811043357-5c2b7879457f
+	github.com/longhorn/backupstore v0.0.0-20240823013231-436ca3afcf2d
 	github.com/longhorn/go-common-libs v0.0.0-20240811024046-b6ddc3efb72e
 	github.com/longhorn/go-iscsi-helper v0.0.0-20240811043302-df8de353dd58
 	github.com/longhorn/sparse-tools v0.0.0-20240729132735-18b207e459ff
@@ -29,10 +29,10 @@ require (
 )
 
 require (
-	github.com/Azure/azure-sdk-for-go/sdk/azcore v0.21.1 // indirect
-	github.com/Azure/azure-sdk-for-go/sdk/internal v0.8.3 // indirect
-	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v0.3.0 // indirect
-	github.com/aws/aws-sdk-go v1.34.2 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.14.0 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/internal v1.10.0 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.4.0 // indirect
+	github.com/aws/aws-sdk-go v1.55.5 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/c9s/goprocinfo v0.0.0-20210130143923-c95fcf8c64a8 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
@@ -76,7 +76,7 @@ require (
 	gopkg.in/mattn/go-isatty.v0 v0.0.4 // indirect
 	gopkg.in/mattn/go-runewidth.v0 v0.0.4 // indirect
 	gotest.tools/v3 v3.4.0 // indirect
-	k8s.io/apimachinery v0.30.3 // indirect
+	k8s.io/apimachinery v0.31.0 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 	k8s.io/utils v0.0.0-20240711033017-18e509b52bc8 // indirect
 )
