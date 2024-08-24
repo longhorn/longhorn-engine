@@ -8,8 +8,8 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
-	github.com/longhorn/backupstore v0.0.0-20240823013231-436ca3afcf2d
-	github.com/longhorn/go-common-libs v0.0.0-20240811024046-b6ddc3efb72e
+	github.com/longhorn/backupstore v0.0.0-20240823072635-7afd6aa10d3e
+	github.com/longhorn/go-common-libs v0.0.0-20240821134112-907f57efd48f
 	github.com/longhorn/go-iscsi-helper v0.0.0-20240811043302-df8de353dd58
 	github.com/longhorn/sparse-tools v0.0.0-20240729132735-18b207e459ff
 	github.com/longhorn/types v0.0.0-20240725040629-473d671316c4
