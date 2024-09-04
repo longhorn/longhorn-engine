@@ -57,6 +57,11 @@ func (rb *BackupStatus) UpdateBackupStatus(snapID, volumeID string, state string
 		return fmt.Errorf("invalid volume [%s] and snapshot [%s], not volume [%s], snapshot [%s]", rb.volumeID, rb.SnapshotID, volumeID, id)
 	}
 
+	if rb.State == ProgressStateComplete || rb.State == ProgressStateError {
+		logrus.Warnf("backup of volume [%s] and snapshot [%s] already completed or failed, skip the status update", rb.volumeID, rb.SnapshotID)
+		return nil
+	}
+
 	rb.State = ProgressState(state)
 	rb.Progress = progress
 	rb.BackupURL = url
