@@ -60,7 +60,7 @@ func prune(parentFileIo, childFileIo FileIoProcessor, fileSize int64, ops FileHa
 
 	defer func() {
 		if err != nil {
-			log.Errorf(err.Error())
+			log.Errorf("%v", err)
 			updateProgress(progress, atomic.LoadUint32(progress), true, err, progressMutex, ops)
 		} else {
 			updateProgress(progress, progressComplete, true, nil, progressMutex, ops)
