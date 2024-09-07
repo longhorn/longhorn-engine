@@ -188,7 +188,7 @@ func (rs *ReplicaServer) ReplicaExpand(ctx context.Context, req *enginerpc.Repli
 			errWithCode = types.NewError(types.ErrorCodeFunctionFailedWithoutRollback,
 				err.Error(), "")
 		}
-		return nil, status.Errorf(codes.Internal, errWithCode.ToJSONString())
+		return nil, status.Errorf(codes.Internal, "%s", errWithCode.ToJSONString())
 	}
 
 	return &enginerpc.ReplicaExpandResponse{Replica: rs.getReplica()}, nil
