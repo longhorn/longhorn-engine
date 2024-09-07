@@ -1,4 +1,4 @@
-FROM registry.suse.com/bci/golang:1.22
+FROM registry.suse.com/bci/golang:1.23
 
 ARG DAPPER_HOST_ARCH
 ARG http_proxy
