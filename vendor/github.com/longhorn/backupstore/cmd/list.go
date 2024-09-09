@@ -80,7 +80,7 @@ func ResponseLogAndError(v interface{}) {
 		e, isErr := v.(error)
 		_, isRuntimeErr := e.(runtime.Error)
 		if isErr && !isRuntimeErr {
-			logrus.Errorf(fmt.Sprint(e))
+			logrus.Errorf("%v", e)
 			fmt.Println(fmt.Sprint(e))
 		} else {
 			logrus.Errorf("Caught FATAL error: %s", v)
