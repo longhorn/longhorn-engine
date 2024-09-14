@@ -8,8 +8,8 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
-	github.com/longhorn/backupstore v0.0.0-20240907142840-c1268343d512
-	github.com/longhorn/go-common-libs v0.0.0-20240907130740-7060fefb5bda
+	github.com/longhorn/backupstore v0.0.0-20240914104455-ae6fea57b2c1
+	github.com/longhorn/go-common-libs v0.0.0-20240914083622-928beb30c12e
 	github.com/longhorn/go-iscsi-helper v0.0.0-20240907143006-2d71415d9bd3
 	github.com/longhorn/sparse-tools v0.0.0-20240907135423-37af3c64d59d
 	github.com/longhorn/types v0.0.0-20240902072916-1bf23d310acb
@@ -76,7 +76,7 @@ require (
 	gopkg.in/mattn/go-isatty.v0 v0.0.4 // indirect
 	gopkg.in/mattn/go-runewidth.v0 v0.0.4 // indirect
 	gotest.tools/v3 v3.4.0 // indirect
-	k8s.io/apimachinery v0.31.0 // indirect
+	k8s.io/apimachinery v0.31.1 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 	k8s.io/utils v0.0.0-20240711033017-18e509b52bc8 // indirect
 )
