@@ -21,11 +21,11 @@ require (
 	github.com/urfave/cli v1.22.15
 	golang.org/x/net v0.29.0
 	golang.org/x/sys v0.25.0
-	google.golang.org/grpc v1.66.1
+	google.golang.org/grpc v1.66.2
 	google.golang.org/protobuf v1.34.2
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 	gopkg.in/cheggaaa/pb.v2 v2.0.7
-	k8s.io/mount-utils v0.31.0
+	k8s.io/mount-utils v0.31.1
 )
 
 require (
