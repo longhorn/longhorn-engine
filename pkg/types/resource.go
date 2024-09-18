@@ -54,8 +54,9 @@ type VolumeInfo struct {
 }
 
 type ControllerReplicaInfo struct {
-	Address string `json:"address"`
-	Mode    Mode   `json:"mode"`
+	Address       string              `json:"address"`
+	Mode          Mode                `json:"mode"`
+	SnapshotDisks map[string]DiskInfo `json:"snapshotDisks"`
 }
 
 type SyncFileInfo struct {
