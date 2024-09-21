@@ -8,9 +8,9 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
-	github.com/longhorn/backupstore v0.0.0-20240914104455-ae6fea57b2c1
-	github.com/longhorn/go-common-libs v0.0.0-20240914083622-928beb30c12e
-	github.com/longhorn/go-iscsi-helper v0.0.0-20240907143006-2d71415d9bd3
+	github.com/longhorn/backupstore v0.0.0-20240921050203-6a6dfbf4ca4b
+	github.com/longhorn/go-common-libs v0.0.0-20240921050101-797b589b669d
+	github.com/longhorn/go-iscsi-helper v0.0.0-20240921050131-ea564c4f8688
 	github.com/longhorn/sparse-tools v0.0.0-20240907135423-37af3c64d59d
 	github.com/longhorn/types v0.0.0-20240902072916-1bf23d310acb
 	github.com/moby/moby v26.1.5+incompatible
@@ -31,7 +31,7 @@ require (
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.14.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.10.0 // indirect
-	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.4.0 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.4.1 // indirect
 	github.com/aws/aws-sdk-go v1.55.5 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/c9s/goprocinfo v0.0.0-20210130143923-c95fcf8c64a8 // indirect
