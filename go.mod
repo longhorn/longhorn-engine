@@ -8,9 +8,9 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
-	github.com/longhorn/backupstore v0.0.0-20240921050203-6a6dfbf4ca4b
+	github.com/longhorn/backupstore v0.0.0-20240922062439-e33cb1230db9
 	github.com/longhorn/go-common-libs v0.0.0-20240921050101-797b589b669d
-	github.com/longhorn/go-iscsi-helper v0.0.0-20240921050131-ea564c4f8688
+	github.com/longhorn/go-iscsi-helper v0.0.0-20240922062410-c17a624e50c1
 	github.com/longhorn/sparse-tools v0.0.0-20240907135423-37af3c64d59d
 	github.com/longhorn/types v0.0.0-20240902072916-1bf23d310acb
 	github.com/moby/moby v26.1.5+incompatible
