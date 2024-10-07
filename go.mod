@@ -10,21 +10,21 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
-	github.com/longhorn/backupstore v0.0.0-20240922062439-e33cb1230db9
-	github.com/longhorn/go-common-libs v0.0.0-20240921050101-797b589b669d
-	github.com/longhorn/go-iscsi-helper v0.0.0-20240922062410-c17a624e50c1
+	github.com/longhorn/backupstore v0.0.0-20241006011054-d46756322f43
+	github.com/longhorn/go-common-libs v0.0.0-20241005131830-a0195307257b
+	github.com/longhorn/go-iscsi-helper v0.0.0-20241006012607-08f5166d1fad
 	github.com/longhorn/sparse-tools v0.0.0-20240907135423-37af3c64d59d
-	github.com/longhorn/types v0.0.0-20240902072916-1bf23d310acb
-	github.com/moby/moby v23.0.14+incompatible
+	github.com/longhorn/types v0.0.0-20241007141758-3640f2357238
+	github.com/moby/moby v23.0.15+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
 	github.com/rancher/go-rancher v0.1.1-0.20190307222549-9756097e5e4c
 	github.com/sirupsen/logrus v1.9.3
 	github.com/urfave/cli v1.22.15
-	golang.org/x/net v0.29.0
-	golang.org/x/sys v0.25.0
-	google.golang.org/grpc v1.67.0
-	google.golang.org/protobuf v1.34.2
+	golang.org/x/net v0.30.0
+	golang.org/x/sys v0.26.0
+	google.golang.org/grpc v1.67.1
+	google.golang.org/protobuf v1.35.1
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 	gopkg.in/cheggaaa/pb.v2 v2.0.7
 )
@@ -69,7 +69,7 @@ require (
 	github.com/shirou/gopsutil/v3 v3.24.5 // indirect
 	github.com/slok/goresilience v0.2.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
-	golang.org/x/text v0.18.0 // indirect
+	golang.org/x/text v0.19.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20240814211410-ddb44dafa142 // indirect
 	gopkg.in/VividCortex/ewma.v1 v1.1.1 // indirect
 	gopkg.in/fatih/color.v1 v1.7.0 // indirect
