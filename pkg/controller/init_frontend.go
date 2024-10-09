@@ -8,6 +8,7 @@ import (
 	"github.com/longhorn/longhorn-engine/pkg/frontend/rest"
 	"github.com/longhorn/longhorn-engine/pkg/frontend/socket"
 	"github.com/longhorn/longhorn-engine/pkg/frontend/tgt"
+	"github.com/longhorn/longhorn-engine/pkg/frontend/ublk"
 	"github.com/longhorn/longhorn-engine/pkg/types"
 	"github.com/sirupsen/logrus"
 )
@@ -21,7 +22,7 @@ const (
 	maxEngineReplicaTimeout     = 30 * time.Second
 )
 
-func NewFrontend(frontendType string, iscsiTargetRequestTimeout time.Duration) (types.Frontend, error) {
+func NewFrontend(frontendType string, iscsiTargetRequestTimeout time.Duration, frontendQueues int) (types.Frontend, error) {
 	switch frontendType {
 	case "rest":
 		return rest.New(), nil
@@ -31,6 +32,8 @@ func NewFrontend(frontendType string, iscsiTargetRequestTimeout time.Duration) (
 		return tgt.New(devtypes.FrontendTGTBlockDev, defaultScsiTimeout, defaultIscsiAbortTimeout, iscsiTargetRequestTimeout), nil
 	case devtypes.FrontendTGTISCSI:
 		return tgt.New(devtypes.FrontendTGTISCSI, defaultScsiTimeout, defaultIscsiAbortTimeout, iscsiTargetRequestTimeout), nil
+	case "ublk":
+		return ublk.New(frontendQueues), nil
 	default:
 		return nil, fmt.Errorf("unsupported frontend type: %v", frontendType)
 	}
