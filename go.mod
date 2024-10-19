@@ -9,16 +9,16 @@ require (
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
 	github.com/longhorn/backupstore v0.0.0-20241013024428-b52180a5191f
-	github.com/longhorn/go-common-libs v0.0.0-20241012153249-4c71f1cbdd9e
-	github.com/longhorn/go-iscsi-helper v0.0.0-20241006012607-08f5166d1fad
-	github.com/longhorn/sparse-tools v0.0.0-20240907135423-37af3c64d59d
+	github.com/longhorn/go-common-libs v0.0.0-20241018042323-54da24c0807f
+	github.com/longhorn/go-iscsi-helper v0.0.0-20241018035016-4f89087f131a
+	github.com/longhorn/sparse-tools v0.0.0-20241018033304-1f5ba953b4cd
 	github.com/longhorn/types v0.0.0-20241007141758-3640f2357238
 	github.com/moby/moby v26.1.5+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
 	github.com/rancher/go-rancher v0.1.1-0.20190307222549-9756097e5e4c
 	github.com/sirupsen/logrus v1.9.3
-	github.com/urfave/cli v1.22.15
+	github.com/urfave/cli v1.22.16
 	golang.org/x/net v0.30.0
 	golang.org/x/sys v0.26.0
 	google.golang.org/grpc v1.67.1
@@ -37,7 +37,7 @@ require (
 	github.com/c9s/goprocinfo v0.0.0-20210130143923-c95fcf8c64a8 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
 	github.com/coreos/go-systemd/v22 v22.5.0 // indirect
-	github.com/cpuguy83/go-md2man/v2 v2.0.4 // indirect
+	github.com/cpuguy83/go-md2man/v2 v2.0.5 // indirect
 	github.com/felixge/httpsnoop v1.0.4 // indirect
 	github.com/gammazero/deque v0.2.1 // indirect
 	github.com/gammazero/workerpool v1.1.3 // indirect
