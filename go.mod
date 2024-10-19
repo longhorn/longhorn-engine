@@ -8,7 +8,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
-	github.com/longhorn/backupstore v0.0.0-20241013024428-b52180a5191f
+	github.com/longhorn/backupstore v0.0.0-20241019040107-9af970b538d9
 	github.com/longhorn/go-common-libs v0.0.0-20241018042323-54da24c0807f
 	github.com/longhorn/go-iscsi-helper v0.0.0-20241018035016-4f89087f131a
 	github.com/longhorn/sparse-tools v0.0.0-20241018033304-1f5ba953b4cd
@@ -29,7 +29,7 @@ require (
 )
 
 require (
-	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.14.0 // indirect
+	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.16.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.10.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.4.1 // indirect
 	github.com/aws/aws-sdk-go v1.55.5 // indirect
