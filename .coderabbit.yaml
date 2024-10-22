@@ -15,5 +15,9 @@ reviews:
     drafts: false
     base_branches:
       - master
+  path_filters:
+    - "!vendor/**"
+    - "!go.mod"
+    - "!go.sum"
 chat:
   auto_reply: true
