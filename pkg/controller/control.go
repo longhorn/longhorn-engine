@@ -66,6 +66,8 @@ type Controller struct {
 	lastExpansionError string
 
 	fileSyncHTTPClientTimeout int
+
+	frontendQueues int
 }
 
 const (
@@ -75,7 +77,7 @@ const (
 func NewController(name string, factory types.BackendFactory, frontend types.Frontend, isUpgrade, disableRevCounter,
 	salvageRequested, unmapMarkSnapChainRemoved bool, iscsiTargetRequestTimeout, engineReplicaTimeoutShort,
 	engineReplicaTimeoutLong time.Duration, dataServerProtocol types.DataServerProtocol, fileSyncHTTPClientTimeout,
-	snapshotMaxCount int, snapshotMaxSize int64) *Controller {
+	snapshotMaxCount int, snapshotMaxSize int64, frontendQueues int) *Controller {
 	c := &Controller{
 		factory:       factory,
 		VolumeName:    name,
@@ -95,6 +97,7 @@ func NewController(name string, factory types.BackendFactory, frontend types.Fro
 		DataServerProtocol:        dataServerProtocol,
 
 		fileSyncHTTPClientTimeout: fileSyncHTTPClientTimeout,
+		frontendQueues:            frontendQueues,
 	}
 	c.reset()
 	c.metricsStart()
@@ -578,7 +581,7 @@ func (c *Controller) StartFrontend(frontend string) error {
 		}
 	}
 
-	f, err := NewFrontend(frontend, c.iscsiTargetRequestTimeout)
+	f, err := NewFrontend(frontend, c.iscsiTargetRequestTimeout, c.frontendQueues)
 	if err != nil {
 		return errors.Wrapf(err, "failed to find frontend: %s", frontend)
 	}
