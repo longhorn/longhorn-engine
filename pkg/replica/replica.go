@@ -366,13 +366,13 @@ func (r *Replica) hardlinkDisk(target, source string) error {
 	}
 
 	if _, err := os.Stat(r.diskPath(target)); err == nil {
-		logrus.Infof("Removing old file %s", target)
+		logrus.Debugf("Removing old file %s", target)
 		if err := os.Remove(r.diskPath(target)); err != nil {
 			return errors.Wrapf(err, "failed to remove %s", target)
 		}
 	}
 
-	logrus.Infof("Hard linking %v to %v", source, target)
+	logrus.Debugf("Hard linking %v to %v", source, target)
 	if err := os.Link(r.diskPath(source), r.diskPath(target)); err != nil {
 		return fmt.Errorf("failed to hard link %s to %s", source, target)
 	}
@@ -413,7 +413,7 @@ func (r *Replica) ReplaceDisk(target, source string) error {
 	}
 	r.volume.files[index] = newFile
 
-	logrus.Infof("Done replacing disk %v with %v", source, target)
+	logrus.Debugf("Done replacing disk %v with %v", source, target)
 
 	return nil
 }
@@ -776,19 +776,19 @@ func (r *Replica) linkDisk(oldName, newName string) (rollbackFunc func() error, 
 	}()
 
 	destMetadata := r.diskPath(newName + diskutil.DiskMetadataSuffix)
-	logrus.Infof("Cleaning up new disk metadata file path %v before linking", destMetadata)
+	logrus.Debugf("Cleaning up new disk metadata file path %v before linking", destMetadata)
 	if err := os.RemoveAll(destMetadata); err != nil {
 		return rollbackFunc, errors.Wrapf(err, "failed to clean up new disk metadata file %v before linking", destMetadata)
 	}
 
 	destChecksum := r.diskPath(newName + diskutil.DiskChecksumSuffix)
-	logrus.Infof("Cleaning up new disk checksum file %v before linking", destChecksum)
+	logrus.Debugf("Cleaning up new disk checksum file %v before linking", destChecksum)
 	if err := os.RemoveAll(destChecksum); err != nil {
 		return rollbackFunc, errors.Wrapf(err, "failed to clean up new disk checksum file %v before linking", destChecksum)
 	}
 
 	dest := r.diskPath(newName)
-	logrus.Infof("Cleaning up new disk file %v before linking", dest)
+	logrus.Debugf("Cleaning up new disk file %v before linking", dest)
 	if err := os.RemoveAll(dest); err != nil {
 		return rollbackFunc, errors.Wrapf(err, "failed to clean up new disk file %v before linking", dest)
 	}
@@ -831,7 +831,7 @@ func (r *Replica) rmDisk(name string) error {
 		return nil
 	}
 
-	logrus.Infof("Removing disk %v", name)
+	logrus.Debugf("Removing disk %v", name)
 
 	diskPath := r.diskPath(name)
 	lastErr := os.RemoveAll(diskPath)
@@ -895,7 +895,7 @@ func (r *Replica) revertDisk(parentDiskFileName, created string) (*Replica, erro
 
 func (r *Replica) createDisk(name string, userCreated bool, created string, labels map[string]string, size int64) (err error) {
 	log := logrus.WithFields(logrus.Fields{"disk": name})
-	log.Info("Starting to create disk")
+	log.Debug("Starting to create disk")
 	if r.readOnly {
 		return fmt.Errorf("cannot create disk on read-only replica")
 	}
@@ -995,7 +995,7 @@ func (r *Replica) createDisk(name string, userCreated bool, created string, labe
 	r.volume.files = append(r.volume.files, f)
 	r.activeDiskData = append(r.activeDiskData, &newHeadDisk)
 
-	log.Info("Finished creating disk")
+	log.Debug("Finished creating disk")
 	return nil
 }
 
@@ -1229,7 +1229,7 @@ func (r *Replica) SetUnmapMarkDiskChainRemoved(enabled bool) {
 
 	r.unmapMarkDiskChainRemoved = enabled
 
-	logrus.Infof("Set replica flag unmapMarkDiskChainRemoved to %v", enabled)
+	logrus.Debugf("Set replica flag unmapMarkDiskChainRemoved to %v", enabled)
 }
 
 func (r *Replica) SetSnapshotMaxCount(count int) {
@@ -1238,7 +1238,7 @@ func (r *Replica) SetSnapshotMaxCount(count int) {
 
 	r.snapshotMaxCount = count
 
-	logrus.Infof("Set replica flag snapshotMaxCount to %d", count)
+	logrus.Debugf("Set replica flag snapshotMaxCount to %d", count)
 }
 
 func (r *Replica) SetSnapshotMaxSize(size int64) {
@@ -1247,7 +1247,7 @@ func (r *Replica) SetSnapshotMaxSize(size int64) {
 
 	r.snapshotMaxSize = size
 
-	logrus.Infof("Set replica flag SnapshotMaxSize to %d", size)
+	logrus.Debugf("Set replica flag SnapshotMaxSize to %d", size)
 }
 
 func (r *Replica) Expand(size int64) (err error) {

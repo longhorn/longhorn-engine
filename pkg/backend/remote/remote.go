@@ -96,7 +96,7 @@ func (r *Remote) open() error {
 }
 
 func (r *Remote) Snapshot(name string, userCreated bool, created string, labels map[string]string) error {
-	logrus.Infof("Starting to snapshot: %s %s UserCreated %v Created at %v, Labels %v",
+	logrus.Debugf("Starting to snapshot: %s %s UserCreated %v Created at %v, Labels %v",
 		r.name, name, userCreated, created, labels)
 	conn, err := grpc.NewClient(r.replicaServiceURL, grpc.WithTransportCredentials(insecure.NewCredentials()),
 		interceptor.WithIdentityValidationClientInterceptor(r.volumeName, ""))
@@ -117,7 +117,7 @@ func (r *Remote) Snapshot(name string, userCreated bool, created string, labels 
 	}); err != nil {
 		return errors.Wrapf(err, "failed to snapshot replica %v from remote", r.replicaServiceURL)
 	}
-	logrus.Infof("Finished to snapshot: %s %s UserCreated %v Created at %v, Labels %v",
+	logrus.Debugf("Finished to snapshot: %s %s UserCreated %v Created at %v, Labels %v",
 		r.name, name, userCreated, created, labels)
 	return nil
 }

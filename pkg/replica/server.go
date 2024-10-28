@@ -93,7 +93,7 @@ func (s *Server) Reload() error {
 		return nil
 	}
 
-	logrus.Info("Reloading replica")
+	logrus.Debug("Reloading replica")
 	newReplica, err := s.r.Reload()
 	if err != nil {
 		return err
@@ -167,7 +167,7 @@ func (s *Server) Revert(name, created string) error {
 		return nil
 	}
 
-	logrus.Infof("Reverting to snapshot [%s] on replica at %s", name, created)
+	logrus.Debugf("Reverting to snapshot [%s] on replica at %s", name, created)
 	r, err := s.r.Revert(name, created)
 	if err != nil {
 		return err
@@ -185,7 +185,7 @@ func (s *Server) Snapshot(name string, userCreated bool, createdTime string, lab
 		return nil
 	}
 
-	logrus.Infof("Replica server starts to snapshot [%s] volume, user created %v, created time %v, labels %v",
+	logrus.Debugf("Replica server starts to snapshot [%s] volume, user created %v, created time %v, labels %v",
 		name, userCreated, createdTime, labels)
 	return s.r.Snapshot(name, userCreated, createdTime, labels)
 }
@@ -228,7 +228,7 @@ func (s *Server) Expand(size int64) error {
 		return nil
 	}
 
-	logrus.Infof("Replica server starts to expand to size %v", size)
+	logrus.Debugf("Replica server starts to expand to size %v", size)
 
 	return s.r.Expand(size)
 }
@@ -241,7 +241,7 @@ func (s *Server) RemoveDiffDisk(name string, force bool) error {
 		return nil
 	}
 
-	logrus.Infof("Removing disk %s, force %v", name, force)
+	logrus.Debugf("Removing disk %s, force %v", name, force)
 	return s.r.RemoveDiffDisk(name, force)
 }
 
@@ -253,7 +253,7 @@ func (s *Server) ReplaceDisk(target, source string) error {
 		return nil
 	}
 
-	logrus.Infof("Replacing disk %v with %v", source, target)
+	logrus.Debugf("Replacing disk %v with %v", source, target)
 	return s.r.ReplaceDisk(target, source)
 }
 
@@ -265,7 +265,7 @@ func (s *Server) MarkDiskAsRemoved(name string) error {
 		return nil
 	}
 
-	logrus.Infof("Marking disk %v as removed", name)
+	logrus.Debugf("Marking disk %v as removed", name)
 	return s.r.MarkDiskAsRemoved(name)
 }
 
@@ -277,7 +277,7 @@ func (s *Server) PrepareRemoveDisk(name string) ([]PrepareRemoveAction, error) {
 		return nil, nil
 	}
 
-	logrus.Infof("Prepare removing disk %s", name)
+	logrus.Debugf("Prepare removing disk %s", name)
 	return s.r.PrepareRemoveDisk(name)
 }
 

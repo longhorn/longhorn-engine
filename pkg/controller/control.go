@@ -200,7 +200,7 @@ func (c *Controller) Snapshot(inputName string, labels map[string]string, should
 	}
 
 	log := logrus.WithFields(logrus.Fields{"volume": c.VolumeName, "snapshot": name})
-	log.Info("Starting snapshot")
+	log.Debug("Starting snapshot")
 
 	defer func() {
 		if err != nil {
@@ -228,7 +228,7 @@ func (c *Controller) Snapshot(inputName string, labels map[string]string, should
 	exec := lhexec.NewExecutor()
 	defer func() {
 		if frozen {
-			log.Infof("Unfreezing filesystem mounted at %v", freezePoint)
+			log.Debugf("Unfreezing filesystem mounted at %v", freezePoint)
 			if _, err := util.UnfreezeFilesystem(freezePoint, exec); err != nil {
 				log.WithError(err).Warnf("Failed to unfreeze filesystem mounted at %v", freezePoint)
 			}
@@ -263,7 +263,7 @@ func (c *Controller) Snapshot(inputName string, labels map[string]string, should
 	}
 	if !frozen {
 		// Revert to the previous/default behavior of syncing before taking a snapshot.
-		log.Info("Requesting system sync before snapshot")
+		log.Debug("Requesting system sync before snapshot")
 		if err := lhns.Sync(); err != nil {
 			// Sync should never fail, so it is likely due to the nsenter. To maintain existing behavior, we do not
 			// refuse to take a snapshot if sync fails.
@@ -281,7 +281,7 @@ func (c *Controller) Snapshot(inputName string, labels map[string]string, should
 	if err = c.handleErrorNoLock(c.backend.Snapshot(name, true, created, labels)); err != nil {
 		return "", err
 	}
-	log.Info("Finished snapshot")
+	log.Debug("Finished snapshot")
 	return name, nil
 }
 

@@ -314,26 +314,26 @@ func (s *SyncAgentServer) Reset(ctx context.Context, req *emptypb.Empty) (*empty
 }
 
 func (*SyncAgentServer) FileRemove(ctx context.Context, req *enginerpc.FileRemoveRequest) (*emptypb.Empty, error) {
-	logrus.Infof("Running rm %v", req.FileName)
+	logrus.Debugf("Running rm %v", req.FileName)
 
 	if err := os.Remove(req.FileName); err != nil {
-		logrus.Infof("Error running %s %v: %v", "rm", req.FileName, err)
+		logrus.Warnf("Error running %s %v: %v", "rm", req.FileName, err)
 		return nil, err
 	}
 
-	logrus.Infof("Done running %s %v", "rm", req.FileName)
+	logrus.Debugf("Done running %s %v", "rm", req.FileName)
 	return &emptypb.Empty{}, nil
 }
 
 func (*SyncAgentServer) FileRename(ctx context.Context, req *enginerpc.FileRenameRequest) (*emptypb.Empty, error) {
-	logrus.Infof("Running rename file from %v to %v", req.OldFileName, req.NewFileName)
+	logrus.Debugf("Running rename file from %v to %v", req.OldFileName, req.NewFileName)
 
 	if err := os.Rename(req.OldFileName, req.NewFileName); err != nil {
-		logrus.Infof("Error running %s from %v to %v: %v", "rename", req.OldFileName, req.NewFileName, err)
+		logrus.Warnf("Error running %s from %v to %v: %v", "rename", req.OldFileName, req.NewFileName, err)
 		return nil, err
 	}
 
-	logrus.Infof("Done running %s from %v to %v", "rename", req.OldFileName, req.NewFileName)
+	logrus.Debugf("Done running %s from %v to %v", "rename", req.OldFileName, req.NewFileName)
 	return &emptypb.Empty{}, nil
 }
 
@@ -343,11 +343,11 @@ func (s *SyncAgentServer) FileSend(ctx context.Context, req *enginerpc.FileSendR
 	if filepath.Ext(strings.TrimSpace(req.FromFileName)) == ".meta" {
 		directIO = false
 	}
-	logrus.Infof("Syncing file %v to %v", req.FromFileName, address)
+	logrus.Debugf("Syncing file %v to %v", req.FromFileName, address)
 	if err := sparse.SyncFile(req.FromFileName, address, int(req.FileSyncHttpClientTimeout), directIO, req.FastSync); err != nil {
 		return nil, err
 	}
-	logrus.Infof("Done syncing file %v to %v", req.FromFileName, address)
+	logrus.Debugf("Done syncing file %v to %v", req.FromFileName, address)
 
 	return &emptypb.Empty{}, nil
 }
@@ -468,12 +468,12 @@ func (s *SyncAgentServer) fileSyncLocal(ctx context.Context, req *enginerpc.File
 		"targetPath": req.LocalSync.TargetPath,
 	})
 
-	log.Info("Syncing files locally")
+	log.Debug("Syncing files locally")
 
 	// Defer function to handle cleanup of files if an error occurs
 	defer func() {
 		if err == nil {
-			log.Info("Done syncing files locally")
+			log.Debug("Done syncing files locally")
 		} else {
 			log.WithError(err).Warn("Failed to sync files locally, reverting changes")
 
@@ -795,7 +795,7 @@ func (s *SyncAgentServer) BackupCreate(ctx context.Context, req *enginerpc.Backu
 		IsIncremental: backupStatus.IsIncremental,
 	}
 
-	logrus.Infof("Done initiating backup creation, received backupID: %v", resp.Backup)
+	logrus.Debugf("Done initiating backup creation, received backupID: %v", resp.Backup)
 	return resp, nil
 }
 
@@ -835,13 +835,13 @@ func (*SyncAgentServer) BackupRemove(ctx context.Context, req *enginerpc.BackupR
 		return nil, err
 	}
 
-	logrus.Infof("Running %s %v", cmd.Path, cmd.Args)
+	logrus.Debugf("Running %s %v", cmd.Path, cmd.Args)
 	if err := cmd.Wait(); err != nil {
-		logrus.Infof("Error running %s %v: %v", "backup", cmd.Args, err)
+		logrus.Warnf("Error running %s %v: %v", "backup", cmd.Args, err)
 		return nil, err
 	}
 
-	logrus.Infof("Done running %s %v", "backup", cmd.Args)
+	logrus.Debugf("Done running %s %v", "backup", cmd.Args)
 	return &emptypb.Empty{}, nil
 }
 
@@ -1397,25 +1397,25 @@ func (s *SyncAgentServer) processRemoveSnapshot(snapshot string) error {
 	for _, op := range ops.Operations {
 		switch op.Action {
 		case replica.OpCoalesce:
-			logrus.Infof("Coalescing %v to %v", op.Target, op.Source)
+			logrus.Debugf("Coalescing %v to %v", op.Target, op.Source)
 			if err := sparse.FoldFile(op.Target, op.Source, s.PurgeStatus); err != nil {
 				logrus.WithError(err).Errorf("Failed to coalesce %v to %v", op.Target, op.Source)
 				return err
 			}
 		case replica.OpRemove:
-			logrus.Infof("Removing %v", op.Source)
+			logrus.Debugf("Removing %v", op.Source)
 			if err := s.rmDisk(op.Source); err != nil {
 				logrus.WithError(err).Errorf("Failed to remove %v", op.Source)
 				return err
 			}
 		case replica.OpReplace:
-			logrus.Infof("Replacing %v with %v", op.Source, op.Target)
+			logrus.Debugf("Replacing %v with %v", op.Source, op.Target)
 			if err = s.replaceDisk(op.Source, op.Target); err != nil {
 				logrus.WithError(err).Errorf("Failed to replace %v with %v", op.Source, op.Target)
 				return err
 			}
 		case replica.OpPrune:
-			logrus.Infof("Pruning overlapping chunks from %v based on %v", op.Source, op.Target)
+			logrus.Debugf("Pruning overlapping chunks from %v based on %v", op.Source, op.Target)
 			if err := sparse.PruneFile(op.Source, op.Target, s.PurgeStatus); err != nil {
 				logrus.WithError(err).Errorf("Failed to prune %v based on %v", op.Source, op.Target)
 				return err
