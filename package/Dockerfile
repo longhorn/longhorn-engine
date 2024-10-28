@@ -9,7 +9,7 @@ RUN zypper -n addrepo --refresh https://download.opensuse.org/repositories/syste
     zypper -n addrepo --refresh https://download.opensuse.org/repositories/network:/utilities/SLE_15_SP5/network:utilities.repo && \
     zypper --gpg-auto-import-keys ref
 
-RUN zypper -n install cmake curl git gcc wget xsltproc docbook-xsl-stylesheets && \
+RUN zypper -n install cmake curl git gcc wget xsltproc docbook-xsl-stylesheets jq && \
     rm -rf /var/cache/zypp/*
 
 # Build liblonghorn
@@ -31,7 +31,8 @@ RUN cd /usr/src && \
     make install
 
 # Install grpc_health_probe
-RUN wget https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/v0.4.28/grpc_health_probe-linux-${ARCH} -O /usr/local/bin/grpc_health_probe && \
+RUN GRPC_HEALTH_PROBE_DOWNLOAD_URL=$(wget -qO- https://api.github.com/repos/grpc-ecosystem/grpc-health-probe/releases/latest | jq -r '.assets[] | select(.name | test("linux.*'"${ARCH}"'"; "i")) | .browser_download_url') && \
+    wget ${GRPC_HEALTH_PROBE_DOWNLOAD_URL} -O /usr/local/bin/grpc_health_probe && \
     chmod +x /usr/local/bin/grpc_health_probe
 
 FROM registry.suse.com/bci/bci-base:15.6 AS release
