@@ -86,8 +86,8 @@ github.com/longhorn/go-iscsi-helper v0.0.0-20241110033836-dd4b01aa15b8 h1:vM7FiS
 github.com/longhorn/go-iscsi-helper v0.0.0-20241110033836-dd4b01aa15b8/go.mod h1:UvAltu/RQZV5i18GcUcGGWA91dzfFR/ylIgKcItsnjk=
 github.com/longhorn/sparse-tools v0.0.0-20241023025917-7951cd783270 h1:F13lddDaeUX8dBwRqOT/aXtb2C1szwqIFgW4KpZgCGw=
 github.com/longhorn/sparse-tools v0.0.0-20241023025917-7951cd783270/go.mod h1:iUJCZtOKG/9xv2rfrUAYZntFTzP5dZtvy4Kwe6dMcUc=
-github.com/longhorn/types v0.0.0-20241101010532-9e901229a935 h1:s6ngry7kCUdggXRKywHdwt98vjbOZQX8Txq166hxph0=
-github.com/longhorn/types v0.0.0-20241101010532-9e901229a935/go.mod h1:IpV+1bctQgBgp3brj0nsHmnBDFkd5IrzTgBtVAloJuw=
+github.com/longhorn/types v0.0.0-20241110123431-85dca7039c42 h1:zMSuk0V/sVfgvdd+CpxfqJAB0yKQaWFglOFCyrHU3xc=
+github.com/longhorn/types v0.0.0-20241110123431-85dca7039c42/go.mod h1:3A0asFlVzaBCvQHhqEY+HsnFnNBUFZ5onYKI2Qq9u74=
 github.com/mattn/go-colorable v0.1.4 h1:snbPLB8fVfU9iwbbo30TPtbLRzwWu6aJS6Xh4eaaviA=
 github.com/mattn/go-colorable v0.1.4/go.mod h1:U0ppj6V5qS13XJ6of8GYAs25YV2eR4EVcfRqFIhoBtE=
 github.com/mattn/go-isatty v0.0.8 h1:HLtExJ+uU2HOZ+wI0Tt5DtUDrx8yhUqDcp7fYERX4CE=
