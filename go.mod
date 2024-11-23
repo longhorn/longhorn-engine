@@ -11,10 +11,10 @@ require (
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
 	github.com/longhorn/backupstore v0.0.0-20241117040525-542fb2c66652
-	github.com/longhorn/go-common-libs v0.0.0-20241117040506-5685d80d0eea
-	github.com/longhorn/go-iscsi-helper v0.0.0-20241110033836-dd4b01aa15b8
+	github.com/longhorn/go-common-libs v0.0.0-20241123075700-b6fce15463ce
+	github.com/longhorn/go-iscsi-helper v0.0.0-20241123080407-29a913da4400
 	github.com/longhorn/sparse-tools v0.0.0-20241023025917-7951cd783270
-	github.com/longhorn/types v0.0.0-20241117042122-c899b8796df9
+	github.com/longhorn/types v0.0.0-20241123075624-48c550af4eab
 	github.com/moby/moby v26.1.5+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
@@ -79,7 +79,7 @@ require (
 	gopkg.in/mattn/go-isatty.v0 v0.0.4 // indirect
 	gopkg.in/mattn/go-runewidth.v0 v0.0.4 // indirect
 	gotest.tools/v3 v3.4.0 // indirect
-	k8s.io/apimachinery v0.31.2 // indirect
+	k8s.io/apimachinery v0.31.3 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 	k8s.io/utils v0.0.0-20240711033017-18e509b52bc8 // indirect
 )
