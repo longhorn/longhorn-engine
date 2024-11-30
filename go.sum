@@ -81,8 +81,8 @@ github.com/kylelemons/godebug v1.1.0 h1:RPNrshWIDI6G2gRW9EHilWtl7Z6Sb1BR0xunSBf0
 github.com/kylelemons/godebug v1.1.0/go.mod h1:9/0rRGxNHcop5bhtWyNeEfOS8JIWk580+fNqagV/RAw=
 github.com/longhorn/backupstore v0.0.0-20241124092526-138305866a87 h1:Alpq8lFYom5Awa80tMDCFIAe2J+vvgLoY3zB6Jhq5B0=
 github.com/longhorn/backupstore v0.0.0-20241124092526-138305866a87/go.mod h1:43jaLhUmWSpP2TekZslfLcFBqFTe07Eucgv7hRst5Pw=
-github.com/longhorn/go-common-libs v0.0.0-20241124035508-d6221574e626 h1:6RHxLM2DLwr7FrDn6yyryEXwa7yN01fcZfIyllxmBss=
-github.com/longhorn/go-common-libs v0.0.0-20241124035508-d6221574e626/go.mod h1:gSa+qB058kcNlCaOOwIFPHb3tvqMTmKcxtL7HPTS4o4=
+github.com/longhorn/go-common-libs v0.0.0-20241128023039-4d6c3a880dbc h1:Ok7qdNu2038Oj7tQNaKjFqP20NqokR31a3RVMV7ulms=
+github.com/longhorn/go-common-libs v0.0.0-20241128023039-4d6c3a880dbc/go.mod h1:gSa+qB058kcNlCaOOwIFPHb3tvqMTmKcxtL7HPTS4o4=
 github.com/longhorn/go-iscsi-helper v0.0.0-20241124090242-e1ca22338f8a h1:tiyQ1kD9W2XQ0OzOXgX7JnD5Ye/Csu5qrvpJuc9w5YE=
 github.com/longhorn/go-iscsi-helper v0.0.0-20241124090242-e1ca22338f8a/go.mod h1:U00lu8Y6EtDhX/cMSeRoj39WAlPVA3dYSQBiqz9HFJ4=
 github.com/longhorn/sparse-tools v0.0.0-20241124090628-9499c1fb63d7 h1:jrW659ETMgyy8kmGAjG03DnaUWSxpFwnqDHlWe0kIUk=
