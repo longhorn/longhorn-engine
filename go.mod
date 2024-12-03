@@ -2,7 +2,7 @@ module github.com/longhorn/longhorn-engine
 
 go 1.22.7
 
-toolchain go1.23.3
+toolchain go1.23.4
 
 require (
 	github.com/docker/go-units v0.4.0
@@ -10,9 +10,9 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
-	github.com/longhorn/backupstore v0.0.0-20241124092526-138305866a87
-	github.com/longhorn/go-common-libs v0.0.0-20241124035508-d6221574e626
-	github.com/longhorn/go-iscsi-helper v0.0.0-20241124090242-e1ca22338f8a
+	github.com/longhorn/backupstore v0.0.0-20241130163459-2b482603a2c6
+	github.com/longhorn/go-common-libs v0.0.0-20241128023039-4d6c3a880dbc
+	github.com/longhorn/go-iscsi-helper v0.0.0-20241130163427-b18631536a86
 	github.com/longhorn/sparse-tools v0.0.0-20241124090628-9499c1fb63d7
 	github.com/longhorn/types v0.0.0-20241123075624-48c550af4eab
 	github.com/moby/moby v23.0.15+incompatible
