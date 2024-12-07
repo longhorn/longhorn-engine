@@ -2,7 +2,7 @@ module github.com/longhorn/longhorn-engine
 
 go 1.22.7
 
-toolchain go1.23.3
+toolchain go1.23.4
 
 require (
 	github.com/docker/go-units v0.5.0
@@ -11,7 +11,7 @@ require (
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
 	github.com/longhorn/backupstore v0.0.0-20241130163459-2b482603a2c6
-	github.com/longhorn/go-common-libs v0.0.0-20241128023039-4d6c3a880dbc
+	github.com/longhorn/go-common-libs v0.0.0-20241206085105-b60ef86c0b25
 	github.com/longhorn/go-iscsi-helper v0.0.0-20241130163427-b18631536a86
 	github.com/longhorn/sparse-tools v0.0.0-20241124090628-9499c1fb63d7
 	github.com/longhorn/types v0.0.0-20241123075624-48c550af4eab
@@ -23,7 +23,7 @@ require (
 	github.com/urfave/cli v1.22.16
 	golang.org/x/net v0.31.0
 	golang.org/x/sys v0.27.0
-	google.golang.org/grpc v1.68.0
+	google.golang.org/grpc v1.68.1
 	google.golang.org/protobuf v1.35.2
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 	gopkg.in/cheggaaa/pb.v2 v2.0.7
