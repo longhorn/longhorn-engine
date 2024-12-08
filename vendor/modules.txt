@@ -161,7 +161,7 @@ github.com/kr/pretty
 # github.com/kr/text v0.2.0
 ## explicit
 github.com/kr/text
-# github.com/longhorn/backupstore v0.0.0-20241207165647-0292e7399ff4
+# github.com/longhorn/backupstore v0.0.0-20241208060255-5c474bb003bd
 ## explicit; go 1.22.7
 github.com/longhorn/backupstore
 github.com/longhorn/backupstore/azblob
@@ -178,7 +178,7 @@ github.com/longhorn/backupstore/systembackup
 github.com/longhorn/backupstore/types
 github.com/longhorn/backupstore/util
 github.com/longhorn/backupstore/vfs
-# github.com/longhorn/go-common-libs v0.0.0-20241206085105-b60ef86c0b25
+# github.com/longhorn/go-common-libs v0.0.0-20241208031806-6a06a4861f43
 ## explicit; go 1.22.7
 github.com/longhorn/go-common-libs/backup
 github.com/longhorn/go-common-libs/exec
@@ -205,7 +205,7 @@ github.com/longhorn/sparse-tools/sparse/rest
 github.com/longhorn/sparse-tools/stats
 github.com/longhorn/sparse-tools/types
 github.com/longhorn/sparse-tools/util
-# github.com/longhorn/types v0.0.0-20241123075624-48c550af4eab
+# github.com/longhorn/types v0.0.0-20241208031854-891e672bc453
 ## explicit; go 1.22.7
 github.com/longhorn/types/pkg/generated/profilerrpc
 # github.com/mattn/go-colorable v0.1.4
@@ -298,7 +298,7 @@ github.com/urfave/cli
 # github.com/yusufpapurcu/wmi v1.2.4
 ## explicit; go 1.16
 github.com/yusufpapurcu/wmi
-# golang.org/x/exp v0.0.0-20241108190413-2d47ceb2692f
+# golang.org/x/exp v0.0.0-20241204233417-43b7b7cde48d
 ## explicit; go 1.22.0
 golang.org/x/exp/constraints
 # golang.org/x/net v0.32.0
