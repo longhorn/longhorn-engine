@@ -199,7 +199,7 @@ github.com/longhorn/sparse-tools/sparse/rest
 github.com/longhorn/sparse-tools/stats
 github.com/longhorn/sparse-tools/types
 github.com/longhorn/sparse-tools/util
-# github.com/longhorn/types v0.0.0-20241212070310-f6797e59f9c9
+# github.com/longhorn/types v0.0.0-20241214151852-cf9e27d3d0a9
 ## explicit; go 1.22.7
 github.com/longhorn/types/pkg/generated/enginerpc
 github.com/longhorn/types/pkg/generated/profilerrpc
