@@ -16,6 +16,7 @@ ENV DAPPER_RUN_ARGS --privileged --tmpfs /go/src/github.com/longhorn/longhorn-en
 ENV DAPPER_SOURCE /go/src/github.com/longhorn/longhorn-engine
 
 ENV GOLANGCI_LINT_VERSION="v1.60.3"
+ENV LONGHORN_INSTANCE_MANAGER_BRANCH="master"
 
 WORKDIR ${DAPPER_SOURCE}
 ENTRYPOINT ["./scripts/entry"]
@@ -94,7 +95,7 @@ RUN cd integration && \
 
 # Build longhorn-instance-manager for integration testing
 RUN cd /go/src/github.com/longhorn && \
-    git clone https://github.com/longhorn/longhorn-instance-manager.git && \
+    git clone https://github.com/longhorn/longhorn-instance-manager.git -b ${LONGHORN_INSTANCE_MANAGER_BRANCH} && \
     cd longhorn-instance-manager && \
     go build -o ./longhorn-instance-manager -tags netgo -ldflags "-linkmode external -extldflags -static" && \
     install longhorn-instance-manager /usr/local/bin
