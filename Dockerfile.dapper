@@ -15,6 +15,8 @@ ENV DAPPER_OUTPUT bin coverage.out
 ENV DAPPER_RUN_ARGS --privileged --tmpfs /go/src/github.com/longhorn/longhorn-engine/integration/.venv:exec --tmpfs /go/src/github.com/longhorn/longhorn-engine/integration/.tox:exec -v /dev:/host/dev -v /proc:/host/proc --mount type=bind,source=/tmp,destination=/host/tmp,bind-propagation=rslave
 ENV DAPPER_SOURCE /go/src/github.com/longhorn/longhorn-engine
 
+ENV LONGHORN_INSTANCE_MANAGER_BRANCH="v1.7.x"
+
 WORKDIR ${DAPPER_SOURCE}
 ENTRYPOINT ["./scripts/entry"]
 CMD ["ci"]
@@ -92,7 +94,7 @@ RUN cd integration && \
 
 # Build longhorn-instance-manager for integration testing
 RUN cd /go/src/github.com/longhorn && \
-    git clone https://github.com/longhorn/longhorn-instance-manager.git && \
+    git clone https://github.com/longhorn/longhorn-instance-manager.git -b ${LONGHORN_INSTANCE_MANAGER_BRANCH} && \
     cd longhorn-instance-manager && \
     go build -o ./longhorn-instance-manager -tags netgo -ldflags "-linkmode external -extldflags -static" && \
     install longhorn-instance-manager /usr/local/bin
