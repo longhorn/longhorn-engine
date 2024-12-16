@@ -1,6 +1,6 @@
 module github.com/longhorn/longhorn-engine
 
-go 1.23.0
+go 1.22.7
 
 toolchain go1.23.4
 
@@ -10,7 +10,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
-	github.com/longhorn/backupstore v0.0.0-20241216110555-9deb8c7c2d4c
+	github.com/longhorn/backupstore v0.0.0-20241216162505-6ea1b1d542a3
 	github.com/longhorn/go-common-libs v0.0.0-20241216151853-f3a20a6d8f6e
 	github.com/longhorn/go-iscsi-helper v0.0.0-20241216160354-6e5f17558cef
 	github.com/longhorn/sparse-tools v0.0.0-20241124090628-9499c1fb63d7
@@ -81,5 +81,5 @@ require (
 	gotest.tools/v3 v3.4.0 // indirect
 	k8s.io/apimachinery v0.31.3 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
-	k8s.io/utils v0.0.0-20240711033017-18e509b52bc8 // indirect
+	k8s.io/utils v0.0.0-20241210054802-24370beab758 // indirect
 )

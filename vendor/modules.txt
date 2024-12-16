@@ -161,8 +161,8 @@ github.com/kr/pretty
 # github.com/kr/text v0.2.0
 ## explicit
 github.com/kr/text
-# github.com/longhorn/backupstore v0.0.0-20241216110555-9deb8c7c2d4c
-## explicit; go 1.23.0
+# github.com/longhorn/backupstore v0.0.0-20241216162505-6ea1b1d542a3
+## explicit; go 1.22.7
 github.com/longhorn/backupstore
 github.com/longhorn/backupstore/azblob
 github.com/longhorn/backupstore/backupbackingimage
@@ -471,7 +471,7 @@ k8s.io/klog/v2/internal/sloghandler
 # k8s.io/mount-utils v0.31.3
 ## explicit; go 1.22.0
 k8s.io/mount-utils
-# k8s.io/utils v0.0.0-20240711033017-18e509b52bc8
+# k8s.io/utils v0.0.0-20241210054802-24370beab758
 ## explicit; go 1.18
 k8s.io/utils/clock
 k8s.io/utils/exec
