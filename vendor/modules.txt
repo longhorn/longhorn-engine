@@ -178,7 +178,7 @@ github.com/longhorn/backupstore/systembackup
 github.com/longhorn/backupstore/types
 github.com/longhorn/backupstore/util
 github.com/longhorn/backupstore/vfs
-# github.com/longhorn/go-common-libs v0.0.0-20241216151853-f3a20a6d8f6e
+# github.com/longhorn/go-common-libs v0.0.0-20241217111348-5bad87d5320c
 ## explicit; go 1.22.7
 github.com/longhorn/go-common-libs/backup
 github.com/longhorn/go-common-libs/exec
