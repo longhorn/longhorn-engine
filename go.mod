@@ -12,9 +12,9 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/longhorn/backupstore v0.0.0-20241216162505-6ea1b1d542a3
 	github.com/longhorn/go-common-libs v0.0.0-20241216151853-f3a20a6d8f6e
-	github.com/longhorn/go-iscsi-helper v0.0.0-20241216160354-6e5f17558cef
-	github.com/longhorn/sparse-tools v0.0.0-20241124090628-9499c1fb63d7
-	github.com/longhorn/types v0.0.0-20241214151852-cf9e27d3d0a9
+	github.com/longhorn/go-iscsi-helper v0.0.0-20241216162435-a9bda5faf8b8
+	github.com/longhorn/sparse-tools v0.0.0-20241216160947-2b328f0fa59c
+	github.com/longhorn/types v0.0.0-20241217083824-2e0ecb487ccf
 	github.com/moby/moby v26.1.5+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
