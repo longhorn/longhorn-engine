@@ -102,9 +102,6 @@ github.com/c9s/goprocinfo/linux
 # github.com/cespare/xxhash/v2 v2.3.0
 ## explicit; go 1.11
 github.com/cespare/xxhash/v2
-# github.com/coreos/go-systemd/v22 v22.5.0
-## explicit; go 1.12
-github.com/coreos/go-systemd/v22/dbus
 # github.com/cpuguy83/go-md2man/v2 v2.0.5
 ## explicit; go 1.11
 github.com/cpuguy83/go-md2man/v2/md2man
@@ -127,9 +124,6 @@ github.com/go-logr/logr
 ## explicit; go 1.12
 github.com/go-ole/go-ole
 github.com/go-ole/go-ole/oleutil
-# github.com/godbus/dbus/v5 v5.1.0
-## explicit; go 1.12
-github.com/godbus/dbus/v5
 # github.com/gofrs/flock v0.8.1
 ## explicit
 github.com/gofrs/flock
@@ -226,15 +220,6 @@ github.com/moby/moby/pkg/reexec
 # github.com/moby/sys/mountinfo v0.7.2
 ## explicit; go 1.17
 github.com/moby/sys/mountinfo
-# github.com/opencontainers/runc v1.1.14
-## explicit; go 1.18
-github.com/opencontainers/runc/libcontainer/configs
-github.com/opencontainers/runc/libcontainer/devices
-github.com/opencontainers/runc/libcontainer/user
-github.com/opencontainers/runc/libcontainer/userns
-# github.com/opencontainers/runtime-spec v1.0.3-0.20220909204839-494a5a6aca78
-## explicit
-github.com/opencontainers/runtime-spec/specs-go
 # github.com/pierrec/lz4/v4 v4.1.22
 ## explicit; go 1.14
 github.com/pierrec/lz4/v4
@@ -452,8 +437,8 @@ gopkg.in/mattn/go-isatty.v0
 gopkg.in/mattn/go-runewidth.v0
 # gotest.tools/v3 v3.4.0
 ## explicit; go 1.13
-# k8s.io/apimachinery v0.31.3
-## explicit; go 1.22.0
+# k8s.io/apimachinery v0.28.15
+## explicit; go 1.20
 k8s.io/apimachinery/pkg/util/runtime
 k8s.io/apimachinery/pkg/util/wait
 # k8s.io/klog/v2 v2.130.1
@@ -465,8 +450,8 @@ k8s.io/klog/v2/internal/dbg
 k8s.io/klog/v2/internal/serialize
 k8s.io/klog/v2/internal/severity
 k8s.io/klog/v2/internal/sloghandler
-# k8s.io/mount-utils v0.31.3
-## explicit; go 1.22.0
+# k8s.io/mount-utils v0.28.15
+## explicit; go 1.20
 k8s.io/mount-utils
 # k8s.io/utils v0.0.0-20241210054802-24370beab758
 ## explicit; go 1.18
