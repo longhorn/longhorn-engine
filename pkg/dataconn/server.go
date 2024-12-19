@@ -9,20 +9,45 @@ import (
 	"github.com/longhorn/longhorn-engine/pkg/types"
 )
 
+const (
+	threadCount = 256
+)
+
 type Server struct {
 	wire      *Wire
+	requests  chan *Message
 	responses chan *Message
 	done      chan struct{}
 	data      types.DataProcessor
 }
 
 func NewServer(conn net.Conn, data types.DataProcessor) *Server {
-	return &Server{
+	//init theads
+	server := &Server{
 		wire:      NewWire(conn),
+		requests:  make(chan *Message, 1024),
 		responses: make(chan *Message, 1024),
 		done:      make(chan struct{}, 5),
 		data:      data,
 	}
+	for i := 0; i < threadCount; i++ {
+		go func(s *Server) {
+			for {
+				msg := <-s.requests
+				switch msg.Type {
+				case TypeRead:
+					s.handleRead(msg)
+				case TypeWrite:
+					s.handleWrite(msg)
+				case TypeUnmap:
+					s.handleUnmap(msg)
+				case TypePing:
+					s.handlePing(msg)
+				}
+			}
+		}(server)
+	}
+	return server
 }
 
 func (s *Server) Handle() error {
@@ -43,16 +68,7 @@ func (s *Server) readFromWire(ret chan<- error) {
 		ret <- err
 		return
 	}
-	switch msg.Type {
-	case TypeRead:
-		go s.handleRead(msg)
-	case TypeWrite:
-		go s.handleWrite(msg)
-	case TypeUnmap:
-		go s.handleUnmap(msg)
-	case TypePing:
-		go s.handlePing(msg)
-	}
+	s.requests <- msg
 	ret <- nil
 }
 
