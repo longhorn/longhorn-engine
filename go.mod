@@ -10,11 +10,11 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
-	github.com/longhorn/backupstore v0.0.0-20241218004307-b75ee1322085
-	github.com/longhorn/go-common-libs v0.0.0-20241217170247-b8a12cee7f65
-	github.com/longhorn/go-iscsi-helper v0.0.0-20241218002831-b9829a236cd2
+	github.com/longhorn/backupstore v0.0.0-20241221053416-1143c265f7b7
+	github.com/longhorn/go-common-libs v0.0.0-20241221040404-3f84afedcca8
+	github.com/longhorn/go-iscsi-helper v0.0.0-20241221094330-a9d2760ee13b
 	github.com/longhorn/sparse-tools v0.0.0-20241216160947-2b328f0fa59c
-	github.com/longhorn/types v0.0.0-20241217083824-2e0ecb487ccf
+	github.com/longhorn/types v0.0.0-20241220104939-0d566342b51d
 	github.com/moby/moby v26.1.5+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
@@ -23,7 +23,7 @@ require (
 	github.com/urfave/cli v1.22.16
 	golang.org/x/net v0.33.0
 	golang.org/x/sys v0.28.0
-	google.golang.org/grpc v1.69.0
+	google.golang.org/grpc v1.69.2
 	google.golang.org/protobuf v1.36.0
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 	gopkg.in/cheggaaa/pb.v2 v2.0.7
@@ -67,7 +67,7 @@ require (
 	github.com/shirou/gopsutil/v3 v3.24.5 // indirect
 	github.com/slok/goresilience v0.2.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
-	golang.org/x/exp v0.0.0-20241215155358-4a5509556b9e // indirect
+	golang.org/x/exp v0.0.0-20241217172543-b2144cdd0a67 // indirect
 	golang.org/x/text v0.21.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20241015192408-796eee8c2d53 // indirect
 	gopkg.in/VividCortex/ewma.v1 v1.1.1 // indirect
