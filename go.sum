@@ -77,8 +77,8 @@ github.com/longhorn/backupstore v0.0.0-20241221053416-1143c265f7b7 h1:kqqIIT6LrG
 github.com/longhorn/backupstore v0.0.0-20241221053416-1143c265f7b7/go.mod h1:pPul9m4i3AUun7AV4SW+z3z3XGw9iWScLGcz4Zm+Y7Y=
 github.com/longhorn/go-common-libs v0.0.0-20241221040404-3f84afedcca8 h1:SkLNk7XOhprnW7uDTrwI7tHyoCd4j3J/Q4tPXhQYYfY=
 github.com/longhorn/go-common-libs v0.0.0-20241221040404-3f84afedcca8/go.mod h1:HXqYyTXGh0ssBYKA4duXGQcZ7YfDd9wkVasu6bsipEc=
-github.com/longhorn/go-iscsi-helper v0.0.0-20241218002831-b9829a236cd2 h1:p33ldmDLPn4Xp1B7x/bM1YOeZA8EBNaiu0wi4lwcRxc=
-github.com/longhorn/go-iscsi-helper v0.0.0-20241218002831-b9829a236cd2/go.mod h1:DbCk3R1PY5QiV1w/GuU738npeJbfiqZad1mNIFWqVEk=
+github.com/longhorn/go-iscsi-helper v0.0.0-20241221094330-a9d2760ee13b h1:LKKymnP4ipsdAvcu4hpAlWvBK+LI6oNQ1asa66x77x4=
+github.com/longhorn/go-iscsi-helper v0.0.0-20241221094330-a9d2760ee13b/go.mod h1:wpbmDwCzeJikHgeg+dgZgXCqwFqffgScHnsev+BuWVA=
 github.com/longhorn/sparse-tools v0.0.0-20241216160947-2b328f0fa59c h1:OFz3haCSPdgiiJvXLBeId/4dPu0dxIEqkQkfNMufLwc=
 github.com/longhorn/sparse-tools v0.0.0-20241216160947-2b328f0fa59c/go.mod h1:dfbJqfI8+T9ZCp5zhTYcBi/64hPBNt5/vFF3gTlfMmc=
 github.com/longhorn/types v0.0.0-20241220104939-0d566342b51d h1:OyDv2D0n/IadXlYUWy+FL5ADqrBej8eXbWzJQ0FVlfU=
