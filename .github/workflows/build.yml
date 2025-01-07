@@ -33,7 +33,7 @@ jobs:
 
   build-arm64-binaries:
     name: Build ARM64 binaries
-    runs-on: longhorn-infra-arm64-runners
+    runs-on: longhorn-infra-oracle-arm64-runners
     steps:
     - name: Install make curl git
       run: |
@@ -144,7 +144,7 @@ jobs:
 
   build-push-arm64-images:
     name: Build and push ARM64 images
-    runs-on: longhorn-infra-arm64-runners
+    runs-on: longhorn-infra-oracle-arm64-runners
     needs: build-arm64-binaries
     if: ${{ startsWith(github.ref, 'refs/heads/') || startsWith(github.ref, 'refs/tags/') }}
     steps:
