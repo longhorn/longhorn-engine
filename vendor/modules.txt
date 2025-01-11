@@ -172,7 +172,7 @@ github.com/longhorn/backupstore/systembackup
 github.com/longhorn/backupstore/types
 github.com/longhorn/backupstore/util
 github.com/longhorn/backupstore/vfs
-# github.com/longhorn/go-common-libs v0.0.0-20241227132452-5a6ca245288a
+# github.com/longhorn/go-common-libs v0.0.0-20250107022351-ec79818ce8db
 ## explicit; go 1.22.7
 github.com/longhorn/go-common-libs/backup
 github.com/longhorn/go-common-libs/exec
@@ -287,7 +287,7 @@ github.com/urfave/cli
 # github.com/yusufpapurcu/wmi v1.2.4
 ## explicit; go 1.16
 github.com/yusufpapurcu/wmi
-# golang.org/x/exp v0.0.0-20241217172543-b2144cdd0a67
+# golang.org/x/exp v0.0.0-20250106191152-7588d65b2ba8
 ## explicit; go 1.22.0
 golang.org/x/exp/constraints
 # golang.org/x/net v0.33.0
@@ -380,7 +380,7 @@ google.golang.org/grpc/serviceconfig
 google.golang.org/grpc/stats
 google.golang.org/grpc/status
 google.golang.org/grpc/tap
-# google.golang.org/protobuf v1.36.1
+# google.golang.org/protobuf v1.36.2
 ## explicit; go 1.21
 google.golang.org/protobuf/encoding/protojson
 google.golang.org/protobuf/encoding/prototext
