@@ -12,7 +12,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/longhorn/backupstore v0.0.0-20241227145911-8de988de7eff
 	github.com/longhorn/go-common-libs v0.0.0-20250107022351-ec79818ce8db
-	github.com/longhorn/go-iscsi-helper v0.0.0-20241227145851-edeefa73a30d
+	github.com/longhorn/go-iscsi-helper v0.0.0-20250111093313-7e1930499625
 	github.com/longhorn/sparse-tools v0.0.0-20241216160947-2b328f0fa59c
 	github.com/longhorn/types v0.0.0-20241225162202-00d3a5fd7502
 	github.com/moby/moby v26.1.5+incompatible

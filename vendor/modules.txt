@@ -184,7 +184,7 @@ github.com/longhorn/go-common-libs/sync
 github.com/longhorn/go-common-libs/sys
 github.com/longhorn/go-common-libs/types
 github.com/longhorn/go-common-libs/utils
-# github.com/longhorn/go-iscsi-helper v0.0.0-20241227145851-edeefa73a30d
+# github.com/longhorn/go-iscsi-helper v0.0.0-20250111093313-7e1930499625
 ## explicit; go 1.22.7
 github.com/longhorn/go-iscsi-helper/iscsi
 github.com/longhorn/go-iscsi-helper/iscsidev
