@@ -1407,17 +1407,11 @@ func (r *Replica) GetSnapshotCountUsage() int {
 
 func (r *Replica) getSnapshotCountUsage() int {
 	var (
-		backingDiskName string
-		snapshotCount   int
+		snapshotCount int
 	)
-	// index 0 is nil or backing file
-	if r.activeDiskData[0] != nil {
-		backingDiskName = r.activeDiskData[0].Name
-	}
 
 	for _, disk := range r.diskData {
-		// exclude volume head, backing disk, and removed disks
-		if disk == nil || disk.Removed || disk.Name == backingDiskName || disk.Name == r.info.Head {
+		if disk == nil {
 			continue
 		}
 		snapshotCount++
