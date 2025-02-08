@@ -167,6 +167,7 @@ func GetReplicaInfo(r *ptypes.Replica) *types.ReplicaInfo {
 		RevisionCounterDisabled:   r.RevisionCounterDisabled,
 		UnmapMarkDiskChainRemoved: r.UnmapMarkDiskChainRemoved,
 		SnapshotCountUsage:        int(r.SnapshotCountUsage),
+		SnapshotCountTotal:        int(r.SnapshotCountTotal),
 		SnapshotSizeUsage:         r.SnapshotSizeUsage,
 	}
 

@@ -100,8 +100,8 @@ func (f *Wrapper) SectorSize() (int64, error) {
 	return 4096, nil
 }
 
-func (f *Wrapper) GetSnapshotCountAndSizeUsage() (int, int64, error) {
-	return 1, 0, nil
+func (f *Wrapper) GetSnapshotCountAndSizeUsage() (int, int, int64, error) {
+	return 1, 1, 0, nil
 }
 
 func (f *Wrapper) GetRevisionCounter() (int64, error) {

@@ -85,7 +85,7 @@ func ControllerCmd() cli.Command {
 			},
 			cli.IntFlag{
 				Name:  "snapshot-max-count",
-				Value: 250,
+				Value: types.MaximumTotalSnapshotCount,
 				Usage: "Maximum number of snapshots to keep",
 			},
 			cli.StringFlag{

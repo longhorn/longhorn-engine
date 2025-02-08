@@ -4,6 +4,8 @@ go 1.22.7
 
 toolchain go1.23.6
 
+replace github.com/longhorn/types => ../types
+
 require (
 	github.com/docker/go-units v0.4.0
 	github.com/gofrs/flock v0.8.1

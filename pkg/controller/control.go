@@ -218,12 +218,15 @@ func (c *Controller) Snapshot(name string, labels map[string]string) (string, er
 }
 
 func (c *Controller) canDoSnapshot() error {
-	countUsage, sizeUsage, err := c.backend.GetSnapshotCountAndSizeUsage()
+	countUsage, countTotal, sizeUsage, err := c.backend.GetSnapshotCountAndSizeUsage()
 	if err != nil {
 		return err
 	}
 	if countUsage >= c.snapshotMaxCount {
 		return fmt.Errorf("snapshot count usage %d is equal or larger than snapshotMaxCount %d", countUsage, c.snapshotMaxCount)
+	}
+	if countTotal >= types.MaximumTotalSnapshotCount {
+		return fmt.Errorf("snapshot count total is already too big: %v", countTotal)
 	}
 	// if SnapshotMaxSize is 0, it means no limit
 	if c.SnapshotMaxSize == 0 {
@@ -690,7 +693,7 @@ func (c *Controller) SetSnapshotMaxCount(count int) error {
 	c.Lock()
 	defer c.Unlock()
 
-	countUsage, _, err := c.backend.GetSnapshotCountAndSizeUsage()
+	countUsage, _, _, err := c.backend.GetSnapshotCountAndSizeUsage()
 	if err != nil {
 		return err
 	}
@@ -728,7 +731,7 @@ func (c *Controller) SetSnapshotMaxSize(size int64) error {
 	c.Lock()
 	defer c.Unlock()
 
-	_, sizeUsage, err := c.backend.GetSnapshotCountAndSizeUsage()
+	_, _, sizeUsage, err := c.backend.GetSnapshotCountAndSizeUsage()
 	if err != nil {
 		return err
 	}
