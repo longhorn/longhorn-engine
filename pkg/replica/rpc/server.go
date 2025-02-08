@@ -84,7 +84,9 @@ func (rs *ReplicaServer) getReplica() (replica *enginerpc.Replica) {
 		chain, _ := r.DisplayChain()
 		replica.Chain = chain
 		replica.RemainSnapshots = int32(r.GetRemainSnapshotCounts())
-		replica.SnapshotCountUsage = int32(r.GetSnapshotCountUsage())
+		snapCountUsage, snapCountTotal := r.GetSnapshotCount()
+		replica.SnapshotCountUsage = int32(snapCountUsage)
+		replica.SnapshotCountTotal = int32(snapCountTotal)
 		replica.SnapshotSizeUsage = r.GetSnapshotSizeUsage()
 		if !r.IsRevCounterDisabled() {
 			replica.RevisionCounter = r.GetRevisionCounter()
