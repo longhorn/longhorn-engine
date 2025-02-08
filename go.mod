@@ -4,6 +4,8 @@ go 1.23.0
 
 toolchain go1.23.5
 
+replace github.com/longhorn/types => ../types
+
 require (
 	github.com/docker/go-units v0.5.0
 	github.com/gofrs/flock v0.12.1
