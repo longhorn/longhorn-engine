@@ -29,8 +29,6 @@ import (
 const (
 	volumeMetaData = "volume.meta"
 
-	maximumChainLength = 250
-
 	tmpFileSuffix = ".tmp"
 
 	// Special indexes inside r.volume.files
@@ -151,7 +149,7 @@ func New(ctx context.Context, size, sectorSize int64, dir string, backingFile *b
 func NewReadOnly(ctx context.Context, dir, head string, backingFile *backingfile.BackingFile) (*Replica, error) {
 	// size and sectorSize don't matter because they will be read from metadata
 	// snapshotMaxCount and SnapshotMaxSize don't matter because readonly replica can't create a new disk
-	return construct(ctx, true, 0, diskutil.ReplicaSectorSize, dir, head, backingFile, false, false, 250, 0)
+	return construct(ctx, true, 0, diskutil.ReplicaSectorSize, dir, head, backingFile, false, false, types.MaximumTotalSnapshotCount, 0)
 }
 
 func construct(ctx context.Context, readonly bool, size, sectorSize int64, dir, head string, backingFile *backingfile.BackingFile, disableRevCounter, unmapMarkDiskChainRemoved bool, snapshotMaxCount int, snapshotMaxSize int64) (*Replica, error) {
@@ -1050,7 +1048,7 @@ func (r *Replica) openLiveChain() error {
 		return err
 	}
 
-	if len(chain) > maximumChainLength {
+	if len(chain) > types.MaximumTotalSnapshotCount {
 		return fmt.Errorf("live chain is too long: %v", len(chain))
 	}
 
@@ -1398,11 +1396,15 @@ func (r *Replica) ListDisks() map[string]DiskInfo {
 	return result
 }
 
-func (r *Replica) GetSnapshotCountUsage() int {
+func (r *Replica) GetSnapshotCount() (int, int) {
 	r.RLock()
 	defer r.RUnlock()
 
-	return r.getSnapshotCountUsage()
+	return r.getSnapshotCountUsage(), r.getSnapshotCountTotal()
+}
+
+func (r *Replica) getSnapshotCountTotal() int {
+	return len(r.diskData)
 }
 
 func (r *Replica) getSnapshotCountUsage() int {

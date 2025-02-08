@@ -353,25 +353,28 @@ type backendWrapper struct {
 	mode    types.Mode
 }
 
-func (r *replicator) GetSnapshotCountAndSizeUsage() (countUsage int, sizeUsage int64, err error) {
+func (r *replicator) GetSnapshotCountAndSizeUsage() (countUsage, countTotal int, sizeUsage int64, err error) {
 	var (
-		count     int
-		size      int64
-		hasResult bool
+		currentCountUsage, currentCountTotal int
+		size                                 int64
+		hasResult                            bool
 	)
 	for _, backend := range r.backends {
 		if backend.mode == types.ERR {
 			continue
 		}
 		// ignore error and try next one
-		count, size, err = backend.backend.GetSnapshotCountAndSizeUsage()
+		currentCountUsage, currentCountTotal, size, err = backend.backend.GetSnapshotCountAndSizeUsage()
 		if err != nil {
 			logrus.Errorf("Failed to get snapshot count and size usage: %v", err)
 			continue
 		}
 		hasResult = true
-		if countUsage < count {
-			countUsage = count
+		if countUsage < currentCountUsage {
+			countUsage = currentCountUsage
+		}
+		if countTotal < currentCountTotal {
+			countTotal = currentCountTotal
 		}
 		if sizeUsage < size {
 			sizeUsage = size
@@ -379,9 +382,9 @@ func (r *replicator) GetSnapshotCountAndSizeUsage() (countUsage int, sizeUsage i
 	}
 
 	if !hasResult {
-		return 0, 0, fmt.Errorf("cannot get an valid result for snapshot usage")
+		return 0, 0, 0, fmt.Errorf("cannot get an valid result for snapshot usage")
 	}
-	return countUsage, sizeUsage, nil
+	return countUsage, countTotal, sizeUsage, nil
 }
 
 func (r *replicator) GetHeadFileSize() (int64, error) {

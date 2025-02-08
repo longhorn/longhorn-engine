@@ -219,16 +219,16 @@ func (r *Remote) SectorSize() (int64, error) {
 	return replicaInfo.SectorSize, nil
 }
 
-func (r *Remote) GetSnapshotCountAndSizeUsage() (int, int64, error) {
+func (r *Remote) GetSnapshotCountAndSizeUsage() (int, int, int64, error) {
 	replicaInfo, err := r.info()
 	if err != nil {
-		return 0, 0, err
+		return 0, 0, 0, err
 	}
 	switch replicaInfo.State {
 	case "open", "dirty", "rebuilding":
-		return replicaInfo.SnapshotCountUsage, replicaInfo.SnapshotSizeUsage, nil
+		return replicaInfo.SnapshotCountUsage, replicaInfo.SnapshotCountTotal, replicaInfo.SnapshotSizeUsage, nil
 	}
-	return 0, 0, fmt.Errorf("invalid state %v for counting snapshots", replicaInfo.State)
+	return 0, 0, 0, fmt.Errorf("invalid state %v for counting snapshots", replicaInfo.State)
 }
 
 func (r *Remote) GetRevisionCounter() (int64, error) {
