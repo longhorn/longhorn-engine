@@ -72,21 +72,22 @@ RUN ln -sf /usr/bin/python3.11 /usr/bin/python3 & \
     ln -sf /usr/bin/pip3.11 /usr/bin/pip3 && \
     pip3 install grpcio==1.58.0 grpcio_tools==1.58.0 protobuf==${PROTOBUF_VER_PY}
 
+RUN git clone https://github.com/longhorn/dep-versions.git -b ${SRC_BRANCH} /usr/src/dep-versions && \
+    cd /usr/src/dep-versions && \
+    if [ -n "${SRC_TAG}" ] && git show-ref --tags ${SRC_TAG} > /dev/null 2>&1; then \
+        echo "Checking out tag ${SRC_TAG}"; \
+        cd /usr/src/dep-versions && git checkout tags/${SRC_TAG}; \
+    fi
+
 # Build liblonghorn
-RUN cd /usr/src && \
-    git clone https://github.com/rancher/liblonghorn.git && \
-    cd liblonghorn && \
-    git checkout 53d1c063b95efc8d949b095bd4bf04637230265f && \
-    make; \
-    make install
+RUN export REPO_OVERRIDE="" && \
+    export COMMIT_ID_OVERRIDE="" && \
+    bash /usr/src/dep-versions/scripts/build-liblonghorn.sh "${REPO_OVERRIDE}" "${COMMIT_ID_OVERRIDE}"
 
 # Build TGT
-RUN cd /usr/src && \
-    git clone https://github.com/rancher/tgt.git && \
-    cd tgt && \
-    git checkout 3a8bc4823b5390e046f7aa8231ed262c0365c42c && \
-    make; \
-    make install
+RUN export REPO_OVERRIDE="" && \
+    export COMMIT_ID_OVERRIDE="" && \
+    bash /usr/src/dep-versions/scripts/build-tgt.sh "${REPO_OVERRIDE}" "${COMMIT_ID_OVERRIDE}"
 
 # Build cache for tox
 RUN mkdir integration/
