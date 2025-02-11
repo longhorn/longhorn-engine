@@ -1,6 +1,8 @@
 FROM registry.suse.com/bci/golang:1.23
 
 ARG DAPPER_HOST_ARCH
+ARG SRC_BRANCH=main
+ARG SRC_TAG
 ARG http_proxy
 ARG https_proxy
 
@@ -14,6 +16,8 @@ ENV DAPPER_OUTPUT bin coverage.out
 # and mount filesystems to /tmp to simulate this without bind mounting everything.
 ENV DAPPER_RUN_ARGS --privileged --tmpfs /go/src/github.com/longhorn/longhorn-engine/integration/.venv:exec --tmpfs /go/src/github.com/longhorn/longhorn-engine/integration/.tox:exec -v /dev:/host/dev -v /proc:/host/proc --mount type=bind,source=/tmp,destination=/host/tmp,bind-propagation=rslave
 ENV DAPPER_SOURCE /go/src/github.com/longhorn/longhorn-engine
+ENV SRC_BRANCH ${SRC_BRANCH}
+ENV SRC_TAG ${SRC_TAG}
 
 ENV GOLANGCI_LINT_VERSION="v1.60.3"
 ENV LONGHORN_INSTANCE_MANAGER_BRANCH="master"
