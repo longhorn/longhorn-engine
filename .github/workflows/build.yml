@@ -8,6 +8,48 @@ on:
     - v*
   pull_request:
 jobs:
+  build_info:
+    name: Collect build info
+    runs-on: ubuntu-latest
+    outputs:
+      version_major: ${{ steps.build_info.outputs.version_major }}
+      version_minor: ${{ steps.build_info.outputs.version_minor }}
+      version_patch: ${{ steps.build_info.outputs.version_patch }}
+      image_tag: ${{ steps.build_info.outputs.image_tag }}
+
+    steps:
+    - id: build_info
+      name: Declare build info
+      run: |
+        version_major=''
+        version_minor=''
+        version_patch=''
+        image_tag=''
+
+        branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}
+        ref=${{ github.ref }}
+        if [[ "$ref" =~ 'refs/tags/' ]]; then
+          version=$(sed -E 's/^v([0-9]*\.[0-9]*\.[0-9]*).*$/\1/' <<<${{ github.ref_name }} )
+          version_major=$(cut -d. -f1 <<<$version)
+          version_minor=$(cut -d. -f2 <<<$version)
+          version_patch=$(cut -d. -f3 <<<$version)
+          image_tag=${{ github.ref_name }}
+        elif [[ "$ref" =~ 'refs/heads/' ]]; then
+          image_tag="${branch}-head"
+        fi
+
+        echo "version_major=${version_major}" >>$GITHUB_OUTPUT
+        echo "version_minor=${version_minor}" >>$GITHUB_OUTPUT
+        echo "version_patch=${version_patch}" >>$GITHUB_OUTPUT
+        echo "image_tag=${image_tag}" >>$GITHUB_OUTPUT
+
+        cat <<EOF
+        version_major=${version_major}
+        version_minor=${version_minor}
+        version_patch=${version_patch}
+        image_tag=${image_tag}
+        EOF
+
   build-amd64-binaries:
     name: Build AMD64 binaries
     runs-on: ubuntu-latest
@@ -17,7 +59,7 @@ jobs:
 
     # Build binaries
     - name: Run make ci
-      run: make ci
+      run: SKIP_TASKS=package make ci
 
     - uses: codecov/codecov-action@v4
       with:
@@ -45,9 +87,7 @@ jobs:
 
     # Build binaries
     - name: Run make build
-      run: |
-        make build
-        make package
+      run: make build
 
     - name: Upload binaries
       uses: actions/upload-artifact@v4
@@ -58,7 +98,7 @@ jobs:
   build-push-amd64-images:
     name: Build and push AMD64 images
     runs-on: ubuntu-latest
-    needs: build-amd64-binaries
+    needs: [build_info, build-amd64-binaries]
     if: ${{ startsWith(github.ref, 'refs/heads/') || startsWith(github.ref, 'refs/tags/') }}
     steps:
     - name: Checkout code
@@ -68,10 +108,6 @@ jobs:
       uses: docker/setup-qemu-action@v3
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
-
-    - name: Declare branch
-      run: |
-        echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> "$GITHUB_ENV"
 
     - name: Download binaries
       uses: actions/download-artifact@v4
@@ -95,57 +131,17 @@ jobs:
         password: ${{ secrets.DOCKER_PASSWORD }}
 
     # longhornio/longhorn-engine image
-    - name: docker-build-longhorn-engine
-      if: ${{ startsWith(github.ref, 'refs/heads/') }}
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        push: false
-        platforms: linux/amd64
-        tags: longhornio/longhorn-engine:${{ env.branch }}-head-amd64
-        file: package/Dockerfile
-        build-args: |
-          ARCH=amd64
-    - name: docker-publish-longhorn-engine
-      if: ${{ startsWith(github.ref, 'refs/heads/') }}
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        push: true
-        platforms: linux/amd64
-        tags: longhornio/longhorn-engine:${{ env.branch }}-head-amd64
-        file: package/Dockerfile
-        sbom: true
-        build-args: |
-          ARCH=amd64
-    - name: docker-build-longhorn-engine-with-tag
-      if: ${{ startsWith(github.ref, 'refs/tags/') }}
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        push: false
-        platforms: linux/amd64
-        tags: longhornio/longhorn-engine:${{ github.ref_name }}-amd64
-        file: package/Dockerfile
-        build-args: |
-          ARCH=amd64
-    - name: docker-publish-longhorn-engine-with-tag
-      if: ${{ startsWith(github.ref, 'refs/tags/') }}
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        push: true
-        platforms: linux/amd64
-        tags: longhornio/longhorn-engine:${{ github.ref_name }}-amd64
-        file: package/Dockerfile
-        sbom: true
-        build-args: |
-          ARCH=amd64
+    - name: Build and publish image
+      env:
+        REPO: docker.io/longhornio
+        TAG: ${{ needs.build_info.outputs.image_tag }}-amd64
+        TARGET_PLATFORMS: linux/amd64
+      run: make workflow-image-build-push
 
   build-push-arm64-images:
     name: Build and push ARM64 images
     runs-on: longhorn-infra-oracle-arm64-runners
-    needs: build-arm64-binaries
+    needs: [build_info, build-arm64-binaries]
     if: ${{ startsWith(github.ref, 'refs/heads/') || startsWith(github.ref, 'refs/tags/') }}
     steps:
     - name: Install make curl git
@@ -161,9 +157,6 @@ jobs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v3
 
-    - name: Declare branch and sha_short
-      run: |
-        echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> "$GITHUB_ENV"
     - name: Download binaries
       uses: actions/download-artifact@v4
       with:
@@ -186,69 +179,22 @@ jobs:
         password: ${{ secrets.DOCKER_PASSWORD }}
 
     # longhornio/longhorn-engine image
-    - name: docker-build-longhorn-engine
-      if: ${{ startsWith(github.ref, 'refs/heads/') }}
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        push: false
-        platforms: linux/arm64
-        tags: longhornio/longhorn-engine:${{ env.branch }}-head-arm64
-        file: package/Dockerfile
-        build-args: |
-          ARCH=arm64
-    - name: docker-publish-longhorn-engine
-      if: ${{ startsWith(github.ref, 'refs/heads/') }}
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        push: true
-        platforms: linux/arm64
-        tags: longhornio/longhorn-engine:${{ env.branch }}-head-arm64
-        file: package/Dockerfile
-        sbom: true
-        build-args: |
-          ARCH=arm64
-    - name: docker-build-longhorn-engine-with-tag
-      if: ${{ startsWith(github.ref, 'refs/tags/') }}
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        push: false
-        platforms: linux/arm64
-        tags: longhornio/longhorn-engine:${{ github.ref_name }}-arm64
-        file: package/Dockerfile
-        build-args: |
-          ARCH=arm64
-    - name: docker-publish-longhorn-engine-with-tag
-      if: ${{ startsWith(github.ref, 'refs/tags/') }}
-      uses: docker/build-push-action@v5
-      with:
-        context: .
-        push: true
-        platforms: linux/arm64
-        tags: longhornio/longhorn-engine:${{ github.ref_name }}-arm64
-        file: package/Dockerfile
-        sbom: true
-        build-args: |
-          ARCH=arm64
+    - name: Build and publish image
+      env:
+        REPO: docker.io/longhornio
+        TAG: ${{ needs.build_info.outputs.image_tag }}-arm64
+        TARGET_PLATFORMS: linux/arm64
+      run: make workflow-image-build-push
+
 
   manifest-image:
     name: Manifest images
     runs-on: ubuntu-latest
-    needs: [build-push-amd64-images, build-push-arm64-images]
+    needs: [build_info, build-push-amd64-images, build-push-arm64-images]
     if: ${{ startsWith(github.ref, 'refs/heads/') || startsWith(github.ref, 'refs/tags/') }}
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-
-    - name: Declare branch and sha_short
-      run: |
-        echo "branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}" >> "$GITHUB_ENV"
-    - name: Set up QEMU
-      uses: docker/setup-qemu-action@v3
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
 
     - name: Login to Docker Hub
       uses: docker/login-action@v3
@@ -257,19 +203,8 @@ jobs:
         password: ${{ secrets.DOCKER_PASSWORD }}
 
     # longhornio/longhorn-engine image
-    - name: docker-pull-longhorn-engine
-      if: ${{ startsWith(github.ref, 'refs/heads/') }}
-      run: |
-        docker pull --platform linux/amd64 longhornio/longhorn-engine:${{ env.branch }}-head-amd64
-        docker pull --platform linux/arm64 longhornio/longhorn-engine:${{ env.branch }}-head-arm64
-        docker buildx imagetools create -t longhornio/longhorn-engine:${{ env.branch }}-head \
-          longhornio/longhorn-engine:${{ env.branch }}-head-amd64 \
-          longhornio/longhorn-engine:${{ env.branch }}-head-arm64
-    - name: docker-pull-longhorn-engine-with-tag
-      if: ${{ startsWith(github.ref, 'refs/tags/') }}
-      run: |
-        docker pull --platform linux/amd64 longhornio/longhorn-engine:${{ github.ref_name }}-amd64
-        docker pull --platform linux/arm64 longhornio/longhorn-engine:${{ github.ref_name }}-arm64
-        docker buildx imagetools create -t longhornio/longhorn-engine:${{ github.ref_name }} \
-          longhornio/longhorn-engine:${{ github.ref_name }}-amd64 \
-          longhornio/longhorn-engine:${{ github.ref_name }}-arm64
+    - name: docker-pull-manifest-longhorn-engine
+      env:
+        REPO: docker.io/longhornio
+        TAG: ${{ needs.build_info.outputs.image_tag }}
+      run: make workflow-manifest-image
