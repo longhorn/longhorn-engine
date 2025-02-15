@@ -11,7 +11,7 @@ require (
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
 	github.com/longhorn/backupstore v0.0.0-20250215022153-7ee3a979f2a9
-	github.com/longhorn/go-common-libs v0.0.0-20250214070119-c86a06c781f5
+	github.com/longhorn/go-common-libs v0.0.0-20250215052214-151615b29f8e
 	github.com/longhorn/go-iscsi-helper v0.0.0-20250111093313-7e1930499625
 	github.com/longhorn/sparse-tools v0.0.0-20241216160947-2b328f0fa59c
 	github.com/longhorn/types v0.0.0-20250210001806-5ef312749bee
@@ -67,7 +67,7 @@ require (
 	github.com/shirou/gopsutil/v3 v3.24.5 // indirect
 	github.com/slok/goresilience v0.2.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
-	golang.org/x/exp v0.0.0-20250207012021-f9890c6ad9f3 // indirect
+	golang.org/x/exp v0.0.0-20250210185358-939b2ce775ac // indirect
 	golang.org/x/text v0.21.0 // indirect
 	google.golang.org/genproto/googleapis/rpc v0.0.0-20241015192408-796eee8c2d53 // indirect
 	gopkg.in/VividCortex/ewma.v1 v1.1.1 // indirect
