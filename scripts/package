@@ -51,15 +51,15 @@ else
     x86_64)
         ARCH=amd64
         ;;
-    s390x)
-        ARCH=s390x
-        ;;
     *)
         echo "$(uname -a): unsupported architecture"
         exit 1
     esac
     BUILDX_ARGS+=('--platform' "linux/${ARCH}")
 fi
+
+# TODO: implement self-contained build
+[[ ! -x ./bin/longhorn || ! -x ./bin/longhorn-instance-manager ]] && make build
 
 IMAGE_ARGS=(--build-arg ARCH="${ARCH}")
 [[ -n "${SRC_BRANCH}" ]] && IMAGE_ARGS+=(--build-arg SRC_BRANCH="${SRC_BRANCH}")
