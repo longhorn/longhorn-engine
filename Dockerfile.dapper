@@ -104,3 +104,8 @@ RUN cd /go/src/github.com/longhorn && \
     cd longhorn-instance-manager && \
     go build -o ./longhorn-instance-manager -tags netgo -ldflags "-linkmode external -extldflags -static" && \
     install longhorn-instance-manager /usr/local/bin
+
+# Docker Builx: The docker version in dapper is too old to have buildx. Install it manually.
+RUN curl -sSfLO https://github.com/docker/buildx/releases/download/v0.13.1/buildx-v0.13.1.linux-${ARCH} && \
+    chmod +x buildx-v0.13.1.linux-${ARCH} && \
+    mv buildx-v0.13.1.linux-${ARCH} /usr/local/bin/buildx
