@@ -20,4 +20,4 @@ cd $(dirname $0)/..
 
 mkdir -p bin
 go build -o bin/longhorn -tags netgo -ldflags "$LINKFLAGS" $COVER $COVERPKG
-[[ ! -x ./bin/longhorn-instance-manager ]] && cp /usr/local/bin/longhorn-instance-manager ./bin
+cp /usr/local/bin/longhorn-instance-manager ./bin
