@@ -430,6 +430,7 @@ func (s *SyncAgentServer) FilesSync(ctx context.Context, req *enginerpc.FilesSyn
 			s.RebuildStatus.State = types.ProcessStateError
 			logrus.WithError(err).Error("Sync agent gRPC server failed to rebuild replica/sync files")
 		} else {
+			s.RebuildStatus.Progress = 100
 			s.RebuildStatus.State = types.ProcessStateComplete
 			logrus.Infof("Sync agent gRPC server finished rebuilding replica/sync files for replica %v", req.ToHost)
 		}
