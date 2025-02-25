@@ -35,11 +35,19 @@ func (c *Controller) getCurrentAndRWReplica(address string) (*types.Replica, *ty
 	return current, rwReplica, nil
 }
 
-func (c *Controller) VerifyRebuildReplica(address, instanceName string) error {
+func (c *Controller) VerifyRebuildReplica(address, instanceName string) (err error) {
 	// Prevent snapshot happens at the same time, as well as prevent
 	// writing from happening since we're updating revision counter
 	c.Lock()
 	defer c.Unlock()
+
+	// TODO: It's unreasonable to set the replica mode to ERR for some of the below errors. Need to improve in the future.
+	defer func() {
+		if err != nil {
+			logrus.WithError(err).Errorf("Failed to verify rebuild replica %v for volume %v", address, c.VolumeName)
+			c.setReplicaModeNoLock(address, types.ERR)
+		}
+	}()
 
 	replica, rwReplica, err := c.getCurrentAndRWReplica(address)
 	if err != nil {
