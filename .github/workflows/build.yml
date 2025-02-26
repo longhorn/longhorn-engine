@@ -80,14 +80,14 @@ jobs:
     - name: Install make curl git
       run: |
         sudo apt update
-        sudo apt-get -y install make curl git
+        sudo apt-get -y install make curl git open-iscsi
 
     - name: Checkout code
       uses: actions/checkout@v4
 
     # Build binaries
-    - name: Run make build
-      run: make build
+    - name: Run make ci
+      run: SKIP_TASKS=package make ci
 
     - name: Upload binaries
       uses: actions/upload-artifact@v4
