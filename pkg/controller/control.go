@@ -1115,14 +1115,14 @@ func (c *Controller) ReadAt(b []byte, off int64) (int, error) {
 func (c *Controller) UnmapAt(length uint32, off int64) (int, error) {
 	// TODO: Need to fail unmap requests
 	//  if the volume is purging snapshots or creating backups.
-	c.RLock()
+	c.Lock()
 
 	if off < 0 || off+int64(length) > c.size {
 		// This is a legitimate error (which is handled by tgt/liblonghorn at a higher level). Since tgt/liblonghorn
 		// does not actually print the error, print it here.
 		err := fmt.Errorf("EOF: unmap of %v bytes at offset %v is beyond volume size %v", length, off, c.size)
 		logrus.WithError(err).Error("Failed to unmap")
-		c.RUnlock()
+		c.Unlock()
 		return 0, err
 	}
 	if c.hasWOReplica() {
@@ -1131,7 +1131,7 @@ func (c *Controller) UnmapAt(length uint32, off int64) (int, error) {
 		// will remain paused for the entire duration of the rebuild.
 		err := fmt.Errorf("cannot unmap %v bytes at offset %v while rebuilding is in progress", length, off)
 		logrus.WithError(err).Warn("Failed to unmap")
-		c.RUnlock()
+		c.Unlock()
 		return 0, nil
 	}
 	if c.isExpanding {
@@ -1140,13 +1140,13 @@ func (c *Controller) UnmapAt(length uint32, off int64) (int, error) {
 		// trimmed, so it can try again.
 		err := fmt.Errorf("cannot unmap %v bytes at offset %v while expansion in is progress", length, off)
 		logrus.WithError(err).Error("Failed to unmap")
-		c.RUnlock()
+		c.Unlock()
 		return 0, err
 	}
 
 	// startTime := time.Now()
 	n, err := c.backend.UnmapAt(length, off)
-	c.RUnlock()
+	c.Unlock()
 	if err != nil {
 		return n, c.handleError(err)
 	}
