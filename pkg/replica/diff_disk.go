@@ -271,7 +271,7 @@ func (d *diffDisk) lookup(sector int64) (byte, error) {
 		for i := len(d.files) - 1; i > 1; i-- {
 			e, errno := fibmap.Fiemap(d.files[i].Fd(), uint64(sector*d.sectorSize), uint64(d.sectorSize), 1)
 			if errno != 0 {
-				return 0, fmt.Errorf(errno.Error())
+				return 0, fmt.Errorf("%v", errno)
 			}
 			if len(e) > 0 {
 				d.location[sector] = byte(i)
