@@ -7,9 +7,11 @@ ARG SRC_TAG
 RUN zypper -n ref && \
     zypper update -y
 
-RUN zypper -n addrepo --refresh https://download.opensuse.org/repositories/system:/snappy/SLE_15/system:snappy.repo && \
-    zypper -n addrepo --refresh https://download.opensuse.org/repositories/network:/utilities/SLE_15_SP5/network:utilities.repo && \
-    zypper --gpg-auto-import-keys ref
+RUN for i in {1..10}; do \
+        zypper -n addrepo --refresh https://download.opensuse.org/repositories/system:/snappy/SLE_15/system:snappy.repo && \
+        zypper -n addrepo --refresh https://download.opensuse.org/repositories/network:/utilities/SLE_15_SP5/network:utilities.repo && \
+        zypper --gpg-auto-import-keys ref && break || sleep 1; \
+    done
 
 RUN zypper -n install cmake curl git gcc wget xsltproc docbook-xsl-stylesheets jq && \
     rm -rf /var/cache/zypp/*
@@ -43,9 +45,11 @@ ARG ARCH=amd64
 RUN zypper -n ref && \
     zypper update -y
 
-RUN zypper -n addrepo --refresh https://download.opensuse.org/repositories/system:/snappy/SLE_15/system:snappy.repo && \
-    zypper -n addrepo --refresh https://download.opensuse.org/repositories/network:/utilities/SLE_15_SP5/network:utilities.repo && \
-    zypper --gpg-auto-import-keys ref
+RUN for i in {1..10}; do \
+        zypper -n addrepo --refresh https://download.opensuse.org/repositories/system:/snappy/SLE_15/system:snappy.repo && \
+        zypper -n addrepo --refresh https://download.opensuse.org/repositories/network:/utilities/SLE_15_SP5/network:utilities.repo && \
+        zypper --gpg-auto-import-keys ref && break || sleep 1; \
+    done
 
 RUN zypper -n install nfs-client nfs4-acl-tools cifs-utils libaio1 sg3_utils \
     iputils iproute2 qemu-tools e2fsprogs jq && \

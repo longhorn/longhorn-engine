@@ -26,11 +26,13 @@ WORKDIR ${DAPPER_SOURCE}
 ENTRYPOINT ["./scripts/entry"]
 CMD ["ci"]
 
-RUN zypper -n addrepo --refresh https://download.opensuse.org/repositories/system:/snappy/SLE_15/system:snappy.repo && \
-    zypper --gpg-auto-import-keys ref
+RUN for i in {1..10}; do \
+        zypper -n addrepo --refresh https://download.opensuse.org/repositories/system:/snappy/SLE_15/system:snappy.repo && \
+        zypper --gpg-auto-import-keys ref && break || sleep 1; \
+    done
 
 RUN if [ ${ARCH} == "amd64" ]; then \
-    zypper -n install autoconf libtool libunwind-devel; \
+        zypper -n install autoconf libtool libunwind-devel; \
     fi
 
 # TODO: use default python3 if SLE upgrade system python version to python3.11
