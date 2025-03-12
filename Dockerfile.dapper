@@ -19,7 +19,6 @@ ENV DAPPER_SOURCE /go/src/github.com/longhorn/longhorn-engine
 ENV SRC_BRANCH ${SRC_BRANCH}
 ENV SRC_TAG ${SRC_TAG}
 
-ENV GOLANGCI_LINT_VERSION="v1.64.6"
 ENV LONGHORN_INSTANCE_MANAGER_BRANCH="master"
 
 WORKDIR ${DAPPER_SOURCE}
@@ -45,7 +44,7 @@ RUN zypper -n install cmake curl git less file gcc python311 python311-pip pytho
     rm -rf /var/cache/zypp/*
 
 # Install golangci-lint
-RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin ${GOLANGCI_LINT_VERSION}
+RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin latest
 
 # Install Minio
 ENV MINIO_URL_amd64=https://dl.min.io/server/minio/release/linux-amd64/archive/minio.RELEASE.2021-12-20T22-07-16Z \
