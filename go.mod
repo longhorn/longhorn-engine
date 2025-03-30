@@ -21,7 +21,7 @@ require (
 	github.com/rancher/go-rancher v0.1.1-0.20190307222549-9756097e5e4c
 	github.com/sirupsen/logrus v1.9.3
 	github.com/urfave/cli v1.22.16
-	golang.org/x/net v0.37.0
+	golang.org/x/net v0.38.0
 	golang.org/x/sys v0.31.0
 	google.golang.org/grpc v1.71.1
 	google.golang.org/protobuf v1.36.6
