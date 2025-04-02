@@ -44,7 +44,11 @@ func updateReplica(c *cli.Context) (*types.ControllerReplicaInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer controllerClient.Close()
+	defer func() {
+		if errClose := controllerClient.Close(); errClose != nil {
+			logrus.WithError(errClose).Error("Failed to close controller client")
+		}
+	}()
 
 	return controllerClient.ReplicaUpdate(replica, mode)
 }

@@ -65,7 +65,7 @@ func (b *BackupList) BackupAdd(backupID string, backup *replica.BackupStatus) er
 
 	if backupListHighWaterMark < len(b.infos) {
 		backupListHighWaterMark = len(b.infos)
-		if 0 == backupListHighWaterMark%BackupListHighWaterMarkQuantum {
+		if backupListHighWaterMark%BackupListHighWaterMarkQuantum == 0 {
 			logrus.Infof("New BackupList high water mark: %d", backupListHighWaterMark)
 		}
 	}

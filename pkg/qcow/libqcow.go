@@ -61,7 +61,7 @@ func (q *Qcow) ReadAt(buf []byte, off int64) (int, error) {
 }
 
 func (q *Qcow) UnmapAt(length uint32, off int64) (int, error) {
-	return 0, errors.New("Unsupported operation")
+	return 0, errors.New("unsupported operation")
 }
 
 func (q *Qcow) Close() error {

@@ -118,7 +118,9 @@ func (c *Client) operation(op uint32, buf []byte, length uint32, offset int64) (
 // Close replica client
 func (c *Client) Close() {
 	for _, wire := range c.wires {
-		wire.Close()
+		if errClose := wire.Close(); errClose != nil {
+			logrus.WithError(errClose).Error("Failed to close wire")
+		}
 	}
 	c.end <- struct{}{}
 }
