@@ -263,7 +263,11 @@ func (r *Replica) isExtentSupported() error {
 		return err
 	}
 
-	defer file.Close()
+	defer func() {
+		if errClose := file.Close(); errClose != nil {
+			logrus.WithError(errClose).Errorf("Failed to close file %v", filePath)
+		}
+	}()
 
 	fiemapFile := fibmap.NewFibmapFile(file)
 	if _, errno := fiemapFile.Fiemap(uint32(fileInfo.Size())); errno != 0 {
@@ -632,7 +636,9 @@ func (r *Replica) isBackingFile(index int) bool {
 func (r *Replica) closeWithoutWritingMetaData() {
 	for i, f := range r.volume.files {
 		if f != nil && !r.isBackingFile(i) {
-			f.Close()
+			if errClose := f.Close(); errClose != nil {
+				logrus.WithError(errClose).Error("Failed to close file")
+			}
 		}
 	}
 }
@@ -724,7 +730,9 @@ func (r *Replica) createNewHead(oldHead, parent, created string, size int64) (f 
 		// the upper layer either succeeds to execute all functions,
 		// or fails in the middle then does rollback for the previous succeeded parts so that everything looks like unchanged.
 		rollbackFunc = func() error {
-			f.Close()
+			if errClose := f.Close(); errClose != nil {
+				logrus.WithError(errClose).Error("Failed to close file")
+			}
 			if subRollbackFunc != nil {
 				return types.CombineErrors(subRollbackFunc(), r.rmDisk(newHeadName))
 			}
@@ -865,7 +873,11 @@ func (r *Replica) revertDisk(parentDiskFileName, created string) (*Replica, erro
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() {
+		if errClose := f.Close(); errClose != nil {
+			logrus.WithError(errClose).Error("Failed to close file")
+		}
+	}()
 
 	info := r.info
 	info.Head = newHeadDisk.Name
@@ -1159,7 +1171,11 @@ func (r *Replica) unmarshalFile(file string, obj interface{}) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() {
+		if errClose := f.Close(); errClose != nil {
+			logrus.WithError(errClose).Errorf("Failed to close file %v", p)
+		}
+	}()
 
 	dec := json.NewDecoder(f)
 	return dec.Decode(obj)

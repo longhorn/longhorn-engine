@@ -17,9 +17,10 @@ func (c *Controller) Revert(name string) error {
 	wo := false
 	for _, rep := range c.replicas {
 		// BUG: Need to deal with replica in rebuilding(WO) mode.
-		if rep.Mode == types.RW {
+		switch rep.Mode {
+		case types.RW:
 			rw = true
-		} else if rep.Mode == types.WO {
+		case types.WO:
 			wo = true
 		}
 	}

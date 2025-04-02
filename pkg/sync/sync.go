@@ -192,7 +192,11 @@ func (t *Task) PurgeSnapshots(skip bool) error {
 				errorMap.Store(rep.Address, errors.Wrapf(err, "failed to get replica client %v before purging", rep.Address))
 				return
 			}
-			defer repClient.Close()
+			defer func() {
+				if errClose := repClient.Close(); errClose != nil {
+					logrus.WithError(errClose).Errorf("Failed to close replica client for replica address %s", rep.Address)
+				}
+			}()
 
 			if err := repClient.SnapshotPurge(); err != nil {
 				errorMap.Store(rep.Address, errors.Wrapf(err, "replica %v failed to execute snapshot purge", rep.Address))
@@ -271,7 +275,11 @@ func (t *Task) isRebuilding(replicaInController *types.ControllerReplicaInfo) (b
 	if err != nil {
 		return false, err
 	}
-	defer repClient.Close()
+	defer func() {
+		if errClose := repClient.Close(); errClose != nil {
+			logrus.WithError(errClose).Errorf("Failed to close replica client for replica address %s", replicaInController.Address)
+		}
+	}()
 
 	replica, err := repClient.GetReplica()
 	if err != nil {
@@ -287,7 +295,11 @@ func (t *Task) isHashingSnapshot(replicaInController *types.ControllerReplicaInf
 	if err != nil {
 		return false, err
 	}
-	defer repClient.Close()
+	defer func() {
+		if errClose := repClient.Close(); errClose != nil {
+			logrus.WithError(errClose).Errorf("Failed to close replica client for replica address %s", replicaInController.Address)
+		}
+	}()
 
 	isLocked, err := repClient.SnapshotHashLockState()
 	if err != nil {
@@ -303,7 +315,11 @@ func (t *Task) isPurging(replicaInController *types.ControllerReplicaInfo) (bool
 	if err != nil {
 		return false, err
 	}
-	defer repClient.Close()
+	defer func() {
+		if errClose := repClient.Close(); errClose != nil {
+			logrus.WithError(errClose).Errorf("Failed to close replica client for replica address %s", replicaInController.Address)
+		}
+	}()
 
 	status, err := repClient.SnapshotPurgeStatus()
 	if err != nil {
@@ -323,7 +339,11 @@ func (t *Task) markSnapshotAsRemoved(replicaInController *types.ControllerReplic
 	if err != nil {
 		return err
 	}
-	defer repClient.Close()
+	defer func() {
+		if errClose := repClient.Close(); errClose != nil {
+			logrus.WithError(errClose).Errorf("Failed to close replica client for replica address %s", replicaInController.Address)
+		}
+	}()
 
 	if err := repClient.MarkDiskAsRemoved(snapshot); err != nil {
 		return err
@@ -338,7 +358,11 @@ func (t *Task) cancelSnapshotHashJob(replicaInController *types.ControllerReplic
 	if err != nil {
 		return err
 	}
-	defer repClient.Close()
+	defer func() {
+		if errClose := repClient.Close(); errClose != nil {
+			logrus.WithError(errClose).Errorf("Failed to close replica client for replica address %s", replicaInController.Address)
+		}
+	}()
 
 	if err := repClient.SnapshotHashCancel(snapshot); err != nil {
 		return err
@@ -475,7 +499,11 @@ func (t *Task) checkAndResetFailedRebuild(address, instanceName string) error {
 	if err != nil {
 		return err
 	}
-	defer client.Close()
+	defer func() {
+		if errClose := client.Close(); errClose != nil {
+			logrus.WithError(errClose).Errorf("Failed to close replica client for replica address %s", address)
+		}
+	}()
 
 	replica, err := client.GetReplica()
 	if err != nil {
@@ -502,7 +530,11 @@ func (t *Task) checkAndExpandReplica(address, instanceName string, size int64) e
 	if err != nil {
 		return err
 	}
-	defer client.Close()
+	defer func() {
+		if errClose := client.Close(); errClose != nil {
+			logrus.WithError(errClose).Errorf("Failed to close replica client %s", address)
+		}
+	}()
 
 	replica, err := client.GetReplica()
 	if err != nil {
@@ -652,7 +684,11 @@ func getNonBackingDisks(address string, volumeName string) (map[string]types.Dis
 	if err != nil {
 		return nil, err
 	}
-	defer repClient.Close()
+	defer func() {
+		if errClose := repClient.Close(); errClose != nil {
+			logrus.WithError(errClose).Errorf("Failed to close replica client for replica address %s", address)
+		}
+	}()
 
 	r, err := repClient.GetReplica()
 	if err != nil {
@@ -849,7 +885,11 @@ func CloneSnapshot(engineControllerClient, fromControllerClient *client.Controll
 				syncErrorMap.Store(r.Address, err)
 				return
 			}
-			defer repClient.Close()
+			defer func() {
+				if errClose := repClient.Close(); errClose != nil {
+					logrus.WithError(errClose).Errorf("Failed to close replica client for replica address %s", r.Address)
+				}
+			}()
 			if err := repClient.CloneSnapshot(sourceReplica.Address, fromVolumeName, snapshotFileName,
 				exportBackingImageIfExist, fileSyncHTTPClientTimeout, grpcTimeoutSeconds); err != nil {
 				syncErrorMap.Store(r.Address, err)
@@ -954,7 +994,11 @@ func (t *Task) HashSnapshot(snapshotName string, rehash bool) error {
 				syncErrorMap.Store(r.Address, err)
 				return
 			}
-			defer repClient.Close()
+			defer func() {
+				if errClose := repClient.Close(); errClose != nil {
+					logrus.WithError(errClose).Errorf("Failed to close replica client for replica address %s", r.Address)
+				}
+			}()
 
 			if err := repClient.SnapshotHash(snapshotName, rehash); err != nil {
 				syncErrorMap.Store(r.Address, err)
@@ -1082,7 +1126,11 @@ func (t *Task) HashSnapshotCancel(snapshotName string) error {
 				syncErrorMap.Store(r.Address, err)
 				return
 			}
-			defer repClient.Close()
+			defer func() {
+				if errClose := repClient.Close(); errClose != nil {
+					logrus.WithError(errClose).Errorf("Failed to close replica client for replica address %s", r.Address)
+				}
+			}()
 			if err := repClient.SnapshotHashCancel(snapshotName); err != nil {
 				syncErrorMap.Store(r.Address, err)
 			}

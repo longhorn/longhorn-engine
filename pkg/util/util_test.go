@@ -59,7 +59,8 @@ func createTempDir(c *C) string {
 func touchFile(c *C, path string) {
 	f, err := os.Create(path)
 	c.Assert(err, IsNil)
-	f.Close()
+	err = f.Close()
+	c.Assert(err, IsNil)
 }
 
 func (s *TestSuite) TestResolveFilepathNoOp(c *C) {

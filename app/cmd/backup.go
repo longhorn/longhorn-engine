@@ -132,7 +132,11 @@ func checkBackupStatus(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	defer controllerClient.Close()
+	defer func() {
+		if errClose := controllerClient.Close(); errClose != nil {
+			logrus.WithError(errClose).Error("Failed to close controller client")
+		}
+	}()
 
 	replicas, err := controllerClient.ReplicaList()
 	if err != nil {
@@ -156,12 +160,14 @@ func checkBackupStatus(c *cli.Context) error {
 			// We don't know the replica's instanceName, so create a client without it.
 			repClient, err := replicaClient.NewReplicaClient(replica.Address, volumeName, "")
 			if err != nil {
-				logrus.WithError(err).Errorf("Cannot create a replica client for IP[%v]", replicaAddress)
+				logrus.WithError(err).Errorf("Cannot create a replica client for replica address %s", replica.Address)
 				return err
 			}
 
 			_, err = sync.FetchBackupStatus(repClient, backupID, replica.Address)
-			repClient.Close()
+			if errClose := repClient.Close(); errClose != nil {
+				logrus.WithError(errClose).Errorf("Failed to close replica client for replica address %s", replica.Address)
+			}
 			if err == nil {
 				replicaAddress = replica.Address
 				break
@@ -180,10 +186,14 @@ func checkBackupStatus(c *cli.Context) error {
 
 	repClient, err := replicaClient.NewReplicaClient(replicaAddress, volumeName, replicaInstanceName)
 	if err != nil {
-		logrus.WithError(err).Errorf("Cannot create a replica client for IP[%v]", replicaAddress)
+		logrus.WithError(err).Errorf("Cannot create a replica client for replica address %s", replicaAddress)
 		return err
 	}
-	defer repClient.Close()
+	defer func() {
+		if errClose := repClient.Close(); errClose != nil {
+			logrus.WithError(errClose).Errorf("Failed to close replica client for replica address %s", replicaAddress)
+		}
+	}()
 
 	status, err := sync.FetchBackupStatus(repClient, backupID, replicaAddress)
 	if err != nil {

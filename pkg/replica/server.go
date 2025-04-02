@@ -101,7 +101,9 @@ func (s *Server) Reload() error {
 
 	oldReplica := s.r
 	s.r = newReplica
-	oldReplica.Close()
+	if errClose := oldReplica.Close(); errClose != nil {
+		logrus.WithError(errClose).Error("Failed to close old replica")
+	}
 	return nil
 }
 
