@@ -83,7 +83,11 @@ func (r *replicator) RemoveBackend(address string) {
 		// Stop the monitoring goroutine in the Controller
 		backend.backend.StopMonitoring()
 
-		go backend.backend.Close()
+		go func() {
+			if errClose := backend.backend.Close(); errClose != nil {
+				logrus.WithError(errClose).Errorf("Failed to close backend %s", address)
+			}
+		}()
 	}
 	delete(r.backends, address)
 	r.buildReaderWriterUnmappers()

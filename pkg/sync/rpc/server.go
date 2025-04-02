@@ -234,7 +234,9 @@ func (s *SyncAgentServer) StartRestore(backupURL, requestedBackupName, snapshotD
 		if err != nil {
 			logrus.Warn("Failed to initiate the backup restore, will do revert and clean up then.")
 			if newRestoreStatus.ToFileName != newRestoreStatus.SnapshotDiskName {
-				os.Remove(newRestoreStatus.ToFileName)
+				if errRemove := os.Remove(newRestoreStatus.ToFileName); errRemove != nil {
+					logrus.WithError(errRemove).Errorf("Failed to remove file %v", newRestoreStatus.ToFileName)
+				}
 			}
 			s.RestoreInfo.Revert(restoreStatus)
 		}
@@ -339,10 +341,8 @@ func (*SyncAgentServer) FileRename(ctx context.Context, req *enginerpc.FileRenam
 
 func (s *SyncAgentServer) FileSend(ctx context.Context, req *enginerpc.FileSendRequest) (*emptypb.Empty, error) {
 	address := net.JoinHostPort(req.Host, strconv.Itoa(int(req.Port)))
-	directIO := true
-	if filepath.Ext(strings.TrimSpace(req.FromFileName)) == ".meta" {
-		directIO = false
-	}
+	directIO := filepath.Ext(strings.TrimSpace(req.FromFileName)) != ".meta"
+
 	logrus.Infof("Syncing file %v to %v", req.FromFileName, address)
 	if err := sparse.SyncFile(req.FromFileName, address, int(req.FileSyncHttpClientTimeout), directIO, req.FastSync); err != nil {
 		return nil, err
@@ -514,7 +514,11 @@ func (s *SyncAgentServer) fileSyncRemote(ctx context.Context, req *enginerpc.Fil
 	if err != nil {
 		return err
 	}
-	defer fromClient.Close()
+	defer func() {
+		if errClose := fromClient.Close(); errClose != nil {
+			logrus.WithError(errClose).Errorf("Failed to close replica client for replica address %v", req.FromAddress)
+		}
+	}()
 
 	var ops sparserest.SyncFileOperations
 	fileStub := &sparserest.SyncFileStub{}
@@ -607,7 +611,11 @@ func (s *SyncAgentServer) SnapshotClone(ctx context.Context, req *enginerpc.Snap
 	if err != nil {
 		return nil, err
 	}
-	defer fromClient.Close()
+	defer func() {
+		if errClose := fromClient.Close(); errClose != nil {
+			logrus.WithError(errClose).Errorf("Failed to close replica client for for replica address %v", req.FromAddress)
+		}
+	}()
 
 	sourceReplica, err := fromClient.GetReplica()
 	if err != nil {
@@ -1040,7 +1048,11 @@ func (s *SyncAgentServer) reloadReplica() error {
 	if err != nil {
 		return errors.Wrapf(err, "cannot connect to ReplicaService %v", s.replicaAddress)
 	}
-	defer conn.Close()
+	defer func() {
+		if errClose := conn.Close(); errClose != nil {
+			logrus.WithError(errClose).Errorf("Failed to close replica client for for replica address %v", s.replicaAddress)
+		}
+	}()
 	replicaServiceClient := enginerpc.NewReplicaServiceClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
@@ -1059,7 +1071,11 @@ func (s *SyncAgentServer) replicaRevert(name, created string) error {
 	if err != nil {
 		return errors.Wrapf(err, "cannot connect to ReplicaService %v", s.replicaAddress)
 	}
-	defer conn.Close()
+	defer func() {
+		if errClose := conn.Close(); errClose != nil {
+			logrus.WithError(errClose).Errorf("Failed to close replica client for for replica address %v", s.replicaAddress)
+		}
+	}()
 	replicaServiceClient := enginerpc.NewReplicaServiceClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
@@ -1129,7 +1145,11 @@ func (s *SyncAgentServer) purgeSnapshots() (err error) {
 	if err != nil {
 		return err
 	}
-	defer replicaClient.Close()
+	defer func() {
+		if errClose := replicaClient.Close(); errClose != nil {
+			logrus.WithError(errClose).Errorf("Failed to close replica client for for replica address %v", s.replicaAddress)
+		}
+	}()
 
 	var leaves []string
 
@@ -1361,7 +1381,11 @@ func (s *SyncAgentServer) markSnapshotAsRemoved(snapshot string) error {
 	if err != nil {
 		return errors.Wrapf(err, "cannot connect to ReplicaService %v", s.replicaAddress)
 	}
-	defer conn.Close()
+	defer func() {
+		if errClose := conn.Close(); errClose != nil {
+			logrus.WithError(errClose).Errorf("Failed to close replica client for for replica address %v", s.replicaAddress)
+		}
+	}()
 
 	replicaServiceClient := enginerpc.NewReplicaServiceClient(conn)
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
@@ -1382,7 +1406,11 @@ func (s *SyncAgentServer) processRemoveSnapshot(snapshot string) error {
 	if err != nil {
 		return errors.Wrapf(err, "cannot connect to ReplicaService %v", s.replicaAddress)
 	}
-	defer conn.Close()
+	defer func() {
+		if errClose := conn.Close(); errClose != nil {
+			logrus.WithError(errClose).Errorf("Failed to close replica client for for replica address %v", s.replicaAddress)
+		}
+	}()
 
 	replicaServiceClient := enginerpc.NewReplicaServiceClient(conn)
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
@@ -1433,7 +1461,11 @@ func (s *SyncAgentServer) replaceDisk(source, target string) error {
 	if err != nil {
 		return errors.Wrapf(err, "cannot connect to ReplicaService %v", s.replicaAddress)
 	}
-	defer conn.Close()
+	defer func() {
+		if errClose := conn.Close(); errClose != nil {
+			logrus.WithError(errClose).Errorf("Failed to close replica client for for replica address %v", s.replicaAddress)
+		}
+	}()
 
 	replicaServiceClient := enginerpc.NewReplicaServiceClient(conn)
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
@@ -1455,7 +1487,11 @@ func (s *SyncAgentServer) rmDisk(disk string) error {
 	if err != nil {
 		return errors.Wrapf(err, "cannot connect to ReplicaService %v", s.replicaAddress)
 	}
-	defer conn.Close()
+	defer func() {
+		if errClose := conn.Close(); errClose != nil {
+			logrus.WithError(errClose).Errorf("Failed to close replica client for for replica address %v", s.replicaAddress)
+		}
+	}()
 
 	replicaServiceClient := enginerpc.NewReplicaServiceClient(conn)
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)

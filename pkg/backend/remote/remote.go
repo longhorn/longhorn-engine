@@ -62,7 +62,12 @@ func (r *Remote) Close() error {
 	if err != nil {
 		return errors.Wrapf(err, "cannot connect to ReplicaService %v", r.replicaServiceURL)
 	}
-	defer conn.Close()
+	defer func() {
+		if errClose := conn.Close(); errClose != nil {
+			logrus.WithError(errClose).Errorf("Failed to close connection to ReplicaService %v", r.replicaServiceURL)
+		}
+	}()
+
 	replicaServiceClient := enginerpc.NewReplicaServiceClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), replicaClient.GRPCServiceCommonTimeout)
@@ -82,7 +87,12 @@ func (r *Remote) open() error {
 	if err != nil {
 		return errors.Wrapf(err, "cannot connect to ReplicaService %v", r.replicaServiceURL)
 	}
-	defer conn.Close()
+	defer func() {
+		if errClose := conn.Close(); errClose != nil {
+			logrus.WithError(errClose).Errorf("Failed to close connection to ReplicaService %v", r.replicaServiceURL)
+		}
+	}()
+
 	replicaServiceClient := enginerpc.NewReplicaServiceClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), replicaClient.GRPCServiceCommonTimeout)
@@ -103,7 +113,12 @@ func (r *Remote) Snapshot(name string, userCreated bool, created string, labels 
 	if err != nil {
 		return errors.Wrapf(err, "cannot connect to ReplicaService %v", r.replicaServiceURL)
 	}
-	defer conn.Close()
+	defer func() {
+		if errClose := conn.Close(); errClose != nil {
+			logrus.WithError(errClose).Errorf("Failed to close connection to ReplicaService %v", r.replicaServiceURL)
+		}
+	}()
+
 	replicaServiceClient := enginerpc.NewReplicaServiceClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), replicaClient.GRPCServiceCommonTimeout)
@@ -133,7 +148,11 @@ func (r *Remote) Expand(size int64) (err error) {
 	if err != nil {
 		return errors.Wrapf(err, "cannot connect to ReplicaService %v", r.replicaServiceURL)
 	}
-	defer conn.Close()
+	defer func() {
+		if errClose := conn.Close(); errClose != nil {
+			logrus.WithError(errClose).Errorf("Failed to close connection to ReplicaService %v", r.replicaServiceURL)
+		}
+	}()
 	replicaServiceClient := enginerpc.NewReplicaServiceClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), replicaClient.GRPCServiceCommonTimeout)
@@ -156,7 +175,12 @@ func (r *Remote) SetRevisionCounter(counter int64) error {
 	if err != nil {
 		return errors.Wrapf(err, "cannot connect to ReplicaService %v", r.replicaServiceURL)
 	}
-	defer conn.Close()
+	defer func() {
+		if errClose := conn.Close(); errClose != nil {
+			logrus.WithError(errClose).Errorf("Failed to close connection to ReplicaService %v", r.replicaServiceURL)
+		}
+	}()
+
 	replicaServiceClient := enginerpc.NewReplicaServiceClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), replicaClient.GRPCServiceCommonTimeout)
@@ -272,7 +296,12 @@ func (r *Remote) SetUnmapMarkSnapChainRemoved(enabled bool) error {
 	if err != nil {
 		return errors.Wrapf(err, "failed connecting to ReplicaService %v", r.replicaServiceURL)
 	}
-	defer conn.Close()
+	defer func() {
+		if errClose := conn.Close(); errClose != nil {
+			logrus.WithError(errClose).Errorf("Failed to close connection to ReplicaService %v", r.replicaServiceURL)
+		}
+	}()
+
 	replicaServiceClient := enginerpc.NewReplicaServiceClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), replicaClient.GRPCServiceCommonTimeout)
@@ -304,7 +333,11 @@ func (r *Remote) ResetRebuild() error {
 	if err != nil {
 		return errors.Wrapf(err, "failed connecting to ReplicaService %v", r.replicaServiceURL)
 	}
-	defer conn.Close()
+	defer func() {
+		if errClose := conn.Close(); errClose != nil {
+			logrus.WithError(errClose).Errorf("Failed to close connection to ReplicaService %v", r.replicaServiceURL)
+		}
+	}()
 
 	replicaServiceClient := enginerpc.NewReplicaServiceClient(conn)
 
@@ -330,7 +363,12 @@ func (r *Remote) SetSnapshotMaxCount(count int) error {
 	if err != nil {
 		return errors.Wrapf(err, "cannot connect to ReplicaService %s", r.replicaServiceURL)
 	}
-	defer conn.Close()
+	defer func() {
+		if errClose := conn.Close(); errClose != nil {
+			logrus.WithError(errClose).Errorf("Failed to close connection to ReplicaService %s", r.replicaServiceURL)
+		}
+	}()
+
 	replicaServiceClient := enginerpc.NewReplicaServiceClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), replicaClient.GRPCServiceCommonTimeout)
@@ -354,7 +392,11 @@ func (r *Remote) SetSnapshotMaxSize(size int64) error {
 	if err != nil {
 		return errors.Wrapf(err, "cannot connect to ReplicaService %s", r.replicaServiceURL)
 	}
-	defer conn.Close()
+	defer func() {
+		if errClose := conn.Close(); errClose != nil {
+			logrus.WithError(errClose).Errorf("Failed to close connection to ReplicaService %s", r.replicaServiceURL)
+		}
+	}()
 	replicaServiceClient := enginerpc.NewReplicaServiceClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), replicaClient.GRPCServiceCommonTimeout)
@@ -375,7 +417,11 @@ func (r *Remote) info() (*types.ReplicaInfo, error) {
 	if err != nil {
 		return nil, errors.Wrapf(err, "cannot connect to ReplicaService %v", r.replicaServiceURL)
 	}
-	defer conn.Close()
+	defer func() {
+		if errClose := conn.Close(); errClose != nil {
+			logrus.WithError(errClose).Errorf("Failed to close connection to ReplicaService %v", r.replicaServiceURL)
+		}
+	}()
 	replicaServiceClient := enginerpc.NewReplicaServiceClient(conn)
 
 	ctx, cancel := context.WithTimeout(context.Background(), replicaClient.GRPCServiceCommonTimeout)
