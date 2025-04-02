@@ -20,7 +20,11 @@ func Journal() cli.Command {
 			if err != nil {
 				logrus.Fatalln("Error running journal command:", err)
 			}
-			defer controllerClient.Close()
+			defer func() {
+				if errClose := controllerClient.Close(); errClose != nil {
+					logrus.WithError(errClose).Error("Failed to close controller client")
+				}
+			}()
 
 			if err = controllerClient.JournalList(c.Int("limit")); err != nil {
 				logrus.Fatalln("Error running journal command:", err)

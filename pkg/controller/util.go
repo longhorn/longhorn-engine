@@ -4,6 +4,7 @@ import (
 	"fmt"
 
 	"github.com/pkg/errors"
+	"github.com/sirupsen/logrus"
 
 	"github.com/longhorn/longhorn-engine/pkg/replica/client"
 	"github.com/longhorn/longhorn-engine/pkg/types"
@@ -15,7 +16,11 @@ func GetReplicaDisksAndHead(address, volumeName, instanceName string) (map[strin
 	if err != nil {
 		return nil, "", errors.Wrapf(err, "cannot get replica client for %v", address)
 	}
-	defer repClient.Close()
+	defer func() {
+		if errClose := repClient.Close(); errClose != nil {
+			logrus.WithError(errClose).Errorf("Failed to close replica client for %v", address)
+		}
+	}()
 
 	rep, err := repClient.GetReplica()
 	if err != nil {

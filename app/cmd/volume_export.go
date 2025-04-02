@@ -71,7 +71,11 @@ func exportVolume(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	defer controllerClient.Close()
+	defer func() {
+		if errClose := controllerClient.Close(); errClose != nil {
+			logrus.WithError(errClose).Error("Failed to close controller client")
+		}
+	}()
 	volume, err := controllerClient.VolumeGet()
 	if err != nil {
 		return err
@@ -98,7 +102,11 @@ func exportVolume(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	defer rClient.Close()
+	defer func() {
+		if errClose := rClient.Close(); errClose != nil {
+			logrus.WithError(errClose).Errorf("Failed to close replica client for replica address %s", r.Address)
+		}
+	}()
 
 	rInfo, err := rClient.GetReplica()
 	if err != nil {

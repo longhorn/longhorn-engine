@@ -29,7 +29,11 @@ func rmReplica(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	defer controllerClient.Close()
+	defer func() {
+		if errClose := controllerClient.Close(); errClose != nil {
+			logrus.WithError(errClose).Error("Failed to close controller client")
+		}
+	}()
 
 	return controllerClient.ReplicaDelete(replica)
 }

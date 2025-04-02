@@ -261,7 +261,11 @@ func createSnapshot(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	defer controllerClient.Close()
+	defer func() {
+		if errClose := controllerClient.Close(); errClose != nil {
+			logrus.WithError(errClose).Error("Failed to close controller client")
+		}
+	}()
 
 	id, err := controllerClient.VolumeSnapshot(name, labelMap, freezeFilesystem)
 	if err != nil {
@@ -282,7 +286,11 @@ func revertSnapshot(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	defer controllerClient.Close()
+	defer func() {
+		if errClose := controllerClient.Close(); errClose != nil {
+			logrus.WithError(errClose).Error("Failed to close controller client")
+		}
+	}()
 
 	if err = controllerClient.VolumeRevert(name); err != nil {
 		return err
@@ -362,7 +370,12 @@ func lsSnapshot(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	defer controllerClient.Close()
+	defer func() {
+		if errClose := controllerClient.Close(); errClose != nil {
+			logrus.WithError(errClose).Error("Failed to close controller client")
+		}
+	}()
+
 	volumeName := c.GlobalString("volume-name")
 
 	replicas, err := controllerClient.ReplicaList()
@@ -404,12 +417,14 @@ func lsSnapshot(c *cli.Context) error {
 
 	format := "%s\n"
 	tw := tabwriter.NewWriter(os.Stdout, 0, 20, 1, ' ', 0)
-	fmt.Fprintf(tw, format, "ID")
+	_, _ = fmt.Fprintf(tw, format, "ID")
 	for _, s := range snapshots {
 		s = strings.TrimSuffix(strings.TrimPrefix(s, "volume-snap-"), ".img")
-		fmt.Fprintf(tw, format, s)
+		_, _ = fmt.Fprintf(tw, format, s)
 	}
-	tw.Flush()
+	if errFlush := tw.Flush(); errFlush != nil {
+		logrus.WithError(errFlush).Error("Failed to flush")
+	}
 
 	return nil
 }
@@ -421,7 +436,11 @@ func infoSnapshot(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	defer controllerClient.Close()
+	defer func() {
+		if errClose := controllerClient.Close(); errClose != nil {
+			logrus.WithError(errClose).Error("Failed to close controller client")
+		}
+	}()
 
 	replicas, err := controllerClient.ReplicaList()
 	if err != nil {
@@ -463,7 +482,11 @@ func cloneSnapshot(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	defer controllerClient.Close()
+	defer func() {
+		if errClose := controllerClient.Close(); errClose != nil {
+			logrus.WithError(errClose).Error("Failed to close controller client")
+		}
+	}()
 
 	volumeName := c.GlobalString("volume-name")
 	fromVolumeName := c.String("from-volume-name")
@@ -473,7 +496,11 @@ func cloneSnapshot(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	defer fromControllerClient.Close()
+	defer func() {
+		if errClose := fromControllerClient.Close(); errClose != nil {
+			logrus.WithError(errClose).Error("Failed to close from controller client")
+		}
+	}()
 
 	if err := sync.CloneSnapshot(controllerClient, fromControllerClient, volumeName, fromVolumeName,
 		snapshotName, exportBackingImageIfExist, fileSyncHTTPClientTimeout, grpcTimeoutSeconds); err != nil {
@@ -487,7 +514,11 @@ func cloneSnapshotStatus(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	defer controllerClient.Close()
+	defer func() {
+		if errClose := controllerClient.Close(); errClose != nil {
+			logrus.WithError(errClose).Error("Failed to close controller client")
+		}
+	}()
 
 	volumeName := c.GlobalString("volume-name")
 	statusMap, err := sync.CloneStatus(controllerClient, volumeName)

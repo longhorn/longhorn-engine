@@ -29,7 +29,12 @@ func lsReplica(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	defer controllerClient.Close()
+	defer func() {
+		if errClose := controllerClient.Close(); errClose != nil {
+			logrus.WithError(errClose).Error("Failed to close controller client")
+		}
+	}()
+
 	volumeName := c.GlobalString("volume-name")
 
 	reps, err := controllerClient.ReplicaList()
@@ -39,10 +44,10 @@ func lsReplica(c *cli.Context) error {
 
 	format := "%s\t%s\t%v\n"
 	tw := tabwriter.NewWriter(os.Stdout, 0, 20, 1, ' ', 0)
-	fmt.Fprintf(tw, format, "ADDRESS", "MODE", "CHAIN")
+	_, _ = fmt.Fprintf(tw, format, "ADDRESS", "MODE", "CHAIN")
 	for _, r := range reps {
 		if r.Mode == types.ERR {
-			fmt.Fprintf(tw, format, r.Address, r.Mode, "")
+			_, _ = fmt.Fprintf(tw, format, r.Address, r.Mode, "")
 			continue
 		}
 		chain := interface{}("")
@@ -50,9 +55,11 @@ func lsReplica(c *cli.Context) error {
 		if err == nil {
 			chain = chainList
 		}
-		fmt.Fprintf(tw, format, r.Address, r.Mode, chain)
+		_, _ = fmt.Fprintf(tw, format, r.Address, r.Mode, chain)
 	}
-	tw.Flush()
+	if errFlush := tw.Flush(); errFlush != nil {
+		logrus.WithError(errFlush).Error("Failed to flush")
+	}
 
 	return nil
 }
@@ -63,7 +70,11 @@ func getChain(address, volumeName string) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer repClient.Close()
+	defer func() {
+		if errClose := repClient.Close(); errClose != nil {
+			logrus.WithError(errClose).Errorf("Failed to close replica client for replica address %s", address)
+		}
+	}()
 
 	r, err := repClient.GetReplica()
 	if err != nil {

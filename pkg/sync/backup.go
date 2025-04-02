@@ -90,7 +90,11 @@ func (t *Task) createBackup(replicaInController *types.ControllerReplicaInfo, ba
 	if err != nil {
 		return nil, err
 	}
-	defer repClient.Close()
+	defer func() {
+		if errClose := repClient.Close(); errClose != nil {
+			logrus.WithError(errClose).Errorf("Failed to close replica client for replica address %v", replicaInController.Address)
+		}
+	}()
 
 	rep, err := repClient.GetReplica()
 	if err != nil {
@@ -276,7 +280,11 @@ func (t *Task) restoreBackup(replicaInController *types.ControllerReplicaInfo, b
 	if err != nil {
 		return err
 	}
-	defer repClient.Close()
+	defer func() {
+		if errClose := repClient.Close(); errClose != nil {
+			logrus.WithError(errClose).Errorf("Failed to close replica client for replica address %v", replicaInController.Address)
+		}
+	}()
 
 	if err := repClient.RestoreBackup(backup, snapshotFile, credential, concurrentLimit); err != nil {
 		return err

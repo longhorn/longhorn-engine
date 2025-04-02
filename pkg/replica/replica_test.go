@@ -40,7 +40,7 @@ func NewTestBackingFile(path string) (*TestBackingFile, error) {
 }
 
 func (f *TestBackingFile) Size() (int64, error) {
-	info, err := f.File.Stat()
+	info, err := f.Stat()
 	if err != nil {
 		return 0, err
 	}
@@ -56,11 +56,17 @@ var _ = Suite(&TestSuite{})
 func (s *TestSuite) TestCreate(c *C) {
 	dir, err := os.MkdirTemp("", "replica")
 	c.Assert(err, IsNil)
-	defer os.RemoveAll(dir)
+	defer func() {
+		errRemove := os.RemoveAll(dir)
+		c.Assert(errRemove, IsNil)
+	}()
 
 	r, err := New(context.Background(), 9, 3, dir, nil, false, false, 250, 0)
 	c.Assert(err, IsNil)
-	defer r.Close()
+	defer func() {
+		errClose := r.Close()
+		c.Assert(errClose, IsNil)
+	}()
 }
 
 func getNow() string {
@@ -72,11 +78,17 @@ func getNow() string {
 func (s *TestSuite) TestSnapshot(c *C) {
 	dir, err := os.MkdirTemp("", "replica")
 	c.Assert(err, IsNil)
-	defer os.RemoveAll(dir)
+	defer func() {
+		errRemove := os.RemoveAll(dir)
+		c.Assert(errRemove, IsNil)
+	}()
 
 	r, err := New(context.Background(), 9, 3, dir, nil, false, false, 250, 0)
 	c.Assert(err, IsNil)
-	defer r.Close()
+	defer func() {
+		errClose := r.Close()
+		c.Assert(errClose, IsNil)
+	}()
 
 	createdTime0 := getNow()
 
@@ -157,11 +169,17 @@ func (s *TestSuite) TestSnapshot(c *C) {
 func (s *TestSuite) TestRevert(c *C) {
 	dir, err := os.MkdirTemp("", "replica")
 	c.Assert(err, IsNil)
-	defer os.RemoveAll(dir)
+	defer func() {
+		errRemove := os.RemoveAll(dir)
+		c.Assert(errRemove, IsNil)
+	}()
 
 	r, err := New(context.Background(), 9, 3, dir, nil, false, false, 250, 0)
 	c.Assert(err, IsNil)
-	defer r.Close()
+	defer func() {
+		errClose := r.Close()
+		c.Assert(errClose, IsNil)
+	}()
 
 	createdTime0 := getNow()
 	err = r.Snapshot("000", true, createdTime0, nil)
@@ -269,11 +287,17 @@ func (s *TestSuite) TestRevert(c *C) {
 func (s *TestSuite) TestRemoveLeafNode(c *C) {
 	dir, err := os.MkdirTemp("", "replica")
 	c.Assert(err, IsNil)
-	defer os.RemoveAll(dir)
+	defer func() {
+		errRemove := os.RemoveAll(dir)
+		c.Assert(errRemove, IsNil)
+	}()
 
 	r, err := New(context.Background(), 9, 3, dir, nil, false, false, 250, 0)
 	c.Assert(err, IsNil)
-	defer r.Close()
+	defer func() {
+		errClose := r.Close()
+		c.Assert(errClose, IsNil)
+	}()
 
 	now := getNow()
 	err = r.Snapshot("000", true, now, nil)
@@ -344,11 +368,17 @@ func (s *TestSuite) TestRemoveLeafNode(c *C) {
 func (s *TestSuite) TestRemoveLast(c *C) {
 	dir, err := os.MkdirTemp("", "replica")
 	c.Assert(err, IsNil)
-	defer os.RemoveAll(dir)
+	defer func() {
+		errRemove := os.RemoveAll(dir)
+		c.Assert(errRemove, IsNil)
+	}()
 
 	r, err := New(context.Background(), 9, 3, dir, nil, false, false, 250, 0)
 	c.Assert(err, IsNil)
-	defer r.Close()
+	defer func() {
+		errClose := r.Close()
+		c.Assert(errClose, IsNil)
+	}()
 
 	now := getNow()
 	err = r.Snapshot("000", true, now, nil)
@@ -390,11 +420,17 @@ func (s *TestSuite) TestRemoveLast(c *C) {
 func (s *TestSuite) TestRemoveMiddle(c *C) {
 	dir, err := os.MkdirTemp("", "replica")
 	c.Assert(err, IsNil)
-	defer os.RemoveAll(dir)
+	defer func() {
+		errRemove := os.RemoveAll(dir)
+		c.Assert(errRemove, IsNil)
+	}()
 
 	r, err := New(context.Background(), 9, 3, dir, nil, false, false, 250, 0)
 	c.Assert(err, IsNil)
-	defer r.Close()
+	defer func() {
+		errClose := r.Close()
+		c.Assert(errClose, IsNil)
+	}()
 
 	now := getNow()
 	err = r.Snapshot("000", true, now, nil)
@@ -436,11 +472,17 @@ func (s *TestSuite) TestRemoveMiddle(c *C) {
 func (s *TestSuite) TestRemoveFirst(c *C) {
 	dir, err := os.MkdirTemp("", "replica")
 	c.Assert(err, IsNil)
-	defer os.RemoveAll(dir)
+	defer func() {
+		errRemove := os.RemoveAll(dir)
+		c.Assert(errRemove, IsNil)
+	}()
 
 	r, err := New(context.Background(), 9, 3, dir, nil, false, false, 250, 0)
 	c.Assert(err, IsNil)
-	defer r.Close()
+	defer func() {
+		errClose := r.Close()
+		c.Assert(errClose, IsNil)
+	}()
 
 	now := getNow()
 	err = r.Snapshot("000", true, now, nil)
@@ -467,11 +509,17 @@ func (s *TestSuite) TestRemoveFirst(c *C) {
 func (s *TestSuite) TestRemoveOutOfChain(c *C) {
 	dir, err := os.MkdirTemp("", "replica")
 	c.Assert(err, IsNil)
-	defer os.RemoveAll(dir)
+	defer func() {
+		errRemove := os.RemoveAll(dir)
+		c.Assert(errRemove, IsNil)
+	}()
 
 	r, err := New(context.Background(), 9, 3, dir, nil, false, false, 250, 0)
 	c.Assert(err, IsNil)
-	defer r.Close()
+	defer func() {
+		errClose := r.Close()
+		c.Assert(errClose, IsNil)
+	}()
 
 	now := getNow()
 	err = r.Snapshot("000", true, now, nil)
@@ -543,11 +591,17 @@ func (s *TestSuite) TestRemoveOutOfChain(c *C) {
 func (s *TestSuite) TestPrepareRemove(c *C) {
 	dir, err := os.MkdirTemp("", "replica")
 	c.Assert(err, IsNil)
-	defer os.RemoveAll(dir)
+	defer func() {
+		errRemove := os.RemoveAll(dir)
+		c.Assert(errRemove, IsNil)
+	}()
 
 	r, err := New(context.Background(), 9, 3, dir, nil, false, false, 250, 0)
 	c.Assert(err, IsNil)
-	defer r.Close()
+	defer func() {
+		errClose := r.Close()
+		c.Assert(errClose, IsNil)
+	}()
 
 	now := getNow()
 	err = r.Snapshot("000", true, now, nil)
@@ -683,11 +737,17 @@ func fill(buf []byte, val byte) {
 func (s *TestSuite) TestRead(c *C) {
 	dir, err := os.MkdirTemp("", "replica")
 	c.Assert(err, IsNil)
-	defer os.RemoveAll(dir)
+	defer func() {
+		errRemove := os.RemoveAll(dir)
+		c.Assert(errRemove, IsNil)
+	}()
 
 	r, err := New(context.Background(), 9*b, b, dir, nil, false, false, 250, 0)
 	c.Assert(err, IsNil)
-	defer r.Close()
+	defer func() {
+		errClose := r.Close()
+		c.Assert(errClose, IsNil)
+	}()
 
 	buf := make([]byte, 3*b)
 	_, err = r.ReadAt(buf, 0)
@@ -698,7 +758,10 @@ func (s *TestSuite) TestRead(c *C) {
 func (s *TestSuite) TestReadBackingFileSmallerThanVolume(c *C) {
 	dir, err := os.MkdirTemp("", "replica")
 	c.Assert(err, IsNil)
-	defer os.RemoveAll(dir)
+	defer func() {
+		errRemove := os.RemoveAll(dir)
+		c.Assert(errRemove, IsNil)
+	}()
 
 	// Test read from BackingImage which is smaller than Volume
 	// BackinImage: [0:3b], Volume: [0:5b]
@@ -707,7 +770,10 @@ func (s *TestSuite) TestReadBackingFileSmallerThanVolume(c *C) {
 
 	f, err := NewTestBackingFile(path.Join(dir, "backing"))
 	c.Assert(err, IsNil)
-	defer f.Close()
+	defer func() {
+		errClose := f.Close()
+		c.Assert(errClose, IsNil)
+	}()
 	_, err = f.Write(buf)
 	c.Assert(err, IsNil)
 
@@ -718,7 +784,10 @@ func (s *TestSuite) TestReadBackingFileSmallerThanVolume(c *C) {
 
 	r, err := New(context.Background(), 5*b, b, dir, backing, false, false, 250, 0)
 	c.Assert(err, IsNil)
-	defer r.Close()
+	defer func() {
+		errClose := r.Close()
+		c.Assert(errClose, IsNil)
+	}()
 
 	// Test Case 1: read within BackingImage boundary (read [1b:3b])
 	expectedData := make([]byte, 2*b)
@@ -795,11 +864,17 @@ func (s *TestSuite) TestReadBackingFileSmallerThanVolume(c *C) {
 func (s *TestSuite) TestWrite(c *C) {
 	dir, err := os.MkdirTemp("", "replica")
 	c.Assert(err, IsNil)
-	defer os.RemoveAll(dir)
+	defer func() {
+		errRemove := os.RemoveAll(dir)
+		c.Assert(errRemove, IsNil)
+	}()
 
 	r, err := New(context.Background(), 9*b, b, dir, nil, false, false, 250, 0)
 	c.Assert(err, IsNil)
-	defer r.Close()
+	defer func() {
+		errClose := r.Close()
+		c.Assert(errClose, IsNil)
+	}()
 
 	buf := make([]byte, 9*b)
 	fill(buf, 1)
@@ -817,11 +892,17 @@ func (s *TestSuite) TestSnapshotReadWrite(c *C) {
 	dir, err := os.MkdirTemp("", "replica")
 	c.Logf("Volume: %s", dir)
 	c.Assert(err, IsNil)
-	defer os.RemoveAll(dir)
+	defer func() {
+		errRemove := os.RemoveAll(dir)
+		c.Assert(errRemove, IsNil)
+	}()
 
 	r, err := New(context.Background(), 3*b, b, dir, nil, false, false, 250, 0)
 	c.Assert(err, IsNil)
-	defer r.Close()
+	defer func() {
+		errClose := r.Close()
+		c.Assert(errClose, IsNil)
+	}()
 
 	buf := make([]byte, 3*b)
 	fill(buf, 3)
@@ -865,14 +946,20 @@ func (s *TestSuite) TestBackingFile(c *C) {
 	dir, err := os.MkdirTemp("", "replica")
 	c.Logf("Volume: %s", dir)
 	c.Assert(err, IsNil)
-	defer os.RemoveAll(dir)
+	defer func() {
+		errRemove := os.RemoveAll(dir)
+		c.Assert(errRemove, IsNil)
+	}()
 
 	buf := make([]byte, 3*b)
 	fill(buf, 3)
 
 	f, err := NewTestBackingFile(path.Join(dir, "backing"))
 	c.Assert(err, IsNil)
-	defer f.Close()
+	defer func() {
+		errClose := f.Close()
+		c.Assert(errClose, IsNil)
+	}()
 	_, err = f.Write(buf)
 	c.Assert(err, IsNil)
 
@@ -883,7 +970,10 @@ func (s *TestSuite) TestBackingFile(c *C) {
 
 	r, err := New(context.Background(), 3*b, b, dir, backing, false, false, 250, 0)
 	c.Assert(err, IsNil)
-	defer r.Close()
+	defer func() {
+		errClose := r.Close()
+		c.Assert(errClose, IsNil)
+	}()
 
 	chain, err := r.Chain()
 	c.Assert(err, IsNil)
@@ -909,14 +999,20 @@ func (s *TestSuite) partialWriteRead(c *C, totalLength, writeLength, writeOffset
 	dir, err := os.MkdirTemp("", "replica")
 	c.Logf("Volume: %s", dir)
 	c.Assert(err, IsNil)
-	defer os.RemoveAll(dir)
+	defer func() {
+		errRemove := os.RemoveAll(dir)
+		c.Assert(errRemove, IsNil)
+	}()
 
 	buf := make([]byte, totalLength)
 	fill(buf, 3)
 
 	r, err := New(context.Background(), totalLength, b, dir, nil, false, false, 250, 0)
 	c.Assert(err, IsNil)
-	defer r.Close()
+	defer func() {
+		errClose := r.Close()
+		c.Assert(errClose, IsNil)
+	}()
 
 	_, err = r.WriteAt(buf, 0)
 	c.Assert(err, IsNil)
@@ -957,14 +1053,20 @@ func (s *TestSuite) testPartialRead(c *C, totalLength int64, readBuf []byte, off
 	dir, err := os.MkdirTemp("", "replica")
 	fmt.Printf("Volume: %s\n", dir)
 	c.Assert(err, IsNil)
-	defer os.RemoveAll(dir)
+	defer func() {
+		errRemove := os.RemoveAll(dir)
+		c.Assert(errRemove, IsNil)
+	}()
 
 	buf := make([]byte, totalLength)
 	fill(buf, 3)
 
 	r, err := New(context.Background(), totalLength, b, dir, nil, false, false, 250, 0)
 	c.Assert(err, IsNil)
-	defer r.Close()
+	defer func() {
+		errClose := r.Close()
+		c.Assert(errClose, IsNil)
+	}()
 
 	for i := int64(0); i < totalLength; i += b {
 		buf := make([]byte, totalLength-i)
@@ -975,7 +1077,7 @@ func (s *TestSuite) testPartialRead(c *C, totalLength int64, readBuf []byte, off
 		c.Assert(err, IsNil)
 	}
 
-	fmt.Println("Starting partialRead", r.volume.location)
+	fmt.Println("Starting partialRead", string(r.volume.location))
 	return r.ReadAt(readBuf, offset)
 }
 
@@ -1031,11 +1133,17 @@ func (s *TestSuite) TestPartialReadZeroEndOffset(c *C) {
 func (s *TestSuite) TestForceRemoveDiffDisk(c *C) {
 	dir, err := os.MkdirTemp("", "replica")
 	c.Assert(err, IsNil)
-	defer os.RemoveAll(dir)
+	defer func() {
+		errRemove := os.RemoveAll(dir)
+		c.Assert(errRemove, IsNil)
+	}()
 
 	r, err := New(context.Background(), 9, 3, dir, nil, false, false, 250, 0)
 	c.Assert(err, IsNil)
-	defer r.Close()
+	defer func() {
+		errClose := r.Close()
+		c.Assert(errClose, IsNil)
+	}()
 
 	now := getNow()
 	err = r.Snapshot("000", true, now, nil)
@@ -1075,11 +1183,17 @@ func (s *TestSuite) TestForceRemoveDiffDisk(c *C) {
 func (s *TestSuite) TestUnmapMarkDiskRemoved(c *C) {
 	dir, err := os.MkdirTemp("", "replica")
 	c.Assert(err, IsNil)
-	defer os.RemoveAll(dir)
+	defer func() {
+		errRemove := os.RemoveAll(dir)
+		c.Assert(errRemove, IsNil)
+	}()
 
 	r, err := New(context.Background(), 9, 3, dir, nil, false, true, 250, 0)
 	c.Assert(err, IsNil)
-	defer r.Close()
+	defer func() {
+		errClose := r.Close()
+		c.Assert(errClose, IsNil)
+	}()
 
 	now := getNow()
 	err = r.Snapshot("000", true, now, nil)
@@ -1126,11 +1240,17 @@ func (s *TestSuite) TestUnmapMarkDiskRemoved(c *C) {
 func (s *TestSuite) TestUnmap(c *C) {
 	dir, err := os.MkdirTemp("", "replica")
 	c.Assert(err, IsNil)
-	defer os.RemoveAll(dir)
+	defer func() {
+		errRemove := os.RemoveAll(dir)
+		c.Assert(errRemove, IsNil)
+	}()
 
 	r, err := New(context.Background(), 8*b, b, dir, nil, false, false, 250, 0)
 	c.Assert(err, IsNil)
-	defer r.Close()
+	defer func() {
+		errClose := r.Close()
+		c.Assert(errClose, IsNil)
+	}()
 
 	buf := make([]byte, 8*b)
 	fill(buf, 1)

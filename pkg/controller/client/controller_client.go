@@ -4,13 +4,17 @@ import (
 	"fmt"
 	"time"
 
-	"github.com/longhorn/types/pkg/generated/enginerpc"
+	"github.com/sirupsen/logrus"
+
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
-	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/protobuf/types/known/emptypb"
+
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
+
+	"github.com/longhorn/types/pkg/generated/enginerpc"
 
 	"github.com/longhorn/longhorn-engine/pkg/interceptor"
 	"github.com/longhorn/longhorn-engine/pkg/meta"
@@ -416,7 +420,12 @@ func (c *ControllerClient) Check() error {
 	if err != nil {
 		return errors.Wrapf(err, "cannot connect to ControllerService %v", c.serviceURL)
 	}
-	defer conn.Close()
+	defer func() {
+		if errClose := conn.Close(); errClose != nil {
+			logrus.WithError(errClose).Errorf("Failed to close controller client for %v", c.serviceURL)
+		}
+	}()
+
 	// TODO: JM we can reuse the controller service context connection for the health requests
 	healthCheckClient := healthpb.NewHealthClient(conn)
 

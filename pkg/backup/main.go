@@ -197,11 +197,16 @@ func DoBackupRestoreIncrementally(url string, deltaFile string, lastRestored str
 }
 
 func CreateNewSnapshotMetafile(file string) error {
-	f, err := os.Create(file + ".tmp")
+	path := file + ".tmp"
+	f, err := os.Create(path)
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() {
+		if errClose := f.Close(); errClose != nil {
+			logrus.WithError(errClose).Errorf("Failed to close file %v", path)
+		}
+	}()
 
 	content := "{\"Parent\":\"\"}\n"
 	if _, err := f.Write([]byte(content)); err != nil {
