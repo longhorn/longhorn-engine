@@ -196,12 +196,20 @@ func GetProcKernelConfigMap(procDir string) (configMap map[string]string, err er
 	if err != nil {
 		return nil, err
 	}
-	defer configFile.Close()
+	defer func() {
+		if errClose := configFile.Close(); errClose != nil {
+			logrus.WithError(errClose).Errorf("Failed to close config file %s", configPath)
+		}
+	}()
 	gzReader, err := gzip.NewReader(configFile)
 	if err != nil {
 		return nil, err
 	}
-	defer gzReader.Close()
+	defer func() {
+		if errClose := gzReader.Close(); errClose != nil {
+			logrus.WithError(errClose).Errorf("Failed to close gzip reader for config file %s", configPath)
+		}
+	}()
 	return parseKernelModuleConfigMap(gzReader)
 }
 
