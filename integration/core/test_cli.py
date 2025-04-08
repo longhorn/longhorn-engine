@@ -1312,9 +1312,11 @@ def test_engine_restart_after_sigkill(bin):  # NOQA
            '--label', 'name=snap1', '--label', 'key=value']
     snap1 = subprocess.check_output(cmd, encoding='utf-8').strip()
 
-    cmd = ["bash", "-c",
-           "kill -9 $(ps aux | grep %s | grep -v grep | awk '{print $2}')" %
-           VOLUME_NAME]
+    cmd = [
+        "bash", "-c",
+        (f"kill -9 $(ps aux -www | grep {VOLUME_NAME} | grep -v grep | "
+         "awk '{{print $2}}')")
+    ]
     subprocess.check_call(cmd)
     wait_for_process_error(em_client, ENGINE_NAME)
 
