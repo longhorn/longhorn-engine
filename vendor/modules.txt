@@ -161,7 +161,7 @@ github.com/kr/pretty
 # github.com/kr/text v0.2.0
 ## explicit
 github.com/kr/text
-# github.com/longhorn/backupstore v0.0.0-20250419065723-9289038cc8a5
+# github.com/longhorn/backupstore v0.0.0-20250421031654-0ef762b84472
 ## explicit; go 1.23.0
 github.com/longhorn/backupstore
 github.com/longhorn/backupstore/azblob
