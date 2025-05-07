@@ -1,7 +1,7 @@
 FROM registry.suse.com/bci/bci-base:15.6 AS builder
 
 ARG ARCH=amd64
-ARG SRC_BRANCH=main
+ARG SRC_BRANCH=master
 ARG SRC_TAG
 
 RUN zypper -n ref && \

@@ -1,7 +1,7 @@
 FROM registry.suse.com/bci/golang:1.24
 
 ARG DAPPER_HOST_ARCH
-ARG SRC_BRANCH=main
+ARG SRC_BRANCH=master
 ARG SRC_TAG
 ARG http_proxy
 ARG https_proxy
