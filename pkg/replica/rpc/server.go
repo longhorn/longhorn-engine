@@ -290,3 +290,13 @@ func (hc *ReplicaHealthCheckServer) Watch(req *healthpb.HealthCheckRequest, ws h
 		Status: healthpb.HealthCheckResponse_NOT_SERVING,
 	})
 }
+
+func (hc *ReplicaHealthCheckServer) List(context.Context, *healthpb.HealthListRequest) (*healthpb.HealthListResponse, error) {
+	return &healthpb.HealthListResponse{
+		Statuses: map[string]*healthpb.HealthCheckResponse{
+			"grpc": {
+				Status: healthpb.HealthCheckResponse_SERVING,
+			},
+		},
+	}, nil
+}
