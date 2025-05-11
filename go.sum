@@ -78,10 +78,10 @@ github.com/kylelemons/godebug v1.1.0 h1:RPNrshWIDI6G2gRW9EHilWtl7Z6Sb1BR0xunSBf0
 github.com/kylelemons/godebug v1.1.0/go.mod h1:9/0rRGxNHcop5bhtWyNeEfOS8JIWk580+fNqagV/RAw=
 github.com/longhorn/backupstore v0.0.0-20250421031654-0ef762b84472 h1:nKpF/SLYj9Gw6PJPsuz23OxjHhe7iT8ObIN8NUSZhtE=
 github.com/longhorn/backupstore v0.0.0-20250421031654-0ef762b84472/go.mod h1:pcMa85HhY/6QuPOMYx/THntdmkxyXa1p1RAOsXFen/8=
-github.com/longhorn/go-common-libs v0.0.0-20250419062810-2bdafe8e7f4e h1:Pw6nJB8C8wB6usM7bSkGhYxbWaa/SNESh1yoFboazuY=
-github.com/longhorn/go-common-libs v0.0.0-20250419062810-2bdafe8e7f4e/go.mod h1:O5c6VGDM2EiYdBmaz9DlVf0o4vvBf1bJaF4m1aQ1kvU=
-github.com/longhorn/go-iscsi-helper v0.0.0-20250425050615-1de428a1281a h1:rvUgmO0v6LTpIqoGn0n3nLFmchHyvoVZ8EePnt4bEqA=
-github.com/longhorn/go-iscsi-helper v0.0.0-20250425050615-1de428a1281a/go.mod h1:6otI70HGdPUKJTRHCU9qlcpFJO6b5LXSrVWy3pciNww=
+github.com/longhorn/go-common-libs v0.0.0-20250510103049-801acb30430c h1:/ZCU7cI9rRiLgDusbxFKy2qVO4A72cEBFjzESgC6dXs=
+github.com/longhorn/go-common-libs v0.0.0-20250510103049-801acb30430c/go.mod h1:jmpkf0LHUnYAzc57uzfCzMnnYgtaWn1qounGJOlpjNo=
+github.com/longhorn/go-iscsi-helper v0.0.0-20250507091512-6de0af5cd997 h1:0hkdqWH6gjr46lQsybaRac/3fFORCZI2LFwUoPDbCPY=
+github.com/longhorn/go-iscsi-helper v0.0.0-20250507091512-6de0af5cd997/go.mod h1:6otI70HGdPUKJTRHCU9qlcpFJO6b5LXSrVWy3pciNww=
 github.com/longhorn/sparse-tools v0.0.0-20241216160947-2b328f0fa59c h1:OFz3haCSPdgiiJvXLBeId/4dPu0dxIEqkQkfNMufLwc=
 github.com/longhorn/sparse-tools v0.0.0-20241216160947-2b328f0fa59c/go.mod h1:dfbJqfI8+T9ZCp5zhTYcBi/64hPBNt5/vFF3gTlfMmc=
 github.com/longhorn/types v0.0.0-20250416235128-0c407ad2b792 h1:+KWYQQKGCBnoy7Our2ryJ9HtUksKf3OPaLVMfsxPzMk=
@@ -178,8 +178,8 @@ golang.org/x/crypto v0.0.0-20191011191535-87dc89f01550/go.mod h1:yigFU9vqHzYiE8U
 golang.org/x/crypto v0.0.0-20200622213623-75b288015ac9/go.mod h1:LzIPMQfyMNhhGPhUkYOs5KpL4U8rLKemX1yGLhDgUto=
 golang.org/x/crypto v0.38.0 h1:jt+WWG8IZlBnVbomuhg2Mdq0+BBQaHbtqHEFEigjUV8=
 golang.org/x/crypto v0.38.0/go.mod h1:MvrbAqul58NNYPKnOra203SB9vpuZW0e+RRZV+Ggqjw=
-golang.org/x/exp v0.0.0-20250408133849-7e4ce0ab07d0 h1:R84qjqJb5nVJMxqWYb3np9L5ZsaDtB+a39EqjV0JSUM=
-golang.org/x/exp v0.0.0-20250408133849-7e4ce0ab07d0/go.mod h1:S9Xr4PYopiDyqSyp5NjCrhFrqg6A5zA2E/iPHPhqnS8=
+golang.org/x/exp v0.0.0-20250506013437-ce4c2cf36ca6 h1:y5zboxd6LQAqYIhHnB48p0ByQ/GnQx2BE33L8BOHQkI=
+golang.org/x/exp v0.0.0-20250506013437-ce4c2cf36ca6/go.mod h1:U6Lno4MTRCDY+Ba7aCcauB9T60gsv5s4ralQzP72ZoQ=
 golang.org/x/mod v0.3.0/go.mod h1:s0Qsj1ACt9ePp/hMypM3fl4fZqREWJwdYDEqhRiZZUA=
 golang.org/x/net v0.0.0-20181201002055-351d144fa1fc/go.mod h1:mL1N/T3taQHkDXs73rZJwtUhF3w3ftmwwsq0BUmARs4=
 golang.org/x/net v0.0.0-20190404232315-eb5bcb51f2a3/go.mod h1:t9HGtf8HONx5eT2rtn7q6eTqICYqUVnKs3thJo3Qplg=
