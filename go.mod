@@ -10,7 +10,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
-	github.com/longhorn/backupstore v0.0.0-20250421031654-0ef762b84472
+	github.com/longhorn/backupstore v0.0.0-20250513044119-966fecd6b927
 	github.com/longhorn/go-common-libs v0.0.0-20250510103049-801acb30430c
 	github.com/longhorn/go-iscsi-helper v0.0.0-20250511111123-ceffe5d4a273
 	github.com/longhorn/sparse-tools v0.0.0-20241216160947-2b328f0fa59c
@@ -23,18 +23,18 @@ require (
 	github.com/urfave/cli v1.22.16
 	golang.org/x/net v0.40.0
 	golang.org/x/sys v0.33.0
-	google.golang.org/grpc v1.72.0
+	google.golang.org/grpc v1.72.1
 	google.golang.org/protobuf v1.36.6
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 	gopkg.in/cheggaaa/pb.v2 v2.0.7
-	k8s.io/mount-utils v0.33.0
+	k8s.io/mount-utils v0.33.1
 )
 
 require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.16.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.10.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.5.0 // indirect
-	github.com/aws/aws-sdk-go v1.55.6 // indirect
+	github.com/aws/aws-sdk-go v1.55.7 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/c9s/goprocinfo v0.0.0-20210130143923-c95fcf8c64a8 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect

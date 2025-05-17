@@ -40,7 +40,7 @@ github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/internal/shared
 github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/pageblob
 github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/sas
 github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/service
-# github.com/aws/aws-sdk-go v1.55.6
+# github.com/aws/aws-sdk-go v1.55.7
 ## explicit; go 1.19
 github.com/aws/aws-sdk-go/aws
 github.com/aws/aws-sdk-go/aws/arn
@@ -155,7 +155,7 @@ github.com/kr/pretty
 # github.com/kr/text v0.2.0
 ## explicit
 github.com/kr/text
-# github.com/longhorn/backupstore v0.0.0-20250421031654-0ef762b84472
+# github.com/longhorn/backupstore v0.0.0-20250513044119-966fecd6b927
 ## explicit; go 1.23.0
 github.com/longhorn/backupstore
 github.com/longhorn/backupstore/azblob
@@ -314,7 +314,7 @@ golang.org/x/text/unicode/norm
 # google.golang.org/genproto/googleapis/rpc v0.0.0-20250218202821-56aae31c358a
 ## explicit; go 1.22
 google.golang.org/genproto/googleapis/rpc/status
-# google.golang.org/grpc v1.72.0
+# google.golang.org/grpc v1.72.1
 ## explicit; go 1.23
 google.golang.org/grpc
 google.golang.org/grpc/attributes
@@ -458,7 +458,7 @@ k8s.io/klog/v2/internal/dbg
 k8s.io/klog/v2/internal/serialize
 k8s.io/klog/v2/internal/severity
 k8s.io/klog/v2/internal/sloghandler
-# k8s.io/mount-utils v0.33.0
+# k8s.io/mount-utils v0.33.1
 ## explicit; go 1.24.0
 k8s.io/mount-utils
 # k8s.io/utils v0.0.0-20241210054802-24370beab758
