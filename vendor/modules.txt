@@ -172,7 +172,7 @@ github.com/longhorn/backupstore/systembackup
 github.com/longhorn/backupstore/types
 github.com/longhorn/backupstore/util
 github.com/longhorn/backupstore/vfs
-# github.com/longhorn/go-common-libs v0.0.0-20250510103049-801acb30430c
+# github.com/longhorn/go-common-libs v0.0.0-20250524033713-74041234ac93
 ## explicit; go 1.23.0
 github.com/longhorn/go-common-libs/backup
 github.com/longhorn/go-common-libs/exec
@@ -199,7 +199,7 @@ github.com/longhorn/sparse-tools/sparse/rest
 github.com/longhorn/sparse-tools/stats
 github.com/longhorn/sparse-tools/types
 github.com/longhorn/sparse-tools/util
-# github.com/longhorn/types v0.0.0-20250416235128-0c407ad2b792
+# github.com/longhorn/types v0.0.0-20250519005747-57ce2e5a3ee5
 ## explicit; go 1.22.7
 github.com/longhorn/types/pkg/generated/enginerpc
 github.com/longhorn/types/pkg/generated/profilerrpc
