@@ -21,7 +21,7 @@ const (
 	frontendName = "ublk"
 
 	SocketDirectory = "/var/run"
-	DevPath         = "/dev/longhorn/"
+	DeviceDirectory = "/dev/longhorn/"
 )
 
 func New(frontendQueues int) *Ublk {
@@ -36,6 +36,7 @@ type Ublk struct {
 	QueueDepth int
 	BlockSize  int
 	DaemonPId  int
+	DevicePath string
 
 	isUp         bool
 	socketPath   string
@@ -49,6 +50,7 @@ func (u *Ublk) FrontendName() string {
 func (u *Ublk) Init(name string, size, sectorSize int64) error {
 	u.Volume = name
 	u.Size = size
+	u.DevicePath = ""
 
 	return nil
 }
@@ -91,9 +93,26 @@ func (u *Ublk) Startup(rwu types.ReaderWriterUnmapperAt) error {
 	}
 	go func() {
 		err := u.StartUblk()
+		u.DevicePath = "/dev/ublkb" + strconv.Itoa(u.UblkID)
+
 		if err != nil {
 			logrus.Errorf("Failed to start ublk: %v", err)
 		}
+		// Create symlink
+		devicePath := u.GetDevicePath()
+		logrus.Infof("linking %v to %v", devicePath, u.DevicePath)
+		if err := os.MkdirAll(DeviceDirectory, os.ModePerm); err != nil {
+			logrus.Errorf("Failed to create device directory %v: %v", DeviceDirectory, err)
+			return
+		}
+		if _, err := os.Lstat(devicePath); err == nil {
+			os.Remove(devicePath)
+		}
+		if err := os.Symlink(u.DevicePath, devicePath); err != nil {
+			logrus.Errorf("Failed to create symlink %v -> %v: %v", u.DevicePath, devicePath, err)
+			return
+		}
+
 	}()
 
 	return nil
@@ -247,4 +266,12 @@ func (u *Ublk) Upgrade(name string, size, sectorSize int64, rwu types.ReaderWrit
 
 func (u *Ublk) Expand(size int64) error {
 	return fmt.Errorf("expand is not supported")
+}
+
+func (u *Ublk) GetDevicePath() string {
+
+	if u.Volume == "" {
+		panic("Invalid volume name")
+	}
+	return filepath.Join(DeviceDirectory, u.Volume)
 }
