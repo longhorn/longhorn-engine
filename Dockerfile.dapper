@@ -38,7 +38,7 @@ RUN zypper -n install cmake curl git less file gcc python311 python311-pip pytho
     bash-completion librdmacm1 librdmacm-utils libibverbs xsltproc docbook-xsl-stylesheets \
     perl-Config-General libaio-devel glibc-devel-static glibc-devel sg3_utils iptables libltdl7 \
     libdevmapper1_03 iproute2 jq unzip zlib-devel zlib-devel-static \
-    rpm-build rdma-core-devel gcc-c++ docker open-iscsi && \
+    rpm-build rdma-core-devel gcc-c++ docker open-iscsi e2fsprogs && \
     rm -rf /var/cache/zypp/*
 
 # Install golangci-lint
