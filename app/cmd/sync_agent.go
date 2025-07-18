@@ -58,6 +58,7 @@ func SyncAgentServerResetCmd() cli.Command {
 }
 
 func startSyncAgent(c *cli.Context) error {
+	logrus.Infof(">>> Starting sync-agent server command")
 	listenPort := c.String("listen")
 	portRange := c.String("listen-port-range")
 	replicaAddress := c.String("replica")
