@@ -7,6 +7,7 @@ import (
 )
 
 const (
+<<<<<<< HEAD
 	LogFieldVolume       = "volume"
 	LogFieldVolumeDev    = "volume_dev"
 	LogFieldVolumeName   = "volume_name"
@@ -21,6 +22,25 @@ const (
 	LogFieldSourceURL    = "source_url"
 	LogFieldKind         = "kind"
 	LogFieldFilepath     = "filepath"
+=======
+	LogFieldVolume            = "volume"
+	LogFieldDataEngine        = "data_engine"
+	LogFieldSrcVolume         = "source_volume"
+	LogFieldDstVolumeDev      = "destination_volume_dev"
+	LogFieldSnapshot          = "snapshot"
+	LogFieldLastSnapshot      = "last_snapshot"
+	LogFieldBackup            = "backup"
+	LogFieldBackupType        = "backup_type"
+	LogFieldLastBackup        = "last_backup"
+	LogFieldCompressionMethod = "compression_method"
+	LogFieldBackupURL         = "backup_url"
+	LogFieldDestURL           = "dest_url"
+	LogFieldSourceURL         = "source_url"
+	LogFieldKind              = "kind"
+	LogFieldFilepath          = "filepath"
+	LogFieldConcurrentLimit   = "concurrent_limit"
+	LogFieldBackupBlockSize   = "backup_block_size"
+>>>>>>> 3932ded (feat(backup): configurable bkup block size)
 
 	LogFieldEvent        = "event"
 	LogEventBackup       = "backup"
