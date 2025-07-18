@@ -111,9 +111,6 @@ github.com/docker/go-units
 # github.com/felixge/httpsnoop v1.0.4
 ## explicit; go 1.13
 github.com/felixge/httpsnoop
-# github.com/fxamacker/cbor/v2 v2.7.0
-## explicit; go 1.17
-github.com/fxamacker/cbor/v2
 # github.com/gammazero/deque v0.2.1
 ## explicit; go 1.18
 github.com/gammazero/deque
@@ -290,9 +287,6 @@ github.com/slok/goresilience/timeout
 # github.com/urfave/cli v1.22.17
 ## explicit; go 1.11
 github.com/urfave/cli
-# github.com/x448/float16 v0.8.4
-## explicit; go 1.11
-github.com/x448/float16
 # github.com/yusufpapurcu/wmi v1.2.4
 ## explicit; go 1.16
 github.com/yusufpapurcu/wmi
@@ -460,11 +454,9 @@ gopkg.in/mattn/go-isatty.v0
 gopkg.in/mattn/go-runewidth.v0
 # gotest.tools/v3 v3.4.0
 ## explicit; go 1.13
-# k8s.io/apimachinery v0.31.3
-## explicit; go 1.22.0
+# k8s.io/apimachinery v0.28.15
+## explicit; go 1.20
 k8s.io/apimachinery/pkg/api/resource
-k8s.io/apimachinery/pkg/runtime/serializer/cbor/direct
-k8s.io/apimachinery/pkg/runtime/serializer/cbor/internal/modes
 k8s.io/apimachinery/pkg/util/runtime
 k8s.io/apimachinery/pkg/util/wait
 # k8s.io/klog/v2 v2.130.1
