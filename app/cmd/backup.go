@@ -4,13 +4,17 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
+	"k8s.io/apimachinery/pkg/api/resource"
 
+	"github.com/longhorn/backupstore"
 	"github.com/longhorn/backupstore/cmd"
 	butil "github.com/longhorn/backupstore/util"
+	lhbackup "github.com/longhorn/go-common-libs/backup"
 
 	replicaClient "github.com/longhorn/longhorn-engine/pkg/replica/client"
 	"github.com/longhorn/longhorn-engine/pkg/sync"
@@ -79,6 +83,11 @@ func BackupCreateCmd() cli.Command {
 			cli.IntFlag{
 				Name:  "storage-class-name",
 				Usage: "Storage class name of the pv binding with the volume",
+			},
+			cli.StringFlag{
+				Name:  "backup-block-size",
+				Usage: "Backup block size quantity",
+				Value: backupstore.DEFAULT_BLOCK_SIZE_QUANTITY,
 			},
 		},
 		Action: func(c *cli.Context) {
@@ -286,6 +295,13 @@ func createBackup(c *cli.Context) error {
 	url := c.GlobalString("url")
 	volumeName := c.GlobalString("volume-name")
 	engineInstanceName := c.GlobalString("engine-instance-name")
+
+	if quantity, parseErr := resource.ParseQuantity(c.String("backup-block-size")); parseErr != nil {
+		return fmt.Errorf("cannot parse backup block size: %w", parseErr)
+	} else {
+		parameters[lhbackup.LonghornBackupParameterBackupBlockSize] = strconv.FormatInt(quantity.Value(), 10)
+	}
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	task, err := sync.NewTask(ctx, url, volumeName, engineInstanceName)
