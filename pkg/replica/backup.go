@@ -161,7 +161,7 @@ func (rb *BackupStatus) CloseSnapshot(snapID, volumeID string) error {
 	return err
 }
 
-func (rb *BackupStatus) CompareSnapshot(snapID, compareSnapID, volumeID string) (*btypes.Mappings, error) {
+func (rb *BackupStatus) CompareSnapshot(snapID, compareSnapID, volumeID string, blockSize int64) (*btypes.Mappings, error) {
 	id := diskutil.GenerateSnapshotDiskName(snapID)
 	compareID := ""
 	if compareSnapID != "" {
@@ -188,7 +188,7 @@ func (rb *BackupStatus) CompareSnapshot(snapID, compareSnapID, volumeID string) 
 	}
 
 	mappings := &btypes.Mappings{
-		BlockSize: backupBlockSize,
+		BlockSize: blockSize,
 	}
 	mapping := btypes.Mapping{
 		Offset: -1,
@@ -202,11 +202,11 @@ func (rb *BackupStatus) CompareSnapshot(snapID, compareSnapID, volumeID string) 
 		if val <= byte(from) && val > byte(to) {
 			offset := int64(i) * rb.replica.volume.sectorSize
 			// align
-			offset -= (offset % backupBlockSize)
+			offset -= (offset % blockSize)
 			if mapping.Offset != offset {
 				mapping = btypes.Mapping{
 					Offset: offset,
-					Size:   backupBlockSize,
+					Size:   blockSize,
 				}
 				mappings.Mappings = append(mappings.Mappings, mapping)
 			}
