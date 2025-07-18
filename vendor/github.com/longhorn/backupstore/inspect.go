@@ -88,6 +88,7 @@ func fillBackupInfo(backup *Backup, destURL string) *BackupInfo {
 		SnapshotCreated:       backup.SnapshotCreatedAt,
 		Created:               backup.CreatedTime,
 		Size:                  backup.Size,
+		BlockSize:             backup.BlockSize,
 		Labels:                backup.Labels,
 		Parameters:            backup.Parameters,
 		IsIncremental:         backup.IsIncremental,

@@ -23,6 +23,7 @@ const (
 	LogFieldKind              = "kind"
 	LogFieldFilepath          = "filepath"
 	LogFieldConcurrentLimit   = "concurrent_limit"
+	LogFieldBackupBlockSize   = "backup_block_size"
 
 	LogFieldEvent        = "event"
 	LogEventBackup       = "backup"

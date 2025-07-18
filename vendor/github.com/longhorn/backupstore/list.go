@@ -38,6 +38,7 @@ type BackupInfo struct {
 	SnapshotCreated       string
 	Created               string
 	Size                  int64 `json:",string"`
+	BlockSize             int64 `json:",string"`
 	Labels                map[string]string
 	Parameters            map[string]string
 	IsIncremental         bool
