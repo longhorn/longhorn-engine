@@ -12,6 +12,8 @@ import (
 
 const (
 	mb = 1 << 20
+
+	defaultBackupBlockSize = 2 * mb
 )
 
 func (s *TestSuite) TestBackup(c *C) {
@@ -48,7 +50,7 @@ func (s *TestSuite) TestBackup(c *C) {
 	err = rb.OpenSnapshot(snap, volume)
 	c.Assert(err, IsNil)
 
-	mappings, err := rb.CompareSnapshot(snap, "", volume)
+	mappings, err := rb.CompareSnapshot(snap, "", volume, defaultBackupBlockSize)
 	c.Assert(err, IsNil)
 	c.Assert(len(mappings.Mappings), Equals, 2)
 	c.Assert(mappings.BlockSize, Equals, int64(2*mb))
@@ -174,7 +176,7 @@ func (s *TestSuite) testBackupWithBackups(c *C, backingFile *backingfile.Backing
 	c.Assert(err, IsNil)
 	md5Equals(c, readBuf, expected)
 
-	mappings, err := rb.CompareSnapshot(snap3, "", volume)
+	mappings, err := rb.CompareSnapshot(snap3, "", volume, defaultBackupBlockSize)
 	c.Assert(err, IsNil)
 	c.Assert(len(mappings.Mappings), Equals, 4)
 	c.Assert(mappings.BlockSize, Equals, int64(2*mb))
@@ -193,7 +195,7 @@ func (s *TestSuite) testBackupWithBackups(c *C, backingFile *backingfile.Backing
 	// Test 003 -> 002
 	err = rb.OpenSnapshot(snap3, volume)
 	c.Assert(err, IsNil)
-	mappings, err = rb.CompareSnapshot(snap3, snap2, volume)
+	mappings, err = rb.CompareSnapshot(snap3, snap2, volume, defaultBackupBlockSize)
 	c.Assert(err, IsNil)
 	c.Assert(len(mappings.Mappings), Equals, 2)
 	c.Assert(mappings.BlockSize, Equals, int64(2*mb))
@@ -222,7 +224,7 @@ func (s *TestSuite) testBackupWithBackups(c *C, backingFile *backingfile.Backing
 	c.Assert(err, IsNil)
 	md5Equals(c, readBuf, expected)
 
-	mappings, err = rb.CompareSnapshot(snap2, snap1, volume)
+	mappings, err = rb.CompareSnapshot(snap2, snap1, volume, defaultBackupBlockSize)
 	c.Assert(err, IsNil)
 	c.Assert(len(mappings.Mappings), Equals, 2)
 	c.Assert(mappings.BlockSize, Equals, int64(2*mb))
@@ -236,7 +238,7 @@ func (s *TestSuite) testBackupWithBackups(c *C, backingFile *backingfile.Backing
 	// Test 002 -> ""
 	err = rb.OpenSnapshot(snap2, volume)
 	c.Assert(err, IsNil)
-	mappings, err = rb.CompareSnapshot(snap2, "", volume)
+	mappings, err = rb.CompareSnapshot(snap2, "", volume, defaultBackupBlockSize)
 	c.Assert(err, IsNil)
 	c.Assert(len(mappings.Mappings), Equals, 3)
 	c.Assert(mappings.BlockSize, Equals, int64(2*mb))
@@ -265,7 +267,7 @@ func (s *TestSuite) testBackupWithBackups(c *C, backingFile *backingfile.Backing
 	c.Assert(err, IsNil)
 	md5Equals(c, readBuf, expected)
 
-	mappings, err = rb.CompareSnapshot(snap1, "", volume)
+	mappings, err = rb.CompareSnapshot(snap1, "", volume, defaultBackupBlockSize)
 	c.Assert(err, IsNil)
 	c.Assert(len(mappings.Mappings), Equals, 2)
 	c.Assert(mappings.BlockSize, Equals, int64(2*mb))
