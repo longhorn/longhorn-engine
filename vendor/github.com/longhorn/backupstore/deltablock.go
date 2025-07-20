@@ -119,6 +119,13 @@ type DeltaRestoreOperations interface {
 
 // CreateDeltaBlockBackup creates a delta block backup for the given volume and snapshot.
 func CreateDeltaBlockBackup(backupName string, config *DeltaBackupConfig) (isIncremental bool, err error) {
+	createLog := log
+	defer func() {
+		if err != nil {
+			createLog.WithError(err).Error("Failed to create delta block backup")
+		}
+	}()
+
 	if config == nil {
 		return false, fmt.Errorf("BUG: invalid empty config for backup")
 	}
@@ -126,22 +133,21 @@ func CreateDeltaBlockBackup(backupName string, config *DeltaBackupConfig) (isInc
 	volume := config.Volume
 	snapshot := config.Snapshot
 	destURL := config.DestURL
+	createLog = createLog.WithFields(logrus.Fields{
+		LogFieldVolume:   volume,
+		LogFieldSnapshot: snapshot,
+		LogFieldDestURL:  destURL,
+	})
+
 	deltaOps := config.DeltaOps
 	if deltaOps == nil {
 		return false, fmt.Errorf("BUG: missing DeltaBlockBackupOperations")
 	}
 
-	log := logrus.WithFields(logrus.Fields{
-		"volume":   volume,
-		"snapshot": snapshot,
-		"destURL":  destURL,
-	})
-
 	defer func() {
 		if err != nil {
-			log.WithError(err).Error("Failed to create delta block backup")
 			if updateErr := deltaOps.UpdateBackupStatus(snapshot.Name, volume.Name, string(types.ProgressStateError), 0, "", err.Error()); updateErr != nil {
-				log.WithError(updateErr).Warn("Failed to update backup status")
+				createLog.WithError(updateErr).Warn("Failed to update backup status")
 			}
 		}
 	}()
@@ -158,7 +164,7 @@ func CreateDeltaBlockBackup(backupName string, config *DeltaBackupConfig) (isInc
 
 	defer func() {
 		if unlockErr := lock.Unlock(); unlockErr != nil {
-			logrus.WithError(unlockErr).Warn("Failed to unlock")
+			createLog.WithError(unlockErr).Warn("Failed to unlock")
 		}
 	}()
 	if err := lock.Lock(); err != nil {
@@ -177,6 +183,10 @@ func CreateDeltaBlockBackup(backupName string, config *DeltaBackupConfig) (isInc
 
 	config.Volume.CompressionMethod = volume.CompressionMethod
 	config.Volume.DataEngine = volume.DataEngine
+	createLog = createLog.WithFields(logrus.Fields{
+		LogFieldCompressionMethod: volume.CompressionMethod,
+		LogFieldDataEngine:        volume.DataEngine,
+	})
 
 	if err := deltaOps.OpenSnapshot(snapshot.Name, volume.Name); err != nil {
 		return false, err
@@ -185,43 +195,50 @@ func CreateDeltaBlockBackup(backupName string, config *DeltaBackupConfig) (isInc
 	backupRequest := &backupRequest{}
 	if volume.LastBackupName != "" && !isFullBackup(config) {
 		lastBackupName := volume.LastBackupName
-		var backup, err = loadBackup(bsDriver, lastBackupName, volume.Name)
-		if err != nil {
-			log.WithFields(logrus.Fields{
-				LogFieldReason:  LogReasonFallback,
-				LogFieldEvent:   LogEventBackup,
-				LogFieldObject:  LogObjectBackup,
-				LogFieldBackup:  lastBackupName,
-				LogFieldVolume:  volume.Name,
-				LogFieldDestURL: destURL,
-			}).WithError(err).Info("Cannot find previous backup in backupstore")
-		} else if backup.SnapshotName == snapshot.Name {
-			// Generate full snapshot if the snapshot has been backed up last time
-			log.WithFields(logrus.Fields{
-				LogFieldReason:   LogReasonFallback,
-				LogFieldEvent:    LogEventCompare,
-				LogFieldObject:   LogObjectSnapshot,
-				LogFieldSnapshot: backup.SnapshotName,
-				LogFieldVolume:   volume.Name,
-			}).Info("Creating full snapshot config")
-		} else if backup.SnapshotName != "" && !deltaOps.HasSnapshot(backup.SnapshotName, volume.Name) {
-			log.WithFields(logrus.Fields{
-				LogFieldReason:   LogReasonFallback,
-				LogFieldObject:   LogObjectSnapshot,
-				LogFieldSnapshot: backup.SnapshotName,
-				LogFieldVolume:   volume.Name,
-			}).Info("Cannot find last snapshot in local storage")
+		createLog = createLog.WithFields(logrus.Fields{
+			LogFieldLastBackup: lastBackupName,
+		})
+		if lastBackup, err := loadBackup(bsDriver, lastBackupName, volume.Name); err != nil {
+			createLog = createLog.WithFields(logrus.Fields{
+				LogFieldLastBackup: "",
+			})
+			createLog.WithFields(logrus.Fields{
+				LogFieldReason: LogReasonFallback,
+				LogFieldEvent:  LogEventBackup,
+				LogFieldObject: LogObjectBackup,
+			}).WithError(err).Infof("Cannot find previous backup %s in backupstore", lastBackupName)
 		} else {
-			backupRequest.lastBackup = backup
+			createLog = createLog.WithFields(logrus.Fields{
+				LogFieldLastSnapshot: lastBackup.SnapshotName,
+			})
+			if lastBackup.SnapshotName == snapshot.Name {
+				// Generate full snapshot if the snapshot has been backed up last time
+				createLog.WithFields(logrus.Fields{
+					LogFieldReason: LogReasonFallback,
+					LogFieldEvent:  LogEventCompare,
+					LogFieldObject: LogObjectSnapshot,
+				}).Info("Creating full snapshot config")
+			} else if lastBackup.SnapshotName != "" && !deltaOps.HasSnapshot(lastBackup.SnapshotName, volume.Name) {
+				createLog = createLog.WithFields(logrus.Fields{
+					LogFieldLastSnapshot: "",
+				})
+				createLog.WithFields(logrus.Fields{
+					LogFieldReason: LogReasonFallback,
+					LogFieldObject: LogObjectSnapshot,
+				}).Infof("Cannot find last snapshot %s in local storage", lastBackup.SnapshotName)
+			} else {
+				backupRequest.lastBackup = lastBackup
+			}
 		}
 	}
 
-	log.WithFields(logrus.Fields{
-		LogFieldReason:       LogReasonStart,
-		LogFieldObject:       LogObjectSnapshot,
-		LogFieldEvent:        LogEventCompare,
-		LogFieldSnapshot:     snapshot.Name,
-		LogFieldLastSnapshot: backupRequest.getLastSnapshotName(),
+	createLog = logrus.WithFields(logrus.Fields{
+		LogFieldBackupType: backupRequest.getBackupType(),
+	})
+	createLog.WithFields(logrus.Fields{
+		LogFieldReason: LogReasonStart,
+		LogFieldObject: LogObjectSnapshot,
+		LogFieldEvent:  LogEventCompare,
 	}).Info("Generating snapshot changed blocks config")
 
 	delta, err := deltaOps.CompareSnapshot(snapshot.Name, backupRequest.getLastSnapshotName(), volume.Name)
@@ -238,19 +255,15 @@ func CreateDeltaBlockBackup(backupName string, config *DeltaBackupConfig) (isInc
 		}
 		return backupRequest.isIncrementalBackup(), err
 	}
-	log.WithFields(logrus.Fields{
-		LogFieldReason:       LogReasonComplete,
-		LogFieldObject:       LogObjectSnapshot,
-		LogFieldEvent:        LogEventCompare,
-		LogFieldSnapshot:     snapshot.Name,
-		LogFieldLastSnapshot: backupRequest.getLastSnapshotName(),
+	createLog.WithFields(logrus.Fields{
+		LogFieldReason: LogReasonComplete,
+		LogFieldObject: LogObjectSnapshot,
+		LogFieldEvent:  LogEventCompare,
 	}).Info("Generated snapshot changed blocks config")
 
-	log.WithFields(logrus.Fields{
-		LogFieldReason:     LogReasonStart,
-		LogFieldEvent:      LogEventBackup,
-		LogFieldBackupType: backupRequest.getBackupType(),
-		LogFieldSnapshot:   snapshot.Name,
+	createLog.WithFields(logrus.Fields{
+		LogFieldReason: LogReasonStart,
+		LogFieldEvent:  LogEventBackup,
 	}).Info("Creating backup")
 
 	deltaBackup := &Backup{
@@ -264,10 +277,6 @@ func CreateDeltaBlockBackup(backupName string, config *DeltaBackupConfig) (isInc
 		},
 	}
 
-	log = logrus.WithFields(logrus.Fields{
-		"compressionMethod": volume.CompressionMethod,
-	})
-
 	// keep lock alive for async go routine.
 	if err := lock.Lock(); err != nil {
 		if closeErr := deltaOps.CloseSnapshot(snapshot.Name, volume.Name); closeErr != nil {
@@ -278,29 +287,29 @@ func CreateDeltaBlockBackup(backupName string, config *DeltaBackupConfig) (isInc
 	go func() {
 		defer func() {
 			if closeErr := deltaOps.CloseSnapshot(snapshot.Name, volume.Name); closeErr != nil {
-				logrus.WithError(closeErr).Warn("Failed to close snapshot")
+				createLog.WithError(closeErr).Warn("Failed to close snapshot")
 			}
 		}()
 		defer func() {
 			if unlockErr := lock.Unlock(); unlockErr != nil {
-				logrus.WithError(unlockErr).Warn("Failed to unlock")
+				createLog.WithError(unlockErr).Warn("Failed to unlock")
 			}
 		}()
 
 		if updateErr := deltaOps.UpdateBackupStatus(snapshot.Name, volume.Name, string(types.ProgressStateInProgress), 0, "", ""); updateErr != nil {
-			logrus.WithError(updateErr).Error("Failed to update backup status")
+			createLog.WithError(updateErr).Error("Failed to update backup status")
 		}
 
-		log.Info("Performing delta block backup")
+		createLog.Info("Performing delta block backup")
 
 		if progress, backup, err := performBackup(bsDriver, config, delta, deltaBackup, backupRequest.lastBackup); err != nil {
-			logrus.WithError(err).Errorf("Failed to perform backup for volume %v snapshot %v", volume.Name, snapshot.Name)
+			createLog.WithError(err).Errorf("Failed to perform backup for volume %v snapshot %v", volume.Name, snapshot.Name)
 			if updateErr := deltaOps.UpdateBackupStatus(snapshot.Name, volume.Name, string(types.ProgressStateInProgress), progress, "", err.Error()); updateErr != nil {
-				logrus.WithError(updateErr).Warn("Failed to update backup status")
+				createLog.WithError(updateErr).Warn("Failed to update backup status")
 			}
 		} else {
 			if updateErr := deltaOps.UpdateBackupStatus(snapshot.Name, volume.Name, string(types.ProgressStateInProgress), progress, backup, ""); updateErr != nil {
-				logrus.WithError(updateErr).Warn("Failed to update backup status")
+				createLog.WithError(updateErr).Warn("Failed to update backup status")
 			}
 		}
 	}()
@@ -687,7 +696,14 @@ func mergeSnapshotMap(deltaBackup, lastBackup *Backup) *Backup {
 }
 
 // RestoreDeltaBlockBackup restores a delta block backup for the given configuration
-func RestoreDeltaBlockBackup(ctx context.Context, config *DeltaRestoreConfig) error {
+func RestoreDeltaBlockBackup(ctx context.Context, config *DeltaRestoreConfig) (err error) {
+	restoreLog := log
+	defer func() {
+		if err != nil {
+			restoreLog.WithError(err).Error("Failed to restore delta block backup")
+		}
+	}()
+
 	if config == nil {
 		return fmt.Errorf("invalid empty config for restore")
 	}
@@ -695,6 +711,12 @@ func RestoreDeltaBlockBackup(ctx context.Context, config *DeltaRestoreConfig) er
 	volDevName := config.Filename
 	backupURL := config.BackupURL
 	concurrentLimit := config.ConcurrentLimit
+	restoreLog = restoreLog.WithFields(logrus.Fields{
+		LogFieldDstVolumeDev:    volDevName,
+		LogFieldBackupURL:       backupURL,
+		LogFieldConcurrentLimit: concurrentLimit,
+	})
+
 	deltaOps := config.DeltaOps
 	if deltaOps == nil {
 		return fmt.Errorf("missing DeltaRestoreOperations")
@@ -709,6 +731,10 @@ func RestoreDeltaBlockBackup(ctx context.Context, config *DeltaRestoreConfig) er
 	if err != nil {
 		return err
 	}
+	restoreLog = restoreLog.WithFields(logrus.Fields{
+		LogFieldSnapshot:  srcBackupName,
+		LogFieldSrcVolume: srcVolumeName,
+	})
 
 	lock, err := New(bsDriver, srcVolumeName, RESTORE_LOCK)
 	if err != nil {
@@ -717,7 +743,7 @@ func RestoreDeltaBlockBackup(ctx context.Context, config *DeltaRestoreConfig) er
 
 	defer func() {
 		if unlockErr := lock.Unlock(); unlockErr != nil {
-			logrus.WithError(unlockErr).Warn("Failed to unlock")
+			restoreLog.WithError(unlockErr).Warn("Failed to unlock")
 		}
 	}()
 	if err := lock.Lock(); err != nil {
@@ -727,14 +753,18 @@ func RestoreDeltaBlockBackup(ctx context.Context, config *DeltaRestoreConfig) er
 	vol, err := loadVolume(bsDriver, srcVolumeName)
 	if err != nil {
 		return generateError(logrus.Fields{
-			LogFieldVolume:    srcVolumeName,
-			LogEventBackupURL: backupURL,
-		}, "Volume doesn't exist in backupstore: %v", err)
+			LogFieldSrcVolume: srcVolumeName,
+			LogFieldSnapshot:  srcBackupName,
+			LogFieldBackupURL: backupURL,
+		}, "Source volume doesn't exist in backupstore: %v", err)
 	}
-
 	if vol.Size == 0 || vol.Size%DEFAULT_BLOCK_SIZE != 0 {
 		return fmt.Errorf("invalid volume size %v", vol.Size)
 	}
+	restoreLog = restoreLog.WithFields(logrus.Fields{
+		LogFieldCompressionMethod: vol.CompressionMethod,
+		LogFieldDataEngine:        vol.DataEngine,
+	})
 
 	volDev, volDevPath, err := deltaOps.OpenVolumeDev(volDevName)
 	if err != nil {
@@ -743,7 +773,7 @@ func RestoreDeltaBlockBackup(ctx context.Context, config *DeltaRestoreConfig) er
 	defer func() {
 		if err != nil {
 			if _err := deltaOps.CloseVolumeDev(volDev); _err != nil {
-				logrus.WithError(_err).Warnf("Failed to close volume device %v", volDevName)
+				restoreLog.WithError(_err).Warnf("Failed to close volume device %v", volDevName)
 			}
 		}
 	}()
@@ -758,14 +788,10 @@ func RestoreDeltaBlockBackup(ctx context.Context, config *DeltaRestoreConfig) er
 		return err
 	}
 
-	log.WithFields(logrus.Fields{
-		LogFieldReason:     LogReasonStart,
-		LogFieldEvent:      LogEventRestore,
-		LogFieldObject:     LogFieldSnapshot,
-		LogFieldSnapshot:   srcBackupName,
-		LogFieldOrigVolume: srcVolumeName,
-		LogFieldVolumeDev:  volDevName,
-		LogEventBackupURL:  backupURL,
+	restoreLog.WithFields(logrus.Fields{
+		LogFieldReason: LogReasonStart,
+		LogFieldEvent:  LogEventRestore,
+		LogFieldObject: LogFieldSnapshot,
 	}).Info("Restoring delta block backup")
 
 	// keep lock alive for async go routine.
@@ -779,12 +805,12 @@ func RestoreDeltaBlockBackup(ctx context.Context, config *DeltaRestoreConfig) er
 
 		defer func() {
 			if _err := deltaOps.CloseVolumeDev(volDev); _err != nil {
-				logrus.WithError(_err).Warnf("Failed to close volume device %v", volDevName)
+				restoreLog.WithError(_err).Warnf("Failed to close volume device %v", volDevName)
 			}
 
 			deltaOps.UpdateRestoreStatus(volDevName, currentProgress, err)
 			if unlockErr := lock.Unlock(); unlockErr != nil {
-				logrus.WithError(unlockErr).Warn("Failed to unlock")
+				restoreLog.WithError(unlockErr).Warn("Failed to unlock")
 			}
 		}()
 
@@ -798,7 +824,7 @@ func RestoreDeltaBlockBackup(ctx context.Context, config *DeltaRestoreConfig) er
 		// https://github.com/longhorn/longhorn/issues/2503
 		// We want to truncate regular files, but not device
 		if stat.Mode().IsRegular() {
-			log.Infof("Truncate %v to size %v", volDevName, vol.Size)
+			restoreLog.Infof("Truncate %v to size %v", volDevName, vol.Size)
 			err = volDev.Truncate(vol.Size)
 			if err != nil {
 				return
@@ -816,7 +842,7 @@ func RestoreDeltaBlockBackup(ctx context.Context, config *DeltaRestoreConfig) er
 		err = <-mergedErrChan
 		if err != nil {
 			currentProgress = progress.progress
-			logrus.WithError(err).Errorf("Failed to delta restore volume %v backup %v", srcVolumeName, backup.Name)
+			restoreLog.WithError(err).Errorf("Failed to delta restore volume %v backup %v", srcVolumeName, backup.Name)
 			return
 		}
 		currentProgress = PROGRESS_PERCENTAGE_BACKUP_TOTAL
@@ -839,7 +865,14 @@ func restoreBlockToFile(bsDriver BackupStoreDriver, volumeName string, volDev *o
 	return errors.Wrapf(err, "failed to write decompressed block %v to volume %v", blkFile, volumeName)
 }
 
-func RestoreDeltaBlockBackupIncrementally(ctx context.Context, config *DeltaRestoreConfig) error {
+func RestoreDeltaBlockBackupIncrementally(ctx context.Context, config *DeltaRestoreConfig) (err error) {
+	restoreLog := log
+	defer func() {
+		if err != nil {
+			restoreLog.WithError(err).Error("Failed to restore delta block backup incrementally")
+		}
+	}()
+
 	if config == nil {
 		return fmt.Errorf("invalid empty config for restore")
 	}
@@ -847,6 +880,12 @@ func RestoreDeltaBlockBackupIncrementally(ctx context.Context, config *DeltaRest
 	backupURL := config.BackupURL
 	volDevName := config.Filename
 	lastBackupName := config.LastBackupName
+	restoreLog = restoreLog.WithFields(logrus.Fields{
+		LogFieldDstVolumeDev: volDevName,
+		LogFieldBackupURL:    backupURL,
+		LogFieldLastBackup:   lastBackupName,
+	})
+
 	deltaOps := config.DeltaOps
 	if deltaOps == nil {
 		return fmt.Errorf("missing DeltaRestoreOperations")
@@ -861,6 +900,10 @@ func RestoreDeltaBlockBackupIncrementally(ctx context.Context, config *DeltaRest
 	if err != nil {
 		return err
 	}
+	restoreLog = restoreLog.WithFields(logrus.Fields{
+		LogFieldSnapshot:  srcBackupName,
+		LogFieldSrcVolume: srcVolumeName,
+	})
 
 	lock, err := New(bsDriver, srcVolumeName, RESTORE_LOCK)
 	if err != nil {
@@ -872,7 +915,7 @@ func RestoreDeltaBlockBackupIncrementally(ctx context.Context, config *DeltaRest
 	}
 	defer func() {
 		if unlockErr := lock.Unlock(); unlockErr != nil {
-			logrus.WithError(unlockErr).Warn("Failed to unlock")
+			restoreLog.WithError(unlockErr).Warn("Failed to unlock")
 		}
 	}()
 
@@ -880,7 +923,8 @@ func RestoreDeltaBlockBackupIncrementally(ctx context.Context, config *DeltaRest
 	if err != nil {
 		return generateError(logrus.Fields{
 			LogFieldVolume:    srcVolumeName,
-			LogEventBackupURL: backupURL,
+			LogFieldSnapshot:  srcBackupName,
+			LogFieldBackupURL: backupURL,
 		}, "Volume doesn't exist in backupstore: %v", err)
 	}
 
@@ -895,7 +939,7 @@ func RestoreDeltaBlockBackupIncrementally(ctx context.Context, config *DeltaRest
 
 	// check the file. do not reuse if the file exists
 	if _, err := os.Stat(volDevName); err == nil {
-		logrus.Warnf("File %s for the incremental restore exists, will remove and re-create it", volDevName)
+		restoreLog.Warnf("File %s for the incremental restore exists, will remove and re-create it", volDevName)
 		if err := os.Remove(volDevName); err != nil {
 			return errors.Wrapf(err, "failed to clean up the existing file %v before incremental restore", volDevName)
 		}
@@ -909,7 +953,7 @@ func RestoreDeltaBlockBackupIncrementally(ctx context.Context, config *DeltaRest
 		// make sure to close the device
 		if err != nil {
 			if _err := deltaOps.CloseVolumeDev(volDev); _err != nil {
-				logrus.WithError(_err).Warnf("Failed to close volume device %v", volDevName)
+				restoreLog.WithError(_err).Warnf("Failed to close volume device %v", volDevName)
 			}
 		}
 	}()
@@ -928,14 +972,10 @@ func RestoreDeltaBlockBackupIncrementally(ctx context.Context, config *DeltaRest
 		return err
 	}
 
-	log.WithFields(logrus.Fields{
-		LogFieldReason:     LogReasonStart,
-		LogFieldEvent:      LogEventRestoreIncre,
-		LogFieldObject:     LogFieldSnapshot,
-		LogFieldSnapshot:   srcBackupName,
-		LogFieldOrigVolume: srcVolumeName,
-		LogFieldVolumeDev:  volDevName,
-		LogEventBackupURL:  backupURL,
+	restoreLog.WithFields(logrus.Fields{
+		LogFieldReason: LogReasonStart,
+		LogFieldEvent:  LogEventRestoreIncre,
+		LogFieldObject: LogFieldSnapshot,
 	}).Infof("Started incrementally restoring from %v to %v", lastBackup, backup)
 	// keep lock alive for async go routine.
 	if err := lock.Lock(); err != nil {
@@ -947,13 +987,13 @@ func RestoreDeltaBlockBackupIncrementally(ctx context.Context, config *DeltaRest
 
 		defer func() {
 			if _err := deltaOps.CloseVolumeDev(volDev); _err != nil {
-				logrus.WithError(_err).Warnf("Failed to close volume device %v", volDevName)
+				restoreLog.WithError(_err).Warnf("Failed to close volume device %v", volDevName)
 			}
 
 			deltaOps.UpdateRestoreStatus(volDevName, finalProgress, err)
 
 			if unlockErr := lock.Unlock(); unlockErr != nil {
-				logrus.WithError(unlockErr).Warn("Failed to unlock")
+				restoreLog.WithError(unlockErr).Warn("Failed to unlock")
 			}
 		}()
 
@@ -963,7 +1003,7 @@ func RestoreDeltaBlockBackupIncrementally(ctx context.Context, config *DeltaRest
 		// https://github.com/longhorn/longhorn/issues/2503
 		// We want to truncate regular files, but not device
 		if stat.Mode().IsRegular() {
-			log.Infof("Truncate %v to size %v", volDevName, vol.Size)
+			restoreLog.Infof("Truncate %v to size %v", volDevName, vol.Size)
 			err = volDev.Truncate(vol.Size)
 			if err != nil {
 				return
@@ -1152,7 +1192,17 @@ func fillZeros(volDev *os.File, offset, length int64) error {
 	return syscall.Fallocate(int(volDev.Fd()), 0, offset, length)
 }
 
-func DeleteBackupVolume(volumeName string, destURL string) error {
+func DeleteBackupVolume(volumeName string, destURL string) (err error) {
+	deleteLog := log.WithFields(logrus.Fields{
+		LogFieldVolume:  volumeName,
+		LogFieldDestURL: destURL,
+	})
+	defer func() {
+		if err != nil {
+			deleteLog.WithError(err).Errorf("Failed to delete backup volume %v at destination URL %v", volumeName, destURL)
+		}
+	}()
+
 	bsDriver, err := GetBackupStoreDriver(destURL)
 	if err != nil {
 		return err
@@ -1178,7 +1228,7 @@ func DeleteBackupVolume(volumeName string, destURL string) error {
 	}
 	defer func() {
 		if unlockErr := lock.Unlock(); unlockErr != nil {
-			logrus.WithError(unlockErr).Warn("Failed to unlock")
+			deleteLog.WithError(unlockErr).Warn("Failed to unlock")
 		}
 	}()
 	return removeVolume(volumeName, bsDriver)
@@ -1226,7 +1276,16 @@ func getLatestBackup(backup *Backup, lastBackup *LastBackupInfo) error {
 	return nil
 }
 
-func DeleteDeltaBlockBackup(backupURL string) error {
+func DeleteDeltaBlockBackup(backupURL string) (err error) {
+	deleteLog := log.WithFields(logrus.Fields{
+		LogFieldBackupURL: backupURL,
+	})
+	defer func() {
+		if err != nil {
+			log.WithError(err).Error("Failed to delete delta block backup")
+		}
+	}()
+
 	bsDriver, err := GetBackupStoreDriver(backupURL)
 	if err != nil {
 		return err
@@ -1236,9 +1295,9 @@ func DeleteDeltaBlockBackup(backupURL string) error {
 	if err != nil {
 		return err
 	}
-	log := log.WithFields(logrus.Fields{
-		"backup": backupName,
-		"volume": volumeName,
+	deleteLog = deleteLog.WithFields(logrus.Fields{
+		LogFieldBackup: backupName,
+		LogFieldVolume: volumeName,
 	})
 
 	lock, err := New(bsDriver, volumeName, DELETION_LOCK)
@@ -1250,14 +1309,14 @@ func DeleteDeltaBlockBackup(backupURL string) error {
 	}
 	defer func() {
 		if unlockErr := lock.Unlock(); unlockErr != nil {
-			logrus.WithError(unlockErr).Warn("Failed to unlock")
+			deleteLog.WithError(unlockErr).Warn("Failed to unlock")
 		}
 	}()
 
 	// If we fail to load the backup we still want to proceed with the deletion of the backup file
 	backupToBeDeleted, err := loadBackup(bsDriver, backupName, volumeName)
 	if err != nil {
-		log.WithError(err).Warn("Failed to load to be deleted backup")
+		deleteLog.WithError(err).Warn("Failed to load to be deleted backup")
 		backupToBeDeleted = &Backup{
 			Name:       backupName,
 			VolumeName: volumeName,
@@ -1268,7 +1327,7 @@ func DeleteDeltaBlockBackup(backupURL string) error {
 	if err := removeBackup(backupToBeDeleted, bsDriver); err != nil {
 		return err
 	}
-	log.Info("Removed backup for volume")
+	deleteLog.Info("Removed backup for volume")
 
 	v, err := loadVolume(bsDriver, volumeName)
 	if err != nil {
@@ -1281,11 +1340,11 @@ func DeleteDeltaBlockBackup(backupURL string) error {
 		v.LastBackupAt = ""
 	}
 
-	log.Info("GC started")
+	deleteLog.Info("GC started")
 	deleteBlocks := true
 	backupNames, err := getBackupNamesForVolume(bsDriver, volumeName)
 	if err != nil {
-		log.WithError(err).Warn("Failed to load backup names, skip block deletion")
+		deleteLog.WithError(err).Warn("Failed to load backup names, skip block deletion")
 		deleteBlocks = false
 	}
 
@@ -1304,16 +1363,16 @@ func DeleteDeltaBlockBackup(backupURL string) error {
 
 	lastBackup := &LastBackupInfo{}
 	for _, name := range backupNames {
-		log := log.WithField("backup", name)
+		deleteLog = deleteLog.WithField("backup", name)
 		backup, err := loadBackup(bsDriver, name, volumeName)
 		if err != nil {
-			log.WithError(err).Warn("Failed to load backup, skip block deletion")
+			deleteLog.WithError(err).Warn("Failed to load backup, skip block deletion")
 			deleteBlocks = false
 			break
 		}
 
 		if isBackupInProgress(backup) {
-			log.Info("Found in progress backup, skip block deletion")
+			deleteLog.Info("Found in progress backup, skip block deletion")
 			deleteBlocks = false
 			break
 		}
@@ -1326,7 +1385,7 @@ func DeleteDeltaBlockBackup(backupURL string) error {
 		if updateLastBackup {
 			err := getLatestBackup(backup, lastBackup)
 			if err != nil {
-				log.WithError(err).Warn("Failed to find last backup, skip block deletion")
+				deleteLog.WithError(err).Warn("Failed to find last backup, skip block deletion")
 				deleteBlocks = false
 				break
 			}
@@ -1346,7 +1405,7 @@ func DeleteDeltaBlockBackup(backupURL string) error {
 	prevBackupNames := backupNames
 	backupNames, err = getBackupNamesForVolume(bsDriver, volumeName)
 	if err != nil || !util.UnorderedEqual(prevBackupNames, backupNames) {
-		log.Info("Found new backups for volume, skip block deletion")
+		deleteLog.Info("Found new backups for volume, skip block deletion")
 		deleteBlocks = false
 	}
 
