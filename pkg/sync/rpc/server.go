@@ -28,6 +28,8 @@ import (
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	lhio "github.com/longhorn/go-common-libs/io"
+	"github.com/longhorn/go-common-libs/profiler"
+	"github.com/longhorn/types/pkg/generated/profilerrpc"
 
 	"github.com/longhorn/longhorn-engine/pkg/backup"
 	"github.com/longhorn/longhorn-engine/pkg/interceptor"
@@ -155,6 +157,7 @@ func NewSyncAgentServer(startPort, endPort int, replicaAddress, volumeName, inst
 	server := grpc.NewServer(interceptor.WithIdentityValidationReplicaServerInterceptor(volumeName, instanceName))
 	enginerpc.RegisterSyncAgentServiceServer(server, sas)
 	reflection.Register(server)
+	profilerrpc.RegisterProfilerServer(server, profiler.NewServer(volumeName+"-sync-agent"))
 	return server
 }
 

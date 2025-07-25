@@ -49,6 +49,7 @@ type Backup struct {
 	CompressionMethod     string
 	NewlyUploadedDataSize int64 `json:",string"`
 	ReUploadedDataSize    int64 `json:",string"`
+	BlockSize             int64 `json:",string"`
 
 	ProcessingBlocks *ProcessingBlocks
 
