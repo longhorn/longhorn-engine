@@ -14,9 +14,7 @@ import (
 
 	"github.com/gofrs/flock"
 	"github.com/longhorn/backupstore"
-	butil "github.com/longhorn/backupstore/util"
 	"github.com/longhorn/sparse-tools/sparse"
-	sparserest "github.com/longhorn/sparse-tools/sparse/rest"
 	"github.com/longhorn/types/pkg/generated/enginerpc"
 	"github.com/moby/moby/pkg/reexec"
 	"github.com/pkg/errors"
@@ -27,14 +25,21 @@ import (
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/protobuf/types/known/emptypb"
 
+	butil "github.com/longhorn/backupstore/util"
+	sparserest "github.com/longhorn/sparse-tools/sparse/rest"
+
+	"github.com/longhorn/go-common-libs/profiler"
+	"github.com/longhorn/types/pkg/generated/profilerrpc"
+
 	lhio "github.com/longhorn/go-common-libs/io"
 
 	"github.com/longhorn/longhorn-engine/pkg/backup"
 	"github.com/longhorn/longhorn-engine/pkg/interceptor"
 	"github.com/longhorn/longhorn-engine/pkg/replica"
-	replicaclient "github.com/longhorn/longhorn-engine/pkg/replica/client"
 	"github.com/longhorn/longhorn-engine/pkg/types"
 	"github.com/longhorn/longhorn-engine/pkg/util"
+
+	replicaclient "github.com/longhorn/longhorn-engine/pkg/replica/client"
 	diskutil "github.com/longhorn/longhorn-engine/pkg/util/disk"
 )
 
@@ -155,6 +160,10 @@ func NewSyncAgentServer(startPort, endPort int, replicaAddress, volumeName, inst
 	server := grpc.NewServer(interceptor.WithIdentityValidationReplicaServerInterceptor(volumeName, instanceName))
 	enginerpc.RegisterSyncAgentServiceServer(server, sas)
 	reflection.Register(server)
+
+	// Runtime switchable pprof profiler server. Add "-sync-agent" suffix to the server name to avoid potential conflict.
+	profilerrpc.RegisterProfilerServer(server, profiler.NewServer(volumeName+"-sync-agent"))
+
 	return server
 }
 
