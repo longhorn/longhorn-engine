@@ -10,8 +10,8 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
-	github.com/longhorn/backupstore v0.0.0-20250728014941-d1d05aa3ad19
-	github.com/longhorn/go-common-libs v0.0.0-20250722040045-f7fd23383de5
+	github.com/longhorn/backupstore v0.0.0-20250728024545-3d2abce3e32f
+	github.com/longhorn/go-common-libs v0.0.0-20250725014231-2c0bac610814
 	github.com/longhorn/go-iscsi-helper v0.0.0-20250713130221-69ce6f3960fa
 	github.com/longhorn/sparse-tools v0.0.0-20241216160947-2b328f0fa59c
 	github.com/longhorn/types v0.0.0-20250710112743-e3a1e9e2a9c1
@@ -23,7 +23,7 @@ require (
 	github.com/urfave/cli v1.22.17
 	golang.org/x/net v0.42.0
 	golang.org/x/sys v0.34.0
-	google.golang.org/grpc v1.74.1
+	google.golang.org/grpc v1.74.2
 	google.golang.org/protobuf v1.36.6
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 	gopkg.in/cheggaaa/pb.v2 v2.0.7
