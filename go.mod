@@ -27,7 +27,7 @@ require (
 	google.golang.org/protobuf v1.36.6
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 	gopkg.in/cheggaaa/pb.v2 v2.0.7
-	k8s.io/apimachinery v0.31.3
+	k8s.io/apimachinery v0.33.3
 	k8s.io/mount-utils v0.33.3
 )
 

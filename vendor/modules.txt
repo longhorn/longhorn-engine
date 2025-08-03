@@ -457,8 +457,8 @@ gopkg.in/mattn/go-isatty.v0
 gopkg.in/mattn/go-runewidth.v0
 # gotest.tools/v3 v3.4.0
 ## explicit; go 1.13
-# k8s.io/apimachinery v0.31.3
-## explicit; go 1.22.0
+# k8s.io/apimachinery v0.33.3
+## explicit; go 1.24.0
 k8s.io/apimachinery/pkg/api/resource
 k8s.io/apimachinery/pkg/runtime/serializer/cbor/direct
 k8s.io/apimachinery/pkg/runtime/serializer/cbor/internal/modes
