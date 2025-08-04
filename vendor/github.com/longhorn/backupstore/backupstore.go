@@ -49,12 +49,15 @@ type Backup struct {
 	CompressionMethod     string
 	NewlyUploadedDataSize int64 `json:",string"`
 	ReUploadedDataSize    int64 `json:",string"`
-	BlockSize             int64 `json:",string"`
 
 	ProcessingBlocks *ProcessingBlocks
 
 	Blocks     []BlockMapping `json:",omitempty"`
 	SingleFile BackupFile     `json:",omitempty"`
+}
+
+func (backup *Backup) GetBlockSize() (int64, error) {
+	return getBlockSizeFromParameters(backup.Parameters)
 }
 
 type LastBackupInfo struct {

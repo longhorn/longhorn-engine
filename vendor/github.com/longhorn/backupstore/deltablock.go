@@ -10,8 +10,6 @@ import (
 	"syscall"
 	"time"
 
-	"k8s.io/apimachinery/pkg/api/resource"
-
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
@@ -34,21 +32,7 @@ type DeltaBackupConfig struct {
 
 // getBackupBlockSize returns the block size in bytes from the DeltaBackupConfig.
 func (config *DeltaBackupConfig) getBackupBlockSize() (int64, error) {
-	if config.Parameters == nil {
-		return DEFAULT_BLOCK_SIZE, nil
-	}
-	sizeVal, exist := config.Parameters[lhbackup.LonghornBackupParameterBackupBlockSize]
-	if !exist || sizeVal == "" {
-		return DEFAULT_BLOCK_SIZE, nil
-	}
-	quantity, err := resource.ParseQuantity(sizeVal)
-	if err != nil {
-		return 0, errors.Wrapf(err, "invalid block size %s from parameter %s", sizeVal, lhbackup.LonghornBackupParameterBackupBlockSize)
-	}
-	if quantity.IsZero() {
-		return DEFAULT_BLOCK_SIZE, nil
-	}
-	return quantity.Value(), nil
+	return getBlockSizeFromParameters(config.Parameters)
 }
 
 type DeltaRestoreConfig struct {
@@ -593,7 +577,6 @@ func performBackup(bsDriver BackupStoreDriver, config *DeltaBackupConfig, delta 
 		Name:              deltaBackup.Name,
 		VolumeName:        deltaBackup.VolumeName,
 		CompressionMethod: volume.CompressionMethod,
-		BlockSize:         blockSize,
 		CreatedTime:       "",
 	}); err != nil {
 		return 0, "", err
@@ -645,7 +628,6 @@ func performBackup(bsDriver BackupStoreDriver, config *DeltaBackupConfig, delta 
 	backup.SnapshotCreatedAt = snapshot.CreatedTime
 	backup.CreatedTime = util.Now()
 	backup.Size = int64(len(backup.Blocks)) * blockSize
-	backup.BlockSize = blockSize
 	backup.Labels = config.Labels
 	backup.Parameters = config.Parameters
 	backup.IsIncremental = lastBackup != nil
@@ -817,10 +799,15 @@ func RestoreDeltaBlockBackup(ctx context.Context, config *DeltaRestoreConfig) (e
 		return err
 	}
 
-	if vol.Size%backup.BlockSize != 0 {
-		return fmt.Errorf("volume size %v is not a multiple of block size %v", vol.Size, backup.BlockSize)
+	backupBlockSize, err := backup.GetBlockSize()
+	if err != nil {
+		return err
 	}
-	restoreLog = restoreLog.WithField(LogFieldBackupBlockSize, backup.BlockSize)
+
+	if vol.Size%backupBlockSize != 0 {
+		return fmt.Errorf("volume size %v is not a multiple of block size %v", vol.Size, backupBlockSize)
+	}
+	restoreLog = restoreLog.WithField(LogFieldBackupBlockSize, backupBlockSize)
 
 	restoreLog.WithFields(logrus.Fields{
 		LogFieldReason: LogReasonStart,
@@ -869,7 +856,7 @@ func RestoreDeltaBlockBackup(ctx context.Context, config *DeltaRestoreConfig) (e
 
 		errorChans := []<-chan error{errChan}
 		for i := 0; i < int(concurrentLimit); i++ {
-			errorChans = append(errorChans, restoreBlocks(ctx, bsDriver, config.DeltaOps, volDevPath, srcVolumeName, blockChan, backup.BlockSize, progress))
+			errorChans = append(errorChans, restoreBlocks(ctx, bsDriver, config.DeltaOps, volDevPath, srcVolumeName, blockChan, backupBlockSize, progress))
 		}
 
 		mergedErrChan := mergeErrorChannels(ctx, errorChans...)
@@ -1006,10 +993,19 @@ func RestoreDeltaBlockBackupIncrementally(ctx context.Context, config *DeltaRest
 		return err
 	}
 
-	if vol.Size%backup.BlockSize != 0 {
-		return fmt.Errorf("volume size %v is not a multiple of block size %v", vol.Size, backup.BlockSize)
-	} else if backup.BlockSize != lastBackup.BlockSize {
-		return fmt.Errorf("backup block size is changed from %v to %v", lastBackup.BlockSize, backup.BlockSize)
+	lastBackupBlockSize, err := lastBackup.GetBlockSize()
+	if err != nil {
+		return err
+	}
+	backupBlockSize, err := backup.GetBlockSize()
+	if err != nil {
+		return err
+	}
+
+	if vol.Size%backupBlockSize != 0 {
+		return fmt.Errorf("volume size %v is not a multiple of block size %v", vol.Size, backupBlockSize)
+	} else if backupBlockSize != lastBackupBlockSize {
+		return fmt.Errorf("backup block size is changed from %v to %v", lastBackupBlockSize, backupBlockSize)
 	}
 
 	restoreLog.WithFields(logrus.Fields{
@@ -1050,7 +1046,7 @@ func RestoreDeltaBlockBackupIncrementally(ctx context.Context, config *DeltaRest
 			}
 		}
 
-		err = performIncrementalRestore(ctx, bsDriver, config, srcVolumeName, volDevPath, lastBackup, backup)
+		err = performIncrementalRestore(ctx, bsDriver, config, srcVolumeName, volDevPath, lastBackup, backup, backupBlockSize)
 		if err != nil {
 			return
 		}
@@ -1205,7 +1201,7 @@ func restoreBlocks(ctx context.Context, bsDriver BackupStoreDriver, deltaOps Del
 
 // performIncrementalRestore assumes the block sizes are identical between lastBackup and backup.
 func performIncrementalRestore(ctx context.Context, bsDriver BackupStoreDriver, config *DeltaRestoreConfig,
-	srcVolumeName, volDevPath string, lastBackup *Backup, backup *Backup) error {
+	srcVolumeName, volDevPath string, lastBackup *Backup, backup *Backup, blockSize int64) error {
 	var err error
 	concurrentLimit := config.ConcurrentLimit
 
@@ -1217,7 +1213,7 @@ func performIncrementalRestore(ctx context.Context, bsDriver BackupStoreDriver, 
 
 	errorChans := []<-chan error{errChan}
 	for i := 0; i < int(concurrentLimit); i++ {
-		errorChans = append(errorChans, restoreBlocks(ctx, bsDriver, config.DeltaOps, volDevPath, srcVolumeName, blockChan, backup.BlockSize, progress))
+		errorChans = append(errorChans, restoreBlocks(ctx, bsDriver, config.DeltaOps, volDevPath, srcVolumeName, blockChan, blockSize, progress))
 	}
 
 	mergedErrChan := mergeErrorChannels(ctx, errorChans...)
