@@ -333,10 +333,6 @@ func loadBackup(bsDriver BackupStoreDriver, backupName, volumeName string) (*Bac
 		log.Infof("Falling back compression method to %v for backup %v", LEGACY_COMPRESSION_METHOD, backup.Name)
 		backup.CompressionMethod = LEGACY_COMPRESSION_METHOD
 	}
-	if backup.BlockSize == 0 {
-		log.Infof("Falling back block size to %v for backup %v", DEFAULT_BLOCK_SIZE, backup.Name)
-		backup.BlockSize = DEFAULT_BLOCK_SIZE
-	}
 	return backup, nil
 }
 
