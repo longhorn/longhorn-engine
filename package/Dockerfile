@@ -8,8 +8,8 @@ RUN zypper -n ref && \
     zypper update -y
 
 RUN for i in {1..10}; do \
-        zypper -n addrepo --refresh https://download.opensuse.org/repositories/system:/snappy/SLE_15/system:snappy.repo && \
-        zypper -n addrepo --refresh https://download.opensuse.org/repositories/network:/utilities/SLE_15_SP5/network:utilities.repo && \
+        zypper -n addrepo --refresh https://download.opensuse.org/repositories/system:/snappy/SLE_15_SP7/system:snappy.repo && \
+        zypper -n addrepo --refresh https://download.opensuse.org/repositories/network:/utilities/SLE_15_SP7/network:utilities.repo && \
         zypper --gpg-auto-import-keys ref && break || sleep 1; \
     done
 
@@ -46,8 +46,8 @@ RUN zypper -n ref && \
     zypper update -y
 
 RUN for i in {1..10}; do \
-        zypper -n addrepo --refresh https://download.opensuse.org/repositories/system:/snappy/SLE_15/system:snappy.repo && \
-        zypper -n addrepo --refresh https://download.opensuse.org/repositories/network:/utilities/SLE_15_SP5/network:utilities.repo && \
+        zypper -n addrepo --refresh https://download.opensuse.org/repositories/system:/snappy/SLE_15_SP7/system:snappy.repo && \
+        zypper -n addrepo --refresh https://download.opensuse.org/repositories/network:/utilities/SLE_15_SP7/network:utilities.repo && \
         zypper --gpg-auto-import-keys ref && break || sleep 1; \
     done
 
