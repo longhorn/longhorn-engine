@@ -11,10 +11,10 @@ require (
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
 	github.com/longhorn/backupstore v0.0.0-20250804022317-794abf817297
-	github.com/longhorn/go-common-libs v0.0.0-20250809060702-aec53ac032f0
-	github.com/longhorn/go-iscsi-helper v0.0.0-20250713130221-69ce6f3960fa
+	github.com/longhorn/go-common-libs v0.0.0-20250812101836-470cb7301942
+	github.com/longhorn/go-iscsi-helper v0.0.0-20250810143507-5c5f9a0060b4
 	github.com/longhorn/sparse-tools v0.0.0-20241216160947-2b328f0fa59c
-	github.com/longhorn/types v0.0.0-20250710112743-e3a1e9e2a9c1
+	github.com/longhorn/types v0.0.0-20250812040111-bee68b0a4c07
 	github.com/moby/moby v26.1.5+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
@@ -27,8 +27,8 @@ require (
 	google.golang.org/protobuf v1.36.7
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 	gopkg.in/cheggaaa/pb.v2 v2.0.7
-	k8s.io/apimachinery v0.33.3
-	k8s.io/mount-utils v0.33.3
+	k8s.io/apimachinery v0.33.4
+	k8s.io/mount-utils v0.33.4
 )
 
 require (
