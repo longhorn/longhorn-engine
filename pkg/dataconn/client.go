@@ -134,6 +134,10 @@ func (c *Client) loop() {
 	var ioInflight int
 	var timeOfLastActivity time.Time
 
+	log := logrus.WithFields(logrus.Fields{
+		"peerAddr": c.peerAddr,
+	})
+
 	decremented := false
 	c.sharedTimeouts.Increment()
 	// Ensure we always decrement the sharedTimeouts counter regardless of how we leave this loop.
@@ -167,7 +171,7 @@ func (c *Client) loop() {
 			exceededTimeout := c.sharedTimeouts.CheckAndDecrement(time.Since(timeOfLastActivity))
 			if exceededTimeout > 0 {
 				decremented = true
-				logrus.Errorf("R/W Timeout. No response received in %v", exceededTimeout)
+				log.Errorf("R/W Timeout. No response received in %v", exceededTimeout)
 				handleClientError(ErrRWTimeout)
 				journal.PrintLimited(1000)
 			}
@@ -194,7 +198,7 @@ func (c *Client) loop() {
 
 			req, pending := c.messages[resp.Seq]
 			if !pending {
-				logrus.Warnf("Received response message id %v seq %v type %v for non pending request", resp.ID, resp.Seq, resp.Type)
+				log.Warnf("Received response message id %v seq %v type %v for non pending request", resp.ID, resp.Seq, resp.Type)
 				continue
 			}
 
