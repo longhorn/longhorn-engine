@@ -102,6 +102,8 @@ func NewController(name string, factory types.BackendFactory, frontend types.Fro
 }
 
 func (c *Controller) StartGRPCServer() error {
+	log := logrus.WithField("volume", c.VolumeName)
+
 	if c.GRPCServer == nil {
 		return fmt.Errorf("cannot find grpc server")
 	}
@@ -122,14 +124,14 @@ func (c *Controller) StartGRPCServer() error {
 		grpcAddress := c.GRPCAddress
 		listener, err := net.Listen("tcp", c.GRPCAddress)
 		if err != nil {
-			logrus.WithError(err).Errorf("Failed to listen %v", grpcAddress)
+			log.WithError(err).Errorf("Failed to listen %v", grpcAddress)
 			c.lastError = err
 			return
 		}
 
-		logrus.Infof("Listening on gRPC Controller server: %v", grpcAddress)
+		log.Infof("Listening on gRPC Controller server: %v", grpcAddress)
 		err = c.GRPCServer.Serve(listener)
-		logrus.WithError(err).Errorf("GRPC server at %v is down", grpcAddress)
+		log.WithError(err).Errorf("GRPC server at %v is down", grpcAddress)
 		c.lastError = err
 	}()
 
@@ -313,8 +315,10 @@ func (c *Controller) canDoSnapshot() error {
 }
 
 func (c *Controller) Expand(size int64) error {
+	log := logrus.WithField("volume", c.VolumeName)
+
 	if err := c.startExpansion(size); err != nil {
-		logrus.WithError(err).Error("Controller failed to start expansion")
+		log.WithError(err).Error("Controller failed to start expansion")
 		return err
 	}
 
@@ -325,7 +329,7 @@ func (c *Controller) Expand(size int64) error {
 			// Hence there will be a deadlock once we use the lock to protect this frontend expansion.
 			if c.frontend != nil && expanded {
 				if err := c.frontend.Expand(size); err != nil {
-					logrus.WithError(err).Error("Failed to expand the frontend")
+					log.WithError(err).Error("Failed to expand the frontend")
 					expanded = false
 				}
 			}
@@ -336,14 +340,14 @@ func (c *Controller) Expand(size int64) error {
 		// Can be improved to only sync the filesystem on the block device later
 		if err := lhns.Sync(); err != nil {
 			// sync should never fail though, so it more like due to the nsenter
-			logrus.WithError(err).Errorf("WARNING: continue to expand to size %v for %v, but sync failed", size, c.VolumeName)
+			log.WithError(err).Errorf("WARNING: continue to expand to size %v for %v, but sync failed", size, c.VolumeName)
 		}
 
 		// Should block R/W during the expansion.
 		c.Lock()
 		defer c.Unlock()
 		if err := c.canDoSnapshot(); err != nil {
-			logrus.WithError(err).Error("Cannot get remain snapshot count before expansion")
+			log.WithError(err).Error("Cannot get remain snapshot count before expansion")
 			return
 		}
 
@@ -356,7 +360,7 @@ func (c *Controller) Expand(size int64) error {
 				c.lastExpansionError = fmt.Sprintf("the expansion failed since all replica expansion failed: %v", errsForRecording)
 			}
 			if err := c.handleErrorNoLock(errsNeedToBeHandled); err != nil {
-				logrus.WithError(err).Error("Failed to handle the backend expansion errors")
+				log.WithError(err).Error("Failed to handle the backend expansion errors")
 			}
 			// If there is expansion failure, controller cannot continue expanding the frontend
 			if !expansionSuccess {
@@ -373,6 +377,8 @@ func (c *Controller) Expand(size int64) error {
 func (c *Controller) startExpansion(size int64) (err error) {
 	c.Lock()
 	defer c.Unlock()
+
+	log := logrus.WithField("volume", c.VolumeName)
 
 	if c.isExpanding {
 		return fmt.Errorf("controller expansion is in progress")
@@ -392,7 +398,7 @@ func (c *Controller) startExpansion(size int64) (err error) {
 		return fmt.Errorf("requested expansion size %v not multiple of volume sector size %v", size, diskutil.VolumeSectorSize)
 	}
 	if c.size == size {
-		logrus.Infof("controller %v is already expanded to size %v", c.VolumeName, size)
+		log.Infof("controller %v is already expanded to size %v", c.VolumeName, size)
 		return nil
 	}
 	if c.size > size {
@@ -408,15 +414,17 @@ func (c *Controller) finishExpansion(expanded bool, size int64) {
 	c.Lock()
 	defer c.Unlock()
 
+	log := logrus.WithField("volume", c.VolumeName)
+
 	if expanded {
 		if c.lastExpansionError != "" {
-			logrus.Infof("Controller succeeded to expand from size %v to %v but there are some replica expansion failures: %v", c.size, size, c.lastExpansionError)
+			log.Infof("Controller succeeded to expand from size %v to %v but there are some replica expansion failures: %v", c.size, size, c.lastExpansionError)
 		} else {
-			logrus.Infof("Controller succeeded to expand from size %v to %v", c.size, size)
+			log.Infof("Controller succeeded to expand from size %v to %v", c.size, size)
 		}
 		c.size = size
 	} else {
-		logrus.Infof("Controller failed to expand from size %v to %v", c.size, size)
+		log.Infof("Controller failed to expand from size %v to %v", c.size, size)
 	}
 	c.isExpanding = false
 }
@@ -434,10 +442,12 @@ func (c *Controller) GetExpansionErrorInfo() (string, string) {
 }
 
 func (c *Controller) addReplicaNoLock(newBackend types.Backend, address string, snapshot bool, mode types.Mode) (err error) {
+	log := logrus.WithField("volume", c.VolumeName)
+
 	defer func() {
 		if err != nil && newBackend != nil {
 			if errClose := newBackend.Close(); errClose != nil {
-				logrus.WithError(errClose).Error("Failed to close backend")
+				log.WithError(errClose).Error("Failed to close backend")
 			}
 		}
 	}()
@@ -530,36 +540,40 @@ func (c *Controller) SetReplicaMode(address string, mode types.Mode) error {
 }
 
 func (c *Controller) setReplicaModeNoLock(address string, mode types.Mode) {
+	log := logrus.WithField("volume", c.VolumeName)
+
 	for i, r := range c.replicas {
 		if r.Address == address {
 			if r.Mode != types.ERR {
-				logrus.Infof("Setting replica %v to mode %v", address, mode)
+				log.Infof("Setting replica %v to mode %v", address, mode)
 				r.Mode = mode
 				c.replicas[i] = r
 				c.backend.SetMode(address, mode)
 			} else {
-				logrus.Infof("Ignore set replica %v to mode %v due to it's ERR", address, mode)
+				log.Infof("Ignore set replica %v to mode %v due to it's ERR", address, mode)
 			}
 		}
 	}
 }
 
 func (c *Controller) startFrontend() error {
+	log := logrus.WithField("volume", c.VolumeName)
+
 	if len(c.replicas) > 0 && c.frontend != nil {
 		if c.isUpgrade {
-			logrus.Info("Upgrading frontend")
+			log.Info("Upgrading frontend")
 			if err := c.frontend.Upgrade(c.VolumeName, c.size, c.sectorSize, c); err != nil {
-				logrus.WithError(err).Error("Failed to upgrade frontend")
+				log.WithError(err).Error("Failed to upgrade frontend")
 				return errors.Wrap(err, "failed to upgrade frontend")
 			}
 			return nil
 		}
 		if err := c.frontend.Init(c.VolumeName, c.size, c.sectorSize); err != nil {
-			logrus.WithError(err).Error("Failed to init frontend")
+			log.WithError(err).Error("Failed to init frontend")
 			return errors.Wrap(err, "failed to init frontend")
 		}
 		if err := c.frontend.Startup(c); err != nil {
-			logrus.WithError(err).Error("Failed to startup frontend")
+			log.WithError(err).Error("Failed to startup frontend")
 			return errors.Wrap(err, "failed to start up frontend")
 		}
 	}
@@ -594,6 +608,8 @@ func (c *Controller) StartFrontend(frontend string) error {
 // Check if all replica revision counter setting match with engine
 // controller, and mark unmatch replica to ERR.
 func (c *Controller) checkReplicaRevCounterSettingMatch() error {
+	log := logrus.WithField("volume", c.VolumeName)
+
 	for _, r := range c.replicas {
 		if r.Mode == types.ERR {
 			continue
@@ -604,7 +620,7 @@ func (c *Controller) checkReplicaRevCounterSettingMatch() error {
 		}
 
 		if c.revisionCounterDisabled != revCounterDisabled {
-			logrus.Errorf("Revision Counter Disabled setting mismatch at engine %v, replica %v: %v, mark this replica as ERR.",
+			log.Errorf("Revision Counter Disabled setting mismatch at engine %v, replica %v: %v, mark this replica as ERR.",
 				c.revisionCounterDisabled, r.Address, revCounterDisabled)
 			c.setReplicaModeNoLock(r.Address, types.ERR)
 		}
@@ -662,13 +678,15 @@ func (c *Controller) salvageRevisionCounterDisabledReplicas() error {
 		return fmt.Errorf("BUG: Should find one candidate for salvage")
 	}
 
+	log := logrus.WithField("volume", c.VolumeName)
+
 	// Only leave bestCandidate replica as good, mark others as ERR.
 	for _, r := range c.replicas {
 		if r.Address != bestCandidate.Address {
-			logrus.Infof("salvageRequested set and mark %v as ERR", r.Address)
+			log.Infof("salvageRequested set and mark %v as ERR", r.Address)
 			c.setReplicaModeNoLock(r.Address, types.ERR)
 		} else {
-			logrus.Infof("salvageRequested set and mark %v as RW", r.Address)
+			log.Infof("salvageRequested set and mark %v as RW", r.Address)
 			c.setReplicaModeNoLock(r.Address, types.RW)
 		}
 	}
@@ -696,9 +714,11 @@ func (c *Controller) checkReplicasRevisionCounter() error {
 		revisionCounters[r.Address] = counter
 	}
 
+	log := logrus.WithField("volume", c.VolumeName)
+
 	for address, counter := range revisionCounters {
 		if counter != expectedRevision {
-			logrus.Errorf("Revision conflict detected! Expect %v, got %v in replica %v. Mark as ERR",
+			log.Errorf("Revision conflict detected! Expect %v, got %v in replica %v. Mark as ERR",
 				expectedRevision, counter, address)
 			c.setReplicaModeNoLock(address, types.ERR)
 		}
@@ -726,6 +746,8 @@ func (c *Controller) GetUnmapMarkSnapChainRemoved() bool {
 func (c *Controller) checkUnmapMarkSnapChainRemoved() error {
 	allFailed := true
 
+	log := logrus.WithField("volume", c.VolumeName)
+
 	expected := c.unmapMarkSnapChainRemoved
 	for _, r := range c.replicas {
 		// The related backend is nil if the mode is ERR
@@ -739,7 +761,7 @@ func (c *Controller) checkUnmapMarkSnapChainRemoved() error {
 		if enabled != expected {
 			err := c.backend.SetUnmapMarkSnapChainRemoved(r.Address, expected)
 			if err != nil {
-				logrus.Errorf("Failed to correct Unmatched flag UnmapMarkSnapChainRemoved! Expect %v, got %v in replica %v. Mark as ERR",
+				log.WithError(err).Errorf("Failed to correct Unmatched flag UnmapMarkSnapChainRemoved! Expect %v, got %v in replica %v. Mark as ERR",
 					expected, enabled, r.Address)
 				c.setReplicaModeNoLock(r.Address, types.ERR)
 			} else {
@@ -754,7 +776,7 @@ func (c *Controller) checkUnmapMarkSnapChainRemoved() error {
 		return fmt.Errorf("failed to correct Unmatched flag UnmapMarkSnapChainRemoved for all replicas, expect %v", expected)
 	}
 
-	logrus.Infof("Controller checked and corrected flag unmapMarkSnapChainRemoved=%v for backend replicas", c.unmapMarkSnapChainRemoved)
+	log.Infof("Controller checked and corrected flag unmapMarkSnapChainRemoved=%v for backend replicas", c.unmapMarkSnapChainRemoved)
 
 	return nil
 }
@@ -774,6 +796,8 @@ func (c *Controller) SetSnapshotMaxCount(count int) error {
 
 	c.snapshotMaxCount = count
 
+	log := logrus.WithField("volume", c.VolumeName)
+
 	for _, r := range c.replicas {
 		// The related backend is nil if the mode is ERR
 		if r.Mode == types.ERR {
@@ -781,12 +805,12 @@ func (c *Controller) SetSnapshotMaxCount(count int) error {
 		}
 		err := c.backend.SetSnapshotMaxCount(r.Address, count)
 		if err != nil {
-			logrus.Errorf("failed to set flag SnapshotMaxCount to %d in replica %s, err: %v", count, r.Address, err)
+			log.Errorf("failed to set flag SnapshotMaxCount to %d in replica %s, err: %v", count, r.Address, err)
 			return fmt.Errorf("failed to set flag SnapshotMaxCount to %d in replica %s, err: %v", count, r.Address, err)
 		}
 	}
 
-	logrus.Infof("Controller set flag snapshotMaxCount=%d for backend replicas", count)
+	log.Infof("Controller set flag snapshotMaxCount=%d for backend replicas", count)
 
 	return nil
 }
@@ -812,6 +836,8 @@ func (c *Controller) SetSnapshotMaxSize(size int64) error {
 
 	c.SnapshotMaxSize = size
 
+	log := logrus.WithField("volume", c.VolumeName)
+
 	for _, r := range c.replicas {
 		// The related backend is nil if the mode is ERR
 		if r.Mode == types.ERR {
@@ -819,12 +845,12 @@ func (c *Controller) SetSnapshotMaxSize(size int64) error {
 		}
 		err := c.backend.SetSnapshotMaxSize(r.Address, size)
 		if err != nil {
-			logrus.WithError(err).Errorf("Failed to set flag SnapshotMaxSize to %d in replica %s", size, r.Address)
+			log.WithError(err).Errorf("Failed to set flag SnapshotMaxSize to %d in replica %s", size, r.Address)
 			return fmt.Errorf("failed to set flag SnapshotMaxSize to %d in replica %s, err: %v", size, r.Address, err)
 		}
 	}
 
-	logrus.Infof("Controller set flag SnapshotMaxSize=%d for backend replicas", size)
+	log.Infof("Controller set flag SnapshotMaxSize=%d for backend replicas", size)
 
 	return nil
 }
@@ -883,6 +909,8 @@ func (c *Controller) Start(volumeSize, volumeCurrentSize int64, addresses ...str
 	c.Lock()
 	defer c.Unlock()
 
+	log := logrus.WithField("volume", c.VolumeName)
+
 	if len(addresses) == 0 {
 		return nil
 	}
@@ -907,7 +935,7 @@ func (c *Controller) Start(volumeSize, volumeCurrentSize int64, addresses ...str
 			if strings.Contains(err.Error(), "rpc error: code = Unavailable") {
 				errorCodes[address] = codes.Unavailable
 			}
-			logrus.WithError(err).Warnf("Failed to create backend with address %v", address)
+			log.WithError(err).Warnf("Failed to create backend with address %v", address)
 			continue
 		}
 
@@ -921,7 +949,7 @@ func (c *Controller) Start(volumeSize, volumeCurrentSize int64, addresses ...str
 		if len(addresses) == 1 {
 			err = newBackend.ResetRebuild()
 			if err != nil {
-				logrus.WithError(err).Warnf("Failed to reset invalid rebuild for backend with address %v", address)
+				log.WithError(err).Warnf("Failed to reset invalid rebuild for backend with address %v", address)
 			}
 		}
 
@@ -930,7 +958,7 @@ func (c *Controller) Start(volumeSize, volumeCurrentSize int64, addresses ...str
 			if strings.Contains(err.Error(), "rpc error: code = Unavailable") {
 				errorCodes[address] = codes.Unavailable
 			}
-			logrus.WithError(err).Warnf("Failed to get the size from the backend address %v", address)
+			log.WithError(err).Warnf("Failed to get the size from the backend address %v", address)
 			continue
 		}
 
@@ -939,7 +967,7 @@ func (c *Controller) Start(volumeSize, volumeCurrentSize int64, addresses ...str
 			if strings.Contains(err.Error(), "rpc error: code = Unavailable") {
 				errorCodes[address] = codes.Unavailable
 			}
-			logrus.WithError(err).Warnf("Failed to get the sector size from the backend address %v", address)
+			log.WithError(err).Warnf("Failed to get the sector size from the backend address %v", address)
 			continue
 		}
 
@@ -948,11 +976,11 @@ func (c *Controller) Start(volumeSize, volumeCurrentSize int64, addresses ...str
 			if strings.Contains(err.Error(), "rpc error: code = Unavailable") {
 				errorCodes[address] = codes.Unavailable
 			}
-			logrus.WithError(err).Warnf("Failed to get the state from the backend address %v", address)
+			log.WithError(err).Warnf("Failed to get the state from the backend address %v", address)
 			continue
 		}
 		if isReplicaInInvalidState(state) {
-			logrus.Warnf("Backend %v is in the invalid state %v", address, state)
+			log.Warnf("Backend %v is in the invalid state %v", address, state)
 			continue
 		}
 
@@ -962,7 +990,7 @@ func (c *Controller) Start(volumeSize, volumeCurrentSize int64, addresses ...str
 		}
 
 		if c.sectorSize != newSectorSize {
-			logrus.Warnf("Backend %v sector size does not match %d != %d in the engine initiation phase", address, c.sectorSize, newSectorSize)
+			log.Warnf("Backend %v sector size does not match %d != %d in the engine initiation phase", address, c.sectorSize, newSectorSize)
 			continue
 		}
 
@@ -975,13 +1003,13 @@ func (c *Controller) Start(volumeSize, volumeCurrentSize int64, addresses ...str
 	for address, backend := range availableBackends {
 		size, err := backend.Size()
 		if err != nil {
-			logrus.WithError(err).Warnf("Failed to get the size from the backend address %v", address)
+			log.WithError(err).Warnf("Failed to get the size from the backend address %v", address)
 			delete(availableBackends, address)
 			continue
 		}
 
 		if c.size != size {
-			logrus.Warnf("Backend %v size does not match %d != %d in the engine initiation phase", address, c.size, size)
+			log.Warnf("Backend %v size does not match %d != %d in the engine initiation phase", address, c.size, size)
 			delete(availableBackends, address)
 		}
 	}
@@ -1122,11 +1150,13 @@ func (c *Controller) UnmapAt(length uint32, off int64) (int, error) {
 	//  if the volume is purging snapshots or creating backups.
 	c.Lock()
 
+	log := logrus.WithField("volume", c.VolumeName)
+
 	if off < 0 || off+int64(length) > c.size {
 		// This is a legitimate error (which is handled by tgt/liblonghorn at a higher level). Since tgt/liblonghorn
 		// does not actually print the error, print it here.
 		err := fmt.Errorf("EOF: unmap of %v bytes at offset %v is beyond volume size %v", length, off, c.size)
-		logrus.WithError(err).Error("Failed to unmap")
+		log.WithError(err).Error("Failed to unmap")
 		c.Unlock()
 		return 0, err
 	}
@@ -1135,7 +1165,7 @@ func (c *Controller) UnmapAt(length uint32, off int64) (int, error) {
 		// to not complete the unmap operation, so simply respond that 0 blocks were unmapped. Otherwise, VM workloads
 		// will remain paused for the entire duration of the rebuild.
 		err := fmt.Errorf("cannot unmap %v bytes at offset %v while rebuilding is in progress", length, off)
-		logrus.WithError(err).Warn("Failed to unmap")
+		log.WithError(err).Warn("Failed to unmap")
 		c.Unlock()
 		return 0, nil
 	}
@@ -1144,7 +1174,7 @@ func (c *Controller) UnmapAt(length uint32, off int64) (int, error) {
 		// should be fast. It is better to return the error, letting the filesystem know that blocks have not been
 		// trimmed, so it can try again.
 		err := fmt.Errorf("cannot unmap %v bytes at offset %v while expansion in is progress", length, off)
-		logrus.WithError(err).Error("Failed to unmap")
+		log.WithError(err).Error("Failed to unmap")
 		c.Unlock()
 		return 0, err
 	}
@@ -1168,6 +1198,8 @@ func isSnapshotDiskExist(err error) bool {
 }
 
 func (c *Controller) handleErrorNoLock(err error) error {
+	log := logrus.WithField("volume", c.VolumeName)
+
 	if bErr, ok := err.(*BackendError); ok {
 		snapshotExistList := make(map[string]struct{})
 
@@ -1179,7 +1211,7 @@ func (c *Controller) handleErrorNoLock(err error) error {
 					// We reject the request, so do not set the replica to ERR if the snapshot is already existing.
 					snapshotExistList[address] = struct{}{}
 				} else {
-					logrus.WithError(err).Errorf("Setting replica %s to ERR", address)
+					log.WithError(err).Errorf("Setting replica %s to ERR", address)
 					c.setReplicaModeNoLock(address, types.ERR)
 				}
 			}
@@ -1189,7 +1221,7 @@ func (c *Controller) handleErrorNoLock(err error) error {
 				// if we still have a good replica, do not return error
 				for _, r := range c.replicas {
 					if r.Mode == types.RW {
-						logrus.WithError(err).Errorf("Ignoring error because %s is mode RW", r.Address)
+						log.WithError(err).Errorf("Ignoring error because %s is mode RW", r.Address)
 						err = nil
 						break
 					}
@@ -1198,7 +1230,7 @@ func (c *Controller) handleErrorNoLock(err error) error {
 		}
 	}
 	if err != nil {
-		logrus.WithError(err).Errorf("I/O error")
+		log.WithError(err).Errorf("I/O error")
 	}
 	return err
 }
@@ -1251,13 +1283,15 @@ func (c *Controller) Shutdown() error {
 		Need to shutdown frontend first because it will write
 		the final piece of data to backend
 	*/
+	log := logrus.WithField("volume", c.VolumeName)
+
 	errFrontend := c.shutdownFrontend()
 	if errFrontend != nil {
-		logrus.WithError(errFrontend).Error("Error when shutting down frontend")
+		log.WithError(errFrontend).Error("Error when shutting down frontend")
 	}
 	errBackend := c.shutdownBackend()
 	if errBackend != nil {
-		logrus.WithError(errBackend).Error("Error when shutting down backend")
+		log.WithError(errBackend).Error("Error when shutting down backend")
 	}
 	if errFrontend != nil || errBackend != nil {
 		return errors.Wrapf(errBackend, "errors when shutting down controller: frontend: %v backend", errFrontend)
@@ -1271,21 +1305,23 @@ func (c *Controller) Size() int64 {
 }
 
 func (c *Controller) monitoring(address string, backend types.Backend) {
+	log := logrus.WithField("volume", c.VolumeName)
+
 	monitorChan := backend.GetMonitorChannel()
 
 	if monitorChan == nil {
 		return
 	}
 
-	logrus.Infof("Start monitoring %v", address)
+	log.Infof("Start monitoring %v", address)
 	err := <-monitorChan
 	if err != nil {
-		logrus.WithError(err).Errorf("Backend %v monitoring failed, mark as ERR", address)
+		log.WithError(err).Errorf("Backend %v monitoring failed, mark as ERR", address)
 		if err = c.SetReplicaMode(address, types.ERR); err != nil {
-			logrus.WithError(err).Warnf("Failed to set replica %v to ERR", address)
+			log.WithError(err).Warnf("Failed to set replica %v to ERR", address)
 		}
 	}
-	logrus.Infof("Monitoring stopped %v", address)
+	log.Infof("Monitoring stopped %v", address)
 }
 
 func (c *Controller) Endpoint() string {
