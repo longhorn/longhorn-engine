@@ -112,6 +112,10 @@ func (s *Server) pushResponse(count int, msg *Message, err error) {
 		msg.Type = TypeEOF
 		msg.Data = msg.Data[:count]
 		msg.Size = uint32(len(msg.Data))
+	} else if err == types.ErrNoSpaceLeftOnDevice {
+		msg.Type = TypeENOSPC
+		msg.Data = []byte(err.Error())
+		msg.Size = uint32(len(msg.Data))
 	} else if err != nil {
 		msg.Type = TypeError
 		msg.Data = []byte(err.Error())
