@@ -1204,16 +1204,25 @@ func (c *Controller) handleErrorNoLock(err error) error {
 		snapshotExistList := make(map[string]struct{})
 
 		if len(bErr.Errors) > 0 {
+			noSpaceErrMap := make(map[string]string, len(c.replicas))
 			for address, replicaErr := range bErr.Errors {
 				if isSnapshotDiskExist(replicaErr) {
 					// The snapshot request using a existing snapshot's name might be caused by
 					// users and callers unexpectedly.
 					// We reject the request, so do not set the replica to ERR if the snapshot is already existing.
 					snapshotExistList[address] = struct{}{}
+				} else if strings.Contains(replicaErr.Error(), types.ErrorStringNoSpaceLeftOnDevice) {
+					log.WithError(err).Errorf("Disk is out of space for replica %s", address)
+					noSpaceErrMap[address] = types.ErrorStringNoSpaceLeftOnDevice
 				} else {
 					log.WithError(err).Errorf("Setting replica %s to ERR", address)
 					c.setReplicaModeNoLock(address, types.ERR)
 				}
+			}
+
+			if err := c.handleDiskNoSpaceErrorForReplicas(noSpaceErrMap); err != nil {
+				log.WithError(err).Error("All disks of writable replicas are out of space")
+				return err
 			}
 
 			// Always return error if the snapshot is already existing.
@@ -1233,6 +1242,31 @@ func (c *Controller) handleErrorNoLock(err error) error {
 		log.WithError(err).Errorf("I/O error")
 	}
 	return err
+}
+
+func (c *Controller) handleDiskNoSpaceErrorForReplicas(replicaNoSpaceErrMap map[string]string) error {
+	if len(replicaNoSpaceErrMap) == 0 {
+		return nil
+	}
+
+	replicaWritableCount := 0
+	for _, r := range c.replicas {
+		if r.Mode == types.ERR {
+			continue
+		}
+		replicaWritableCount++
+	}
+
+	// https://github.com/longhorn/longhorn/issues/10718#issuecomment-3190666485
+	// If a replica is on a disk that is out of space, and others are not, this replica will be marked as ERR to avoid the inconsistent data.
+	// The volume will be readable when all disks of the replicas are out of space so last one replica will not be marked as ERR because of ENOSPC.
+	if len(replicaNoSpaceErrMap) == replicaWritableCount {
+		return types.ErrNoSpaceLeftOnDevice
+	}
+	for address := range replicaNoSpaceErrMap {
+		c.setReplicaModeNoLock(address, types.ERR)
+	}
+	return nil
 }
 
 func (c *Controller) handleError(err error) error {
