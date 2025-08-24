@@ -84,8 +84,8 @@ github.com/kylelemons/godebug v1.1.0 h1:RPNrshWIDI6G2gRW9EHilWtl7Z6Sb1BR0xunSBf0
 github.com/kylelemons/godebug v1.1.0/go.mod h1:9/0rRGxNHcop5bhtWyNeEfOS8JIWk580+fNqagV/RAw=
 github.com/longhorn/backupstore v0.0.0-20250804022317-794abf817297 h1:KVnOHFT3wuwgyhV7/Rue8NMt13NkpIkZ3B7eVR0C8yM=
 github.com/longhorn/backupstore v0.0.0-20250804022317-794abf817297/go.mod h1:j5TiUyvRBYaSaPY/p6GIFOk1orfWcngk9hIWxDDJ5mg=
-github.com/longhorn/go-common-libs v0.0.0-20250812101836-470cb7301942 h1:H9hPMP02ZJSzXa7/0TOG3HQAhieDAGQuqnePSlj+BbQ=
-github.com/longhorn/go-common-libs v0.0.0-20250812101836-470cb7301942/go.mod h1:fuYzrb6idZgLrh8yePy6fA+LVB+z5fl4zZbBAU09+0g=
+github.com/longhorn/go-common-libs v0.0.0-20250819144703-ff4997b6fd80 h1:VcvA3RBSbeAurVnop4fVYwNWzxCI6sS0ORPE+nhGPk8=
+github.com/longhorn/go-common-libs v0.0.0-20250819144703-ff4997b6fd80/go.mod h1:fuYzrb6idZgLrh8yePy6fA+LVB+z5fl4zZbBAU09+0g=
 github.com/longhorn/go-iscsi-helper v0.0.0-20250810143507-5c5f9a0060b4 h1:i6Wac1SO2YwXkqZetnc1KZc+2PnFZ9xSUs99nFAhHiU=
 github.com/longhorn/go-iscsi-helper v0.0.0-20250810143507-5c5f9a0060b4/go.mod h1:EIkghFAyqv+8ktznS4a+leJ6KKQLPt9zrcdS2Zsfk+M=
 github.com/longhorn/sparse-tools v0.0.0-20241216160947-2b328f0fa59c h1:OFz3haCSPdgiiJvXLBeId/4dPu0dxIEqkQkfNMufLwc=
@@ -233,8 +233,8 @@ google.golang.org/genproto/googleapis/rpc v0.0.0-20250528174236-200df99c418a h1:
 google.golang.org/genproto/googleapis/rpc v0.0.0-20250528174236-200df99c418a/go.mod h1:qQ0YXyHHx3XkvlzUtpXDkS29lDSafHMZBAZDc03LQ3A=
 google.golang.org/grpc v1.74.2 h1:WoosgB65DlWVC9FqI82dGsZhWFNBSLjQ84bjROOpMu4=
 google.golang.org/grpc v1.74.2/go.mod h1:CtQ+BGjaAIXHs/5YS3i473GqwBBa1zGQNevxdeBEXrM=
-google.golang.org/protobuf v1.36.7 h1:IgrO7UwFQGJdRNXH/sQux4R1Dj1WAKcLElzeeRaXV2A=
-google.golang.org/protobuf v1.36.7/go.mod h1:jduwjTPXsFjZGTmRluh+L6NjiWu7pchiJ2/5YcXBHnY=
+google.golang.org/protobuf v1.36.8 h1:xHScyCOEuuwZEc6UtSOvPbAT4zRh0xcNRYekJwfqyMc=
+google.golang.org/protobuf v1.36.8/go.mod h1:fuxRtAxBytpl4zzqUh6/eyUujkJdNiuEkXntxiD/uRU=
 gopkg.in/VividCortex/ewma.v1 v1.1.1 h1:tWHEKkKq802K/JT9RiqGCBU5fW3raAPnJGTE9ostZvg=
 gopkg.in/VividCortex/ewma.v1 v1.1.1/go.mod h1:TekXuFipeiHWiAlO1+wSS23vTcyFau5u3rxXUSXj710=
 gopkg.in/check.v1 v0.0.0-20161208181325-20d25e280405/go.mod h1:Co6ibVJAznAaIkqp8huTwlJQCZ016jof/cbN4VW5Yz0=

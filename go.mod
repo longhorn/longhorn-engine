@@ -11,7 +11,7 @@ require (
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
 	github.com/longhorn/backupstore v0.0.0-20250804022317-794abf817297
-	github.com/longhorn/go-common-libs v0.0.0-20250812101836-470cb7301942
+	github.com/longhorn/go-common-libs v0.0.0-20250819144703-ff4997b6fd80
 	github.com/longhorn/go-iscsi-helper v0.0.0-20250810143507-5c5f9a0060b4
 	github.com/longhorn/sparse-tools v0.0.0-20241216160947-2b328f0fa59c
 	github.com/longhorn/types v0.0.0-20250812040111-bee68b0a4c07
@@ -24,7 +24,7 @@ require (
 	golang.org/x/net v0.43.0
 	golang.org/x/sys v0.35.0
 	google.golang.org/grpc v1.74.2
-	google.golang.org/protobuf v1.36.7
+	google.golang.org/protobuf v1.36.8
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 	gopkg.in/cheggaaa/pb.v2 v2.0.7
 	k8s.io/apimachinery v0.33.4
