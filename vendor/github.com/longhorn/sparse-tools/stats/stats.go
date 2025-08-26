@@ -4,11 +4,9 @@ import (
 	"fmt"
 	"time"
 
-	"errors"
-
 	"sync"
 
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -33,9 +31,11 @@ const (
 
 type dataPoint struct {
 	target    int // index in targetIDs (e.g replica index)
+	seq       uint32
 	op        SampleOp
 	timestamp time.Time
 	duration  time.Duration
+	offset    int
 	size      int // i/o operation size
 	status    bool
 }
@@ -98,11 +98,11 @@ func (sample dataPoint) String() string {
 	target := targetID(sample.target)
 	if sample.duration != time.Duration(0) {
 		if sample.status {
-			return fmt.Sprintf("%s: ->%s %v[%3dkB] %8dus", sample.timestamp.Format(time.StampMicro), target, sample.op, sample.size/1024, sample.duration.Nanoseconds()/1000)
+			return fmt.Sprintf("%s: REQ %v ->%s %v[%3dkB@%vkB] %8dus", sample.timestamp.Format(time.StampMicro), sample.seq, target, sample.op, sample.size/1024, sample.offset/1024, sample.duration.Nanoseconds()/1000)
 		}
-		return fmt.Sprintf("%s: ->%s %v[%3dkB] %8dus failed", sample.timestamp.Format(time.StampMicro), target, sample.op, sample.size/1024, sample.duration.Nanoseconds()/1000)
+		return fmt.Sprintf("%s: REQ %v ->%s %v[%3dkB@%vkB] %8dus failed", sample.timestamp.Format(time.StampMicro), sample.seq, target, sample.op, sample.size/1024, sample.offset/1024, sample.duration.Nanoseconds()/1000)
 	}
-	return fmt.Sprintf("%s: ->%s %v[%3dkB] pending", sample.timestamp.Format(time.StampMicro), target, sample.op, sample.size/1024)
+	return fmt.Sprintf("%s: REQ %v ->%s %v[%3dkB@%vkB] pending", sample.timestamp.Format(time.StampMicro), sample.seq, target, sample.op, sample.size/1024, sample.offset/1024)
 }
 
 var (
@@ -113,7 +113,7 @@ var (
 func initStats(size int) {
 	bufferSize = size
 	cdata = make(chan dataPoint, bufferSize)
-	log.Debug("Stats.init=", size)
+	logrus.Debugf("Stats.init bufferSize=%v", bufferSize)
 }
 
 func init() {
@@ -133,8 +133,8 @@ func storeSample(sample dataPoint) {
 }
 
 // Sample to the cyclic buffer
-func Sample(timestamp time.Time, duration time.Duration, targetID string, op SampleOp, size int, status bool) {
-	storeSample(dataPoint{targetIndex(targetID), op, timestamp, duration, size, status})
+func Sample(timestamp time.Time, duration time.Duration, targetID string, seq uint32, op SampleOp, offset, size int, status bool) {
+	storeSample(dataPoint{targetIndex(targetID), seq, op, timestamp, duration, offset, size, status})
 }
 
 // Process unreported samples
@@ -160,7 +160,7 @@ func ProcessLimited(limit int, processor func(dataPoint)) chan struct{} {
 		for count := 0; limit == 0 || count < limit; {
 			select {
 			case sample := <-cdata:
-				log.Debug("Stats.Processing=", sample)
+				logrus.Debugf("Stats.Processing=%+v", sample)
 				if dropCount > 0 {
 					// skip old samples
 					dropCount--
@@ -173,7 +173,7 @@ func ProcessLimited(limit int, processor func(dataPoint)) chan struct{} {
 			}
 		}
 		for _, sample := range pending {
-			log.Debug("Stats.Processing pending=", sample)
+			logrus.Debugf("Stats.Processing pending=%+v", sample)
 			processor(sample)
 		}
 		close(done)
@@ -198,7 +198,7 @@ func PrintLimited(limit int) chan struct{} {
 
 // Test helper to exercise small buffer sizes
 func resetStats(size int) {
-	log.Debug("Stats.reset")
+	logrus.Debug("Stats.reset")
 	initStats(size)
 }
 
@@ -212,7 +212,7 @@ var (
 )
 
 // InsertPendingOp starts tracking of a pending operation
-func InsertPendingOp(timestamp time.Time, targetID string, op SampleOp, size int) OpID {
+func InsertPendingOp(timestamp time.Time, targetID string, seq uint32, op SampleOp, offset, size int) OpID {
 	mutexPendingOps.Lock()
 	defer mutexPendingOps.Unlock()
 
@@ -224,27 +224,27 @@ func InsertPendingOp(timestamp time.Time, targetID string, op SampleOp, size int
 	} else {
 		id = pendingOpEmptySlot()
 	}
-	pendingOps[id] = dataPoint{targetIndex(targetID), op, timestamp, 0, size, false}
-	log.Debug("InsertPendingOp id=", id)
+	pendingOps[id] = dataPoint{targetIndex(targetID), seq, op, timestamp, 0, offset, size, false}
+	logrus.Debugf("InsertPendingOp OpID=%v", id)
 	return OpID(id)
 }
 
 // RemovePendingOp removes tracking of a completed operation
 func RemovePendingOp(id OpID, status bool) error {
-	log.Debug("RemovePendingOp id=", id)
+	logrus.Debugf("RemovePendingOp OpID=%v", id)
 	mutexPendingOps.Lock()
 	defer mutexPendingOps.Unlock()
 
 	i := int(id)
 	if i < 0 || i >= len(pendingOps) {
-		errMsg := "RemovePendingOp: Invalid OpID"
-		log.Error(errMsg, i)
-		return errors.New(errMsg)
+		err := fmt.Errorf("RemovePendingOp: Invalid OpID %v", i)
+		logrus.Error(err)
+		return err
 	}
 	if pendingOps[i].op == OpNone {
-		errMsg := "RemovePendingOp: OpID already removed"
-		log.Error(errMsg, i)
-		return errors.New(errMsg)
+		err := fmt.Errorf("RemovePendingOp: OpID already removed OpID %v", i)
+		logrus.Error(err)
+		return err
 	}
 
 	// Update the duration and store in the recent stats
