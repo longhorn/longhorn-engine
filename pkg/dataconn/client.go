@@ -117,11 +117,17 @@ func (c *Client) operation(op uint32, buf []byte, length uint32, offset int64) (
 
 // Close replica client
 func (c *Client) Close() {
+	log := logrus.WithFields(logrus.Fields{
+		"peerAddr": c.peerAddr,
+	})
+
 	for _, wire := range c.wires {
 		if errClose := wire.Close(); errClose != nil {
-			logrus.WithError(errClose).Error("Failed to close wire")
+			log.WithError(errClose).Error("Failed to close wire")
 		}
 	}
+
+	log.Info("Closing data connection client")
 	c.end <- struct{}{}
 }
 
@@ -137,6 +143,8 @@ func (c *Client) loop() {
 	log := logrus.WithFields(logrus.Fields{
 		"peerAddr": c.peerAddr,
 	})
+
+	log.Info("Data connection client loop started")
 
 	decremented := false
 	c.sharedTimeouts.Increment()
@@ -162,6 +170,7 @@ func (c *Client) loop() {
 	for {
 		select {
 		case <-c.end:
+			log.Info("Data connection client loop ended")
 			return
 		case <-ticker.C:
 			if timeOfLastActivity.IsZero() || ioInflight == 0 {
@@ -236,19 +245,20 @@ func (c *Client) replyError(req *Message, err error) {
 }
 
 func (c *Client) handleRequest(req *Message) {
+	seq := c.nextSeq()
 	switch req.Type {
 	case TypeRead:
-		req.ID = journal.InsertPendingOp(time.Now(), c.TargetID(), journal.OpRead, int(req.Size))
+		req.ID = journal.InsertPendingOp(time.Now(), c.TargetID(), seq, journal.OpRead, int(req.Offset), int(req.Size))
 	case TypeWrite:
-		req.ID = journal.InsertPendingOp(time.Now(), c.TargetID(), journal.OpWrite, int(req.Size))
+		req.ID = journal.InsertPendingOp(time.Now(), c.TargetID(), seq, journal.OpWrite, int(req.Offset), int(req.Size))
 	case TypeUnmap:
-		req.ID = journal.InsertPendingOp(time.Now(), c.TargetID(), journal.OpUnmap, int(req.Size))
+		req.ID = journal.InsertPendingOp(time.Now(), c.TargetID(), seq, journal.OpUnmap, int(req.Offset), int(req.Size))
 	case TypePing:
-		req.ID = journal.InsertPendingOp(time.Now(), c.TargetID(), journal.OpPing, 0)
+		req.ID = journal.InsertPendingOp(time.Now(), c.TargetID(), seq, journal.OpPing, 0, 0)
 	}
 
 	req.MagicVersion = MagicVersion
-	req.Seq = c.nextSeq()
+	req.Seq = seq
 	c.messages[req.Seq] = req
 	c.send <- req
 }
