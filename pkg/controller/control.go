@@ -550,7 +550,7 @@ func (c *Controller) setReplicaModeNoLock(address string, mode types.Mode) {
 				c.replicas[i] = r
 				c.backend.SetMode(address, mode)
 			} else {
-				log.Infof("Ignore set replica %v to mode %v due to it's ERR", address, mode)
+				log.Infof("Ignored setting replica %v to mode %v due to it's ERR", address, mode)
 			}
 		}
 	}
