@@ -19,6 +19,10 @@ const (
 	DefaultEngineReplicaTimeout = 8 * time.Second
 	minEngineReplicaTimeout     = 8 * time.Second
 	maxEngineReplicaTimeout     = 30 * time.Second
+
+	// defaultScsiQueueDepth is 32, which is the typical default value set by the Linux iSCSI initiator for iSCSI-TCP devices.
+	defaultScsiQueueDepth   = 32
+	additionalBufferTimeout = 30 * time.Second
 )
 
 func NewFrontend(frontendType string, iscsiTargetRequestTimeout time.Duration) (types.Frontend, error) {
@@ -45,11 +49,13 @@ func DetermineEngineReplicaTimeout(timeout time.Duration) time.Duration {
 	return timeout
 }
 
-func DetermineIscsiTargetRequestTimeout(engineReplicaTimeout time.Duration) time.Duration {
-	// The engine to replica timeout is engineReplicaTimeout.
-	// If the iSCSI target cannot receive the response from engine within
-	// engineReplicaTimeout + 7 (an arbitrarily chosen buffer for the time delay
-	// of engine to iSCSI target). If engineReplicaTimeout is 8, the iscsiTargetRequestTimeout
-	// will be 15 as previous value.
-	return engineReplicaTimeout + 7*time.Second
+func DetermineIscsiTargetRequestTimeout(engineReplicaTimeoutLong time.Duration) time.Duration {
+	// https://github.com/longhorn/longhorn/issues/8572#issuecomment-3226825317
+	// The formula is derived from:
+	// ```
+	// queue_depth × (2 × engine-replica-timeout) + additional buffer timeout
+	// ```
+	// 2 × engine-replica-timeout is engineReplicaTimeoutLong
+	// queue_depth is SCSI queue depth, which is 32 by default
+	return engineReplicaTimeoutLong*defaultScsiQueueDepth + additionalBufferTimeout
 }
