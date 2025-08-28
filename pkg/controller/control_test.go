@@ -302,3 +302,121 @@ func resetSlice(data []byte, val byte) {
 		data[i] = val
 	}
 }
+
+func (s *TestSuite) TestHandleDiskNoSpaceErrorForReplicas(c *C) {
+	tests := []struct {
+		name                 string
+		replicas             []types.Replica
+		replicaNoSpaceErrMap map[string]string
+		expectedError        error
+		expectedReplicaModes map[string]types.Mode
+	}{
+		{
+			name:                 "empty error map should return nil",
+			replicas:             []types.Replica{},
+			replicaNoSpaceErrMap: map[string]string{},
+			expectedError:        nil,
+			expectedReplicaModes: map[string]types.Mode{},
+		},
+		{
+			name: "single writable replica with no space error should return ErrNoSpaceLeftOnDevice",
+			replicas: []types.Replica{
+				{Address: "1.1.1.1", Mode: types.RW},
+			},
+			replicaNoSpaceErrMap: map[string]string{
+				"1.1.1.1": "no space left on device",
+			},
+			expectedError: types.ErrNoSpaceLeftOnDevice,
+			expectedReplicaModes: map[string]types.Mode{
+				"1.1.1.1": types.RW, // Should not be changed to ERR
+			},
+		},
+		{
+			name: "all writable replicas with no space error should return ErrNoSpaceLeftOnDevice",
+			replicas: []types.Replica{
+				{Address: "1.1.1.1", Mode: types.RW},
+				{Address: "1.1.1.2", Mode: types.WO},
+				{Address: "1.1.1.3", Mode: types.ERR},
+			},
+			replicaNoSpaceErrMap: map[string]string{
+				"1.1.1.1": "no space left on device",
+				"1.1.1.2": "no space left on device",
+			},
+			expectedError: types.ErrNoSpaceLeftOnDevice,
+			expectedReplicaModes: map[string]types.Mode{
+				"1.1.1.1": types.RW, // Should not be changed to ERR
+				"1.1.1.2": types.ERR,
+				"1.1.1.3": types.ERR,
+			},
+		},
+		{
+			name: "partial replicas with no space error should mark affected replicas as ERR",
+			replicas: []types.Replica{
+				{Address: "1.1.1.1", Mode: types.WO},
+				{Address: "1.1.1.2", Mode: types.RW},
+				{Address: "1.1.1.3", Mode: types.RW},
+			},
+			replicaNoSpaceErrMap: map[string]string{
+				"1.1.1.1": "no space left on device",
+			},
+			expectedError: nil,
+			expectedReplicaModes: map[string]types.Mode{
+				"1.1.1.1": types.ERR, // Should be changed to ERR
+				"1.1.1.2": types.RW,
+				"1.1.1.3": types.RW,
+			},
+		},
+		{
+			name: "replicas with WO mode should count as writable",
+			replicas: []types.Replica{
+				{Address: "1.1.1.1", Mode: types.RW},
+				{Address: "1.1.1.2", Mode: types.WO},
+				{Address: "1.1.1.3", Mode: types.ERR},
+			},
+			replicaNoSpaceErrMap: map[string]string{
+				"1.1.1.2": "no space left on device",
+			},
+			expectedError: nil,
+			expectedReplicaModes: map[string]types.Mode{
+				"1.1.1.1": types.RW, // Should not be changed to ERR
+				"1.1.1.2": types.ERR,
+				"1.1.1.3": types.ERR,
+			},
+		},
+	}
+
+	readSource := makeByteSliceWithInitialData(1, 1)
+	writeSource := makeByteSliceWithInitialData(1, 1)
+	ctrl := &Controller{
+		replicas:   []types.Replica{},
+		VolumeName: "test-no-space-left-on-device",
+		backend:    newMockReplicator(readSource, writeSource),
+	}
+	for _, tt := range tests {
+		ctrl.replicas = tt.replicas
+
+		// Call the method under test
+		err := ctrl.handleDiskNoSpaceErrorForReplicas(tt.replicaNoSpaceErrMap)
+
+		// Check the error result
+		if tt.expectedError != nil {
+			c.Assert(err, NotNil)
+			c.Assert(err, Equals, tt.expectedError)
+		} else {
+			c.Assert(err, IsNil)
+		}
+
+		// Check that replica modes are set correctly
+		for address, expectedMode := range tt.expectedReplicaModes {
+			found := false
+			for _, replica := range ctrl.replicas {
+				if replica.Address == address {
+					c.Assert(replica.Mode, Equals, expectedMode)
+					found = true
+					break
+				}
+			}
+			c.Assert(found, Equals, true)
+		}
+	}
+}
