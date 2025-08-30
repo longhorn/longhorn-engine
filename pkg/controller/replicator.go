@@ -29,7 +29,8 @@ type replicator struct {
 }
 
 type BackendError struct {
-	Errors map[string]error
+	Errors       map[string]error
+	WrittenBytes map[string]int
 }
 
 func (b *BackendError) Error() string {
@@ -135,15 +136,18 @@ func (r *replicator) WriteAt(p []byte, off int64) (int, error) {
 		errors := map[string]error{
 			r.writerIndex[0]: err,
 		}
+		var wbs map[string]int
 		if mErr, ok := err.(*MultiWriterError); ok {
 			errors = map[string]error{}
+			wbs = make(map[string]int, len(mErr.WrittenBytes))
 			for index, err := range mErr.Errors {
 				if err != nil {
 					errors[r.writerIndex[index]] = err
+					wbs[r.writerIndex[index]] = mErr.WrittenBytes[index]
 				}
 			}
 		}
-		return n, &BackendError{Errors: errors}
+		return n, &BackendError{Errors: errors, WrittenBytes: wbs}
 	}
 	return n, err
 }

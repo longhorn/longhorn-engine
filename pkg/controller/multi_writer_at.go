@@ -11,8 +11,9 @@ type MultiWriterAt struct {
 }
 
 type MultiWriterError struct {
-	Writers []io.WriterAt
-	Errors  []error
+	Writers      []io.WriterAt
+	Errors       []error
+	WrittenBytes []int
 }
 
 func (m *MultiWriterError) Error() string {
@@ -35,14 +36,16 @@ func (m *MultiWriterError) Error() string {
 
 func (m *MultiWriterAt) WriteAt(p []byte, off int64) (int, error) {
 	errs := make([]error, len(m.writers))
+	wbs := make([]int, len(m.writers))
 	wg := sync.WaitGroup{}
 
 	for i, w := range m.writers {
 		wg.Add(1)
 		go func(index int, w io.WriterAt) {
-			_, err := w.WriteAt(p, off)
+			wn, err := w.WriteAt(p, off)
 			if err != nil {
 				errs[index] = err
+				wbs[index] = wn
 			}
 
 			wg.Done()
@@ -57,8 +60,9 @@ func (m *MultiWriterAt) WriteAt(p []byte, off int64) (int, error) {
 	for i := range errs {
 		if errs[i] != nil {
 			err = &MultiWriterError{
-				Writers: m.writers,
-				Errors:  errs,
+				Writers:      m.writers,
+				Errors:       errs,
+				WrittenBytes: wbs,
 			}
 		} else {
 			n = len(p)

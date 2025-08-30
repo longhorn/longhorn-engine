@@ -307,14 +307,14 @@ func (s *TestSuite) TestHandleDiskNoSpaceErrorForReplicas(c *C) {
 	tests := []struct {
 		name                 string
 		replicas             []types.Replica
-		replicaNoSpaceErrMap map[string]string
+		replicaNoSpaceErrMap map[string]int
 		expectedError        error
 		expectedReplicaModes map[string]types.Mode
 	}{
 		{
 			name:                 "empty error map should return nil",
 			replicas:             []types.Replica{},
-			replicaNoSpaceErrMap: map[string]string{},
+			replicaNoSpaceErrMap: map[string]int{},
 			expectedError:        nil,
 			expectedReplicaModes: map[string]types.Mode{},
 		},
@@ -323,8 +323,8 @@ func (s *TestSuite) TestHandleDiskNoSpaceErrorForReplicas(c *C) {
 			replicas: []types.Replica{
 				{Address: "1.1.1.1", Mode: types.RW},
 			},
-			replicaNoSpaceErrMap: map[string]string{
-				"1.1.1.1": "no space left on device",
+			replicaNoSpaceErrMap: map[string]int{
+				"1.1.1.1": 1,
 			},
 			expectedError: types.ErrNoSpaceLeftOnDevice,
 			expectedReplicaModes: map[string]types.Mode{
@@ -338,9 +338,9 @@ func (s *TestSuite) TestHandleDiskNoSpaceErrorForReplicas(c *C) {
 				{Address: "1.1.1.2", Mode: types.WO},
 				{Address: "1.1.1.3", Mode: types.ERR},
 			},
-			replicaNoSpaceErrMap: map[string]string{
-				"1.1.1.1": "no space left on device",
-				"1.1.1.2": "no space left on device",
+			replicaNoSpaceErrMap: map[string]int{
+				"1.1.1.1": 1,
+				"1.1.1.2": 1,
 			},
 			expectedError: types.ErrNoSpaceLeftOnDevice,
 			expectedReplicaModes: map[string]types.Mode{
@@ -352,18 +352,17 @@ func (s *TestSuite) TestHandleDiskNoSpaceErrorForReplicas(c *C) {
 		{
 			name: "partial replicas with no space error should mark affected replicas as ERR",
 			replicas: []types.Replica{
-				{Address: "1.1.1.1", Mode: types.WO},
-				{Address: "1.1.1.2", Mode: types.RW},
-				{Address: "1.1.1.3", Mode: types.RW},
+				{Address: "1.1.1.1", Mode: types.RW},
+				{Address: "1.1.1.2", Mode: types.WO},
 			},
-			replicaNoSpaceErrMap: map[string]string{
-				"1.1.1.1": "no space left on device",
+			replicaNoSpaceErrMap: map[string]int{
+				"1.1.1.1": 1,
+				"1.1.1.2": 1,
 			},
-			expectedError: nil,
+			expectedError: types.ErrNoSpaceLeftOnDevice,
 			expectedReplicaModes: map[string]types.Mode{
-				"1.1.1.1": types.ERR, // Should be changed to ERR
-				"1.1.1.2": types.RW,
-				"1.1.1.3": types.RW,
+				"1.1.1.1": types.RW, // Should be changed to ERR
+				"1.1.1.2": types.ERR,
 			},
 		},
 		{
@@ -373,14 +372,58 @@ func (s *TestSuite) TestHandleDiskNoSpaceErrorForReplicas(c *C) {
 				{Address: "1.1.1.2", Mode: types.WO},
 				{Address: "1.1.1.3", Mode: types.ERR},
 			},
-			replicaNoSpaceErrMap: map[string]string{
-				"1.1.1.2": "no space left on device",
+			replicaNoSpaceErrMap: map[string]int{
+				"1.1.1.2": 1,
 			},
 			expectedError: nil,
 			expectedReplicaModes: map[string]types.Mode{
 				"1.1.1.1": types.RW, // Should not be changed to ERR
 				"1.1.1.2": types.ERR,
 				"1.1.1.3": types.ERR,
+			},
+		},
+		{
+			name: "replicas in max length of replicas that have the same written bytes should not be marked as ERR",
+			replicas: []types.Replica{
+				{Address: "1.1.1.1", Mode: types.RW},
+				{Address: "1.1.1.2", Mode: types.RW},
+				{Address: "1.1.1.3", Mode: types.RW},
+				{Address: "1.1.1.4", Mode: types.RW},
+			},
+			replicaNoSpaceErrMap: map[string]int{
+				"1.1.1.1": 1,
+				"1.1.1.2": 1,
+				"1.1.1.3": 2,
+				"1.1.1.4": 3,
+			},
+			expectedError: types.ErrNoSpaceLeftOnDevice,
+			expectedReplicaModes: map[string]types.Mode{
+				"1.1.1.1": types.RW, // Should not be changed to ERR
+				"1.1.1.2": types.RW, // Should not be changed to ERR
+				"1.1.1.3": types.ERR,
+				"1.1.1.4": types.ERR,
+			},
+		},
+		{
+			name: "replicas with max wb of max length of replicas that have the same written bytes	 should not be marked as ERR",
+			replicas: []types.Replica{
+				{Address: "1.1.1.1", Mode: types.RW},
+				{Address: "1.1.1.2", Mode: types.RW},
+				{Address: "1.1.1.3", Mode: types.RW},
+				{Address: "1.1.1.4", Mode: types.RW},
+			},
+			replicaNoSpaceErrMap: map[string]int{
+				"1.1.1.1": 2,
+				"1.1.1.2": 2,
+				"1.1.1.3": 1,
+				"1.1.1.4": 1,
+			},
+			expectedError: types.ErrNoSpaceLeftOnDevice,
+			expectedReplicaModes: map[string]types.Mode{
+				"1.1.1.1": types.RW, // Should not be changed to ERR
+				"1.1.1.2": types.RW, // Should not be changed to ERR
+				"1.1.1.3": types.ERR,
+				"1.1.1.4": types.ERR,
 			},
 		},
 	}

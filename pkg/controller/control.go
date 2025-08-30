@@ -1204,7 +1204,7 @@ func (c *Controller) handleErrorNoLock(err error) error {
 		snapshotExistList := make(map[string]struct{})
 
 		if len(bErr.Errors) > 0 {
-			noSpaceErrMap := make(map[string]string, len(c.replicas))
+			noSpaceErrMap := make(map[string]int, len(c.replicas))
 			for address, replicaErr := range bErr.Errors {
 				if isSnapshotDiskExist(replicaErr) {
 					// The snapshot request using a existing snapshot's name might be caused by
@@ -1213,7 +1213,7 @@ func (c *Controller) handleErrorNoLock(err error) error {
 					snapshotExistList[address] = struct{}{}
 				} else if strings.Contains(replicaErr.Error(), types.ErrorStringNoSpaceLeftOnDevice) {
 					log.WithError(err).Debugf("Disk is out of space for replica %s", address)
-					noSpaceErrMap[address] = types.ErrorStringNoSpaceLeftOnDevice
+					noSpaceErrMap[address] = bErr.WrittenBytes[address]
 				} else {
 					log.WithError(err).Errorf("Setting replica %s to ERR", address)
 					c.setReplicaModeNoLock(address, types.ERR)
@@ -1244,43 +1244,97 @@ func (c *Controller) handleErrorNoLock(err error) error {
 	return err
 }
 
-func (c *Controller) handleDiskNoSpaceErrorForReplicas(replicaNoSpaceErrMap map[string]string) error {
+func (c *Controller) handleDiskNoSpaceErrorForReplicas(replicaNoSpaceErrMap map[string]int) error {
 	if len(replicaNoSpaceErrMap) == 0 {
 		return nil
 	}
 
+	replicaRWCount, rwReplicasOnEnospcMap := c.getRWReplicaCountAndNoSpaceMap(replicaNoSpaceErrMap)
+
+	// https://github.com/longhorn/longhorn/issues/10718#issuecomment-3190666485
+	// If a replica is on a disk that is out of space, and others are not, this replica will be marked as ERR to avoid the inconsistent data.
+	// Last one replica will not be marked as ERR for an ENOSPC error so the volume will still be readable when all disks of the replicas are out of space.
+	// If all replicas are on disks that are out of space at the same time, keep a list of replicas that have the same write bytes RW and other replicas will be set to ERR.
+	if len(rwReplicasOnEnospcMap) == replicaRWCount {
+		if replicaRWCount != 1 {
+			// the ErrNoSpaceLeftOnDevice error will be translated to TypeENOSPC/ENOSPC and handled by `liblonghorn`
+			rwReplicasToErrOnEnospcList := filterReplicasToErrOnEnospc(replicaNoSpaceErrMap)
+			for _, address := range rwReplicasToErrOnEnospcList {
+				c.setReplicaModeNoLock(address, types.ERR)
+			}
+		}
+		return types.ErrNoSpaceLeftOnDevice
+	}
+
+	for address := range rwReplicasOnEnospcMap {
+		c.setReplicaModeNoLock(address, types.ERR)
+	}
+
+	return nil
+}
+
+func (c *Controller) getRWReplicaCountAndNoSpaceMap(replicaNoSpaceMap map[string]int) (int, map[string]int) {
 	replicaRWCount := 0
-	noSpaceRWReplicaList := make([]string, 0, len(c.replicas))
+	noSpaceRWReplicaMap := make(map[string]int, len(c.replicas))
+
 	for _, r := range c.replicas {
 		if r.Mode == types.RW {
 			replicaRWCount++
-			if _, exist := replicaNoSpaceErrMap[r.Address]; exist {
-				noSpaceRWReplicaList = append(noSpaceRWReplicaList, r.Address)
+			if wbn, exist := replicaNoSpaceMap[r.Address]; exist {
+				noSpaceRWReplicaMap[r.Address] = wbn
 			}
 			continue
 		}
 		if r.Mode == types.WO {
-			if _, exist := replicaNoSpaceErrMap[r.Address]; exist {
+			if _, exist := replicaNoSpaceMap[r.Address]; exist {
 				c.setReplicaModeNoLock(r.Address, types.ERR)
 			}
 			continue
 		}
 	}
 
-	// https://github.com/longhorn/longhorn/issues/10718#issuecomment-3190666485
-	// If a replica is on a disk that is out of space, and others are not, this replica will be marked as ERR to avoid the inconsistent data.
-	// If all replicas are on disks that are out of space at the same time, the volume will be directly return an ENOSPC error and no replica will be set to ERR.
-	// Last one replica will not be marked as ERR for an ENOSPC error so the volume will still be readable when all disks of the replicas are out of space.
-	if len(noSpaceRWReplicaList) == replicaRWCount {
-		// the ErrNoSpaceLeftOnDevice error will be translated to TypeENOSPC/ENOSPC and handled by `liblonghorn`
-		return types.ErrNoSpaceLeftOnDevice
+	return replicaRWCount, noSpaceRWReplicaMap
+}
+
+func filterReplicasToErrOnEnospc(replicaToErrOnNoSpaceMap map[string]int) []string {
+	wbReplicaMap := make(map[int]map[string]bool, len(replicaToErrOnNoSpaceMap))
+	for address, wb := range replicaToErrOnNoSpaceMap {
+		if wbReplicaMap[wb] == nil {
+			wbReplicaMap[wb] = make(map[string]bool)
+		}
+		wbReplicaMap[wb][address] = true
 	}
 
-	for _, address := range noSpaceRWReplicaList {
-		c.setReplicaModeNoLock(address, types.ERR)
+	maxLenSetReplica := 0
+	maxLenWbList := []int{}
+	for wb, addresses := range wbReplicaMap {
+		if len(addresses) > maxLenSetReplica {
+			maxLenSetReplica = len(addresses)
+			maxLenWbList = []int{wb}
+			continue
+		}
+		if len(addresses) == maxLenSetReplica {
+			maxLenWbList = append(maxLenWbList, wb)
+		}
 	}
 
-	return nil
+	maxWrittenBytes := int(-1)
+	for _, wb := range maxLenWbList {
+		if wb > maxWrittenBytes {
+			maxWrittenBytes = wb
+		}
+	}
+
+	keepRWReplicaMap := wbReplicaMap[maxWrittenBytes]
+	replicasToErrOnEnospcList := make([]string, 0, len(replicaToErrOnNoSpaceMap))
+	for address := range replicaToErrOnNoSpaceMap {
+		if _, exist := keepRWReplicaMap[address]; exist {
+			continue
+		}
+		replicasToErrOnEnospcList = append(replicasToErrOnEnospcList, address)
+	}
+
+	return replicasToErrOnEnospcList
 }
 
 func (c *Controller) handleError(err error) error {
