@@ -15,6 +15,8 @@ import (
 
 	"github.com/longhorn/sparse-tools/cli/ssync"
 
+	lhtypes "github.com/longhorn/go-common-libs/types"
+
 	"github.com/longhorn/longhorn-engine/app/cmd"
 	"github.com/longhorn/longhorn-engine/pkg/meta"
 )
@@ -96,7 +98,8 @@ func longhornCli() {
 			funcName := path.Base(f.Function)
 			return funcName, fileName
 		},
-		FullTimestamp: true,
+		TimestampFormat: lhtypes.RFC3339NanoUTC,
+		FullTimestamp:   true,
 	})
 
 	a.Before = func(c *cli.Context) error {
