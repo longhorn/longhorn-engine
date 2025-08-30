@@ -8,6 +8,7 @@ import (
 	"runtime"
 	"runtime/debug"
 	"runtime/pprof"
+	"time"
 
 	"github.com/moby/moby/pkg/reexec"
 	"github.com/sirupsen/logrus"
@@ -96,7 +97,8 @@ func longhornCli() {
 			funcName := path.Base(f.Function)
 			return funcName, fileName
 		},
-		FullTimestamp: true,
+		TimestampFormat: time.RFC3339Nano,
+		FullTimestamp:   true,
 	})
 
 	a.Before = func(c *cli.Context) error {
