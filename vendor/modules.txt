@@ -178,8 +178,8 @@ github.com/longhorn/backupstore/systembackup
 github.com/longhorn/backupstore/types
 github.com/longhorn/backupstore/util
 github.com/longhorn/backupstore/vfs
-# github.com/longhorn/go-common-libs v0.0.0-20250819144703-ff4997b6fd80
-## explicit; go 1.23.0
+# github.com/longhorn/go-common-libs v0.0.0-20250831092333-eaa5dddf05b8
+## explicit; go 1.24.0
 github.com/longhorn/go-common-libs/backup
 github.com/longhorn/go-common-libs/exec
 github.com/longhorn/go-common-libs/io
@@ -205,8 +205,8 @@ github.com/longhorn/sparse-tools/sparse/rest
 github.com/longhorn/sparse-tools/stats
 github.com/longhorn/sparse-tools/types
 github.com/longhorn/sparse-tools/util
-# github.com/longhorn/types v0.0.0-20250812040111-bee68b0a4c07
-## explicit; go 1.22.7
+# github.com/longhorn/types v0.0.0-20250831081209-ea63b0b5f6e1
+## explicit; go 1.23.0
 github.com/longhorn/types/pkg/generated/enginerpc
 github.com/longhorn/types/pkg/generated/profilerrpc
 # github.com/mattn/go-colorable v0.1.13
@@ -293,8 +293,8 @@ github.com/x448/float16
 # github.com/yusufpapurcu/wmi v1.2.4
 ## explicit; go 1.16
 github.com/yusufpapurcu/wmi
-# golang.org/x/exp v0.0.0-20250808145144-a408d31f581a
-## explicit; go 1.23.0
+# golang.org/x/exp v0.0.0-20250819193227-8b4c13bb791b
+## explicit; go 1.24.0
 golang.org/x/exp/constraints
 # golang.org/x/net v0.43.0
 ## explicit; go 1.23.0
