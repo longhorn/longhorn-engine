@@ -307,15 +307,15 @@ func (s *TestSuite) TestHandleDiskNoSpaceErrorForReplicas(c *C) {
 	tests := []struct {
 		name                 string
 		replicas             []types.Replica
-		replicaNoSpaceErrMap map[string]string
-		expectedError        error
+		replicaNoSpaceErrMap map[string]int
+		expectedAllFull      bool
 		expectedReplicaModes map[string]types.Mode
 	}{
 		{
 			name:                 "empty error map should return nil",
 			replicas:             []types.Replica{},
-			replicaNoSpaceErrMap: map[string]string{},
-			expectedError:        nil,
+			replicaNoSpaceErrMap: map[string]int{},
+			expectedAllFull:      false,
 			expectedReplicaModes: map[string]types.Mode{},
 		},
 		{
@@ -323,10 +323,10 @@ func (s *TestSuite) TestHandleDiskNoSpaceErrorForReplicas(c *C) {
 			replicas: []types.Replica{
 				{Address: "1.1.1.1", Mode: types.RW},
 			},
-			replicaNoSpaceErrMap: map[string]string{
-				"1.1.1.1": "no space left on device",
+			replicaNoSpaceErrMap: map[string]int{
+				"1.1.1.1": 1,
 			},
-			expectedError: types.ErrNoSpaceLeftOnDevice,
+			expectedAllFull: true,
 			expectedReplicaModes: map[string]types.Mode{
 				"1.1.1.1": types.RW, // Should not be changed to ERR
 			},
@@ -338,11 +338,11 @@ func (s *TestSuite) TestHandleDiskNoSpaceErrorForReplicas(c *C) {
 				{Address: "1.1.1.2", Mode: types.WO},
 				{Address: "1.1.1.3", Mode: types.ERR},
 			},
-			replicaNoSpaceErrMap: map[string]string{
-				"1.1.1.1": "no space left on device",
-				"1.1.1.2": "no space left on device",
+			replicaNoSpaceErrMap: map[string]int{
+				"1.1.1.1": 1,
+				"1.1.1.2": 1,
 			},
-			expectedError: types.ErrNoSpaceLeftOnDevice,
+			expectedAllFull: true,
 			expectedReplicaModes: map[string]types.Mode{
 				"1.1.1.1": types.RW, // Should not be changed to ERR
 				"1.1.1.2": types.ERR,
@@ -352,18 +352,17 @@ func (s *TestSuite) TestHandleDiskNoSpaceErrorForReplicas(c *C) {
 		{
 			name: "partial replicas with no space error should mark affected replicas as ERR",
 			replicas: []types.Replica{
-				{Address: "1.1.1.1", Mode: types.WO},
-				{Address: "1.1.1.2", Mode: types.RW},
-				{Address: "1.1.1.3", Mode: types.RW},
+				{Address: "1.1.1.1", Mode: types.RW},
+				{Address: "1.1.1.2", Mode: types.WO},
 			},
-			replicaNoSpaceErrMap: map[string]string{
-				"1.1.1.1": "no space left on device",
+			replicaNoSpaceErrMap: map[string]int{
+				"1.1.1.1": 1,
+				"1.1.1.2": 1,
 			},
-			expectedError: nil,
+			expectedAllFull: true,
 			expectedReplicaModes: map[string]types.Mode{
-				"1.1.1.1": types.ERR, // Should be changed to ERR
-				"1.1.1.2": types.RW,
-				"1.1.1.3": types.RW,
+				"1.1.1.1": types.RW, // Should be changed to ERR
+				"1.1.1.2": types.ERR,
 			},
 		},
 		{
@@ -373,10 +372,110 @@ func (s *TestSuite) TestHandleDiskNoSpaceErrorForReplicas(c *C) {
 				{Address: "1.1.1.2", Mode: types.WO},
 				{Address: "1.1.1.3", Mode: types.ERR},
 			},
-			replicaNoSpaceErrMap: map[string]string{
-				"1.1.1.2": "no space left on device",
+			replicaNoSpaceErrMap: map[string]int{
+				"1.1.1.2": 1,
 			},
-			expectedError: nil,
+			expectedAllFull: false,
+			expectedReplicaModes: map[string]types.Mode{
+				"1.1.1.1": types.RW, // Should not be changed to ERR
+				"1.1.1.2": types.ERR,
+				"1.1.1.3": types.ERR,
+			},
+		},
+		{
+			name: "replicas in max length of replicas that have the same written bytes should not be marked as ERR",
+			replicas: []types.Replica{
+				{Address: "1.1.1.1", Mode: types.RW},
+				{Address: "1.1.1.2", Mode: types.RW},
+				{Address: "1.1.1.3", Mode: types.RW},
+				{Address: "1.1.1.4", Mode: types.RW},
+			},
+			replicaNoSpaceErrMap: map[string]int{
+				"1.1.1.1": 1,
+				"1.1.1.2": 1,
+				"1.1.1.3": 2,
+				"1.1.1.4": 3,
+			},
+			expectedAllFull: true,
+			expectedReplicaModes: map[string]types.Mode{
+				"1.1.1.1": types.RW, // Should not be changed to ERR
+				"1.1.1.2": types.RW, // Should not be changed to ERR
+				"1.1.1.3": types.ERR,
+				"1.1.1.4": types.ERR,
+			},
+		},
+		{
+			name: "replicas with max wb of max length of replicas that have the same written bytes should not be marked as ERR",
+			replicas: []types.Replica{
+				{Address: "1.1.1.1", Mode: types.RW},
+				{Address: "1.1.1.2", Mode: types.RW},
+				{Address: "1.1.1.3", Mode: types.RW},
+				{Address: "1.1.1.4", Mode: types.RW},
+			},
+			replicaNoSpaceErrMap: map[string]int{
+				"1.1.1.1": 2,
+				"1.1.1.2": 2,
+				"1.1.1.3": 1,
+				"1.1.1.4": 1,
+			},
+			expectedAllFull: true,
+			expectedReplicaModes: map[string]types.Mode{
+				"1.1.1.1": types.RW, // Should not be changed to ERR
+				"1.1.1.2": types.RW, // Should not be changed to ERR
+				"1.1.1.3": types.ERR,
+				"1.1.1.4": types.ERR,
+			},
+		},
+		{
+			name: "replicas with different written bytes should be marked as ERR",
+			replicas: []types.Replica{
+				{Address: "1.1.1.1", Mode: types.RW},
+				{Address: "1.1.1.2", Mode: types.RW},
+				{Address: "1.1.1.3", Mode: types.RW},
+			},
+			replicaNoSpaceErrMap: map[string]int{
+				"1.1.1.2": 2,
+				"1.1.1.3": 1,
+			},
+			expectedAllFull: false,
+			expectedReplicaModes: map[string]types.Mode{
+				"1.1.1.1": types.RW, // Should not be changed to ERR
+				"1.1.1.2": types.ERR,
+				"1.1.1.3": types.ERR,
+			},
+		},
+		{
+			name: "replicas with different modes and different written bytes should be handled correctly",
+			replicas: []types.Replica{
+				{Address: "1.1.1.1", Mode: types.RW},
+				{Address: "1.1.1.2", Mode: types.RW},
+				{Address: "1.1.1.3", Mode: types.WO},
+			},
+			replicaNoSpaceErrMap: map[string]int{
+				"1.1.1.1": 3,
+				"1.1.1.2": 2,
+				"1.1.1.3": 1,
+			},
+			expectedAllFull: true,
+			expectedReplicaModes: map[string]types.Mode{
+				"1.1.1.1": types.RW, // Should not be changed to ERR
+				"1.1.1.2": types.ERR,
+				"1.1.1.3": types.ERR,
+			},
+		},
+		{
+			name: "all replicas are RW with different written bytes should be handled correctly",
+			replicas: []types.Replica{
+				{Address: "1.1.1.1", Mode: types.RW},
+				{Address: "1.1.1.2", Mode: types.RW},
+				{Address: "1.1.1.3", Mode: types.RW},
+			},
+			replicaNoSpaceErrMap: map[string]int{
+				"1.1.1.1": 3,
+				"1.1.1.2": 2,
+				"1.1.1.3": 1,
+			},
+			expectedAllFull: true,
 			expectedReplicaModes: map[string]types.Mode{
 				"1.1.1.1": types.RW, // Should not be changed to ERR
 				"1.1.1.2": types.ERR,
@@ -396,27 +495,316 @@ func (s *TestSuite) TestHandleDiskNoSpaceErrorForReplicas(c *C) {
 		ctrl.replicas = tt.replicas
 
 		// Call the method under test
-		err := ctrl.handleDiskNoSpaceErrorForReplicas(tt.replicaNoSpaceErrMap)
-
-		// Check the error result
-		if tt.expectedError != nil {
-			c.Assert(err, NotNil)
-			c.Assert(err, Equals, tt.expectedError)
-		} else {
-			c.Assert(err, IsNil)
-		}
+		areAllReplicasNoSpace := ctrl.handleDiskNoSpaceErrorForReplicas(tt.replicaNoSpaceErrMap)
+		c.Assert(areAllReplicasNoSpace, Equals, tt.expectedAllFull, Commentf("Test case: %s - Expected all replicas on no space: %v but got %v", tt.name, tt.expectedAllFull, areAllReplicasNoSpace))
 
 		// Check that replica modes are set correctly
 		for address, expectedMode := range tt.expectedReplicaModes {
 			found := false
 			for _, replica := range ctrl.replicas {
 				if replica.Address == address {
-					c.Assert(replica.Mode, Equals, expectedMode)
+					c.Assert(replica.Mode, Equals, expectedMode, Commentf("Test case: %s - Expected mode %v for replica %s but got %v", tt.name, expectedMode, address, replica.Mode))
 					found = true
 					break
 				}
 			}
-			c.Assert(found, Equals, true)
+			c.Assert(found, Equals, true, Commentf("Test case: %s - Expected replica %s to be found", tt.name, address))
+		}
+	}
+}
+
+func (s *TestSuite) TestCategorizeOutOfSpaceReplicas(c *C) {
+	tests := []struct {
+		name                   string
+		replicas               []types.Replica
+		replicaNoSpaceErrMap   map[string]int
+		expectedRWReplicaCount int
+		expectedNoSpaceMap     map[string]int
+		expectedROReplicaList  []string
+	}{
+		{
+			name:                   "empty replicas and error map",
+			replicas:               []types.Replica{},
+			replicaNoSpaceErrMap:   map[string]int{},
+			expectedRWReplicaCount: 0,
+			expectedNoSpaceMap:     map[string]int{},
+			expectedROReplicaList:  []string{},
+		},
+		{
+			name: "only RW replicas without errors",
+			replicas: []types.Replica{
+				{Address: "1.1.1.1", Mode: types.RW},
+				{Address: "1.1.1.2", Mode: types.RW},
+				{Address: "1.1.1.3", Mode: types.ERR},
+			},
+			replicaNoSpaceErrMap:   map[string]int{},
+			expectedRWReplicaCount: 2,
+			expectedNoSpaceMap:     map[string]int{},
+			expectedROReplicaList:  []string{},
+		},
+		{
+			name: "RW and WO replicas with some no space errors",
+			replicas: []types.Replica{
+				{Address: "1.1.1.1", Mode: types.RW},
+				{Address: "1.1.1.2", Mode: types.WO},
+				{Address: "1.1.1.3", Mode: types.ERR},
+			},
+			replicaNoSpaceErrMap: map[string]int{
+				"1.1.1.1": 1,
+			},
+			expectedRWReplicaCount: 1,
+			expectedNoSpaceMap: map[string]int{
+				"1.1.1.1": 1,
+			},
+			expectedROReplicaList: []string{},
+		},
+		{
+			name: "all writable replicas with no space errors",
+			replicas: []types.Replica{
+				{Address: "1.1.1.1", Mode: types.RW},
+				{Address: "1.1.1.2", Mode: types.WO},
+				{Address: "1.1.1.3", Mode: types.ERR},
+			},
+			replicaNoSpaceErrMap: map[string]int{
+				"1.1.1.1": 1,
+				"1.1.1.2": 1,
+			},
+			expectedRWReplicaCount: 1,
+			expectedNoSpaceMap: map[string]int{
+				"1.1.1.1": 1,
+			},
+			expectedROReplicaList: []string{"1.1.1.2"},
+		},
+		{
+			name: "mixed modes with errors including non-existent replicas",
+			replicas: []types.Replica{
+				{Address: "1.1.1.1", Mode: types.RW},
+				{Address: "1.1.1.2", Mode: types.WO},
+				{Address: "1.1.1.3", Mode: types.ERR},
+			},
+			replicaNoSpaceErrMap: map[string]int{
+				"1.1.1.1":      1,
+				"1.1.1.2":      1,
+				"1.1.1.3":      1,
+				"non.existent": 1, // Non-existent replica
+			},
+			expectedRWReplicaCount: 1,
+			expectedNoSpaceMap: map[string]int{
+				"1.1.1.1": 1,
+			},
+			expectedROReplicaList: []string{"1.1.1.2"},
+		},
+		{
+			name: "only ERR replicas with no space errors",
+			replicas: []types.Replica{
+				{Address: "1.1.1.1", Mode: types.ERR},
+				{Address: "1.1.1.2", Mode: types.ERR},
+			},
+			replicaNoSpaceErrMap: map[string]int{
+				"1.1.1.1": 1,
+				"1.1.1.2": 1,
+			},
+			expectedRWReplicaCount: 0,
+			expectedNoSpaceMap:     map[string]int{},
+			expectedROReplicaList:  []string{},
+		},
+		{
+			name: "various written bytes values for same replicas",
+			replicas: []types.Replica{
+				{Address: "1.1.1.1", Mode: types.RW},
+				{Address: "1.1.1.2", Mode: types.RW},
+				{Address: "1.1.1.3", Mode: types.WO},
+			},
+			replicaNoSpaceErrMap: map[string]int{
+				"1.1.1.1": 5,
+				"1.1.1.2": 3,
+				"1.1.1.3": 5,
+			},
+			expectedRWReplicaCount: 2,
+			expectedNoSpaceMap: map[string]int{
+				"1.1.1.1": 5,
+				"1.1.1.2": 3,
+			},
+			expectedROReplicaList: []string{"1.1.1.3"},
+		},
+	}
+
+	readSource := makeByteSliceWithInitialData(1, 1)
+	writeSource := makeByteSliceWithInitialData(1, 1)
+	ctrl := &Controller{
+		replicas:   []types.Replica{},
+		VolumeName: "test-get-rw-replica-count",
+		backend:    newMockReplicator(readSource, writeSource),
+	}
+
+	for _, tt := range tests {
+		ctrl.replicas = tt.replicas
+
+		// Call the method under test
+		rwReplicaCount, noSpaceMap, roReplicaList := ctrl.categorizeOutOfSpaceReplicas(tt.replicaNoSpaceErrMap)
+
+		// Check the results
+		c.Assert(rwReplicaCount, Equals, tt.expectedRWReplicaCount, Commentf("Test case: %s - RW replica count mismatch", tt.name))
+		c.Assert(len(noSpaceMap), Equals, len(tt.expectedNoSpaceMap), Commentf("Test case: %s - No space map length mismatch", tt.name))
+		c.Assert(len(roReplicaList), Equals, len(tt.expectedROReplicaList), Commentf("Test case: %s - RO replica list length mismatch", tt.name))
+
+		// Check the no space map contents
+		for expectedAddr, expectedWB := range tt.expectedNoSpaceMap {
+			actualWB, exists := noSpaceMap[expectedAddr]
+			c.Assert(exists, Equals, true, Commentf("Test case: %s - Address %s not found in no space map", tt.name, expectedAddr))
+			c.Assert(actualWB, Equals, expectedWB, Commentf("Test case: %s - Written bytes mismatch for address %s", tt.name, expectedAddr))
+		}
+
+		// Ensure no extra entries in the actual map
+		for actualAddr := range noSpaceMap {
+			_, exists := tt.expectedNoSpaceMap[actualAddr]
+			c.Assert(exists, Equals, true, Commentf("Test case: %s - Unexpected address %s in no space map", tt.name, actualAddr))
+		}
+
+		// Check the RO replica list contents
+		for i, expectedAddr := range tt.expectedROReplicaList {
+			c.Assert(roReplicaList[i], Equals, expectedAddr, Commentf("Test case: %s - RO replica list mismatch at index %d", tt.name, i))
+		}
+
+	}
+}
+
+func (s *TestSuite) TestListReplicasToErrOnEnospc(c *C) {
+	tests := []struct {
+		name                      string
+		replicaToErrOnNoSpaceMap  map[string]int
+		expectedReplicasToErrList []string
+	}{
+		{
+			name:                      "empty map should return empty list",
+			replicaToErrOnNoSpaceMap:  map[string]int{},
+			expectedReplicasToErrList: []string{},
+		},
+		{
+			name: "single replica should return empty list (keep the only replica)",
+			replicaToErrOnNoSpaceMap: map[string]int{
+				"1.1.1.1": 100,
+			},
+			expectedReplicasToErrList: []string{},
+		},
+		{
+			name: "replicas with same written bytes should keep all",
+			replicaToErrOnNoSpaceMap: map[string]int{
+				"1.1.1.1": 100,
+				"1.1.1.2": 100,
+				"1.1.1.3": 100,
+			},
+			expectedReplicasToErrList: []string{},
+		},
+		{
+			name: "replicas with different written bytes should keep highest",
+			replicaToErrOnNoSpaceMap: map[string]int{
+				"1.1.1.1": 50,
+				"1.1.1.2": 100,
+				"1.1.1.3": 75,
+			},
+			expectedReplicasToErrList: []string{
+				"1.1.1.1",
+				"1.1.1.3",
+			},
+		},
+		{
+			name: "multiple replicas with highest written bytes should keep all highest",
+			replicaToErrOnNoSpaceMap: map[string]int{
+				"1.1.1.1": 100,
+				"1.1.1.2": 100,
+				"1.1.1.3": 75,
+				"1.1.1.4": 50,
+			},
+			expectedReplicasToErrList: []string{
+				"1.1.1.3",
+				"1.1.1.4",
+			},
+		},
+		{
+			name: "multiple groups with same count - keep group with highest written bytes",
+			replicaToErrOnNoSpaceMap: map[string]int{
+				"1.1.1.1": 100, // Group 1: 2 replicas with 100 bytes
+				"1.1.1.2": 100,
+				"1.1.1.3": 75, // Group 2: 2 replicas with 75 bytes
+				"1.1.1.4": 75,
+			},
+			expectedReplicasToErrList: []string{
+				"1.1.1.3",
+				"1.1.1.4",
+			},
+		},
+		{
+			name: "complex scenario with multiple groups",
+			replicaToErrOnNoSpaceMap: map[string]int{
+				"1.1.1.1": 200, // Group 1: 1 replica with 200 bytes
+				"1.1.1.2": 150, // Group 2: 3 replicas with 150 bytes (largest group)
+				"1.1.1.3": 150,
+				"1.1.1.4": 150,
+				"1.1.1.5": 100, // Group 3: 2 replicas with 100 bytes
+				"1.1.1.6": 100,
+			},
+			expectedReplicasToErrList: []string{
+				"1.1.1.1",
+				"1.1.1.5",
+				"1.1.1.6",
+			},
+		},
+		{
+			name: "zero written bytes should be handled correctly",
+			replicaToErrOnNoSpaceMap: map[string]int{
+				"1.1.1.1": 0, // Group 1: 2 replicas with 0 bytes
+				"1.1.1.2": 0,
+				"1.1.1.3": 50, // Group 2: 1 replica with 50 bytes
+			},
+			expectedReplicasToErrList: []string{
+				"1.1.1.3",
+			},
+		},
+		{
+			name: "negative written bytes edge case",
+			replicaToErrOnNoSpaceMap: map[string]int{
+				"1.1.1.1": -10, // Group 1: 1 replica with -10 bytes
+				"1.1.1.2": 0,   // Group 2: 2 replicas with 0 bytes (largest group)
+				"1.1.1.3": 0,
+				"1.1.1.4": 50, // Group 3: 1 replica with 50 bytes
+			},
+			expectedReplicasToErrList: []string{
+				"1.1.1.1",
+				"1.1.1.4",
+			},
+		},
+	}
+
+	for _, tt := range tests {
+		// Call the function under test
+		result := listReplicasToErrOnEnospc(tt.replicaToErrOnNoSpaceMap)
+
+		// Check the length
+		c.Assert(len(result), Equals, len(tt.expectedReplicasToErrList),
+			Commentf("Test case: %s - Length mismatch", tt.name))
+
+		// Convert result to map for easier comparison
+		resultMap := make(map[string]bool)
+		for _, addr := range result {
+			resultMap[addr] = true
+		}
+
+		// Check each expected address is in the result
+		for _, expectedAddr := range tt.expectedReplicasToErrList {
+			c.Assert(resultMap[expectedAddr], Equals, true, Commentf("Test case: %s - Expected address %s not found in result", tt.name, expectedAddr))
+		}
+
+		// Check no unexpected addresses in the result
+		for _, actualAddr := range result {
+			found := false
+			for _, expectedAddr := range tt.expectedReplicasToErrList {
+				if actualAddr == expectedAddr {
+					found = true
+					break
+				}
+			}
+			c.Assert(found, Equals, true, Commentf("Test case: %s - Unexpected address %s in result", tt.name, actualAddr))
 		}
 	}
 }
