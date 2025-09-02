@@ -1204,7 +1204,10 @@ func (c *Controller) handleErrorNoLock(err error) error {
 		snapshotExistList := make(map[string]struct{})
 
 		if len(bErr.Errors) > 0 {
-			noSpaceErrMap := make(map[string]string, len(c.replicas))
+			// noSpaceErrMap tracks the written bytes for each replica that are out of space.
+			// For Example: {"replicaA": 1, "replicaB": 2, "replicaC": 3}, and replicas can be RW or WO.
+			// if there are replicas in noSpaceErrMap, we will handle them accordingly in handleDiskNoSpaceErrorForReplicas.
+			noSpaceErrMap := make(map[string]int, len(c.replicas))
 			for address, replicaErr := range bErr.Errors {
 				if isSnapshotDiskExist(replicaErr) {
 					// The snapshot request using a existing snapshot's name might be caused by
@@ -1213,16 +1216,17 @@ func (c *Controller) handleErrorNoLock(err error) error {
 					snapshotExistList[address] = struct{}{}
 				} else if strings.Contains(replicaErr.Error(), types.ErrorStringNoSpaceLeftOnDevice) {
 					log.WithError(err).Debugf("Disk is out of space for replica %s", address)
-					noSpaceErrMap[address] = types.ErrorStringNoSpaceLeftOnDevice
+					noSpaceErrMap[address] = bErr.WrittenBytes[address]
 				} else {
 					log.WithError(err).Errorf("Setting replica %s to ERR", address)
 					c.setReplicaModeNoLock(address, types.ERR)
 				}
 			}
 
-			if noSpaceErr := c.handleDiskNoSpaceErrorForReplicas(noSpaceErrMap); noSpaceErr != nil {
-				log.WithError(noSpaceErr).Debug("All disks of writable replicas are out of space")
-				return noSpaceErr
+			if c.handleDiskNoSpaceErrorForReplicas(noSpaceErrMap) {
+				log.Debug("All writable replicas are out of space")
+				// the ErrNoSpaceLeftOnDevice error will be translated to TypeENOSPC/ENOSPC and handled by `liblonghorn`
+				return types.ErrNoSpaceLeftOnDevice
 			}
 
 			// Always return error if the snapshot is already existing.
@@ -1244,43 +1248,155 @@ func (c *Controller) handleErrorNoLock(err error) error {
 	return err
 }
 
-func (c *Controller) handleDiskNoSpaceErrorForReplicas(replicaNoSpaceErrMap map[string]string) error {
+// handleDiskNoSpaceErrorForReplicas handles the case where some replicas are out of space.
+// It will set the writable replicas on out of space disks to ERR mode for data integrity if needed, and it will return true if all RW replicas are out of space.
+//
+//	Input: replicaNoSpaceErrMap - a map of replicas that encountered no space error and the bytes they have written when encountering the error.
+//	Output: true if all RW replicas are out of space, false otherwise
+func (c *Controller) handleDiskNoSpaceErrorForReplicas(replicaNoSpaceErrMap map[string]int) bool {
 	if len(replicaNoSpaceErrMap) == 0 {
-		return nil
+		return false
 	}
+	log := logrus.WithField("volume", c.VolumeName)
 
-	replicaRWCount := 0
-	noSpaceRWReplicaList := make([]string, 0, len(c.replicas))
-	for _, r := range c.replicas {
-		if r.Mode == types.RW {
-			replicaRWCount++
-			if _, exist := replicaNoSpaceErrMap[r.Address]; exist {
-				noSpaceRWReplicaList = append(noSpaceRWReplicaList, r.Address)
-			}
-			continue
-		}
-		if r.Mode == types.WO {
-			if _, exist := replicaNoSpaceErrMap[r.Address]; exist {
-				c.setReplicaModeNoLock(r.Address, types.ERR)
-			}
-			continue
-		}
+	rwReplicaCount, rwReplicasOnEnospcMap, noSpaceWOReplicasList := c.categorizeOutOfSpaceReplicas(replicaNoSpaceErrMap)
+	for _, address := range noSpaceWOReplicasList {
+		// If the WO replica is on a disk that is out of space, it will be marked as ERR for data integrity,
+		// and there will be other replicas that are still RW.
+		log.Infof("Setting WO replica %s to ERR due to no space", address)
+		c.setReplicaModeNoLock(address, types.ERR)
 	}
 
 	// https://github.com/longhorn/longhorn/issues/10718#issuecomment-3190666485
 	// If a replica is on a disk that is out of space, and others are not, this replica will be marked as ERR to avoid the inconsistent data.
-	// If all replicas are on disks that are out of space at the same time, the volume will be directly return an ENOSPC error and no replica will be set to ERR.
 	// Last one replica will not be marked as ERR for an ENOSPC error so the volume will still be readable when all disks of the replicas are out of space.
-	if len(noSpaceRWReplicaList) == replicaRWCount {
-		// the ErrNoSpaceLeftOnDevice error will be translated to TypeENOSPC/ENOSPC and handled by `liblonghorn`
-		return types.ErrNoSpaceLeftOnDevice
+	// If all replicas are on disks that are out of space at the same time, we need to ensure the data integrity by written bytes that each replica has written when encountering ENOSPC
+	// And we can rebuild the less replicas efficiently when ENOSPC issue is fixed.
+	// Therefore, it will retain a list of max number of replicas that have the same written bytes RW and other replicas will be set to ERR.
+	// When will len(rwReplicasOnEnospcMap) will not be equal to rwReplicaCount,
+	// For example, there are 3 RW replicas (A,B,C), and 2 RW replicas (B,C) encounter the ENOSPC error.
+	// In this case, rwReplicaCount is 3, and len(rwReplicasOnEnospcMap) is 2, so replicas B and C will be set to ERR, while A will remain RW.
+	if len(rwReplicasOnEnospcMap) == rwReplicaCount {
+		// rwReplicasOnEnospcMap now is a map only contains RW replicas that encountered ENOSPC error.
+		// rwReplicaCount means the count of all RW replicas and if it is not 1 and equal to len(rwReplicasOnEnospcMap),
+		// it means some replica in rwReplicasOnEnospcMap need to be set to ERR for data integrity.
+		if rwReplicaCount != 1 {
+			rwReplicasToErrOnEnospcList := listReplicasToErrOnEnospc(rwReplicasOnEnospcMap)
+			for _, address := range rwReplicasToErrOnEnospcList {
+				log.Infof("Setting RW replica %s to ERR due to no space", address)
+				c.setReplicaModeNoLock(address, types.ERR)
+			}
+		}
+		return true
 	}
 
-	for _, address := range noSpaceRWReplicaList {
+	for address := range rwReplicasOnEnospcMap {
+		log.Infof("Setting RW replica %s to ERR due to no space", address)
 		c.setReplicaModeNoLock(address, types.ERR)
 	}
 
-	return nil
+	return false
+}
+
+// categorizeOutOfSpaceReplicas returns the count of all RW replicas, a map of RW replicas on no space disks, and a list of WO replicas on no space disks.
+// The functions separate RW/WO replicas in replicaWrittenBytesMap into a RW replicas with WrittenBytes Map and a WO replicas list to be set to `ERR`.
+//
+//	replicaWrittenBytesMap: a map of replicas that encountered no space error and the bytes they have written when encountering the error. For example: {"replica A": 1, "replica B": 2, "replica C": 2, "replica D": 2, "replica E": 0,}
+func (c *Controller) categorizeOutOfSpaceReplicas(replicaWrittenBytesMap map[string]int) (int, map[string]int, []string) {
+	rwReplicaCount := 0
+	noSpaceRWReplicasMap := make(map[string]int, len(replicaWrittenBytesMap))
+	noSpaceWOReplicasList := make([]string, 0, len(replicaWrittenBytesMap))
+
+	for _, r := range c.replicas {
+		switch r.Mode {
+		case types.RW:
+			rwReplicaCount++
+			// The RW replicas that are not on out of space disks will not in the replicaWrittenBytesMap.
+			if wbn, exist := replicaWrittenBytesMap[r.Address]; exist {
+				noSpaceRWReplicasMap[r.Address] = wbn
+			}
+		case types.WO:
+			if _, exist := replicaWrittenBytesMap[r.Address]; exist {
+				noSpaceWOReplicasList = append(noSpaceWOReplicasList, r.Address)
+			}
+		}
+	}
+
+	return rwReplicaCount, noSpaceRWReplicasMap, noSpaceWOReplicasList
+}
+
+// listReplicasToErrOnEnospc lists the replicas that need to be set to ERR on ENOSPC error,
+// and retain max number of replicas that have the same written bytes to keep the volume working.
+//
+//	return a list of replicas that need to be set to ERR on ENOSPC error.
+//	Example 1:
+//	Input: replicaToErrOnNoSpaceMap: {"replica A": 1, "replica B": 2, "replica C": 1, "replica D": 2, "replica E": 0,}
+//	Written Bytes 2: {"replica B", "replica D"},
+//	Written Bytes 1: {"replica A", "replica C"},
+//	Written Bytes 0: {"replica E"}
+//	{"replica B", "replica D"} will be retained RW because they have max number of the replicas that wrote the same written bytes, and the written bytes is maximum.
+//	Therefore, it will return the list {"replica A", "replica C", "replica E"} to be set to ERR.
+//	Example 2:
+//	Input: replicaToErrOnNoSpaceMap: {"replica A": 1, "replica B": 1, "replica C": 1, "replica D": 1}
+//	Written Bytes 1: {"replica A", "replica B", "replica C", "replica D"},
+//	{"replica A", "replica B", "replica C", "replica D"} will be retained RW.
+//	Therefore, it will return an empty list {} to be set to ERR.
+func listReplicasToErrOnEnospc(replicaToErrOnNoSpaceMap map[string]int) []string {
+	retainedReplicasMap := getRetainedReplicasMap(replicaToErrOnNoSpaceMap)
+
+	replicasToErrList := make([]string, 0, len(replicaToErrOnNoSpaceMap))
+	for address := range replicaToErrOnNoSpaceMap {
+		if _, exist := retainedReplicasMap[address]; exist {
+			continue
+		}
+		replicasToErrList = append(replicasToErrList, address)
+	}
+
+	return replicasToErrList
+}
+
+// getRetainedReplicasMap converts a map of replicas to written bytes into a map of a set of replicas.
+//
+//	For example:
+//	Input: replicasWrittenBytesMap: {"replica A": 1, "replica B": 2, "replica C": 2, "replica D": 0, "replica E": 0,}
+//	Output: {"replica B": true, "replica C": true, "replica D": true}
+func getRetainedReplicasMap(replicasWrittenBytesMap map[string]int) map[string]struct{} {
+	//	An example to get a writtenBytesReplicasMap:
+	//		Input: replicasWrittenBytesMap: {"replica A": 1, "replica B": 2, "replica C": 2, "replica D": 0, "replica E": 0,}
+	//		Result: {2: {"replica B": true, "replica C": true}, 0: {"replica E": true, "replica D": true}, 1: {"replica A": true}}
+	writtenBytesReplicasMap := make(map[int]map[string]struct{})
+	for address, wb := range replicasWrittenBytesMap {
+		if writtenBytesReplicasMap[wb] == nil {
+			writtenBytesReplicasMap[wb] = make(map[string]struct{})
+		}
+		writtenBytesReplicasMap[wb][address] = struct{}{}
+	}
+
+	// An example to get the maximum number of replicas and the maximum written bytes:
+	// Input: writtenBytesReplicasMap: {2: {"replica B": true, "replica C": true}, 0: {"replica D": true, "replica E": true}, 1: {"replica A": true}}
+	// Result: 2
+	// Because 2 replicas (B, C) is the maximum number of replicas and 2 bytes written is the maximum written byte (bigger then 0).
+	maxReplicasNum := 0
+	maxReplicasNumWrittenBytesList := []int{}
+	for wb, addresses := range writtenBytesReplicasMap {
+		if len(addresses) > maxReplicasNum {
+			maxReplicasNum = len(addresses)
+			maxReplicasNumWrittenBytesList = []int{wb}
+			continue
+		}
+		if len(addresses) == maxReplicasNum {
+			maxReplicasNumWrittenBytesList = append(maxReplicasNumWrittenBytesList, wb)
+		}
+	}
+
+	maxWrittenBytes := int(-1)
+	for _, wb := range maxReplicasNumWrittenBytesList {
+		if wb > maxWrittenBytes {
+			maxWrittenBytes = wb
+		}
+	}
+
+	return writtenBytesReplicasMap[maxWrittenBytes]
 }
 
 func (c *Controller) handleError(err error) error {
