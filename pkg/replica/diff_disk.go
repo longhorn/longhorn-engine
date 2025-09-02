@@ -78,16 +78,19 @@ func (d *diffDisk) WriteAt(buf []byte, offset int64) (int, error) {
 		return d.readModifyWrite(buf, offset)
 	}
 
-	if _, err := d.readModifyWrite(buf[0:startCut], offset); err != nil {
-		return 0, err
+	startWritten, err := d.readModifyWrite(buf[0:startCut], offset)
+	if err != nil {
+		return startWritten, err
 	}
 
-	if _, err := d.fullWriteAt(buf[startCut:int64(len(buf))-endOffset], offset+startCut); err != nil {
-		return 0, err
+	middleWritten, err := d.fullWriteAt(buf[startCut:int64(len(buf))-endOffset], offset+startCut)
+	if err != nil {
+		return middleWritten + startWritten, err
 	}
 
-	if _, err := d.readModifyWrite(buf[int64(len(buf))-endOffset:], offset+int64(len(buf))-endOffset); err != nil {
-		return 0, err
+	endWritten, err := d.readModifyWrite(buf[int64(len(buf))-endOffset:], offset+int64(len(buf))-endOffset)
+	if err != nil {
+		return endWritten + startWritten + middleWritten, err
 	}
 
 	return len(buf), nil
@@ -110,7 +113,41 @@ func (d *diffDisk) readModifyWrite(buf []byte, offset int64) (int, error) {
 
 	copy(readBuf[offset%d.sectorSize:], buf)
 
-	return d.fullWriteAt(readBuf, readOffset)
+	n, err := d.fullWriteAt(readBuf, readOffset)
+	if err != nil {
+		return int(computeNominalWrittenBytes(int64(len(buf)), int64(n), offset, readOffset)), err
+	}
+
+	return len(buf), nil
+}
+
+// computeNominalWrittenBytes computes nominal written bytes for the input buf
+//
+//	For Example:
+//	offset > readOffset  or  offset == readOffset
+//	readOffset               readOffset
+//	.----------1---2---3     1---2---3----------.
+//	|          |  buf  |     |  buf  |          |
+//	.----------.-------.     .-------.----------.
+//	0          offset  512   offset             512
+//	If writtenBytes is the number, such as 10, before 1 (including 1), such as 64, it should return 0
+//	If writtenBytes is the number, such as 100, between 1 and 3 (including 3), such as 64 and 128, it should return writtenBytes - (offset - readOffset)
+//	If writtenBytes is the number, such as 200, after 3 (excluding 3), it should return bufSize
+func computeNominalWrittenBytes(bufSize, writtenBytes, offset, readOffset int64) int64 {
+	// offset should be equal to or bigger than readOffset
+	if offset < readOffset {
+		return 0
+	}
+
+	nominalWrittenBytes := writtenBytes - (offset - readOffset)
+	if nominalWrittenBytes < 0 {
+		nominalWrittenBytes = 0
+	}
+	if nominalWrittenBytes > bufSize {
+		nominalWrittenBytes = bufSize
+	}
+
+	return nominalWrittenBytes
 }
 
 func (d *diffDisk) fullWriteAt(buf []byte, offset int64) (int, error) {
