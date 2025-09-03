@@ -137,6 +137,19 @@ func LoginTarget(ip, target string, nsexec *lhns.Executor) error {
 	return nil
 }
 
+// ListSessions lists all iSCSI sessions.
+func ListSessions(nsexec *lhns.Executor) (string, error) {
+	opts := []string{
+		"-m", "session",
+		"-P", "1",
+	}
+	output, err := nsexec.Execute(nil, iscsiBinary, opts, lhtypes.ExecuteDefaultTimeout)
+	if err != nil {
+		return "", err
+	}
+	return string(output), nil
+}
+
 // LogoutTarget will logout all sessions if ip == ""
 func LogoutTarget(ip, target string, nsexec *lhns.Executor) error {
 	opts := []string{

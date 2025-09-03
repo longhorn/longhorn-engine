@@ -259,8 +259,15 @@ func LogoutTarget(target string, nsexec *lhns.Executor) error {
 	if err := iscsi.CheckForInitiatorExistence(nsexec); err != nil {
 		return err
 	}
+
 	if iscsi.IsTargetLoggedIn("", target, nsexec) {
-		var err error
+		sessions, err := iscsi.ListSessions(nsexec)
+		if err != nil {
+			logrus.Warnf("Failed to list iSCSI sessions before logout: %v", err)
+		} else {
+			logrus.Infof("Current iSCSI sessions before logout of %v:\n%v", target, sessions)
+		}
+
 		loggingOut := false
 
 		logrus.Infof("Shutting down iSCSI device for target %v", target)
