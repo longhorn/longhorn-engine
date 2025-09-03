@@ -1,4 +1,3 @@
-name: build
 on:
   push:
     branches:
@@ -8,9 +7,18 @@ on:
     - v*
   pull_request:
   workflow_dispatch:
+    inputs:
+      tag:
+        description: "Tag to build (e.g., v1.10.0-rc1)"
+        required: false
+        default: ""
+      branch:
+        description: "Branch to build (e.g., master)"
+        required: false
+        default: ""
+
 jobs:
   build_info:
-    name: Collect build info
     runs-on: ubuntu-latest
     outputs:
       version_major: ${{ steps.build_info.outputs.version_major }}
@@ -27,16 +35,35 @@ jobs:
         version_patch=''
         image_tag=''
 
-        branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}
-        ref=${{ github.ref }}
-        if [[ "$ref" =~ 'refs/tags/' ]]; then
-          version=$(sed -E 's/^v([0-9]*\.[0-9]*\.[0-9]*).*$/\1/' <<<${{ github.ref_name }} )
-          version_major=$(cut -d. -f1 <<<$version)
-          version_minor=$(cut -d. -f2 <<<$version)
-          version_patch=$(cut -d. -f3 <<<$version)
-          image_tag=${{ github.ref_name }}
-        elif [[ "$ref" =~ 'refs/heads/' ]]; then
-          image_tag="${branch}-head"
+        if [[ -n "${{ github.event.inputs.tag }}" ]]; then
+          ref="refs/tags/${{ github.event.inputs.tag }}"
+          version=$(sed -E 's/^v([0-9]+\.[0-9]+\.[0-9]+).*$/\1/' <<<"${{ github.event.inputs.tag }}" )
+          version_major=$(cut -d. -f1 <<<"$version")
+          version_minor=$(cut -d. -f2 <<<"$version")
+          version_patch=$(cut -d. -f3 <<<"$version")
+          image_tag=${{ github.event.inputs.tag }}
+
+        elif [[ -n "${{ github.event.inputs.branch }}" ]]; then
+          ref="refs/heads/${{ github.event.inputs.branch }}"
+          image_tag="${{ github.event.inputs.branch }}-head"
+
+        else
+          ref="refs/heads/master"
+          image_tag="master-head"
+        fi
+
+        if [[ -z "${{ github.event.inputs.tag }}" && -z "${{ github.event.inputs.branch }}" ]]; then
+          ref=${{ github.ref }}
+          branch=${GITHUB_HEAD_REF:-${GITHUB_REF#refs/heads/}}
+          if [[ "$ref" =~ 'refs/tags/' ]]; then
+            version=$(sed -E 's/^v([0-9]+\.[0-9]+\.[0-9]+).*$/\1/' <<<${{ github.ref_name }} )
+            version_major=$(cut -d. -f1 <<<"$version")
+            version_minor=$(cut -d. -f2 <<<"$version")
+            version_patch=$(cut -d. -f3 <<<"$version")
+            image_tag=${{ github.ref_name }}
+          elif [[ "$ref" =~ 'refs/heads/' ]]; then
+            image_tag="${branch}-head"
+          fi
         fi
 
         echo "version_major=${version_major}" >>$GITHUB_OUTPUT
