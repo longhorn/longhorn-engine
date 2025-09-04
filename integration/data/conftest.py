@@ -35,6 +35,10 @@ from rpc.replica.replica_client import ReplicaClient
 from rpc.controller.controller_client import ControllerClient
 
 
+def pytest_runtest_logstart(nodeid, location):
+    print(f"\n=== Running: {nodeid} ===", flush=True)
+
+
 @pytest.fixture
 def grpc_engine_manager(request, engine_manager_client):
     return engine_manager_client

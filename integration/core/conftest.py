@@ -18,6 +18,9 @@ from rpc.replica.replica_client import ReplicaClient
 from rpc.process_manager.process_manager_client import ProcessManagerClient
 
 
+def pytest_runtest_logstart(nodeid, location):
+    print(f"\n=== Running: {nodeid} ===", flush=True)
+
 @pytest.fixture
 def process_manager_client(request, address=INSTANCE_MANAGER_REPLICA):
     c = ProcessManagerClient(address)
