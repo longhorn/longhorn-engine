@@ -159,8 +159,31 @@ def cleanup_controller(grpc_client):
 
     if v.replicaCount != 0:
         grpc_client.volume_shutdown()
+
+    # Attempt to wait for iSCSI sessions to be cleaned up with some retries.
+    # If sessions remain after retries, a warning is issued.
+    max_attempts = 10
+    retry_interval = 0.5
+    for attempt in range(max_attempts):
+        try:
+            subprocess.check_output(
+                ["nsenter","--mount=/host/proc/1/ns/mnt",
+                 "--net=/host/proc/1/ns/net",
+                 "iscsiadm", "-m", "session"],
+                stderr=subprocess.STDOUT
+            ).decode()
+            print(f"Attempt {attempt + 1}: iSCSI sessions still active")
+        except subprocess.CalledProcessError as e:
+            if e.returncode == 21 or b"No active sessions" in e.output:
+                print(f"iSCSI sessions cleaned up after {attempt + 1} attempts")
+                break
+        time.sleep(retry_interval)
+    else:
+        print("Warning: iSCSI sessions still active after max retries")
+
     for r in grpc_client.replica_list():
         grpc_client.replica_delete(r.address)
+
     return grpc_client
 
 
