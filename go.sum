@@ -84,8 +84,13 @@ github.com/kylelemons/godebug v1.1.0 h1:RPNrshWIDI6G2gRW9EHilWtl7Z6Sb1BR0xunSBf0
 github.com/kylelemons/godebug v1.1.0/go.mod h1:9/0rRGxNHcop5bhtWyNeEfOS8JIWk580+fNqagV/RAw=
 github.com/longhorn/backupstore v0.0.0-20250804022317-794abf817297 h1:KVnOHFT3wuwgyhV7/Rue8NMt13NkpIkZ3B7eVR0C8yM=
 github.com/longhorn/backupstore v0.0.0-20250804022317-794abf817297/go.mod h1:j5TiUyvRBYaSaPY/p6GIFOk1orfWcngk9hIWxDDJ5mg=
+<<<<<<< HEAD
 github.com/longhorn/go-common-libs v0.0.0-20250819144703-ff4997b6fd80 h1:VcvA3RBSbeAurVnop4fVYwNWzxCI6sS0ORPE+nhGPk8=
 github.com/longhorn/go-common-libs v0.0.0-20250819144703-ff4997b6fd80/go.mod h1:fuYzrb6idZgLrh8yePy6fA+LVB+z5fl4zZbBAU09+0g=
+=======
+github.com/longhorn/go-common-libs v0.0.0-20250905093241-e9576a7c89fa h1:90B+2eTb+qGlmzWosRbFr0IGK48/9T5z9drEey1DRw0=
+github.com/longhorn/go-common-libs v0.0.0-20250905093241-e9576a7c89fa/go.mod h1:8acAlt4F+Dgyq923/i2pNpZI+LX7XW75BpPzxe1TXJE=
+>>>>>>> ea41eff (fix(replica): validate size with backing image virtual size)
 github.com/longhorn/go-iscsi-helper v0.0.0-20250810143507-5c5f9a0060b4 h1:i6Wac1SO2YwXkqZetnc1KZc+2PnFZ9xSUs99nFAhHiU=
 github.com/longhorn/go-iscsi-helper v0.0.0-20250810143507-5c5f9a0060b4/go.mod h1:EIkghFAyqv+8ktznS4a+leJ6KKQLPt9zrcdS2Zsfk+M=
 github.com/longhorn/sparse-tools v0.0.0-20250826041019-4aae87cb253a h1:uiECueW4EyOjfaw0GgKlbJjAjDBgQlsDiQjXDU262VY=

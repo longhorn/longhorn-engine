@@ -133,6 +133,9 @@ func startReplica(c *cli.Context) (err error) {
 		if err != nil {
 			return err
 		}
+		if backingFile != nil && size < backingFile.VirtualSize {
+			return fmt.Errorf("replica size %v < backing image virtual size %v", size, backingFile.VirtualSize)
+		}
 
 		if err := s.Create(size); err != nil {
 			return err
