@@ -277,6 +277,10 @@ func createSnapshot(c *cli.Context) error {
 }
 
 func revertSnapshot(c *cli.Context) error {
+	if c.NArg() == 0 {
+		return errors.New("snapshot name is required")
+	}
+
 	name := c.Args()[0]
 	if name == "" {
 		return fmt.Errorf("missing parameter for snapshot")

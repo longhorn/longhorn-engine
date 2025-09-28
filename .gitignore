@@ -1,4 +1,5 @@
 /.dapper
+/.dapper.tmp
 /.trash-cache
 /bin
 *.pyc
