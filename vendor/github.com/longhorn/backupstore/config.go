@@ -10,8 +10,8 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cockroachdb/errors"
 	"github.com/gammazero/workerpool"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"github.com/slok/goresilience/timeout"
 

@@ -13,7 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go/aws/client"
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/s3"
-	"github.com/pkg/errors"
+	"github.com/cockroachdb/errors"
 
 	bhttp "github.com/longhorn/backupstore/http"
 )
