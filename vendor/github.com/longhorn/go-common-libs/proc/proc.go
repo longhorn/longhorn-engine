@@ -8,8 +8,8 @@ import (
 	"strings"
 
 	"github.com/c9s/goprocinfo/linux"
+	"github.com/cockroachdb/errors"
 	"github.com/mitchellh/go-ps"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
 	"github.com/longhorn/go-common-libs/types"

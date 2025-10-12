@@ -11,8 +11,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
 	"golang.org/x/exp/constraints"
 
 	"github.com/longhorn/go-common-libs/types"
