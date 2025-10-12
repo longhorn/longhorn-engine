@@ -3,7 +3,7 @@ package backupstore
 import (
 	"path/filepath"
 
-	"github.com/pkg/errors"
+	"github.com/cockroachdb/errors"
 	"github.com/sirupsen/logrus"
 
 	. "github.com/longhorn/backupstore/logging"
