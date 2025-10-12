@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
+	"github.com/cockroachdb/errors"
 
 	"github.com/longhorn/go-common-libs/io"
 	"github.com/longhorn/go-common-libs/types"
