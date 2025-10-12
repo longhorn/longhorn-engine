@@ -5,7 +5,7 @@ import (
 	"net/url"
 	"sync"
 
-	"github.com/pkg/errors"
+	"github.com/cockroachdb/errors"
 
 	"github.com/longhorn/backupstore/util"
 )

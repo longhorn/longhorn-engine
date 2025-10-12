@@ -9,7 +9,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/pkg/errors"
+	"github.com/cockroachdb/errors"
 	"github.com/shirou/gopsutil/v3/disk"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"

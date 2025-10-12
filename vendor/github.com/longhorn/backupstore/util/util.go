@@ -19,11 +19,12 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/cockroachdb/errors"
 	"github.com/google/uuid"
-	lz4 "github.com/pierrec/lz4/v4"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
+
+	lz4 "github.com/pierrec/lz4/v4"
 
 	"k8s.io/apimachinery/pkg/util/wait"
 	mount "k8s.io/mount-utils"

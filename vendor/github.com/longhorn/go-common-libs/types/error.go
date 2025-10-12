@@ -1,6 +1,6 @@
 package types
 
-import "github.com/pkg/errors"
+import "github.com/cockroachdb/errors"
 
 var (
 	// It is recommended to wrap the following common errors with meaningful message, so that the error handler can unwrap
