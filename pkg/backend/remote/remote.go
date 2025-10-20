@@ -6,19 +6,21 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/longhorn/types/pkg/generated/enginerpc"
-	"github.com/pkg/errors"
+	"github.com/cockroachdb/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/types/known/emptypb"
 
+	"github.com/longhorn/types/pkg/generated/enginerpc"
+
 	"github.com/longhorn/longhorn-engine/pkg/dataconn"
 	"github.com/longhorn/longhorn-engine/pkg/interceptor"
-	replicaClient "github.com/longhorn/longhorn-engine/pkg/replica/client"
 	"github.com/longhorn/longhorn-engine/pkg/types"
 	"github.com/longhorn/longhorn-engine/pkg/util"
+
+	replicaClient "github.com/longhorn/longhorn-engine/pkg/replica/client"
 )
 
 const (

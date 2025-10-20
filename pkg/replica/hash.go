@@ -15,14 +15,16 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/cockroachdb/errors"
 	"github.com/gofrs/flock"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 
 	"github.com/longhorn/sparse-tools/sparse"
+
 	xattrType "github.com/longhorn/sparse-tools/types"
 
 	"github.com/longhorn/longhorn-engine/pkg/types"
+
 	diskutil "github.com/longhorn/longhorn-engine/pkg/util/disk"
 )
 

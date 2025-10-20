@@ -6,8 +6,7 @@ import (
 	"strconv"
 	"time"
 
-	"github.com/longhorn/types/pkg/generated/enginerpc"
-	"github.com/pkg/errors"
+	"github.com/cockroachdb/errors"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -16,6 +15,8 @@ import (
 	"github.com/longhorn/longhorn-engine/pkg/interceptor"
 	"github.com/longhorn/longhorn-engine/pkg/types"
 	"github.com/longhorn/longhorn-engine/pkg/util"
+
+	"github.com/longhorn/types/pkg/generated/enginerpc"
 )
 
 const (

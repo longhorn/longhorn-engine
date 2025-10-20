@@ -15,15 +15,17 @@ import (
 	"sync/atomic"
 	"syscall"
 
-	"github.com/pkg/errors"
+	"github.com/cockroachdb/errors"
 	"github.com/rancher/go-fibmap"
 	"github.com/sirupsen/logrus"
+
+	"github.com/longhorn/sparse-tools/sparse"
 
 	"github.com/longhorn/longhorn-engine/pkg/backingfile"
 	"github.com/longhorn/longhorn-engine/pkg/types"
 	"github.com/longhorn/longhorn-engine/pkg/util"
+
 	diskutil "github.com/longhorn/longhorn-engine/pkg/util/disk"
-	"github.com/longhorn/sparse-tools/sparse"
 )
 
 const (

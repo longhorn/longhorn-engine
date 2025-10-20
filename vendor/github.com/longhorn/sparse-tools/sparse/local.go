@@ -6,7 +6,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/pkg/errors"
+	"github.com/cockroachdb/errors"
 	"github.com/sirupsen/logrus"
 )
 
@@ -83,14 +83,14 @@ func newSyncLocal(sourceFilePath, targetFilePath string, fileSize, syncBatchSize
 
 	targetFileIo, err := NewDirectFileIoProcessor(targetFilePath, os.O_RDWR|os.O_CREATE, 0)
 	if err != nil {
-		sourceFileIo.Close()
+		_ = sourceFileIo.Close()
 		return nil, err
 	}
 
 	err = targetFileIo.Truncate(fileSize)
 	if err != nil {
-		sourceFileIo.Close()
-		targetFileIo.Close()
+		_ = sourceFileIo.Close()
+		_ = targetFileIo.Close()
 		return nil, err
 	}
 
@@ -104,8 +104,8 @@ func newSyncLocal(sourceFilePath, targetFilePath string, fileSize, syncBatchSize
 }
 
 func (local *syncLocal) close() {
-	local.sourceFileIo.Close()
-	local.targetFileIo.Close()
+	_ = local.sourceFileIo.Close()
+	_ = local.targetFileIo.Close()
 }
 
 func (local *syncLocal) syncContent() error {
