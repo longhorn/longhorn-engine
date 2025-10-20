@@ -12,12 +12,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/cockroachdb/errors"
 	"github.com/gofrs/flock"
-	"github.com/longhorn/backupstore"
-	"github.com/longhorn/sparse-tools/sparse"
-	"github.com/longhorn/types/pkg/generated/enginerpc"
 	"github.com/moby/moby/pkg/reexec"
-	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
@@ -25,13 +22,16 @@ import (
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/protobuf/types/known/emptypb"
 
-	butil "github.com/longhorn/backupstore/util"
-	sparserest "github.com/longhorn/sparse-tools/sparse/rest"
+	"github.com/longhorn/backupstore"
+	"github.com/longhorn/sparse-tools/sparse"
+	"github.com/longhorn/types/pkg/generated/enginerpc"
 
 	"github.com/longhorn/go-common-libs/profiler"
 	"github.com/longhorn/types/pkg/generated/profilerrpc"
 
+	butil "github.com/longhorn/backupstore/util"
 	lhio "github.com/longhorn/go-common-libs/io"
+	sparserest "github.com/longhorn/sparse-tools/sparse/rest"
 
 	"github.com/longhorn/longhorn-engine/pkg/backup"
 	"github.com/longhorn/longhorn-engine/pkg/interceptor"

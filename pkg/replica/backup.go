@@ -6,13 +6,14 @@ import (
 	"os"
 	"sync"
 
-	"github.com/pkg/errors"
+	"github.com/cockroachdb/errors"
 	"github.com/sirupsen/logrus"
 
 	btypes "github.com/longhorn/backupstore/types"
 	butil "github.com/longhorn/backupstore/util"
 
 	"github.com/longhorn/longhorn-engine/pkg/backingfile"
+
 	diskutil "github.com/longhorn/longhorn-engine/pkg/util/disk"
 )
 

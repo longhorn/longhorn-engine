@@ -5,11 +5,12 @@ import (
 	"net"
 	"strconv"
 
-	"github.com/pkg/errors"
+	"github.com/cockroachdb/errors"
 	"github.com/sirupsen/logrus"
 
 	"github.com/longhorn/longhorn-engine/pkg/replica/client"
 	"github.com/longhorn/longhorn-engine/pkg/types"
+
 	diskutil "github.com/longhorn/longhorn-engine/pkg/util/disk"
 )
 

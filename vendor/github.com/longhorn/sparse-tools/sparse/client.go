@@ -13,7 +13,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pkg/errors"
+	"github.com/cockroachdb/errors"
+
 	log "github.com/sirupsen/logrus"
 
 	"github.com/longhorn/sparse-tools/types"
@@ -114,7 +115,9 @@ func SyncFile(localPath string, remote string, httpClientTimeout int, directIO, 
 		log.WithError(err).Errorf("Failed to open local source file %v", localPath)
 		return err
 	}
-	defer fileIo.Close()
+	defer func() {
+		_ = fileIo.Close()
+	}()
 
 	return SyncContent(fileIo.Name(), fileIo, fileSize, remote, httpClientTimeout, directIO, fastSync)
 }
@@ -250,7 +253,9 @@ func getLocalDiskFileChangeTimeAndChecksum(sourceName string) (recordedChangeTim
 	if err != nil {
 		return "", "", "", errors.Wrap(err, "failed to open checksum file")
 	}
-	defer f.Close()
+	defer func() {
+		_ = f.Close()
+	}()
 
 	data, err := io.ReadAll(f)
 	if err != nil {

@@ -6,13 +6,14 @@ import (
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
+	"github.com/cockroachdb/errors"
 	"github.com/sirupsen/logrus"
 	"k8s.io/mount-utils"
 
-	lhexec "github.com/longhorn/go-common-libs/exec"
 	"github.com/longhorn/go-common-libs/types"
 	"github.com/longhorn/go-iscsi-helper/longhorndev"
+
+	lhexec "github.com/longhorn/go-common-libs/exec"
 )
 
 const (

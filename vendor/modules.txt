@@ -245,8 +245,8 @@ github.com/longhorn/go-iscsi-helper/iscsidev
 github.com/longhorn/go-iscsi-helper/longhorndev
 github.com/longhorn/go-iscsi-helper/types
 github.com/longhorn/go-iscsi-helper/util
-# github.com/longhorn/sparse-tools v0.0.0-20250826041019-4aae87cb253a
-## explicit; go 1.22.0
+# github.com/longhorn/sparse-tools v0.0.0-20251020055717-ae3aca526fd7
+## explicit; go 1.24.0
 github.com/longhorn/sparse-tools/cli/ssync
 github.com/longhorn/sparse-tools/sparse
 github.com/longhorn/sparse-tools/sparse/rest

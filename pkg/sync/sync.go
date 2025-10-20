@@ -7,15 +7,17 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/pkg/errors"
+	"github.com/cockroachdb/errors"
 	"github.com/sirupsen/logrus"
+
+	"github.com/longhorn/types/pkg/generated/enginerpc"
 
 	"github.com/longhorn/longhorn-engine/pkg/controller/client"
 	"github.com/longhorn/longhorn-engine/pkg/replica"
-	replicaClient "github.com/longhorn/longhorn-engine/pkg/replica/client"
 	"github.com/longhorn/longhorn-engine/pkg/types"
+
+	replicaClient "github.com/longhorn/longhorn-engine/pkg/replica/client"
 	diskutil "github.com/longhorn/longhorn-engine/pkg/util/disk"
-	"github.com/longhorn/types/pkg/generated/enginerpc"
 )
 
 type Task struct {

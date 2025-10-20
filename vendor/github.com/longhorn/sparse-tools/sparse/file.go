@@ -10,7 +10,8 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/pkg/errors"
+	"github.com/cockroachdb/errors"
+
 	log "github.com/sirupsen/logrus"
 )
 
@@ -69,7 +70,7 @@ func (file *BufferedFileIoProcessor) GetDataLayout(ctx context.Context) (<-chan 
 }
 
 func (file *BufferedFileIoProcessor) Size() (int64, error) {
-	info, err := file.File.Stat()
+	info, err := file.Stat()
 	if err != nil {
 		return 0, err
 	}
@@ -77,7 +78,7 @@ func (file *BufferedFileIoProcessor) Size() (int64, error) {
 }
 
 func (file *BufferedFileIoProcessor) Close() error {
-	if err := file.File.Sync(); err != nil {
+	if err := file.Sync(); err != nil {
 		return err
 	}
 	return file.File.Close()
@@ -156,7 +157,7 @@ func (file *DirectFileIoProcessor) GetDataLayout(ctx context.Context) (<-chan Fi
 }
 
 func (file *DirectFileIoProcessor) Size() (int64, error) {
-	info, err := file.File.Stat()
+	info, err := file.Stat()
 	if err != nil {
 		return 0, err
 	}
