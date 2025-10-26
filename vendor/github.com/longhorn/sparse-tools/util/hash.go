@@ -23,7 +23,9 @@ func GetSnapshotHashInfoFromChecksumFile(checksumFileName string) (*types.Snapsh
 	if err != nil {
 		return nil, err
 	}
-	defer f.Close()
+	defer func() {
+		_ = f.Close()
+	}()
 
 	var info types.SnapshotHashInfo
 
@@ -51,7 +53,9 @@ func encodeToFile(obj interface{}, path string) (err error) {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() {
+		_ = f.Close()
+	}()
 
 	if err := json.NewEncoder(f).Encode(&obj); err != nil {
 		return err

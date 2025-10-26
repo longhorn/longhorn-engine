@@ -8,7 +8,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/pkg/errors"
+	"github.com/cockroachdb/errors"
+
 	log "github.com/sirupsen/logrus"
 )
 
@@ -43,13 +44,17 @@ func PruneFile(parentFileName, childFileName string, ops FileHandlingOperations)
 	if err != nil {
 		return errors.Wrapf(err, "failed to open child file %v", childFileName)
 	}
-	defer childFileIo.Close()
+	defer func() {
+		_ = childFileIo.Close()
+	}()
 
 	parentFileIo, err := NewDirectFileIoProcessor(parentFileName, os.O_RDWR, 0)
 	if err != nil {
 		return errors.Wrapf(err, "failed to open parent file %v", parentFileName)
 	}
-	defer parentFileIo.Close()
+	defer func() {
+		_ = parentFileIo.Close()
+	}()
 
 	return prune(parentFileIo, childFileIo, childFInfo.Size(), ops)
 }
