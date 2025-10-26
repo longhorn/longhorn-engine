@@ -10,7 +10,8 @@ import (
 	"strings"
 	"syscall"
 
-	"github.com/pkg/errors"
+	"github.com/cockroachdb/errors"
+
 	log "github.com/sirupsen/logrus"
 
 	"github.com/longhorn/sparse-tools/sparse"
@@ -121,7 +122,7 @@ func (server *SyncServer) doOpen(writer http.ResponseWriter, request *http.Reque
 	}
 
 	writer.Header().Set("Content-Type", "application/json")
-	fmt.Fprint(writer, string(outgoingJSON))
+	_, _ = fmt.Fprint(writer, string(outgoingJSON))
 
 	return nil
 }
@@ -142,7 +143,7 @@ func (server *SyncServer) close(writer http.ResponseWriter, request *http.Reques
 	}
 
 	if server.fileIo != nil {
-		server.fileIo.Close()
+		_ = server.fileIo.Close()
 	}
 
 	if checksumMethod != "" && checksum != "" {
@@ -225,7 +226,7 @@ func (server *SyncServer) doGetChecksum(writer http.ResponseWriter, request *htt
 	}
 
 	writer.Header().Set("Content-Type", "application/json")
-	fmt.Fprint(writer, string(outgoingJSON))
+	_, _ = fmt.Fprint(writer, string(outgoingJSON))
 
 	if server.fileAlreadyExists {
 		server.syncFileOps.UpdateSyncFileProgress(remoteDataInterval.Len())
@@ -303,7 +304,7 @@ func (server *SyncServer) doGetRecordedMetadata(writer http.ResponseWriter, requ
 	}
 
 	writer.Header().Set("Content-Type", "application/json")
-	fmt.Fprint(writer, string(metadata))
+	_, _ = fmt.Fprint(writer, string(metadata))
 
 	return nil
 }
@@ -313,7 +314,9 @@ func (server *SyncServer) getRecordedMetadataFromChecksumFile() ([]byte, error) 
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to open checksum file")
 	}
-	defer f.Close()
+	defer func() {
+		_ = f.Close()
+	}()
 
 	metadata, err := io.ReadAll(f)
 	if err != nil {
