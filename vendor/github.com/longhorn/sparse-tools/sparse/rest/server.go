@@ -8,7 +8,8 @@ import (
 	"sync"
 	"time"
 
-	"github.com/pkg/errors"
+	"github.com/cockroachdb/errors"
+
 	log "github.com/sirupsen/logrus"
 
 	"github.com/longhorn/sparse-tools/sparse"
@@ -106,10 +107,10 @@ func Server(ctx context.Context, port string, filePath string, syncFileOps SyncF
 	go func() {
 		select {
 		case <-ctx.Done():
-			srv.Close()
+			_ = srv.Close()
 		case <-idleTimer.Done():
 			log.Errorf("Shutting down the server since it is idle for %v", idleTimer.timeout)
-			srv.Close()
+			_ = srv.Close()
 		}
 	}()
 
