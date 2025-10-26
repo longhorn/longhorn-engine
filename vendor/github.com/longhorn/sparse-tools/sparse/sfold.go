@@ -8,7 +8,8 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/pkg/errors"
+	"github.com/cockroachdb/errors"
+
 	log "github.com/sirupsen/logrus"
 )
 
@@ -47,13 +48,17 @@ func FoldFile(childFileName, parentFileName string, ops FileHandlingOperations) 
 	if err != nil {
 		return errors.Wrap(err, "failed to open childFile")
 	}
-	defer childFileIo.Close()
+	defer func() {
+		_ = childFileIo.Close()
+	}()
 
 	parentFileIo, err := NewDirectFileIoProcessor(parentFileName, os.O_WRONLY, 0)
 	if err != nil {
 		return errors.Wrap(err, "failed to open parentFile")
 	}
-	defer parentFileIo.Close()
+	defer func() {
+		_ = parentFileIo.Close()
+	}()
 
 	return coalesce(parentFileIo, childFileIo, childFInfo.Size(), ops)
 }
