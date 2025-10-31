@@ -215,7 +215,7 @@ func (c *Controller) Snapshot(inputName string, labels map[string]string, should
 	c.RLock()
 	// Check now to avoid freezing or syncing unnecessarily. Also check again later as originally designed.
 	err = c.canDoSnapshot()
-	if c.frontend.FrontendName() == types.EngineFrontendBlockDev {
+	if c.frontend != nil && c.frontend.FrontendName() == types.EngineFrontendBlockDev {
 		// It is meaningless to try to freeze filesystems for a tgt-iscsi endpoint.
 		endpoint = c.Endpoint()
 	}
