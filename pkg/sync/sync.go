@@ -9,6 +9,7 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/sirupsen/logrus"
+	"go.uber.org/multierr"
 
 	"github.com/longhorn/types/pkg/generated/enginerpc"
 
@@ -144,7 +145,7 @@ func (t *Task) DeleteSnapshot(snapshot string) error {
 			return err
 		}
 
-		if err = t.cancelSnapshotHashJob(replica, snapshot); err != nil {
+		if err = t.CancelSnapshotHashJob(replica.Address, []string{snapshot}); err != nil {
 			return err
 		}
 	}
@@ -354,23 +355,27 @@ func (t *Task) markSnapshotAsRemoved(replicaInController *types.ControllerReplic
 	return nil
 }
 
-func (t *Task) cancelSnapshotHashJob(replicaInController *types.ControllerReplicaInfo, snapshot string) error {
+// CancelSnapshotHashJob stops the hash computation for one or more snapshots on a specific replica.
+func (t *Task) CancelSnapshotHashJob(replicaAddress string, snapshotNames []string) error {
 	// We don't know the replica's instanceName, so create a client without it.
-	repClient, err := replicaClient.NewReplicaClient(replicaInController.Address, t.client.VolumeName, "")
+	repClient, err := replicaClient.NewReplicaClient(replicaAddress, t.client.VolumeName, "")
 	if err != nil {
 		return err
 	}
 	defer func() {
 		if errClose := repClient.Close(); errClose != nil {
-			logrus.WithError(errClose).Errorf("Failed to close replica client for replica address %s", replicaInController.Address)
+			logrus.WithError(errClose).Errorf("Failed to close replica client for replica address %s", replicaAddress)
 		}
 	}()
 
-	if err := repClient.SnapshotHashCancel(snapshot); err != nil {
-		return err
+	var errs error
+	for _, snapshotName := range snapshotNames {
+		if err := repClient.SnapshotHashCancel(snapshotName); err != nil {
+			errs = multierr.Append(errs, errors.Wrapf(err, "failed to stop snapshot %s hash", snapshotName))
+		}
 	}
 
-	return nil
+	return errs
 }
 
 func (t *Task) AddRestoreReplica(volumeSize, volumeCurrentSize int64, address, instanceName string) error {

@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/cockroachdb/errors"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
@@ -784,6 +785,8 @@ func (c *ReplicaClient) SnapshotHashStatus(snapshotName string) (*enginerpc.Snap
 }
 
 func (c *ReplicaClient) SnapshotHashCancel(snapshotName string) error {
+	logrus.Infof("cancel snapshot %s hash for %s", snapshotName, c.replicaServiceURL)
+
 	syncAgentServiceClient, err := c.getSyncServiceClient()
 	if err != nil {
 		return err
