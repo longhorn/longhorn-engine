@@ -509,7 +509,7 @@ func (c *ReplicaClient) LaunchReceiver(toFilePath string) (string, int32, error)
 	return c.host, reply.Port, nil
 }
 
-func (c *ReplicaClient) SyncFiles(fromAddress string, list []types.SyncFileInfo, fileSyncHTTPClientTimeout int, fastSync bool, grpcTimeoutSeconds int64, localSync *types.FileLocalSync) error {
+func (c *ReplicaClient) SyncFiles(fromAddressMap map[string]bool, list []types.SyncFileInfo, fileSyncHTTPClientTimeout int, fastSync bool, grpcTimeoutSeconds int64, localSync *types.FileLocalSync) error {
 	syncAgentServiceClient, err := c.getSyncServiceClient()
 	if err != nil {
 		return err
@@ -522,7 +522,7 @@ func (c *ReplicaClient) SyncFiles(fromAddress string, list []types.SyncFileInfo,
 	defer cancel()
 
 	fileSyncRequest := &enginerpc.FilesSyncRequest{
-		FromAddress:               fromAddress,
+		FromAddressMap:            fromAddressMap,
 		ToHost:                    c.host,
 		SyncFileInfoList:          syncFileInfoListToSyncAgentGRPCFormat(list),
 		FastSync:                  fastSync,
@@ -538,7 +538,7 @@ func (c *ReplicaClient) SyncFiles(fromAddress string, list []types.SyncFileInfo,
 	}
 
 	if _, err := syncAgentServiceClient.FilesSync(ctx, fileSyncRequest); err != nil {
-		return errors.Wrapf(err, "failed to sync files %+v from %v", list, fromAddress)
+		return errors.Wrapf(err, "failed to sync files %+v from %+v", list, fromAddressMap)
 	}
 
 	return nil

@@ -516,6 +516,7 @@ func (s *SyncAgentServer) fileSyncLocal(ctx context.Context, req *enginerpc.File
 }
 
 func (s *SyncAgentServer) fileSyncRemote(ctx context.Context, req *enginerpc.FilesSyncRequest) error {
+<<<<<<< HEAD
 	// We generally don't know the from replica's instanceName since it is arbitrarily chosen from candidate addresses
 	// stored in the controller. Don't modify FilesSyncRequest to contain it, and create a client without it.
 	fromClient, err := replicaclient.NewReplicaClient(req.FromAddress, s.volumeName, "") // nolint: staticcheck
@@ -525,20 +526,79 @@ func (s *SyncAgentServer) fileSyncRemote(ctx context.Context, req *enginerpc.Fil
 	defer func() {
 		if errClose := fromClient.Close(); errClose != nil {
 			logrus.WithError(errClose).Errorf("Failed to close replica client for replica address %v", req.FromAddress) // nolint: staticcheck
+=======
+	fromClientMap := make(map[string]*replicaclient.ReplicaClient, len(req.FromAddressMap))
+	defer func() {
+		for address, client := range fromClientMap {
+			err := client.Close()
+			if err != nil {
+				logrus.WithError(err).Errorf("Failed to close replica client for for replica address %v at the end of the remote file sync", address)
+			}
+>>>>>>> 91dad371 (feat: use multiple healthy replicas to sync snapshots simultaneously)
 		}
 	}()
+
+	// Default sync agent server listening port range
+	concurrentCount := len(req.FromAddressMap)
+	if len(req.SyncFileInfoList) < concurrentCount {
+		concurrentCount = len(req.SyncFileInfoList)
+	}
+	if concurrentCount < 1 {
+		return fmt.Errorf("no files or remote replicas for sync")
+	}
+
+	connectionCount := 0
+	for fromAddress := range req.FromAddressMap {
+		// We generally don't know the from replica's instanceName since it is arbitrarily chosen from candidate addresses
+		// stored in the controller. Don't modify FilesSyncRequest to contain it, and create a client without it.
+		fromClient, err := replicaclient.NewReplicaClient(fromAddress, s.volumeName, "")
+		if err != nil {
+			logrus.WithError(err).Errorf("Failed to create replica client for %v, will skip use this replica as file sync source", fromAddress)
+			continue
+		}
+		fromClientMap[fromAddress] = fromClient
+		connectionCount++
+		if connectionCount >= concurrentCount {
+			break
+		}
+	}
+	if connectionCount == 0 {
+		return fmt.Errorf("cannot connect to any remote replica for file sync")
+	}
+
+	fileList := make([]string, 0, len(req.SyncFileInfoList))
+	unsyncedFileMap := make(map[string]*enginerpc.SyncFileInfo, len(req.SyncFileInfoList))
+	for _, info := range req.SyncFileInfoList {
+		unsyncedFileMap[info.ToFileName] = info
+		fileList = append(fileList, info.ToFileName)
+	}
+
+	logrus.Infof("Replica %s starts to sync files %+v to from remote replicas %+v", req.ToHost, fileList, fromClientMap)
 
 	var ops sparserest.SyncFileOperations
 	fileStub := &sparserest.SyncFileStub{}
 
-	for _, info := range req.SyncFileInfoList {
-		// Do not count size for disk meta file or empty disk file.
-		if info.ActualSize == 0 {
-			ops = fileStub
-		} else {
-			ops = s.RebuildStatus
-		}
+	syncFileLock := &sync.Mutex{}
+	wg := &sync.WaitGroup{}
+	wg.Add(connectionCount)
+	for addr := range fromClientMap {
+		fromAddress := addr
+		fromClient := fromClientMap[fromAddress]
+		go func() {
+			defer wg.Done()
+			for done := false; !done; {
+				done = func() bool {
+					var syncFileInfo *enginerpc.SyncFileInfo
+					var err error
+					syncFileLock.Lock()
+					for fileName, fileInfo := range unsyncedFileMap {
+						syncFileInfo = fileInfo
+						delete(unsyncedFileMap, fileName)
+						break
+					}
+					syncFileLock.Unlock()
 
+<<<<<<< HEAD
 		port, err := s.launchReceiver("FilesSync", info.ToFileName, ops)
 		if err != nil {
 			return errors.Wrapf(err, "failed to launch receiver for file %v", info.ToFileName)
@@ -546,7 +606,55 @@ func (s *SyncAgentServer) fileSyncRemote(ctx context.Context, req *enginerpc.Fil
 		if err := fromClient.SendFile(info.FromFileName, req.ToHost, int32(port), int(req.FileSyncHttpClientTimeout), req.FastSync, req.GrpcTimeoutSeconds); err != nil {
 			return errors.Wrapf(err, "replica %v failed to send file %v to %v:%v", req.FromAddress, info.ToFileName, req.ToHost, port) // nolint: staticcheck
 		}
+=======
+					if syncFileInfo == nil {
+						return true
+					}
+
+					defer func() {
+						if err != nil {
+							syncFileLock.Lock()
+							unsyncedFileMap[syncFileInfo.ToFileName] = syncFileInfo
+							syncFileLock.Unlock()
+							logrus.WithError(err).Warnf("Failed to sync file %v from remote replica %v, will requeue the file and let other remote replicas handle it", syncFileInfo.ToFileName, fromAddress)
+						}
+					}()
+
+					// Do not count size for disk meta file or empty disk file.
+					if syncFileInfo.ActualSize == 0 {
+						ops = fileStub
+					} else {
+						ops = s.RebuildStatus
+					}
+
+					port, err := s.launchReceiver("FilesSync", syncFileInfo.ToFileName, ops)
+					if err != nil {
+						err = errors.Wrap(err, "failed to launch receiver")
+						return false
+					}
+
+					logrus.Infof("Remote replica %v starts to send file %v to current replica %v:%d", fromAddress, syncFileInfo.ToFileName, req.ToHost, port)
+
+					if err = fromClient.SendFile(syncFileInfo.FromFileName, req.ToHost, int32(port), int(req.FileSyncHttpClientTimeout), req.FastSync, req.GrpcTimeoutSeconds); err != nil {
+						err = errors.Wrapf(err, "failed to send file %v to %v:%v", syncFileInfo.ToFileName, req.ToHost, port)
+						return false
+					}
+
+					logrus.Infof("Remote replica %v succeeded to send file %v to current replica %v:%d", fromAddress, syncFileInfo.ToFileName, req.ToHost, port)
+					return false
+				}()
+			}
+		}()
+>>>>>>> 91dad371 (feat: use multiple healthy replicas to sync snapshots simultaneously)
 	}
+	wg.Wait()
+
+	if len(unsyncedFileMap) != 0 {
+		return fmt.Errorf("some files failed to sync: %+v", unsyncedFileMap)
+	}
+
+	logrus.Infof("Replica %s finished to sync files %+v to from remote replicas %+v", req.ToHost, fileList, fromClientMap)
+
 	return nil
 }
 
