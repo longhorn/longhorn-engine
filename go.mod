@@ -2,7 +2,7 @@ module github.com/longhorn/longhorn-engine
 
 go 1.24.0
 
-toolchain go1.25.3
+toolchain go1.25.4
 
 require (
 	github.com/docker/go-units v0.5.0
