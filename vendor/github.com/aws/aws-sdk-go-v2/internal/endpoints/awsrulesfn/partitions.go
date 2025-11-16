@@ -3,7 +3,8 @@
 package awsrulesfn
 
 // GetPartition returns an AWS [Partition] for the region provided. If the
-// partition cannot be determined nil will be returned.
+// partition cannot be determined then the default partition (AWS commercial)
+// will be returned.
 func GetPartition(region string) *PartitionConfig {
 	return getPartition(partitions, region)
 }
@@ -379,6 +380,13 @@ var partitions = []Partition{
 				SupportsDualStack:  nil,
 			},
 			"us-isob-east-1": {
+				Name:               nil,
+				DnsSuffix:          nil,
+				DualStackDnsSuffix: nil,
+				SupportsFIPS:       nil,
+				SupportsDualStack:  nil,
+			},
+			"us-isob-west-1": {
 				Name:               nil,
 				DnsSuffix:          nil,
 				DualStackDnsSuffix: nil,

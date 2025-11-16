@@ -15,7 +15,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"github.com/slok/goresilience/timeout"
 
-	. "github.com/longhorn/backupstore/logging"
+	. "github.com/longhorn/backupstore/logging" // nolint: staticcheck
 	"github.com/longhorn/backupstore/types"
 	"github.com/longhorn/backupstore/util"
 )
@@ -46,7 +46,9 @@ func LoadConfigInBackupStore(driver BackupStoreDriver, filePath string, v interf
 	if err != nil {
 		return err
 	}
-	defer rc.Close()
+	defer func() {
+		_ = rc.Close()
+	}()
 
 	log.WithFields(logrus.Fields{
 		LogFieldReason:   LogReasonStart,
