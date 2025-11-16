@@ -32,19 +32,19 @@ func setupS3Credential(credential map[string]string) error {
 		return errors.New("s3 credential secret access key not found")
 	}
 	if credential[types.AWSAccessKey] != "" && credential[types.AWSSecretKey] != "" {
-		os.Setenv(types.AWSAccessKey, credential[types.AWSAccessKey])
-		os.Setenv(types.AWSSecretKey, credential[types.AWSSecretKey])
+		_ = os.Setenv(types.AWSAccessKey, credential[types.AWSAccessKey])
+		_ = os.Setenv(types.AWSSecretKey, credential[types.AWSSecretKey])
 	}
 
-	os.Setenv(types.AWSEndPoint, credential[types.AWSEndPoint])
-	os.Setenv(types.HTTPSProxy, credential[types.HTTPSProxy])
-	os.Setenv(types.HTTPProxy, credential[types.HTTPProxy])
-	os.Setenv(types.NOProxy, credential[types.NOProxy])
-	os.Setenv(types.VirtualHostedStyle, credential[types.VirtualHostedStyle])
+	_ = os.Setenv(types.AWSEndPoint, credential[types.AWSEndPoint])
+	_ = os.Setenv(types.HTTPSProxy, credential[types.HTTPSProxy])
+	_ = os.Setenv(types.HTTPProxy, credential[types.HTTPProxy])
+	_ = os.Setenv(types.NOProxy, credential[types.NOProxy])
+	_ = os.Setenv(types.VirtualHostedStyle, credential[types.VirtualHostedStyle])
 
 	// set a custom ca cert if available
 	if credential[types.AWSCert] != "" {
-		os.Setenv(types.AWSCert, credential[types.AWSCert])
+		_ = os.Setenv(types.AWSCert, credential[types.AWSCert])
 	}
 
 	return nil
@@ -55,8 +55,8 @@ func setupCIFSCredential(credential map[string]string) error {
 		return nil
 	}
 
-	os.Setenv(types.CIFSUsername, credential[types.CIFSUsername])
-	os.Setenv(types.CIFSPassword, credential[types.CIFSPassword])
+	_ = os.Setenv(types.CIFSUsername, credential[types.CIFSUsername])
+	_ = os.Setenv(types.CIFSPassword, credential[types.CIFSPassword])
 
 	return nil
 }
@@ -67,21 +67,21 @@ func setupAZBlobCredential(credential map[string]string) error {
 	}
 
 	if credential[types.AZBlobAccountName] == "" && credential[types.AZBlobAccountKey] != "" {
-		return errors.New("Azure Blob Storage credential account name not found")
+		return errors.New("azure Blob Storage credential account name not found")
 	}
 	if credential[types.AZBlobAccountName] != "" && credential[types.AZBlobAccountKey] == "" {
-		return errors.New("Azure Blob Storage credential account key not found")
+		return errors.New("azure Blob Storage credential account key not found")
 	}
 
-	os.Setenv(types.AZBlobAccountName, credential[types.AZBlobAccountName])
-	os.Setenv(types.AZBlobAccountKey, credential[types.AZBlobAccountKey])
-	os.Setenv(types.AZBlobEndpoint, credential[types.AZBlobEndpoint])
-	os.Setenv(types.HTTPSProxy, credential[types.HTTPSProxy])
-	os.Setenv(types.HTTPProxy, credential[types.HTTPProxy])
-	os.Setenv(types.NOProxy, credential[types.NOProxy])
+	_ = os.Setenv(types.AZBlobAccountName, credential[types.AZBlobAccountName])
+	_ = os.Setenv(types.AZBlobAccountKey, credential[types.AZBlobAccountKey])
+	_ = os.Setenv(types.AZBlobEndpoint, credential[types.AZBlobEndpoint])
+	_ = os.Setenv(types.HTTPSProxy, credential[types.HTTPSProxy])
+	_ = os.Setenv(types.HTTPProxy, credential[types.HTTPProxy])
+	_ = os.Setenv(types.NOProxy, credential[types.NOProxy])
 
 	if credential[types.AZBlobCert] != "" {
-		os.Setenv(types.AZBlobCert, credential[types.AZBlobCert])
+		_ = os.Setenv(types.AZBlobCert, credential[types.AZBlobCert])
 	}
 
 	return nil
