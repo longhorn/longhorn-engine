@@ -79,7 +79,9 @@ func DecompressAndVerifyWithFallback(bsDriver BackupStoreDriver, blkFile, decomp
 	if err != nil {
 		return nil, err
 	}
-	defer rc.Close()
+	defer func() {
+		_ = rc.Close()
+	}()
 
 	r, err := util.DecompressAndVerify(decompression, rc, checksum)
 	if err == nil {
@@ -100,7 +102,9 @@ func DecompressAndVerifyWithFallback(bsDriver BackupStoreDriver, blkFile, decomp
 		if err != nil {
 			return nil, err
 		}
-		defer retriedRc.Close()
+		defer func() {
+			_ = retriedRc.Close()
+		}()
 
 		r, err = util.DecompressAndVerify(alternativeDecompression, retriedRc, checksum)
 		if err != nil {

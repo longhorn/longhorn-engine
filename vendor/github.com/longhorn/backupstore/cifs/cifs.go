@@ -73,7 +73,7 @@ func initFunc(destURL string) (backupstore.BackupStoreDriver, error) {
 	b.password = os.Getenv("CIFS_PASSWORD")
 	b.serverPath = u.Host + u.Path
 	b.destURL = KIND + "://" + b.serverPath
-	b.mountDir = filepath.Join(util.MountDir, strings.TrimRight(strings.Replace(u.Host, ".", "_", -1), ":"), u.Path)
+	b.mountDir = filepath.Join(util.MountDir, strings.TrimRight(strings.ReplaceAll(u.Host, ".", "_"), ":"), u.Path)
 
 	cifsOptions, exist := u.Query()["cifsOptions"]
 	if exist {
