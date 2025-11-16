@@ -464,7 +464,9 @@ func restoreBlocks(ctx context.Context, bsDriver backupstore.BackupStoreDriver, 
 			errChan <- err
 			return
 		}
-		defer backingImageFile.Close()
+		defer func() {
+			_ = backingImageFile.Close()
+		}()
 
 		for {
 			select {

@@ -168,7 +168,9 @@ func (s *BackupStoreDriver) Upload(src, dst string) error {
 		log.WithError(err).Warnf("Failed to open file: %v", src)
 		return nil
 	}
-	defer file.Close()
+	defer func() {
+		_ = file.Close()
+	}()
 	path := s.updatePath(dst)
 	return s.service.putBlob(path, file)
 }
@@ -176,7 +178,7 @@ func (s *BackupStoreDriver) Upload(src, dst string) error {
 // Download gets a item data from the backup target
 func (s *BackupStoreDriver) Download(src, dst string) error {
 	if _, err := os.Stat(dst); err != nil {
-		os.Remove(dst)
+		_ = os.Remove(dst)
 	}
 
 	if err := os.MkdirAll(filepath.Dir(dst), os.ModeDir|0700); err != nil {
@@ -187,14 +189,18 @@ func (s *BackupStoreDriver) Download(src, dst string) error {
 	if err != nil {
 		return err
 	}
-	defer f.Close()
+	defer func() {
+		_ = f.Close()
+	}()
 
 	path := s.updatePath(src)
 	rc, err := s.service.getBlob(path)
 	if err != nil {
 		return err
 	}
-	defer rc.Close()
+	defer func() {
+		_ = rc.Close()
+	}()
 
 	_, err = io.Copy(f, rc)
 	return err

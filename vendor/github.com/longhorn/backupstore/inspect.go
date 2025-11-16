@@ -5,7 +5,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	. "github.com/longhorn/backupstore/logging"
+	. "github.com/longhorn/backupstore/logging" // nolint: staticcheck
 	"github.com/longhorn/backupstore/types"
 )
 

@@ -15,7 +15,7 @@ import (
 
 	lhbackup "github.com/longhorn/go-common-libs/backup"
 
-	. "github.com/longhorn/backupstore/logging"
+	. "github.com/longhorn/backupstore/logging" // nolint: staticcheck
 	"github.com/longhorn/backupstore/types"
 	"github.com/longhorn/backupstore/util"
 )
@@ -1170,7 +1170,7 @@ func restoreBlocks(ctx context.Context, bsDriver BackupStoreDriver, deltaOps Del
 			return
 		}
 		defer func() {
-			volDev.Close()
+			_ = volDev.Close()
 			if err != nil {
 				errChan <- err
 			}
