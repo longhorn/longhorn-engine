@@ -1,19 +1,21 @@
 package rpc
 
 import (
+	"context"
 	"fmt"
 	"strconv"
+
+	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/reflection"
+	"google.golang.org/grpc/status"
+	"google.golang.org/protobuf/types/known/emptypb"
+
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 
 	"github.com/longhorn/go-common-libs/profiler"
 	"github.com/longhorn/types/pkg/generated/enginerpc"
 	"github.com/longhorn/types/pkg/generated/profilerrpc"
-	"golang.org/x/net/context"
-	"google.golang.org/grpc"
-	"google.golang.org/grpc/codes"
-	healthpb "google.golang.org/grpc/health/grpc_health_v1"
-	"google.golang.org/grpc/reflection"
-	"google.golang.org/grpc/status"
-	"google.golang.org/protobuf/types/known/emptypb"
 
 	"github.com/longhorn/longhorn-engine/pkg/interceptor"
 	"github.com/longhorn/longhorn-engine/pkg/replica"
