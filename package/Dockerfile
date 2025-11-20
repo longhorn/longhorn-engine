@@ -48,6 +48,7 @@ RUN zypper -n ref && \
 RUN for i in {1..10}; do \
         zypper -n addrepo --refresh https://download.opensuse.org/repositories/system:/snappy/openSUSE_Factory/system:snappy.repo && \
         zypper -n addrepo --refresh https://download.opensuse.org/repositories/network:/utilities/16.0/network:utilities.repo && \
+        zypper -n addrepo --refresh https://download.opensuse.org/repositories/Base:System/openSUSE_Factory && \
         zypper --gpg-auto-import-keys ref && break || sleep 1; \
     done
 
