@@ -42,11 +42,11 @@ type SnapshotPurgeStatus struct {
 }
 
 type ReplicaRebuildStatus struct {
-	Error              string `json:"error"`
-	IsRebuilding       bool   `json:"isRebuilding"`
-	Progress           int    `json:"progress"`
-	State              string `json:"state"`
-	FromReplicaAddress string `json:"fromReplicaAddress"`
+	Error                  string   `json:"error"`
+	IsRebuilding           bool     `json:"isRebuilding"`
+	Progress               int      `json:"progress"`
+	State                  string   `json:"state"`
+	FromReplicaAddressList []string `json:"fromReplicaAddressList"`
 }
 
 type SnapshotCloneStatus struct {
@@ -795,11 +795,16 @@ func (t *Task) RebuildStatus() (map[string]*ReplicaRebuildStatus, error) {
 			continue
 		}
 		replicaStatusMap[r.Address] = &ReplicaRebuildStatus{
-			Error:              status.Error,
-			IsRebuilding:       status.IsRebuilding,
-			Progress:           int(status.Progress),
-			State:              status.State,
-			FromReplicaAddress: status.FromReplicaAddress, // nolint: staticcheck
+			Error:                  status.Error,
+			IsRebuilding:           status.IsRebuilding,
+			Progress:               int(status.Progress),
+			State:                  status.State,
+			FromReplicaAddressList: status.FromReplicaAddressList,
+		}
+
+		// For backward compatibility, old replica client only returns a single fromReplicaAddress
+		if len(status.FromReplicaAddressList) == 0 && status.FromReplicaAddress != "" { // nolint: staticcheck
+			replicaStatusMap[r.Address].FromReplicaAddressList = []string{status.FromReplicaAddress} // nolint: staticcheck
 		}
 	}
 

@@ -102,10 +102,10 @@ func (ps *PurgeStatus) UpdateFileHandlingProgress(progress int, done bool, err e
 
 type RebuildStatus struct {
 	sync.RWMutex
-	Error              string
-	Progress           int
-	State              types.ProcessState
-	FromReplicaAddress string
+	Error                  string
+	Progress               int
+	State                  types.ProcessState
+	FromReplicaAddressList []string
 
 	processedSize int64
 	totalSize     int64
@@ -427,7 +427,7 @@ func (s *SyncAgentServer) launchReceiver(processName, toFileName string, ops spa
 }
 
 func (s *SyncAgentServer) FilesSync(ctx context.Context, req *enginerpc.FilesSyncRequest) (res *emptypb.Empty, err error) {
-	if err := s.PrepareRebuild(req.SyncFileInfoList, req.FromAddress); err != nil { // nolint: staticcheck
+	if err := s.PrepareRebuild(req.SyncFileInfoList, req.FromAddressMap); err != nil {
 		return nil, err
 	}
 
@@ -516,17 +516,6 @@ func (s *SyncAgentServer) fileSyncLocal(ctx context.Context, req *enginerpc.File
 }
 
 func (s *SyncAgentServer) fileSyncRemote(ctx context.Context, req *enginerpc.FilesSyncRequest) error {
-<<<<<<< HEAD
-	// We generally don't know the from replica's instanceName since it is arbitrarily chosen from candidate addresses
-	// stored in the controller. Don't modify FilesSyncRequest to contain it, and create a client without it.
-	fromClient, err := replicaclient.NewReplicaClient(req.FromAddress, s.volumeName, "") // nolint: staticcheck
-	if err != nil {
-		return err
-	}
-	defer func() {
-		if errClose := fromClient.Close(); errClose != nil {
-			logrus.WithError(errClose).Errorf("Failed to close replica client for replica address %v", req.FromAddress) // nolint: staticcheck
-=======
 	fromClientMap := make(map[string]*replicaclient.ReplicaClient, len(req.FromAddressMap))
 	defer func() {
 		for address, client := range fromClientMap {
@@ -534,7 +523,6 @@ func (s *SyncAgentServer) fileSyncRemote(ctx context.Context, req *enginerpc.Fil
 			if err != nil {
 				logrus.WithError(err).Errorf("Failed to close replica client for for replica address %v at the end of the remote file sync", address)
 			}
->>>>>>> 91dad371 (feat: use multiple healthy replicas to sync snapshots simultaneously)
 		}
 	}()
 
@@ -598,15 +586,6 @@ func (s *SyncAgentServer) fileSyncRemote(ctx context.Context, req *enginerpc.Fil
 					}
 					syncFileLock.Unlock()
 
-<<<<<<< HEAD
-		port, err := s.launchReceiver("FilesSync", info.ToFileName, ops)
-		if err != nil {
-			return errors.Wrapf(err, "failed to launch receiver for file %v", info.ToFileName)
-		}
-		if err := fromClient.SendFile(info.FromFileName, req.ToHost, int32(port), int(req.FileSyncHttpClientTimeout), req.FastSync, req.GrpcTimeoutSeconds); err != nil {
-			return errors.Wrapf(err, "replica %v failed to send file %v to %v:%v", req.FromAddress, info.ToFileName, req.ToHost, port) // nolint: staticcheck
-		}
-=======
 					if syncFileInfo == nil {
 						return true
 					}
@@ -645,7 +624,6 @@ func (s *SyncAgentServer) fileSyncRemote(ctx context.Context, req *enginerpc.Fil
 				}()
 			}
 		}()
->>>>>>> 91dad371 (feat: use multiple healthy replicas to sync snapshots simultaneously)
 	}
 	wg.Wait()
 
@@ -658,7 +636,7 @@ func (s *SyncAgentServer) fileSyncRemote(ctx context.Context, req *enginerpc.Fil
 	return nil
 }
 
-func (s *SyncAgentServer) PrepareRebuild(list []*enginerpc.SyncFileInfo, fromReplicaAddress string) error {
+func (s *SyncAgentServer) PrepareRebuild(list []*enginerpc.SyncFileInfo, fromReplicaAddressMap map[string]bool) error {
 	s.Lock()
 	defer s.Unlock()
 
@@ -672,7 +650,10 @@ func (s *SyncAgentServer) PrepareRebuild(list []*enginerpc.SyncFileInfo, fromRep
 	s.isRebuilding = true
 
 	s.RebuildStatus.Lock()
-	s.RebuildStatus.FromReplicaAddress = fromReplicaAddress
+	s.RebuildStatus.FromReplicaAddressList = make([]string, 0, len(fromReplicaAddressMap))
+	for fromReplicaAddress := range fromReplicaAddressMap {
+		s.RebuildStatus.FromReplicaAddressList = append(s.RebuildStatus.FromReplicaAddressList, fromReplicaAddress)
+	}
 	s.RebuildStatus.Error = ""
 	s.RebuildStatus.State = types.ProcessStateInProgress
 	// avoid possible division by zero
@@ -712,11 +693,11 @@ func (s *SyncAgentServer) ReplicaRebuildStatus(ctx context.Context, req *emptypb
 	s.RebuildStatus.RLock()
 	defer s.RebuildStatus.RUnlock()
 	return &enginerpc.ReplicaRebuildStatusResponse{
-		IsRebuilding:       isRebuilding,
-		Error:              s.RebuildStatus.Error,
-		Progress:           int32(s.RebuildStatus.Progress),
-		State:              string(s.RebuildStatus.State),
-		FromReplicaAddress: s.RebuildStatus.FromReplicaAddress,
+		IsRebuilding:           isRebuilding,
+		Error:                  s.RebuildStatus.Error,
+		Progress:               int32(s.RebuildStatus.Progress),
+		State:                  string(s.RebuildStatus.State),
+		FromReplicaAddressList: s.RebuildStatus.FromReplicaAddressList,
 	}, nil
 }
 
