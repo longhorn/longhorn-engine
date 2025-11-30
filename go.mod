@@ -12,7 +12,7 @@ require (
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
 	github.com/longhorn/backupstore v0.0.0-20251130062045-a1de4c42df07
-	github.com/longhorn/go-common-libs v0.0.0-20251130061014-a2c18552fb30
+	github.com/longhorn/go-common-libs v0.0.0-20251130104056-3332521977c9
 	github.com/longhorn/go-iscsi-helper v0.0.0-20251130062153-44edbb497d99
 	github.com/longhorn/sparse-tools v0.0.0-20251020055717-ae3aca526fd7
 	github.com/longhorn/types v0.0.0-20251130061042-fc15b4776c60
