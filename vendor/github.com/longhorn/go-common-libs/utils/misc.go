@@ -139,3 +139,83 @@ func SortKeys[K constraints.Ordered, V any](mapObj map[K]V) ([]K, error) {
 
 	return keys, nil
 }
+
+// GetNumberFromMapSupportedTypes defines the numeric types supported by
+// GetNumberFromMap.
+//
+// Only these types can be used as the generic type parameter T in
+// GetNumberFromMap. The tilde (~) allows both the base types and any
+// type aliases based on them.
+type GetNumberFromMapSupportedTypes interface {
+	~uint8 | ~uint16 | ~uint64
+}
+
+// GetNumberFromMap retrieves a numeric value of type T from a map[string]any.
+//
+// This function looks up the value associated with the given key in mapObj
+// and returns it as type T. The generic type T must satisfy
+// GetNumberFromMapSupportedTypes (i.e., the numeric types this helper supports).
+//
+// Behavior:
+//   - If the key does not exist or the value is nil, the zero value of T is returned.
+//   - If the value already has type T, it is returned directly.
+//   - If the value is a float64 (common when decoding JSON), it is converted
+//     to T using a direct type conversion (T(v)) and returned. Fractional parts
+//     are truncated when converting to integer types.
+//   - If the value is a float64 but beyond the range of T, the zero value of T
+//     is returned.
+//   - Any other value type results in the zero value of T being returned.
+//
+// Notes:
+//   - This helper is useful for reading numeric values from loosely-typed maps
+//     such as JSON-decoded maps, where numbers are often represented as float64.
+//   - Converting from float64 to integer types may cause truncation or precision loss.
+func GetNumberFromMap[T GetNumberFromMapSupportedTypes](mapObj map[string]any, key string) T {
+	var zero T
+	value, ok := mapObj[key]
+	if !ok || value == nil {
+		return zero
+	}
+
+	if out, ok := value.(T); ok {
+		return out
+	}
+
+	switch v := value.(type) {
+	case float64:
+		// Clamp to zero if negative or beyond T’s max range.
+		if v < 0 || v > float64(^zero) {
+			return zero
+		}
+		return T(v)
+	}
+
+	return zero
+}
+
+// GetStringFromMap retrieves a string value from a map[string]any.
+//
+// It looks up the value associated with the given key in mapObj and returns it
+// as a string. Behavior:
+//   - If the key does not exist or the value is nil, it returns an empty string.
+//   - If the value is already a string, it is returned directly.
+//   - If the value implements fmt.Stringer, its String() method is called and returned.
+//   - For any other value type, fmt.Sprint is used to convert it to a string.
+//
+// This function is useful for safely extracting string representations from
+// loosely-typed maps, such as JSON-decoded maps.
+func GetStringFromMap(mapObj map[string]any, key string) string {
+	value, ok := mapObj[key]
+	if !ok || value == nil {
+		return ""
+	}
+
+	switch v := value.(type) {
+	case string:
+		return v
+	case fmt.Stringer:
+		return v.String()
+	default:
+		return fmt.Sprint(value)
+	}
+}
