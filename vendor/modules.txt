@@ -91,6 +91,10 @@ github.com/aws/aws-sdk-go-v2/feature/ec2/imds/internal/config
 # github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.19.8
 ## explicit; go 1.22
 github.com/aws/aws-sdk-go-v2/feature/s3/manager
+# github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager v0.1.0
+## explicit; go 1.21
+github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager
+github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager/types
 # github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.13
 ## explicit; go 1.23
 github.com/aws/aws-sdk-go-v2/internal/configsources
@@ -279,7 +283,7 @@ github.com/kr/pretty
 # github.com/kr/text v0.2.0
 ## explicit
 github.com/kr/text
-# github.com/longhorn/backupstore v0.0.0-20251130143517-bd9d3a1f688b
+# github.com/longhorn/backupstore v0.0.0-20251207100523-1140ccc38333
 ## explicit; go 1.24.0
 github.com/longhorn/backupstore
 github.com/longhorn/backupstore/azblob
