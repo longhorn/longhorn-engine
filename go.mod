@@ -10,7 +10,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
-	github.com/longhorn/backupstore v0.0.0-20251130143517-bd9d3a1f688b
+	github.com/longhorn/backupstore v0.0.0-20251207100523-1140ccc38333
 	github.com/longhorn/go-common-libs v0.0.0-20251130104056-3332521977c9
 	github.com/longhorn/go-iscsi-helper v0.0.0-20251130062153-44edbb497d99
 	github.com/longhorn/sparse-tools v0.0.0-20251020055717-ae3aca526fd7
@@ -41,6 +41,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/credentials v1.18.24 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.13 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.19.8 // indirect
+	github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager v0.1.0 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.13 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.13 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.4 // indirect
