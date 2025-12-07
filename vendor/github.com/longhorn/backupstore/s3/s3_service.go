@@ -13,6 +13,7 @@ import (
 	"github.com/aws/aws-sdk-go-v2/aws/retry"
 	"github.com/aws/aws-sdk-go-v2/config"
 	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go-v2/service/s3/types"
 	"github.com/aws/smithy-go"
@@ -55,6 +56,11 @@ func newService(u *url.URL) (*service, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	if tr, ok := client.Transport.(*http.Transport); ok {
+		transfermanager.WithRoundRobinDNS()(tr)
+	}
+
 	s.Client = client
 
 	return &s, nil
