@@ -636,6 +636,24 @@ func (t *Task) getTransferClients(address, instanceName string) (toClient *repli
 		return nil, nil, fmt.Errorf("cannot find the WO replica client from address %s", address)
 	}
 
+	// ReplicaRebuildConcurrentSyncLimit is only supported from Controller API version 6
+	apiVer, err := t.client.VersionDetailGet()
+	if err != nil {
+		return nil, nil, err
+	}
+	if apiVer.ControllerAPIVersion >= 6 {
+		limit, err := t.client.ReplicaRebuildConcurrentSyncLimitGet()
+		if err != nil {
+			return nil, nil, err
+		}
+		for address := range fromAddressMap {
+			if len(fromAddressMap) <= int(limit) {
+				break
+			}
+			delete(fromAddressMap, address)
+		}
+	}
+
 	logrus.Infof("Using replicas %+v as the source for replica %s rebuild", fromAddressMap, address)
 
 	return toClient, fromAddressMap, nil
