@@ -49,6 +49,8 @@ type Controller struct {
 	snapshotMaxCount   int
 	SnapshotMaxSize    int64
 
+	rebuildSyncConcurrentLimit int
+
 	GRPCAddress string
 	GRPCServer  *grpc.Server
 
@@ -75,7 +77,7 @@ const (
 func NewController(name string, factory types.BackendFactory, frontend types.Frontend, isUpgrade, disableRevCounter,
 	salvageRequested, unmapMarkSnapChainRemoved bool, iscsiTargetRequestTimeout, engineReplicaTimeoutShort,
 	engineReplicaTimeoutLong time.Duration, dataServerProtocol types.DataServerProtocol, fileSyncHTTPClientTimeout,
-	snapshotMaxCount int, snapshotMaxSize int64) *Controller {
+	snapshotMaxCount int, snapshotMaxSize int64, rebuildSyncConcurrentLimit int) *Controller {
 	c := &Controller{
 		factory:       factory,
 		VolumeName:    name,
@@ -89,6 +91,8 @@ func NewController(name string, factory types.BackendFactory, frontend types.Fro
 		unmapMarkSnapChainRemoved: unmapMarkSnapChainRemoved,
 		snapshotMaxCount:          snapshotMaxCount,
 		SnapshotMaxSize:           snapshotMaxSize,
+
+		rebuildSyncConcurrentLimit: rebuildSyncConcurrentLimit,
 
 		iscsiTargetRequestTimeout: iscsiTargetRequestTimeout,
 		sharedTimeouts:            util.NewSharedTimeouts(engineReplicaTimeoutShort, engineReplicaTimeoutLong),

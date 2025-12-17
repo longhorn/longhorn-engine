@@ -92,6 +92,11 @@ func ControllerCmd() cli.Command {
 				Name:  "snapshot-max-size",
 				Usage: "Maximum total snapshot size in bytes or human readable 42kb, 42mb, 42gb",
 			},
+			cli.IntFlag{
+				Name:  "rebuild-sync-concurrent-limit",
+				Value: types.DefaultRebuildSyncConcurrentLimit,
+				Usage: "Maximum number of concurrent syncing files for one rebuilding",
+			},
 		},
 		Action: func(c *cli.Context) {
 			if err := startController(c); err != nil {
@@ -161,6 +166,11 @@ func startController(c *cli.Context) error {
 		}
 	}
 
+	rebuildSyncConcurrentLimit := c.Int("rebuild-sync-concurrent-limit")
+	if rebuildSyncConcurrentLimit <= 0 {
+		return errors.New("rebuild-sync-concurrent-limit must be a positive integer")
+	}
+
 	factories := map[string]types.BackendFactory{}
 	for _, backend := range backends {
 		switch backend {
@@ -195,7 +205,7 @@ func startController(c *cli.Context) error {
 	control := controller.NewController(volumeName, dynamic.New(factories), frontend, isUpgrade, disableRevCounter,
 		salvageRequested, unmapMarkSnapChainRemoved, iscsiTargetRequestTimeout, engineReplicaTimeoutShort,
 		engineReplicaTimeoutLong, types.DataServerProtocol(dataServerProtocol), fileSyncHTTPClientTimeout,
-		snapshotMaxCount, snapshotMaxSize)
+		snapshotMaxCount, snapshotMaxSize, rebuildSyncConcurrentLimit)
 
 	// need to wait for Shutdown() completion
 	control.ShutdownWG.Add(1)
