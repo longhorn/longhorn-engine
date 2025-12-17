@@ -258,6 +258,21 @@ func (cs *ControllerServer) ReplicaVerifyRebuild(ctx context.Context, req *engin
 	return cs.getControllerReplica(req.Address), nil
 }
 
+func (cs *ControllerServer) ReplicaRebuildConcurrentSyncLimitSet(ctx context.Context, req *enginerpc.ReplicaRebuildConcurrentSyncLimitSetRequest) (*emptypb.Empty, error) {
+	if err := cs.c.SetReplicaRebuildConcurrentSyncLimit(int(req.Limit)); err != nil {
+		return nil, err
+	}
+
+	return &emptypb.Empty{}, nil
+}
+
+func (cs *ControllerServer) ReplicaRebuildConcurrentSyncLimitGet(ctx context.Context, req *emptypb.Empty) (*enginerpc.ReplicaRebuildConcurrentSyncLimitGetReply, error) {
+	limit := cs.c.GetReplicaRebuildConcurrentSyncLimit()
+	return &enginerpc.ReplicaRebuildConcurrentSyncLimitGetReply{
+		Limit: int32(limit),
+	}, nil
+}
+
 func (cs *ControllerServer) JournalList(ctx context.Context, req *enginerpc.JournalListRequest) (*emptypb.Empty, error) {
 	//ListJournal flushes operation journal (replica read/write, ping, etc.) accumulated since previous flush
 	journal.PrintLimited(int(req.Limit))

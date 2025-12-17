@@ -376,6 +376,33 @@ func (c *ControllerClient) ReplicaVerifyRebuild(address, instanceName string) er
 	return nil
 }
 
+func (c *ControllerClient) ReplicaRebuildConcurrentSyncLimitSet(limit int) error {
+	controllerServiceClient := c.getControllerServiceClient()
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
+	defer cancel()
+
+	if _, err := controllerServiceClient.ReplicaRebuildConcurrentSyncLimitSet(ctx, &enginerpc.ReplicaRebuildConcurrentSyncLimitSetRequest{
+		Limit: int32(limit),
+	}); err != nil {
+		return errors.Wrapf(err, "failed to set rebuild concurrent sync limit to %d for volume %v", limit, c.serviceURL)
+	}
+
+	return nil
+}
+
+func (c *ControllerClient) ReplicaRebuildConcurrentSyncLimitGet() (int, error) {
+	controllerServiceClient := c.getControllerServiceClient()
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
+	defer cancel()
+
+	reply, err := controllerServiceClient.ReplicaRebuildConcurrentSyncLimitGet(ctx, &emptypb.Empty{})
+	if err != nil {
+		return 0, errors.Wrapf(err, "failed to get rebuild concurrent sync limit for volume %v", c.serviceURL)
+	}
+
+	return int(reply.Limit), nil
+}
+
 func (c *ControllerClient) JournalList(limit int) error {
 	controllerServiceClient := c.getControllerServiceClient()
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)

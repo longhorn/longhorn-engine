@@ -236,3 +236,22 @@ func removeExtraDisks(extraDisks map[string]types.DiskInfo, address, volumeName,
 
 	return nil
 }
+
+func (c *Controller) SetReplicaRebuildConcurrentSyncLimit(limit int) error {
+	c.Lock()
+	defer c.Unlock()
+
+	if limit <= 0 {
+		return fmt.Errorf("invalid concurrent sync limit %v, which should be a positive integer", limit)
+	}
+	c.rebuildSyncConcurrentLimit = limit
+	logrus.Infof("Set rebuild replica concurrent sync limit to %v for volume %v", limit, c.VolumeName)
+	return nil
+}
+
+func (c *Controller) GetReplicaRebuildConcurrentSyncLimit() int {
+	c.Lock()
+	defer c.Unlock()
+
+	return c.rebuildSyncConcurrentLimit
+}
