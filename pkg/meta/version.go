@@ -2,11 +2,11 @@ package meta
 
 const (
 	// CLIAPIVersion used to communicate with user e.g. longhorn-manager
-	CLIAPIVersion    = 10
+	CLIAPIVersion    = 11
 	CLIAPIMinVersion = 8
 
 	// ControllerAPIVersion used to communicate with instance-manager
-	ControllerAPIVersion    = 5
+	ControllerAPIVersion    = 6
 	ControllerAPIMinVersion = 4
 
 	// DataFormatVersion used by the Replica to store data
