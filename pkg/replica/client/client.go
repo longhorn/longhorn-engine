@@ -537,6 +537,13 @@ func (c *ReplicaClient) SyncFiles(fromAddressMap map[string]bool, list []types.S
 		}
 	}
 
+	// For Backward compatibility.
+	// The proxy in new instance manager pods may use this client API to start a rebuild for an old replica
+	for addr := range fromAddressMap {
+		fileSyncRequest.FromAddress = addr // nolint: staticcheck
+		break
+	}
+
 	if _, err := syncAgentServiceClient.FilesSync(ctx, fileSyncRequest); err != nil {
 		return errors.Wrapf(err, "failed to sync files %+v from %+v", list, fromAddressMap)
 	}
