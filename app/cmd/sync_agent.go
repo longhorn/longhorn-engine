@@ -79,12 +79,15 @@ func startSyncAgent(c *cli.Context) error {
 		return err
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	listen, err := net.Listen("tcp", listenPort)
 	if err != nil {
 		return errors.Wrap(err, "failed to listen")
 	}
 
-	server := syncagentrpc.NewSyncAgentServer(start, end, replicaAddress, volumeName, replicaInstanceName)
+	server := syncagentrpc.NewSyncAgentServer(ctx, start, end, replicaAddress, volumeName, replicaInstanceName)
 
 	logrus.Infof("Listening on sync %s", listenPort)
 
