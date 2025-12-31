@@ -50,6 +50,7 @@ const (
 	MaximumTotalSnapshotCount = 250
 
 	DefaultRebuildSyncConcurrentLimit = 1
+	SyncRetryCount                    = 5
 )
 
 type DataServerProtocol string
