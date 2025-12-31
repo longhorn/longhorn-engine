@@ -427,7 +427,7 @@ func (s *SyncAgentServer) launchReceiver(processName, toFileName string, ops spa
 }
 
 func (s *SyncAgentServer) FilesSync(ctx context.Context, req *enginerpc.FilesSyncRequest) (res *emptypb.Empty, err error) {
-	if err := s.PrepareRebuild(req.SyncFileInfoList, req.FromAddress); err != nil {
+	if err := s.PrepareRebuild(req.SyncFileInfoList, req.FromAddress); err != nil { // nolint: staticcheck
 		return nil, err
 	}
 
@@ -518,13 +518,13 @@ func (s *SyncAgentServer) fileSyncLocal(ctx context.Context, req *enginerpc.File
 func (s *SyncAgentServer) fileSyncRemote(ctx context.Context, req *enginerpc.FilesSyncRequest) error {
 	// We generally don't know the from replica's instanceName since it is arbitrarily chosen from candidate addresses
 	// stored in the controller. Don't modify FilesSyncRequest to contain it, and create a client without it.
-	fromClient, err := replicaclient.NewReplicaClient(req.FromAddress, s.volumeName, "")
+	fromClient, err := replicaclient.NewReplicaClient(req.FromAddress, s.volumeName, "") // nolint: staticcheck
 	if err != nil {
 		return err
 	}
 	defer func() {
 		if errClose := fromClient.Close(); errClose != nil {
-			logrus.WithError(errClose).Errorf("Failed to close replica client for replica address %v", req.FromAddress)
+			logrus.WithError(errClose).Errorf("Failed to close replica client for replica address %v", req.FromAddress) // nolint: staticcheck
 		}
 	}()
 
@@ -544,7 +544,7 @@ func (s *SyncAgentServer) fileSyncRemote(ctx context.Context, req *enginerpc.Fil
 			return errors.Wrapf(err, "failed to launch receiver for file %v", info.ToFileName)
 		}
 		if err := fromClient.SendFile(info.FromFileName, req.ToHost, int32(port), int(req.FileSyncHttpClientTimeout), req.FastSync, req.GrpcTimeoutSeconds); err != nil {
-			return errors.Wrapf(err, "replica %v failed to send file %v to %v:%v", req.FromAddress, info.ToFileName, req.ToHost, port)
+			return errors.Wrapf(err, "replica %v failed to send file %v to %v:%v", req.FromAddress, info.ToFileName, req.ToHost, port) // nolint: staticcheck
 		}
 	}
 	return nil
