@@ -836,7 +836,7 @@ func (t *Task) RebuildStatus() (map[string]*ReplicaRebuildStatus, error) {
 			IsRebuilding:       status.IsRebuilding,
 			Progress:           int(status.Progress),
 			State:              status.State,
-			FromReplicaAddress: status.FromReplicaAddress,
+			FromReplicaAddress: status.FromReplicaAddress, // nolint: staticcheck
 		}
 	}
 
