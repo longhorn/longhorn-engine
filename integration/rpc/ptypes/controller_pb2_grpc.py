@@ -70,6 +70,11 @@ class ControllerServiceStub(object):
                 request_serializer=ptypes_dot_controller__pb2.VolumeSnapshotMaxSizeSetRequest.SerializeToString,
                 response_deserializer=ptypes_dot_controller__pb2.Volume.FromString,
                 )
+        self.VolumeIO = channel.unary_unary(
+                '/ptypes.ControllerService/VolumeIO',
+                request_serializer=ptypes_dot_controller__pb2.VolumeIORequest.SerializeToString,
+                response_deserializer=ptypes_dot_controller__pb2.VolumeIOResponse.FromString,
+                )
         self.ReplicaList = channel.unary_unary(
                 '/ptypes.ControllerService/ReplicaList',
                 request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
@@ -104,6 +109,16 @@ class ControllerServiceStub(object):
                 '/ptypes.ControllerService/ReplicaVerifyRebuild',
                 request_serializer=ptypes_dot_controller__pb2.ReplicaAddress.SerializeToString,
                 response_deserializer=ptypes_dot_controller__pb2.ControllerReplica.FromString,
+                )
+        self.ReplicaRebuildConcurrentSyncLimitSet = channel.unary_unary(
+                '/ptypes.ControllerService/ReplicaRebuildConcurrentSyncLimitSet',
+                request_serializer=ptypes_dot_controller__pb2.ReplicaRebuildConcurrentSyncLimitSetRequest.SerializeToString,
+                response_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                )
+        self.ReplicaRebuildConcurrentSyncLimitGet = channel.unary_unary(
+                '/ptypes.ControllerService/ReplicaRebuildConcurrentSyncLimitGet',
+                request_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+                response_deserializer=ptypes_dot_controller__pb2.ReplicaRebuildConcurrentSyncLimitGetReply.FromString,
                 )
         self.JournalList = channel.unary_unary(
                 '/ptypes.ControllerService/JournalList',
@@ -191,6 +206,12 @@ class ControllerServiceServicer(object):
         context.set_details('Method not implemented!')
         raise NotImplementedError('Method not implemented!')
 
+    def VolumeIO(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
     def ReplicaList(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
@@ -228,6 +249,18 @@ class ControllerServiceServicer(object):
         raise NotImplementedError('Method not implemented!')
 
     def ReplicaVerifyRebuild(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ReplicaRebuildConcurrentSyncLimitSet(self, request, context):
+        """Missing associated documentation comment in .proto file."""
+        context.set_code(grpc.StatusCode.UNIMPLEMENTED)
+        context.set_details('Method not implemented!')
+        raise NotImplementedError('Method not implemented!')
+
+    def ReplicaRebuildConcurrentSyncLimitGet(self, request, context):
         """Missing associated documentation comment in .proto file."""
         context.set_code(grpc.StatusCode.UNIMPLEMENTED)
         context.set_details('Method not implemented!')
@@ -309,6 +342,11 @@ def add_ControllerServiceServicer_to_server(servicer, server):
                     request_deserializer=ptypes_dot_controller__pb2.VolumeSnapshotMaxSizeSetRequest.FromString,
                     response_serializer=ptypes_dot_controller__pb2.Volume.SerializeToString,
             ),
+            'VolumeIO': grpc.unary_unary_rpc_method_handler(
+                    servicer.VolumeIO,
+                    request_deserializer=ptypes_dot_controller__pb2.VolumeIORequest.FromString,
+                    response_serializer=ptypes_dot_controller__pb2.VolumeIOResponse.SerializeToString,
+            ),
             'ReplicaList': grpc.unary_unary_rpc_method_handler(
                     servicer.ReplicaList,
                     request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
@@ -343,6 +381,16 @@ def add_ControllerServiceServicer_to_server(servicer, server):
                     servicer.ReplicaVerifyRebuild,
                     request_deserializer=ptypes_dot_controller__pb2.ReplicaAddress.FromString,
                     response_serializer=ptypes_dot_controller__pb2.ControllerReplica.SerializeToString,
+            ),
+            'ReplicaRebuildConcurrentSyncLimitSet': grpc.unary_unary_rpc_method_handler(
+                    servicer.ReplicaRebuildConcurrentSyncLimitSet,
+                    request_deserializer=ptypes_dot_controller__pb2.ReplicaRebuildConcurrentSyncLimitSetRequest.FromString,
+                    response_serializer=google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ),
+            'ReplicaRebuildConcurrentSyncLimitGet': grpc.unary_unary_rpc_method_handler(
+                    servicer.ReplicaRebuildConcurrentSyncLimitGet,
+                    request_deserializer=google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+                    response_serializer=ptypes_dot_controller__pb2.ReplicaRebuildConcurrentSyncLimitGetReply.SerializeToString,
             ),
             'JournalList': grpc.unary_unary_rpc_method_handler(
                     servicer.JournalList,
@@ -557,6 +605,23 @@ class ControllerService(object):
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 
     @staticmethod
+    def VolumeIO(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/ptypes.ControllerService/VolumeIO',
+            ptypes_dot_controller__pb2.VolumeIORequest.SerializeToString,
+            ptypes_dot_controller__pb2.VolumeIOResponse.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
     def ReplicaList(request,
             target,
             options=(),
@@ -672,6 +737,40 @@ class ControllerService(object):
         return grpc.experimental.unary_unary(request, target, '/ptypes.ControllerService/ReplicaVerifyRebuild',
             ptypes_dot_controller__pb2.ReplicaAddress.SerializeToString,
             ptypes_dot_controller__pb2.ControllerReplica.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def ReplicaRebuildConcurrentSyncLimitSet(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/ptypes.ControllerService/ReplicaRebuildConcurrentSyncLimitSet',
+            ptypes_dot_controller__pb2.ReplicaRebuildConcurrentSyncLimitSetRequest.SerializeToString,
+            google_dot_protobuf_dot_empty__pb2.Empty.FromString,
+            options, channel_credentials,
+            insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
+
+    @staticmethod
+    def ReplicaRebuildConcurrentSyncLimitGet(request,
+            target,
+            options=(),
+            channel_credentials=None,
+            call_credentials=None,
+            insecure=False,
+            compression=None,
+            wait_for_ready=None,
+            timeout=None,
+            metadata=None):
+        return grpc.experimental.unary_unary(request, target, '/ptypes.ControllerService/ReplicaRebuildConcurrentSyncLimitGet',
+            google_dot_protobuf_dot_empty__pb2.Empty.SerializeToString,
+            ptypes_dot_controller__pb2.ReplicaRebuildConcurrentSyncLimitGetReply.FromString,
             options, channel_credentials,
             insecure, call_credentials, compression, wait_for_ready, timeout, metadata)
 

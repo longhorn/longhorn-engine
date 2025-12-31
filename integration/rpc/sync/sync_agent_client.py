@@ -24,7 +24,7 @@ class SyncAgentClient(object):
     def replica_rebuild_status(self):
         return self.stub.ReplicaRebuildStatus(empty_pb2.Empty())
 
-    def sync_files(self, from_address, sync_file_info_tuples, fast_sync,
+    def sync_files(self, from_address_map, sync_file_info_tuples, fast_sync,
                    file_sync_http_client_timeout):
 
         sync_file_info_list = []
@@ -35,7 +35,7 @@ class SyncAgentClient(object):
             sync_file_info_list.append(info)
 
         return self.stub.FilesSync(syncagent_pb2.FilesSyncRequest(
-            from_address=from_address, to_host='localhost',
+            from_address_map=from_address_map, to_host='localhost',
             sync_file_info_list=sync_file_info_list,
             fast_sync=fast_sync,
             file_sync_http_client_timeout=file_sync_http_client_timeout
