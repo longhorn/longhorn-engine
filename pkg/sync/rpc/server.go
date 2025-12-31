@@ -21,6 +21,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/protobuf/types/known/emptypb"
+	"k8s.io/client-go/util/flowcontrol"
 
 	"github.com/longhorn/backupstore"
 	"github.com/longhorn/go-common-libs/profiler"
@@ -559,8 +560,11 @@ func (s *SyncAgentServer) fileSyncRemote(ctx context.Context, req *enginerpc.Fil
 
 	fileList := make([]string, 0, len(req.SyncFileInfoList))
 	unsyncedFileMap := make(map[string]*enginerpc.SyncFileInfo, len(req.SyncFileInfoList))
+	unsyncedFileRetryMap := make(map[string]int, len(req.SyncFileInfoList))
+	fileRetryBackoff := flowcontrol.NewBackOff(30*time.Second, time.Minute*2)
 	for _, info := range req.SyncFileInfoList {
 		unsyncedFileMap[info.ToFileName] = info
+		unsyncedFileRetryMap[info.ToFileName] = 0
 		fileList = append(fileList, info.ToFileName)
 	}
 
@@ -577,30 +581,46 @@ func (s *SyncAgentServer) fileSyncRemote(ctx context.Context, req *enginerpc.Fil
 		fromClient := fromClientMap[fromAddress]
 		go func() {
 			defer wg.Done()
+
+			ticker := time.NewTicker(3 * time.Second)
+			defer ticker.Stop()
 			for done := false; !done; {
 				select {
 				case <-s.ctx.Done():
 					done = true
-				default:
+				case <-ticker.C:
 					done = func() bool {
 						var syncFileInfo *enginerpc.SyncFileInfo
 						var err error
 						syncFileLock.Lock()
+						for fileName := range unsyncedFileMap {
+							if unsyncedFileRetryMap[fileName] >= types.SyncRetryCount {
+								syncFileLock.Unlock()
+								logrus.Errorf("Replica %s file %s syncing has failed for %d times, will consider the whole syncing as failed", req.ToHost, fileName, types.SyncRetryCount)
+								return true
+							}
+						}
 						for fileName, fileInfo := range unsyncedFileMap {
+							if fileRetryBackoff.IsInBackOffSinceUpdate(fileName, time.Now()) {
+								continue
+							}
 							syncFileInfo = fileInfo
 							delete(unsyncedFileMap, fileName)
 							break
 						}
+						done = len(unsyncedFileMap) == 0
 						syncFileLock.Unlock()
 
 						if syncFileInfo == nil {
-							return true
+							return done
 						}
 
 						defer func() {
 							if err != nil {
 								syncFileLock.Lock()
 								unsyncedFileMap[syncFileInfo.ToFileName] = syncFileInfo
+								fileRetryBackoff.Next(syncFileInfo.ToFileName, time.Now())
+								unsyncedFileRetryMap[syncFileInfo.ToFileName] = unsyncedFileRetryMap[syncFileInfo.ToFileName] + 1
 								syncFileLock.Unlock()
 								logrus.WithError(err).Warnf("Failed to sync file %v from remote replica %v, will requeue the file and let other remote replicas handle it", syncFileInfo.ToFileName, fromAddress)
 							}
