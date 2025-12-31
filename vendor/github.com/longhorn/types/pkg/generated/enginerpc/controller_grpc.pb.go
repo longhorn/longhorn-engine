@@ -20,28 +20,30 @@ import (
 const _ = grpc.SupportPackageIsVersion7
 
 const (
-	ControllerService_VolumeGet_FullMethodName                          = "/ptypes.ControllerService/VolumeGet"
-	ControllerService_VolumeStart_FullMethodName                        = "/ptypes.ControllerService/VolumeStart"
-	ControllerService_VolumeShutdown_FullMethodName                     = "/ptypes.ControllerService/VolumeShutdown"
-	ControllerService_VolumeSnapshot_FullMethodName                     = "/ptypes.ControllerService/VolumeSnapshot"
-	ControllerService_VolumeRevert_FullMethodName                       = "/ptypes.ControllerService/VolumeRevert"
-	ControllerService_VolumeExpand_FullMethodName                       = "/ptypes.ControllerService/VolumeExpand"
-	ControllerService_VolumeFrontendStart_FullMethodName                = "/ptypes.ControllerService/VolumeFrontendStart"
-	ControllerService_VolumeFrontendShutdown_FullMethodName             = "/ptypes.ControllerService/VolumeFrontendShutdown"
-	ControllerService_VolumeUnmapMarkSnapChainRemovedSet_FullMethodName = "/ptypes.ControllerService/VolumeUnmapMarkSnapChainRemovedSet"
-	ControllerService_VolumeSnapshotMaxCountSet_FullMethodName          = "/ptypes.ControllerService/VolumeSnapshotMaxCountSet"
-	ControllerService_VolumeSnapshotMaxSizeSet_FullMethodName           = "/ptypes.ControllerService/VolumeSnapshotMaxSizeSet"
-	ControllerService_VolumeIO_FullMethodName                           = "/ptypes.ControllerService/VolumeIO"
-	ControllerService_ReplicaList_FullMethodName                        = "/ptypes.ControllerService/ReplicaList"
-	ControllerService_ReplicaGet_FullMethodName                         = "/ptypes.ControllerService/ReplicaGet"
-	ControllerService_ControllerReplicaCreate_FullMethodName            = "/ptypes.ControllerService/ControllerReplicaCreate"
-	ControllerService_ReplicaDelete_FullMethodName                      = "/ptypes.ControllerService/ReplicaDelete"
-	ControllerService_ReplicaUpdate_FullMethodName                      = "/ptypes.ControllerService/ReplicaUpdate"
-	ControllerService_ReplicaPrepareRebuild_FullMethodName              = "/ptypes.ControllerService/ReplicaPrepareRebuild"
-	ControllerService_ReplicaVerifyRebuild_FullMethodName               = "/ptypes.ControllerService/ReplicaVerifyRebuild"
-	ControllerService_JournalList_FullMethodName                        = "/ptypes.ControllerService/JournalList"
-	ControllerService_VersionDetailGet_FullMethodName                   = "/ptypes.ControllerService/VersionDetailGet"
-	ControllerService_MetricsGet_FullMethodName                         = "/ptypes.ControllerService/MetricsGet"
+	ControllerService_VolumeGet_FullMethodName                            = "/ptypes.ControllerService/VolumeGet"
+	ControllerService_VolumeStart_FullMethodName                          = "/ptypes.ControllerService/VolumeStart"
+	ControllerService_VolumeShutdown_FullMethodName                       = "/ptypes.ControllerService/VolumeShutdown"
+	ControllerService_VolumeSnapshot_FullMethodName                       = "/ptypes.ControllerService/VolumeSnapshot"
+	ControllerService_VolumeRevert_FullMethodName                         = "/ptypes.ControllerService/VolumeRevert"
+	ControllerService_VolumeExpand_FullMethodName                         = "/ptypes.ControllerService/VolumeExpand"
+	ControllerService_VolumeFrontendStart_FullMethodName                  = "/ptypes.ControllerService/VolumeFrontendStart"
+	ControllerService_VolumeFrontendShutdown_FullMethodName               = "/ptypes.ControllerService/VolumeFrontendShutdown"
+	ControllerService_VolumeUnmapMarkSnapChainRemovedSet_FullMethodName   = "/ptypes.ControllerService/VolumeUnmapMarkSnapChainRemovedSet"
+	ControllerService_VolumeSnapshotMaxCountSet_FullMethodName            = "/ptypes.ControllerService/VolumeSnapshotMaxCountSet"
+	ControllerService_VolumeSnapshotMaxSizeSet_FullMethodName             = "/ptypes.ControllerService/VolumeSnapshotMaxSizeSet"
+	ControllerService_VolumeIO_FullMethodName                             = "/ptypes.ControllerService/VolumeIO"
+	ControllerService_ReplicaList_FullMethodName                          = "/ptypes.ControllerService/ReplicaList"
+	ControllerService_ReplicaGet_FullMethodName                           = "/ptypes.ControllerService/ReplicaGet"
+	ControllerService_ControllerReplicaCreate_FullMethodName              = "/ptypes.ControllerService/ControllerReplicaCreate"
+	ControllerService_ReplicaDelete_FullMethodName                        = "/ptypes.ControllerService/ReplicaDelete"
+	ControllerService_ReplicaUpdate_FullMethodName                        = "/ptypes.ControllerService/ReplicaUpdate"
+	ControllerService_ReplicaPrepareRebuild_FullMethodName                = "/ptypes.ControllerService/ReplicaPrepareRebuild"
+	ControllerService_ReplicaVerifyRebuild_FullMethodName                 = "/ptypes.ControllerService/ReplicaVerifyRebuild"
+	ControllerService_ReplicaRebuildConcurrentSyncLimitSet_FullMethodName = "/ptypes.ControllerService/ReplicaRebuildConcurrentSyncLimitSet"
+	ControllerService_ReplicaRebuildConcurrentSyncLimitGet_FullMethodName = "/ptypes.ControllerService/ReplicaRebuildConcurrentSyncLimitGet"
+	ControllerService_JournalList_FullMethodName                          = "/ptypes.ControllerService/JournalList"
+	ControllerService_VersionDetailGet_FullMethodName                     = "/ptypes.ControllerService/VersionDetailGet"
+	ControllerService_MetricsGet_FullMethodName                           = "/ptypes.ControllerService/MetricsGet"
 )
 
 // ControllerServiceClient is the client API for ControllerService service.
@@ -67,6 +69,8 @@ type ControllerServiceClient interface {
 	ReplicaUpdate(ctx context.Context, in *ControllerReplica, opts ...grpc.CallOption) (*ControllerReplica, error)
 	ReplicaPrepareRebuild(ctx context.Context, in *ReplicaAddress, opts ...grpc.CallOption) (*ReplicaPrepareRebuildReply, error)
 	ReplicaVerifyRebuild(ctx context.Context, in *ReplicaAddress, opts ...grpc.CallOption) (*ControllerReplica, error)
+	ReplicaRebuildConcurrentSyncLimitSet(ctx context.Context, in *ReplicaRebuildConcurrentSyncLimitSetRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
+	ReplicaRebuildConcurrentSyncLimitGet(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ReplicaRebuildConcurrentSyncLimitGetReply, error)
 	JournalList(ctx context.Context, in *JournalListRequest, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	VersionDetailGet(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*VersionDetailGetReply, error)
 	MetricsGet(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*MetricsGetReply, error)
@@ -251,6 +255,24 @@ func (c *controllerServiceClient) ReplicaVerifyRebuild(ctx context.Context, in *
 	return out, nil
 }
 
+func (c *controllerServiceClient) ReplicaRebuildConcurrentSyncLimitSet(ctx context.Context, in *ReplicaRebuildConcurrentSyncLimitSetRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
+	out := new(emptypb.Empty)
+	err := c.cc.Invoke(ctx, ControllerService_ReplicaRebuildConcurrentSyncLimitSet_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controllerServiceClient) ReplicaRebuildConcurrentSyncLimitGet(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ReplicaRebuildConcurrentSyncLimitGetReply, error) {
+	out := new(ReplicaRebuildConcurrentSyncLimitGetReply)
+	err := c.cc.Invoke(ctx, ControllerService_ReplicaRebuildConcurrentSyncLimitGet_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
 func (c *controllerServiceClient) JournalList(ctx context.Context, in *JournalListRequest, opts ...grpc.CallOption) (*emptypb.Empty, error) {
 	out := new(emptypb.Empty)
 	err := c.cc.Invoke(ctx, ControllerService_JournalList_FullMethodName, in, out, opts...)
@@ -301,6 +323,8 @@ type ControllerServiceServer interface {
 	ReplicaUpdate(context.Context, *ControllerReplica) (*ControllerReplica, error)
 	ReplicaPrepareRebuild(context.Context, *ReplicaAddress) (*ReplicaPrepareRebuildReply, error)
 	ReplicaVerifyRebuild(context.Context, *ReplicaAddress) (*ControllerReplica, error)
+	ReplicaRebuildConcurrentSyncLimitSet(context.Context, *ReplicaRebuildConcurrentSyncLimitSetRequest) (*emptypb.Empty, error)
+	ReplicaRebuildConcurrentSyncLimitGet(context.Context, *emptypb.Empty) (*ReplicaRebuildConcurrentSyncLimitGetReply, error)
 	JournalList(context.Context, *JournalListRequest) (*emptypb.Empty, error)
 	VersionDetailGet(context.Context, *emptypb.Empty) (*VersionDetailGetReply, error)
 	MetricsGet(context.Context, *emptypb.Empty) (*MetricsGetReply, error)
@@ -367,6 +391,12 @@ func (UnimplementedControllerServiceServer) ReplicaPrepareRebuild(context.Contex
 }
 func (UnimplementedControllerServiceServer) ReplicaVerifyRebuild(context.Context, *ReplicaAddress) (*ControllerReplica, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReplicaVerifyRebuild not implemented")
+}
+func (UnimplementedControllerServiceServer) ReplicaRebuildConcurrentSyncLimitSet(context.Context, *ReplicaRebuildConcurrentSyncLimitSetRequest) (*emptypb.Empty, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ReplicaRebuildConcurrentSyncLimitSet not implemented")
+}
+func (UnimplementedControllerServiceServer) ReplicaRebuildConcurrentSyncLimitGet(context.Context, *emptypb.Empty) (*ReplicaRebuildConcurrentSyncLimitGetReply, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method ReplicaRebuildConcurrentSyncLimitGet not implemented")
 }
 func (UnimplementedControllerServiceServer) JournalList(context.Context, *JournalListRequest) (*emptypb.Empty, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method JournalList not implemented")
@@ -732,6 +762,42 @@ func _ControllerService_ReplicaVerifyRebuild_Handler(srv interface{}, ctx contex
 	return interceptor(ctx, in, info, handler)
 }
 
+func _ControllerService_ReplicaRebuildConcurrentSyncLimitSet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(ReplicaRebuildConcurrentSyncLimitSetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).ReplicaRebuildConcurrentSyncLimitSet(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_ReplicaRebuildConcurrentSyncLimitSet_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).ReplicaRebuildConcurrentSyncLimitSet(ctx, req.(*ReplicaRebuildConcurrentSyncLimitSetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ControllerService_ReplicaRebuildConcurrentSyncLimitGet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(emptypb.Empty)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).ReplicaRebuildConcurrentSyncLimitGet(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_ReplicaRebuildConcurrentSyncLimitGet_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).ReplicaRebuildConcurrentSyncLimitGet(ctx, req.(*emptypb.Empty))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
 func _ControllerService_JournalList_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
 	in := new(JournalListRequest)
 	if err := dec(in); err != nil {
@@ -868,6 +934,14 @@ var ControllerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "ReplicaVerifyRebuild",
 			Handler:    _ControllerService_ReplicaVerifyRebuild_Handler,
+		},
+		{
+			MethodName: "ReplicaRebuildConcurrentSyncLimitSet",
+			Handler:    _ControllerService_ReplicaRebuildConcurrentSyncLimitSet_Handler,
+		},
+		{
+			MethodName: "ReplicaRebuildConcurrentSyncLimitGet",
+			Handler:    _ControllerService_ReplicaRebuildConcurrentSyncLimitGet_Handler,
 		},
 		{
 			MethodName: "JournalList",

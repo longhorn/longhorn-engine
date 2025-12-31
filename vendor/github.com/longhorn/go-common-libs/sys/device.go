@@ -7,20 +7,26 @@ import (
 	"path/filepath"
 	"regexp"
 	"strings"
+	"syscall"
 
 	"github.com/cockroachdb/errors"
+	"golang.org/x/sys/unix"
 )
 
 // FindBlockDeviceForMount returns the block device associated with a given mount path.
 func FindBlockDeviceForMount(mountPath string) (string, error) {
-	return findBlockDeviceForMountWithFile(mountPath, "/proc/mounts")
+	return findBlockDeviceForMountWithDeps(mountPath, "/proc/mounts", findBlockDeviceByMajorMinor)
 }
 
-// findBlockDeviceForMountWithFile returns the block device associated with a given mount path
+// findBlockDeviceForMountWithDeps returns the block device associated with a given mount path
 // by reading the specified mounts file.
 //
 // This function allows dependency injection for unit testing.
-func findBlockDeviceForMountWithFile(mountPath, mountsFile string) (string, error) {
+func findBlockDeviceForMountWithDeps(
+	mountPath string,
+	mountsFile string,
+	resolveDevice func(string) (string, error),
+) (string, error) {
 	f, err := os.Open(mountsFile)
 	if err != nil {
 		return "", errors.Wrapf(err, "failed to open %s", mountsFile)
@@ -33,7 +39,28 @@ func findBlockDeviceForMountWithFile(mountPath, mountsFile string) (string, erro
 	for scanner.Scan() {
 		fields := strings.Fields(scanner.Text())
 		if len(fields) >= 2 && fields[1] == mountPath {
-			return fields[0], nil
+			device := fields[0]
+
+			// Skip pseudo-filesystems that don't have /dev/ prefix
+			if !strings.HasPrefix(device, "/dev/") {
+				return "", fmt.Errorf("mount path %s uses non-block device %q", mountPath, device)
+			}
+
+			// LVM device-mapper paths (e.g., /dev/mapper/... or /dev/dm-*) should be
+			// returned as-is. In containerized environments, the underlying dm-*
+			// backing devices may not be visible inside the container, so attempting
+			// to resolve them to a physical block device can fail.
+			if strings.HasPrefix(device, "/dev/mapper/") || strings.HasPrefix(device, "/dev/dm-") {
+				return device, nil
+			}
+
+			// Resolve device using the injected resolveDevice function.
+			// This handles special devices like /dev/root and symlinks consistently.
+			actualDev, err := resolveDevice(device)
+			if err != nil {
+				return "", errors.Wrapf(err, "failed to resolve %q to actual device", device)
+			}
+			return actualDev, nil
 		}
 	}
 	if err := scanner.Err(); err != nil {
@@ -60,6 +87,64 @@ func ResolveBlockDeviceToPhysicalDevice(
 // Note: This regex may need to be updated if additional device types are
 // required.
 var deviceRegexp = regexp.MustCompile(`(block|nvme)/([^/]+)`)
+
+// findBlockDeviceByMajorMinor finds the actual device in /sys/class/block that matches
+// the given device's major:minor numbers. This is primarily used as a fallback for
+// special device paths (such as /dev/root) that do not have a direct sysfs entry and
+// therefore cannot be resolved via simple symlink or sysfs path lookups.
+func findBlockDeviceByMajorMinor(devicePath string) (string, error) {
+	var stat syscall.Stat_t
+	if err := syscall.Stat(devicePath, &stat); err != nil {
+		return "", errors.Wrapf(err, "failed to stat device %q", devicePath)
+	}
+
+	// Extract major and minor numbers using proper Linux device number encoding
+	major := uint64(unix.Major(stat.Rdev))
+	minor := uint64(unix.Minor(stat.Rdev))
+
+	// Fast path: if the device basename exists in /sys/class/block, check its dev file first.
+	// This avoids scanning all entries when the name already matches. This is only expected
+	// to succeed for direct device paths like /dev/sda1; symlinks such as
+	// /dev/disk/by-uuid/... have different basenames and will fall back to the full scan.
+	baseName := filepath.Base(devicePath)
+	devPath := filepath.Join("/sys/class/block", baseName, "dev")
+	if contentBytes, err := os.ReadFile(devPath); err == nil {
+		content := strings.TrimSpace(string(contentBytes))
+		var entryMajor, entryMinor uint64
+		if _, err := fmt.Sscanf(content, "%d:%d", &entryMajor, &entryMinor); err == nil {
+			if entryMajor == major && entryMinor == minor {
+				return "/dev/" + baseName, nil
+			}
+		}
+		// If the basename exists but doesn't match, fall through to full scan.
+	}
+
+	// Search /sys/class/block for a device with matching major:minor
+	entries, err := os.ReadDir("/sys/class/block")
+	if err != nil {
+		return "", errors.Wrap(err, "failed to read /sys/class/block")
+	}
+
+	for _, entry := range entries {
+		devFile := filepath.Join("/sys/class/block", entry.Name(), "dev")
+		contentBytes, err := os.ReadFile(devFile)
+		if err != nil {
+			continue // Skip if we can't read the dev file
+		}
+		content := strings.TrimSpace(string(contentBytes))
+
+		var entryMajor, entryMinor uint64
+		if _, err := fmt.Sscanf(content, "%d:%d", &entryMajor, &entryMinor); err != nil {
+			continue
+		}
+
+		if entryMajor == major && entryMinor == minor {
+			return "/dev/" + entry.Name(), nil
+		}
+	}
+
+	return "", fmt.Errorf("no device found in /sys/class/block matching %q (major:%d, minor:%d)", devicePath, major, minor)
+}
 
 // resolveBlockDeviceToPhysicalDeviceWithDeps resolves a block device path
 // (e.g., /dev/nvme0n1p3 or /dev/sda2) to its top-level physical device
@@ -101,32 +186,4 @@ func resolveBlockDeviceToPhysicalDeviceWithDeps(
 	}
 
 	return "/dev/" + topDevice, nil
-}
-
-// ResolveMountPathToPhysicalDevice returns the physical block device (e.g., /dev/nvme0)
-// for the given mount path (e.g., /var/lib/longhorn)
-func ResolveMountPathToPhysicalDevice(mountPath string) (string, error) {
-	return resolveMountPathToPhysicalDeviceWithDeps(
-		mountPath,
-		"/proc/mounts",
-		filepath.EvalSymlinks,
-	)
-}
-
-// resolveMountPathToPhysicalDeviceWithDeps returns the top-level physical device
-// (e.g., /dev/nvme0 for NVMe, /dev/sda for SATA) corresponding to the given
-// mount path (e.g., /var/lib/longhorn).
-//
-// This function allows dependency injection for unit testing.
-func resolveMountPathToPhysicalDeviceWithDeps(
-	mountPath string,
-	mountsFile string,
-	evalSymlinks func(string) (string, error),
-) (string, error) {
-	blockDevice, err := findBlockDeviceForMountWithFile(mountPath, mountsFile)
-	if err != nil {
-		return "", err
-	}
-
-	return resolveBlockDeviceToPhysicalDeviceWithDeps(blockDevice, evalSymlinks)
 }
