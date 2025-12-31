@@ -117,7 +117,7 @@ def test_validation_fails_with_client(engine_manager_client,
                                VOLUME_NAME)
     sync_file_info_tuples = [("some_name", "some_name", 512)]
     with pytest.raises(grpc.RpcError) as e:
-        s_client.sync_files(get_process_address(replica_different),
+        s_client.sync_files({get_process_address(replica_different): True},
                             sync_file_info_tuples,
                             True,
                             0)
