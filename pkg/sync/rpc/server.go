@@ -574,6 +574,7 @@ func (s *SyncAgentServer) fileSyncRemote(ctx context.Context, req *enginerpc.Fil
 	fileStub := &sparserest.SyncFileStub{}
 
 	syncFileLock := &sync.Mutex{}
+	var aggregatedError error
 	wg := &sync.WaitGroup{}
 	wg.Add(connectionCount)
 	for addr := range fromClientMap {
@@ -595,8 +596,9 @@ func (s *SyncAgentServer) fileSyncRemote(ctx context.Context, req *enginerpc.Fil
 						syncFileLock.Lock()
 						for fileName := range unsyncedFileMap {
 							if unsyncedFileRetryMap[fileName] >= types.SyncRetryCount {
+								// No need to aggregate this error since the goroutine that handles the last retry of this file syncing should have already collected the root cause.
+								logrus.Errorf("replica %s cannot continue remote file sync from replica %s as file %s syncing has failed for %d times", req.ToHost, fromAddress, fileName, types.SyncRetryCount)
 								syncFileLock.Unlock()
-								logrus.Errorf("Replica %s file %s syncing has failed for %d times, will consider the whole syncing as failed", req.ToHost, fileName, types.SyncRetryCount)
 								return true
 							}
 						}
@@ -616,14 +618,22 @@ func (s *SyncAgentServer) fileSyncRemote(ctx context.Context, req *enginerpc.Fil
 						}
 
 						defer func() {
-							if err != nil {
-								syncFileLock.Lock()
-								unsyncedFileMap[syncFileInfo.ToFileName] = syncFileInfo
-								fileRetryBackoff.Next(syncFileInfo.ToFileName, time.Now())
-								unsyncedFileRetryMap[syncFileInfo.ToFileName] = unsyncedFileRetryMap[syncFileInfo.ToFileName] + 1
-								syncFileLock.Unlock()
-								logrus.WithError(err).Warnf("Failed to sync file %v from remote replica %v, will requeue the file and let other remote replicas handle it", syncFileInfo.ToFileName, fromAddress)
+							if err == nil {
+								return
 							}
+							syncFileLock.Lock()
+							unsyncedFileMap[syncFileInfo.ToFileName] = syncFileInfo
+							unsyncedFileRetryMap[syncFileInfo.ToFileName] = unsyncedFileRetryMap[syncFileInfo.ToFileName] + 1
+							if unsyncedFileRetryMap[syncFileInfo.ToFileName] >= types.SyncRetryCount {
+								err = errors.Wrapf(err, "Replica %s file %s syncing has failed for %d times, will error out", req.ToHost, syncFileInfo.ToFileName, types.SyncRetryCount)
+								aggregatedError = errors.CombineErrors(aggregatedError, err)
+								logrus.Error(err)
+								done = true
+							} else {
+								logrus.WithError(err).Warnf("Replica %s failed to sync file %v from remote replica %v for %d times, will requeue the file and let other remote replicas handle it", req.ToHost, syncFileInfo.ToFileName, fromAddress, unsyncedFileRetryMap[syncFileInfo.ToFileName])
+								fileRetryBackoff.Next(syncFileInfo.ToFileName, time.Now())
+							}
+							syncFileLock.Unlock()
 						}()
 
 						// Do not count size for disk meta file or empty disk file.
@@ -635,14 +645,13 @@ func (s *SyncAgentServer) fileSyncRemote(ctx context.Context, req *enginerpc.Fil
 
 						port, err := s.launchReceiver("FilesSync", syncFileInfo.ToFileName, ops)
 						if err != nil {
-							err = errors.Wrap(err, "failed to launch receiver")
+							err = errors.Wrapf(err, "replica %s failed to launch receiver for file %s from remote replica %s", req.ToHost, syncFileInfo.ToFileName, fromAddress)
 							return false
 						}
 
 						logrus.Infof("Remote replica %v starts to send file %v to current replica %v:%d", fromAddress, syncFileInfo.ToFileName, req.ToHost, port)
 
 						if err = fromClient.SendFile(syncFileInfo.FromFileName, req.ToHost, int32(port), int(req.FileSyncHttpClientTimeout), req.FastSync, req.GrpcTimeoutSeconds); err != nil {
-							err = errors.Wrapf(err, "failed to send file %v to %v:%v", syncFileInfo.ToFileName, req.ToHost, port)
 							return false
 						}
 
@@ -655,6 +664,9 @@ func (s *SyncAgentServer) fileSyncRemote(ctx context.Context, req *enginerpc.Fil
 	}
 	wg.Wait()
 
+	if aggregatedError != nil {
+		return aggregatedError
+	}
 	if len(unsyncedFileMap) != 0 {
 		return fmt.Errorf("some files failed to sync: %+v", unsyncedFileMap)
 	}
