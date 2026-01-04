@@ -11,8 +11,8 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
-	github.com/longhorn/backupstore v0.0.0-20251220100905-806bfd28ecb6
-	github.com/longhorn/go-common-libs v0.0.0-20251228142402-32900f1ed495
+	github.com/longhorn/backupstore v0.0.0-20260103122000-395c8e4b093d
+	github.com/longhorn/go-common-libs v0.0.0-20260103034008-119bdcf1b2d6
 	github.com/longhorn/go-iscsi-helper v0.0.0-20251220102922-df1ba3dff946
 	github.com/longhorn/sparse-tools v0.0.0-20251020055717-ae3aca526fd7
 	github.com/longhorn/types v0.0.0-20251228142423-336840fb2fd6
