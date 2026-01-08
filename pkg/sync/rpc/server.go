@@ -1,6 +1,7 @@
 package rpc
 
 import (
+	"context"
 	"fmt"
 	"net"
 	"net/http"
@@ -13,13 +14,9 @@ import (
 	"time"
 
 	"github.com/gofrs/flock"
-	"github.com/longhorn/backupstore"
-	"github.com/longhorn/sparse-tools/sparse"
-	"github.com/longhorn/types/pkg/generated/enginerpc"
 	"github.com/moby/moby/pkg/reexec"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/grpc/reflection"
@@ -28,7 +25,10 @@ import (
 	butil "github.com/longhorn/backupstore/util"
 	sparserest "github.com/longhorn/sparse-tools/sparse/rest"
 
+	"github.com/longhorn/backupstore"
 	"github.com/longhorn/go-common-libs/profiler"
+	"github.com/longhorn/sparse-tools/sparse"
+	"github.com/longhorn/types/pkg/generated/enginerpc"
 	"github.com/longhorn/types/pkg/generated/profilerrpc"
 
 	lhio "github.com/longhorn/go-common-libs/io"
