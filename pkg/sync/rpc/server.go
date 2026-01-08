@@ -561,7 +561,7 @@ func (s *SyncAgentServer) fileSyncRemote(ctx context.Context, req *enginerpc.Fil
 	fileList := make([]string, 0, len(req.SyncFileInfoList))
 	unsyncedFileMap := make(map[string]*enginerpc.SyncFileInfo, len(req.SyncFileInfoList))
 	unsyncedFileRetryMap := make(map[string]int, len(req.SyncFileInfoList))
-	fileRetryBackoff := flowcontrol.NewBackOff(30*time.Second, time.Minute*2)
+	fileRetryBackoff := flowcontrol.NewBackOff(10*time.Second, 30*time.Second)
 	for _, info := range req.SyncFileInfoList {
 		unsyncedFileMap[info.ToFileName] = info
 		unsyncedFileRetryMap[info.ToFileName] = 0
