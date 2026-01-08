@@ -530,8 +530,18 @@ func (s *SyncAgentServer) fileSyncRemote(ctx context.Context, req *enginerpc.Fil
 		}
 	}()
 
+	// Reconstruct fromAddressMap for backward compatibility when the engine is on an old instance manager
+	fromAddressMap := map[string]bool{}
+	for addr := range req.FromAddressMap {
+		fromAddressMap[addr] = true
+	}
+	if len(fromAddressMap) == 0 && req.FromAddress != "" { // nolint: staticcheck
+		logrus.Info("Reconstructing fromAddressMap for backward compatibility")
+		fromAddressMap[req.FromAddress] = true // nolint: staticcheck
+	}
+
 	// Default sync agent server listening port range
-	concurrentCount := len(req.FromAddressMap)
+	concurrentCount := len(fromAddressMap)
 	if len(req.SyncFileInfoList) < concurrentCount {
 		concurrentCount = len(req.SyncFileInfoList)
 	}
@@ -540,7 +550,7 @@ func (s *SyncAgentServer) fileSyncRemote(ctx context.Context, req *enginerpc.Fil
 	}
 
 	connectionCount := 0
-	for fromAddress := range req.FromAddressMap {
+	for fromAddress := range fromAddressMap {
 		// We generally don't know the from replica's instanceName since it is arbitrarily chosen from candidate addresses
 		// stored in the controller. Don't modify FilesSyncRequest to contain it, and create a client without it.
 		fromClient, err := replicaclient.NewReplicaClient(fromAddress, s.volumeName, "")
