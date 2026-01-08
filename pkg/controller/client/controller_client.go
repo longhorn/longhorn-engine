@@ -1,13 +1,12 @@
 package client
 
 import (
+	"context"
 	"fmt"
 	"time"
 
-	"github.com/sirupsen/logrus"
-
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
+	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 	"google.golang.org/protobuf/types/known/emptypb"

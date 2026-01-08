@@ -1,10 +1,10 @@
 package rpc
 
 import (
+	"context"
 	"strconv"
 	"testing"
 
-	"golang.org/x/net/context"
 	. "gopkg.in/check.v1"
 
 	"github.com/longhorn/longhorn-engine/pkg/replica"

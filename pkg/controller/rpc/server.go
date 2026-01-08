@@ -1,19 +1,21 @@
 package rpc
 
 import (
+	"context"
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
-	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/protobuf/types/known/emptypb"
 
+	healthpb "google.golang.org/grpc/health/grpc_health_v1"
+
 	"github.com/longhorn/go-common-libs/profiler"
-	journal "github.com/longhorn/sparse-tools/stats"
 	"github.com/longhorn/types/pkg/generated/enginerpc"
 	"github.com/longhorn/types/pkg/generated/profilerrpc"
+
+	journal "github.com/longhorn/sparse-tools/stats"
 
 	"github.com/longhorn/longhorn-engine/pkg/controller"
 	"github.com/longhorn/longhorn-engine/pkg/interceptor"
