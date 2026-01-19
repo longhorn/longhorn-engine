@@ -1,0 +1,33 @@
+name: fossa
+on:
+  push:
+    branches:
+      - master
+      - v*
+    tags:
+      - v*
+  pull_request:
+    branches:
+      - master
+      - v*
+  workflow_dispatch: {}
+
+permissions: {}
+
+jobs:
+  fossa-scan:
+    if: github.repository == 'longhorn/longhorn-engine' # FOSSA is not intended to run on forks.
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      FOSSA_API_KEY: ${{ secrets.FOSSA_API_KEY }}
+    steps:
+      - name: "Checkout code"
+        uses: actions/checkout@v4
+
+      - name: "Run FOSSA Scan"
+        uses: fossas/fossa-action@v1.7.0 # Use a specific version if locking is preferred
+        with:
+          api-key: ${{ secrets.FOSSA_API_KEY }}
+          project: longhorn-engine
