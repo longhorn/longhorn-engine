@@ -12,10 +12,10 @@ require (
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
 	github.com/longhorn/backupstore v0.0.0-20260120061542-61f6a1bcd863
-	github.com/longhorn/go-common-libs v0.0.0-20260103034008-119bdcf1b2d6
+	github.com/longhorn/go-common-libs v0.0.0-20260118234208-0048623a22b1
 	github.com/longhorn/go-iscsi-helper v0.0.0-20260117042347-da1af2aab3fc
 	github.com/longhorn/sparse-tools v0.0.0-20260117144214-070853c24eda
-	github.com/longhorn/types v0.0.0-20251228142423-336840fb2fd6
+	github.com/longhorn/types v0.0.0-20260118234234-63598269a247
 	github.com/moby/moby v26.1.5+incompatible
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
 	github.com/rancher/go-rancher v0.1.1-0.20190307222549-9756097e5e4c
@@ -93,7 +93,7 @@ require (
 	github.com/slok/goresilience v0.2.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
-	golang.org/x/exp v0.0.0-20251219203646-944ab1f22d93 // indirect
+	golang.org/x/exp v0.0.0-20260112195511-716be5621a96 // indirect
 	golang.org/x/net v0.49.0 // indirect
 	golang.org/x/text v0.33.0 // indirect
 	golang.org/x/time v0.9.0 // indirect
