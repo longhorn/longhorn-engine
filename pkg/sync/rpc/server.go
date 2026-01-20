@@ -1052,14 +1052,18 @@ func (s *SyncAgentServer) postIncrementalRestoreOperations(restoreStatus *replic
 }
 
 func (s *SyncAgentServer) reloadReplica() error {
-	conn, err := grpc.NewClient(s.replicaAddress, grpc.WithTransportCredentials(insecure.NewCredentials()),
-		interceptor.WithIdentityValidationClientInterceptor(s.volumeName, s.instanceName))
+	conn, err := grpc.NewClient(
+		s.replicaAddress,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithNoProxy(),
+		interceptor.WithIdentityValidationClientInterceptor(s.volumeName, s.instanceName),
+	)
 	if err != nil {
 		return errors.Wrapf(err, "cannot connect to ReplicaService %v", s.replicaAddress)
 	}
 	defer func() {
 		if errClose := conn.Close(); errClose != nil {
-			logrus.WithError(errClose).Errorf("Failed to close replica client for for replica address %v", s.replicaAddress)
+			logrus.WithError(errClose).Warnf("Failed to close replica client for for replica address %v", s.replicaAddress)
 		}
 	}()
 	replicaServiceClient := enginerpc.NewReplicaServiceClient(conn)
@@ -1075,14 +1079,18 @@ func (s *SyncAgentServer) reloadReplica() error {
 }
 
 func (s *SyncAgentServer) replicaRevert(name, created string) error {
-	conn, err := grpc.NewClient(s.replicaAddress, grpc.WithTransportCredentials(insecure.NewCredentials()),
-		interceptor.WithIdentityValidationClientInterceptor(s.volumeName, s.instanceName))
+	conn, err := grpc.NewClient(
+		s.replicaAddress,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithNoProxy(),
+		interceptor.WithIdentityValidationClientInterceptor(s.volumeName, s.instanceName),
+	)
 	if err != nil {
 		return errors.Wrapf(err, "cannot connect to ReplicaService %v", s.replicaAddress)
 	}
 	defer func() {
 		if errClose := conn.Close(); errClose != nil {
-			logrus.WithError(errClose).Errorf("Failed to close replica client for for replica address %v", s.replicaAddress)
+			logrus.WithError(errClose).Warnf("Failed to close replica client for for replica address %v", s.replicaAddress)
 		}
 	}()
 	replicaServiceClient := enginerpc.NewReplicaServiceClient(conn)
@@ -1385,14 +1393,18 @@ func getSnapshotsInfo(replicaClient *replicaclient.ReplicaClient) (map[string]ty
 }
 
 func (s *SyncAgentServer) markSnapshotAsRemoved(snapshot string) error {
-	conn, err := grpc.NewClient(s.replicaAddress, grpc.WithTransportCredentials(insecure.NewCredentials()),
-		interceptor.WithIdentityValidationClientInterceptor(s.volumeName, s.instanceName))
+	conn, err := grpc.NewClient(
+		s.replicaAddress,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithNoProxy(),
+		interceptor.WithIdentityValidationClientInterceptor(s.volumeName, s.instanceName),
+	)
 	if err != nil {
 		return errors.Wrapf(err, "cannot connect to ReplicaService %v", s.replicaAddress)
 	}
 	defer func() {
 		if errClose := conn.Close(); errClose != nil {
-			logrus.WithError(errClose).Errorf("Failed to close replica client for for replica address %v", s.replicaAddress)
+			logrus.WithError(errClose).Warnf("Failed to close replica client for for replica address %v", s.replicaAddress)
 		}
 	}()
 
@@ -1410,14 +1422,18 @@ func (s *SyncAgentServer) markSnapshotAsRemoved(snapshot string) error {
 }
 
 func (s *SyncAgentServer) processRemoveSnapshot(snapshot string) error {
-	conn, err := grpc.NewClient(s.replicaAddress, grpc.WithTransportCredentials(insecure.NewCredentials()),
-		interceptor.WithIdentityValidationClientInterceptor(s.volumeName, s.instanceName))
+	conn, err := grpc.NewClient(
+		s.replicaAddress,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithNoProxy(),
+		interceptor.WithIdentityValidationClientInterceptor(s.volumeName, s.instanceName),
+	)
 	if err != nil {
 		return errors.Wrapf(err, "cannot connect to ReplicaService %v", s.replicaAddress)
 	}
 	defer func() {
 		if errClose := conn.Close(); errClose != nil {
-			logrus.WithError(errClose).Errorf("Failed to close replica client for for replica address %v", s.replicaAddress)
+			logrus.WithError(errClose).Warnf("Failed to close replica client for for replica address %v", s.replicaAddress)
 		}
 	}()
 
@@ -1465,14 +1481,18 @@ func (s *SyncAgentServer) processRemoveSnapshot(snapshot string) error {
 }
 
 func (s *SyncAgentServer) replaceDisk(source, target string) error {
-	conn, err := grpc.NewClient(s.replicaAddress, grpc.WithTransportCredentials(insecure.NewCredentials()),
-		interceptor.WithIdentityValidationClientInterceptor(s.volumeName, s.instanceName))
+	conn, err := grpc.NewClient(
+		s.replicaAddress,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithNoProxy(),
+		interceptor.WithIdentityValidationClientInterceptor(s.volumeName, s.instanceName),
+	)
 	if err != nil {
 		return errors.Wrapf(err, "cannot connect to ReplicaService %v", s.replicaAddress)
 	}
 	defer func() {
 		if errClose := conn.Close(); errClose != nil {
-			logrus.WithError(errClose).Errorf("Failed to close replica client for for replica address %v", s.replicaAddress)
+			logrus.WithError(errClose).Warnf("Failed to close replica client for for replica address %v", s.replicaAddress)
 		}
 	}()
 
@@ -1491,14 +1511,18 @@ func (s *SyncAgentServer) replaceDisk(source, target string) error {
 }
 
 func (s *SyncAgentServer) rmDisk(disk string) error {
-	conn, err := grpc.NewClient(s.replicaAddress, grpc.WithTransportCredentials(insecure.NewCredentials()),
-		interceptor.WithIdentityValidationClientInterceptor(s.volumeName, s.instanceName))
+	conn, err := grpc.NewClient(
+		s.replicaAddress,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithNoProxy(),
+		interceptor.WithIdentityValidationClientInterceptor(s.volumeName, s.instanceName),
+	)
 	if err != nil {
 		return errors.Wrapf(err, "cannot connect to ReplicaService %v", s.replicaAddress)
 	}
 	defer func() {
 		if errClose := conn.Close(); errClose != nil {
-			logrus.WithError(errClose).Errorf("Failed to close replica client for for replica address %v", s.replicaAddress)
+			logrus.WithError(errClose).Warnf("Failed to close replica client for for replica address %v", s.replicaAddress)
 		}
 	}()
 
