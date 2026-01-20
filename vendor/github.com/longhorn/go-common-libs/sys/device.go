@@ -99,8 +99,8 @@ func findBlockDeviceByMajorMinor(devicePath string) (string, error) {
 	}
 
 	// Extract major and minor numbers using proper Linux device number encoding
-	major := uint64(unix.Major(stat.Rdev))
-	minor := uint64(unix.Minor(stat.Rdev))
+	major := unix.Major(uint64(stat.Rdev))
+	minor := unix.Minor(uint64(stat.Rdev))
 
 	// Fast path: if the device basename exists in /sys/class/block, check its dev file first.
 	// This avoids scanning all entries when the name already matches. This is only expected
@@ -110,7 +110,7 @@ func findBlockDeviceByMajorMinor(devicePath string) (string, error) {
 	devPath := filepath.Join("/sys/class/block", baseName, "dev")
 	if contentBytes, err := os.ReadFile(devPath); err == nil {
 		content := strings.TrimSpace(string(contentBytes))
-		var entryMajor, entryMinor uint64
+		var entryMajor, entryMinor uint32
 		if _, err := fmt.Sscanf(content, "%d:%d", &entryMajor, &entryMinor); err == nil {
 			if entryMajor == major && entryMinor == minor {
 				return "/dev/" + baseName, nil
@@ -133,7 +133,7 @@ func findBlockDeviceByMajorMinor(devicePath string) (string, error) {
 		}
 		content := strings.TrimSpace(string(contentBytes))
 
-		var entryMajor, entryMinor uint64
+		var entryMajor, entryMinor uint32
 		if _, err := fmt.Sscanf(content, "%d:%d", &entryMajor, &entryMinor); err != nil {
 			continue
 		}
