@@ -118,7 +118,7 @@ func parseAwsError(err error) error {
 		return fmt.Errorf("%s", message)
 	}
 	// Try to extract HTTP status code and request ID if available
-	var re smithyhttp.ResponseError
+	var re *smithyhttp.ResponseError
 	if errors.As(err, &re) {
 		return fmt.Errorf("AWS HTTP Error: %d %v", re.HTTPStatusCode(), re.Err)
 	}
