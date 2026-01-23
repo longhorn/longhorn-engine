@@ -96,6 +96,7 @@ func (c *ReplicaClient) getReplicaServiceClient() (enginerpc.ReplicaServiceClien
 			c.replicaServiceURL,
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 			grpc.WithNoProxy(),
+			grpc.WithDisableServiceConfig(),
 			interceptor.WithIdentityValidationClientInterceptor(c.volumeName, c.instanceName),
 		)
 		if err != nil {
@@ -121,6 +122,7 @@ func (c *ReplicaClient) getSyncServiceClient() (enginerpc.SyncAgentServiceClient
 			c.syncAgentServiceURL,
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 			grpc.WithNoProxy(),
+			grpc.WithDisableServiceConfig(),
 			interceptor.WithIdentityValidationClientInterceptor(
 				c.volumeName,
 				c.instanceName,
