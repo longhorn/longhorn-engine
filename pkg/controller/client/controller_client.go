@@ -53,6 +53,7 @@ func NewControllerClient(address, volumeName, instanceName string) (*ControllerC
 			serviceUrl,
 			grpc.WithTransportCredentials(insecure.NewCredentials()),
 			grpc.WithNoProxy(),
+			grpc.WithDisableServiceConfig(),
 			interceptor.WithIdentityValidationClientInterceptor(volumeName, instanceName),
 		)
 		if err != nil {
@@ -450,6 +451,7 @@ func (c *ControllerClient) Check() error {
 		c.serviceURL,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithNoProxy(),
+		grpc.WithDisableServiceConfig(),
 	)
 	if err != nil {
 		return errors.Wrapf(err, "cannot connect to ControllerService %v", c.serviceURL)
