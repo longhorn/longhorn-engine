@@ -1056,6 +1056,7 @@ func (s *SyncAgentServer) reloadReplica() error {
 		s.replicaAddress,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithNoProxy(),
+		grpc.WithDisableServiceConfig(),
 		interceptor.WithIdentityValidationClientInterceptor(s.volumeName, s.instanceName),
 	)
 	if err != nil {
@@ -1083,6 +1084,7 @@ func (s *SyncAgentServer) replicaRevert(name, created string) error {
 		s.replicaAddress,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithNoProxy(),
+		grpc.WithDisableServiceConfig(),
 		interceptor.WithIdentityValidationClientInterceptor(s.volumeName, s.instanceName),
 	)
 	if err != nil {
@@ -1397,6 +1399,7 @@ func (s *SyncAgentServer) markSnapshotAsRemoved(snapshot string) error {
 		s.replicaAddress,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithNoProxy(),
+		grpc.WithDisableServiceConfig(),
 		interceptor.WithIdentityValidationClientInterceptor(s.volumeName, s.instanceName),
 	)
 	if err != nil {
@@ -1426,6 +1429,7 @@ func (s *SyncAgentServer) processRemoveSnapshot(snapshot string) error {
 		s.replicaAddress,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithNoProxy(),
+		grpc.WithDisableServiceConfig(),
 		interceptor.WithIdentityValidationClientInterceptor(s.volumeName, s.instanceName),
 	)
 	if err != nil {
@@ -1485,6 +1489,7 @@ func (s *SyncAgentServer) replaceDisk(source, target string) error {
 		s.replicaAddress,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithNoProxy(),
+		grpc.WithDisableServiceConfig(),
 		interceptor.WithIdentityValidationClientInterceptor(s.volumeName, s.instanceName),
 	)
 	if err != nil {
@@ -1515,6 +1520,7 @@ func (s *SyncAgentServer) rmDisk(disk string) error {
 		s.replicaAddress,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithNoProxy(),
+		grpc.WithDisableServiceConfig(),
 		interceptor.WithIdentityValidationClientInterceptor(s.volumeName, s.instanceName),
 	)
 	if err != nil {

@@ -61,6 +61,7 @@ func (r *Remote) Close() error {
 		r.replicaServiceURL,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithNoProxy(),
+		grpc.WithDisableServiceConfig(),
 		interceptor.WithIdentityValidationClientInterceptor(
 			r.volumeName,
 			"",
@@ -93,6 +94,7 @@ func (r *Remote) open() error {
 		r.replicaServiceURL,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithNoProxy(),
+		grpc.WithDisableServiceConfig(),
 		interceptor.WithIdentityValidationClientInterceptor(
 			r.volumeName,
 			"",
@@ -126,6 +128,7 @@ func (r *Remote) Snapshot(name string, userCreated bool, created string, labels 
 		r.replicaServiceURL,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithNoProxy(),
+		grpc.WithDisableServiceConfig(),
 		interceptor.WithIdentityValidationClientInterceptor(r.volumeName, ""),
 	)
 	if err != nil {
@@ -165,6 +168,7 @@ func (r *Remote) Expand(size int64) (err error) {
 		r.replicaServiceURL,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithNoProxy(),
+		grpc.WithDisableServiceConfig(),
 		interceptor.WithIdentityValidationClientInterceptor(r.volumeName, ""),
 	)
 	if err != nil {
@@ -196,6 +200,7 @@ func (r *Remote) SetRevisionCounter(counter int64) error {
 		r.replicaServiceURL,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithNoProxy(),
+		grpc.WithDisableServiceConfig(),
 		interceptor.WithIdentityValidationClientInterceptor(r.volumeName, ""),
 	)
 	if err != nil {
@@ -321,6 +326,7 @@ func (r *Remote) SetUnmapMarkSnapChainRemoved(enabled bool) error {
 		r.replicaServiceURL,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithNoProxy(),
+		grpc.WithDisableServiceConfig(),
 		interceptor.WithIdentityValidationClientInterceptor(r.volumeName, ""),
 	)
 	if err != nil {
@@ -362,6 +368,7 @@ func (r *Remote) ResetRebuild() error {
 		r.replicaServiceURL,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithNoProxy(),
+		grpc.WithDisableServiceConfig(),
 		interceptor.WithIdentityValidationClientInterceptor(r.volumeName, ""),
 	)
 	if err != nil {
@@ -395,6 +402,7 @@ func (r *Remote) SetSnapshotMaxCount(count int) error {
 		r.replicaServiceURL,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithNoProxy(),
+		grpc.WithDisableServiceConfig(),
 		interceptor.WithIdentityValidationClientInterceptor(r.volumeName, ""),
 	)
 	if err != nil {
@@ -427,6 +435,7 @@ func (r *Remote) SetSnapshotMaxSize(size int64) error {
 		r.replicaServiceURL,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithNoProxy(),
+		grpc.WithDisableServiceConfig(),
 		interceptor.WithIdentityValidationClientInterceptor(r.volumeName, ""),
 	)
 	if err != nil {
@@ -456,6 +465,7 @@ func (r *Remote) info() (*types.ReplicaInfo, error) {
 		r.replicaServiceURL,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
 		grpc.WithNoProxy(),
+		grpc.WithDisableServiceConfig(),
 		interceptor.WithIdentityValidationClientInterceptor(r.volumeName, ""),
 	)
 	if err != nil {
