@@ -286,7 +286,7 @@ github.com/kr/pretty
 # github.com/kr/text v0.2.0
 ## explicit
 github.com/kr/text
-# github.com/longhorn/backupstore v0.0.0-20260120061542-61f6a1bcd863
+# github.com/longhorn/backupstore v0.0.0-20260125095146-1a9767525bb7
 ## explicit; go 1.24.0
 github.com/longhorn/backupstore
 github.com/longhorn/backupstore/azblob
@@ -316,7 +316,7 @@ github.com/longhorn/go-common-libs/sync
 github.com/longhorn/go-common-libs/sys
 github.com/longhorn/go-common-libs/types
 github.com/longhorn/go-common-libs/utils
-# github.com/longhorn/go-iscsi-helper v0.0.0-20260117042347-da1af2aab3fc
+# github.com/longhorn/go-iscsi-helper v0.0.0-20260125095104-688e170e56e5
 ## explicit; go 1.24.0
 github.com/longhorn/go-iscsi-helper/iscsi
 github.com/longhorn/go-iscsi-helper/iscsidev
