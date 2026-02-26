@@ -7,6 +7,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -72,6 +73,7 @@ func (s *service) newInstance(ctx context.Context, retryBackoff bool) (*s3.Clien
 		config.WithRegion(s.Region),
 		config.WithRetryMaxAttempts(AWSRetryMaxAttempts),
 		config.WithRequestChecksumCalculation(aws.RequestChecksumCalculationWhenRequired),
+		config.WithResponseChecksumValidation(aws.ResponseChecksumValidationWhenRequired),
 	)
 	if err != nil {
 		return nil, err
@@ -104,6 +106,14 @@ func (s *service) newInstance(ctx context.Context, retryBackoff bool) (*s3.Clien
 				so.MaxAttempts = AWSRetryMaximumAttempts
 				so.MaxBackoff = AWSRetryMaximumBackoff
 			})
+		}
+		// Google Cloud Storage alters the `Accept-Encoding` header (GCS might changes the header on its way to GCS by appending gzip(gfe) as accepted encoding),
+		// which causing signature mismatches and breaks the v2 request signature verification.
+		// (https://github.com/aws/aws-sdk-go-v2/issues/1816 and https://github.com/rclone/rclone/issues/6670)
+		// `Accept-Encoding` is added as one of the SignedHeaders in v2 but it is not used in v1.
+		// Remove `Accept-Encoding` from SignedHeaders is added as a workaround to make the v2 signature compatible with GCS.
+		if strings.Contains(endpoints, "storage.googleapis.com") {
+			ignoreSigningHeaders(o, []string{"Accept-Encoding"})
 		}
 	}), nil
 }
