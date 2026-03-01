@@ -92,7 +92,7 @@ github.com/aws/aws-sdk-go-v2/feature/ec2/imds/internal/config
 # github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.19.8
 ## explicit; go 1.22
 github.com/aws/aws-sdk-go-v2/feature/s3/manager
-# github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager v0.1.5
+# github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager v0.1.6
 ## explicit; go 1.23
 github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager
 github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager/types
@@ -113,7 +113,7 @@ github.com/aws/aws-sdk-go-v2/internal/v4a/internal/v4
 # github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.5
 ## explicit; go 1.23
 github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding
-# github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.9.9
+# github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.9.10
 ## explicit; go 1.23
 github.com/aws/aws-sdk-go-v2/service/internal/checksum
 # github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.18
@@ -124,7 +124,7 @@ github.com/aws/aws-sdk-go-v2/service/internal/presigned-url
 github.com/aws/aws-sdk-go-v2/service/internal/s3shared
 github.com/aws/aws-sdk-go-v2/service/internal/s3shared/arn
 github.com/aws/aws-sdk-go-v2/service/internal/s3shared/config
-# github.com/aws/aws-sdk-go-v2/service/s3 v1.96.1
+# github.com/aws/aws-sdk-go-v2/service/s3 v1.96.2
 ## explicit; go 1.23
 github.com/aws/aws-sdk-go-v2/service/s3
 github.com/aws/aws-sdk-go-v2/service/s3/internal/arn
@@ -151,8 +151,8 @@ github.com/aws/aws-sdk-go-v2/service/ssooidc/types
 github.com/aws/aws-sdk-go-v2/service/sts
 github.com/aws/aws-sdk-go-v2/service/sts/internal/endpoints
 github.com/aws/aws-sdk-go-v2/service/sts/types
-# github.com/aws/smithy-go v1.24.1
-## explicit; go 1.23
+# github.com/aws/smithy-go v1.24.2
+## explicit; go 1.24
 github.com/aws/smithy-go
 github.com/aws/smithy-go/auth
 github.com/aws/smithy-go/auth/bearer
@@ -292,7 +292,7 @@ github.com/kr/pretty
 # github.com/kr/text v0.2.0
 ## explicit
 github.com/kr/text
-# github.com/longhorn/backupstore v0.0.0-20260225123158-39d1f7ecbb74
+# github.com/longhorn/backupstore v0.0.0-20260228145020-4b02fe818ebd
 ## explicit; go 1.25.0
 github.com/longhorn/backupstore
 github.com/longhorn/backupstore/azblob
@@ -602,14 +602,14 @@ gopkg.in/mattn/go-isatty.v0
 gopkg.in/mattn/go-runewidth.v0
 # gotest.tools/v3 v3.4.0
 ## explicit; go 1.13
-# k8s.io/apimachinery v0.35.1
+# k8s.io/apimachinery v0.35.2
 ## explicit; go 1.25.0
 k8s.io/apimachinery/pkg/api/resource
 k8s.io/apimachinery/pkg/runtime/serializer/cbor/direct
 k8s.io/apimachinery/pkg/runtime/serializer/cbor/internal/modes
 k8s.io/apimachinery/pkg/util/runtime
 k8s.io/apimachinery/pkg/util/wait
-# k8s.io/client-go v0.35.1
+# k8s.io/client-go v0.35.2
 ## explicit; go 1.25.0
 k8s.io/client-go/util/flowcontrol
 # k8s.io/klog/v2 v2.130.1
@@ -621,7 +621,7 @@ k8s.io/klog/v2/internal/dbg
 k8s.io/klog/v2/internal/serialize
 k8s.io/klog/v2/internal/severity
 k8s.io/klog/v2/internal/sloghandler
-# k8s.io/mount-utils v0.35.1
+# k8s.io/mount-utils v0.35.2
 ## explicit; go 1.25.0
 k8s.io/mount-utils
 # k8s.io/utils v0.0.0-20251002143259-bc988d571ff4
