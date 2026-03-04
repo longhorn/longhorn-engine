@@ -39,6 +39,10 @@ const (
 	AWSRetryMaximumAttempts = 10
 	// AWSRetryMaximumBackoff specifies the maximum duration between retried attempts.
 	AWSRetryMaximumBackoff = 300 * time.Second
+
+	// InvalidRequestErrorMsg is the error message returned by S3 Compatible services when the authorization mechanism is not supported,
+	// which can be caused by using AWS Signature Version 2 for signing requests to AWS S3 regions that require AWS Signature Version 4.
+	InvalidRequestErrorMsg = "The authorization mechanism you have provided is not supported. Please use AWS4-HMAC-SHA256."
 )
 
 func newService(u *url.URL) (*service, error) {
@@ -203,7 +207,7 @@ func (s *service) PutObject(ctx context.Context, key string, reader io.ReadSeeke
 
 	// Ensure reader is at the beginning
 	if _, err := reader.Seek(0, io.SeekStart); err != nil {
-		return fmt.Errorf("failed to seek reader to start: %v", err)
+		return errors.Wrapf(err, "failed to seek reader to offset 0")
 	}
 
 	params := &s3.PutObjectInput{
@@ -214,7 +218,37 @@ func (s *service) PutObject(ctx context.Context, key string, reader io.ReadSeeke
 
 	_, err = uploader.Upload(ctx, params)
 	if err != nil {
-		return fmt.Errorf("failed to put object: %v error: %v", key, parseAwsError(err))
+		// If the error message contains InvalidRequestErrorMsg, it indicates that the S3-Compatible services do not support AWS Signature Version 4 and the request should be signed with AWS Signature Version 2.
+		// In this case, we can fallback to a single-part upload which is compatible with AWS Signature Version 2.
+		// Usually, this happens with the backup configuration file.
+		if strings.Contains(err.Error(), InvalidRequestErrorMsg) {
+			log.Debugf("Falling back to single-part upload for bucket/key: %v/%s", s.Bucket, key)
+			return s.PutObjectSinglePart(ctx, svc, key, reader)
+		}
+		return errors.Wrapf(parseAwsError(err), "failed to put object: %v", key)
+	}
+	return nil
+}
+
+// PutObjectSinglePart is a fallback method for PutObject when the error message contains InvalidRequestErrorMsg, which indicates that the S3-Compatible services do not support AWS Signature Version 4 and the request should be signed with AWS Signature Version 2.
+// This method performs a single-part upload which is compatible with AWS Signature Version 2, but it only supports objects up to 5 GiB in size.
+func (s *service) PutObjectSinglePart(ctx context.Context, svc *s3.Client, key string, reader io.ReadSeeker) error {
+	// Ensure reader is at the beginning
+	if _, err := reader.Seek(0, io.SeekStart); err != nil {
+		return errors.Wrapf(err, "failed to seek reader to offset 0")
+	}
+
+	params := &s3.PutObjectInput{
+		Bucket: aws.String(s.Bucket),
+		Key:    aws.String(key),
+		Body:   reader,
+	}
+
+	// The maximum object size of a single part upload to S3 is 5GB. If the object size exceeds this limit, multipart upload should be used.
+	// https://docs.aws.amazon.com/AmazonS3/latest/userguide/upload-objects.html
+	_, err := svc.PutObject(ctx, params)
+	if err != nil {
+		return errors.Wrapf(parseAwsError(err), "failed to put object in single part: %v", key)
 	}
 	return nil
 }
@@ -233,7 +267,7 @@ func (s *service) GetObject(ctx context.Context, key string) (io.ReadCloser, err
 
 	resp, err := svc.GetObject(ctx, params)
 	if err != nil {
-		return nil, fmt.Errorf("failed to get object: %v error: %v", key, parseAwsError(err))
+		return nil, errors.Wrapf(parseAwsError(err), "failed to get object: %v", key)
 	}
 
 	return resp.Body, nil
