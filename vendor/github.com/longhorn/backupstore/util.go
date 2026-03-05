@@ -69,6 +69,9 @@ var backoffDuration = [...]time.Duration{
 	time.Second,
 	5 * time.Second,
 	30 * time.Second,
+	1 * time.Minute,
+	2 * time.Minute,
+	5 * time.Minute,
 }
 
 func retryWithBackoff(ctx context.Context, f func() (io.Reader, error)) (io.Reader, error) {
