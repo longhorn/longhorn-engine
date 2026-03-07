@@ -1,8 +1,6 @@
 module github.com/longhorn/longhorn-engine
 
-go 1.24.0
-
-toolchain go1.24.4
+go 1.25.0
 
 require (
 	github.com/docker/go-units v0.5.0
@@ -10,21 +8,21 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
-	github.com/longhorn/backupstore v0.0.0-20251207100523-1140ccc38333
-	github.com/longhorn/go-common-libs v0.0.0-20251130104056-3332521977c9
-	github.com/longhorn/go-iscsi-helper v0.0.0-20251130062153-44edbb497d99
-	github.com/longhorn/sparse-tools v0.0.0-20251020055717-ae3aca526fd7
-	github.com/longhorn/types v0.0.0-20251207085945-9c40bd62daff
+	github.com/longhorn/backupstore v0.0.0-20260306105805-ea08687ca2cd
+	github.com/longhorn/go-common-libs v0.0.0-20260307044012-ae36fc92e72e
+	github.com/longhorn/go-iscsi-helper v0.0.0-20260306105756-948eb7e165af
+	github.com/longhorn/sparse-tools v0.0.0-20260117144214-070853c24eda
+	github.com/longhorn/types v0.0.0-20260304051809-1002ef5005c7
 	github.com/moby/moby v26.1.5+incompatible
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
 	github.com/rancher/go-rancher v0.1.1-0.20190307222549-9756097e5e4c
-	github.com/sirupsen/logrus v1.9.3
+	github.com/sirupsen/logrus v1.9.4
 	github.com/urfave/cli v1.22.17
-	golang.org/x/net v0.46.1-0.20251013234738-63d1a5100f82
-	golang.org/x/sys v0.37.0
-	google.golang.org/grpc v1.77.0
-	google.golang.org/protobuf v1.36.10
+	golang.org/x/net v0.49.0
+	golang.org/x/sys v0.40.0
+	google.golang.org/grpc v1.78.0
+	google.golang.org/protobuf v1.36.11
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 	gopkg.in/cheggaaa/pb.v2 v2.0.7
 	k8s.io/apimachinery v0.28.15
@@ -35,26 +33,27 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.16.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.10.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.5.0 // indirect
-	github.com/aws/aws-sdk-go-v2 v1.39.6 // indirect
-	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.1 // indirect
-	github.com/aws/aws-sdk-go-v2/config v1.31.20 // indirect
-	github.com/aws/aws-sdk-go-v2/credentials v1.18.24 // indirect
-	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.13 // indirect
+	github.com/aws/aws-sdk-go-v2 v1.41.2 // indirect
+	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.5 // indirect
+	github.com/aws/aws-sdk-go-v2/config v1.32.10 // indirect
+	github.com/aws/aws-sdk-go-v2/credentials v1.19.10 // indirect
+	github.com/aws/aws-sdk-go-v2/feature/ec2/imds v1.18.18 // indirect
 	github.com/aws/aws-sdk-go-v2/feature/s3/manager v1.19.8 // indirect
-	github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager v0.1.0 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.13 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.13 // indirect
+	github.com/aws/aws-sdk-go-v2/feature/s3/transfermanager v0.1.6 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/configsources v1.4.18 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/endpoints/v2 v2.7.18 // indirect
 	github.com/aws/aws-sdk-go-v2/internal/ini v1.8.4 // indirect
-	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.8 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.3 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.8.8 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.13 // indirect
-	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.19.8 // indirect
-	github.com/aws/aws-sdk-go-v2/service/s3 v1.88.2 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sso v1.30.3 // indirect
-	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.35.7 // indirect
-	github.com/aws/aws-sdk-go-v2/service/sts v1.40.2 // indirect
-	github.com/aws/smithy-go v1.23.2 // indirect
+	github.com/aws/aws-sdk-go-v2/internal/v4a v1.4.18 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/accept-encoding v1.13.5 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/checksum v1.9.10 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/presigned-url v1.13.18 // indirect
+	github.com/aws/aws-sdk-go-v2/service/internal/s3shared v1.19.18 // indirect
+	github.com/aws/aws-sdk-go-v2/service/s3 v1.96.2 // indirect
+	github.com/aws/aws-sdk-go-v2/service/signin v1.0.6 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sso v1.30.11 // indirect
+	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.35.15 // indirect
+	github.com/aws/aws-sdk-go-v2/service/sts v1.41.7 // indirect
+	github.com/aws/smithy-go v1.24.2 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/c9s/goprocinfo v0.0.0-20210130143923-c95fcf8c64a8 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
@@ -80,7 +79,7 @@ require (
 	github.com/mitchellh/go-ps v1.0.0 // indirect
 	github.com/moby/sys/mountinfo v0.7.2 // indirect
 	github.com/moby/sys/userns v0.1.0 // indirect
-	github.com/pierrec/lz4/v4 v4.1.22 // indirect
+	github.com/pierrec/lz4/v4 v4.1.25 // indirect
 	github.com/power-devops/perfstat v0.0.0-20240221224432-82ca36839d55 // indirect
 	github.com/prometheus/client_golang v1.15.0 // indirect
 	github.com/prometheus/client_model v0.3.0 // indirect
@@ -91,9 +90,9 @@ require (
 	github.com/shirou/gopsutil/v3 v3.24.5 // indirect
 	github.com/slok/goresilience v0.2.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
-	golang.org/x/exp v0.0.0-20251125195548-87e1e737ad39 // indirect
-	golang.org/x/text v0.30.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20251022142026-3a174f9686a8 // indirect
+	golang.org/x/exp v0.0.0-20260218203240-3dfff04db8fa // indirect
+	golang.org/x/text v0.33.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20251029180050-ab9386a59fda // indirect
 	gopkg.in/VividCortex/ewma.v1 v1.1.1 // indirect
 	gopkg.in/fatih/color.v1 v1.7.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
