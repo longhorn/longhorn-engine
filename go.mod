@@ -21,9 +21,9 @@ require (
 	github.com/rancher/go-rancher v0.1.1-0.20190307222549-9756097e5e4c
 	github.com/sirupsen/logrus v1.9.3
 	github.com/urfave/cli v1.22.17
-	golang.org/x/net v0.46.1-0.20251013234738-63d1a5100f82
-	golang.org/x/sys v0.37.0
-	google.golang.org/grpc v1.77.0
+	golang.org/x/net v0.48.0
+	golang.org/x/sys v0.39.0
+	google.golang.org/grpc v1.79.3
 	google.golang.org/protobuf v1.36.10
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 	gopkg.in/cheggaaa/pb.v2 v2.0.7
@@ -92,8 +92,8 @@ require (
 	github.com/slok/goresilience v0.2.0 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	golang.org/x/exp v0.0.0-20251125195548-87e1e737ad39 // indirect
-	golang.org/x/text v0.30.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20251022142026-3a174f9686a8 // indirect
+	golang.org/x/text v0.32.0 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20251202230838-ff82c1b0f217 // indirect
 	gopkg.in/VividCortex/ewma.v1 v1.1.1 // indirect
 	gopkg.in/fatih/color.v1 v1.7.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
