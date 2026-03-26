@@ -1,10 +1,10 @@
 package rpc
 
 import (
+	"context"
 	"time"
 
 	"github.com/sirupsen/logrus"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
 	"google.golang.org/grpc/reflection"

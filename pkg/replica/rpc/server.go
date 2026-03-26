@@ -1,13 +1,13 @@
 package rpc
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 
 	"github.com/longhorn/go-common-libs/profiler"
 	"github.com/longhorn/types/pkg/generated/enginerpc"
 	"github.com/longhorn/types/pkg/generated/profilerrpc"
-	"golang.org/x/net/context"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
