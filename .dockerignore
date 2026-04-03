@@ -1,4 +1,3 @@
-./.dapper
 ./dist
 ./.trash-cache
 ./integration/.venv

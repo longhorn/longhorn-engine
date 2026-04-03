@@ -60,7 +60,13 @@ jobs:
 
     # Build binaries
     - name: Run make ci
-      run: SKIP_TASKS=package make ci
+      run: make ci
+
+    - name: Run make sync-grpc-py
+      run: make sync-grpc-py
+
+    - name: Run make integration-test
+      run: make integration-test
 
     - uses: codecov/codecov-action@b9fd7d16f6d7d1b5d2bec1a2887e65ceed900238 # v4
       with:
@@ -87,8 +93,14 @@ jobs:
       uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
     # Build binaries
-    - name: Run make build
-      run: make build
+    - name: Run make ci
+      run: make ci
+
+    - name: Run make sync-grpc-py
+      run: make sync-grpc-py
+
+    - name: Run make integration-test
+      run: make integration-test
 
     - name: Upload binaries
       uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

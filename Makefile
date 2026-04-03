@@ -1,5 +1,4 @@
 PROJECT := longhorn-engine
-TARGETS := $(shell ls scripts)
 MACHINE := longhorn
 # Define the target platforms that can be used across the ecosystem.
 # Note that what would actually be used for a given project will be
@@ -9,15 +8,36 @@ DEFAULT_PLATFORMS := linux/amd64,linux/arm64
 export SRC_BRANCH := $(shell bash -c 'source <(curl -s "https://raw.githubusercontent.com/longhorn/dep-versions/master/scripts/common.sh") && get_branch')
 export SRC_TAG := $(shell git tag --points-at HEAD | head -n 1)
 
-.dapper:
-	@echo Downloading dapper
-	@curl -sL https://releases.rancher.com/dapper/latest/dapper-`uname -s`-`uname -m` > .dapper.tmp
-	@@chmod +x .dapper.tmp
-	@./.dapper.tmp -v
-	@mv .dapper.tmp .dapper
+.PHONY: build validate test ci package
+build:
+	docker buildx build --target build-artifacts --output type=local,dest=. -f Dockerfile .
 
-$(TARGETS): .dapper
-	./.dapper $@
+validate:
+	docker buildx build --target validate -f Dockerfile .
+
+test:
+	docker buildx build --target test -f Dockerfile .
+
+ci:
+	docker buildx build --target ci-artifacts --output type=local,dest=. -f Dockerfile .
+
+package:
+	bash scripts/package
+
+.PHONY: integration-test
+integration-test:
+	docker buildx build --target base -t longhorn-engine-test -f Dockerfile .
+	docker run --privileged \
+		--tmpfs /go/src/github.com/longhorn/longhorn-engine/integration/.venv:exec \
+		--tmpfs /go/src/github.com/longhorn/longhorn-engine/integration/.tox:exec \
+		-v /dev:/host/dev -v /proc:/host/proc \
+		--mount type=bind,source=/tmp,destination=/host/tmp,bind-propagation=rslave \
+		longhorn-engine-test ./scripts/integration-test
+
+.PHONY: sync-grpc-py
+sync-grpc-py:
+	docker buildx build --target base -t longhorn-engine-test -f Dockerfile .
+	docker run longhorn-engine-test ./scripts/sync-grpc-py
 
 .PHONY: buildx-machine
 buildx-machine:
@@ -41,14 +61,4 @@ workflow-manifest-image:
 	  ${REPO}/longhorn-engine:${TAG}-amd64 \
 	  ${REPO}/longhorn-engine:${TAG}-arm64
 
-trash: .dapper
-	./.dapper -m bind trash
-
-trash-keep: .dapper
-	./.dapper -m bind trash -k
-
-deps: trash
-
 .DEFAULT_GOAL := ci
-
-.PHONY: $(TARGETS)

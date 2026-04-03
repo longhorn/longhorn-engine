@@ -1,8 +1,6 @@
 #!/bin/bash
 set -e
 
-trap "chown -R $DAPPER_UID:$DAPPER_GID ." exit
-
 export GOFLAGS=-mod=vendor
 
 mkdir -p bin

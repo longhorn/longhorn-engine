@@ -1,29 +1,19 @@
-FROM registry.suse.com/bci/golang:1.26
+# syntax=docker/dockerfile:1.22.0
+FROM registry.suse.com/bci/golang:1.26 AS base
 
-ARG DAPPER_HOST_ARCH
+ARG TARGETARCH
 ARG SRC_BRANCH=master
 ARG SRC_TAG
 ARG http_proxy
 ARG https_proxy
 
-ENV HOST_ARCH=${DAPPER_HOST_ARCH} ARCH=${DAPPER_HOST_ARCH}
+ENV ARCH=${TARGETARCH}
+ENV GOFLAGS=-mod=vendor
 ENV PROTOBUF_VER_PY=4.24.3
-ENV DAPPER_DOCKER_SOCKET true
-ENV DAPPER_ENV TAG REPO DRONE_REPO DRONE_PULL_REQUEST DRONE_COMMIT_REF SKIP_TASKS
-ENV DAPPER_OUTPUT bin coverage.out
-# For filesystem freeze tests, our container must be able to see the filesystem mounted in the host mount namespace.
-# Usually, instance-manager runs with the equivalent of "-v /:/host". For integration testing, use "-v /tmp:/host/tmp"
-# and mount filesystems to /tmp to simulate this without bind mounting everything.
-ENV DAPPER_RUN_ARGS --privileged --tmpfs /go/src/github.com/longhorn/longhorn-engine/integration/.venv:exec --tmpfs /go/src/github.com/longhorn/longhorn-engine/integration/.tox:exec -v /dev:/host/dev -v /proc:/host/proc --mount type=bind,source=/tmp,destination=/host/tmp,bind-propagation=rslave
-ENV DAPPER_SOURCE /go/src/github.com/longhorn/longhorn-engine
-ENV SRC_BRANCH ${SRC_BRANCH}
-ENV SRC_TAG ${SRC_TAG}
 
 ENV LONGHORN_INSTANCE_MANAGER_BRANCH="master"
 
-WORKDIR ${DAPPER_SOURCE}
-ENTRYPOINT ["./scripts/entry"]
-CMD ["ci"]
+WORKDIR /go/src/github.com/longhorn/longhorn-engine
 
 RUN for i in {1..10}; do \
         zypper -n addrepo --refresh https://download.opensuse.org/repositories/system:/snappy/SLE_15/system:snappy.repo && \
@@ -106,7 +96,29 @@ RUN cd /go/src/github.com/longhorn && \
     go build -o ./longhorn-instance-manager -tags netgo -ldflags "-linkmode external -extldflags -static" && \
     install longhorn-instance-manager /usr/local/bin
 
-# Docker Builx: The docker version in dapper is too old to have buildx. Install it manually.
+# Docker Buildx
 RUN curl -sSfLO https://github.com/docker/buildx/releases/download/v0.13.1/buildx-v0.13.1.linux-${ARCH} && \
     chmod +x buildx-v0.13.1.linux-${ARCH} && \
     mv buildx-v0.13.1.linux-${ARCH} /usr/local/bin/buildx
+
+COPY . .
+
+ENTRYPOINT ["./scripts/entry"]
+CMD ["ci"]
+
+FROM base AS build
+RUN ./scripts/build
+
+FROM base AS validate
+RUN ./scripts/validate && touch /validate.done
+
+FROM base AS test
+RUN ./scripts/test
+
+FROM scratch AS build-artifacts
+COPY --from=build /go/src/github.com/longhorn/longhorn-engine/bin/ /bin/
+
+FROM scratch AS ci-artifacts
+COPY --from=build /go/src/github.com/longhorn/longhorn-engine/bin/ /bin/
+COPY --from=test /go/src/github.com/longhorn/longhorn-engine/coverage.out /coverage.out
+COPY --from=validate /validate.done /validate.done
