@@ -1,11 +1,8 @@
-/.dapper
-/.dapper.tmp
 /.trash-cache
 /bin
 *.pyc
 *.pyo
 *.swp
-Dockerfile.dapper*
 .python-version
 
 integration/.tox/
