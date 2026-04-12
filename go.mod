@@ -14,7 +14,7 @@ require (
 	github.com/longhorn/backupstore v0.0.0-20260329081928-dd6c86c9ba6d
 	github.com/longhorn/go-common-libs v0.0.0-20260328134226-cafa38fc4ce8
 	github.com/longhorn/go-iscsi-helper v0.0.0-20260327125832-d1a62805e28f
-	github.com/longhorn/sparse-tools v0.0.0-20260327124327-3fac691f3c28
+	github.com/longhorn/sparse-tools v0.0.0-20260411033103-ab9b450f4535
 	github.com/longhorn/types v0.0.0-20260327130848-66f6de8a2fb3
 	github.com/moby/moby v26.1.5+incompatible
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
@@ -36,6 +36,7 @@ require (
 	github.com/Azure/azure-sdk-for-go/sdk/azcore v1.16.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/internal v1.10.0 // indirect
 	github.com/Azure/azure-sdk-for-go/sdk/storage/azblob v1.5.0 // indirect
+	github.com/avast/retry-go/v4 v4.7.0 // indirect
 	github.com/aws/aws-sdk-go-v2 v1.41.5 // indirect
 	github.com/aws/aws-sdk-go-v2/aws/protocol/eventstream v1.7.8 // indirect
 	github.com/aws/aws-sdk-go-v2/config v1.32.13 // indirect
