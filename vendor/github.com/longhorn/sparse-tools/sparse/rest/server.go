@@ -9,15 +9,14 @@ import (
 	"time"
 
 	"github.com/cockroachdb/errors"
-
 	log "github.com/sirupsen/logrus"
 
 	"github.com/longhorn/sparse-tools/sparse"
 )
 
 var (
-	defaultIdleTimeout     = 90 * time.Second
-	defaultHTTPIdleTimeout = 60 * time.Second
+	defaultIdleTimeout     = 300 * time.Second
+	defaultHTTPIdleTimeout = 240 * time.Second
 )
 
 type IdleTimer struct {
