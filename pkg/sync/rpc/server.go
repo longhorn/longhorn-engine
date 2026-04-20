@@ -112,14 +112,127 @@ type RebuildStatus struct {
 
 	processedSize int64
 	totalSize     int64
+	// Track completed files to avoid double-counting during retries
+	completedFiles map[string]bool
+	// Track per-file progress for concurrent transfers (prevents race conditions)
+	fileProgress map[string]*FileTransferProgress
 }
 
-func (rs *RebuildStatus) UpdateSyncFileProgress(size int64) {
+// FileTransferProgress tracks the transfer state of an individual file.
+// This allows multiple files to be transferred concurrently without race conditions.
+type FileTransferProgress struct {
+	offset int64
+}
+
+// UpdateFileProgress updates progress for a specific file during transfer.
+// This is thread-safe and supports concurrent file transfers.
+func (rs *RebuildStatus) UpdateFileProgress(fileName string, size int64) {
 	rs.Lock()
 	defer rs.Unlock()
 
-	rs.processedSize = rs.processedSize + size
-	rs.Progress = int((float32(rs.processedSize) / float32(rs.totalSize)) * 100)
+	// Update the specific file's progress
+	progress, exists := rs.fileProgress[fileName]
+	if !exists {
+		logrus.Warnf("Received progress update for uninitialized file %v, ignoring", fileName)
+		return
+	}
+	progress.offset += size
+
+	// Calculate total progress from completed files + all in-progress files
+	totalProcessed := rs.processedSize
+	for _, progress := range rs.fileProgress {
+		totalProcessed += progress.offset
+	}
+
+	// Cap progress at 100%
+	progressPct := int((float32(totalProcessed) / float32(rs.totalSize)) * 100)
+	rs.Progress = min(progressPct, 100)
+}
+
+// StartFileTransfer initializes tracking for a new file transfer.
+func (rs *RebuildStatus) StartFileTransfer(fileName string, fileSize int64) {
+	rs.Lock()
+	defer rs.Unlock()
+
+	// Don't restart already-completed files
+	if rs.completedFiles[fileName] {
+		logrus.Warnf("Attempted to start transfer for already-completed file %v", fileName)
+		return
+	}
+
+	// Initialize progress tracking for this file
+	rs.fileProgress[fileName] = &FileTransferProgress{
+		offset: 0,
+	}
+
+	logrus.Debugf("Starting transfer of file %v (size: %v bytes)", fileName, fileSize)
+}
+
+// MarkFileComplete marks a file as successfully transferred and updates progress.
+// This ensures each file is only counted once, even if retried multiple times.
+func (rs *RebuildStatus) MarkFileComplete(fileName string, fileSize int64) {
+	rs.Lock()
+	defer rs.Unlock()
+
+	// Always clean up any in-progress tracking to prevent leaks
+	delete(rs.fileProgress, fileName)
+
+	// Only count the file if it hasn't been completed before
+	if !rs.completedFiles[fileName] {
+		rs.completedFiles[fileName] = true
+
+		// Move this file from "in-progress" to "completed"
+		rs.processedSize += fileSize
+
+		// Recalculate total progress
+		totalProcessed := rs.processedSize
+		for _, progress := range rs.fileProgress {
+			totalProcessed += progress.offset
+		}
+
+		progress := int((float32(totalProcessed) / float32(rs.totalSize)) * 100)
+		rs.Progress = min(progress, 100)
+
+		logrus.Debugf("Marked file %v as complete (size: %v bytes), rebuild progress: %v%%",
+			fileName, fileSize, rs.Progress)
+	}
+}
+
+// ResetFileTransfer resets the transfer state for a specific file without marking it complete.
+// This is used when a file transfer fails and will be retried.
+func (rs *RebuildStatus) ResetFileTransfer(fileName string) {
+	rs.Lock()
+	defer rs.Unlock()
+
+	if progress, exists := rs.fileProgress[fileName]; exists {
+		logrus.Debugf("Resetting transfer state for file %v (offset was: %v bytes)",
+			fileName, progress.offset)
+
+		// Remove from in-progress tracking (offset is lost, will restart from 0)
+		delete(rs.fileProgress, fileName)
+
+		// Recalculate progress from completed files + remaining in-progress files
+		totalProcessed := rs.processedSize
+		for _, p := range rs.fileProgress {
+			totalProcessed += p.offset
+		}
+
+		progress := int((float32(totalProcessed) / float32(rs.totalSize)) * 100)
+		rs.Progress = min(progress, 100)
+	}
+}
+
+// FileProgressTracker wraps RebuildStatus to track progress for a specific file.
+// This implements sparserest.SyncFileOperations and allows concurrent file transfers
+// without race conditions.
+type FileProgressTracker struct {
+	rebuildStatus *RebuildStatus
+	fileName      string
+}
+
+// UpdateSyncFileProgress implements sparserest.SyncFileOperations.
+func (tracker *FileProgressTracker) UpdateSyncFileProgress(size int64) {
+	tracker.rebuildStatus.UpdateFileProgress(tracker.fileName, size)
 }
 
 type CloneStatus struct {
@@ -157,8 +270,11 @@ func NewSyncAgentServer(ctx context.Context, startPort, endPort int, replicaAddr
 		SnapshotHashList: &SnapshotHashList{},
 		RestoreInfo:      &replica.RestoreStatus{},
 		PurgeStatus:      &PurgeStatus{},
-		RebuildStatus:    &RebuildStatus{},
-		CloneStatus:      &CloneStatus{},
+		RebuildStatus: &RebuildStatus{
+			completedFiles: map[string]bool{},
+			fileProgress:   map[string]*FileTransferProgress{},
+		},
+		CloneStatus: &CloneStatus{},
 	}
 	server := grpc.NewServer(interceptor.WithIdentityValidationReplicaServerInterceptor(volumeName, instanceName))
 	enginerpc.RegisterSyncAgentServiceServer(server, sas)
@@ -580,7 +696,6 @@ func (s *SyncAgentServer) fileSyncRemote(ctx context.Context, req *enginerpc.Fil
 
 	logrus.Infof("Replica %s starts to sync files %+v to from remote replicas %+v", req.ToHost, fileList, fromClientMap)
 
-	var ops sparserest.SyncFileOperations
 	fileStub := &sparserest.SyncFileStub{}
 
 	syncFileLock := &sync.Mutex{}
@@ -631,6 +746,9 @@ func (s *SyncAgentServer) fileSyncRemote(ctx context.Context, req *enginerpc.Fil
 							if err == nil {
 								return
 							}
+							// Reset current file progress on failure to prevent double-counting on retry
+							s.RebuildStatus.ResetFileTransfer(syncFileInfo.ToFileName)
+
 							syncFileLock.Lock()
 							unsyncedFileMap[syncFileInfo.ToFileName] = syncFileInfo
 							unsyncedFileRetryMap[syncFileInfo.ToFileName] = unsyncedFileRetryMap[syncFileInfo.ToFileName] + 1
@@ -646,11 +764,20 @@ func (s *SyncAgentServer) fileSyncRemote(ctx context.Context, req *enginerpc.Fil
 							syncFileLock.Unlock()
 						}()
 
+						// Initialize tracking for this file transfer
+						s.RebuildStatus.StartFileTransfer(syncFileInfo.ToFileName, syncFileInfo.ActualSize)
+
 						// Do not count size for disk meta file or empty disk file.
+						// Declare ops locally to avoid data race across goroutines
+						var ops sparserest.SyncFileOperations
 						if syncFileInfo.ActualSize == 0 {
 							ops = fileStub
 						} else {
-							ops = s.RebuildStatus
+							// Create a file-specific progress tracker to support concurrent transfers
+							ops = &FileProgressTracker{
+								rebuildStatus: s.RebuildStatus,
+								fileName:      syncFileInfo.ToFileName,
+							}
 						}
 
 						port, err := s.launchReceiver("FilesSync", syncFileInfo.ToFileName, ops)
@@ -666,6 +793,11 @@ func (s *SyncAgentServer) fileSyncRemote(ctx context.Context, req *enginerpc.Fil
 						}
 
 						logrus.Infof("Remote replica %v succeeded to send file %v to current replica %v:%d", fromAddress, syncFileInfo.ToFileName, req.ToHost, port)
+
+						// Mark file as complete to update progress. This ensures each file is counted
+						// only once, even if there were previous failed attempts.
+						s.RebuildStatus.MarkFileComplete(syncFileInfo.ToFileName, syncFileInfo.ActualSize)
+
 						return false
 					}()
 				}
@@ -706,13 +838,21 @@ func (s *SyncAgentServer) PrepareRebuild(list []*enginerpc.SyncFileInfo, fromRep
 	}
 	s.RebuildStatus.Error = ""
 	s.RebuildStatus.State = types.ProcessStateInProgress
-	// avoid possible division by zero
-	s.RebuildStatus.processedSize = 1
-	s.RebuildStatus.totalSize = 1
+	// Initialize completed files tracker to prevent double-counting during retries
+	s.RebuildStatus.completedFiles = make(map[string]bool)
+	// Start with 0 processed size - files will be counted when they complete
+	s.RebuildStatus.processedSize = 0
+	s.RebuildStatus.totalSize = 0
 	for _, info := range list {
 		s.RebuildStatus.totalSize += info.ActualSize
 	}
-	s.RebuildStatus.Progress = int((float32(s.RebuildStatus.processedSize) / float32(s.RebuildStatus.totalSize)) * 100)
+	// Avoid division by zero
+	if s.RebuildStatus.totalSize == 0 {
+		s.RebuildStatus.totalSize = 1
+	}
+	s.RebuildStatus.Progress = 0
+	// Initialize per-file progress tracking for concurrent transfers
+	s.RebuildStatus.fileProgress = make(map[string]*FileTransferProgress)
 	s.RebuildStatus.Unlock()
 
 	return nil
