@@ -580,7 +580,19 @@ func (s *SyncAgentServer) fileSyncRemote(ctx context.Context, req *enginerpc.Fil
 
 	logrus.Infof("Replica %s starts to sync files %+v to from remote replicas %+v", req.ToHost, fileList, fromClientMap)
 
-	var ops sparserest.SyncFileOperations
+	// Create a per-file progress tracker for each non-empty file. The tracker forwards
+	// UpdateSyncFileProgress calls to RebuildStatus but also remembers how much it has
+	// contributed. On retry a new tracker is created and the old one is detached so that
+	// late callbacks from the previous ssync attempt cannot contaminate the new attempt.
+	fileProgressTrackers := make(map[string]*perFileProgressOps, len(req.SyncFileInfoList))
+	for _, info := range req.SyncFileInfoList {
+		if info.ActualSize > 0 {
+			fileProgressTrackers[info.ToFileName] = &perFileProgressOps{
+				SyncFileOperations: s.RebuildStatus,
+			}
+		}
+	}
+
 	fileStub := &sparserest.SyncFileStub{}
 
 	syncFileLock := &sync.Mutex{}
@@ -621,6 +633,11 @@ func (s *SyncAgentServer) fileSyncRemote(ctx context.Context, req *enginerpc.Fil
 							break
 						}
 						done = len(unsyncedFileMap) == 0
+						// Do not count size for disk meta file or empty disk file.
+						var fileOps sparserest.SyncFileOperations = fileStub
+						if syncFileInfo != nil && syncFileInfo.ActualSize != 0 {
+							fileOps = fileProgressTrackers[syncFileInfo.ToFileName]
+						}
 						syncFileLock.Unlock()
 
 						if syncFileInfo == nil {
@@ -642,18 +659,20 @@ func (s *SyncAgentServer) fileSyncRemote(ctx context.Context, req *enginerpc.Fil
 							} else {
 								logrus.WithError(err).Warnf("Replica %s failed to sync file %v from remote replica %v for %d times, will requeue the file and let other remote replicas handle it", req.ToHost, syncFileInfo.ToFileName, fromAddress, unsyncedFileRetryMap[syncFileInfo.ToFileName])
 								fileRetryBackoff.Next(syncFileInfo.ToFileName, time.Now())
+								if tracker, ok := fileProgressTrackers[syncFileInfo.ToFileName]; ok {
+									// Detach the old tracker so late UpdateSyncFileProgress callbacks
+									// from the previous ssync attempt do not contaminate the new one,
+									// then create a fresh tracker for the retry.
+									tracker.detach()
+									fileProgressTrackers[syncFileInfo.ToFileName] = &perFileProgressOps{
+										SyncFileOperations: s.RebuildStatus,
+									}
+								}
 							}
 							syncFileLock.Unlock()
 						}()
 
-						// Do not count size for disk meta file or empty disk file.
-						if syncFileInfo.ActualSize == 0 {
-							ops = fileStub
-						} else {
-							ops = s.RebuildStatus
-						}
-
-						port, err := s.launchReceiver("FilesSync", syncFileInfo.ToFileName, ops)
+						port, err := s.launchReceiver("FilesSync", syncFileInfo.ToFileName, fileOps)
 						if err != nil {
 							err = errors.Wrapf(err, "replica %s failed to launch receiver for file %s from remote replica %s", req.ToHost, syncFileInfo.ToFileName, fromAddress)
 							return false
@@ -684,6 +703,41 @@ func (s *SyncAgentServer) fileSyncRemote(ctx context.Context, req *enginerpc.Fil
 	logrus.Infof("Replica %s finished to sync files %+v to from remote replicas %+v", req.ToHost, fileList, fromClientMap)
 
 	return nil
+}
+
+// perFileProgressOps wraps SyncFileOperations to track how much progress a single file
+// has contributed to the global RebuildStatus. On retry, detach() subtracts the previous
+// contribution and disconnects the tracker so late callbacks from the previous ssync
+// attempt cannot contaminate the new attempt. A fresh tracker is then created for the retry.
+type perFileProgressOps struct {
+	sparserest.SyncFileOperations
+	mu          sync.Mutex
+	contributed int64
+	detached    bool
+}
+
+func (p *perFileProgressOps) UpdateSyncFileProgress(size int64) {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	if p.detached {
+		return
+	}
+	p.contributed += size
+	p.SyncFileOperations.UpdateSyncFileProgress(size)
+}
+
+// detach subtracts this file's accumulated progress from the underlying counter and
+// marks the tracker as detached so any further UpdateSyncFileProgress calls are ignored.
+func (p *perFileProgressOps) detach() {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+
+	if p.contributed > 0 {
+		p.SyncFileOperations.UpdateSyncFileProgress(-p.contributed)
+		p.contributed = 0
+	}
+	p.detached = true
 }
 
 func (s *SyncAgentServer) PrepareRebuild(list []*enginerpc.SyncFileInfo, fromReplicaAddressMap map[string]bool) error {
