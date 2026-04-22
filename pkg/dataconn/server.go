@@ -1,6 +1,7 @@
 package dataconn
 
 import (
+	"errors"
 	"io"
 	"net"
 
@@ -35,7 +36,7 @@ func (s *Server) Handle() error {
 
 func (s *Server) readFromWire(ret chan<- error) {
 	msg, err := s.wire.Read()
-	if err == io.EOF {
+	if errors.Is(err, io.EOF) {
 		ret <- err
 		return
 	} else if err != nil {
