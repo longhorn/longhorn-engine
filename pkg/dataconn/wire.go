@@ -7,6 +7,8 @@ import (
 	"io"
 	"net"
 	"unsafe"
+
+	"github.com/cockroachdb/errors"
 )
 
 type Wire struct {
@@ -66,8 +68,11 @@ func (w *Wire) Read() (*Message, error) {
 
 	offset := 0
 
-	if _, err := io.ReadFull(w.reader, w.readHeader); err != nil {
-		return nil, err
+	if bytesRead, err := io.ReadFull(w.reader, w.readHeader); err != nil {
+		if bytesRead == 0 && errors.Is(err, io.EOF) {
+			return nil, err
+		}
+		return nil, errors.Wrap(err, "failed to read message header")
 	}
 
 	msg.MagicVersion = binary.LittleEndian.Uint16(w.readHeader[offset:])
@@ -91,8 +96,12 @@ func (w *Wire) Read() (*Message, error) {
 	length = binary.LittleEndian.Uint32(w.readHeader[offset:])
 	if length > 0 {
 		msg.Data = make([]byte, length)
+		// EOF here = connection dropped mid-payload — always unexpected.
 		if _, err := io.ReadFull(w.reader, msg.Data); err != nil {
-			return nil, err
+			if errors.Is(err, io.EOF) {
+				err = io.ErrUnexpectedEOF
+			}
+			return nil, errors.Wrapf(err, "failed to read message payload (seq=%d, size=%d)", msg.Seq, length)
 		}
 	}
 
