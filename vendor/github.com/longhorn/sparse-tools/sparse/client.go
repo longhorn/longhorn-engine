@@ -122,6 +122,11 @@ func newSyncClient(remote string, sourceName string, size int64, rw ReaderWriter
 
 // SyncFile synchronizes local file to remote host
 func SyncFile(localPath string, remote string, httpClientTimeout int, directIO, fastSync bool) error {
+	return SyncFileWithContext(context.Background(), localPath, remote, httpClientTimeout, directIO, fastSync)
+}
+
+// SyncFileWithContext synchronizes local file to remote host until the context is canceled.
+func SyncFileWithContext(ctx context.Context, localPath string, remote string, httpClientTimeout int, directIO, fastSync bool) error {
 	fileInfo, err := os.Stat(localPath)
 	if err != nil {
 		log.WithError(err).Errorf("Failed to get file info of source file %s", localPath)
@@ -144,7 +149,7 @@ func SyncFile(localPath string, remote string, httpClientTimeout int, directIO, 
 		_ = fileIo.Close()
 	}()
 
-	return SyncContent(fileIo.Name(), fileIo, fileSize, remote, httpClientTimeout, directIO, fastSync)
+	return SyncContentWithContext(ctx, fileIo.Name(), fileIo, fileSize, remote, httpClientTimeout, directIO, fastSync)
 }
 
 func newFileIoProcessor(localPath string, directIO bool) (FileIoProcessor, error) {
@@ -155,6 +160,10 @@ func newFileIoProcessor(localPath string, directIO bool) (FileIoProcessor, error
 }
 
 func SyncContent(sourceName string, rw ReaderWriterAt, fileSize int64, remote string, httpClientTimeout int, directIO, fastSync bool) (err error) {
+	return SyncContentWithContext(context.Background(), sourceName, rw, fileSize, remote, httpClientTimeout, directIO, fastSync)
+}
+
+func SyncContentWithContext(ctx context.Context, sourceName string, rw ReaderWriterAt, fileSize int64, remote string, httpClientTimeout int, directIO, fastSync bool) (err error) {
 	defer func() {
 		err = errors.Wrapf(err, "failed to sync content for source file %v", sourceName)
 	}()
@@ -181,8 +190,8 @@ func SyncContent(sourceName string, rw ReaderWriterAt, fileSize int64, remote st
 	client := newSyncClient(remote, sourceName, fileSize, rw, directIO, httpClientTimeout,
 		recordedChangeTime, recordedChecksumMethod, recordedChecksum, syncBatchSize, numSyncWorkers)
 
-	// Set context early so that fast-sync check is also cancellable on function return
-	ctx, cancel := context.WithCancel(context.Background())
+	// Derive a cancellable context so best-effort cleanup can stop in-flight requests.
+	ctx, cancel := context.WithCancel(ctx)
 	client.ctx = ctx
 	defer cancel()
 	defer client.close() // kill the server no matter success or not, best effort
