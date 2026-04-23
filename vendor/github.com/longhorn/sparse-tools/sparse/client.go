@@ -74,6 +74,8 @@ type syncClient struct {
 	// retryOpts allows overriding retry options for testing
 	retryOpts []retry.Option
 
+	httpRetryEnabled bool
+
 	ctx context.Context
 }
 
@@ -122,11 +124,25 @@ func newSyncClient(remote string, sourceName string, size int64, rw ReaderWriter
 
 // SyncFile synchronizes local file to remote host
 func SyncFile(localPath string, remote string, httpClientTimeout int, directIO, fastSync bool) error {
-	return SyncFileWithContext(context.Background(), localPath, remote, httpClientTimeout, directIO, fastSync)
+	return syncFileWithContextAndRetry(context.Background(), localPath, remote, httpClientTimeout, directIO, fastSync, false)
+}
+
+// SyncFileWithRetry synchronizes local file to remote host with HTTP retries enabled.
+func SyncFileWithRetry(localPath string, remote string, httpClientTimeout int, directIO, fastSync bool) error {
+	return syncFileWithContextAndRetry(context.Background(), localPath, remote, httpClientTimeout, directIO, fastSync, true)
 }
 
 // SyncFileWithContext synchronizes local file to remote host until the context is canceled.
 func SyncFileWithContext(ctx context.Context, localPath string, remote string, httpClientTimeout int, directIO, fastSync bool) error {
+	return syncFileWithContextAndRetry(ctx, localPath, remote, httpClientTimeout, directIO, fastSync, false)
+}
+
+// SyncFileWithContextAndRetry synchronizes local file to remote host with HTTP retries enabled until the context is canceled.
+func SyncFileWithContextAndRetry(ctx context.Context, localPath string, remote string, httpClientTimeout int, directIO, fastSync bool) error {
+	return syncFileWithContextAndRetry(ctx, localPath, remote, httpClientTimeout, directIO, fastSync, true)
+}
+
+func syncFileWithContextAndRetry(ctx context.Context, localPath string, remote string, httpClientTimeout int, directIO, fastSync, httpRetry bool) error {
 	fileInfo, err := os.Stat(localPath)
 	if err != nil {
 		log.WithError(err).Errorf("Failed to get file info of source file %s", localPath)
@@ -149,7 +165,7 @@ func SyncFileWithContext(ctx context.Context, localPath string, remote string, h
 		_ = fileIo.Close()
 	}()
 
-	return SyncContentWithContext(ctx, fileIo.Name(), fileIo, fileSize, remote, httpClientTimeout, directIO, fastSync)
+	return syncContentWithContextAndRetry(ctx, fileIo.Name(), fileIo, fileSize, remote, httpClientTimeout, directIO, fastSync, httpRetry)
 }
 
 func newFileIoProcessor(localPath string, directIO bool) (FileIoProcessor, error) {
@@ -160,10 +176,24 @@ func newFileIoProcessor(localPath string, directIO bool) (FileIoProcessor, error
 }
 
 func SyncContent(sourceName string, rw ReaderWriterAt, fileSize int64, remote string, httpClientTimeout int, directIO, fastSync bool) (err error) {
-	return SyncContentWithContext(context.Background(), sourceName, rw, fileSize, remote, httpClientTimeout, directIO, fastSync)
+	return syncContentWithContextAndRetry(context.Background(), sourceName, rw, fileSize, remote, httpClientTimeout, directIO, fastSync, false)
+}
+
+// SyncContentWithRetry synchronizes content to remote host with HTTP retries enabled.
+func SyncContentWithRetry(sourceName string, rw ReaderWriterAt, fileSize int64, remote string, httpClientTimeout int, directIO, fastSync bool) (err error) {
+	return syncContentWithContextAndRetry(context.Background(), sourceName, rw, fileSize, remote, httpClientTimeout, directIO, fastSync, true)
 }
 
 func SyncContentWithContext(ctx context.Context, sourceName string, rw ReaderWriterAt, fileSize int64, remote string, httpClientTimeout int, directIO, fastSync bool) (err error) {
+	return syncContentWithContextAndRetry(ctx, sourceName, rw, fileSize, remote, httpClientTimeout, directIO, fastSync, false)
+}
+
+// SyncContentWithContextAndRetry synchronizes content to remote host with HTTP retries enabled until the context is canceled.
+func SyncContentWithContextAndRetry(ctx context.Context, sourceName string, rw ReaderWriterAt, fileSize int64, remote string, httpClientTimeout int, directIO, fastSync bool) (err error) {
+	return syncContentWithContextAndRetry(ctx, sourceName, rw, fileSize, remote, httpClientTimeout, directIO, fastSync, true)
+}
+
+func syncContentWithContextAndRetry(ctx context.Context, sourceName string, rw ReaderWriterAt, fileSize int64, remote string, httpClientTimeout int, directIO, fastSync, httpRetry bool) (err error) {
 	defer func() {
 		err = errors.Wrapf(err, "failed to sync content for source file %v", sourceName)
 	}()
@@ -189,6 +219,7 @@ func SyncContentWithContext(ctx context.Context, sourceName string, rw ReaderWri
 
 	client := newSyncClient(remote, sourceName, fileSize, rw, directIO, httpClientTimeout,
 		recordedChangeTime, recordedChecksumMethod, recordedChecksum, syncBatchSize, numSyncWorkers)
+	client.httpRetryEnabled = httpRetry
 
 	// Derive a cancellable context so best-effort cleanup can stop in-flight requests.
 	ctx, cancel := context.WithCancel(ctx)
@@ -240,6 +271,27 @@ func (client *syncClient) syncContent() error {
 	err = <-mergedErrc
 
 	return err
+}
+
+func (client *syncClient) sendHTTPRequestMaybeRetry(method string, action string, queries map[string]string, data []byte) (*http.Response, error) {
+	if !client.httpRetryEnabled {
+		resp, err := client.sendHTTPRequest(method, action, queries, data)
+		if err != nil {
+			closeResponse(resp)
+			return nil, err
+		}
+
+		if resp.StatusCode == http.StatusOK {
+			return resp, nil
+		}
+
+		statusCode := resp.StatusCode
+		closeResponse(resp)
+		return nil, fmt.Errorf("request %s %s returned status %d (%s)",
+			method, action, statusCode, http.StatusText(statusCode))
+	}
+
+	return client.sendHTTPRequestWithRetry(method, action, queries, data)
 }
 
 func (client *syncClient) isLocalAndRemoteDiskFilesIdentical() bool {
@@ -484,7 +536,7 @@ func (client *syncClient) syncHoleInterval(holeInterval Interval) error {
 	queries := make(map[string]string)
 	queries["begin"] = strconv.FormatInt(holeInterval.Begin, 10)
 	queries["end"] = strconv.FormatInt(holeInterval.End, 10)
-	resp, err := client.sendHTTPRequestWithRetry("POST", "sendHole", queries, nil)
+	resp, err := client.sendHTTPRequestMaybeRetry("POST", "sendHole", queries, nil)
 	if err != nil {
 		return errors.Wrapf(err, "failed to send hole interval %+v", holeInterval)
 	}
@@ -500,7 +552,7 @@ func (client *syncClient) getServerChecksum(batchInterval Interval) ([]byte, err
 	queries := make(map[string]string)
 	queries["begin"] = strconv.FormatInt(batchInterval.Begin, 10)
 	queries["end"] = strconv.FormatInt(batchInterval.End, 10)
-	resp, err := client.sendHTTPRequestWithRetry("GET", "getChecksum", queries, nil)
+	resp, err := client.sendHTTPRequestMaybeRetry("GET", "getChecksum", queries, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get checksum")
 	}
@@ -523,7 +575,7 @@ func (client *syncClient) getServerChecksum(batchInterval Interval) ([]byte, err
 
 func (client *syncClient) getServerRecordedMetadata() ([]byte, error) {
 	queries := make(map[string]string)
-	resp, err := client.sendHTTPRequestWithRetry("GET", "getRecordedMetadata", queries, nil)
+	resp, err := client.sendHTTPRequestMaybeRetry("GET", "getRecordedMetadata", queries, nil)
 	if err != nil {
 		return nil, errors.Wrap(err, "failed to get recorded metadata")
 	}
@@ -539,7 +591,7 @@ func (client *syncClient) writeData(dataInterval Interval, data []byte) error {
 	queries := make(map[string]string)
 	queries["begin"] = strconv.FormatInt(dataInterval.Begin, 10)
 	queries["end"] = strconv.FormatInt(dataInterval.End, 10)
-	resp, err := client.sendHTTPRequestWithRetry("POST", "writeData", queries, data)
+	resp, err := client.sendHTTPRequestMaybeRetry("POST", "writeData", queries, data)
 	if err != nil {
 		return errors.Wrap(err, "failed to write data")
 	}
