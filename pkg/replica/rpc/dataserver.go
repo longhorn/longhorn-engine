@@ -1,7 +1,9 @@
 package rpc
 
 import (
+	"errors"
 	"fmt"
+	"io"
 	"net"
 
 	"github.com/sirupsen/logrus"
@@ -58,7 +60,12 @@ func (s *DataServer) listenAndServeTCP() error {
 
 		go func(conn net.Conn) {
 			server := dataconn.NewServer(conn, s.s)
-			if err = server.Handle(); err != nil {
+			if err := server.Handle(); err != nil {
+				if errors.Is(err, io.EOF) {
+					// Clean remote close: this is normal on detach, engine restart.
+					logrus.WithError(err).Debug("data server connection closed by remote")
+					return
+				}
 				logrus.WithError(err).Warn("failed to handle data server")
 			}
 		}(conn)
@@ -85,7 +92,11 @@ func (s *DataServer) listenAndServeUNIX() error {
 		logrus.Infof("New connection from: %v", conn.RemoteAddr())
 		go func(conn net.Conn) {
 			server := dataconn.NewServer(conn, s.s)
-			if err = server.Handle(); err != nil {
+			if err := server.Handle(); err != nil {
+				if errors.Is(err, io.EOF) {
+					logrus.WithError(err).Debug("data server connection closed by local peer")
+					return
+				}
 				logrus.WithError(err).Warn("failed to handle data server")
 			}
 		}(conn)
