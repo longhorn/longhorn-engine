@@ -76,6 +76,10 @@ type SyncServer struct {
 }
 
 func Server(ctx context.Context, port string, filePath string, syncFileOps SyncFileOperations) error {
+	return serverWithIdleTimeout(ctx, port, filePath, syncFileOps, defaultIdleTimeout)
+}
+
+func serverWithIdleTimeout(ctx context.Context, port string, filePath string, syncFileOps SyncFileOperations, idleTimeout time.Duration) error {
 	log.Infof("Creating Ssync service")
 	ctx, cancelFunc := context.WithCancel(ctx)
 	srv := &http.Server{
@@ -84,7 +88,7 @@ func Server(ctx context.Context, port string, filePath string, syncFileOps SyncF
 	}
 
 	// if server has no connection for a period of time, it will shutdown itself to prevent receiver from getting stuck.
-	idleTimer := NewIdleTimer(defaultIdleTimeout)
+	idleTimer := NewIdleTimer(idleTimeout)
 	srv.ConnState = idleTimer.ConnState
 
 	fileAlreadyExists := true
@@ -118,5 +122,5 @@ func Server(ctx context.Context, port string, filePath string, syncFileOps SyncF
 
 // TestServer daemon serves only one connection for each test then exits
 func TestServer(ctx context.Context, port string, filePath string, timeout int) error {
-	return Server(ctx, port, filePath, &SyncFileStub{})
+	return serverWithIdleTimeout(ctx, port, filePath, &SyncFileStub{}, time.Duration(timeout)*time.Second)
 }
