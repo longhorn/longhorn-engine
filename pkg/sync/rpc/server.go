@@ -356,7 +356,7 @@ func (s *SyncAgentServer) FileSend(ctx context.Context, req *enginerpc.FileSendR
 	directIO := filepath.Ext(strings.TrimSpace(req.FromFileName)) != ".meta"
 
 	logrus.Infof("Syncing file %v to %v", req.FromFileName, address)
-	if err := sparse.SyncFile(req.FromFileName, address, int(req.FileSyncHttpClientTimeout), directIO, req.FastSync); err != nil {
+	if err := sparse.SyncFileWithContext(ctx, req.FromFileName, address, int(req.FileSyncHttpClientTimeout), directIO, req.FastSync); err != nil {
 		return nil, err
 	}
 	logrus.Infof("Done syncing file %v to %v", req.FromFileName, address)
