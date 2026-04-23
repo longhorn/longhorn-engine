@@ -356,7 +356,7 @@ func (s *SyncAgentServer) FileSend(ctx context.Context, req *enginerpc.FileSendR
 	directIO := filepath.Ext(strings.TrimSpace(req.FromFileName)) != ".meta"
 
 	logrus.Infof("Syncing file %v to %v", req.FromFileName, address)
-	if err := sparse.SyncFileWithContext(ctx, req.FromFileName, address, int(req.FileSyncHttpClientTimeout), directIO, req.FastSync); err != nil {
+	if err := sparse.SyncFileWithContextAndRetry(ctx, req.FromFileName, address, int(req.FileSyncHttpClientTimeout), directIO, req.FastSync); err != nil {
 		return nil, err
 	}
 	logrus.Infof("Done syncing file %v to %v", req.FromFileName, address)
@@ -387,7 +387,7 @@ func (s *SyncAgentServer) VolumeExport(ctx context.Context, req *enginerpc.Volum
 	if err := r.Preload(req.ExportBackingImageIfExist); err != nil {
 		return nil, err
 	}
-	if err := sparse.SyncContent(req.SnapshotFileName, r, r.Info().Size, remoteAddress, int(req.FileSyncHttpClientTimeout), true, false); err != nil {
+	if err := sparse.SyncContentWithContextAndRetry(ctx, req.SnapshotFileName, r, r.Info().Size, remoteAddress, int(req.FileSyncHttpClientTimeout), true, false); err != nil {
 		return nil, err
 	}
 
