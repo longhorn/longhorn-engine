@@ -227,6 +227,10 @@ func BackupRestoreCmd() cli.Command {
 				Value: 1,
 				Usage: "Concurrent restore worker threads",
 			},
+			cli.BoolFlag{
+				Name:  "need-correct-encrypted-volume-size",
+				Usage: "Whether to correct the encrypted volume size during restore, only used for encrypted volume restore",
+			},
 		},
 		Action: func(c *cli.Context) {
 			if err := restoreBackup(c); err != nil {
@@ -347,8 +351,9 @@ func restoreBackup(c *cli.Context) error {
 		return err
 	}
 	concurrentLimit := c.Int("concurrent-limit")
+	needCorrectEncryptedVolumeSize := c.Bool("need-correct-encrypted-volume-size")
 
-	if err := task.RestoreBackup(backupURL, credential, concurrentLimit); err != nil {
+	if err := task.RestoreBackup(backupURL, credential, concurrentLimit, needCorrectEncryptedVolumeSize); err != nil {
 		return err
 	}
 

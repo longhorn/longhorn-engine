@@ -6,6 +6,7 @@ import (
 	"path"
 
 	"github.com/longhorn/longhorn-engine/pkg/backingfile"
+	"github.com/longhorn/longhorn-engine/pkg/types"
 	"github.com/longhorn/longhorn-engine/pkg/util"
 	. "gopkg.in/check.v1"
 )
@@ -27,7 +28,7 @@ func (s *TestSuite) TestBackup(c *C) {
 	err = os.Chdir(dir)
 	c.Assert(err, IsNil)
 
-	r, err := New(context.Background(), 10*mb, bs, dir, nil, false, false, 250, 0)
+	r, err := New(context.Background(), 10*mb, bs, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, 10*mb)
 	c.Assert(err, IsNil)
 	defer func() {
 		errClose := r.Close()
@@ -105,7 +106,7 @@ func (s *TestSuite) testBackupWithBackups(c *C, backingFile *backingfile.Backing
 	c.Assert(err, IsNil)
 	volume := "test"
 
-	r, err := New(context.Background(), 10*mb, bs, dir, backingFile, false, false, 250, 0)
+	r, err := New(context.Background(), 10*mb, bs, dir, backingFile, false, false, 250, 0, false, false, types.ReplicaStateInitial, 10*mb)
 	c.Assert(err, IsNil)
 	defer func() {
 		errClose := r.Close()
