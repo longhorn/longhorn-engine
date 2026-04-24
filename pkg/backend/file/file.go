@@ -132,7 +132,7 @@ func (f *Wrapper) SetSnapshotMaxSize(size int64) error {
 }
 
 func (ff *Factory) Create(volumeName, address string, dataServerProtocol types.DataServerProtocol,
-	sharedTimeouts types.SharedTimeouts) (types.Backend, error) {
+	sharedTimeouts types.SharedTimeouts, isUpgrade bool, expectedBackendSize int64) (types.Backend, error) {
 	logrus.Infof("Creating file: %s", address)
 	file, err := os.OpenFile(address, os.O_RDWR|os.O_CREATE, 0600)
 	if err != nil {

@@ -21,6 +21,8 @@ import (
 
 	"github.com/longhorn/sparse-tools/sparse"
 
+	lhtypes "github.com/longhorn/go-common-libs/types"
+
 	"github.com/longhorn/longhorn-engine/pkg/backingfile"
 	"github.com/longhorn/longhorn-engine/pkg/types"
 	"github.com/longhorn/longhorn-engine/pkg/util"
@@ -77,6 +79,7 @@ type Info struct {
 	SectorSize      int64
 	BackingFilePath string
 	BackingFile     *backingfile.BackingFile `json:"-"`
+	Encrypted       bool
 }
 
 type disk struct {
@@ -144,17 +147,19 @@ func ReadInfo(dir string) (Info, error) {
 	return info, err
 }
 
-func New(ctx context.Context, size, sectorSize int64, dir string, backingFile *backingfile.BackingFile, disableRevCounter, unmapMarkDiskChainRemoved bool, snapshotMaxCount int, SnapshotMaxSize int64) (*Replica, error) {
-	return construct(ctx, false, size, sectorSize, dir, "", backingFile, disableRevCounter, unmapMarkDiskChainRemoved, snapshotMaxCount, SnapshotMaxSize)
+func New(ctx context.Context, size, sectorSize int64, dir string, backingFile *backingfile.BackingFile,
+	disableRevCounter, unmapMarkDiskChainRemoved bool, snapshotMaxCount int, snapshotMaxSize int64, encrypted, isUpgrade bool, state types.ReplicaState, expectedBackendSize int64) (*Replica, error) {
+	return construct(ctx, false, size, sectorSize, dir, "", backingFile, disableRevCounter, unmapMarkDiskChainRemoved, snapshotMaxCount, snapshotMaxSize, encrypted, isUpgrade, state, expectedBackendSize)
 }
 
 func NewReadOnly(ctx context.Context, dir, head string, backingFile *backingfile.BackingFile) (*Replica, error) {
 	// size and sectorSize don't matter because they will be read from metadata
 	// snapshotMaxCount and SnapshotMaxSize don't matter because readonly replica can't create a new disk
-	return construct(ctx, true, 0, diskutil.ReplicaSectorSize, dir, head, backingFile, false, false, types.MaximumTotalSnapshotCount, 0)
+	return construct(ctx, true, 0, diskutil.ReplicaSectorSize, dir, head, backingFile, false, false, types.MaximumTotalSnapshotCount, 0, false, false, types.ReplicaStateClosed, 0)
 }
 
-func construct(ctx context.Context, readonly bool, size, sectorSize int64, dir, head string, backingFile *backingfile.BackingFile, disableRevCounter, unmapMarkDiskChainRemoved bool, snapshotMaxCount int, snapshotMaxSize int64) (*Replica, error) {
+func construct(ctx context.Context, readonly bool, size, sectorSize int64, dir, head string, backingFile *backingfile.BackingFile,
+	disableRevCounter, unmapMarkDiskChainRemoved bool, snapshotMaxCount int, snapshotMaxSize int64, encrypted, isUpgrade bool, state types.ReplicaState, expectedBackendSize int64) (*Replica, error) {
 	if size%sectorSize != 0 {
 		return nil, fmt.Errorf("size %d not a multiple of sector size %d", size, sectorSize)
 	}
@@ -179,6 +184,7 @@ func construct(ctx context.Context, readonly bool, size, sectorSize int64, dir, 
 	}
 	r.info.Size = size
 	r.info.SectorSize = sectorSize
+	r.info.Encrypted = encrypted
 	r.volume.sectorSize = diskutil.VolumeSectorSize
 
 	// Try to recover volume metafile if deleted or empty.
@@ -227,6 +233,12 @@ func construct(ctx context.Context, readonly bool, size, sectorSize int64, dir, 
 		if err := r.openLiveChain(); err != nil {
 			return nil, err
 		}
+		if needExpand, expectedBackendSize := isExpandingEncryptedDevRequired(state, encrypted, size, expectedBackendSize, isUpgrade); needExpand {
+			logrus.Infof("Expanding replica size from %v to %v for head %v", r.info.Size, expectedBackendSize, r.info.Head)
+			if err := r.Expand(expectedBackendSize); err != nil {
+				return nil, err
+			}
+		}
 	} else if size <= 0 {
 		return nil, os.ErrNotExist
 	} else {
@@ -244,6 +256,27 @@ func construct(ctx context.Context, readonly bool, size, sectorSize int64, dir, 
 	r.insertBackingFile()
 
 	return r, r.writeVolumeMetaData(true, r.info.Rebuilding)
+}
+
+func isExpandingEncryptedDevRequired(replicaState types.ReplicaState, encrypted bool, existingReplicaImageFileSize, expectedBackendSize int64, isUpgrade bool) (bool, int64) {
+	// replicaState: We only expand the replica size when opening the replica, so the previous replica state must be closed and the replica info exists.
+	if replicaState != types.ReplicaStateClosed {
+		return false, 0
+	}
+	// encrypted: Expanding backend size only when the volume is encrypted.
+	if !encrypted {
+		return false, 0
+	}
+	// isUpgrade: Before live upgrade (isUpgrade is true), the volume-head image file is expanded to the expected backend size. Therefore, we should not expand the replica size for live upgrade.
+	if isUpgrade {
+		return false, 0
+	}
+	// expectedBackendSize: The expected size of the backend, and it should be 16 MiB greater than the existing replica image file size, otherwise we don't need to expand the replica size.
+	// existingReplicaImageFileSize: The current size of the replica image file.
+	if expectedBackendSize <= 0 || existingReplicaImageFileSize <= 0 {
+		return false, 0
+	}
+	return expectedBackendSize == existingReplicaImageFileSize+lhtypes.Luks2EncryptionHeaderSize, expectedBackendSize
 }
 
 func (r *Replica) diskPath(name string) string {
@@ -298,7 +331,7 @@ func (r *Replica) SetRebuilding(rebuilding bool) error {
 }
 
 func (r *Replica) Reload() (*Replica, error) {
-	newReplica, err := New(r.ctx, r.info.Size, r.info.SectorSize, r.dir, r.info.BackingFile, r.revisionCounterDisabled, r.unmapMarkDiskChainRemoved, r.snapshotMaxCount, r.snapshotMaxSize)
+	newReplica, err := New(r.ctx, r.info.Size, r.info.SectorSize, r.dir, r.info.BackingFile, r.revisionCounterDisabled, r.unmapMarkDiskChainRemoved, r.snapshotMaxCount, r.snapshotMaxSize, r.info.Encrypted, false, types.ReplicaStateDirty, r.info.Size)
 	if err != nil {
 		return nil, err
 	}

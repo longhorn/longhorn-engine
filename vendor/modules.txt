@@ -311,7 +311,7 @@ github.com/longhorn/backupstore/systembackup
 github.com/longhorn/backupstore/types
 github.com/longhorn/backupstore/util
 github.com/longhorn/backupstore/vfs
-# github.com/longhorn/go-common-libs v0.0.0-20260328134226-cafa38fc4ce8
+# github.com/longhorn/go-common-libs v0.0.0-20260418032157-c135767e4855
 ## explicit; go 1.25.0
 github.com/longhorn/go-common-libs/backingimage
 github.com/longhorn/go-common-libs/backup
@@ -339,7 +339,7 @@ github.com/longhorn/sparse-tools/sparse/rest
 github.com/longhorn/sparse-tools/stats
 github.com/longhorn/sparse-tools/types
 github.com/longhorn/sparse-tools/util
-# github.com/longhorn/types v0.0.0-20260327130848-66f6de8a2fb3
+# github.com/longhorn/types v0.0.0-20260424095800-4b6385093e88
 ## explicit; go 1.24.0
 github.com/longhorn/types/pkg/generated/enginerpc
 github.com/longhorn/types/pkg/generated/profilerrpc
@@ -610,7 +610,9 @@ k8s.io/apimachinery/pkg/api/resource
 k8s.io/apimachinery/pkg/runtime/serializer/cbor/direct
 k8s.io/apimachinery/pkg/runtime/serializer/cbor/internal/modes
 k8s.io/apimachinery/pkg/util/runtime
+k8s.io/apimachinery/pkg/util/version
 k8s.io/apimachinery/pkg/util/wait
+k8s.io/apimachinery/pkg/version
 # k8s.io/client-go v0.35.3
 ## explicit; go 1.25.0
 k8s.io/client-go/util/flowcontrol

@@ -234,8 +234,8 @@ func (c *ReplicaClient) OpenReplica() error {
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceCommonTimeout)
 	defer cancel()
 
-	if _, err := replicaServiceClient.ReplicaOpen(ctx, &emptypb.Empty{}); err != nil {
-		return errors.Wrapf(err, "failed to open replica %v", c.replicaServiceURL)
+	if _, err := replicaServiceClient.ReplicaOpen(ctx, &enginerpc.ReplicaOpenRequest{IsUpgrade: false}); err != nil {
+		return errors.Wrapf(err, "failed to open replica %v with IsUpgrade false", c.replicaServiceURL)
 	}
 
 	return nil
