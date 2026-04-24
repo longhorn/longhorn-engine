@@ -83,6 +83,11 @@ func ReplicaCmd() cli.Command {
 				Name:  "snapshot-max-size",
 				Usage: "Maximum total snapshot size in bytes or human readable 42kb, 42mb, 42gb",
 			},
+			cli.BoolFlag{
+				Name:   "encrypted",
+				Hidden: false,
+				Usage:  "Volume is encrypted",
+			},
 		},
 		Action: func(c *cli.Context) {
 			if err := startReplica(c); err != nil {
@@ -116,6 +121,8 @@ func startReplica(c *cli.Context) (err error) {
 		}
 	}
 
+	encrypted := c.Bool("encrypted")
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer func() {
 		if err != nil {
@@ -123,7 +130,7 @@ func startReplica(c *cli.Context) (err error) {
 		}
 	}()
 
-	s := replica.NewServer(ctx, dir, backingFile, diskutil.ReplicaSectorSize, disableRevCounter, unmapMarkDiskChainRemoved, snapshotMaxCount, snapshotMaxSize)
+	s := replica.NewServer(ctx, dir, backingFile, diskutil.ReplicaSectorSize, disableRevCounter, unmapMarkDiskChainRemoved, snapshotMaxCount, snapshotMaxSize, encrypted)
 
 	address := c.String("listen")
 

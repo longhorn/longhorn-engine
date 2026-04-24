@@ -9,6 +9,7 @@ import (
 
 	"github.com/longhorn/backupstore"
 
+	lhtypes "github.com/longhorn/go-common-libs/types"
 	lhutils "github.com/longhorn/go-common-libs/utils"
 
 	"github.com/longhorn/longhorn-engine/pkg/types"
@@ -138,7 +139,7 @@ func FetchBackupStatus(client *replicaClient.ReplicaClient, backupID string, rep
 	}, nil
 }
 
-func (t *Task) RestoreBackup(backup string, credential map[string]string, concurrentLimit int) error {
+func (t *Task) RestoreBackup(backup string, credential map[string]string, concurrentLimit int, needCorrectEncryptedVolumeSize bool) error {
 	volume, err := t.client.VolumeGet()
 	if err != nil {
 		return errors.Wrapf(err, "failed to get volume")
@@ -232,14 +233,19 @@ func (t *Task) RestoreBackup(backup string, credential map[string]string, concur
 		return taskErr
 	}
 
-	if backupInfo.VolumeSize < volume.Size {
-		return fmt.Errorf("BUG: The backup volume %v size %v cannot be smaller than the DR volume %v size %v", backupInfo.VolumeName, backupInfo.VolumeSize, volume.Name, volume.Size)
+	backupVolumeSize := backupInfo.VolumeSize
+	if needCorrectEncryptedVolumeSize {
+		backupVolumeSize = backupVolumeSize + lhtypes.Luks2EncryptionHeaderSize
 	}
-	if backupInfo.VolumeSize > volume.Size {
+
+	if backupVolumeSize < volume.Size {
+		return fmt.Errorf("BUG: The backup volume %v size %v cannot be smaller than the DR volume %v size %v", backupInfo.VolumeName, backupVolumeSize, volume.Name, volume.Size)
+	}
+	if backupVolumeSize > volume.Size {
 		if !isIncremental {
-			return fmt.Errorf("BUG: The backup volume %v size %v cannot be larger than normal restore volume %v size %v", backupInfo.VolumeName, backupInfo.VolumeSize, volume.Name, volume.Size)
+			return fmt.Errorf("BUG: The backup volume %v size %v cannot be larger than normal restore volume %v size %v", backupInfo.VolumeName, backupVolumeSize, volume.Name, volume.Size)
 		}
-		return fmt.Errorf("need to expand the DR volume %v to size %v before incremental restoration", volume.Name, backupInfo.VolumeSize)
+		return fmt.Errorf("need to expand the DR volume %v to size %v before incremental restoration", volume.Name, backupVolumeSize)
 	}
 
 	syncErrorMap := sync.Map{}

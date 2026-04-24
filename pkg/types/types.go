@@ -115,7 +115,7 @@ type Backend interface {
 
 type BackendFactory interface {
 	Create(volumeName, address string, dataServerProtocol DataServerProtocol,
-		sharedTimeouts SharedTimeouts) (Backend, error)
+		sharedTimeouts SharedTimeouts, isUpgrade bool, expectedBackendSize int64) (Backend, error)
 }
 
 type SharedTimeouts interface {

@@ -131,8 +131,8 @@ func (rs *ReplicaServer) ReplicaGet(ctx context.Context, req *emptypb.Empty) (*e
 	return &enginerpc.ReplicaGetResponse{Replica: rs.getReplica()}, nil
 }
 
-func (rs *ReplicaServer) ReplicaOpen(ctx context.Context, req *emptypb.Empty) (*enginerpc.ReplicaOpenResponse, error) {
-	if err := rs.s.Open(); err != nil {
+func (rs *ReplicaServer) ReplicaOpen(ctx context.Context, req *enginerpc.ReplicaOpenRequest) (*enginerpc.ReplicaOpenResponse, error) {
+	if err := rs.s.Open(req.IsUpgrade, req.ExpectedBackendSize); err != nil {
 		return nil, err
 	}
 
