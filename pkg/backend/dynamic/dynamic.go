@@ -18,12 +18,12 @@ func New(factories map[string]types.BackendFactory) types.BackendFactory {
 }
 
 func (d *Factory) Create(volumeName, address string, dataServerProtocol types.DataServerProtocol,
-	sharedTimeouts types.SharedTimeouts) (types.Backend, error) {
+	sharedTimeouts types.SharedTimeouts, isUpgrade bool, expectedBackendSize int64) (types.Backend, error) {
 	parts := strings.SplitN(address, "://", 2)
 
 	if len(parts) == 2 {
 		if factory, ok := d.factories[parts[0]]; ok {
-			return factory.Create(volumeName, parts[1], dataServerProtocol, sharedTimeouts)
+			return factory.Create(volumeName, parts[1], dataServerProtocol, sharedTimeouts, isUpgrade, expectedBackendSize)
 		}
 	}
 

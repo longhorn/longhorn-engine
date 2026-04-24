@@ -90,8 +90,8 @@ func (r *Remote) Close() error {
 	return nil
 }
 
-func (r *Remote) open() error {
-	logrus.Infof("Opening remote: %s", r.name)
+func (r *Remote) open(isUpgrade bool, expectedBackendSize int64) error {
+	logrus.Infof("Opening remote: %s, upgrading: %v", r.name, isUpgrade)
 	conn, err := grpc.NewClient(
 		r.replicaServiceURL,
 		grpc.WithTransportCredentials(insecure.NewCredentials()),
@@ -116,7 +116,7 @@ func (r *Remote) open() error {
 	ctx, cancel := context.WithTimeout(context.Background(), replicaClient.GRPCServiceCommonTimeout)
 	defer cancel()
 
-	if _, err := replicaServiceClient.ReplicaOpen(ctx, &emptypb.Empty{}); err != nil {
+	if _, err := replicaServiceClient.ReplicaOpen(ctx, &enginerpc.ReplicaOpenRequest{IsUpgrade: isUpgrade, ExpectedBackendSize: expectedBackendSize}); err != nil {
 		return errors.Wrapf(err, "failed to open replica %v from remote", r.replicaServiceURL)
 	}
 
@@ -492,7 +492,7 @@ func (r *Remote) info() (*types.ReplicaInfo, error) {
 }
 
 func (rf *Factory) Create(volumeName, address string, dataServerProtocol types.DataServerProtocol,
-	sharedTimeouts types.SharedTimeouts) (types.Backend, error) {
+	sharedTimeouts types.SharedTimeouts, isUpgrade bool, expectedBackendSize int64) (types.Backend, error) {
 	logrus.Infof("Connecting to remote: %s (%v)", address, dataServerProtocol)
 
 	controlAddress, dataAddress, _, _, err := util.GetAddresses(volumeName, address, dataServerProtocol)
@@ -531,7 +531,7 @@ func (rf *Factory) Create(volumeName, address string, dataServerProtocol types.D
 	dataConnClient := dataconn.NewClient(conns, sharedTimeouts)
 	r.ReaderWriterUnmapperAt = dataConnClient
 
-	if err := r.open(); err != nil {
+	if err := r.open(isUpgrade, expectedBackendSize); err != nil {
 		return nil, err
 	}
 
