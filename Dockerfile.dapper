@@ -19,7 +19,11 @@ ENV DAPPER_SOURCE /go/src/github.com/longhorn/longhorn-engine
 ENV SRC_BRANCH ${SRC_BRANCH}
 ENV SRC_TAG ${SRC_TAG}
 
+<<<<<<< HEAD
 ENV LONGHORN_INSTANCE_MANAGER_BRANCH="v1.9.x"
+=======
+ENV LONGHORN_INSTANCE_MANAGER_BRANCH="v1.11.x"
+>>>>>>> 13c177c2 (fix: build failure)
 
 WORKDIR ${DAPPER_SOURCE}
 ENTRYPOINT ["./scripts/entry"]
