@@ -1,8 +1,6 @@
 module github.com/longhorn/longhorn-engine
 
-go 1.25.0
-
-toolchain go1.25.6
+go 1.25.9
 
 require (
 	github.com/docker/go-units v0.5.0
@@ -15,7 +13,7 @@ require (
 	github.com/longhorn/go-iscsi-helper v0.0.0-20260331100542-4c4c6f91525b
 	github.com/longhorn/sparse-tools v0.0.0-20260327124327-3fac691f3c28
 	github.com/longhorn/types v0.0.0-20260327130848-66f6de8a2fb3
-	github.com/moby/moby v26.1.5+incompatible
+	github.com/moby/sys/reexec v0.1.0
 	github.com/pkg/errors v0.9.1
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
 	github.com/rancher/go-rancher v0.1.1-0.20190307222549-9756097e5e4c
@@ -102,7 +100,6 @@ require (
 	gopkg.in/mattn/go-colorable.v0 v0.1.0 // indirect
 	gopkg.in/mattn/go-isatty.v0 v0.0.4 // indirect
 	gopkg.in/mattn/go-runewidth.v0 v0.0.4 // indirect
-	gotest.tools/v3 v3.4.0 // indirect
 	k8s.io/klog/v2 v2.130.1 // indirect
 	k8s.io/utils v0.0.0-20250604170112-4c0f3b243397 // indirect
 	sigs.k8s.io/json v0.0.0-20241014173422-cfa47c3a1cc8 // indirect
