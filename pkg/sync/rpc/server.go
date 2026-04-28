@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/gofrs/flock"
-	"github.com/moby/moby/pkg/reexec"
+	"github.com/moby/sys/reexec"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
