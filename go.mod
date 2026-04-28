@@ -16,7 +16,7 @@ require (
 	github.com/longhorn/go-iscsi-helper v0.0.0-20260331100542-4c4c6f91525b
 	github.com/longhorn/sparse-tools v0.0.0-20260423074222-280e61de741a
 	github.com/longhorn/types v0.0.0-20260327130848-66f6de8a2fb3
-	github.com/moby/moby v26.1.5+incompatible
+	github.com/moby/sys/reexec v0.1.0
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
 	github.com/rancher/go-rancher v0.1.1-0.20190307222549-9756097e5e4c
 	github.com/sirupsen/logrus v1.9.4
@@ -106,7 +106,6 @@ require (
 	gopkg.in/mattn/go-colorable.v0 v0.1.0 // indirect
 	gopkg.in/mattn/go-isatty.v0 v0.0.4 // indirect
 	gopkg.in/mattn/go-runewidth.v0 v0.0.4 // indirect
-	gotest.tools/v3 v3.4.0 // indirect
 	k8s.io/klog/v2 v2.140.0 // indirect
 	k8s.io/utils v0.0.0-20260210185600-b8788abfbbc2 // indirect
 	sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730 // indirect
