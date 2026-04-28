@@ -344,12 +344,12 @@ github.com/matttproud/golang_protobuf_extensions/pbutil
 # github.com/mitchellh/go-ps v1.0.0
 ## explicit; go 1.13
 github.com/mitchellh/go-ps
-# github.com/moby/moby v26.1.5+incompatible
-## explicit
-github.com/moby/moby/pkg/reexec
 # github.com/moby/sys/mountinfo v0.7.2
 ## explicit; go 1.17
 github.com/moby/sys/mountinfo
+# github.com/moby/sys/reexec v0.1.0
+## explicit; go 1.18
+github.com/moby/sys/reexec
 # github.com/moby/sys/userns v0.1.0
 ## explicit; go 1.21
 github.com/moby/sys/userns
@@ -585,8 +585,6 @@ gopkg.in/mattn/go-isatty.v0
 # gopkg.in/mattn/go-runewidth.v0 v0.0.4
 ## explicit
 gopkg.in/mattn/go-runewidth.v0
-# gotest.tools/v3 v3.4.0
-## explicit; go 1.13
 # k8s.io/apimachinery v0.28.15
 ## explicit; go 1.20
 k8s.io/apimachinery/pkg/api/resource
