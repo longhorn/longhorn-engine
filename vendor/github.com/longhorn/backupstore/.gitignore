@@ -24,9 +24,7 @@ _testmain.go
 *.prof
 
 coverage.out
-
-# build files
-/.dapper
+validate.done
 
 # ignores all goland project folders and files
 .idea/
