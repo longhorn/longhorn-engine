@@ -23,7 +23,7 @@ jobs:
         uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
 
       - name: "Run FOSSA Scan"
-        uses: fossas/fossa-action@c414b9ad82eaad041e47a7cf62a4f02411f427a0 # v1.8.0 # Use a specific version if locking is preferred
+        uses: fossas/fossa-action@ff70fe9fe17cbd2040648f1c45e8ec4e4884dcf3 # v1.9.0 # Use a specific version if locking is preferred
         with:
           api-key: ${{ secrets.FOSSA_API_KEY }}
           project: longhorn-engine
