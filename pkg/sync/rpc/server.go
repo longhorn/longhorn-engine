@@ -14,12 +14,8 @@ import (
 	"time"
 
 	"github.com/gofrs/flock"
-	"github.com/longhorn/backupstore"
-	butil "github.com/longhorn/backupstore/util"
-	"github.com/longhorn/sparse-tools/sparse"
-	sparserest "github.com/longhorn/sparse-tools/sparse/rest"
-	"github.com/longhorn/types/pkg/generated/enginerpc"
-	"github.com/moby/moby/pkg/reexec"
+
+	"github.com/moby/sys/reexec"
 	"github.com/pkg/errors"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
@@ -27,14 +23,21 @@ import (
 	"google.golang.org/grpc/reflection"
 	"google.golang.org/protobuf/types/known/emptypb"
 
+	"github.com/longhorn/backupstore"
+	"github.com/longhorn/sparse-tools/sparse"
+	"github.com/longhorn/types/pkg/generated/enginerpc"
+
+	butil "github.com/longhorn/backupstore/util"
 	lhio "github.com/longhorn/go-common-libs/io"
+	sparserest "github.com/longhorn/sparse-tools/sparse/rest"
 
 	"github.com/longhorn/longhorn-engine/pkg/backup"
 	"github.com/longhorn/longhorn-engine/pkg/interceptor"
 	"github.com/longhorn/longhorn-engine/pkg/replica"
-	replicaclient "github.com/longhorn/longhorn-engine/pkg/replica/client"
 	"github.com/longhorn/longhorn-engine/pkg/types"
 	"github.com/longhorn/longhorn-engine/pkg/util"
+
+	replicaclient "github.com/longhorn/longhorn-engine/pkg/replica/client"
 	diskutil "github.com/longhorn/longhorn-engine/pkg/util/disk"
 )
 

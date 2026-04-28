@@ -9,7 +9,7 @@ import (
 	"runtime/debug"
 	"runtime/pprof"
 
-	"github.com/moby/moby/pkg/reexec"
+	"github.com/moby/sys/reexec"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
 
