@@ -9,7 +9,9 @@ ARG https_proxy
 
 ENV ARCH=${TARGETARCH}
 ENV GOFLAGS=-mod=vendor
+
 ENV PROTOBUF_VER_PY=4.24.3
+ENV GOLANGCI_LINT_VERSION=v2.11.4
 
 ENV LONGHORN_INSTANCE_MANAGER_BRANCH="master"
 
@@ -34,7 +36,9 @@ RUN zypper -n install cmake curl git less file gcc python311 python311-pip pytho
     rm -rf /var/cache/zypp/*
 
 # Install golangci-lint
-RUN curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh | sh -s -- -b $(go env GOPATH)/bin latest
+RUN curl -fsSL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh -o /tmp/install.sh \
+    && chmod +x /tmp/install.sh \
+    && /tmp/install.sh -b /usr/local/bin ${GOLANGCI_LINT_VERSION}
 
 # Install Minio
 ENV MINIO_URL_amd64=https://dl.min.io/server/minio/release/linux-amd64/archive/minio.RELEASE.2021-12-20T22-07-16Z \
