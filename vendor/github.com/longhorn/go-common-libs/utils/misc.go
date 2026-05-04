@@ -15,6 +15,8 @@ import (
 	"github.com/google/uuid"
 	"golang.org/x/exp/constraints"
 
+	"k8s.io/apimachinery/pkg/util/version"
+
 	"github.com/longhorn/go-common-libs/types"
 )
 
@@ -218,4 +220,24 @@ func GetStringFromMap(mapObj map[string]any, key string) string {
 	default:
 		return fmt.Sprint(value)
 	}
+}
+
+// IsVersionAtLeast checks if the current version is at least the minimum version.
+func IsVersionAtLeast(currentVersion, minimumVersion string) (bool, error) {
+	parsedVer, err := version.ParseSemantic(currentVersion)
+	if err != nil {
+		return false, errors.Wrapf(err, "failed to parse testing version %q", currentVersion)
+	}
+
+	minVer, err := version.ParseSemantic(minimumVersion)
+	if err != nil {
+		return false, errors.Wrapf(err, "failed to parse minimum version %q", minimumVersion)
+	}
+
+	return parsedVer.AtLeast(minVer), nil
+}
+
+func IsVersionValid(versionStr string) bool {
+	_, err := version.ParseSemantic(versionStr)
+	return err == nil
 }
