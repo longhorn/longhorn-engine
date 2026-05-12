@@ -140,6 +140,8 @@ func (s *Server) write() {
 			if err := s.wire.Write(msg); err != nil {
 				logrus.WithError(err).Warn("Failed to write")
 			}
+			// Returning on <-s.done is intentionally skipped,
+			// as in-flight handlers may still send responses after the close signal.
 		}
 	}
 }
