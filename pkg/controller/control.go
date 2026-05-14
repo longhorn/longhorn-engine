@@ -524,7 +524,12 @@ func (c *Controller) RemoveReplica(address string) error {
 }
 
 func (c *Controller) ListReplicas() []types.Replica {
-	return c.replicas
+	c.RLock()
+	defer c.RUnlock()
+
+	replicas := make([]types.Replica, len(c.replicas))
+	copy(replicas, c.replicas)
+	return replicas
 }
 
 func (c *Controller) SetReplicaMode(address string, mode types.Mode) error {
