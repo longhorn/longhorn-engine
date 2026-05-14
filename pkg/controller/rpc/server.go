@@ -6,7 +6,9 @@ import (
 
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/reflection"
+	"google.golang.org/grpc/status"
 	"google.golang.org/protobuf/types/known/emptypb"
 
 	healthpb "google.golang.org/grpc/health/grpc_health_v1"
@@ -101,14 +103,14 @@ func (cs *ControllerServer) getVolume() *enginerpc.Volume {
 	}
 }
 
-func (cs *ControllerServer) getControllerReplica(address string) *enginerpc.ControllerReplica {
+func (cs *ControllerServer) getControllerReplica(address string) (*enginerpc.ControllerReplica, error) {
 	for _, r := range cs.c.ListReplicas() {
 		if r.Address == address {
-			return cs.replicaToControllerReplica(&r)
+			return cs.replicaToControllerReplica(&r), nil
 		}
 	}
 
-	return nil
+	return nil, status.Errorf(codes.NotFound, "cannot find the replica with address %s in the controller server of volume %s", address, cs.c.VolumeName)
 }
 
 func (cs *ControllerServer) listControllerReplica() []*enginerpc.ControllerReplica {
@@ -211,7 +213,7 @@ func (cs *ControllerServer) ReplicaList(ctx context.Context, req *emptypb.Empty)
 }
 
 func (cs *ControllerServer) ReplicaGet(ctx context.Context, req *enginerpc.ReplicaAddress) (*enginerpc.ControllerReplica, error) {
-	return cs.getControllerReplica(req.Address), nil
+	return cs.getControllerReplica(req.Address)
 }
 
 func (cs *ControllerServer) ControllerReplicaCreate(ctx context.Context, req *enginerpc.ControllerReplicaCreateRequest) (*enginerpc.ControllerReplica, error) {
@@ -219,7 +221,7 @@ func (cs *ControllerServer) ControllerReplicaCreate(ctx context.Context, req *en
 		return nil, err
 	}
 
-	return cs.getControllerReplica(req.Address), nil
+	return cs.getControllerReplica(req.Address)
 }
 
 func (cs *ControllerServer) ReplicaDelete(ctx context.Context, req *enginerpc.ReplicaAddress) (*emptypb.Empty, error) {
@@ -235,7 +237,7 @@ func (cs *ControllerServer) ReplicaUpdate(ctx context.Context, req *enginerpc.Co
 		return nil, err
 	}
 
-	return cs.getControllerReplica(req.Address.Address), nil
+	return cs.getControllerReplica(req.Address.Address)
 }
 
 func (cs *ControllerServer) ReplicaPrepareRebuild(ctx context.Context, req *enginerpc.ReplicaAddress) (*enginerpc.ReplicaPrepareRebuildReply, error) {
@@ -244,8 +246,13 @@ func (cs *ControllerServer) ReplicaPrepareRebuild(ctx context.Context, req *engi
 		return nil, err
 	}
 
+	r, err := cs.getControllerReplica(req.Address)
+	if err != nil {
+		return nil, err
+	}
+
 	return &enginerpc.ReplicaPrepareRebuildReply{
-		Replica:          cs.getControllerReplica(req.Address),
+		Replica:          r,
 		SyncFileInfoList: cs.syncFileInfoListToControllerFormat(list),
 	}, nil
 }
@@ -255,7 +262,7 @@ func (cs *ControllerServer) ReplicaVerifyRebuild(ctx context.Context, req *engin
 		return nil, err
 	}
 
-	return cs.getControllerReplica(req.Address), nil
+	return cs.getControllerReplica(req.Address)
 }
 
 func (cs *ControllerServer) ReplicaRebuildConcurrentSyncLimitSet(ctx context.Context, req *enginerpc.ReplicaRebuildConcurrentSyncLimitSetRequest) (*emptypb.Empty, error) {
