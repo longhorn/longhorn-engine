@@ -92,11 +92,18 @@ func GetVolumeInfo(v *enginerpc.Volume) *types.VolumeInfo {
 	}
 }
 
-func GetControllerReplicaInfo(cr *enginerpc.ControllerReplica) *types.ControllerReplicaInfo {
+func GetControllerReplicaInfo(cr *enginerpc.ControllerReplica) (*types.ControllerReplicaInfo, error) {
+	if cr == nil {
+		return nil, errors.New("controller returned an empty replica response")
+	}
+	if cr.Address == nil {
+		return nil, errors.New("controller returned a replica response without an address")
+	}
+
 	return &types.ControllerReplicaInfo{
 		Address: cr.Address.Address,
 		Mode:    types.Mode(cr.Mode.String()),
-	}
+	}, nil
 }
 
 func GetControllerReplica(r *types.ControllerReplicaInfo) *enginerpc.ControllerReplica {
@@ -278,7 +285,11 @@ func (c *ControllerClient) ReplicaList() ([]*types.ControllerReplicaInfo, error)
 
 	replicas := []*types.ControllerReplicaInfo{}
 	for _, cr := range reply.Replicas {
-		replicas = append(replicas, GetControllerReplicaInfo(cr))
+		replica, err := GetControllerReplicaInfo(cr)
+		if err != nil {
+			return nil, errors.Wrapf(err, "failed to decode a replica for volume %v", c.serviceURL)
+		}
+		replicas = append(replicas, replica)
 	}
 
 	return replicas, nil
@@ -296,7 +307,12 @@ func (c *ControllerClient) ReplicaGet(address string) (*types.ControllerReplicaI
 		return nil, errors.Wrapf(err, "failed to get replica %v for volume %v", address, c.serviceURL)
 	}
 
-	return GetControllerReplicaInfo(cr), nil
+	replica, err := GetControllerReplicaInfo(cr)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to decode replica %v for volume %v", address, c.serviceURL)
+	}
+
+	return replica, nil
 }
 
 func (c *ControllerClient) ReplicaCreate(address string, snapshotRequired bool, mode types.Mode) (*types.ControllerReplicaInfo, error) {
@@ -313,7 +329,12 @@ func (c *ControllerClient) ReplicaCreate(address string, snapshotRequired bool, 
 		return nil, errors.Wrapf(err, "failed to create replica %v for volume %v", address, c.serviceURL)
 	}
 
-	return GetControllerReplicaInfo(cr), nil
+	replica, err := GetControllerReplicaInfo(cr)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to decode created replica %v for volume %v", address, c.serviceURL)
+	}
+
+	return replica, nil
 }
 
 func (c *ControllerClient) ReplicaDelete(address string) error {
@@ -343,7 +364,12 @@ func (c *ControllerClient) ReplicaUpdate(address string, mode types.Mode) (*type
 		return nil, errors.Wrapf(err, "failed to update replica %v for volume %v", address, c.serviceURL)
 	}
 
-	return GetControllerReplicaInfo(cr), nil
+	replica, err := GetControllerReplicaInfo(cr)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to decode updated replica %v for volume %v", address, c.serviceURL)
+	}
+
+	return replica, nil
 }
 
 func (c *ControllerClient) ReplicaPrepareRebuild(address, instanceName string) ([]types.SyncFileInfo, error) {
