@@ -15,7 +15,7 @@ require (
 	github.com/longhorn/go-common-libs v0.0.0-20260502161928-1e84fa75a8f1
 	github.com/longhorn/go-iscsi-helper v0.0.0-20260331100542-4c4c6f91525b
 	github.com/longhorn/sparse-tools v0.0.0-20260423074222-280e61de741a
-	github.com/longhorn/types v0.0.0-20260408014255-ff785625245f
+	github.com/longhorn/types v0.0.0-20260505090548-f44cbe9dd7b0
 	github.com/moby/sys/reexec v0.1.0
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
 	github.com/rancher/go-rancher v0.1.1-0.20190307222549-9756097e5e4c
@@ -23,7 +23,7 @@ require (
 	github.com/urfave/cli v1.22.17
 	go.uber.org/multierr v1.11.0
 	golang.org/x/sys v0.40.0
-	google.golang.org/grpc v1.79.3
+	google.golang.org/grpc v1.80.0
 	google.golang.org/protobuf v1.36.11
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 	gopkg.in/cheggaaa/pb.v2 v2.0.7
@@ -98,7 +98,7 @@ require (
 	golang.org/x/net v0.49.0 // indirect
 	golang.org/x/text v0.33.0 // indirect
 	golang.org/x/time v0.9.0 // indirect
-	google.golang.org/genproto/googleapis/rpc v0.0.0-20251202230838-ff82c1b0f217 // indirect
+	google.golang.org/genproto/googleapis/rpc v0.0.0-20260120221211-b8f7ae30c516 // indirect
 	gopkg.in/VividCortex/ewma.v1 v1.1.1 // indirect
 	gopkg.in/fatih/color.v1 v1.7.0 // indirect
 	gopkg.in/inf.v0 v0.9.1 // indirect
