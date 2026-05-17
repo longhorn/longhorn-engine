@@ -29,7 +29,7 @@ require (
 	gopkg.in/cheggaaa/pb.v2 v2.0.7
 	k8s.io/apimachinery v0.36.0
 	k8s.io/client-go v0.36.0
-	k8s.io/mount-utils v0.36.0
+	k8s.io/mount-utils v0.36.1
 )
 
 require (
