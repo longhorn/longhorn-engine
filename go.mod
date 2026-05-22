@@ -2,7 +2,7 @@ module github.com/longhorn/longhorn-engine
 
 go 1.26.0
 
-toolchain go1.26.2
+toolchain go1.26.3
 
 require (
 	github.com/cockroachdb/errors v1.13.0
