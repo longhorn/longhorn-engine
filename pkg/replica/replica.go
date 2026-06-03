@@ -187,6 +187,17 @@ func construct(ctx context.Context, readonly bool, size, sectorSize int64, dir, 
 	r.info.Encrypted = encrypted
 	r.volume.sectorSize = diskutil.VolumeSectorSize
 
+	// Sweep leftover *.tmp files from prior interrupted meta writes. The
+	// journal-driven step engine (see pkg/replica/journal) is responsible
+	// for the actual chain consistency on restart; this just removes
+	// orphaned scratch files that the rename-after-write pattern can leave
+	// behind.
+	if !readonly {
+		if err := r.sweepTmpFiles(); err != nil {
+			return nil, err
+		}
+	}
+
 	// Try to recover volume metafile if deleted or empty.
 	if err := r.tryRecoverVolumeMetaFile(head); err != nil {
 		return nil, err
@@ -713,14 +724,56 @@ func (r *Replica) encodeToFile(obj interface{}, file string) (rollbackFunc func(
 	}
 
 	if err := json.NewEncoder(f).Encode(&obj); err != nil {
+		_ = f.Close()
 		return rollbackFunc, err
+	}
+
+	// fsync the data of the temp file before the rename so that a crash
+	// after the rename cannot expose a zero-length file.
+	if err := f.Sync(); err != nil {
+		_ = f.Close()
+		return rollbackFunc, errors.Wrapf(err, "failed to fsync tmp file %v", r.diskPath(tmpFileName))
 	}
 
 	if err := f.Close(); err != nil {
 		return rollbackFunc, err
 	}
 
-	return rollbackFunc, os.Rename(r.diskPath(tmpFileName), r.diskPath(file))
+	if err := os.Rename(r.diskPath(tmpFileName), r.diskPath(file)); err != nil {
+		return rollbackFunc, err
+	}
+
+	// fsync the parent directory so the rename itself is durable.
+	return rollbackFunc, util.FsyncDir(r.dir)
+}
+
+// sweepTmpFiles removes leftover *.tmp files in the replica directory.
+// Called from construct() before journal recovery; the .tmp files are
+// scratch artifacts of an interrupted write -> rename and carry no
+// authoritative state, so removing them here is always safe. The journal
+// (replayed immediately after) is the source of truth for chain
+// consistency.
+func (r *Replica) sweepTmpFiles() error {
+	entries, err := os.ReadDir(r.dir)
+	if err != nil {
+		return err
+	}
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		name := e.Name()
+		if !strings.HasSuffix(name, tmpFileSuffix) {
+			continue
+		}
+		p := filepath.Join(r.dir, name)
+		if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
+			logrus.WithError(err).Warnf("failed to sweep leftover tmp file %v", p)
+		} else {
+			logrus.Infof("Swept leftover tmp file %v", p)
+		}
+	}
+	return nil
 }
 
 func (r *Replica) nextFile(parsePattern *regexp.Regexp, pattern, parent string) (string, error) {
