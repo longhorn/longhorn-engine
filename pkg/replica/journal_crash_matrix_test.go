@@ -589,3 +589,165 @@ func TestCrashMatrixSnapCreateThroughReplicaAfterRecovery(t *testing.T) {
 		})
 	}
 }
+
+// ---- Nested recovery (recovery-of-recovery) ----
+//
+// These tests verify that crash-during-recovery converges. Setup: a
+// prepared txn with 0 steps applied (i.e. the original writer crashed
+// right after PREPARE). The test then simulates a recovery process
+// that runs partway and crashes itself, by directly invoking the
+// stepRegistry against the replica directory and optionally writing
+// STEP_DONE to the journal -- the same operations recoverJournal does
+// internally. After the simulated recovery-crash, the real
+// recoverJournal is invoked to finish; the final fingerprint must
+// match the post-op fingerprint of a crash-free run.
+//
+// The (applyK, stepDoneJ) parameters model the two failure points
+// inside recoverJournal's inner loop:
+//
+//	apply step k to disk (idempotent)   <-- crash here: stepDoneJ < applyK
+//	write STEP_DONE record + fsync      <-- crash here: stepDoneJ == applyK
+//
+// stepDoneJ must be <= applyK by construction (the journal record
+// follows the disk action).
+
+// partialRecover simulates recoverJournal interrupted mid-flight.
+// It opens the journal, picks up the single pending prepared txn,
+// applies the first `applyK` not-yet-completed steps to disk, writes
+// STEP_DONE for the first `stepDoneJ` of them, then force-closes
+// without commit/checkpoint.
+func partialRecover(t *testing.T, dir string, applyK, stepDoneJ int) {
+	t.Helper()
+	if stepDoneJ > applyK {
+		t.Fatalf("stepDoneJ=%d > applyK=%d (impossible: STEP_DONE follows disk apply)", stepDoneJ, applyK)
+	}
+	j, err := wal.Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	a, err := j.Recover()
+	if err != nil {
+		_ = wal.ForceCloseForTest(j)
+		t.Fatal(err)
+	}
+	if len(a.Pending) != 1 {
+		_ = wal.ForceCloseForTest(j)
+		t.Fatalf("expected exactly 1 pending txn, got %d", len(a.Pending))
+	}
+	pt := a.Pending[0]
+	if !pt.Prepared {
+		_ = wal.ForceCloseForTest(j)
+		t.Fatalf("expected prepared txn for nested-recovery test")
+	}
+
+	tx, err := wal.AdoptTxn(j, pt.ID, pt.Op)
+	if err != nil {
+		_ = wal.ForceCloseForTest(j)
+		t.Fatalf("adopt txn %d: %v", pt.ID, err)
+	}
+	s := stepDir{dir: dir}
+	applied := 0
+	for _, intent := range pt.PendingIntents {
+		if pt.CompletedSteps[intent.StepID] {
+			continue
+		}
+		if applied >= applyK {
+			break
+		}
+		fn := stepRegistry[intent.Action]
+		if fn == nil {
+			_ = wal.ForceCloseForTest(j)
+			t.Fatalf("unknown action %q", intent.Action)
+		}
+		if err := fn(s, intent.Args); err != nil {
+			_ = wal.ForceCloseForTest(j)
+			t.Fatalf("apply step %d (%s): %v", intent.StepID, intent.Action, err)
+		}
+		if applied < stepDoneJ {
+			if err := tx.StepDone(intent.StepID); err != nil {
+				_ = wal.ForceCloseForTest(j)
+				t.Fatalf("StepDone %d: %v", intent.StepID, err)
+			}
+		}
+		applied++
+	}
+	if err := wal.ForceCloseForTest(j); err != nil {
+		t.Fatal(err)
+	}
+}
+
+// TestNestedRecoverySnapCreate verifies every realistic crash point of
+// the recovery path itself. recoverJournal's inner loop is
+//
+//	for each not-yet-completed step:
+//	    apply step k to disk          <-- crash A: applyK=k, stepDoneJ=k-1
+//	    write STEP_DONE k + fsync     <-- crash B: applyK=k, stepDoneJ=k
+//	    (proceed to step k+1)
+//
+// so at any in-flight moment applyK - stepDoneJ is 0 or 1. Combinations
+// outside that window are not reachable from production code (and
+// would falsely signal a bug because steps depend on each other in
+// order: e.g. replaying step 2 LINK after step 5 DELETE_OLD_HEAD has
+// run cannot succeed -- the source inode is gone).
+func TestNestedRecoverySnapCreate(t *testing.T) {
+	postOp := captureSnapCreatePostOp(t)
+	const N = 5
+	type pt struct{ applyK, stepDoneJ int }
+	var cases []pt
+	cases = append(cases, pt{0, 0}) // recovery hasn't started
+	for k := 1; k <= N; k++ {
+		cases = append(cases, pt{k, k - 1}) // crash A: pre-STEP_DONE
+		cases = append(cases, pt{k, k})     // crash B: post-STEP_DONE
+	}
+	for _, c := range cases {
+		c := c
+		t.Run(fmt.Sprintf("applyK=%d/stepDoneJ=%d", c.applyK, c.stepDoneJ), func(t *testing.T) {
+			dir, info, oldHead := setupSnapCreatePreOp(t)
+			_, plan := snapshotCreatePlan(t, info, oldHead, "s1")
+
+			// First crash: writer prepared but did 0 steps.
+			driveCrash(t, dir, wal.OpSnapCreate, plan, N, 0, true, false)
+
+			// Second crash: recovery makes partial progress.
+			partialRecover(t, dir, c.applyK, c.stepDoneJ)
+
+			// Final recovery must converge to post-op.
+			got := recoverAndFingerprint(t, dir)
+			if !fpEqual(got, postOp) {
+				t.Fatalf("nested recovery did not converge to post-op:\n%s",
+					fpDiff(got, postOp))
+			}
+		})
+	}
+}
+
+// TestTripleCrashRecoveryConverges chains three partial recoveries
+// (writer crash + two recovery crashes) and asserts the fourth attempt
+// reaches post-op. Exercises the "monotonic progress" property: each
+// successful STEP_DONE is durable, so a chain of crashes can only
+// move the CompletedSteps set forward.
+func TestTripleCrashRecoveryConverges(t *testing.T) {
+	postOp := captureSnapCreatePostOp(t)
+	dir, info, oldHead := setupSnapCreatePreOp(t)
+	_, plan := snapshotCreatePlan(t, info, oldHead, "s1")
+
+	// Crash 1: writer crashed after PREPARE.
+	driveCrash(t, dir, wal.OpSnapCreate, plan, len(plan), 0, true, false)
+
+	// Crash 2: recovery applied step 1 to disk, did NOT write STEP_DONE.
+	// (applyK=1, stepDoneJ=0 -- the realistic "after disk apply, before
+	// journal write" crash point.)
+	partialRecover(t, dir, 1, 0)
+
+	// Crash 3: recovery redid step 1 (idempotent), wrote STEP_DONE 1,
+	// applied step 2, wrote STEP_DONE 2, applied step 3, crashed before
+	// STEP_DONE 3. (applyK=3, stepDoneJ=2.)
+	partialRecover(t, dir, 3, 2)
+
+	// Final recovery: must redo step 3 (idempotent), then 4 and 5.
+	got := recoverAndFingerprint(t, dir)
+	if !fpEqual(got, postOp) {
+		t.Fatalf("triple-crash recovery did not converge to post-op:\n%s",
+			fpDiff(got, postOp))
+	}
+}
