@@ -304,7 +304,9 @@ func closeJournalAbruptly(t *testing.T, j *wal.Journal) {
 // package itself as wal.ForceCloseForTest.
 func journalForceClose(j *wal.Journal) error {
 	return wal.ForceCloseForTest(j)
-}// TestApplyRmDiskIdempotent verifies RM_DISK is a no-op when files are
+}
+
+// TestApplyRmDiskIdempotent verifies RM_DISK is a no-op when files are
 // already absent and removes them cleanly when present.
 func TestApplyRmDiskIdempotent(t *testing.T) {
 	dir := t.TempDir()
@@ -560,5 +562,40 @@ func TestRemoveThroughReplicaIsCrashSafe(t *testing.T) {
 	}
 	if bMeta.Parent != "" {
 		t.Fatalf("snap-b parent should be empty, got %q", bMeta.Parent)
+	}
+}
+
+// TestRecoverJournalQuarantinesUnreadable verifies that recoverJournal
+// returns a usable journal (no error) when the on-disk journal file is
+// structurally invalid -- the bad file must be renamed aside so the
+// replica can still start.
+func TestRecoverJournalQuarantinesUnreadable(t *testing.T) {
+	dir := t.TempDir()
+	// 16 bytes of zeros = bad magic; wal.Open rejects this as mid-stream
+	// corruption, which is the trigger for the quarantine path.
+	if err := os.WriteFile(filepath.Join(dir, wal.FileName),
+		make([]byte, 16), 0600); err != nil {
+		t.Fatal(err)
+	}
+	j, err := recoverJournal(dir)
+	if err != nil {
+		t.Fatalf("recoverJournal should succeed via quarantine, got: %v", err)
+	}
+	if err := j.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var broken int
+	for _, e := range entries {
+		if strings.HasPrefix(e.Name(), wal.FileName+".broken-") {
+			broken++
+		}
+	}
+	if broken != 1 {
+		t.Fatalf("expected exactly one quarantined journal, got %d (entries: %v)",
+			broken, entries)
 	}
 }

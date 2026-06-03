@@ -293,9 +293,18 @@ var stepRegistry = map[wal.Action]stepFunc{
 // The returned journal is open with a held flock and ready for the
 // caller to use for new transactions; close it via wal.Close().
 func recoverJournal(dir string) (*wal.Journal, error) {
-	j, err := wal.Open(dir)
+	j, qInfo, err := wal.OpenWithQuarantine(dir)
 	if err != nil {
 		return nil, errors.Wrap(err, "open journal")
+	}
+	if qInfo != nil {
+		// The previous journal was unreadable. We start fresh; any
+		// in-flight txns recorded in the broken file are lost. Surface
+		// the path so an operator can inspect it offline.
+		logrus.Warnf("Recovery: journal at %s was unreadable (%v); "+
+			"quarantined to %s and continuing with a fresh journal. "+
+			"On-disk chain state will be reconciled by metadata recovery.",
+			qInfo.OriginalPath, qInfo.OpenError, qInfo.QuarantinedPath)
 	}
 	analysis, err := j.Recover()
 	if err != nil {
