@@ -19,6 +19,7 @@ import (
 	"github.com/rancher/go-fibmap"
 	"github.com/sirupsen/logrus"
 
+	"github.com/longhorn/go-common-libs/wal"
 	"github.com/longhorn/sparse-tools/sparse"
 
 	lhtypes "github.com/longhorn/go-common-libs/types"
@@ -67,6 +68,10 @@ type Replica struct {
 
 	snapshotMaxCount int
 	snapshotMaxSize  int64
+
+	// journal is the per-replica WAL used to make snapshot chain
+	// operations crash-safe. nil for read-only replicas.
+	wal *wal.Journal
 }
 
 type Info struct {
@@ -159,7 +164,7 @@ func NewReadOnly(ctx context.Context, dir, head string, backingFile *backingfile
 }
 
 func construct(ctx context.Context, readonly bool, size, sectorSize int64, dir, head string, backingFile *backingfile.BackingFile,
-	disableRevCounter, unmapMarkDiskChainRemoved bool, snapshotMaxCount int, snapshotMaxSize int64, encrypted, isUpgrade bool, state types.ReplicaState, expectedBackendSize int64) (*Replica, error) {
+	disableRevCounter, unmapMarkDiskChainRemoved bool, snapshotMaxCount int, snapshotMaxSize int64, encrypted, isUpgrade bool, state types.ReplicaState, expectedBackendSize int64) (_ *Replica, retErr error) {
 	if size%sectorSize != 0 {
 		return nil, fmt.Errorf("size %d not a multiple of sector size %d", size, sectorSize)
 	}
@@ -196,6 +201,28 @@ func construct(ctx context.Context, readonly bool, size, sectorSize int64, dir, 
 		if err := r.sweepTmpFiles(); err != nil {
 			return nil, err
 		}
+
+		// Open the journal and replay any unfinished snapshot chain
+		// transactions. Recovery must run before tryRecoverVolumeMetaFile
+		// since a pending UPDATE_VOLUME_META intent will write the correct
+		// volume.meta during replay.
+		j, err := recoverJournal(dir)
+		if err != nil {
+			return nil, err
+		}
+		r.wal = j
+		// Release the journal's flock if construction fails on any
+		// subsequent step; otherwise the FD lives until process exit
+		// and a same-process retry would deadlock under fcntl-flock
+		// semantics on Linux.
+		defer func() {
+			if retErr != nil && r.wal != nil {
+				errClose := r.wal.Close()
+				if errClose != nil {
+					logrus.WithError(errClose).Warnf("Failed to close journal %v", dir)
+				}
+			}
+		}()
 	}
 
 	// Try to recover volume metafile if deleted or empty.
@@ -342,6 +369,18 @@ func (r *Replica) SetRebuilding(rebuilding bool) error {
 }
 
 func (r *Replica) Reload() (*Replica, error) {
+	// The journal flock is held by this replica's process; we must release
+	// it before constructing the replacement, which will reopen the
+	// journal in its own construct(). The current journal is at a clean
+	// state (any in-flight txn has either been committed or aborted by
+	// the operation that triggered Reload), so a clean Close + Checkpoint
+	// is sufficient.
+	if r.wal != nil {
+		if err := r.wal.Close(); err != nil {
+			return nil, err
+		}
+		r.wal = nil
+	}
 	newReplica, err := New(r.ctx, r.info.Size, r.info.SectorSize, r.dir, r.info.BackingFile, r.revisionCounterDisabled, r.unmapMarkDiskChainRemoved, r.snapshotMaxCount, r.snapshotMaxSize, r.info.Encrypted, false, types.ReplicaStateDirty, r.info.Size)
 	if err != nil {
 		return nil, err
@@ -691,7 +730,14 @@ func (r *Replica) closeWithoutWritingMetaData() {
 
 func (r *Replica) close() error {
 	r.closeWithoutWritingMetaData()
-	return r.writeVolumeMetaData(false, r.info.Rebuilding)
+	err := r.writeVolumeMetaData(false, r.info.Rebuilding)
+	if r.wal != nil {
+		if errJ := r.wal.Close(); errJ != nil && err == nil {
+			err = errJ
+		}
+		r.wal = nil
+	}
+	return err
 }
 
 func (r *Replica) encodeToFile(obj interface{}, file string) (rollbackFunc func() error, err error) {
@@ -993,7 +1039,7 @@ func (r *Replica) revertDisk(parentDiskFileName, created string) (*Replica, erro
 
 func (r *Replica) createDisk(name string, userCreated bool, created string, labels map[string]string, size int64) (err error) {
 	log := logrus.WithFields(logrus.Fields{"disk": name})
-	log.Info("Starting to create disk")
+	log.Info("Starting to create disk (journaled)")
 	if r.readOnly {
 		return fmt.Errorf("cannot create disk on read-only replica")
 	}
@@ -1002,94 +1048,189 @@ func (r *Replica) createDisk(name string, userCreated bool, created string, labe
 		return fmt.Errorf("too many active disks: %v", len(r.activeDiskData)-2+1)
 	}
 
+	if r.wal == nil {
+		return fmt.Errorf("createDisk: journal is not initialised")
+	}
+
 	oldHead := r.info.Head
 	newSnapName := diskutil.GenerateSnapshotDiskName(name)
-
 	if oldHead == "" {
 		newSnapName = ""
 	}
-
 	if newSnapName != "" {
 		if _, ok := r.diskData[newSnapName]; ok {
 			return fmt.Errorf("snapshot %v is already existing", newSnapName)
 		}
 	}
 
-	rollbackFuncList := []func() error{}
-	defer func() {
-		if err == nil {
-			if errRm := r.rmDisk(oldHead); errRm != nil {
-				logrus.WithError(errRm).Warnf("Failed to remove old head %v", oldHead)
-			}
-			return
+	// Journaled snapshot-create plan:
+	//   1. CREATE_HEAD         — allocate new head image + write its .meta
+	//   2. LINK_AS_SNAPSHOT    — hardlink old head image+meta as the new snap
+	//   3. UPDATE_VOLUME_META  — swing volume.meta to point at the new head
+	//   4. UPDATE_SNAP_META    — write snap .meta with user-supplied fields
+	//   5. DELETE_OLD_HEAD     — remove the renamed-away old head files
+	//
+	// Steps are recorded as INTENTs, then PREPARE marks the set complete.
+	// Apply runs each step and writes STEP_DONE before final COMMIT.
+	// A crash at any point is recovered on the next startup.
+
+	newHeadName, err := r.nextFile(diskPattern, diskutil.VolumeHeadDiskName, oldHead)
+	if err != nil {
+		return err
+	}
+	if _, errStat := os.Stat(r.diskPath(newHeadName)); errStat == nil {
+		return fmt.Errorf("%s already exists", newHeadName)
+	}
+
+	newHeadDisk := disk{
+		Parent:      newSnapName,
+		Name:        newHeadName,
+		Removed:     false,
+		UserCreated: false,
+		Created:     created,
+	}
+
+	newInfo := r.info
+	newInfo.Head = newHeadName
+	newInfo.Dirty = true
+	newInfo.Parent = newSnapName
+	newInfo.Size = size
+
+	// Build the new snapshot's meta from the soon-to-be-renamed old head's
+	// disk data, with user-provided overrides. Name is set to newSnapName;
+	// readMetadata will overwrite it from the filename on reload anyway.
+	var newSnapMeta disk
+	if newSnapName != "" {
+		old := r.diskData[oldHead]
+		newSnapMeta = disk{
+			Name:        newSnapName,
+			Parent:      old.Parent,
+			Removed:     old.Removed,
+			UserCreated: userCreated,
+			Created:     created,
+			Labels:      labels,
 		}
-
-		var rollbackErr error
-		log.WithError(err).Errorf("Failed to create disk %v, will do rollback", name)
-		for _, rollbackFunc := range rollbackFuncList {
-			if rollbackFunc == nil {
-				continue
-			}
-			rollbackErr = types.CombineErrors(rollbackErr, rollbackFunc())
-		}
-		err = types.WrapError(
-			types.GenerateFunctionErrorWithRollback(err, rollbackErr),
-			"failed to create new disk %v", name)
-	}()
-
-	f, newHeadDisk, createNewHeadRollbackFunc, err := r.createNewHead(oldHead, newSnapName, created, size)
-	if err != nil {
-		return err
 	}
-	rollbackFuncList = append(rollbackFuncList, createNewHeadRollbackFunc)
 
-	linkDiskRollbackFunc, err := r.linkDisk(r.info.Head, newSnapName)
-	if err != nil {
-		return err
+	chArgs := mustJSON(CreateHeadArgs{HeadName: newHeadName, Size: size, Meta: newHeadDisk})
+	var laArgs []byte
+	if newSnapName != "" {
+		laArgs = mustJSON(LinkAsSnapshotArgs{SourceImage: oldHead, DestSnap: newSnapName})
 	}
-	rollbackFuncList = append(rollbackFuncList, linkDiskRollbackFunc)
-
-	info := r.info
-	info.Head = newHeadDisk.Name
-	info.Dirty = true
-	info.Parent = newSnapName
-	info.Size = size
-
-	volumeMetaEncodeRollbackFunc, err := r.encodeToFile(&info, volumeMetaData)
-	if err != nil {
-		return err
+	uvmArgs := mustJSON(UpdateVolumeMetaArgs{Info: newInfo})
+	var usmArgs []byte
+	if newSnapName != "" {
+		usmArgs = mustJSON(UpdateSnapMetaArgs{SnapName: newSnapName, Meta: newSnapMeta})
 	}
-	rollbackFuncList = append(rollbackFuncList, func() error {
-		_, err := r.encodeToFile(&r.info, volumeMetaData)
-		return types.CombineErrors(volumeMetaEncodeRollbackFunc(), err)
+	var dohArgs []byte
+	if oldHead != "" {
+		dohArgs = mustJSON(DeleteOldHeadArgs{HeadName: oldHead})
+	}
+
+	paramsJSON := mustJSON(SnapCreateParams{
+		Snapshot:    name,
+		OldHead:     oldHead,
+		NewHead:     newHeadName,
+		NewSnap:     newSnapName,
+		UserCreated: userCreated,
+		Size:        size,
 	})
 
-	r.diskData[newHeadDisk.Name] = &newHeadDisk
-	if newSnapName != "" {
-		r.addChildDisk(newSnapName, newHeadDisk.Name)
-		r.diskData[newSnapName] = r.diskData[oldHead]
-		r.diskData[newSnapName].UserCreated = userCreated
-		r.diskData[newSnapName].Created = created
-		r.diskData[newSnapName].Labels = labels
-		rollbackFuncList = append(rollbackFuncList, func() error {
-			delete(r.diskData, newHeadDisk.Name)
-			delete(r.diskData, newSnapName)
-			delete(r.diskChildrenMap, newSnapName)
-			return nil
-		})
+	tx, err := r.wal.Begin(wal.OpSnapCreate, paramsJSON)
+	if err != nil {
+		return errors.Wrap(err, "begin journal txn")
+	}
 
-		snapMetaEncodeRollbackFunc, err := r.encodeToFile(r.diskData[newSnapName], newSnapName+diskutil.DiskMetadataSuffix)
-		if err != nil {
-			return err
+	type stepDef struct {
+		id     uint32
+		action wal.Action
+		args   []byte
+		skip   bool
+	}
+	steps := []stepDef{
+		{1, wal.ActionCreateHead, chArgs, false},
+		{2, wal.ActionLinkAsSnapshot, laArgs, newSnapName == ""},
+		{3, wal.ActionUpdateVolumeMeta, uvmArgs, false},
+		{4, wal.ActionUpdateSnapMeta, usmArgs, newSnapName == ""},
+		{5, wal.ActionDeleteOldHead, dohArgs, oldHead == ""},
+	}
+
+	// Write the full operation plan to the journal up front. After this,
+	// recovery has enough information to roll the transaction forward to
+	// completion no matter where a subsequent crash occurs.
+	for _, st := range steps {
+		if st.skip {
+			continue
 		}
-		rollbackFuncList = append(rollbackFuncList, snapMetaEncodeRollbackFunc)
+		if errIntent := tx.Intent(st.id, st.action, st.args); errIntent != nil {
+			_ = tx.Abort()
+			return errors.Wrapf(errIntent, "write intent for step %d", st.id)
+		}
+	}
+	// PREPARE marks the intent set as durable and complete. Recovery
+	// only redoes prepared transactions; a crash before this point
+	// leaves a (possibly torn) intent set that recovery will discard.
+	if errPrep := tx.Prepare(); errPrep != nil {
+		_ = tx.Abort()
+		return errors.Wrap(errPrep, "prepare journal txn")
+	}
+
+	s := stepDir{dir: r.dir}
+	for _, st := range steps {
+		if st.skip {
+			continue
+		}
+		if errApply := stepRegistry[st.action](s, st.args); errApply != nil {
+			// Steps 1-2 run before UPDATE_VOLUME_META (the visible
+			// commit point). Abort the txn and clean up partial
+			// artifacts so the caller can retry with the same name.
+			// From step 3 onwards a partially-applied writeJSONAtomic
+			// may already have moved volume.meta, so leave the txn
+			// pending and let recovery finish on the next startup.
+			if st.id <= 2 {
+				_ = tx.Abort()
+				_ = applyDeleteOldHead(s, mustJSON(DeleteOldHeadArgs{HeadName: newHeadName}))
+				if newSnapName != "" {
+					_ = applyDeleteOldHead(s, mustJSON(DeleteOldHeadArgs{HeadName: newSnapName}))
+				}
+			}
+			return errors.Wrapf(errApply, "apply step %d (%s)", st.id, st.action)
+		}
+		if errDone := tx.StepDone(st.id); errDone != nil {
+			// Apply already succeeded; on-disk effect is durable.
+			// Do not abort -- recovery will write STEP_DONE + COMMIT.
+			return errors.Wrapf(errDone, "step done %d", st.id)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return errors.Wrap(err, "commit journal txn")
+	}
+
+	// Open the new head image for I/O.
+	f, err := r.openFile(r.diskPath(newHeadName), 0)
+	if err != nil {
+		return errors.Wrap(err, "open new head")
+	}
+
+	// Patch in-memory state to reflect the now-durable on-disk state.
+	if newSnapName != "" {
+		// The old head's disk struct is reused as the new snapshot's
+		// disk struct (its image+meta were just hardlinked under the
+		// new name). Mutate Name + user fields in place.
+		snapDiskRef := r.diskData[oldHead]
+		snapDiskRef.Name = newSnapName
+		snapDiskRef.UserCreated = userCreated
+		snapDiskRef.Created = created
+		snapDiskRef.Labels = labels
+		r.diskData[newSnapName] = snapDiskRef
 
 		r.updateChildDisk(oldHead, newSnapName)
 		r.activeDiskData[len(r.activeDiskData)-1].Name = newSnapName
+		r.addChildDisk(newSnapName, newHeadName)
 	}
 	delete(r.diskData, oldHead)
-
-	r.info = info
+	r.diskData[newHeadName] = &newHeadDisk
+	r.info = newInfo
 	r.volume.files = append(r.volume.files, f)
 	r.activeDiskData = append(r.activeDiskData, &newHeadDisk)
 
