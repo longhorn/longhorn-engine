@@ -408,15 +408,121 @@ func (r *Replica) RemoveDiffDisk(name string, force bool) error {
 	if name == r.info.Head {
 		return fmt.Errorf("cannot delete the active differencing disk")
 	}
-
-	if err := r.removeDiskNode(name, force); err != nil {
-		return err
+	if r.wal == nil {
+		return fmt.Errorf("RemoveDiffDisk: journal is not initialised")
+	}
+	if _, ok := r.diskData[name]; !ok {
+		return fmt.Errorf("cannot find disk %v", name)
 	}
 
-	if err := r.rmDisk(name); err != nil {
-		return err
+	// Compute the chain rewiring without mutating in-memory state yet.
+	children := r.diskChildrenMap[name]
+	if len(children) > 1 && !force {
+		return fmt.Errorf("cannot remove snapshot %v with %v children", name, len(children))
+	}
+	if len(children) > 1 {
+		logrus.Warnf("Force delete disk %v with multiple children. Randomly choose a child to inherit", name)
 	}
 
+	var chosenChild string
+	var chosenChildNewMeta disk
+	if len(children) > 0 {
+		for c := range children {
+			chosenChild = c
+			break
+		}
+		existing, ok := r.diskData[chosenChild]
+		if !ok {
+			return fmt.Errorf("child %v of %v not in diskData", chosenChild, name)
+		}
+		chosenChildNewMeta = *existing
+		// child's new parent is name's parent (grandparent).
+		chosenChildNewMeta.Parent = r.diskData[name].Parent
+	}
+
+	paramsJSON := mustJSON(SnapRemoveParams{
+		Name:  name,
+		Force: force,
+		Child: chosenChild,
+	})
+
+	type stepDef struct {
+		id     uint32
+		action wal.Action
+		args   []byte
+	}
+	var steps []stepDef
+	var stepID uint32 = 1
+	if chosenChild != "" {
+		steps = append(steps, stepDef{stepID, wal.ActionUpdateSnapMeta,
+			mustJSON(UpdateSnapMetaArgs{SnapName: chosenChild, Meta: chosenChildNewMeta})})
+		stepID++
+	}
+	steps = append(steps, stepDef{stepID, wal.ActionRmDisk,
+		mustJSON(RmDiskArgs{Name: name})})
+
+	tx, err := r.wal.Begin(wal.OpSnapRemove, paramsJSON)
+	if err != nil {
+		return errors.Wrap(err, "begin remove journal txn")
+	}
+	for _, st := range steps {
+		if err := tx.Intent(st.id, st.action, st.args); err != nil {
+			_ = tx.Abort()
+			return errors.Wrapf(err, "intent step %d", st.id)
+		}
+	}
+	if err := tx.Prepare(); err != nil {
+		_ = tx.Abort()
+		return errors.Wrap(err, "prepare remove txn")
+	}
+
+	s := stepDir{dir: r.dir}
+	for _, st := range steps {
+		fn := stepRegistry[st.action]
+		if err := fn(s, st.args); err != nil {
+			// Every RemoveDiffDisk step is at the visible commit
+			// point (UPDATE_SNAP_META rewrites the surviving child;
+			// RM_DISK deletes the target). Leave the txn pending so
+			// recovery can finish on the next startup.
+			//
+			// NOTE: in-memory r.diskData/diskChildrenMap below is
+			// skipped on this path; callers must treat any error
+			// here as fatal for the *Replica -- the next startup
+			// reconciles both the journal and the in-memory chain.
+			return errors.Wrapf(err, "apply step %d (%s)", st.id, st.action)
+		}
+		if err := tx.StepDone(st.id); err != nil {
+			return errors.Wrapf(err, "STEP_DONE step %d", st.id)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return errors.Wrap(err, "commit remove txn")
+	}
+
+	// In-memory bookkeeping mirroring removeDiskNode, minus the file ops
+	// that the journal Apply has already performed. r.diskData entries
+	// are *disk pointers shared with r.activeDiskData, so we must mutate
+	// the chosen child in place rather than reassigning the map slot.
+	if chosenChild != "" {
+		r.updateChildDisk(name, chosenChild)
+		existing := r.diskData[chosenChild]
+		existing.Parent = chosenChildNewMeta.Parent
+		delete(r.diskChildrenMap, name)
+	} else {
+		r.updateChildDisk(name, "")
+	}
+	delete(r.diskData, name)
+
+	index := r.findDisk(name)
+	if index > 0 {
+		if err := r.volume.RemoveIndex(index); err != nil {
+			return err
+		}
+		if len(r.activeDiskData)-2 == index {
+			r.info.Parent = r.diskData[r.info.Head].Parent
+		}
+		r.activeDiskData = append(r.activeDiskData[:index], r.activeDiskData[index+1:]...)
+	}
 	return nil
 }
 
@@ -1001,33 +1107,92 @@ func (r *Replica) revertDisk(parentDiskFileName, created string) (*Replica, erro
 	} else if diskInfo.Removed {
 		return nil, fmt.Errorf("cannot revert to disk file %v since it's already marked as removed", parentDiskFileName)
 	}
+	if r.wal == nil {
+		return nil, fmt.Errorf("revertDisk: journal is not initialised")
+	}
 
 	oldHead := r.info.Head
-	f, newHeadDisk, _, err := r.createNewHead(oldHead, parentDiskFileName, created, r.info.Size)
+	newHeadName, err := r.nextFile(diskPattern, diskutil.VolumeHeadDiskName, oldHead)
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		if errClose := f.Close(); errClose != nil {
-			logrus.WithError(errClose).Error("Failed to close file")
-		}
-	}()
-
-	info := r.info
-	info.Head = newHeadDisk.Name
-	info.Dirty = true
-	info.Parent = newHeadDisk.Parent
-
-	if _, err := r.encodeToFile(&info, volumeMetaData); err != nil {
-		if _, err = r.encodeToFile(&r.info, volumeMetaData); err != nil {
-			return nil, err
-		}
-		return nil, err
+	if _, errStat := os.Stat(r.diskPath(newHeadName)); errStat == nil {
+		return nil, fmt.Errorf("%s already exists", newHeadName)
 	}
 
-	// Need to execute before r.Reload() to update r.diskChildrenMap
-	if err = r.rmDisk(oldHead); err != nil {
-		return nil, err
+	newHeadDisk := disk{
+		Parent:      parentDiskFileName,
+		Name:        newHeadName,
+		Removed:     false,
+		UserCreated: false,
+		Created:     created,
+	}
+	newInfo := r.info
+	newInfo.Head = newHeadName
+	newInfo.Dirty = true
+	newInfo.Parent = parentDiskFileName
+
+	chArgs := mustJSON(CreateHeadArgs{HeadName: newHeadName, Size: r.info.Size, Meta: newHeadDisk})
+	uvmArgs := mustJSON(UpdateVolumeMetaArgs{Info: newInfo})
+	dohArgs := mustJSON(DeleteOldHeadArgs{HeadName: oldHead})
+	paramsJSON := mustJSON(SnapRevertParams{
+		Parent:  parentDiskFileName,
+		OldHead: oldHead,
+		NewHead: newHeadName,
+		Created: created,
+	})
+
+	tx, err := r.wal.Begin(wal.OpSnapRevert, paramsJSON)
+	if err != nil {
+		return nil, errors.Wrap(err, "begin revert journal txn")
+	}
+	type stepDef struct {
+		id     uint32
+		action wal.Action
+		args   []byte
+		skip   bool
+	}
+	steps := []stepDef{
+		{1, wal.ActionCreateHead, chArgs, false},
+		{2, wal.ActionUpdateVolumeMeta, uvmArgs, false},
+		{3, wal.ActionDeleteOldHead, dohArgs, oldHead == ""},
+	}
+	for _, st := range steps {
+		if st.skip {
+			continue
+		}
+		if err := tx.Intent(st.id, st.action, st.args); err != nil {
+			_ = tx.Abort()
+			return nil, errors.Wrapf(err, "intent step %d", st.id)
+		}
+	}
+	if err := tx.Prepare(); err != nil {
+		_ = tx.Abort()
+		return nil, errors.Wrap(err, "prepare revert txn")
+	}
+
+	s := stepDir{dir: r.dir}
+	for _, st := range steps {
+		if st.skip {
+			continue
+		}
+		fn := stepRegistry[st.action]
+		if err := fn(s, st.args); err != nil {
+			// Step 1 (CREATE_HEAD) runs before UPDATE_VOLUME_META
+			// (the visible commit point). From step 2 onwards a
+			// partial writeJSONAtomic may already have moved
+			// volume.meta, so leave the txn pending for recovery.
+			if st.id <= 1 {
+				_ = tx.Abort()
+			}
+			return nil, errors.Wrapf(err, "apply step %d (%s)", st.id, st.action)
+		}
+		if err := tx.StepDone(st.id); err != nil {
+			return nil, errors.Wrapf(err, "STEP_DONE step %d", st.id)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, errors.Wrap(err, "commit revert txn")
 	}
 
 	rNew, err := r.Reload()

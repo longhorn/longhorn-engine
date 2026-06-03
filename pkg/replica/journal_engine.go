@@ -114,6 +114,12 @@ type DeleteOldHeadArgs struct {
 	HeadName string `json:"head_name"`
 }
 
+// RmDiskArgs is the args payload for ActionRmDisk. Removes the image,
+// metadata, and (if present) checksum file of a snapshot or head.
+type RmDiskArgs struct {
+	Name string `json:"name"`
+}
+
 // ---- Txn params (TXN_BEGIN payloads) ----
 //
 // One typed struct per Op so journal-dump shows a stable field order and
@@ -128,6 +134,21 @@ type SnapCreateParams struct {
 	NewSnap     string `json:"new_snap"`
 	UserCreated bool   `json:"user_created"`
 	Size        int64  `json:"size"`
+}
+
+// SnapRevertParams is the TXN_BEGIN params for OpSnapRevert.
+type SnapRevertParams struct {
+	Parent  string `json:"parent"`
+	OldHead string `json:"old_head"`
+	NewHead string `json:"new_head"`
+	Created string `json:"created"`
+}
+
+// SnapRemoveParams is the TXN_BEGIN params for OpSnapRemove.
+type SnapRemoveParams struct {
+	Name  string `json:"name"`
+	Force bool   `json:"force"`
+	Child string `json:"child"`
 }
 
 // ---- Apply functions (idempotent) ----
@@ -223,8 +244,26 @@ func applyDeleteOldHead(s stepDir, raw []byte) error {
 	if err := json.Unmarshal(raw, &a); err != nil {
 		return errors.Wrap(err, "decode DELETE_OLD_HEAD args")
 	}
+	return removeDiskFiles(s, a.HeadName)
+}
+
+func applyRmDisk(s stepDir, raw []byte) error {
+	var a RmDiskArgs
+	if err := json.Unmarshal(raw, &a); err != nil {
+		return errors.Wrap(err, "decode RM_DISK args")
+	}
+	return removeDiskFiles(s, a.Name)
+}
+
+// removeDiskFiles deletes <name>, <name>.meta and <name>.checksum from
+// dir if they exist. Missing files are ignored so the step is
+// idempotent under recovery replay.
+func removeDiskFiles(s stepDir, name string) error {
+	if name == "" {
+		return nil
+	}
 	for _, suffix := range []string{"", diskutil.DiskMetadataSuffix, diskutil.DiskChecksumSuffix} {
-		p := s.path(a.HeadName + suffix)
+		p := s.path(name + suffix)
 		if err := os.RemoveAll(p); err != nil {
 			return errors.Wrapf(err, "remove %v", p)
 		}
@@ -242,6 +281,7 @@ var stepRegistry = map[wal.Action]stepFunc{
 	wal.ActionUpdateVolumeMeta: applyUpdateVolumeMeta,
 	wal.ActionUpdateSnapMeta:   applyUpdateSnapMeta,
 	wal.ActionDeleteOldHead:    applyDeleteOldHead,
+	wal.ActionRmDisk:           applyRmDisk,
 }
 
 // ---- Recovery driver ----

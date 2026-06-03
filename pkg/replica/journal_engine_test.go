@@ -304,4 +304,261 @@ func closeJournalAbruptly(t *testing.T, j *wal.Journal) {
 // package itself as wal.ForceCloseForTest.
 func journalForceClose(j *wal.Journal) error {
 	return wal.ForceCloseForTest(j)
+}// TestApplyRmDiskIdempotent verifies RM_DISK is a no-op when files are
+// already absent and removes them cleanly when present.
+func TestApplyRmDiskIdempotent(t *testing.T) {
+	dir := t.TempDir()
+	s := stepDir{dir: dir}
+	name := "volume-snap-foo.img"
+
+	// Run on missing files: must succeed.
+	if err := applyRmDisk(s, mustJSONT(t, RmDiskArgs{Name: name})); err != nil {
+		t.Fatalf("rm on missing: %v", err)
+	}
+
+	// Create files then run; must remove all three.
+	for _, suf := range []string{"", diskutil.DiskMetadataSuffix, diskutil.DiskChecksumSuffix} {
+		if err := os.WriteFile(filepath.Join(dir, name+suf), []byte("x"), 0600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := applyRmDisk(s, mustJSONT(t, RmDiskArgs{Name: name})); err != nil {
+		t.Fatalf("rm on present: %v", err)
+	}
+	for _, suf := range []string{"", diskutil.DiskMetadataSuffix, diskutil.DiskChecksumSuffix} {
+		if _, err := os.Stat(filepath.Join(dir, name+suf)); err == nil {
+			t.Fatalf("file %v should be gone", name+suf)
+		}
+	}
+
+	// Run again on already-absent files: must succeed.
+	if err := applyRmDisk(s, mustJSONT(t, RmDiskArgs{Name: name})); err != nil {
+		t.Fatalf("rm second pass: %v", err)
+	}
+}
+
+// TestRecoveryReplaysRemoveDiffDisk simulates a crash mid-RemoveDiffDisk:
+// all intents written, no Apply executed, then SIGKILL. Recovery must
+// finish the operation.
+func TestRecoveryReplaysRemoveDiffDisk(t *testing.T) {
+	dir := t.TempDir()
+
+	// Build a chain on disk: snap-000 <- snap-001 <- head-002.
+	r, err := New(context.Background(), 4096, 512, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, 4096)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := r.Snapshot("000", true, "now", nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.Snapshot("001", true, "now", nil); err != nil {
+		t.Fatal(err)
+	}
+	const removeName = "volume-snap-001.img"
+	const childName = "volume-head-002.img"
+
+	// Compute the new child meta as RemoveDiffDisk would.
+	gp := r.diskData[removeName].Parent
+	newChildMeta := *r.diskData[childName]
+	newChildMeta.Parent = gp
+
+	// Reach into the open journal and write the plan, then drop fd+flock
+	// without commit, then close the replica abruptly.
+	tx, err := r.wal.Begin(wal.OpSnapRemove, mustJSONT(t, SnapRemoveParams{
+		Name: removeName, Child: childName,
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Intent(1, wal.ActionUpdateSnapMeta, mustJSONT(t,
+		UpdateSnapMetaArgs{SnapName: childName, Meta: newChildMeta})); err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Intent(2, wal.ActionRmDisk, mustJSONT(t,
+		RmDiskArgs{Name: removeName})); err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Prepare(); err != nil {
+		t.Fatal(err)
+	}
+	// Simulate SIGKILL: drop the journal abruptly. Replica struct stays
+	// in memory but its files on disk are exactly as a kill would leave
+	// them.
+	if err := wal.ForceCloseForTest(r.wal); err != nil {
+		t.Fatal(err)
+	}
+	r.wal = nil
+
+	// Sanity: removeName still exists on disk.
+	if _, err := os.Stat(filepath.Join(dir, removeName)); err != nil {
+		t.Fatalf("pre-recovery: %v should still exist (%v)", removeName, err)
+	}
+
+	// Reopen — recovery should replay the plan.
+	r2, err := New(context.Background(), 4096, 512, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, 4096)
+	if err != nil {
+		t.Fatalf("reopen: %v", err)
+	}
+	defer r2.Close()
+
+	if _, err := os.Stat(filepath.Join(dir, removeName)); err == nil {
+		t.Fatalf("post-recovery: %v should be deleted", removeName)
+	}
+	if r2.diskData[childName].Parent != gp {
+		t.Fatalf("child parent: want %q got %q", gp, r2.diskData[childName].Parent)
+	}
+	if _, ok := r2.diskData[removeName]; ok {
+		t.Fatalf("%v should be gone from diskData", removeName)
+	}
+}
+
+// TestRecoveryReplaysRevert simulates a crash mid-Revert: all intents
+// written, no Apply, then SIGKILL. Recovery must rotate to the new head.
+func TestRecoveryReplaysRevert(t *testing.T) {
+	dir := t.TempDir()
+
+	r, err := New(context.Background(), 4096, 512, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, 4096)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := r.Snapshot("000", true, "now", nil); err != nil {
+		t.Fatal(err)
+	}
+	const parent = "volume-snap-000.img"
+	const oldHead = "volume-head-001.img"
+	const newHead = "volume-head-002.img"
+
+	if r.info.Head != oldHead {
+		t.Fatalf("expected head %q, got %q", oldHead, r.info.Head)
+	}
+
+	newHeadDisk := disk{Parent: parent, Name: newHead, Created: "now"}
+	newInfo := r.info
+	newInfo.Head = newHead
+	newInfo.Parent = parent
+	newInfo.Dirty = true
+
+	tx, err := r.wal.Begin(wal.OpSnapRevert, mustJSONT(t, SnapRevertParams{
+		Parent: parent, OldHead: oldHead, NewHead: newHead,
+	}))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Intent(1, wal.ActionCreateHead, mustJSONT(t,
+		CreateHeadArgs{HeadName: newHead, Size: 4096, Meta: newHeadDisk})); err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Intent(2, wal.ActionUpdateVolumeMeta, mustJSONT(t,
+		UpdateVolumeMetaArgs{Info: newInfo})); err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Intent(3, wal.ActionDeleteOldHead, mustJSONT(t,
+		DeleteOldHeadArgs{HeadName: oldHead})); err != nil {
+		t.Fatal(err)
+	}
+	if err := tx.Prepare(); err != nil {
+		t.Fatal(err)
+	}
+	if err := wal.ForceCloseForTest(r.wal); err != nil {
+		t.Fatal(err)
+	}
+	r.wal = nil
+
+	if _, err := os.Stat(filepath.Join(dir, oldHead)); err != nil {
+		t.Fatalf("pre-recovery: %v should exist", oldHead)
+	}
+
+	r2, err := New(context.Background(), 4096, 512, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, 4096)
+	if err != nil {
+		t.Fatalf("reopen: %v", err)
+	}
+	defer r2.Close()
+
+	if r2.info.Head != newHead {
+		t.Fatalf("expected head %q after recovery, got %q", newHead, r2.info.Head)
+	}
+	if !strings.HasPrefix(r2.info.Parent, parent) {
+		t.Fatalf("expected parent %q, got %q", parent, r2.info.Parent)
+	}
+	if _, err := os.Stat(filepath.Join(dir, newHead)); err != nil {
+		t.Fatalf("new head missing post-recovery: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(dir, oldHead)); err == nil {
+		t.Fatalf("old head should be gone post-recovery")
+	}
+}
+
+// TestRevertThroughReplicaIsCrashSafe drives a real Revert, closes,
+// and reopens; the chain must reflect the revert.
+func TestRevertThroughReplicaIsCrashSafe(t *testing.T) {
+	dir := t.TempDir()
+	r, err := New(context.Background(), 4096, 512, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, 4096)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := r.Snapshot("base", true, "now", nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.Snapshot("after", true, "now", nil); err != nil {
+		t.Fatal(err)
+	}
+
+	target := "volume-snap-base.img"
+	r2, err := r.Revert(target, "now2")
+	if err != nil {
+		t.Fatalf("Revert: %v", err)
+	}
+	if err := r2.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+
+	r3, err := New(context.Background(), 4096, 512, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, 4096)
+	if err != nil {
+		t.Fatalf("reopen: %v", err)
+	}
+	defer r3.Close()
+
+	if r3.info.Parent != target {
+		t.Fatalf("expected parent %q, got %q", target, r3.info.Parent)
+	}
+}
+
+// TestRemoveThroughReplicaIsCrashSafe drives a real RemoveDiffDisk and
+// reopens; the snapshot must be gone and child rewired.
+func TestRemoveThroughReplicaIsCrashSafe(t *testing.T) {
+	dir := t.TempDir()
+	r, err := New(context.Background(), 4096, 512, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, 4096)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := r.Snapshot("a", true, "now", nil); err != nil {
+		t.Fatal(err)
+	}
+	if err := r.Snapshot("b", true, "now", nil); err != nil {
+		t.Fatal(err)
+	}
+
+	if err := r.RemoveDiffDisk("volume-snap-a.img", false); err != nil {
+		t.Fatalf("RemoveDiffDisk: %v", err)
+	}
+	if err := r.Close(); err != nil {
+		t.Fatalf("Close: %v", err)
+	}
+
+	r2, err := New(context.Background(), 4096, 512, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, 4096)
+	if err != nil {
+		t.Fatalf("reopen: %v", err)
+	}
+	defer r2.Close()
+
+	if _, ok := r2.diskData["volume-snap-a.img"]; ok {
+		t.Fatalf("snap-a should be gone")
+	}
+	bMeta, ok := r2.diskData["volume-snap-b.img"]
+	if !ok {
+		t.Fatalf("snap-b missing")
+	}
+	if bMeta.Parent != "" {
+		t.Fatalf("snap-b parent should be empty, got %q", bMeta.Parent)
+	}
 }
