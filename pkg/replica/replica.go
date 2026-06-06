@@ -19,6 +19,7 @@ import (
 	"github.com/rancher/go-fibmap"
 	"github.com/sirupsen/logrus"
 
+	"github.com/longhorn/go-common-libs/wal"
 	"github.com/longhorn/sparse-tools/sparse"
 
 	lhtypes "github.com/longhorn/go-common-libs/types"
@@ -67,6 +68,10 @@ type Replica struct {
 
 	snapshotMaxCount int
 	snapshotMaxSize  int64
+
+	// journal is the per-replica WAL used to make snapshot chain
+	// operations crash-safe. nil for read-only replicas.
+	wal *wal.Journal
 }
 
 type Info struct {
@@ -159,7 +164,7 @@ func NewReadOnly(ctx context.Context, dir, head string, backingFile *backingfile
 }
 
 func construct(ctx context.Context, readonly bool, size, sectorSize int64, dir, head string, backingFile *backingfile.BackingFile,
-	disableRevCounter, unmapMarkDiskChainRemoved bool, snapshotMaxCount int, snapshotMaxSize int64, encrypted, isUpgrade bool, state types.ReplicaState, expectedBackendSize int64) (*Replica, error) {
+	disableRevCounter, unmapMarkDiskChainRemoved bool, snapshotMaxCount int, snapshotMaxSize int64, encrypted, isUpgrade bool, state types.ReplicaState, expectedBackendSize int64) (_ *Replica, retErr error) {
 	if size%sectorSize != 0 {
 		return nil, fmt.Errorf("size %d not a multiple of sector size %d", size, sectorSize)
 	}
@@ -186,6 +191,39 @@ func construct(ctx context.Context, readonly bool, size, sectorSize int64, dir, 
 	r.info.SectorSize = sectorSize
 	r.info.Encrypted = encrypted
 	r.volume.sectorSize = diskutil.VolumeSectorSize
+
+	// Sweep leftover *.tmp files from prior interrupted meta writes. The
+	// journal-driven step engine (see pkg/replica/journal) is responsible
+	// for the actual chain consistency on restart; this just removes
+	// orphaned scratch files that the rename-after-write pattern can leave
+	// behind.
+	if !readonly {
+		if err := r.sweepTmpFiles(); err != nil {
+			return nil, err
+		}
+
+		// Open the journal and replay any unfinished snapshot chain
+		// transactions. Recovery must run before tryRecoverVolumeMetaFile
+		// since a pending UPDATE_VOLUME_META intent will write the correct
+		// volume.meta during replay.
+		j, err := recoverJournal(dir)
+		if err != nil {
+			return nil, err
+		}
+		r.wal = j
+		// Release the journal's flock if construction fails on any
+		// subsequent step; otherwise the FD lives until process exit
+		// and a same-process retry would deadlock under fcntl-flock
+		// semantics on Linux.
+		defer func() {
+			if retErr != nil && r.wal != nil {
+				errClose := r.wal.Close()
+				if errClose != nil {
+					logrus.WithError(errClose).Warnf("Failed to close journal %v", dir)
+				}
+			}
+		}()
+	}
 
 	// Try to recover volume metafile if deleted or empty.
 	if err := r.tryRecoverVolumeMetaFile(head); err != nil {
@@ -331,6 +369,18 @@ func (r *Replica) SetRebuilding(rebuilding bool) error {
 }
 
 func (r *Replica) Reload() (*Replica, error) {
+	// The journal flock is held by this replica's process; we must release
+	// it before constructing the replacement, which will reopen the
+	// journal in its own construct(). The current journal is at a clean
+	// state (any in-flight txn has either been committed or aborted by
+	// the operation that triggered Reload), so a clean Close + Checkpoint
+	// is sufficient.
+	if r.wal != nil {
+		if err := r.wal.Close(); err != nil {
+			return nil, err
+		}
+		r.wal = nil
+	}
 	newReplica, err := New(r.ctx, r.info.Size, r.info.SectorSize, r.dir, r.info.BackingFile, r.revisionCounterDisabled, r.unmapMarkDiskChainRemoved, r.snapshotMaxCount, r.snapshotMaxSize, r.info.Encrypted, false, types.ReplicaStateDirty, r.info.Size)
 	if err != nil {
 		return nil, err
@@ -358,15 +408,121 @@ func (r *Replica) RemoveDiffDisk(name string, force bool) error {
 	if name == r.info.Head {
 		return fmt.Errorf("cannot delete the active differencing disk")
 	}
-
-	if err := r.removeDiskNode(name, force); err != nil {
-		return err
+	if r.wal == nil {
+		return fmt.Errorf("RemoveDiffDisk: journal is not initialised")
+	}
+	if _, ok := r.diskData[name]; !ok {
+		return fmt.Errorf("cannot find disk %v", name)
 	}
 
-	if err := r.rmDisk(name); err != nil {
-		return err
+	// Compute the chain rewiring without mutating in-memory state yet.
+	children := r.diskChildrenMap[name]
+	if len(children) > 1 && !force {
+		return fmt.Errorf("cannot remove snapshot %v with %v children", name, len(children))
+	}
+	if len(children) > 1 {
+		logrus.Warnf("Force delete disk %v with multiple children. Randomly choose a child to inherit", name)
 	}
 
+	var chosenChild string
+	var chosenChildNewMeta disk
+	if len(children) > 0 {
+		for c := range children {
+			chosenChild = c
+			break
+		}
+		existing, ok := r.diskData[chosenChild]
+		if !ok {
+			return fmt.Errorf("child %v of %v not in diskData", chosenChild, name)
+		}
+		chosenChildNewMeta = *existing
+		// child's new parent is name's parent (grandparent).
+		chosenChildNewMeta.Parent = r.diskData[name].Parent
+	}
+
+	paramsJSON := mustJSON(SnapRemoveParams{
+		Name:  name,
+		Force: force,
+		Child: chosenChild,
+	})
+
+	type stepDef struct {
+		id     uint32
+		action wal.Action
+		args   []byte
+	}
+	var steps []stepDef
+	var stepID uint32 = 1
+	if chosenChild != "" {
+		steps = append(steps, stepDef{stepID, wal.ActionUpdateSnapMeta,
+			mustJSON(UpdateSnapMetaArgs{SnapName: chosenChild, Meta: chosenChildNewMeta})})
+		stepID++
+	}
+	steps = append(steps, stepDef{stepID, wal.ActionRmDisk,
+		mustJSON(RmDiskArgs{Name: name})})
+
+	tx, err := r.wal.Begin(wal.OpSnapRemove, paramsJSON)
+	if err != nil {
+		return errors.Wrap(err, "begin remove journal txn")
+	}
+	for _, st := range steps {
+		if err := tx.Intent(st.id, st.action, st.args); err != nil {
+			_ = tx.Abort()
+			return errors.Wrapf(err, "intent step %d", st.id)
+		}
+	}
+	if err := tx.Prepare(); err != nil {
+		_ = tx.Abort()
+		return errors.Wrap(err, "prepare remove txn")
+	}
+
+	s := stepDir{dir: r.dir}
+	for _, st := range steps {
+		fn := stepRegistry[st.action]
+		if err := fn(s, st.args); err != nil {
+			// Every RemoveDiffDisk step is at the visible commit
+			// point (UPDATE_SNAP_META rewrites the surviving child;
+			// RM_DISK deletes the target). Leave the txn pending so
+			// recovery can finish on the next startup.
+			//
+			// NOTE: in-memory r.diskData/diskChildrenMap below is
+			// skipped on this path; callers must treat any error
+			// here as fatal for the *Replica -- the next startup
+			// reconciles both the journal and the in-memory chain.
+			return errors.Wrapf(err, "apply step %d (%s)", st.id, st.action)
+		}
+		if err := tx.StepDone(st.id); err != nil {
+			return errors.Wrapf(err, "STEP_DONE step %d", st.id)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return errors.Wrap(err, "commit remove txn")
+	}
+
+	// In-memory bookkeeping mirroring removeDiskNode, minus the file ops
+	// that the journal Apply has already performed. r.diskData entries
+	// are *disk pointers shared with r.activeDiskData, so we must mutate
+	// the chosen child in place rather than reassigning the map slot.
+	if chosenChild != "" {
+		r.updateChildDisk(name, chosenChild)
+		existing := r.diskData[chosenChild]
+		existing.Parent = chosenChildNewMeta.Parent
+		delete(r.diskChildrenMap, name)
+	} else {
+		r.updateChildDisk(name, "")
+	}
+	delete(r.diskData, name)
+
+	index := r.findDisk(name)
+	if index > 0 {
+		if err := r.volume.RemoveIndex(index); err != nil {
+			return err
+		}
+		if len(r.activeDiskData)-2 == index {
+			r.info.Parent = r.diskData[r.info.Head].Parent
+		}
+		r.activeDiskData = append(r.activeDiskData[:index], r.activeDiskData[index+1:]...)
+	}
 	return nil
 }
 
@@ -680,7 +836,14 @@ func (r *Replica) closeWithoutWritingMetaData() {
 
 func (r *Replica) close() error {
 	r.closeWithoutWritingMetaData()
-	return r.writeVolumeMetaData(false, r.info.Rebuilding)
+	err := r.writeVolumeMetaData(false, r.info.Rebuilding)
+	if r.wal != nil {
+		if errJ := r.wal.Close(); errJ != nil && err == nil {
+			err = errJ
+		}
+		r.wal = nil
+	}
+	return err
 }
 
 func (r *Replica) encodeToFile(obj interface{}, file string) (rollbackFunc func() error, err error) {
@@ -713,14 +876,56 @@ func (r *Replica) encodeToFile(obj interface{}, file string) (rollbackFunc func(
 	}
 
 	if err := json.NewEncoder(f).Encode(&obj); err != nil {
+		_ = f.Close()
 		return rollbackFunc, err
+	}
+
+	// fsync the data of the temp file before the rename so that a crash
+	// after the rename cannot expose a zero-length file.
+	if err := f.Sync(); err != nil {
+		_ = f.Close()
+		return rollbackFunc, errors.Wrapf(err, "failed to fsync tmp file %v", r.diskPath(tmpFileName))
 	}
 
 	if err := f.Close(); err != nil {
 		return rollbackFunc, err
 	}
 
-	return rollbackFunc, os.Rename(r.diskPath(tmpFileName), r.diskPath(file))
+	if err := os.Rename(r.diskPath(tmpFileName), r.diskPath(file)); err != nil {
+		return rollbackFunc, err
+	}
+
+	// fsync the parent directory so the rename itself is durable.
+	return rollbackFunc, util.FsyncDir(r.dir)
+}
+
+// sweepTmpFiles removes leftover *.tmp files in the replica directory.
+// Called from construct() before journal recovery; the .tmp files are
+// scratch artifacts of an interrupted write -> rename and carry no
+// authoritative state, so removing them here is always safe. The journal
+// (replayed immediately after) is the source of truth for chain
+// consistency.
+func (r *Replica) sweepTmpFiles() error {
+	entries, err := os.ReadDir(r.dir)
+	if err != nil {
+		return err
+	}
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		name := e.Name()
+		if !strings.HasSuffix(name, tmpFileSuffix) {
+			continue
+		}
+		p := filepath.Join(r.dir, name)
+		if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
+			logrus.WithError(err).Warnf("failed to sweep leftover tmp file %v", p)
+		} else {
+			logrus.Infof("Swept leftover tmp file %v", p)
+		}
+	}
+	return nil
 }
 
 func (r *Replica) nextFile(parsePattern *regexp.Regexp, pattern, parent string) (string, error) {
@@ -902,33 +1107,92 @@ func (r *Replica) revertDisk(parentDiskFileName, created string) (*Replica, erro
 	} else if diskInfo.Removed {
 		return nil, fmt.Errorf("cannot revert to disk file %v since it's already marked as removed", parentDiskFileName)
 	}
+	if r.wal == nil {
+		return nil, fmt.Errorf("revertDisk: journal is not initialised")
+	}
 
 	oldHead := r.info.Head
-	f, newHeadDisk, _, err := r.createNewHead(oldHead, parentDiskFileName, created, r.info.Size)
+	newHeadName, err := r.nextFile(diskPattern, diskutil.VolumeHeadDiskName, oldHead)
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		if errClose := f.Close(); errClose != nil {
-			logrus.WithError(errClose).Error("Failed to close file")
-		}
-	}()
-
-	info := r.info
-	info.Head = newHeadDisk.Name
-	info.Dirty = true
-	info.Parent = newHeadDisk.Parent
-
-	if _, err := r.encodeToFile(&info, volumeMetaData); err != nil {
-		if _, err = r.encodeToFile(&r.info, volumeMetaData); err != nil {
-			return nil, err
-		}
-		return nil, err
+	if _, errStat := os.Stat(r.diskPath(newHeadName)); errStat == nil {
+		return nil, fmt.Errorf("%s already exists", newHeadName)
 	}
 
-	// Need to execute before r.Reload() to update r.diskChildrenMap
-	if err = r.rmDisk(oldHead); err != nil {
-		return nil, err
+	newHeadDisk := disk{
+		Parent:      parentDiskFileName,
+		Name:        newHeadName,
+		Removed:     false,
+		UserCreated: false,
+		Created:     created,
+	}
+	newInfo := r.info
+	newInfo.Head = newHeadName
+	newInfo.Dirty = true
+	newInfo.Parent = parentDiskFileName
+
+	chArgs := mustJSON(CreateHeadArgs{HeadName: newHeadName, Size: r.info.Size, Meta: newHeadDisk})
+	uvmArgs := mustJSON(UpdateVolumeMetaArgs{Info: newInfo})
+	dohArgs := mustJSON(DeleteOldHeadArgs{HeadName: oldHead})
+	paramsJSON := mustJSON(SnapRevertParams{
+		Parent:  parentDiskFileName,
+		OldHead: oldHead,
+		NewHead: newHeadName,
+		Created: created,
+	})
+
+	tx, err := r.wal.Begin(wal.OpSnapRevert, paramsJSON)
+	if err != nil {
+		return nil, errors.Wrap(err, "begin revert journal txn")
+	}
+	type stepDef struct {
+		id     uint32
+		action wal.Action
+		args   []byte
+		skip   bool
+	}
+	steps := []stepDef{
+		{1, wal.ActionCreateHead, chArgs, false},
+		{2, wal.ActionUpdateVolumeMeta, uvmArgs, false},
+		{3, wal.ActionDeleteOldHead, dohArgs, oldHead == ""},
+	}
+	for _, st := range steps {
+		if st.skip {
+			continue
+		}
+		if err := tx.Intent(st.id, st.action, st.args); err != nil {
+			_ = tx.Abort()
+			return nil, errors.Wrapf(err, "intent step %d", st.id)
+		}
+	}
+	if err := tx.Prepare(); err != nil {
+		_ = tx.Abort()
+		return nil, errors.Wrap(err, "prepare revert txn")
+	}
+
+	s := stepDir{dir: r.dir}
+	for _, st := range steps {
+		if st.skip {
+			continue
+		}
+		fn := stepRegistry[st.action]
+		if err := fn(s, st.args); err != nil {
+			// Step 1 (CREATE_HEAD) runs before UPDATE_VOLUME_META
+			// (the visible commit point). From step 2 onwards a
+			// partial writeJSONAtomic may already have moved
+			// volume.meta, so leave the txn pending for recovery.
+			if st.id <= 1 {
+				_ = tx.Abort()
+			}
+			return nil, errors.Wrapf(err, "apply step %d (%s)", st.id, st.action)
+		}
+		if err := tx.StepDone(st.id); err != nil {
+			return nil, errors.Wrapf(err, "STEP_DONE step %d", st.id)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return nil, errors.Wrap(err, "commit revert txn")
 	}
 
 	rNew, err := r.Reload()
@@ -940,7 +1204,7 @@ func (r *Replica) revertDisk(parentDiskFileName, created string) (*Replica, erro
 
 func (r *Replica) createDisk(name string, userCreated bool, created string, labels map[string]string, size int64) (err error) {
 	log := logrus.WithFields(logrus.Fields{"disk": name})
-	log.Info("Starting to create disk")
+	log.Info("Starting to create disk (journaled)")
 	if r.readOnly {
 		return fmt.Errorf("cannot create disk on read-only replica")
 	}
@@ -949,94 +1213,189 @@ func (r *Replica) createDisk(name string, userCreated bool, created string, labe
 		return fmt.Errorf("too many active disks: %v", len(r.activeDiskData)-2+1)
 	}
 
+	if r.wal == nil {
+		return fmt.Errorf("createDisk: journal is not initialised")
+	}
+
 	oldHead := r.info.Head
 	newSnapName := diskutil.GenerateSnapshotDiskName(name)
-
 	if oldHead == "" {
 		newSnapName = ""
 	}
-
 	if newSnapName != "" {
 		if _, ok := r.diskData[newSnapName]; ok {
 			return fmt.Errorf("snapshot %v is already existing", newSnapName)
 		}
 	}
 
-	rollbackFuncList := []func() error{}
-	defer func() {
-		if err == nil {
-			if errRm := r.rmDisk(oldHead); errRm != nil {
-				logrus.WithError(errRm).Warnf("Failed to remove old head %v", oldHead)
-			}
-			return
+	// Journaled snapshot-create plan:
+	//   1. CREATE_HEAD         — allocate new head image + write its .meta
+	//   2. LINK_AS_SNAPSHOT    — hardlink old head image+meta as the new snap
+	//   3. UPDATE_VOLUME_META  — swing volume.meta to point at the new head
+	//   4. UPDATE_SNAP_META    — write snap .meta with user-supplied fields
+	//   5. DELETE_OLD_HEAD     — remove the renamed-away old head files
+	//
+	// Steps are recorded as INTENTs, then PREPARE marks the set complete.
+	// Apply runs each step and writes STEP_DONE before final COMMIT.
+	// A crash at any point is recovered on the next startup.
+
+	newHeadName, err := r.nextFile(diskPattern, diskutil.VolumeHeadDiskName, oldHead)
+	if err != nil {
+		return err
+	}
+	if _, errStat := os.Stat(r.diskPath(newHeadName)); errStat == nil {
+		return fmt.Errorf("%s already exists", newHeadName)
+	}
+
+	newHeadDisk := disk{
+		Parent:      newSnapName,
+		Name:        newHeadName,
+		Removed:     false,
+		UserCreated: false,
+		Created:     created,
+	}
+
+	newInfo := r.info
+	newInfo.Head = newHeadName
+	newInfo.Dirty = true
+	newInfo.Parent = newSnapName
+	newInfo.Size = size
+
+	// Build the new snapshot's meta from the soon-to-be-renamed old head's
+	// disk data, with user-provided overrides. Name is set to newSnapName;
+	// readMetadata will overwrite it from the filename on reload anyway.
+	var newSnapMeta disk
+	if newSnapName != "" {
+		old := r.diskData[oldHead]
+		newSnapMeta = disk{
+			Name:        newSnapName,
+			Parent:      old.Parent,
+			Removed:     old.Removed,
+			UserCreated: userCreated,
+			Created:     created,
+			Labels:      labels,
 		}
-
-		var rollbackErr error
-		log.WithError(err).Errorf("Failed to create disk %v, will do rollback", name)
-		for _, rollbackFunc := range rollbackFuncList {
-			if rollbackFunc == nil {
-				continue
-			}
-			rollbackErr = types.CombineErrors(rollbackErr, rollbackFunc())
-		}
-		err = types.WrapError(
-			types.GenerateFunctionErrorWithRollback(err, rollbackErr),
-			"failed to create new disk %v", name)
-	}()
-
-	f, newHeadDisk, createNewHeadRollbackFunc, err := r.createNewHead(oldHead, newSnapName, created, size)
-	if err != nil {
-		return err
 	}
-	rollbackFuncList = append(rollbackFuncList, createNewHeadRollbackFunc)
 
-	linkDiskRollbackFunc, err := r.linkDisk(r.info.Head, newSnapName)
-	if err != nil {
-		return err
+	chArgs := mustJSON(CreateHeadArgs{HeadName: newHeadName, Size: size, Meta: newHeadDisk})
+	var laArgs []byte
+	if newSnapName != "" {
+		laArgs = mustJSON(LinkAsSnapshotArgs{SourceImage: oldHead, DestSnap: newSnapName})
 	}
-	rollbackFuncList = append(rollbackFuncList, linkDiskRollbackFunc)
-
-	info := r.info
-	info.Head = newHeadDisk.Name
-	info.Dirty = true
-	info.Parent = newSnapName
-	info.Size = size
-
-	volumeMetaEncodeRollbackFunc, err := r.encodeToFile(&info, volumeMetaData)
-	if err != nil {
-		return err
+	uvmArgs := mustJSON(UpdateVolumeMetaArgs{Info: newInfo})
+	var usmArgs []byte
+	if newSnapName != "" {
+		usmArgs = mustJSON(UpdateSnapMetaArgs{SnapName: newSnapName, Meta: newSnapMeta})
 	}
-	rollbackFuncList = append(rollbackFuncList, func() error {
-		_, err := r.encodeToFile(&r.info, volumeMetaData)
-		return types.CombineErrors(volumeMetaEncodeRollbackFunc(), err)
+	var dohArgs []byte
+	if oldHead != "" {
+		dohArgs = mustJSON(DeleteOldHeadArgs{HeadName: oldHead})
+	}
+
+	paramsJSON := mustJSON(SnapCreateParams{
+		Snapshot:    name,
+		OldHead:     oldHead,
+		NewHead:     newHeadName,
+		NewSnap:     newSnapName,
+		UserCreated: userCreated,
+		Size:        size,
 	})
 
-	r.diskData[newHeadDisk.Name] = &newHeadDisk
-	if newSnapName != "" {
-		r.addChildDisk(newSnapName, newHeadDisk.Name)
-		r.diskData[newSnapName] = r.diskData[oldHead]
-		r.diskData[newSnapName].UserCreated = userCreated
-		r.diskData[newSnapName].Created = created
-		r.diskData[newSnapName].Labels = labels
-		rollbackFuncList = append(rollbackFuncList, func() error {
-			delete(r.diskData, newHeadDisk.Name)
-			delete(r.diskData, newSnapName)
-			delete(r.diskChildrenMap, newSnapName)
-			return nil
-		})
+	tx, err := r.wal.Begin(wal.OpSnapCreate, paramsJSON)
+	if err != nil {
+		return errors.Wrap(err, "begin journal txn")
+	}
 
-		snapMetaEncodeRollbackFunc, err := r.encodeToFile(r.diskData[newSnapName], newSnapName+diskutil.DiskMetadataSuffix)
-		if err != nil {
-			return err
+	type stepDef struct {
+		id     uint32
+		action wal.Action
+		args   []byte
+		skip   bool
+	}
+	steps := []stepDef{
+		{1, wal.ActionCreateHead, chArgs, false},
+		{2, wal.ActionLinkAsSnapshot, laArgs, newSnapName == ""},
+		{3, wal.ActionUpdateVolumeMeta, uvmArgs, false},
+		{4, wal.ActionUpdateSnapMeta, usmArgs, newSnapName == ""},
+		{5, wal.ActionDeleteOldHead, dohArgs, oldHead == ""},
+	}
+
+	// Write the full operation plan to the journal up front. After this,
+	// recovery has enough information to roll the transaction forward to
+	// completion no matter where a subsequent crash occurs.
+	for _, st := range steps {
+		if st.skip {
+			continue
 		}
-		rollbackFuncList = append(rollbackFuncList, snapMetaEncodeRollbackFunc)
+		if errIntent := tx.Intent(st.id, st.action, st.args); errIntent != nil {
+			_ = tx.Abort()
+			return errors.Wrapf(errIntent, "write intent for step %d", st.id)
+		}
+	}
+	// PREPARE marks the intent set as durable and complete. Recovery
+	// only redoes prepared transactions; a crash before this point
+	// leaves a (possibly torn) intent set that recovery will discard.
+	if errPrep := tx.Prepare(); errPrep != nil {
+		_ = tx.Abort()
+		return errors.Wrap(errPrep, "prepare journal txn")
+	}
+
+	s := stepDir{dir: r.dir}
+	for _, st := range steps {
+		if st.skip {
+			continue
+		}
+		if errApply := stepRegistry[st.action](s, st.args); errApply != nil {
+			// Steps 1-2 run before UPDATE_VOLUME_META (the visible
+			// commit point). Abort the txn and clean up partial
+			// artifacts so the caller can retry with the same name.
+			// From step 3 onwards a partially-applied writeJSONAtomic
+			// may already have moved volume.meta, so leave the txn
+			// pending and let recovery finish on the next startup.
+			if st.id <= 2 {
+				_ = tx.Abort()
+				_ = applyDeleteOldHead(s, mustJSON(DeleteOldHeadArgs{HeadName: newHeadName}))
+				if newSnapName != "" {
+					_ = applyDeleteOldHead(s, mustJSON(DeleteOldHeadArgs{HeadName: newSnapName}))
+				}
+			}
+			return errors.Wrapf(errApply, "apply step %d (%s)", st.id, st.action)
+		}
+		if errDone := tx.StepDone(st.id); errDone != nil {
+			// Apply already succeeded; on-disk effect is durable.
+			// Do not abort -- recovery will write STEP_DONE + COMMIT.
+			return errors.Wrapf(errDone, "step done %d", st.id)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		return errors.Wrap(err, "commit journal txn")
+	}
+
+	// Open the new head image for I/O.
+	f, err := r.openFile(r.diskPath(newHeadName), 0)
+	if err != nil {
+		return errors.Wrap(err, "open new head")
+	}
+
+	// Patch in-memory state to reflect the now-durable on-disk state.
+	if newSnapName != "" {
+		// The old head's disk struct is reused as the new snapshot's
+		// disk struct (its image+meta were just hardlinked under the
+		// new name). Mutate Name + user fields in place.
+		snapDiskRef := r.diskData[oldHead]
+		snapDiskRef.Name = newSnapName
+		snapDiskRef.UserCreated = userCreated
+		snapDiskRef.Created = created
+		snapDiskRef.Labels = labels
+		r.diskData[newSnapName] = snapDiskRef
 
 		r.updateChildDisk(oldHead, newSnapName)
 		r.activeDiskData[len(r.activeDiskData)-1].Name = newSnapName
+		r.addChildDisk(newSnapName, newHeadName)
 	}
 	delete(r.diskData, oldHead)
-
-	r.info = info
+	r.diskData[newHeadName] = &newHeadDisk
+	r.info = newInfo
 	r.volume.files = append(r.volume.files, f)
 	r.activeDiskData = append(r.activeDiskData, &newHeadDisk)
 

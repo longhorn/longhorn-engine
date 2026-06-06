@@ -129,14 +129,12 @@ github.com/kylelemons/godebug v1.1.0 h1:RPNrshWIDI6G2gRW9EHilWtl7Z6Sb1BR0xunSBf0
 github.com/kylelemons/godebug v1.1.0/go.mod h1:9/0rRGxNHcop5bhtWyNeEfOS8JIWk580+fNqagV/RAw=
 github.com/longhorn/backupstore v0.0.0-20260525102750-1ed7dde50b68 h1:p05ShG/5GrcHLU0+ZejEogNONg99e6JS1hq9qXY0B8o=
 github.com/longhorn/backupstore v0.0.0-20260525102750-1ed7dde50b68/go.mod h1:sJ3YQBK1exSY+Gep0cKaQhZ9f2rOem2hy6NTOk7iFg8=
-github.com/longhorn/go-common-libs v0.0.0-20260525102658-c0739cd3e2c2 h1:2xTjL2HGPW1/pV7DG7a/0IRbnksf5e0SLlrLrNE24ig=
-github.com/longhorn/go-common-libs v0.0.0-20260525102658-c0739cd3e2c2/go.mod h1:6dyqqzjGfiPBn0OTKZcTBOjyViexE/L2D56741sch5s=
 github.com/longhorn/go-iscsi-helper v0.0.0-20260331100542-4c4c6f91525b h1:877AlP/bMchRs0qRHVW3zZ42qt+iNjALc4Sz9XzrgZQ=
 github.com/longhorn/go-iscsi-helper v0.0.0-20260331100542-4c4c6f91525b/go.mod h1:5obSKdWNPiFbFTzPWU09k9mGCSnpN9pgGoHQTUk7kYo=
 github.com/longhorn/sparse-tools v0.0.0-20260423074222-280e61de741a h1:xb71oeVPI7XZymAAG8ts5deC8s40dnX5IgxTYAB/qnk=
 github.com/longhorn/sparse-tools v0.0.0-20260423074222-280e61de741a/go.mod h1:d8l9nyC8No3PIfYHwZunnBj88y5M4sDM+h6uZyTtaNk=
-github.com/longhorn/types v0.0.0-20260522011813-8f1780fad833 h1:zqVqTago9q7WQcOo1giTG455P0Nk1QmuYSkSO9rUEIY=
-github.com/longhorn/types v0.0.0-20260522011813-8f1780fad833/go.mod h1:iY4stwsoG8OwvR0WSZr+YeSOr4YNnoX9+GoG3u+uDFw=
+github.com/longhorn/types v0.0.0-20260602074022-85db2ba11d69 h1:SpeYdXeLwtMLXqQwl3tNWke/SHOVISdKHs8IoSqlC+E=
+github.com/longhorn/types v0.0.0-20260602074022-85db2ba11d69/go.mod h1:F84Y4B+3GyEcjr9EbwdI3RgOzT8nm2EqHxqyTWkCfRE=
 github.com/mattn/go-colorable v0.1.13 h1:fFA4WZxdEF4tXPZVKMLwD8oUnCTTo08duU7wxecdEvA=
 github.com/mattn/go-colorable v0.1.13/go.mod h1:7S9/ev0klgBDR4GtXTXX8a3vIGJpMovkB8vQcUbaXHg=
 github.com/mattn/go-isatty v0.0.16/go.mod h1:kYGgaQfpe5nmfYZH+SKPsOc2e4SrIfOl2e/yFXSvRLM=
