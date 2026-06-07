@@ -2,6 +2,8 @@ module github.com/longhorn/longhorn-engine
 
 go 1.25.10
 
+replace github.com/longhorn/types => github.com/longhorn/types v0.0.0-20260408014255-ff785625245f
+
 require (
 	github.com/cockroachdb/errors v1.12.0
 	github.com/docker/go-units v0.5.0
