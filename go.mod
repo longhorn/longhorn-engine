@@ -1,6 +1,6 @@
 module github.com/longhorn/longhorn-engine
 
-go 1.25.9
+go 1.25.10
 
 require (
 	github.com/cockroachdb/errors v1.12.0
