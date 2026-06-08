@@ -1,5 +1,13 @@
+<<<<<<< HEAD
 # syntax=docker/dockerfile:1.23.0@sha256:2780b5c3bab67f1f76c781860de469442999ed1a0d7992a5efdf2cffc0e3d769
 FROM registry.suse.com/bci/golang:1.26@sha256:9b829b1026dac4281baa0715c4dd975735665d5ff843b0e1cd20e3fbbde95302 AS base
+=======
+# syntax=docker/dockerfile:1.24.0@sha256:87999aa3d42bdc6bea60565083ee17e86d1f3339802f543c0d03998580f9cb89
+ARG GOLANGCI_LINT_VERSION=v2.12.2
+FROM golangci/golangci-lint:${GOLANGCI_LINT_VERSION} AS golangci-lint
+
+FROM registry.suse.com/bci/golang:1.26@sha256:f413accb043d80ea904e972958c06543e5fa3225652b29b44c51f027246b3b81 AS base
+>>>>>>> ec7e1216 (chore: update golangci-lint to v2.12.2)
 
 ARG TARGETARCH
 ARG SRC_BRANCH=master
@@ -11,7 +19,6 @@ ENV ARCH=${TARGETARCH}
 ENV GOFLAGS=-mod=vendor
 
 ENV PROTOBUF_VER_PY=4.24.3
-ENV GOLANGCI_LINT_VERSION=v2.11.4
 
 ENV LONGHORN_INSTANCE_MANAGER_BRANCH="master"
 
@@ -35,10 +42,8 @@ RUN zypper -n install cmake curl git less file gcc python311 python311-pip pytho
     rpm-build rdma-core-devel gcc-c++ docker open-iscsi e2fsprogs && \
     rm -rf /var/cache/zypp/*
 
-# Install golangci-lint
-RUN curl -fsSL https://raw.githubusercontent.com/golangci/golangci-lint/master/install.sh -o /tmp/install.sh \
-    && chmod +x /tmp/install.sh \
-    && /tmp/install.sh -b /usr/local/bin ${GOLANGCI_LINT_VERSION}
+# Copy golangci-lint binary from official image
+COPY --from=golangci-lint /usr/bin/golangci-lint /usr/local/bin/golangci-lint
 
 # Install Minio
 ENV MINIO_URL_amd64=https://dl.min.io/server/minio/release/linux-amd64/archive/minio.RELEASE.2021-12-20T22-07-16Z \
