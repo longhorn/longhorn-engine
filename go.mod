@@ -1,6 +1,6 @@
 module github.com/longhorn/longhorn-engine
 
-go 1.25.10
+go 1.25.0
 
 replace github.com/longhorn/types => github.com/longhorn/types v0.0.0-20260408014255-ff785625245f
 
