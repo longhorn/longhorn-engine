@@ -425,8 +425,6 @@ github.com/slok/goresilience/timeout
 # github.com/urfave/cli v1.22.17
 ## explicit; go 1.11
 github.com/urfave/cli
-# github.com/urfave/cli/v3 v3.9.0
-## explicit; go 1.22
 # github.com/x448/float16 v0.8.4
 ## explicit; go 1.11
 github.com/x448/float16

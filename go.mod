@@ -1,8 +1,6 @@
 module github.com/longhorn/longhorn-engine
 
-go 1.26.0
-
-toolchain go1.26.3
+go 1.26
 
 require (
 	github.com/cockroachdb/errors v1.13.0
@@ -21,7 +19,6 @@ require (
 	github.com/rancher/go-rancher v0.1.1-0.20190307222549-9756097e5e4c
 	github.com/sirupsen/logrus v1.9.4
 	github.com/urfave/cli v1.22.17
-	github.com/urfave/cli/v3 v3.9.0
 	go.uber.org/multierr v1.11.0
 	golang.org/x/sys v0.45.0
 	google.golang.org/grpc v1.81.1
