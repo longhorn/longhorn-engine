@@ -1,6 +1,6 @@
-FROM golangci/golangci-lint:v2.12.2 AS golangci-lint
+FROM golangci/golangci-lint:v2.12.2@sha256:5cceeef04e53efe1470638d4b4b4f5ceefd574955ab3941b2d9a68a8c9ad5240 AS golangci-lint
 
-FROM registry.suse.com/bci/golang:1.25@sha256:8afe8e612c9cd4ab4e7284f8de5a93c1c943c467fcf4b07bb9347a4e7647622e
+FROM registry.suse.com/bci/golang:1.25@sha256:2c8e7d25c10a6296c5ffca13a785512917671fd6a6cb2881fa3bffa38517f6ca
 
 ARG DAPPER_HOST_ARCH
 ARG SRC_BRANCH=master
