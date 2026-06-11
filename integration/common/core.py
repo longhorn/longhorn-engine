@@ -387,6 +387,7 @@ def restore_with_frontend(url, engine_name, backup):
     client.volume_frontend_start(FRONTEND_TGT_BLOCKDEV)
     v = client.volume_get()
     assert v.frontendState == "up"
+    get_blockdev(v.name)
     return
 
 
@@ -515,6 +516,9 @@ def snapshot_revert_with_frontend(url, engine_name, name):
     client.volume_frontend_shutdown()
     cmd.snapshot_revert(url, name)
     client.volume_frontend_start(FRONTEND_TGT_BLOCKDEV)
+    v = client.volume_get()
+    assert v.frontendState == "up"
+    get_blockdev(v.name)
 
 
 def cleanup_replica_dir(dir=""):
@@ -547,10 +551,13 @@ def open_replica(grpc_client, size=SIZE):
 
 def get_blockdev(volume):
     dev = blockdev(volume)
-    for i in range(10):
-        if not dev.ready():
-            time.sleep(1)
-    assert dev.ready()
+    ready = False
+    for _ in range(RETRY_COUNTS):
+        ready = dev.ready()
+        if ready:
+            break
+        time.sleep(RETRY_INTERVAL)
+    assert ready
     return dev
 
 
@@ -754,6 +761,9 @@ def expand_volume_with_frontend(grpc_controller_client, size):  # NOQA
     grpc_controller_client.volume_expand(size)
     wait_for_volume_expansion(grpc_controller_client, size)
     grpc_controller_client.volume_frontend_start(FRONTEND_TGT_BLOCKDEV)
+    v = grpc_controller_client.volume_get()
+    assert v.frontendState == "up"
+    get_blockdev(v.name)
 
 
 def wait_for_volume_expansion(grpc_controller_client, size):  # NOQA
