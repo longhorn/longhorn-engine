@@ -25,8 +25,6 @@ import (
 var (
 	MaximumVolumeNameSize = 64
 	validVolumeName       = regexp.MustCompile(`^[a-zA-Z0-9][a-zA-Z0-9_.-]+$`)
-
-	unixDomainSocketDirectoryInContainer = "/host/var/lib/longhorn/unix-domain-socket/"
 )
 
 const (
@@ -277,7 +275,7 @@ func GetAddresses(volumeName, address string, dataServerProtocol types.DataServe
 		return ParseAddresses(address)
 	case types.DataServerProtocolUNIX:
 		controlAddress, _, syncAddress, syncPort, err := ParseAddresses(address)
-		sockPath := filepath.Join(unixDomainSocketDirectoryInContainer, volumeName+".sock")
+		sockPath := filepath.Join(GetUnixDomainSocketDirectoryInContainer(), volumeName+".sock")
 		return controlAddress, sockPath, syncAddress, syncPort, err
 	default:
 		return "", "", "", -1, fmt.Errorf("unsupported protocol: %v", dataServerProtocol)
