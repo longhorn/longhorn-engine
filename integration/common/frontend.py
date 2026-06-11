@@ -1,3 +1,4 @@
+import errno
 import os
 from os import path
 import stat
@@ -85,9 +86,22 @@ class blockdev:
         return writeat_direct(self.dev, offset, data)
 
     def ready(self):
-        if not os.path.exists(self.dev):
-            return False
-        mode = os.stat(self.dev).st_mode
-        if not stat.S_ISBLK(mode):
-            return False
+        fd = None
+        try:
+            st = os.stat(self.dev)
+            if not stat.S_ISBLK(st.st_mode):
+                return False
+            # The block device node can exist before the underlying iSCSI
+            # device is able to service I/O. Probe it with a non-blocking
+            # open + small read so we only report ready once it truly works.
+            fd = os.open(self.dev, os.O_RDONLY | os.O_NONBLOCK)
+            os.pread(fd, PAGE_SIZE, 0)
+        except OSError as e:
+            if e.errno in (errno.ENXIO, errno.ENODEV, errno.ENOENT, errno.EIO,
+                           errno.EAGAIN, errno.EWOULDBLOCK, errno.EBUSY):
+                return False
+            raise
+        finally:
+            if fd is not None:
+                os.close(fd)
         return True
