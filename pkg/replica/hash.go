@@ -24,6 +24,7 @@ import (
 	xattrType "github.com/longhorn/sparse-tools/types"
 
 	"github.com/longhorn/longhorn-engine/pkg/types"
+	"github.com/longhorn/longhorn-engine/pkg/util"
 
 	diskutil "github.com/longhorn/longhorn-engine/pkg/util/disk"
 )
@@ -31,10 +32,13 @@ import (
 const (
 	defaultHashMethod = "crc64"
 
-	FileLockDirectory = "/host/var/lib/longhorn/.lock"
-	HashLockFileName  = "hash"
+	HashLockFileName = "hash"
 
 	checkInterval = 10 * 1024 * 1024
+)
+
+var (
+	FileLockDirectory = util.GetFileLockDirectory()
 )
 
 type SnapshotHashStatus struct {
