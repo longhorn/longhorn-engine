@@ -33,7 +33,7 @@ RUN zypper -n install cmake curl git less file gcc python311 python311-pip pytho
     bash-completion librdmacm1 librdmacm-utils libibverbs xsltproc docbook-xsl-stylesheets \
     perl-Config-General libaio-devel glibc-devel-static glibc-devel sg3_utils iptables libltdl7 \
     libdevmapper1_03 iproute2 jq unzip zlib-devel zlib-devel-static \
-    rpm-build rdma-core-devel gcc-c++ docker open-iscsi e2fsprogs && \
+    rpm-build rdma-core-devel gcc-c++ docker open-iscsi e2fsprogs automake autoconf libtool&& \
     rm -rf /var/cache/zypp/*
 
 # Copy golangci-lint binary from official image
@@ -44,14 +44,6 @@ ENV MINIO_URL_amd64=https://dl.min.io/server/minio/release/linux-amd64/archive/m
     MINIO_URL_arm64=https://dl.min.io/server/minio/release/linux-arm64/archive/minio.RELEASE.2021-12-20T22-07-16Z \
     MINIO_URL=MINIO_URL_${ARCH}
 RUN curl -sSfL ${!MINIO_URL} -o /usr/bin/minio && chmod +x /usr/bin/minio
-
-# Install libqcow
-RUN curl -sSfL https://s3-us-west-1.amazonaws.com/rancher-longhorn/libqcow-alpha-20181117.tar.gz | tar xvzf - -C /usr/src && \
-    cd /usr/src/libqcow-20181117 && \
-    ./configure && \
-    make -j$(nproc) && \
-    make install && \
-    ldconfig
 
 # GRPC health probe
 ENV GRPC_HEALTH_PROBE_amd64=https://github.com/grpc-ecosystem/grpc-health-probe/releases/download/v0.3.2/grpc_health_probe-linux-amd64 \
@@ -72,6 +64,12 @@ RUN git clone https://github.com/longhorn/dep-versions.git -b ${SRC_BRANCH} /usr
         echo "Checking out tag ${SRC_TAG}"; \
         cd /usr/src/dep-versions && git checkout tags/${SRC_TAG}; \
     fi
+
+# Install libqcow
+RUN export REPO_OVERRIDE="" && \
+    export COMMIT_ID_OVERRIDE="" && \
+    bash /usr/src/dep-versions/scripts/build-libqcow.sh "${REPO_OVERRIDE}" "${COMMIT_ID_OVERRIDE}" && \
+    ldconfig
 
 # Build liblonghorn
 RUN export REPO_OVERRIDE="" && \
