@@ -1,6 +1,8 @@
 module github.com/longhorn/longhorn-engine
 
-go 1.26
+go 1.26.0
+
+toolchain go1.26.4
 
 require (
 	github.com/cockroachdb/errors v1.13.0
@@ -27,7 +29,7 @@ require (
 	gopkg.in/cheggaaa/pb.v2 v2.0.7
 	k8s.io/apimachinery v0.36.1
 	k8s.io/client-go v0.36.1
-	k8s.io/mount-utils v0.36.1
+	k8s.io/mount-utils v0.36.2
 )
 
 require (
