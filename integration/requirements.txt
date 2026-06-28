@@ -4,6 +4,6 @@ protobuf==7.35.0
 grpcio==1.81.0
 
 flake8
-pytest==9.0.3
+pytest==9.1.0
 
 libqcow-python==20231125
