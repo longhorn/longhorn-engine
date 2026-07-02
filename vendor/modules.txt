@@ -298,7 +298,7 @@ github.com/kr/pretty
 # github.com/kr/text v0.2.0
 ## explicit
 github.com/kr/text
-# github.com/longhorn/backupstore v0.0.0-20260525102750-1ed7dde50b68
+# github.com/longhorn/backupstore v0.0.0-20260618071319-84c767bdab16
 ## explicit; go 1.25.0
 github.com/longhorn/backupstore
 github.com/longhorn/backupstore/azblob
@@ -606,7 +606,7 @@ gopkg.in/mattn/go-isatty.v0
 # gopkg.in/mattn/go-runewidth.v0 v0.0.4
 ## explicit
 gopkg.in/mattn/go-runewidth.v0
-# k8s.io/apimachinery v0.36.1
+# k8s.io/apimachinery v0.36.2
 ## explicit; go 1.26.0
 k8s.io/apimachinery/pkg/api/resource
 k8s.io/apimachinery/pkg/runtime/serializer/cbor/direct
@@ -615,7 +615,7 @@ k8s.io/apimachinery/pkg/util/runtime
 k8s.io/apimachinery/pkg/util/version
 k8s.io/apimachinery/pkg/util/wait
 k8s.io/apimachinery/pkg/version
-# k8s.io/client-go v0.36.1
+# k8s.io/client-go v0.36.2
 ## explicit; go 1.26.0
 k8s.io/client-go/util/flowcontrol
 # k8s.io/klog/v2 v2.140.0
