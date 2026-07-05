@@ -1,6 +1,6 @@
 module github.com/longhorn/longhorn-engine
 
-go 1.25
+go 1.25.10
 
 replace github.com/longhorn/types => github.com/longhorn/types v0.0.0-20260408014255-ff785625245f
 
@@ -11,7 +11,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
-	github.com/longhorn/backupstore v0.0.0-20260525102750-1ed7dde50b68
+	github.com/longhorn/backupstore v0.0.0-20260618071319-84c767bdab16
 	github.com/longhorn/go-common-libs v0.0.0-20260624092814-b3e1f4451fb9
 	github.com/longhorn/go-iscsi-helper v0.0.0-20260625081921-94479d1d3cf4
 	github.com/longhorn/sparse-tools v0.0.0-20260423074222-280e61de741a
