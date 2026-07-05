@@ -5,7 +5,7 @@ go 1.26.0
 toolchain go1.26.4
 
 require (
-	github.com/cockroachdb/errors v1.13.0
+	github.com/cockroachdb/errors v1.14.0
 	github.com/docker/go-units v0.5.0
 	github.com/gofrs/flock v0.13.0
 	github.com/google/uuid v1.6.0
@@ -21,7 +21,6 @@ require (
 	github.com/rancher/go-rancher v0.1.1-0.20190307222549-9756097e5e4c
 	github.com/sirupsen/logrus v1.9.4
 	github.com/urfave/cli v1.22.17
-	github.com/urfave/cli/v3 v3.10.0
 	go.uber.org/multierr v1.11.0
 	golang.org/x/sys v0.46.0
 	google.golang.org/grpc v1.81.1
