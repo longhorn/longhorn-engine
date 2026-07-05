@@ -56,7 +56,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
-      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
 
     # Build binaries
     - name: Run make ci
@@ -90,7 +90,7 @@ jobs:
         sudo apt-get -y install make curl git
 
     - name: Checkout code
-      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
 
     # Build binaries
     - name: Run make ci
@@ -115,7 +115,7 @@ jobs:
     if: ${{ startsWith(github.ref, 'refs/heads/') || startsWith(github.ref, 'refs/tags/') }}
     steps:
     - name: Checkout code
-      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
 
     - name: Set up QEMU
       uses: docker/setup-qemu-action@06116385d9baf250c9f4dcb4858b16962ea869c3 # v4
@@ -163,7 +163,7 @@ jobs:
         sudo apt-get -y install make curl git
 
     - name: Checkout code
-      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
 
     - name: Set up QEMU
       uses: docker/setup-qemu-action@06116385d9baf250c9f4dcb4858b16962ea869c3 # v4
@@ -207,7 +207,7 @@ jobs:
     if: ${{ startsWith(github.ref, 'refs/heads/') || startsWith(github.ref, 'refs/tags/') }}
     steps:
     - name: Checkout code
-      uses: actions/checkout@df4cb1c069e1874edd31b4311f1884172cec0e10 # v6
+      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
 
     - name: Login to Docker Hub
       uses: docker/login-action@650006c6eb7dba73a995cc03b0b2d7f5ca915bee # v4
