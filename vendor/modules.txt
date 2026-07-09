@@ -315,7 +315,7 @@ github.com/longhorn/backupstore/systembackup
 github.com/longhorn/backupstore/types
 github.com/longhorn/backupstore/util
 github.com/longhorn/backupstore/vfs
-# github.com/longhorn/go-common-libs v0.0.0-20260624092814-b3e1f4451fb9
+# github.com/longhorn/go-common-libs v0.0.0-20260709061022-21a84065aa86
 ## explicit; go 1.25.10
 github.com/longhorn/go-common-libs/backingimage
 github.com/longhorn/go-common-libs/backup
@@ -343,7 +343,7 @@ github.com/longhorn/sparse-tools/sparse/rest
 github.com/longhorn/sparse-tools/stats
 github.com/longhorn/sparse-tools/types
 github.com/longhorn/sparse-tools/util
-# github.com/longhorn/types v0.0.0-20260602074022-85db2ba11d69
+# github.com/longhorn/types v0.0.0-20260608145242-38c27234df4b
 ## explicit; go 1.25.0
 github.com/longhorn/types/pkg/generated/enginerpc
 github.com/longhorn/types/pkg/generated/profilerrpc
@@ -425,8 +425,6 @@ github.com/slok/goresilience/timeout
 # github.com/urfave/cli v1.22.17
 ## explicit; go 1.11
 github.com/urfave/cli
-# github.com/urfave/cli/v3 v3.10.0
-## explicit; go 1.22
 # github.com/x448/float16 v0.8.4
 ## explicit; go 1.11
 github.com/x448/float16

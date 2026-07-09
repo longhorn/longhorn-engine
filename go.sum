@@ -129,14 +129,14 @@ github.com/kylelemons/godebug v1.1.0 h1:RPNrshWIDI6G2gRW9EHilWtl7Z6Sb1BR0xunSBf0
 github.com/kylelemons/godebug v1.1.0/go.mod h1:9/0rRGxNHcop5bhtWyNeEfOS8JIWk580+fNqagV/RAw=
 github.com/longhorn/backupstore v0.0.0-20260525102750-1ed7dde50b68 h1:p05ShG/5GrcHLU0+ZejEogNONg99e6JS1hq9qXY0B8o=
 github.com/longhorn/backupstore v0.0.0-20260525102750-1ed7dde50b68/go.mod h1:sJ3YQBK1exSY+Gep0cKaQhZ9f2rOem2hy6NTOk7iFg8=
-github.com/longhorn/go-common-libs v0.0.0-20260624092814-b3e1f4451fb9 h1:KGiMQE/oXQlRI+Tw0TjvVak3NfiKRqfJ4M0fHK/jWQc=
-github.com/longhorn/go-common-libs v0.0.0-20260624092814-b3e1f4451fb9/go.mod h1:hUt4rnI7Q7Rv0VjO2e3x/cZrvTt8eIxswW3pqcWMg14=
+github.com/longhorn/go-common-libs v0.0.0-20260709061022-21a84065aa86 h1:PjgmbRcpP9kumcLpnCZN+DcPp5poS2ovI4KG2jGFV+E=
+github.com/longhorn/go-common-libs v0.0.0-20260709061022-21a84065aa86/go.mod h1:oA+Qstu0szGJ5DiHI+hCVlx378Wjn/LyS0gALULHpbM=
 github.com/longhorn/go-iscsi-helper v0.0.0-20260625081921-94479d1d3cf4 h1:i4yKScA3sFjO9wJUMqlIQ0JjpQhhGd14jziljO3Og34=
 github.com/longhorn/go-iscsi-helper v0.0.0-20260625081921-94479d1d3cf4/go.mod h1:tx8IHeQXisTCpcg9gB4S+P8rPifC1D98qpWcDwI19tU=
 github.com/longhorn/sparse-tools v0.0.0-20260423074222-280e61de741a h1:xb71oeVPI7XZymAAG8ts5deC8s40dnX5IgxTYAB/qnk=
 github.com/longhorn/sparse-tools v0.0.0-20260423074222-280e61de741a/go.mod h1:d8l9nyC8No3PIfYHwZunnBj88y5M4sDM+h6uZyTtaNk=
-github.com/longhorn/types v0.0.0-20260602074022-85db2ba11d69 h1:SpeYdXeLwtMLXqQwl3tNWke/SHOVISdKHs8IoSqlC+E=
-github.com/longhorn/types v0.0.0-20260602074022-85db2ba11d69/go.mod h1:F84Y4B+3GyEcjr9EbwdI3RgOzT8nm2EqHxqyTWkCfRE=
+github.com/longhorn/types v0.0.0-20260608145242-38c27234df4b h1:7elZcRGyGyvxFS+NYht21Gnfx2uHcUcqwR09giTXKLY=
+github.com/longhorn/types v0.0.0-20260608145242-38c27234df4b/go.mod h1:F84Y4B+3GyEcjr9EbwdI3RgOzT8nm2EqHxqyTWkCfRE=
 github.com/mattn/go-colorable v0.1.13 h1:fFA4WZxdEF4tXPZVKMLwD8oUnCTTo08duU7wxecdEvA=
 github.com/mattn/go-colorable v0.1.13/go.mod h1:7S9/ev0klgBDR4GtXTXX8a3vIGJpMovkB8vQcUbaXHg=
 github.com/mattn/go-isatty v0.0.16/go.mod h1:kYGgaQfpe5nmfYZH+SKPsOc2e4SrIfOl2e/yFXSvRLM=
@@ -210,7 +210,6 @@ github.com/stretchr/testify v1.11.1 h1:7s2iGBzp5EwR7/aIZr8ao5+dra3wiQyKjjFuvgVKu
 github.com/stretchr/testify v1.11.1/go.mod h1:wZwfW3scLgRK+23gO65QZefKpKQRnfz6sD981Nm4B6U=
 github.com/urfave/cli v1.22.17 h1:SYzXoiPfQjHBbkYxbew5prZHS1TOLT3ierW8SYLqtVQ=
 github.com/urfave/cli v1.22.17/go.mod h1:b0ht0aqgH/6pBYzzxURyrM4xXNgsoT/n2ZzwQiEhNVo=
-github.com/urfave/cli/v3 v3.10.0/go.mod h1:ysVLtOEmg2tOy6PknnYVhDoouyC/6N42TMeoMzskhso=
 github.com/x448/float16 v0.8.4 h1:qLwI1I70+NjRFUR3zs1JPUCgaCXSh3SW62uAKT1mSBM=
 github.com/x448/float16 v0.8.4/go.mod h1:14CWIYCyZA/cWjXOioeEpHeN/83MdbZDRQHoFcYsOfg=
 github.com/yuin/goldmark v1.1.27/go.mod h1:3hX8gzYuyVAZsxl0MRgGTJEmQBFcNTphYh9decYSb74=
