@@ -189,7 +189,7 @@ github.com/c9s/goprocinfo/linux
 # github.com/cespare/xxhash/v2 v2.3.0
 ## explicit; go 1.11
 github.com/cespare/xxhash/v2
-# github.com/cockroachdb/errors v1.13.0
+# github.com/cockroachdb/errors v1.14.0
 ## explicit; go 1.25.0
 github.com/cockroachdb/errors
 github.com/cockroachdb/errors/assert
@@ -315,8 +315,8 @@ github.com/longhorn/backupstore/systembackup
 github.com/longhorn/backupstore/types
 github.com/longhorn/backupstore/util
 github.com/longhorn/backupstore/vfs
-# github.com/longhorn/go-common-libs v0.0.0-20260525102658-c0739cd3e2c2
-## explicit; go 1.25.0
+# github.com/longhorn/go-common-libs v0.0.0-20260709061022-21a84065aa86
+## explicit; go 1.25.10
 github.com/longhorn/go-common-libs/backingimage
 github.com/longhorn/go-common-libs/backup
 github.com/longhorn/go-common-libs/exec
@@ -328,8 +328,8 @@ github.com/longhorn/go-common-libs/sync
 github.com/longhorn/go-common-libs/sys
 github.com/longhorn/go-common-libs/types
 github.com/longhorn/go-common-libs/utils
-# github.com/longhorn/go-iscsi-helper v0.0.0-20260331100542-4c4c6f91525b
-## explicit; go 1.25.0
+# github.com/longhorn/go-iscsi-helper v0.0.0-20260625081921-94479d1d3cf4
+## explicit; go 1.25.10
 github.com/longhorn/go-iscsi-helper/iscsi
 github.com/longhorn/go-iscsi-helper/iscsidev
 github.com/longhorn/go-iscsi-helper/longhorndev
@@ -343,8 +343,8 @@ github.com/longhorn/sparse-tools/sparse/rest
 github.com/longhorn/sparse-tools/stats
 github.com/longhorn/sparse-tools/types
 github.com/longhorn/sparse-tools/util
-# github.com/longhorn/types v0.0.0-20260522011813-8f1780fad833
-## explicit; go 1.24.0
+# github.com/longhorn/types v0.0.0-20260608145242-38c27234df4b
+## explicit; go 1.25.0
 github.com/longhorn/types/pkg/generated/enginerpc
 github.com/longhorn/types/pkg/generated/profilerrpc
 # github.com/mattn/go-colorable v0.1.13
@@ -425,7 +425,7 @@ github.com/slok/goresilience/timeout
 # github.com/urfave/cli v1.22.17
 ## explicit; go 1.11
 github.com/urfave/cli
-# github.com/urfave/cli/v3 v3.9.0
+# github.com/urfave/cli/v3 v3.10.0
 ## explicit; go 1.22
 # github.com/x448/float16 v0.8.4
 ## explicit; go 1.11
@@ -436,10 +436,7 @@ github.com/yusufpapurcu/wmi
 # go.uber.org/multierr v1.11.0
 ## explicit; go 1.19
 go.uber.org/multierr
-# golang.org/x/exp v0.0.0-20260508232706-74f9aab9d74a
-## explicit; go 1.25.0
-golang.org/x/exp/constraints
-# golang.org/x/net v0.51.0
+# golang.org/x/net v0.54.0
 ## explicit; go 1.25.0
 golang.org/x/net/http/httpguts
 golang.org/x/net/http/httpproxy
@@ -458,8 +455,8 @@ golang.org/x/sys/execabs
 golang.org/x/sys/unix
 golang.org/x/sys/windows
 golang.org/x/sys/windows/registry
-# golang.org/x/text v0.34.0
-## explicit; go 1.24.0
+# golang.org/x/text v0.37.0
+## explicit; go 1.25.0
 golang.org/x/text/cases
 golang.org/x/text/internal
 golang.org/x/text/internal/language
@@ -611,7 +608,7 @@ gopkg.in/mattn/go-isatty.v0
 # gopkg.in/mattn/go-runewidth.v0 v0.0.4
 ## explicit
 gopkg.in/mattn/go-runewidth.v0
-# k8s.io/apimachinery v0.36.1
+# k8s.io/apimachinery v0.36.2
 ## explicit; go 1.26.0
 k8s.io/apimachinery/pkg/api/resource
 k8s.io/apimachinery/pkg/runtime/serializer/cbor/direct
@@ -620,7 +617,7 @@ k8s.io/apimachinery/pkg/util/runtime
 k8s.io/apimachinery/pkg/util/version
 k8s.io/apimachinery/pkg/util/wait
 k8s.io/apimachinery/pkg/version
-# k8s.io/client-go v0.36.1
+# k8s.io/client-go v0.36.2
 ## explicit; go 1.26.0
 k8s.io/client-go/util/flowcontrol
 # k8s.io/klog/v2 v2.140.0
