@@ -306,8 +306,8 @@ github.com/longhorn/backupstore/systembackup
 github.com/longhorn/backupstore/types
 github.com/longhorn/backupstore/util
 github.com/longhorn/backupstore/vfs
-# github.com/longhorn/go-common-libs v0.0.0-20260525102658-c0739cd3e2c2
-## explicit; go 1.25.0
+# github.com/longhorn/go-common-libs v0.0.0-20260624092814-b3e1f4451fb9
+## explicit; go 1.25.10
 github.com/longhorn/go-common-libs/backingimage
 github.com/longhorn/go-common-libs/backup
 github.com/longhorn/go-common-libs/exec
@@ -319,8 +319,8 @@ github.com/longhorn/go-common-libs/sync
 github.com/longhorn/go-common-libs/sys
 github.com/longhorn/go-common-libs/types
 github.com/longhorn/go-common-libs/utils
-# github.com/longhorn/go-iscsi-helper v0.0.0-20260331100542-4c4c6f91525b
-## explicit; go 1.25.0
+# github.com/longhorn/go-iscsi-helper v0.0.0-20260625081921-94479d1d3cf4
+## explicit; go 1.25.10
 github.com/longhorn/go-iscsi-helper/iscsi
 github.com/longhorn/go-iscsi-helper/iscsidev
 github.com/longhorn/go-iscsi-helper/longhorndev
@@ -334,7 +334,7 @@ github.com/longhorn/sparse-tools/sparse/rest
 github.com/longhorn/sparse-tools/stats
 github.com/longhorn/sparse-tools/types
 github.com/longhorn/sparse-tools/util
-# github.com/longhorn/types v0.0.0-20260522011813-8f1780fad833 => github.com/longhorn/types v0.0.0-20260408014255-ff785625245f
+# github.com/longhorn/types v0.0.0-20260602074022-85db2ba11d69 => github.com/longhorn/types v0.0.0-20260408014255-ff785625245f
 ## explicit; go 1.24.0
 github.com/longhorn/types/pkg/generated/enginerpc
 github.com/longhorn/types/pkg/generated/profilerrpc
@@ -424,27 +424,27 @@ github.com/urfave/cli
 github.com/yusufpapurcu/wmi
 # golang.org/x/exp v0.0.0-20260508232706-74f9aab9d74a
 ## explicit; go 1.25.0
-golang.org/x/exp/constraints
-# golang.org/x/net v0.49.0
-## explicit; go 1.24.0
+# golang.org/x/net v0.54.0
+## explicit; go 1.25.0
 golang.org/x/net/http/httpguts
 golang.org/x/net/http/httpproxy
 golang.org/x/net/http2
 golang.org/x/net/http2/hpack
 golang.org/x/net/idna
 golang.org/x/net/internal/httpcommon
+golang.org/x/net/internal/httpsfv
 golang.org/x/net/internal/socks
 golang.org/x/net/internal/timeseries
 golang.org/x/net/proxy
 golang.org/x/net/trace
-# golang.org/x/sys v0.40.0
-## explicit; go 1.24.0
+# golang.org/x/sys v0.44.0
+## explicit; go 1.25.0
 golang.org/x/sys/execabs
 golang.org/x/sys/unix
 golang.org/x/sys/windows
 golang.org/x/sys/windows/registry
-# golang.org/x/text v0.33.0
-## explicit; go 1.24.0
+# golang.org/x/text v0.37.0
+## explicit; go 1.25.0
 golang.org/x/text/cases
 golang.org/x/text/internal
 golang.org/x/text/internal/language
@@ -455,11 +455,11 @@ golang.org/x/text/secure/bidirule
 golang.org/x/text/transform
 golang.org/x/text/unicode/bidi
 golang.org/x/text/unicode/norm
-# google.golang.org/genproto/googleapis/rpc v0.0.0-20260120221211-b8f7ae30c516
-## explicit; go 1.24.0
+# google.golang.org/genproto/googleapis/rpc v0.0.0-20260226221140-a57be14db171
+## explicit; go 1.25.0
 google.golang.org/genproto/googleapis/rpc/status
-# google.golang.org/grpc v1.80.0
-## explicit; go 1.24.0
+# google.golang.org/grpc v1.81.1
+## explicit; go 1.25.0
 google.golang.org/grpc
 google.golang.org/grpc/attributes
 google.golang.org/grpc/backoff
@@ -513,6 +513,7 @@ google.golang.org/grpc/internal/status
 google.golang.org/grpc/internal/syscall
 google.golang.org/grpc/internal/transport
 google.golang.org/grpc/internal/transport/networktype
+google.golang.org/grpc/internal/transport/readyreader
 google.golang.org/grpc/keepalive
 google.golang.org/grpc/mem
 google.golang.org/grpc/metadata
