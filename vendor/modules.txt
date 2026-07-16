@@ -298,8 +298,8 @@ github.com/kr/pretty
 # github.com/kr/text v0.2.0
 ## explicit
 github.com/kr/text
-# github.com/longhorn/backupstore v0.0.0-20260618071319-84c767bdab16
-## explicit; go 1.25.0
+# github.com/longhorn/backupstore v0.0.0-20260709065232-ca96411485d4
+## explicit; go 1.25.10
 github.com/longhorn/backupstore
 github.com/longhorn/backupstore/azblob
 github.com/longhorn/backupstore/backupbackingimage
@@ -315,7 +315,7 @@ github.com/longhorn/backupstore/systembackup
 github.com/longhorn/backupstore/types
 github.com/longhorn/backupstore/util
 github.com/longhorn/backupstore/vfs
-# github.com/longhorn/go-common-libs v0.0.0-20260709061022-21a84065aa86
+# github.com/longhorn/go-common-libs v0.0.0-20260716070930-439af9b33f41
 ## explicit; go 1.25.10
 github.com/longhorn/go-common-libs/backingimage
 github.com/longhorn/go-common-libs/backup
@@ -343,7 +343,7 @@ github.com/longhorn/sparse-tools/sparse/rest
 github.com/longhorn/sparse-tools/stats
 github.com/longhorn/sparse-tools/types
 github.com/longhorn/sparse-tools/util
-# github.com/longhorn/types v0.0.0-20260608145242-38c27234df4b
+# github.com/longhorn/types v0.0.0-20260709032252-3d0a3cd8f06f
 ## explicit; go 1.25.0
 github.com/longhorn/types/pkg/generated/enginerpc
 github.com/longhorn/types/pkg/generated/profilerrpc
