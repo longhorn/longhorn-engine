@@ -9,11 +9,11 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
-	github.com/longhorn/backupstore v0.0.0-20260618071319-84c767bdab16
-	github.com/longhorn/go-common-libs v0.0.0-20260709061022-21a84065aa86
+	github.com/longhorn/backupstore v0.0.0-20260709065232-ca96411485d4
+	github.com/longhorn/go-common-libs v0.0.0-20260716070930-439af9b33f41
 	github.com/longhorn/go-iscsi-helper v0.0.0-20260625081921-94479d1d3cf4
 	github.com/longhorn/sparse-tools v0.0.0-20260423074222-280e61de741a
-	github.com/longhorn/types v0.0.0-20260608145242-38c27234df4b
+	github.com/longhorn/types v0.0.0-20260709032252-3d0a3cd8f06f
 	github.com/moby/sys/reexec v0.1.0
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
 	github.com/rancher/go-rancher v0.1.1-0.20190307222549-9756097e5e4c
