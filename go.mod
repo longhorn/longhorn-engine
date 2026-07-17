@@ -2,7 +2,7 @@ module github.com/longhorn/longhorn-engine
 
 go 1.25.10
 
-replace github.com/longhorn/types => github.com/longhorn/types v0.0.0-20260408014255-ff785625245f
+replace github.com/longhorn/types => github.com/longhorn/types v0.0.0-20260709032252-3d0a3cd8f06f
 
 require (
 	github.com/cockroachdb/errors v1.12.0
@@ -11,11 +11,11 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
-	github.com/longhorn/backupstore v0.0.0-20260618071319-84c767bdab16
-	github.com/longhorn/go-common-libs v0.0.0-20260624092814-b3e1f4451fb9
+	github.com/longhorn/backupstore v0.0.0-20260717143317-0e4420e3d34a
+	github.com/longhorn/go-common-libs v0.0.0-20260717062941-2c0ab58da729
 	github.com/longhorn/go-iscsi-helper v0.0.0-20260625081921-94479d1d3cf4
 	github.com/longhorn/sparse-tools v0.0.0-20260423074222-280e61de741a
-	github.com/longhorn/types v0.0.0-20260602074022-85db2ba11d69
+	github.com/longhorn/types v0.0.0-20260709032252-3d0a3cd8f06f
 	github.com/moby/sys/reexec v0.1.0
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
 	github.com/rancher/go-rancher v0.1.1-0.20190307222549-9756097e5e4c
