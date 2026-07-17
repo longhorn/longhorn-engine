@@ -298,8 +298,8 @@ github.com/kr/pretty
 # github.com/kr/text v0.2.0
 ## explicit
 github.com/kr/text
-# github.com/longhorn/backupstore v0.0.0-20260525102750-1ed7dde50b68
-## explicit; go 1.25.0
+# github.com/longhorn/backupstore v0.0.0-20260709065232-ca96411485d4
+## explicit; go 1.25.10
 github.com/longhorn/backupstore
 github.com/longhorn/backupstore/azblob
 github.com/longhorn/backupstore/backupbackingimage
@@ -315,7 +315,7 @@ github.com/longhorn/backupstore/systembackup
 github.com/longhorn/backupstore/types
 github.com/longhorn/backupstore/util
 github.com/longhorn/backupstore/vfs
-# github.com/longhorn/go-common-libs v0.0.0-20260709061022-21a84065aa86
+# github.com/longhorn/go-common-libs v0.0.0-20260717062941-2c0ab58da729
 ## explicit; go 1.25.10
 github.com/longhorn/go-common-libs/backingimage
 github.com/longhorn/go-common-libs/backup
@@ -343,7 +343,7 @@ github.com/longhorn/sparse-tools/sparse/rest
 github.com/longhorn/sparse-tools/stats
 github.com/longhorn/sparse-tools/types
 github.com/longhorn/sparse-tools/util
-# github.com/longhorn/types v0.0.0-20260608145242-38c27234df4b
+# github.com/longhorn/types v0.0.0-20260709032252-3d0a3cd8f06f
 ## explicit; go 1.25.0
 github.com/longhorn/types/pkg/generated/enginerpc
 github.com/longhorn/types/pkg/generated/profilerrpc
@@ -425,8 +425,6 @@ github.com/slok/goresilience/timeout
 # github.com/urfave/cli v1.22.17
 ## explicit; go 1.11
 github.com/urfave/cli
-# github.com/urfave/cli/v3 v3.10.1
-## explicit; go 1.22
 # github.com/x448/float16 v0.8.4
 ## explicit; go 1.11
 github.com/x448/float16
@@ -473,7 +471,7 @@ golang.org/x/time/rate
 # google.golang.org/genproto/googleapis/rpc v0.0.0-20260414002931-afd174a4e478
 ## explicit; go 1.25.0
 google.golang.org/genproto/googleapis/rpc/status
-# google.golang.org/grpc v1.82.0
+# google.golang.org/grpc v1.82.1
 ## explicit; go 1.25.0
 google.golang.org/grpc
 google.golang.org/grpc/attributes
