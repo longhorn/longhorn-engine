@@ -203,7 +203,19 @@ func (s *service) PutObject(ctx context.Context, key string, reader io.ReadSeeke
 	defer s.Close()
 
 	// Use the AWS S3 uploader which handles signing correctly
-	uploader := manager.NewUploader(svc)
+	// manager.NewUploader defaults RequestChecksumCalculation to
+	// aws.RequestChecksumCalculationWhenSupported, independent of the
+	// RequestChecksumCalculation set on the underlying s3.Client. That default
+	// makes the uploader always add a CRC32 trailing checksum for multipart
+	// uploads, which forces the request body to use aws-chunked content
+	// encoding. Some S3-compatible providers (e.g. OCI) don't support
+	// aws-chunked and reject the request with "NotImplemented: AWS chunked
+	// encoding is not supported". Align the uploader with the client's
+	// WhenRequired setting so checksums (and aws-chunked encoding) are only
+	// used when required.
+	uploader := manager.NewUploader(svc, func(u *manager.Uploader) {
+		u.RequestChecksumCalculation = aws.RequestChecksumCalculationWhenRequired
+	})
 
 	// Ensure reader is at the beginning
 	if _, err := reader.Seek(0, io.SeekStart); err != nil {
