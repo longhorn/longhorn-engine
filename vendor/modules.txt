@@ -315,7 +315,7 @@ github.com/longhorn/backupstore/systembackup
 github.com/longhorn/backupstore/types
 github.com/longhorn/backupstore/util
 github.com/longhorn/backupstore/vfs
-# github.com/longhorn/go-common-libs v0.0.0-20260716070930-439af9b33f41
+# github.com/longhorn/go-common-libs v0.0.0-20260717062941-2c0ab58da729
 ## explicit; go 1.25.10
 github.com/longhorn/go-common-libs/backingimage
 github.com/longhorn/go-common-libs/backup
