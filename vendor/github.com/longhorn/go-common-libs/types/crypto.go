@@ -15,6 +15,7 @@ const (
 	CryptoPBKDFMemory          = "CRYPTO_PBKDF_MEMORY"
 
 	CliAPIVersionForSupportingExtendLuks2HeaderSize = 12
+	CliAPIVersionExtraLUKS2HeaderReservation        = CliAPIVersionForSupportingExtendLuks2HeaderSize
 	Luks2EncryptionHeaderSize                       = 16 * 1024 * 1024
 )
 
