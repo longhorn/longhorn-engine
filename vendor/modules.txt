@@ -298,7 +298,7 @@ github.com/kr/pretty
 # github.com/kr/text v0.2.0
 ## explicit
 github.com/kr/text
-# github.com/longhorn/backupstore v0.0.0-20260717143317-0e4420e3d34a
+# github.com/longhorn/backupstore v0.0.0-20260722010828-e5f4ddc47e4d
 ## explicit; go 1.25.10
 github.com/longhorn/backupstore
 github.com/longhorn/backupstore/azblob
@@ -425,8 +425,6 @@ github.com/slok/goresilience/timeout
 # github.com/urfave/cli v1.22.17
 ## explicit; go 1.11
 github.com/urfave/cli
-# github.com/urfave/cli/v3 v3.10.1
-## explicit; go 1.22
 # github.com/x448/float16 v0.8.4
 ## explicit; go 1.11
 github.com/x448/float16
