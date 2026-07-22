@@ -180,7 +180,15 @@ func (s *BackupStoreDriver) Read(src string) (io.ReadCloser, error) {
 
 func (s *BackupStoreDriver) Write(dst string, rs io.ReadSeeker) error {
 	path := s.updatePath(dst)
-	return s.service.PutObject(context.Background(), path, rs)
+	// Driver.Write only carries backup metadata (backup_*.cfg, volume.cfg) and
+	// individual data blocks, all well under the 5 GiB single-PutObject limit.
+	// Force a single PutObject request here to avoid the manager.Uploader's
+	// default 5 MiB PartSize silently switching metadata writes to a multipart
+	// upload once the block map grows, which some S3-interop providers (e.g.
+	// Google Cloud Storage) reject with SignatureDoesNotMatch. Driver.Upload
+	// (single-file backups) still uses the multipart-capable path so genuinely
+	// large payloads keep their parallel-upload performance.
+	return s.service.PutObjectAsSinglePart(context.Background(), path, rs)
 }
 
 func (s *BackupStoreDriver) Upload(src, dst string) error {

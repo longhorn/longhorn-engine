@@ -43,6 +43,13 @@ const (
 	// InvalidRequestErrorMsg is the error message returned by S3 Compatible services when the authorization mechanism is not supported,
 	// which can be caused by using AWS Signature Version 2 for signing requests to AWS S3 regions that require AWS Signature Version 4.
 	InvalidRequestErrorMsg = "The authorization mechanism you have provided is not supported. Please use AWS4-HMAC-SHA256."
+
+	// maxSinglePutObjectSize is the maximum object size (5 GiB) that S3 (and S3-compatible
+	// providers) allow to be uploaded via a single PutObject request. Used by
+	// PutObjectAsSinglePart to fail fast with a clear error instead of letting the
+	// request reach S3 and come back as a raw EntityTooLarge error.
+	// https://docs.aws.amazon.com/AmazonS3/latest/userguide/upload-objects.html
+	maxSinglePutObjectSize int64 = 5 * 1024 * 1024 * 1024
 )
 
 func newService(u *url.URL) (*service, error) {
@@ -203,7 +210,19 @@ func (s *service) PutObject(ctx context.Context, key string, reader io.ReadSeeke
 	defer s.Close()
 
 	// Use the AWS S3 uploader which handles signing correctly
-	uploader := manager.NewUploader(svc)
+	// manager.NewUploader defaults RequestChecksumCalculation to
+	// aws.RequestChecksumCalculationWhenSupported, independent of the
+	// RequestChecksumCalculation set on the underlying s3.Client. That default
+	// makes the uploader always add a CRC32 trailing checksum for multipart
+	// uploads, which forces the request body to use aws-chunked content
+	// encoding. Some S3-compatible providers (e.g. OCI) don't support
+	// aws-chunked and reject the request with "NotImplemented: AWS chunked
+	// encoding is not supported". Align the uploader with the client's
+	// WhenRequired setting so checksums (and aws-chunked encoding) are only
+	// used when required.
+	uploader := manager.NewUploader(svc, func(u *manager.Uploader) {
+		u.RequestChecksumCalculation = aws.RequestChecksumCalculationWhenRequired
+	})
 
 	// Ensure reader is at the beginning
 	if _, err := reader.Seek(0, io.SeekStart); err != nil {
@@ -228,6 +247,42 @@ func (s *service) PutObject(ctx context.Context, key string, reader io.ReadSeeke
 		return errors.Wrapf(parseAwsError(err), "failed to put object: %v", key)
 	}
 	return nil
+}
+
+// PutObjectAsSinglePart uploads an object using a single PutObject request,
+// bypassing the manager.Uploader (which switches to a multipart upload path
+// whenever the payload exceeds the SDK's default 5 MiB PartSize).
+//
+// This is the safe path for backup metadata (e.g. backup_*.cfg, volume.cfg)
+// whose size grows with the number of blocks in a backup and can therefore
+// cross the 5 MiB threshold on large volumes. Some S3-interop providers
+// (e.g. Google Cloud Storage) reject the resulting multipart request path
+// with SignatureDoesNotMatch, even though a plain PutObject request of the
+// same object succeeds. A single PutObject request supports objects up to
+// 5 GiB, which is well above any metadata blob written here.
+func (s *service) PutObjectAsSinglePart(ctx context.Context, key string, reader io.ReadSeeker) error {
+	size, err := reader.Seek(0, io.SeekEnd)
+	if err != nil {
+		return errors.Wrapf(err, "failed to determine size of object: %v", key)
+	}
+	if size > maxSinglePutObjectSize {
+		// This is not expected to happen for backup metadata or data blocks, but
+		// fail fast with a clear, actionable error instead of an opaque
+		// EntityTooLarge response from S3 if it ever does.
+		return fmt.Errorf("failed to put object: %v: object size %v bytes exceeds the %v byte limit of a single PutObject request",
+			key, size, maxSinglePutObjectSize)
+	}
+	if _, err := reader.Seek(0, io.SeekStart); err != nil {
+		return errors.Wrapf(err, "failed to seek reader to offset 0")
+	}
+
+	svc, err := s.newInstance(ctx, true)
+	if err != nil {
+		return err
+	}
+	defer s.Close()
+
+	return s.PutObjectSinglePart(ctx, svc, key, reader)
 }
 
 // PutObjectSinglePart is a fallback method for PutObject when the error message contains InvalidRequestErrorMsg, which indicates that the S3-Compatible services do not support AWS Signature Version 4 and the request should be signed with AWS Signature Version 2.
