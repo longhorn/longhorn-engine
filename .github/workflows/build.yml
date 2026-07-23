@@ -56,7 +56,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - name: Checkout code
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     # Build binaries
     - name: Run make ci
@@ -90,7 +90,7 @@ jobs:
         sudo apt-get -y install make curl git
 
     - name: Checkout code
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     # Build binaries
     - name: Run make ci
@@ -115,7 +115,7 @@ jobs:
     if: ${{ startsWith(github.ref, 'refs/heads/') || startsWith(github.ref, 'refs/tags/') }}
     steps:
     - name: Checkout code
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Set up QEMU
       uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4
@@ -137,7 +137,7 @@ jobs:
         cp -r ./bin ./package/
 
     - name: Login to Docker Hub
-      uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4
+      uses: docker/login-action@06fb636fac595d6fb4b28a5dfcb21a6f5091859c # v4
       if: ${{ startsWith(github.ref, 'refs/heads/') || startsWith(github.ref, 'refs/tags/') }}
       with:
         username: ${{ secrets.DOCKER_USERNAME }}
@@ -163,7 +163,7 @@ jobs:
         sudo apt-get -y install make curl git
 
     - name: Checkout code
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Set up QEMU
       uses: docker/setup-qemu-action@96fe6ef7f33517b61c61be40b68a1882f3264fb8 # v4
@@ -186,7 +186,7 @@ jobs:
 
     - name: Login to Docker Hub
       if: ${{ startsWith(github.ref, 'refs/heads/') || startsWith(github.ref, 'refs/tags/') }}
-      uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4
+      uses: docker/login-action@06fb636fac595d6fb4b28a5dfcb21a6f5091859c # v4
       with:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
@@ -207,10 +207,10 @@ jobs:
     if: ${{ startsWith(github.ref, 'refs/heads/') || startsWith(github.ref, 'refs/tags/') }}
     steps:
     - name: Checkout code
-      uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7
+      uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
     - name: Login to Docker Hub
-      uses: docker/login-action@af1e73f918a031802d376d3c8bbc3fe56130a9b0 # v4
+      uses: docker/login-action@06fb636fac595d6fb4b28a5dfcb21a6f5091859c # v4
       with:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}

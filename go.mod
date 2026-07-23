@@ -21,7 +21,6 @@ require (
 	github.com/rancher/go-rancher v0.1.1-0.20190307222549-9756097e5e4c
 	github.com/sirupsen/logrus v1.9.4
 	github.com/urfave/cli v1.22.17
-	github.com/urfave/cli/v3 v3.10.1
 	go.uber.org/multierr v1.11.0
 	golang.org/x/sys v0.47.0
 	google.golang.org/grpc v1.82.1
@@ -30,7 +29,7 @@ require (
 	gopkg.in/cheggaaa/pb.v2 v2.0.7
 	k8s.io/apimachinery v0.36.2
 	k8s.io/client-go v0.36.2
-	k8s.io/mount-utils v0.36.2
+	k8s.io/mount-utils v0.36.3
 )
 
 require (
