@@ -1,4 +1,4 @@
-FROM registry.suse.com/bci/bci-base:15.7@sha256:ce87bee4dd6579774001833f30b23a40d36b2edcd1d9796a1e2d267c67768176 AS builder
+FROM registry.suse.com/bci/bci-base:15.7@sha256:daebf54bd4ab8b05e1e64597d8ea63b242605e936cff16460d0cfdb9716a896a AS builder
 
 ARG ARCH=amd64
 ARG SRC_BRANCH=master
@@ -38,7 +38,7 @@ RUN GRPC_HEALTH_PROBE_DOWNLOAD_URL=$(wget -qO- https://api.github.com/repos/grpc
     wget ${GRPC_HEALTH_PROBE_DOWNLOAD_URL} -O /usr/local/bin/grpc_health_probe && \
     chmod +x /usr/local/bin/grpc_health_probe
 
-FROM registry.suse.com/bci/bci-base:15.7@sha256:ce87bee4dd6579774001833f30b23a40d36b2edcd1d9796a1e2d267c67768176 AS release
+FROM registry.suse.com/bci/bci-base:15.7@sha256:daebf54bd4ab8b05e1e64597d8ea63b242605e936cff16460d0cfdb9716a896a AS release
 
 ARG ARCH=amd64
 
