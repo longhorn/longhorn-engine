@@ -607,7 +607,7 @@ gopkg.in/mattn/go-isatty.v0
 # gopkg.in/mattn/go-runewidth.v0 v0.0.4
 ## explicit
 gopkg.in/mattn/go-runewidth.v0
-# k8s.io/apimachinery v0.36.2
+# k8s.io/apimachinery v0.36.3
 ## explicit; go 1.26.0
 k8s.io/apimachinery/pkg/api/resource
 k8s.io/apimachinery/pkg/runtime/serializer/cbor/direct
@@ -616,7 +616,7 @@ k8s.io/apimachinery/pkg/util/runtime
 k8s.io/apimachinery/pkg/util/version
 k8s.io/apimachinery/pkg/util/wait
 k8s.io/apimachinery/pkg/version
-# k8s.io/client-go v0.36.2
+# k8s.io/client-go v0.36.3
 ## explicit; go 1.26.0
 k8s.io/client-go/util/flowcontrol
 # k8s.io/klog/v2 v2.140.0
