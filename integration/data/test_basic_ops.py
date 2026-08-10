@@ -57,7 +57,7 @@ def test_metrics(grpc_replica1, grpc_replica2, grpc_controller):  # NOQA
     # Create r/w IO
     base = random.randint(1, SIZE - PAGE_SIZE)
     offset = (base // PAGE_SIZE) * PAGE_SIZE
-    length = base - offset
+    length = (base - offset) or PAGE_SIZE
     data = random_string(length)
     verify_data(rw_dev, offset, data)
 
@@ -77,7 +77,7 @@ def test_metrics(grpc_replica1, grpc_replica2, grpc_controller):  # NOQA
         except Exception as e:
             if i == max_iters - 1:
                 raise e
-            time.sleep(0.1)
+            time.sleep(1)
 
 
 def test_beyond_boundary(dev):  # NOQA
