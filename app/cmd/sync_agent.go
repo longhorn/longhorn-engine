@@ -82,7 +82,11 @@ func startSyncAgent(c *cli.Context) error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
-	listen, err := net.Listen("tcp", listenPort)
+	// Preserve the OS keepalive timings. The listener enables keepalive on each
+	// accepted connection without letting the Go standard library replace them.
+	// https://github.com/grpc/grpc-go/issues/6250
+	listenConfig := net.ListenConfig{KeepAlive: -1}
+	listen, err := listenConfig.Listen(ctx, "tcp", listenPort)
 	if err != nil {
 		return errors.Wrap(err, "failed to listen")
 	}
@@ -91,7 +95,26 @@ func startSyncAgent(c *cli.Context) error {
 
 	logrus.Infof("Listening on sync %s", listenPort)
 
-	return server.Serve(listen)
+	return server.Serve(tcpKeepAliveListener{Listener: listen})
+}
+
+type tcpKeepAliveListener struct {
+	net.Listener
+}
+
+func (l tcpKeepAliveListener) Accept() (net.Conn, error) {
+	conn, err := l.Listener.Accept()
+	if err != nil {
+		return nil, err
+	}
+
+	if tcpConn, ok := conn.(*net.TCPConn); ok {
+		if err := tcpConn.SetKeepAlive(true); err != nil {
+			logrus.WithError(err).Warnf("Failed to enable TCP keepalive on connection from %v; using connection without TCP keepalive", conn.RemoteAddr())
+		}
+	}
+
+	return conn, nil
 }
 
 func doReset(c *cli.Context) error {
