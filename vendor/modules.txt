@@ -315,7 +315,7 @@ github.com/longhorn/backupstore/systembackup
 github.com/longhorn/backupstore/types
 github.com/longhorn/backupstore/util
 github.com/longhorn/backupstore/vfs
-# github.com/longhorn/go-common-libs v0.0.0-20260730002911-add09e6eb92c
+# github.com/longhorn/go-common-libs v0.0.0-20260730002911-add09e6eb92c => ../go-common-libs
 ## explicit; go 1.25.10
 github.com/longhorn/go-common-libs/backingimage
 github.com/longhorn/go-common-libs/backup
@@ -328,6 +328,7 @@ github.com/longhorn/go-common-libs/sync
 github.com/longhorn/go-common-libs/sys
 github.com/longhorn/go-common-libs/types
 github.com/longhorn/go-common-libs/utils
+github.com/longhorn/go-common-libs/wal
 # github.com/longhorn/go-iscsi-helper v0.0.0-20260625081921-94479d1d3cf4
 ## explicit; go 1.25.10
 github.com/longhorn/go-iscsi-helper/iscsi
@@ -343,7 +344,7 @@ github.com/longhorn/sparse-tools/sparse/rest
 github.com/longhorn/sparse-tools/stats
 github.com/longhorn/sparse-tools/types
 github.com/longhorn/sparse-tools/util
-# github.com/longhorn/types v0.0.0-20260709032252-3d0a3cd8f06f
+# github.com/longhorn/types v0.0.0-20260814104707-529643438923
 ## explicit; go 1.25.0
 github.com/longhorn/types/pkg/generated/enginerpc
 github.com/longhorn/types/pkg/generated/profilerrpc
@@ -643,3 +644,4 @@ k8s.io/utils/keymutex
 ## explicit; go 1.23
 sigs.k8s.io/json
 sigs.k8s.io/json/internal/golang/encoding/json
+# github.com/longhorn/go-common-libs => ../go-common-libs
