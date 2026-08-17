@@ -499,6 +499,9 @@ def rm_backups(url, engine_name, backups):
     # Engine frontend is down, Start it up
     client = ControllerClient(url)
     client.volume_frontend_start(FRONTEND_TGT_BLOCKDEV)
+    # Wait for the block device to be able to service I/O again before returning
+    v = client.volume_get()
+    get_blockdev(v.name)
 
 
 def rm_snaps(url, snaps):
