@@ -58,11 +58,13 @@ def test_metrics(grpc_replica1, grpc_replica2, grpc_controller):  # NOQA
     base = random.randint(1, SIZE - PAGE_SIZE)
     offset = (base // PAGE_SIZE) * PAGE_SIZE
     length = base - offset
+    if length == 0:
+        length = PAGE_SIZE
     data = random_string(length)
     verify_data(rw_dev, offset, data)
 
-    # metrics update period is 1 second
-    max_iters = 10
+    # metrics update period is 1 second; allow up to 2 seconds of retries
+    max_iters = 20
     for i in range(max_iters):
         try:
             metrics = grpc_controller.metrics_get()
