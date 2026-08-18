@@ -61,8 +61,10 @@ def test_metrics(grpc_replica1, grpc_replica2, grpc_controller):  # NOQA
     data = random_string(length)
     verify_data(rw_dev, offset, data)
 
-    # metrics update period is 1 second
-    max_iters = 10
+    # The reported metrics come from the last completed 1-second bucket, so a
+    # single IO burst is only visible for one ~1s window (up to ~2s after the
+    # IO). Poll long enough to span more than two metrics periods.
+    max_iters = 30
     for i in range(max_iters):
         try:
             metrics = grpc_controller.metrics_get()
