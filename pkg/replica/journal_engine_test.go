@@ -289,6 +289,63 @@ func TestSnapshotCreateThroughReplicaIsCrashSafe(t *testing.T) {
 	}
 }
 
+// TestSecondOpenerBecomesStandbyWhenJournalLocked reproduces the live
+// migration topology: a second replica process opens the SAME data
+// directory while the source replica is still running and holds the
+// journal's exclusive flock. The second opener must not fail on
+// ErrJournalLocked; it downgrades to a standby (r.wal nil, isUpgrade set)
+// and acquires the journal lazily once the source releases the lock.
+func TestSecondOpenerBecomesStandbyWhenJournalLocked(t *testing.T) {
+	dir := t.TempDir()
+
+	// Source replica: owns the directory and holds the journal flock.
+	source, err := New(context.Background(), 4096, 512, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, 4096)
+	if err != nil {
+		t.Fatalf("open source: %v", err)
+	}
+	if source.wal == nil {
+		t.Fatal("source replica should own the journal")
+	}
+
+	// Migration replica: a non-upgrade open of the same directory while the
+	// source still holds the flock. It must succeed as a standby.
+	standby, err := New(context.Background(), 4096, 512, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, 4096)
+	if err != nil {
+		t.Fatalf("open standby while journal is locked: %v", err)
+	}
+	if standby.wal != nil {
+		t.Fatal("standby must not hold the journal while the source owns it")
+	}
+	if !standby.isUpgrade {
+		t.Fatal("standby should be downgraded to isUpgrade")
+	}
+
+	// A chain mutation on the standby still fails while the source holds the
+	// lock, because ensureJournal cannot acquire the flock.
+	if err := standby.Snapshot("s1", true, "now", nil); err == nil {
+		t.Fatal("expected snapshot on locked standby to fail")
+	}
+
+	// Source releases the lock (migration switchover / source detach).
+	if err := source.Close(); err != nil {
+		t.Fatalf("close source: %v", err)
+	}
+
+	// The standby now promotes lazily on its first chain mutation.
+	if err := standby.Snapshot("s1", true, "now", nil); err != nil {
+		t.Fatalf("snapshot after promotion: %v", err)
+	}
+	if standby.wal == nil {
+		t.Fatal("standby should own the journal after promotion")
+	}
+	if standby.isUpgrade {
+		t.Fatal("isUpgrade should be cleared after promotion")
+	}
+	if err := standby.Close(); err != nil {
+		t.Fatalf("close standby: %v", err)
+	}
+}
+
 // closeJournalAbruptly drops the fd and flock without writing
 // CHECKPOINT, simulating an abrupt process death.
 func closeJournalAbruptly(t *testing.T, j *wal.Journal) {

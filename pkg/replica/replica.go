@@ -210,53 +210,67 @@ func construct(ctx context.Context, readonly bool, size, sectorSize int64, dir, 
 	r.isUpgrade = isUpgrade
 	r.volume.sectorSize = diskutil.VolumeSectorSize
 
+	// Open the journal and replay any unfinished snapshot chain
+	// transactions. Recovery must run before sweepTmpFiles and
+	// tryRecoverVolumeMetaFile: a pending UPDATE_VOLUME_META intent will
+	// write the correct volume.meta during replay, and only the process
+	// that owns the journal may touch the directory's shared on-disk state.
+	//
+	// A second replica process sharing this data directory must not
+	// contend for the journal's exclusive flock or mutate the owner's
+	// shared state. There are two such cases:
+	//
+	//   - Live upgrade: the caller declares it via isUpgrade, so the
+	//     journal is skipped outright.
+	//   - Live migration: the migration replica is opened as an ordinary
+	//     (non-upgrade) replica on the SAME directory as the still-running
+	//     source replica, so the caller cannot flag it. Detect it here: if
+	//     the journal flock is already held by the source process, downgrade
+	//     this replica to a standby.
+	//
+	// A standby leaves r.wal nil and skips the tmp sweep and volume.meta
+	// writes until it takes ownership lazily on the first chain-mutating
+	// operation (see ensureJournal), by which point the source replica has
+	// released the lock.
+	if !readonly && !isUpgrade {
+		j, _, err := recoverJournal(dir)
+		switch {
+		case err == nil:
+			r.wal = j
+			// Release the journal's flock if construction fails on any
+			// subsequent step; otherwise the FD lives until process exit
+			// and a same-process retry would deadlock under fcntl-flock
+			// semantics on Linux.
+			defer func() {
+				if retErr != nil && r.wal != nil {
+					errClose := r.wal.Close()
+					if errClose != nil {
+						logrus.WithError(errClose).Warnf("Failed to close journal %v", dir)
+					}
+				}
+			}()
+		case errors.Is(err, wal.ErrJournalLocked):
+			logrus.Warnf("Journal for replica %v is held by another process; opening as a standby that acquires the journal lazily after the owner releases it", dir)
+			r.isUpgrade = true
+		default:
+			return nil, err
+		}
+	}
+
 	// Sweep leftover *.tmp files from prior interrupted meta writes. The
 	// journal-driven step engine (see pkg/replica/journal) is responsible
 	// for the actual chain consistency on restart; this just removes
 	// orphaned scratch files that the rename-after-write pattern can leave
 	// behind.
 	//
-	// Skip during a live upgrade: those *.tmp files belong to the still-
-	// running outgoing replica that owns this directory, and deleting one
-	// mid write->rename would corrupt its atomic metadata write.
-	if !readonly && !isUpgrade {
+	// Skip on a standby (live upgrade or migration): those *.tmp files
+	// belong to the still-running replica that owns this directory, and
+	// deleting one mid write->rename would corrupt its atomic metadata
+	// write.
+	if !readonly && !r.isUpgrade {
 		if err := r.sweepTmpFiles(); err != nil {
 			return nil, err
 		}
-	}
-
-	// Open the journal and replay any unfinished snapshot chain
-	// transactions. Recovery must run before tryRecoverVolumeMetaFile
-	// since a pending UPDATE_VOLUME_META intent will write the correct
-	// volume.meta during replay.
-	//
-	// Skip the journal during a live upgrade: the incoming replica shares
-	// the data directory with the still-running outgoing replica, which
-	// holds the journal's exclusive flock. The outgoing process owns the
-	// journal until switchover, so the incoming standby must not contend
-	// for the lock or run recovery here; the replica always acquires the
-	// journal on its original non-upgrade open. Consequently r.wal stays
-	// nil for the standby until the first chain-mutating operation
-	// acquires it lazily (see ensureJournal), by which point the outgoing
-	// replica has released the lock.
-	if !readonly && !isUpgrade {
-		j, _, err := recoverJournal(dir)
-		if err != nil {
-			return nil, err
-		}
-		r.wal = j
-		// Release the journal's flock if construction fails on any
-		// subsequent step; otherwise the FD lives until process exit
-		// and a same-process retry would deadlock under fcntl-flock
-		// semantics on Linux.
-		defer func() {
-			if retErr != nil && r.wal != nil {
-				errClose := r.wal.Close()
-				if errClose != nil {
-					logrus.WithError(errClose).Warnf("Failed to close journal %v", dir)
-				}
-			}
-		}()
 	}
 
 	// Try to recover volume metafile if deleted or empty.
@@ -305,7 +319,7 @@ func construct(ctx context.Context, readonly bool, size, sectorSize int64, dir, 
 		if err := r.openLiveChain(); err != nil {
 			return nil, err
 		}
-		if needExpand, expectedBackendSize := isExpandingEncryptedDevRequired(state, encrypted, size, expectedBackendSize, isUpgrade); needExpand {
+		if needExpand, expectedBackendSize := isExpandingEncryptedDevRequired(state, encrypted, size, expectedBackendSize, r.isUpgrade); needExpand {
 			logrus.Infof("Expanding replica size from %v to %v for head %v", r.info.Size, expectedBackendSize, r.info.Head)
 			if err := r.Expand(expectedBackendSize); err != nil {
 				return nil, err
