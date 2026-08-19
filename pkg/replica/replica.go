@@ -13,14 +13,15 @@ import (
 	"strings"
 	"sync"
 	"sync/atomic"
-	"syscall"
 
 	"github.com/cockroachdb/errors"
 	"github.com/rancher/go-fibmap"
 	"github.com/sirupsen/logrus"
 
+	"github.com/longhorn/go-common-libs/wal"
 	"github.com/longhorn/sparse-tools/sparse"
 
+	lhio "github.com/longhorn/go-common-libs/io"
 	lhtypes "github.com/longhorn/go-common-libs/types"
 
 	"github.com/longhorn/longhorn-engine/pkg/backingfile"
@@ -67,6 +68,27 @@ type Replica struct {
 
 	snapshotMaxCount int
 	snapshotMaxSize  int64
+
+	// journal is the per-replica WAL used to make snapshot chain
+	// operations crash-safe. nil for read-only replicas.
+	wal *wal.Journal
+
+	// poisoned is set once a snapshot-chain transaction has been
+	// PREPAREd but could not complete in this process. The transaction
+	// is durable and recovery rolls it forward, so the in-memory state
+	// (and volume.meta if it was already advanced on disk) can no longer
+	// be trusted. While set, every mutator is rejected and metadata
+	// writes are skipped until the replica is reconstructed.
+	poisoned bool
+
+	// isUpgrade marks a replica opened as a live-upgrade standby. It
+	// shares the data directory with the still-running outgoing replica
+	// that owns the journal and volume.meta, so this standby neither
+	// opens the journal (see construct) nor writes shared authoritative
+	// state (see writeVolumeMetaData). It takes ownership on the first
+	// chain-mutating operation once the outgoing replica has gone (see
+	// ensureJournal), which clears this flag.
+	isUpgrade bool
 }
 
 type Info struct {
@@ -159,7 +181,7 @@ func NewReadOnly(ctx context.Context, dir, head string, backingFile *backingfile
 }
 
 func construct(ctx context.Context, readonly bool, size, sectorSize int64, dir, head string, backingFile *backingfile.BackingFile,
-	disableRevCounter, unmapMarkDiskChainRemoved bool, snapshotMaxCount int, snapshotMaxSize int64, encrypted, isUpgrade bool, state types.ReplicaState, expectedBackendSize int64) (*Replica, error) {
+	disableRevCounter, unmapMarkDiskChainRemoved bool, snapshotMaxCount int, snapshotMaxSize int64, encrypted, isUpgrade bool, state types.ReplicaState, expectedBackendSize int64) (_ *Replica, retErr error) {
 	if size%sectorSize != 0 {
 		return nil, fmt.Errorf("size %d not a multiple of sector size %d", size, sectorSize)
 	}
@@ -185,7 +207,71 @@ func construct(ctx context.Context, readonly bool, size, sectorSize int64, dir, 
 	r.info.Size = size
 	r.info.SectorSize = sectorSize
 	r.info.Encrypted = encrypted
+	r.isUpgrade = isUpgrade
 	r.volume.sectorSize = diskutil.VolumeSectorSize
+
+	// Open the journal and replay any unfinished snapshot chain
+	// transactions. Recovery must run before sweepTmpFiles and
+	// tryRecoverVolumeMetaFile: a pending UPDATE_VOLUME_META intent will
+	// write the correct volume.meta during replay, and only the process
+	// that owns the journal may touch the directory's shared on-disk state.
+	//
+	// A second replica process sharing this data directory must not
+	// contend for the journal's exclusive flock or mutate the owner's
+	// shared state. There are two such cases:
+	//
+	//   - Live upgrade: the caller declares it via isUpgrade, so the
+	//     journal is skipped outright.
+	//   - Live migration: the migration replica is opened as an ordinary
+	//     (non-upgrade) replica on the SAME directory as the still-running
+	//     source replica, so the caller cannot flag it. Detect it here: if
+	//     the journal flock is already held by the source process, downgrade
+	//     this replica to a standby.
+	//
+	// A standby leaves r.wal nil and skips the tmp sweep and volume.meta
+	// writes until it takes ownership lazily on the first chain-mutating
+	// operation (see ensureJournal), by which point the source replica has
+	// released the lock.
+	if !readonly && !isUpgrade {
+		j, _, err := recoverJournal(dir)
+		switch {
+		case err == nil:
+			r.wal = j
+			// Release the journal's flock if construction fails on any
+			// subsequent step; otherwise the FD lives until process exit
+			// and a same-process retry would deadlock under fcntl-flock
+			// semantics on Linux.
+			defer func() {
+				if retErr != nil && r.wal != nil {
+					errClose := r.wal.Close()
+					if errClose != nil {
+						logrus.WithError(errClose).Warnf("Failed to close journal %v", dir)
+					}
+				}
+			}()
+		case errors.Is(err, wal.ErrJournalLocked):
+			logrus.Warnf("Journal for replica %v is held by another process; opening as a standby that acquires the journal lazily after the owner releases it", dir)
+			r.isUpgrade = true
+		default:
+			return nil, err
+		}
+	}
+
+	// Sweep leftover *.tmp files from prior interrupted meta writes. The
+	// journal-driven step engine (see pkg/replica/journal) is responsible
+	// for the actual chain consistency on restart; this just removes
+	// orphaned scratch files that the rename-after-write pattern can leave
+	// behind.
+	//
+	// Skip on a standby (live upgrade or migration): those *.tmp files
+	// belong to the still-running replica that owns this directory, and
+	// deleting one mid write->rename would corrupt its atomic metadata
+	// write.
+	if !readonly && !r.isUpgrade {
+		if err := r.sweepTmpFiles(); err != nil {
+			return nil, err
+		}
+	}
 
 	// Try to recover volume metafile if deleted or empty.
 	if err := r.tryRecoverVolumeMetaFile(head); err != nil {
@@ -233,7 +319,7 @@ func construct(ctx context.Context, readonly bool, size, sectorSize int64, dir, 
 		if err := r.openLiveChain(); err != nil {
 			return nil, err
 		}
-		if needExpand, expectedBackendSize := isExpandingEncryptedDevRequired(state, encrypted, size, expectedBackendSize, isUpgrade); needExpand {
+		if needExpand, expectedBackendSize := isExpandingEncryptedDevRequired(state, encrypted, size, expectedBackendSize, r.isUpgrade); needExpand {
 			logrus.Infof("Expanding replica size from %v to %v for head %v", r.info.Size, expectedBackendSize, r.info.Head)
 			if err := r.Expand(expectedBackendSize); err != nil {
 				return nil, err
@@ -322,6 +408,17 @@ func (r *Replica) insertBackingFile() {
 }
 
 func (r *Replica) SetRebuilding(rebuilding bool) error {
+	r.Lock()
+	defer r.Unlock()
+
+	if r.poisoned {
+		return errReplicaPoisoned
+	}
+	// Persisting rebuilding into volume.meta is a shared-state write, so a
+	// live-upgrade standby must promote first or writeVolumeMetaData is a no-op.
+	if err := r.ensureJournal(); err != nil {
+		return errors.Wrap(err, "SetRebuilding")
+	}
 	err := r.writeVolumeMetaData(true, rebuilding)
 	if err != nil {
 		return err
@@ -331,6 +428,23 @@ func (r *Replica) SetRebuilding(rebuilding bool) error {
 }
 
 func (r *Replica) Reload() (*Replica, error) {
+	// The journal flock is held by this replica's process; we must release
+	// it before constructing the replacement, which will reopen the
+	// journal in its own construct(). The current journal is at a clean
+	// state (any in-flight txn has either been committed or aborted by
+	// the operation that triggered Reload), so a clean Close + Checkpoint
+	// is sufficient.
+	//
+	// Reload always reconstructs as a normal (non-upgrade) replica, so a
+	// former live-upgrade standby (r.wal == nil, isUpgrade == true) is
+	// promoted here: the replacement acquires the journal and resumes
+	// writing volume.meta.
+	if r.wal != nil {
+		if err := r.wal.Close(); err != nil {
+			return nil, err
+		}
+		r.wal = nil
+	}
 	newReplica, err := New(r.ctx, r.info.Size, r.info.SectorSize, r.dir, r.info.BackingFile, r.revisionCounterDisabled, r.unmapMarkDiskChainRemoved, r.snapshotMaxCount, r.snapshotMaxSize, r.info.Encrypted, false, types.ReplicaStateDirty, r.info.Size)
 	if err != nil {
 		return nil, err
@@ -358,21 +472,145 @@ func (r *Replica) RemoveDiffDisk(name string, force bool) error {
 	if name == r.info.Head {
 		return fmt.Errorf("cannot delete the active differencing disk")
 	}
-
-	if err := r.removeDiskNode(name, force); err != nil {
-		return err
+	if r.poisoned {
+		return errReplicaPoisoned
+	}
+	if err := r.ensureJournal(); err != nil {
+		return errors.Wrap(err, "RemoveDiffDisk")
+	}
+	if _, ok := r.diskData[name]; !ok {
+		return fmt.Errorf("cannot find disk %v", name)
 	}
 
-	if err := r.rmDisk(name); err != nil {
-		return err
+	// Compute the chain rewiring without mutating in-memory state yet.
+	children := r.diskChildrenMap[name]
+	if len(children) > 1 && !force {
+		return fmt.Errorf("cannot remove snapshot %v with %v children", name, len(children))
+	}
+	if len(children) > 1 {
+		logrus.Warnf("Force delete disk %v with multiple children. Randomly choose a child to inherit", name)
 	}
 
+	var chosenChild string
+	var chosenChildNewMeta disk
+	if len(children) > 0 {
+		for c := range children {
+			chosenChild = c
+			break
+		}
+		existing, ok := r.diskData[chosenChild]
+		if !ok {
+			return fmt.Errorf("child %v of %v not in diskData", chosenChild, name)
+		}
+		chosenChildNewMeta = *existing
+		// child's new parent is name's parent (grandparent).
+		chosenChildNewMeta.Parent = r.diskData[name].Parent
+	}
+
+	paramsJSON := mustJSON(SnapRemoveParams{
+		Name:  name,
+		Force: force,
+		Child: chosenChild,
+	})
+
+	type stepDef struct {
+		id     uint32
+		action wal.Action
+		args   []byte
+	}
+	var steps []stepDef
+	var stepID uint32 = 1
+	if chosenChild != "" {
+		steps = append(steps, stepDef{stepID, wal.ActionUpdateSnapMeta,
+			mustJSON(UpdateSnapMetaArgs{SnapName: chosenChild, Meta: chosenChildNewMeta})})
+		stepID++
+	}
+	steps = append(steps, stepDef{stepID, wal.ActionRmDisk,
+		mustJSON(RmDiskArgs{Name: name})})
+
+	tx, err := r.wal.Begin(wal.OpSnapRemove, paramsJSON)
+	if err != nil {
+		return errors.Wrap(err, "begin remove journal txn")
+	}
+	for _, st := range steps {
+		if err := tx.Intent(st.id, st.action, st.args); err != nil {
+			_ = tx.Abort()
+			return errors.Wrapf(err, "intent step %d", st.id)
+		}
+	}
+	if err := tx.Prepare(); err != nil {
+		_ = tx.Abort()
+		return errors.Wrap(err, "prepare remove txn")
+	}
+
+	s := stepDir{dir: r.dir}
+	for _, st := range steps {
+		fn := stepRegistry[st.action]
+		if err := fn(s, st.args); err != nil {
+			// Every RemoveDiffDisk step is at the visible commit
+			// point (UPDATE_SNAP_META rewrites the surviving child;
+			// RM_DISK deletes the target). The txn is prepared, so
+			// recovery rolls it forward; leave it pending and poison
+			// the replica so no new operation runs until a restart
+			// replays it. The next startup reconciles both the
+			// journal and the in-memory chain.
+			r.poison()
+			return errors.Wrapf(err, "apply step %d (%s)", st.id, st.action)
+		}
+		if err := tx.StepDone(st.id); err != nil {
+			r.poison()
+			return errors.Wrapf(err, "STEP_DONE step %d", st.id)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		r.poison()
+		return errors.Wrap(err, "commit remove txn")
+	}
+
+	// In-memory bookkeeping mirroring removeDiskNode, minus the file ops
+	// that the journal Apply has already performed. r.diskData entries
+	// are *disk pointers shared with r.activeDiskData, so we must mutate
+	// the chosen child in place rather than reassigning the map slot.
+	if chosenChild != "" {
+		r.updateChildDisk(name, chosenChild)
+		existing := r.diskData[chosenChild]
+		existing.Parent = chosenChildNewMeta.Parent
+		delete(r.diskChildrenMap, name)
+	} else {
+		r.updateChildDisk(name, "")
+	}
+	delete(r.diskData, name)
+
+	index := r.findDisk(name)
+	if index > 0 {
+		if err := r.volume.RemoveIndex(index); err != nil {
+			// The txn already committed: the disk files are gone and the
+			// surviving child's meta is rewired on disk. Poison so no
+			// operation runs on the diverged in-memory chain until the
+			// replica is reloaded.
+			r.poison()
+			return err
+		}
+		if len(r.activeDiskData)-2 == index {
+			r.info.Parent = r.diskData[r.info.Head].Parent
+		}
+		r.activeDiskData = append(r.activeDiskData[:index], r.activeDiskData[index+1:]...)
+	}
 	return nil
 }
 
 func (r *Replica) MarkDiskAsRemoved(name string) error {
 	r.Lock()
 	defer r.Unlock()
+
+	if r.poisoned {
+		return errReplicaPoisoned
+	}
+	// Marking a snapshot writes its .meta, a shared-state write, so a
+	// live-upgrade standby must promote first.
+	if err := r.ensureJournal(); err != nil {
+		return errors.Wrap(err, "MarkDiskAsRemoved")
+	}
 
 	disk := name
 
@@ -419,6 +657,15 @@ func (r *Replica) hardlinkDisk(target, source string) error {
 func (r *Replica) ReplaceDisk(target, source string) error {
 	r.Lock()
 	defer r.Unlock()
+
+	if r.poisoned {
+		return errReplicaPoisoned
+	}
+	// Replacing rewires the chain and rewrites disk files, a shared-state
+	// write, so a live-upgrade standby must promote first.
+	if err := r.ensureJournal(); err != nil {
+		return errors.Wrap(err, "ReplaceDisk")
+	}
 
 	if target == r.info.Head {
 		return fmt.Errorf("cannot replace the active differencing disk")
@@ -508,6 +755,16 @@ func (r *Replica) removeDiskNode(name string, force bool) error {
 func (r *Replica) PrepareRemoveDisk(name string) ([]PrepareRemoveAction, error) {
 	r.Lock()
 	defer r.Unlock()
+
+	if r.poisoned {
+		return nil, errReplicaPoisoned
+	}
+	// The returned plan authorizes the sync-agent to fold/prune/remove disk
+	// files, some of which bypass the per-op replica guards, so a live-upgrade
+	// standby must promote before computing it.
+	if err := r.ensureJournal(); err != nil {
+		return nil, errors.Wrap(err, "PrepareRemoveDisk")
+	}
 
 	disk := name
 
@@ -654,6 +911,20 @@ func (r *Replica) GetSnapshotSizeUsage() int64 {
 }
 
 func (r *Replica) writeVolumeMetaData(dirty, rebuilding bool) error {
+	if r.isUpgrade {
+		// A live-upgrade standby shares volume.meta with the outgoing
+		// replica that owns it; writing here would race with and clobber
+		// the owner's file. Skip until this replica is reconstructed as
+		// a normal (non-upgrade) replica.
+		return nil
+	}
+	if r.poisoned {
+		// A durable journal transaction may already have advanced
+		// volume.meta on disk; overwriting it with stale in-memory info
+		// would make recovery skip the completed update. Skip until the
+		// replica is reconstructed.
+		return nil
+	}
 	info := r.info
 	info.Dirty = dirty
 	info.Rebuilding = rebuilding
@@ -680,7 +951,14 @@ func (r *Replica) closeWithoutWritingMetaData() {
 
 func (r *Replica) close() error {
 	r.closeWithoutWritingMetaData()
-	return r.writeVolumeMetaData(false, r.info.Rebuilding)
+	err := r.writeVolumeMetaData(false, r.info.Rebuilding)
+	if r.wal != nil {
+		if errJ := r.wal.Close(); errJ != nil && err == nil {
+			err = errJ
+		}
+		r.wal = nil
+	}
+	return err
 }
 
 func (r *Replica) encodeToFile(obj interface{}, file string) (rollbackFunc func() error, err error) {
@@ -713,14 +991,58 @@ func (r *Replica) encodeToFile(obj interface{}, file string) (rollbackFunc func(
 	}
 
 	if err := json.NewEncoder(f).Encode(&obj); err != nil {
+		if closeErr := f.Close(); closeErr != nil {
+			err = errors.Wrapf(err, "failed to close tmp file %v after encode error: %v", r.diskPath(tmpFileName), closeErr)
+		}
 		return rollbackFunc, err
+	}
+
+	// fsync the data of the temp file before the rename so that a crash
+	// after the rename cannot expose a zero-length file.
+	if err := f.Sync(); err != nil {
+		_ = f.Close()
+		return rollbackFunc, errors.Wrapf(err, "failed to fsync tmp file %v", r.diskPath(tmpFileName))
 	}
 
 	if err := f.Close(); err != nil {
 		return rollbackFunc, err
 	}
 
-	return rollbackFunc, os.Rename(r.diskPath(tmpFileName), r.diskPath(file))
+	if err := os.Rename(r.diskPath(tmpFileName), r.diskPath(file)); err != nil {
+		return rollbackFunc, err
+	}
+
+	// fsync the parent directory so the rename itself is durable.
+	return rollbackFunc, lhio.FsyncDir(r.dir)
+}
+
+// sweepTmpFiles removes leftover *.tmp files in the replica directory.
+// Called from construct() before journal recovery; the .tmp files are
+// scratch artifacts of an interrupted write -> rename and carry no
+// authoritative state, so removing them here is always safe. The journal
+// (replayed immediately after) is the source of truth for chain
+// consistency.
+func (r *Replica) sweepTmpFiles() error {
+	entries, err := os.ReadDir(r.dir)
+	if err != nil {
+		return err
+	}
+	for _, e := range entries {
+		if e.IsDir() {
+			continue
+		}
+		name := e.Name()
+		if !strings.HasSuffix(name, tmpFileSuffix) {
+			continue
+		}
+		p := filepath.Join(r.dir, name)
+		if err := os.Remove(p); err != nil && !os.IsNotExist(err) {
+			logrus.WithError(err).Warnf("failed to sweep leftover tmp file %v", p)
+		} else {
+			logrus.Infof("Swept leftover tmp file %v", p)
+		}
+	}
+	return nil
 }
 
 func (r *Replica) nextFile(parsePattern *regexp.Regexp, pattern, parent string) (string, error) {
@@ -739,115 +1061,6 @@ func (r *Replica) nextFile(parsePattern *regexp.Regexp, pattern, parent string) 
 
 func (r *Replica) openFile(name string, flag int) (types.DiffDisk, error) {
 	return sparse.NewDirectFileIoProcessor(r.diskPath(name), os.O_RDWR|flag, 06666, true)
-}
-
-func (r *Replica) createNewHead(oldHead, parent, created string, size int64) (f types.DiffDisk, newDisk disk, rollbackFunc func() error, err error) {
-	newHeadName, err := r.nextFile(diskPattern, diskutil.VolumeHeadDiskName, oldHead)
-	if err != nil {
-		return nil, disk{}, nil, err
-	}
-
-	if _, err := os.Stat(r.diskPath(newHeadName)); err == nil {
-		return nil, disk{}, nil, fmt.Errorf("%s already exists", newHeadName)
-	}
-
-	f, err = r.openFile(r.diskPath(newHeadName), os.O_TRUNC)
-	if err != nil {
-		return nil, disk{}, nil, err
-	}
-
-	var subRollbackFunc func() error
-	defer func() {
-		// This rollback function will be executed either after the current function errors out,
-		// or by the upper layer when the current function succeeds but the subsequent executions fail.
-		//
-		// It allows the upper caller to be atomic:
-		// the upper layer either succeeds to execute all functions,
-		// or fails in the middle then does rollback for the previous succeeded parts so that everything looks like unchanged.
-		rollbackFunc = func() error {
-			if errClose := f.Close(); errClose != nil {
-				logrus.WithError(errClose).Error("Failed to close file")
-			}
-			if subRollbackFunc != nil {
-				return types.CombineErrors(subRollbackFunc(), r.rmDisk(newHeadName))
-			}
-			return r.rmDisk(newHeadName)
-		}
-
-		if err != nil {
-			err = types.GenerateFunctionErrorWithRollback(err, rollbackFunc())
-			rollbackFunc = nil
-		}
-	}()
-
-	if err := syscall.Truncate(r.diskPath(newHeadName), size); err != nil {
-		return nil, disk{}, rollbackFunc, err
-	}
-
-	newDisk = disk{
-		Parent:      parent,
-		Name:        newHeadName,
-		Removed:     false,
-		UserCreated: false,
-		Created:     created,
-	}
-	subRollbackFunc, err = r.encodeToFile(&newDisk, newHeadName+diskutil.DiskMetadataSuffix)
-	return f, newDisk, rollbackFunc, err
-}
-
-func (r *Replica) linkDisk(oldName, newName string) (rollbackFunc func() error, err error) {
-	if oldName == "" {
-		return nil, nil
-	}
-
-	defer func() {
-		if err != nil {
-			return
-		}
-
-		// This rollback function will be executed either after the current function errors out,
-		// or by the upper layer when the current function succeeds but the subsequent executions fail.
-		//
-		// It allows the upper caller to be atomic:
-		// the upper layer either succeeds to execute all functions,
-		// or fails in the middle then does rollback for the previous succeeded parts so that everything looks like unchanged.
-		rollbackFunc = func() error {
-			return r.rmDisk(newName)
-		}
-	}()
-
-	destMetadata := r.diskPath(newName + diskutil.DiskMetadataSuffix)
-	logrus.Infof("Cleaning up new disk metadata file path %v before linking", destMetadata)
-	if err := os.RemoveAll(destMetadata); err != nil {
-		return rollbackFunc, errors.Wrapf(err, "failed to clean up new disk metadata file %v before linking", destMetadata)
-	}
-
-	destChecksum := r.diskPath(newName + diskutil.DiskChecksumSuffix)
-	logrus.Infof("Cleaning up new disk checksum file %v before linking", destChecksum)
-	if err := os.RemoveAll(destChecksum); err != nil {
-		return rollbackFunc, errors.Wrapf(err, "failed to clean up new disk checksum file %v before linking", destChecksum)
-	}
-
-	dest := r.diskPath(newName)
-	logrus.Infof("Cleaning up new disk file %v before linking", dest)
-	if err := os.RemoveAll(dest); err != nil {
-		return rollbackFunc, errors.Wrapf(err, "failed to clean up new disk file %v before linking", dest)
-	}
-
-	defer func() {
-		if err != nil {
-			err = types.GenerateFunctionErrorWithRollback(err, r.rmDisk(newName))
-		}
-	}()
-
-	if err := os.Link(r.diskPath(oldName), dest); err != nil {
-		return rollbackFunc, err
-	}
-
-	// Typically, this function links an old volume head to a new snapshot. And the volume head does not contain a checksum file.
-	// Hence there is no need to link the checksum file here.
-
-	return rollbackFunc, os.Link(r.diskPath(oldName+diskutil.DiskMetadataSuffix), r.diskPath(newName+diskutil.DiskMetadataSuffix))
 }
 
 func (r *Replica) markDiskAsRemoved(name string) error {
@@ -902,45 +1115,191 @@ func (r *Replica) revertDisk(parentDiskFileName, created string) (*Replica, erro
 	} else if diskInfo.Removed {
 		return nil, fmt.Errorf("cannot revert to disk file %v since it's already marked as removed", parentDiskFileName)
 	}
+	if r.poisoned {
+		return nil, errReplicaPoisoned
+	}
+	if err := r.ensureJournal(); err != nil {
+		return nil, errors.Wrap(err, "revertDisk")
+	}
 
 	oldHead := r.info.Head
-	f, newHeadDisk, _, err := r.createNewHead(oldHead, parentDiskFileName, created, r.info.Size)
+	newHeadName, err := r.nextFile(diskPattern, diskutil.VolumeHeadDiskName, oldHead)
 	if err != nil {
 		return nil, err
 	}
-	defer func() {
-		if errClose := f.Close(); errClose != nil {
-			logrus.WithError(errClose).Error("Failed to close file")
-		}
-	}()
-
-	info := r.info
-	info.Head = newHeadDisk.Name
-	info.Dirty = true
-	info.Parent = newHeadDisk.Parent
-
-	if _, err := r.encodeToFile(&info, volumeMetaData); err != nil {
-		if _, err = r.encodeToFile(&r.info, volumeMetaData); err != nil {
-			return nil, err
-		}
-		return nil, err
+	if _, errStat := os.Stat(r.diskPath(newHeadName)); errStat == nil {
+		return nil, fmt.Errorf("%s already exists", newHeadName)
+	} else if !os.IsNotExist(errStat) {
+		return nil, errors.Wrapf(errStat, "failed to stat %v", r.diskPath(newHeadName))
 	}
 
-	// Need to execute before r.Reload() to update r.diskChildrenMap
-	if err = r.rmDisk(oldHead); err != nil {
-		return nil, err
+	newHeadDisk := disk{
+		Parent:      parentDiskFileName,
+		Name:        newHeadName,
+		Removed:     false,
+		UserCreated: false,
+		Created:     created,
 	}
+	newInfo := r.info
+	newInfo.Head = newHeadName
+	newInfo.Dirty = true
+	newInfo.Parent = parentDiskFileName
 
-	rNew, err := r.Reload()
+	chArgs := mustJSON(CreateHeadArgs{HeadName: newHeadName, Size: r.info.Size, Meta: newHeadDisk})
+	uvmArgs := mustJSON(UpdateVolumeMetaArgs{Info: newInfo})
+	dohArgs := mustJSON(DeleteOldHeadArgs{HeadName: oldHead})
+	paramsJSON := mustJSON(SnapRevertParams{
+		Parent:  parentDiskFileName,
+		OldHead: oldHead,
+		NewHead: newHeadName,
+		Created: created,
+	})
+
+	tx, err := r.wal.Begin(wal.OpSnapRevert, paramsJSON)
 	if err != nil {
+		return nil, errors.Wrap(err, "begin revert journal txn")
+	}
+	type stepDef struct {
+		id     uint32
+		action wal.Action
+		args   []byte
+		skip   bool
+	}
+	steps := []stepDef{
+		{1, wal.ActionCreateHead, chArgs, false},
+		{2, wal.ActionUpdateVolumeMeta, uvmArgs, false},
+		{3, wal.ActionDeleteOldHead, dohArgs, oldHead == ""},
+	}
+	for _, st := range steps {
+		if st.skip {
+			continue
+		}
+		if err := tx.Intent(st.id, st.action, st.args); err != nil {
+			_ = tx.Abort()
+			return nil, errors.Wrapf(err, "intent step %d", st.id)
+		}
+	}
+	if err := tx.Prepare(); err != nil {
+		_ = tx.Abort()
+		return nil, errors.Wrap(err, "prepare revert txn")
+	}
+
+	s := stepDir{dir: r.dir}
+	for _, st := range steps {
+		if st.skip {
+			continue
+		}
+		fn := stepRegistry[st.action]
+		if err := fn(s, st.args); err != nil {
+			// The txn is already prepared, so recovery rolls it
+			// forward and the WAL refuses an abort. Leave it pending
+			// and poison the replica so no new operation runs until a
+			// restart replays and completes this transaction.
+			r.poison()
+			return nil, errors.Wrapf(err, "apply step %d (%s)", st.id, st.action)
+		}
+		if err := tx.StepDone(st.id); err != nil {
+			r.poison()
+			return nil, errors.Wrapf(err, "STEP_DONE step %d", st.id)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		r.poison()
+		return nil, errors.Wrap(err, "commit revert txn")
+	}
+
+	rNew, err := reloadAfterRevert(r)
+	if err != nil {
+		// The txn already committed: on disk the new head exists, the old
+		// head is gone, and volume.meta points at the new head, but this
+		// replica's in-memory state still reflects the old head and Reload
+		// has already released r.wal. A committed revert leaves nothing
+		// pending, so ensureJournal would not catch the divergence; poison
+		// so no operation runs on the stale chain until a fresh reload.
+		r.poison()
 		return nil, err
 	}
 	return rNew, nil
 }
 
+// errReplicaPoisoned is returned by every mutator once poison has been
+// called. The replica holds a durable, prepared journal transaction that
+// only a restart can replay to completion, so no further operation may run
+// against the stale in-memory state.
+var errReplicaPoisoned = errors.New("replica has a pending crash-safe transaction; it must be reconstructed before further operations")
+
+// poison is called when a snapshot-chain transaction has been PREPAREd but
+// could not be completed in this process. A prepared transaction is rolled
+// forward (never aborted) by recovery, so it must be left pending on disk;
+// the WAL refuses to abort it. Poisoning releases the journal and marks the
+// replica so that every subsequent mutator fails and no metadata write can
+// clobber the volume.meta that the transaction may already have advanced on
+// disk. The replica accepts no new operation until it is reconstructed and
+// recovery replays the pending transaction to completion.
+func (r *Replica) poison() {
+	r.poisoned = true
+	if r.wal == nil {
+		return
+	}
+	if err := r.wal.Close(); err != nil {
+		logrus.WithError(err).Warn("Failed to close journal after prepared-transaction failure")
+	}
+	r.wal = nil
+}
+
+// ensureJournal lazily acquires the write-ahead log for a replica that was
+// opened without one. A live-upgrade standby (isUpgrade) skips the journal in
+// construct so it does not contend for the flock still held by the outgoing
+// replica; by the time a chain-mutating operation is requested here the
+// outgoing replica has released the lock, so this replica can take ownership
+// and resume writing shared authoritative state. Callers must hold the replica
+// lock.
+func (r *Replica) ensureJournal() error {
+	if r.wal != nil {
+		return nil
+	}
+	if r.poisoned {
+		return errReplicaPoisoned
+	}
+	if r.readOnly {
+		return fmt.Errorf("journal is not available on a read-only replica")
+	}
+	j, replayed, err := recoverJournal(r.dir)
+	if err != nil {
+		return err
+	}
+
+	// Recovery may have rolled prepared transactions forward and advanced
+	// the on-disk chain past the view this replica built at open time. That
+	// in-memory state is now stale and unsafe to mutate, so refuse and let
+	// the caller reload instead of proceeding on a diverged chain.
+	if replayed > 0 {
+		if errClose := j.Close(); errClose != nil {
+			logrus.WithError(errClose).Warn("Failed to close journal after detecting stale in-memory chain")
+		}
+		return fmt.Errorf("journal recovery rolled %d prepared transaction(s) forward; in-memory chain may be stale and the replica must be reloaded", replayed)
+	}
+
+	r.wal = j
+	r.isUpgrade = false
+	return nil
+}
+
+// openNewHeadForIO opens the freshly-committed head image. It is a package
+// variable so tests can inject a post-commit open failure.
+var openNewHeadForIO = func(r *Replica, headName string) (types.DiffDisk, error) {
+	return r.openFile(r.diskPath(headName), 0)
+}
+
+// reloadAfterRevert reconstructs the replica once a revert txn has committed.
+// It is a package variable so tests can inject a post-commit reload failure.
+var reloadAfterRevert = func(r *Replica) (*Replica, error) {
+	return r.Reload()
+}
+
 func (r *Replica) createDisk(name string, userCreated bool, created string, labels map[string]string, size int64) (err error) {
 	log := logrus.WithFields(logrus.Fields{"disk": name})
-	log.Info("Starting to create disk")
+	log.Info("Starting to create disk (journaled)")
 	if r.readOnly {
 		return fmt.Errorf("cannot create disk on read-only replica")
 	}
@@ -949,94 +1308,195 @@ func (r *Replica) createDisk(name string, userCreated bool, created string, labe
 		return fmt.Errorf("too many active disks: %v", len(r.activeDiskData)-2+1)
 	}
 
+	if r.poisoned {
+		return errReplicaPoisoned
+	}
+	if err := r.ensureJournal(); err != nil {
+		return errors.Wrap(err, "createDisk")
+	}
+
 	oldHead := r.info.Head
 	newSnapName := diskutil.GenerateSnapshotDiskName(name)
-
 	if oldHead == "" {
 		newSnapName = ""
 	}
-
 	if newSnapName != "" {
 		if _, ok := r.diskData[newSnapName]; ok {
 			return fmt.Errorf("snapshot %v is already existing", newSnapName)
 		}
 	}
 
-	rollbackFuncList := []func() error{}
-	defer func() {
-		if err == nil {
-			if errRm := r.rmDisk(oldHead); errRm != nil {
-				logrus.WithError(errRm).Warnf("Failed to remove old head %v", oldHead)
-			}
-			return
+	// Journaled snapshot-create plan:
+	//   1. CREATE_HEAD         — allocate new head image + write its .meta
+	//   2. LINK_AS_SNAPSHOT    — hardlink old head image+meta as the new snap
+	//   3. UPDATE_VOLUME_META  — swing volume.meta to point at the new head
+	//   4. UPDATE_SNAP_META    — write snap .meta with user-supplied fields
+	//   5. DELETE_OLD_HEAD     — remove the renamed-away old head files
+	//
+	// Steps are recorded as INTENTs, then PREPARE marks the set complete.
+	// Apply runs each step and writes STEP_DONE before final COMMIT.
+	// A crash at any point is recovered on the next startup.
+
+	newHeadName, err := r.nextFile(diskPattern, diskutil.VolumeHeadDiskName, oldHead)
+	if err != nil {
+		return err
+	}
+	if _, errStat := os.Stat(r.diskPath(newHeadName)); errStat == nil {
+		return fmt.Errorf("%s already exists", newHeadName)
+	} else if !os.IsNotExist(errStat) {
+		return errors.Wrapf(errStat, "failed to stat %v", r.diskPath(newHeadName))
+	}
+
+	newHeadDisk := disk{
+		Parent:      newSnapName,
+		Name:        newHeadName,
+		Removed:     false,
+		UserCreated: false,
+		Created:     created,
+	}
+
+	newInfo := r.info
+	newInfo.Head = newHeadName
+	newInfo.Dirty = true
+	newInfo.Parent = newSnapName
+	newInfo.Size = size
+
+	// Build the new snapshot's meta from the soon-to-be-renamed old head's
+	// disk data, with user-provided overrides. Name is set to newSnapName;
+	// readMetadata will overwrite it from the filename on reload anyway.
+	var newSnapMeta disk
+	if newSnapName != "" {
+		old := r.diskData[oldHead]
+		newSnapMeta = disk{
+			Name:        newSnapName,
+			Parent:      old.Parent,
+			Removed:     old.Removed,
+			UserCreated: userCreated,
+			Created:     created,
+			Labels:      labels,
 		}
-
-		var rollbackErr error
-		log.WithError(err).Errorf("Failed to create disk %v, will do rollback", name)
-		for _, rollbackFunc := range rollbackFuncList {
-			if rollbackFunc == nil {
-				continue
-			}
-			rollbackErr = types.CombineErrors(rollbackErr, rollbackFunc())
-		}
-		err = types.WrapError(
-			types.GenerateFunctionErrorWithRollback(err, rollbackErr),
-			"failed to create new disk %v", name)
-	}()
-
-	f, newHeadDisk, createNewHeadRollbackFunc, err := r.createNewHead(oldHead, newSnapName, created, size)
-	if err != nil {
-		return err
 	}
-	rollbackFuncList = append(rollbackFuncList, createNewHeadRollbackFunc)
 
-	linkDiskRollbackFunc, err := r.linkDisk(r.info.Head, newSnapName)
-	if err != nil {
-		return err
+	chArgs := mustJSON(CreateHeadArgs{HeadName: newHeadName, Size: size, Meta: newHeadDisk})
+	var laArgs []byte
+	if newSnapName != "" {
+		laArgs = mustJSON(LinkAsSnapshotArgs{SourceImage: oldHead, DestSnap: newSnapName})
 	}
-	rollbackFuncList = append(rollbackFuncList, linkDiskRollbackFunc)
-
-	info := r.info
-	info.Head = newHeadDisk.Name
-	info.Dirty = true
-	info.Parent = newSnapName
-	info.Size = size
-
-	volumeMetaEncodeRollbackFunc, err := r.encodeToFile(&info, volumeMetaData)
-	if err != nil {
-		return err
+	uvmArgs := mustJSON(UpdateVolumeMetaArgs{Info: newInfo})
+	var usmArgs []byte
+	if newSnapName != "" {
+		usmArgs = mustJSON(UpdateSnapMetaArgs{SnapName: newSnapName, Meta: newSnapMeta})
 	}
-	rollbackFuncList = append(rollbackFuncList, func() error {
-		_, err := r.encodeToFile(&r.info, volumeMetaData)
-		return types.CombineErrors(volumeMetaEncodeRollbackFunc(), err)
+	var dohArgs []byte
+	if oldHead != "" {
+		dohArgs = mustJSON(DeleteOldHeadArgs{HeadName: oldHead})
+	}
+
+	paramsJSON := mustJSON(SnapCreateParams{
+		Snapshot:    name,
+		OldHead:     oldHead,
+		NewHead:     newHeadName,
+		NewSnap:     newSnapName,
+		UserCreated: userCreated,
+		Size:        size,
 	})
 
-	r.diskData[newHeadDisk.Name] = &newHeadDisk
-	if newSnapName != "" {
-		r.addChildDisk(newSnapName, newHeadDisk.Name)
-		r.diskData[newSnapName] = r.diskData[oldHead]
-		r.diskData[newSnapName].UserCreated = userCreated
-		r.diskData[newSnapName].Created = created
-		r.diskData[newSnapName].Labels = labels
-		rollbackFuncList = append(rollbackFuncList, func() error {
-			delete(r.diskData, newHeadDisk.Name)
-			delete(r.diskData, newSnapName)
-			delete(r.diskChildrenMap, newSnapName)
-			return nil
-		})
+	tx, err := r.wal.Begin(wal.OpSnapCreate, paramsJSON)
+	if err != nil {
+		return errors.Wrap(err, "begin journal txn")
+	}
 
-		snapMetaEncodeRollbackFunc, err := r.encodeToFile(r.diskData[newSnapName], newSnapName+diskutil.DiskMetadataSuffix)
-		if err != nil {
-			return err
+	type stepDef struct {
+		id     uint32
+		action wal.Action
+		args   []byte
+		skip   bool
+	}
+	steps := []stepDef{
+		{1, wal.ActionCreateHead, chArgs, false},
+		{2, wal.ActionLinkAsSnapshot, laArgs, newSnapName == ""},
+		{3, wal.ActionUpdateVolumeMeta, uvmArgs, false},
+		{4, wal.ActionUpdateSnapMeta, usmArgs, newSnapName == ""},
+		{5, wal.ActionDeleteOldHead, dohArgs, oldHead == ""},
+	}
+
+	// Write the full operation plan to the journal up front. After this,
+	// recovery has enough information to roll the transaction forward to
+	// completion no matter where a subsequent crash occurs.
+	for _, st := range steps {
+		if st.skip {
+			continue
 		}
-		rollbackFuncList = append(rollbackFuncList, snapMetaEncodeRollbackFunc)
+		if errIntent := tx.Intent(st.id, st.action, st.args); errIntent != nil {
+			_ = tx.Abort()
+			return errors.Wrapf(errIntent, "write intent for step %d", st.id)
+		}
+	}
+	// PREPARE marks the intent set as durable and complete. Recovery
+	// only redoes prepared transactions; a crash before this point
+	// leaves a (possibly torn) intent set that recovery will discard.
+	if errPrep := tx.Prepare(); errPrep != nil {
+		_ = tx.Abort()
+		return errors.Wrap(errPrep, "prepare journal txn")
+	}
+
+	s := stepDir{dir: r.dir}
+	for _, st := range steps {
+		if st.skip {
+			continue
+		}
+		if errApply := stepRegistry[st.action](s, st.args); errApply != nil {
+			// The txn is already prepared, so recovery rolls it
+			// forward and the WAL refuses an abort. Do not clean up
+			// partial artifacts (that would fight recovery); poison
+			// the replica so no new operation runs until a restart
+			// replays and completes this transaction.
+			r.poison()
+			return errors.Wrapf(errApply, "apply step %d (%s)", st.id, st.action)
+		}
+		if errDone := tx.StepDone(st.id); errDone != nil {
+			// Apply already succeeded and is durable; recovery will
+			// write STEP_DONE + COMMIT. Poison the replica until that
+			// restart replays the pending transaction.
+			r.poison()
+			return errors.Wrapf(errDone, "step done %d", st.id)
+		}
+	}
+	if err := tx.Commit(); err != nil {
+		r.poison()
+		return errors.Wrap(err, "commit journal txn")
+	}
+
+	// Open the new head image for I/O.
+	f, err := openNewHeadForIO(r, newHeadName)
+	if err != nil {
+		// The txn already committed: on disk the new head exists and the
+		// old head is gone, but the in-memory chain still points at the
+		// old head. Poison so no operation runs on the diverged state
+		// until the replica is reloaded.
+		r.poison()
+		return errors.Wrap(err, "open new head")
+	}
+
+	// Patch in-memory state to reflect the now-durable on-disk state.
+	if newSnapName != "" {
+		// The old head's disk struct is reused as the new snapshot's
+		// disk struct (its image+meta were just hardlinked under the
+		// new name). Mutate Name + user fields in place.
+		snapDiskRef := r.diskData[oldHead]
+		snapDiskRef.Name = newSnapName
+		snapDiskRef.UserCreated = userCreated
+		snapDiskRef.Created = created
+		snapDiskRef.Labels = labels
+		r.diskData[newSnapName] = snapDiskRef
 
 		r.updateChildDisk(oldHead, newSnapName)
 		r.activeDiskData[len(r.activeDiskData)-1].Name = newSnapName
+		r.addChildDisk(newSnapName, newHeadName)
 	}
 	delete(r.diskData, oldHead)
-
-	r.info = info
+	r.diskData[newHeadName] = &newHeadDisk
+	r.info = newInfo
 	r.volume.files = append(r.volume.files, f)
 	r.activeDiskData = append(r.activeDiskData, &newHeadDisk)
 
@@ -1299,6 +1759,234 @@ func (r *Replica) SetSnapshotMaxSize(size int64) {
 	logrus.Infof("Set replica flag SnapshotMaxSize to %d", size)
 }
 
+// createDiskWithRollback creates a new head disk using best-effort rollback on
+// failure, instead of the roll-forward crash-safe WAL path used by createDisk.
+//
+// Expansion must leave the replica read-write at its original size when a step
+// fails so the controller can retry, and it signals that via the typed
+// types.ErrorCodeFunctionFailedRollbackSucceeded error. The WAL is
+// roll-forward-only and refuses to abort a prepared transaction, so it cannot
+// provide that rollback contract (and recovery would silently re-expand after a
+// reported failure). Snapshot/revert/remove keep using the journaled createDisk.
+func (r *Replica) createDiskWithRollback(name string, userCreated bool, created string, labels map[string]string, size int64) (err error) {
+	log := logrus.WithFields(logrus.Fields{"disk": name})
+	log.Info("Starting to create disk with rollback")
+	if r.readOnly {
+		return fmt.Errorf("cannot create disk on read-only replica")
+	}
+
+	if r.poisoned {
+		return errReplicaPoisoned
+	}
+
+	if r.getRemainSnapshotCounts() <= 0 {
+		return fmt.Errorf("too many active disks: %v", len(r.activeDiskData)-2+1)
+	}
+
+	oldHead := r.info.Head
+	newSnapName := diskutil.GenerateSnapshotDiskName(name)
+
+	if oldHead == "" {
+		newSnapName = ""
+	}
+
+	if newSnapName != "" {
+		if _, ok := r.diskData[newSnapName]; ok {
+			return fmt.Errorf("snapshot %v is already existing", newSnapName)
+		}
+	}
+
+	rollbackFuncList := []func() error{}
+	defer func() {
+		if err == nil {
+			if errRm := r.rmDisk(oldHead); errRm != nil {
+				logrus.WithError(errRm).Warnf("Failed to remove old head %v", oldHead)
+			}
+			return
+		}
+
+		var rollbackErr error
+		log.WithError(err).Errorf("Failed to create disk %v, will do rollback", name)
+		for _, rollbackFunc := range rollbackFuncList {
+			if rollbackFunc == nil {
+				continue
+			}
+			rollbackErr = types.CombineErrors(rollbackErr, rollbackFunc())
+		}
+		err = types.WrapError(
+			types.GenerateFunctionErrorWithRollback(err, rollbackErr),
+			"failed to create new disk %v", name)
+	}()
+
+	f, newHeadDisk, createNewHeadRollbackFunc, err := r.createNewHead(oldHead, newSnapName, created, size)
+	if err != nil {
+		return err
+	}
+	rollbackFuncList = append(rollbackFuncList, createNewHeadRollbackFunc)
+
+	linkDiskRollbackFunc, err := r.linkDisk(r.info.Head, newSnapName)
+	if err != nil {
+		return err
+	}
+	rollbackFuncList = append(rollbackFuncList, linkDiskRollbackFunc)
+
+	info := r.info
+	info.Head = newHeadDisk.Name
+	info.Dirty = true
+	info.Parent = newSnapName
+	info.Size = size
+
+	volumeMetaEncodeRollbackFunc, err := r.encodeToFile(&info, volumeMetaData)
+	if err != nil {
+		return err
+	}
+	rollbackFuncList = append(rollbackFuncList, func() error {
+		_, err := r.encodeToFile(&r.info, volumeMetaData)
+		return types.CombineErrors(volumeMetaEncodeRollbackFunc(), err)
+	})
+
+	r.diskData[newHeadDisk.Name] = &newHeadDisk
+	if newSnapName != "" {
+		r.addChildDisk(newSnapName, newHeadDisk.Name)
+		r.diskData[newSnapName] = r.diskData[oldHead]
+		r.diskData[newSnapName].UserCreated = userCreated
+		r.diskData[newSnapName].Created = created
+		r.diskData[newSnapName].Labels = labels
+		rollbackFuncList = append(rollbackFuncList, func() error {
+			delete(r.diskData, newHeadDisk.Name)
+			delete(r.diskData, newSnapName)
+			delete(r.diskChildrenMap, newSnapName)
+			return nil
+		})
+
+		snapMetaEncodeRollbackFunc, err := r.encodeToFile(r.diskData[newSnapName], newSnapName+diskutil.DiskMetadataSuffix)
+		if err != nil {
+			return err
+		}
+		rollbackFuncList = append(rollbackFuncList, snapMetaEncodeRollbackFunc)
+
+		r.updateChildDisk(oldHead, newSnapName)
+		r.activeDiskData[len(r.activeDiskData)-1].Name = newSnapName
+	}
+	delete(r.diskData, oldHead)
+
+	r.info = info
+	r.volume.files = append(r.volume.files, f)
+	r.activeDiskData = append(r.activeDiskData, &newHeadDisk)
+
+	log.Info("Finished creating disk")
+	return nil
+}
+
+func (r *Replica) createNewHead(oldHead, parent, created string, size int64) (f types.DiffDisk, newDisk disk, rollbackFunc func() error, err error) {
+	newHeadName, err := r.nextFile(diskPattern, diskutil.VolumeHeadDiskName, oldHead)
+	if err != nil {
+		return nil, disk{}, nil, err
+	}
+
+	if _, err := os.Stat(r.diskPath(newHeadName)); err == nil {
+		return nil, disk{}, nil, fmt.Errorf("%s already exists", newHeadName)
+	}
+
+	f, err = r.openFile(r.diskPath(newHeadName), os.O_TRUNC)
+	if err != nil {
+		return nil, disk{}, nil, err
+	}
+
+	var subRollbackFunc func() error
+	defer func() {
+		// This rollback function will be executed either after the current function errors out,
+		// or by the upper layer when the current function succeeds but the subsequent executions fail.
+		//
+		// It allows the upper caller to be atomic:
+		// the upper layer either succeeds to execute all functions,
+		// or fails in the middle then does rollback for the previous succeeded parts so that everything looks like unchanged.
+		rollbackFunc = func() error {
+			if errClose := f.Close(); errClose != nil {
+				logrus.WithError(errClose).Error("Failed to close file")
+			}
+			if subRollbackFunc != nil {
+				return types.CombineErrors(subRollbackFunc(), r.rmDisk(newHeadName))
+			}
+			return r.rmDisk(newHeadName)
+		}
+
+		if err != nil {
+			err = types.GenerateFunctionErrorWithRollback(err, rollbackFunc())
+			rollbackFunc = nil
+		}
+	}()
+
+	if err := os.Truncate(r.diskPath(newHeadName), size); err != nil {
+		return nil, disk{}, rollbackFunc, err
+	}
+
+	newDisk = disk{
+		Parent:      parent,
+		Name:        newHeadName,
+		Removed:     false,
+		UserCreated: false,
+		Created:     created,
+	}
+	subRollbackFunc, err = r.encodeToFile(&newDisk, newHeadName+diskutil.DiskMetadataSuffix)
+	return f, newDisk, rollbackFunc, err
+}
+
+func (r *Replica) linkDisk(oldName, newName string) (rollbackFunc func() error, err error) {
+	if oldName == "" {
+		return nil, nil
+	}
+
+	defer func() {
+		if err != nil {
+			return
+		}
+
+		// This rollback function will be executed either after the current function errors out,
+		// or by the upper layer when the current function succeeds but the subsequent executions fail.
+		//
+		// It allows the upper caller to be atomic:
+		// the upper layer either succeeds to execute all functions,
+		// or fails in the middle then does rollback for the previous succeeded parts so that everything looks like unchanged.
+		rollbackFunc = func() error {
+			return r.rmDisk(newName)
+		}
+	}()
+
+	destMetadata := r.diskPath(newName + diskutil.DiskMetadataSuffix)
+	logrus.Infof("Cleaning up new disk metadata file path %v before linking", destMetadata)
+	if err := os.RemoveAll(destMetadata); err != nil {
+		return rollbackFunc, errors.Wrapf(err, "failed to clean up new disk metadata file %v before linking", destMetadata)
+	}
+
+	destChecksum := r.diskPath(newName + diskutil.DiskChecksumSuffix)
+	logrus.Infof("Cleaning up new disk checksum file %v before linking", destChecksum)
+	if err := os.RemoveAll(destChecksum); err != nil {
+		return rollbackFunc, errors.Wrapf(err, "failed to clean up new disk checksum file %v before linking", destChecksum)
+	}
+
+	dest := r.diskPath(newName)
+	logrus.Infof("Cleaning up new disk file %v before linking", dest)
+	if err := os.RemoveAll(dest); err != nil {
+		return rollbackFunc, errors.Wrapf(err, "failed to clean up new disk file %v before linking", dest)
+	}
+
+	defer func() {
+		if err != nil {
+			err = types.GenerateFunctionErrorWithRollback(err, r.rmDisk(newName))
+		}
+	}()
+
+	if err := os.Link(r.diskPath(oldName), dest); err != nil {
+		return rollbackFunc, err
+	}
+
+	// Typically, this function links an old volume head to a new snapshot. And the volume head does not contain a checksum file.
+	// Hence there is no need to link the checksum file here.
+
+	return rollbackFunc, os.Link(r.diskPath(oldName+diskutil.DiskMetadataSuffix), r.diskPath(newName+diskutil.DiskMetadataSuffix))
+}
+
 func (r *Replica) Expand(size int64) (err error) {
 	if size%diskutil.VolumeSectorSize != 0 {
 		return fmt.Errorf("failed to expend volume replica size %v, because it is not multiple of volume sector size %v", size, diskutil.VolumeSectorSize)
@@ -1314,8 +2002,16 @@ func (r *Replica) Expand(size int64) (err error) {
 		return nil
 	}
 
-	// Will create a new head with the expanded size and write the new size into the meta file
-	if err := r.createDisk(
+	// Expansion mutates the snapshot chain and volume.meta, so a live-upgrade
+	// standby must take ownership of the journal first (this also runs the
+	// stale-state check and clears isUpgrade so writeVolumeMetaData persists).
+	if err := r.ensureJournal(); err != nil {
+		return errors.Wrap(err, "Expand")
+	}
+
+	// Expansion uses the rollback-capable path (not the roll-forward WAL) so a
+	// failed expansion leaves the replica read-write at its original size.
+	if err := r.createDiskWithRollback(
 		diskutil.GenerateExpansionSnapshotName(size), false, util.Now(),
 		diskutil.GenerateExpansionSnapshotLabels(size), size); err != nil {
 		return err

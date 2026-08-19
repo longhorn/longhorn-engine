@@ -234,6 +234,26 @@ func SyncFile(filePath string) error {
 	return file.Sync()
 }
 
+// FsyncDir fsyncs a directory so that file create / rename / unlink
+// entries within it are durable. POSIX requires this after os.Rename to
+// guarantee crash recovery sees the new name.
+func FsyncDir(dir string) error {
+	d, err := os.Open(dir)
+	if err != nil {
+		return errors.Wrapf(err, "failed to open dir %v for fsync", dir)
+	}
+	defer func() {
+		if errClose := d.Close(); errClose != nil {
+			logrus.WithError(errClose).Errorf("Failed to close dir %v", dir)
+		}
+	}()
+
+	if err := d.Sync(); err != nil {
+		return errors.Wrapf(err, "failed to fsync dir %v", dir)
+	}
+	return nil
+}
+
 // GetDiskStat returns the disk stat for the specified path.
 func GetDiskStat(path string) (diskStat types.DiskStat, err error) {
 	defer func() {
