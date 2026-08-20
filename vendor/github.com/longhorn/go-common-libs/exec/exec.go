@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/exec"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/cockroachdb/errors"
@@ -74,9 +75,18 @@ func (e *Executor) executeCmd(cmd *exec.Cmd, timeout time.Duration) (string, err
 	cmd.Stdout = &output
 	cmd.Stderr = &stderr
 
+	// Place the command in its own process group so that a timeout can kill
+	// the command together with any processes it spawned.
+	cmd.SysProcAttr = &syscall.SysProcAttr{Setpgid: true}
+
+	if err := cmd.Start(); err != nil {
+		return "", errors.Wrapf(err, "failed to execute: %v %v, output %s, stderr %s",
+			cmd.Path, cmd.Args, output.String(), stderr.String())
+	}
+
 	errChan := make(chan error, 1)
 	go func() {
-		errChan <- cmd.Run()
+		errChan <- cmd.Wait()
 	}()
 
 	select {
@@ -86,6 +96,10 @@ func (e *Executor) executeCmd(cmd *exec.Cmd, timeout time.Duration) (string, err
 				cmd.Path, cmd.Args, output.String(), stderr.String())
 		}
 	case <-ctx.Done():
+		// Kill the process group; otherwise the command would keep running
+		// (and consuming resources) after the timeout error is returned.
+		// The Wait in the goroutine above reaps the process once it exits.
+		_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
 		return "", errors.Errorf("timeout executing: %v %v", cmd.Path, cmd.Args)
 	}
 
