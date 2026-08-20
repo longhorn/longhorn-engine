@@ -41,6 +41,7 @@ func setupS3Credential(credential map[string]string) error {
 	_ = os.Setenv(types.HTTPProxy, credential[types.HTTPProxy])
 	_ = os.Setenv(types.NOProxy, credential[types.NOProxy])
 	_ = os.Setenv(types.VirtualHostedStyle, credential[types.VirtualHostedStyle])
+	_ = os.Setenv(types.AWSSignAcceptEncoding, credential[types.AWSSignAcceptEncoding])
 
 	// set a custom ca cert if available
 	if credential[types.AWSCert] != "" {
@@ -145,6 +146,7 @@ func getS3CredentialFromEnvVars() (map[string]string, error) {
 	credential[types.HTTPProxy] = os.Getenv(types.HTTPProxy)
 	credential[types.NOProxy] = os.Getenv(types.NOProxy)
 	credential[types.VirtualHostedStyle] = os.Getenv(types.VirtualHostedStyle)
+	credential[types.AWSSignAcceptEncoding] = os.Getenv(types.AWSSignAcceptEncoding)
 
 	return credential, nil
 }
