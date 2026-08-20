@@ -7,7 +7,9 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -33,6 +35,11 @@ type service struct {
 const (
 	VirtualHostedStyle = "VIRTUAL_HOSTED_STYLE"
 
+	// AWSSignAcceptEncoding controls whether `Accept-Encoding` is included in the
+	// SigV4 SignedHeaders set. Set it to "false" for an endpoint that is reached
+	// through a proxy which alters the header in transit.
+	AWSSignAcceptEncoding = "AWS_SIGN_ACCEPT_ENCODING"
+
 	// AWSRetryMaxAttempts is the default maximum number of retry attempts for a single API operation that fails with a retryable error.
 	AWSRetryMaxAttempts = 5
 	// AWSRetryMaximumAttempts maximum number attempts that should be made.
@@ -51,6 +58,51 @@ const (
 	// https://docs.aws.amazon.com/AmazonS3/latest/userguide/upload-objects.html
 	maxSinglePutObjectSize int64 = 5 * 1024 * 1024 * 1024
 )
+
+// warnInvalidSignAcceptEncoding keeps the warning for a malformed
+// AWS_SIGN_ACCEPT_ENCODING value out of the per-request path.
+var warnInvalidSignAcceptEncoding sync.Once
+
+// ignoreAcceptEncodingSigning reports whether `Accept-Encoding` must be excluded
+// from the SigV4 SignedHeaders set for the given endpoint.
+//
+// aws-sdk-go-v2 sends `Accept-Encoding: identity` and, unlike v1, includes
+// `accept-encoding` in SignedHeaders. Anything that alters the header between
+// the client and the endpoint therefore breaks signature verification at the
+// endpoint with SignatureDoesNotMatch.
+// (https://github.com/aws/aws-sdk-go-v2/issues/1816 and https://github.com/rclone/rclone/issues/6670)
+//
+// Google Cloud Storage always alters the header (it appends gzip(gfe)), so it is
+// detected by endpoint and never depends on the user setting. A reverse proxy or
+// a CDN in front of an S3-compatible endpoint does the same thing (Cloudflare
+// replaces the value with "gzip, br" by design) but cannot be detected from the
+// endpoint. AWS_SIGN_ACCEPT_ENCODING=false lets the user exclude the header for
+// those endpoints. It defaults to true, which keeps the existing behavior.
+func ignoreAcceptEncodingSigning(endpoints string) bool {
+	if strings.Contains(endpoints, "storage.googleapis.com") {
+		return true
+	}
+
+	// The value comes from a Secret, which commonly carries a trailing newline.
+	value := strings.TrimSpace(os.Getenv(AWSSignAcceptEncoding))
+	if value == "" {
+		return false
+	}
+
+	sign, err := strconv.ParseBool(value)
+	if err != nil {
+		// Warn once rather than per request, because a new client is built for
+		// every S3 operation. Without this the user sees the same
+		// SignatureDoesNotMatch failure the setting is meant to fix, with no
+		// indication that the value was rejected.
+		warnInvalidSignAcceptEncoding.Do(func() {
+			log.Warnf("Invalid %v value %q, expecting a boolean. Keeping Accept-Encoding in the request signature.",
+				AWSSignAcceptEncoding, value)
+		})
+		return false
+	}
+	return !sign
+}
 
 func newService(u *url.URL) (*service, error) {
 	s := service{}
@@ -118,12 +170,10 @@ func (s *service) newInstance(ctx context.Context, retryBackoff bool) (*s3.Clien
 				so.MaxBackoff = AWSRetryMaximumBackoff
 			})
 		}
-		// Google Cloud Storage alters the `Accept-Encoding` header (GCS might changes the header on its way to GCS by appending gzip(gfe) as accepted encoding),
-		// which causing signature mismatches and breaks the v2 request signature verification.
-		// (https://github.com/aws/aws-sdk-go-v2/issues/1816 and https://github.com/rclone/rclone/issues/6670)
-		// `Accept-Encoding` is added as one of the SignedHeaders in v2 but it is not used in v1.
-		// Remove `Accept-Encoding` from SignedHeaders is added as a workaround to make the v2 signature compatible with GCS.
-		if strings.Contains(endpoints, "storage.googleapis.com") {
+		// Remove `Accept-Encoding` from SignedHeaders for endpoints that alter it in
+		// transit. ignoreSigningHeaders restores the header after signing, so the
+		// request on the wire is unchanged.
+		if ignoreAcceptEncodingSigning(endpoints) {
 			ignoreSigningHeaders(o, []string{"Accept-Encoding"})
 		}
 	}), nil
