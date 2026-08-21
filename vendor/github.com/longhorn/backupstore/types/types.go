@@ -29,6 +29,8 @@ const (
 	NOProxy    = "NO_PROXY"
 
 	VirtualHostedStyle = "VIRTUAL_HOSTED_STYLE"
+
+	AWSSignAcceptEncoding = "AWS_SIGN_ACCEPT_ENCODING"
 )
 
 type Mapping struct {
