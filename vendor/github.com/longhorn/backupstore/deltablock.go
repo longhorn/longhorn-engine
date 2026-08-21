@@ -187,10 +187,11 @@ func CreateDeltaBlockBackup(backupName string, config *DeltaBackupConfig) (isInc
 	}
 
 	// Update volume from backupstore
-	volume, err = loadVolume(bsDriver, volume.Name)
+	loadedVolume, err := loadVolume(bsDriver, volume.Name)
 	if err != nil {
 		return false, err
 	}
+	volume = loadedVolume
 
 	config.Volume.CompressionMethod = volume.CompressionMethod
 	config.Volume.DataEngine = volume.DataEngine
@@ -639,10 +640,11 @@ func performBackup(bsDriver BackupStoreDriver, config *DeltaBackupConfig, delta 
 		return progress.progress, "", err
 	}
 
-	volume, err = loadVolume(bsDriver, volume.Name)
+	loadedVolume, err := loadVolume(bsDriver, volume.Name)
 	if err != nil {
 		return progress.progress, "", err
 	}
+	volume = loadedVolume
 
 	volume.LastBackupName = backup.Name
 	volume.LastBackupAt = backup.SnapshotCreatedAt
