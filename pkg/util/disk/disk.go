@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+
+	"github.com/longhorn/longhorn-engine/pkg/util"
 )
 
 func GenerateSnapshotDiskName(name string) string {
@@ -43,7 +45,7 @@ func GetSnapshotNameFromDiskName(diskName string) (string, error) {
 }
 
 func GenerateExpansionSnapshotName(size int64) string {
-	return fmt.Sprintf(expansionSnapshotInfix, size)
+	return fmt.Sprintf(expansionSnapshotInfix+"-%s", size, util.UUID())
 }
 
 func GenerateExpansionSnapshotLabels(size int64) map[string]string {
