@@ -33,10 +33,11 @@ func CreateSingleFileBackup(volume *Volume, snapshot *Snapshot, filePath, destUR
 		return "", err
 	}
 
-	volume, err = loadVolume(driver, volume.Name)
+	loadedVolume, err := loadVolume(driver, volume.Name)
 	if err != nil {
 		return "", err
 	}
+	volume = loadedVolume
 
 	log.WithFields(logrus.Fields{
 		LogFieldReason:   LogReasonStart,
