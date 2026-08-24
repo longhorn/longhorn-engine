@@ -42,8 +42,18 @@ func GetSnapshotNameFromDiskName(diskName string) (string, error) {
 	return result, nil
 }
 
-func GenerateExpansionSnapshotName(size int64) string {
-	return fmt.Sprintf(expansionSnapshotInfix, size)
+// GenerateExpansionSnapshotName includes the volume name in the expansion
+// snapshot name. All replicas of a volume share the same volume name, so they
+// generate the same name, while different volumes get different names. This
+// avoids Snapshot CR name collisions within the same Longhorn namespace when
+// two volumes are expanded to the same size. When the volume name is empty, it
+// falls back to the size-only form to keep the result a valid DNS-1123 name.
+func GenerateExpansionSnapshotName(volumeName string, size int64) string {
+	name := fmt.Sprintf(expansionSnapshotInfix, size)
+	if volumeName != "" {
+		name += "-" + volumeName
+	}
+	return name
 }
 
 func GenerateExpansionSnapshotLabels(size int64) map[string]string {
