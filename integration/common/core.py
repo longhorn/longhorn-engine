@@ -27,7 +27,7 @@ from common.constants import (
     RETRY_COUNTS_SHORT, RETRY_INTERVAL_SHORT,
     PROC_STATE_STARTING, PROC_STATE_RUNNING,
     PROC_STATE_ERROR,
-    ENGINE_NAME, EXPANDED_SIZE_STR,
+    ENGINE_NAME,
     VOLUME_NO_FRONTEND_NAME,
     FIXED_REPLICA_PATH1, FIXED_REPLICA_PATH2, REPLICA_NAME
 )
@@ -274,8 +274,13 @@ def get_dev_path(name):
     return os.path.join(LONGHORN_DEV_DIR, name)
 
 
-def get_expansion_snapshot_name():
-    return 'expand-{0}'.format(EXPANDED_SIZE_STR)
+def get_expansion_snapshot_name(grpc_replica_client):
+    # The expansion snapshot name includes the volume name suffix, so it depends
+    # on how the replica was launched. Discover it from the replica chain, where
+    # the expansion snapshot is the parent of the head (chain[1]).
+    chain = grpc_replica_client.replica_get().chain
+    disk_name = chain[1]
+    return disk_name[len('volume-snap-'):-len('.img')]
 
 
 def get_replica_paths_from_snapshot_name(snap_name):
