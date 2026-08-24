@@ -367,10 +367,13 @@ def test_inc_restore_with_rebuild_and_expansion(
     snaps_info = cmd.snapshot_info(dr_address)
     assert len(snaps_info) == 2
     volume_head_name = "volume-head"
-    snap_name = "expand-" + EXPANDED_SIZE_STR
     head_info = snaps_info[volume_head_name]
+    # The replica is launched without a volume name, so the expansion snapshot
+    # falls back to the size-only form "expand-<size>". Discover it from the
+    # head's parent rather than recomputing it.
+    snap_name = head_info["parent"]
+    assert snap_name == "expand-" + EXPANDED_SIZE_STR
     assert head_info["name"] == volume_head_name
-    assert head_info["parent"] == snap_name
     assert not head_info["children"]
     assert head_info["usercreated"] is False
     snap_info = snaps_info[snap_name]

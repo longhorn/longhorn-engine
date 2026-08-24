@@ -74,6 +74,9 @@ ENGINE_NAME_BASE = TEST_PREFIX + "instance-engine-"
 REPLICA_NAME_BASE = TEST_PREFIX + "instance-replica-"
 
 REPLICA_META_FILE_NAME = "volume.meta"
+# The expansion snapshot is named "expand-<size>-<volumeName>" so that replicas
+# of different volumes never collide. Integration test replicas are launched
+# without a volume name, so it falls back to the size-only form "expand-<size>".
 EXPANSION_DISK_TMP_META_NAME = \
     "volume-snap-expand-%d.img.meta.tmp" % EXPANDED_SIZE
 EXPANSION_DISK_NAME = "volume-snap-expand-%d.img" % EXPANDED_SIZE
