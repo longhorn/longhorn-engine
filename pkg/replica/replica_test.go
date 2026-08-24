@@ -14,6 +14,8 @@ import (
 	"github.com/longhorn/longhorn-engine/pkg/backingfile"
 	"github.com/longhorn/longhorn-engine/pkg/types"
 	"github.com/longhorn/longhorn-engine/pkg/util"
+
+	diskutil "github.com/longhorn/longhorn-engine/pkg/util/disk"
 	. "gopkg.in/check.v1"
 )
 
@@ -62,12 +64,43 @@ func (s *TestSuite) TestCreate(c *C) {
 		c.Assert(errRemove, IsNil)
 	}()
 
-	r, err := New(context.Background(), 9, 3, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, 9)
+	r, err := New(context.Background(), 9, 3, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, 9, "")
 	c.Assert(err, IsNil)
 	defer func() {
 		errClose := r.Close()
 		c.Assert(errClose, IsNil)
 	}()
+}
+
+func (s *TestSuite) TestExpandSnapshotNameUsesVolumeName(c *C) {
+	dir, err := os.MkdirTemp("", "replica")
+	c.Assert(err, IsNil)
+	defer func() {
+		errRemove := os.RemoveAll(dir)
+		c.Assert(errRemove, IsNil)
+	}()
+
+	const volumeName = "test-vol"
+	const initialSize = int64(diskutil.VolumeSectorSize)
+	const expandedSize = int64(2 * diskutil.VolumeSectorSize)
+
+	r, err := New(context.Background(), initialSize, diskutil.ReplicaSectorSize, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, initialSize, volumeName)
+	c.Assert(err, IsNil)
+	defer func() {
+		errClose := r.Close()
+		c.Assert(errClose, IsNil)
+	}()
+
+	err = r.Expand(expandedSize)
+	c.Assert(err, IsNil)
+
+	// The expansion snapshot name must include the volume name so that all
+	// replicas of the same volume agree on it while different volumes differ.
+	expectedSnapName := diskutil.GenerateExpansionSnapshotName(volumeName, expandedSize)
+	expectedSnapDiskName := diskutil.GenerateSnapshotDiskName(expectedSnapName)
+	c.Assert(r.info.Parent, Equals, expectedSnapDiskName)
+	_, ok := r.diskData[expectedSnapDiskName]
+	c.Assert(ok, Equals, true)
 }
 
 func getNow() string {
@@ -84,7 +117,7 @@ func (s *TestSuite) TestSnapshot(c *C) {
 		c.Assert(errRemove, IsNil)
 	}()
 
-	r, err := New(context.Background(), 9, 3, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, 9)
+	r, err := New(context.Background(), 9, 3, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, 9, "")
 	c.Assert(err, IsNil)
 	defer func() {
 		errClose := r.Close()
@@ -175,7 +208,7 @@ func (s *TestSuite) TestRevert(c *C) {
 		c.Assert(errRemove, IsNil)
 	}()
 
-	r, err := New(context.Background(), 9, 3, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, 9)
+	r, err := New(context.Background(), 9, 3, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, 9, "")
 	c.Assert(err, IsNil)
 	defer func() {
 		errClose := r.Close()
@@ -293,7 +326,7 @@ func (s *TestSuite) TestRemoveLeafNode(c *C) {
 		c.Assert(errRemove, IsNil)
 	}()
 
-	r, err := New(context.Background(), 9, 3, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, 9)
+	r, err := New(context.Background(), 9, 3, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, 9, "")
 	c.Assert(err, IsNil)
 	defer func() {
 		errClose := r.Close()
@@ -374,7 +407,7 @@ func (s *TestSuite) TestRemoveLast(c *C) {
 		c.Assert(errRemove, IsNil)
 	}()
 
-	r, err := New(context.Background(), 9, 3, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, 9)
+	r, err := New(context.Background(), 9, 3, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, 9, "")
 	c.Assert(err, IsNil)
 	defer func() {
 		errClose := r.Close()
@@ -426,7 +459,7 @@ func (s *TestSuite) TestRemoveMiddle(c *C) {
 		c.Assert(errRemove, IsNil)
 	}()
 
-	r, err := New(context.Background(), 9, 3, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, 9)
+	r, err := New(context.Background(), 9, 3, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, 9, "")
 	c.Assert(err, IsNil)
 	defer func() {
 		errClose := r.Close()
@@ -478,7 +511,7 @@ func (s *TestSuite) TestRemoveFirst(c *C) {
 		c.Assert(errRemove, IsNil)
 	}()
 
-	r, err := New(context.Background(), 9, 3, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, 9)
+	r, err := New(context.Background(), 9, 3, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, 9, "")
 	c.Assert(err, IsNil)
 	defer func() {
 		errClose := r.Close()
@@ -515,7 +548,7 @@ func (s *TestSuite) TestRemoveOutOfChain(c *C) {
 		c.Assert(errRemove, IsNil)
 	}()
 
-	r, err := New(context.Background(), 9, 3, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, 9)
+	r, err := New(context.Background(), 9, 3, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, 9, "")
 	c.Assert(err, IsNil)
 	defer func() {
 		errClose := r.Close()
@@ -597,7 +630,7 @@ func (s *TestSuite) TestPrepareRemove(c *C) {
 		c.Assert(errRemove, IsNil)
 	}()
 
-	r, err := New(context.Background(), 9, 3, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, 9)
+	r, err := New(context.Background(), 9, 3, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, 9, "")
 	c.Assert(err, IsNil)
 	defer func() {
 		errClose := r.Close()
@@ -743,7 +776,7 @@ func (s *TestSuite) TestRead(c *C) {
 		c.Assert(errRemove, IsNil)
 	}()
 
-	r, err := New(context.Background(), 9*b, b, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, 9*b)
+	r, err := New(context.Background(), 9*b, b, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, 9*b, "")
 	c.Assert(err, IsNil)
 	defer func() {
 		errClose := r.Close()
@@ -783,7 +816,7 @@ func (s *TestSuite) TestReadBackingFileSmallerThanVolume(c *C) {
 		Disk: f,
 	}
 
-	r, err := New(context.Background(), 5*b, b, dir, backing, false, false, 250, 0, false, false, types.ReplicaStateInitial, 5*b)
+	r, err := New(context.Background(), 5*b, b, dir, backing, false, false, 250, 0, false, false, types.ReplicaStateInitial, 5*b, "")
 	c.Assert(err, IsNil)
 	defer func() {
 		errClose := r.Close()
@@ -870,7 +903,7 @@ func (s *TestSuite) TestWrite(c *C) {
 		c.Assert(errRemove, IsNil)
 	}()
 
-	r, err := New(context.Background(), 9*b, b, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, 9*b)
+	r, err := New(context.Background(), 9*b, b, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, 9*b, "")
 	c.Assert(err, IsNil)
 	defer func() {
 		errClose := r.Close()
@@ -898,7 +931,7 @@ func (s *TestSuite) TestSnapshotReadWrite(c *C) {
 		c.Assert(errRemove, IsNil)
 	}()
 
-	r, err := New(context.Background(), 3*b, b, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, 3*b)
+	r, err := New(context.Background(), 3*b, b, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, 3*b, "")
 	c.Assert(err, IsNil)
 	defer func() {
 		errClose := r.Close()
@@ -969,7 +1002,7 @@ func (s *TestSuite) TestBackingFile(c *C) {
 		Disk: f,
 	}
 
-	r, err := New(context.Background(), 3*b, b, dir, backing, false, false, 250, 0, false, false, types.ReplicaStateInitial, 3*b)
+	r, err := New(context.Background(), 3*b, b, dir, backing, false, false, 250, 0, false, false, types.ReplicaStateInitial, 3*b, "")
 	c.Assert(err, IsNil)
 	defer func() {
 		errClose := r.Close()
@@ -1008,7 +1041,7 @@ func (s *TestSuite) partialWriteRead(c *C, totalLength, writeLength, writeOffset
 	buf := make([]byte, totalLength)
 	fill(buf, 3)
 
-	r, err := New(context.Background(), totalLength, b, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, totalLength)
+	r, err := New(context.Background(), totalLength, b, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, totalLength, "")
 	c.Assert(err, IsNil)
 	defer func() {
 		errClose := r.Close()
@@ -1062,7 +1095,7 @@ func (s *TestSuite) testPartialRead(c *C, totalLength int64, readBuf []byte, off
 	buf := make([]byte, totalLength)
 	fill(buf, 3)
 
-	r, err := New(context.Background(), totalLength, b, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, totalLength)
+	r, err := New(context.Background(), totalLength, b, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, totalLength, "")
 	c.Assert(err, IsNil)
 	defer func() {
 		errClose := r.Close()
@@ -1139,7 +1172,7 @@ func (s *TestSuite) TestForceRemoveDiffDisk(c *C) {
 		c.Assert(errRemove, IsNil)
 	}()
 
-	r, err := New(context.Background(), 9, 3, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, 9)
+	r, err := New(context.Background(), 9, 3, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, 9, "")
 	c.Assert(err, IsNil)
 	defer func() {
 		errClose := r.Close()
@@ -1189,7 +1222,7 @@ func (s *TestSuite) TestUnmapMarkDiskRemoved(c *C) {
 		c.Assert(errRemove, IsNil)
 	}()
 
-	r, err := New(context.Background(), 9, 3, dir, nil, false, true, 250, 0, false, false, types.ReplicaStateInitial, 9)
+	r, err := New(context.Background(), 9, 3, dir, nil, false, true, 250, 0, false, false, types.ReplicaStateInitial, 9, "")
 	c.Assert(err, IsNil)
 	defer func() {
 		errClose := r.Close()
@@ -1246,7 +1279,7 @@ func (s *TestSuite) TestUnmap(c *C) {
 		c.Assert(errRemove, IsNil)
 	}()
 
-	r, err := New(context.Background(), 8*b, b, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, 8*b)
+	r, err := New(context.Background(), 8*b, b, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, 8*b, "")
 	c.Assert(err, IsNil)
 	defer func() {
 		errClose := r.Close()

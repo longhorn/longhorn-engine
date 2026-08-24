@@ -938,7 +938,7 @@ def test_volume_expand_with_snapshots(  # NOQA
 
     # `expand` will create a snapshot then apply the new size
     # on the new head file
-    snap_expansion = get_expansion_snapshot_name()
+    snap_expansion = get_expansion_snapshot_name(grpc_replica_client)
     r1 = grpc_replica_client.replica_get()
     assert r1.chain[1] == 'volume-snap-{}.img'.format(snap_expansion)
     assert r1.size == EXPANDED_SIZE_STR
@@ -1107,6 +1107,50 @@ def test_expand_multiple_times():
 
         cleanup_process(em_client)
         cleanup_process(rm_client)
+
+
+def test_expansion_snapshot_name_includes_volume_name(
+        process_manager_client):  # NOQA
+    """
+    Regression test for the expansion Snapshot CR name collision
+    (longhorn/longhorn#13386).
+
+    The volume-expansion system snapshot used to be named "expand-<size>",
+    using only the target size. Because Snapshot CR names are unique within a
+    Longhorn namespace, two different volumes expanded to the same byte size
+    produced the same name and collided. The replica now derives the name from
+    its volume name, so replicas launched with different volume names must
+    produce different expansion snapshot names, while staying deterministic
+    per volume.
+    """
+    volume_name_1 = "test-expand-vol-1"
+    volume_name_2 = "test-expand-vol-2"
+
+    replica_process_1 = create_replica_process(
+        process_manager_client, REPLICA_NAME, volume_name=volume_name_1)
+    grpc_replica_client_1 = cleanup_replica(
+        ReplicaClient(get_process_address(replica_process_1)))
+
+    replica_process_2 = create_replica_process(
+        process_manager_client, REPLICA_2_NAME, volume_name=volume_name_2)
+    grpc_replica_client_2 = cleanup_replica(
+        ReplicaClient(get_process_address(replica_process_2)))
+
+    for grpc_replica_client in (grpc_replica_client_1, grpc_replica_client_2):
+        open_replica(grpc_replica_client)
+        grpc_replica_client.replica_open()
+        grpc_replica_client.replica_expand(EXPANDED_SIZE)
+
+    snap_name_1 = get_expansion_snapshot_name(grpc_replica_client_1)
+    snap_name_2 = get_expansion_snapshot_name(grpc_replica_client_2)
+
+    # Each expansion snapshot name embeds its own volume name ...
+    assert snap_name_1 == "expand-{}-{}".format(
+        EXPANDED_SIZE_STR, volume_name_1)
+    assert snap_name_2 == "expand-{}-{}".format(
+        EXPANDED_SIZE_STR, volume_name_2)
+    # ... so two volumes of the same size never collide.
+    assert snap_name_1 != snap_name_2
 
 
 def test_single_replica_failure_during_engine_start(bin):  # NOQA

@@ -130,7 +130,9 @@ func startReplica(c *cli.Context) (err error) {
 		}
 	}()
 
-	s := replica.NewServer(ctx, dir, backingFile, diskutil.ReplicaSectorSize, disableRevCounter, unmapMarkDiskChainRemoved, snapshotMaxCount, snapshotMaxSize, encrypted)
+	volumeName := c.GlobalString("volume-name")
+
+	s := replica.NewServer(ctx, dir, backingFile, diskutil.ReplicaSectorSize, disableRevCounter, unmapMarkDiskChainRemoved, snapshotMaxCount, snapshotMaxSize, encrypted, volumeName)
 
 	address := c.String("listen")
 
@@ -149,7 +151,6 @@ func startReplica(c *cli.Context) (err error) {
 		}
 	}
 
-	volumeName := c.GlobalString("volume-name")
 	replicaInstanceName := c.String("replica-instance-name")
 	dataServerProtocol := c.String("data-server-protocol")
 
