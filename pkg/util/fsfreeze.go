@@ -19,6 +19,7 @@ import (
 const (
 	binaryFsfreeze          = "fsfreeze"
 	notFrozenErrorSubstring = "Invalid argument"
+	freezePointDirectory    = "/var/lib/longhorn/freeze" // We expect this to be INSIDE the container namespace.
 	DevicePathPrefix        = longhorndev.DevPath
 
 	// If the block device is functioning and the filesystem is frozen, fsfreeze -u immediately returns successfully.
@@ -43,7 +44,7 @@ func GetFreezePointFromVolumeName(volumeName string) string {
 	if volumeName == "" {
 		return ""
 	}
-	return filepath.Join(GetFreezePointDirectory(), volumeName)
+	return filepath.Join(freezePointDirectory, volumeName)
 }
 
 // GetDevicePathFromVolumeName mirrors longhorndev.getDev. It returns the device path that go-iscsi-helper will use.
