@@ -9,4 +9,4 @@ on:
 
 jobs:
   call-workflow:
-    uses: longhorn/longhorn/.github/workflows/backport-pr.yml@9990b6db0c5971d5b3bc58dd14095fcdc3c761b3 # v1.12.0
+    uses: longhorn/longhorn/.github/workflows/backport-pr.yml@f349c091c50700cb6cb8a4df8aaa29ea214bdd48 # v1.12.1
