@@ -23,6 +23,16 @@ type Volume struct {
 	CompressionMethod    string `json:",string"`
 	StorageClassName     string `json:",string"`
 	DataEngine           string `json:",string"`
+
+	// LinkedCloneSourceVolume and LinkedCloneSourceSnapshot describe the
+	// linked-clone relationship of the volume.  A linked-clone volume only
+	// stores the data it has written itself; the rest is inherited from the
+	// source snapshot and is therefore absent from the backup.  Restoring such
+	// a backup requires re-establishing the relationship with the source, so
+	// the source has to be recorded alongside the data.
+	// Both are empty for a volume that is not a linked clone.
+	LinkedCloneSourceVolume   string `json:",string"`
+	LinkedCloneSourceSnapshot string `json:",string"`
 }
 
 type Snapshot struct {
