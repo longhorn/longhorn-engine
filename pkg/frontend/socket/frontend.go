@@ -58,6 +58,10 @@ func (t *Socket) Startup(rwu types.ReaderWriterUnmapperAt) error {
 	return nil
 }
 
+func (t *Socket) StartInitiatorAndWaitForDeviceReady() error {
+	return nil
+}
+
 func (t *Socket) Shutdown() error {
 	if t.Volume != "" {
 		if t.socketServer != nil {
