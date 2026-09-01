@@ -1,14 +1,17 @@
 package controller
 
 import (
+	"errors"
 	"io"
 	"reflect"
 	"testing"
+	"time"
 
 	. "gopkg.in/check.v1"
 
-	"github.com/longhorn/longhorn-engine/pkg/types"
 	diskutil "github.com/longhorn/longhorn-engine/pkg/util/disk"
+
+	"github.com/longhorn/longhorn-engine/pkg/types"
 )
 
 func Test(t *testing.T) { TestingT(t) }
@@ -805,6 +808,231 @@ func (s *TestSuite) TestListReplicasToErrOnEnospc(c *C) {
 				}
 			}
 			c.Assert(found, Equals, true, Commentf("Test case: %s - Unexpected address %s in result", tt.name, actualAddr))
+		}
+	}
+}
+
+func awaitLifecycleResult(c *C, result <-chan error) error {
+	select {
+	case err := <-result:
+		return err
+	case <-time.After(5 * time.Second):
+		c.Fatal("lifecycle operation did not complete")
+		return nil
+	}
+}
+
+func (s *TestSuite) TestExpansionRejectedDuringFrontendStartup(c *C) {
+	// Model a block frontend waiting for device readiness outside the controller lock.
+	controller := &Controller{size: 4096, frontend: &removalTestFrontend{state: types.StateDown}, frontendNeedsCleanup: true}
+	err := controller.Expand(8192)
+	c.Assert(err, ErrorMatches, "cannot expand during the frontend startup")
+	c.Assert(controller.IsExpanding(), Equals, false)
+	c.Assert(controller.Size(), Equals, int64(4096))
+	// Like an in-progress expansion, the transient rejection is not recorded;
+	// longhorn-manager retries the expansion while the size still mismatches.
+	lastErr, failedAt := controller.GetExpansionErrorInfo()
+	c.Assert(lastErr, Equals, "")
+	c.Assert(failedAt, Equals, "")
+}
+
+type cleanupTestFrontend struct {
+	types.Frontend
+	shutdownErr error
+	shutdowns   int
+}
+
+func (f *cleanupTestFrontend) FrontendName() string { return types.EngineFrontendBlockDev }
+func (f *cleanupTestFrontend) State() types.State   { return types.StateDown }
+func (f *cleanupTestFrontend) Shutdown() error {
+	f.shutdowns++
+	return f.shutdownErr
+}
+
+func (s *TestSuite) TestFrontendRetryPreservesFailedCleanup(c *C) {
+	for _, name := range []string{types.EngineFrontendBlockDev, types.EngineFrontendISCSI} {
+		c.Logf("Test case: %s", name)
+		cleanupErr := errors.New("cleanup failed")
+		f := &cleanupTestFrontend{shutdownErr: cleanupErr}
+		controller := &Controller{frontend: f, frontendNeedsCleanup: true}
+		err := controller.StartFrontend(name)
+		c.Assert(errors.Is(err, cleanupErr), Equals, true)
+		c.Assert(controller.frontend, Equals, f)
+		c.Assert(controller.frontendNeedsCleanup, Equals, true)
+		c.Assert(f.shutdowns, Equals, 1)
+		f.shutdownErr = nil
+		c.Assert(controller.StartFrontend(name), IsNil)
+		c.Assert(controller.frontend, Not(Equals), f)
+		c.Assert(controller.frontendNeedsCleanup, Equals, false)
+		c.Assert(f.shutdowns, Equals, 2)
+	}
+}
+
+type removalTestFrontend struct {
+	types.Frontend
+	state types.State
+}
+
+func (f *removalTestFrontend) State() types.State { return f.state }
+
+type removalTestBackend struct{ types.Backend }
+
+func (b *removalTestBackend) StopMonitoring() {}
+func (b *removalTestBackend) Close() error    { return nil }
+
+func (s *TestSuite) TestRemoveLastReplicaRejectedWhileFrontendStartedOrPending(c *C) {
+	for _, tc := range []struct {
+		name         string
+		state        types.State
+		needsCleanup bool
+		rejected     bool
+	}{
+		{"frontend up", types.StateUp, true, true},
+		{"frontend startup pending", types.StateDown, true, true},
+		{"frontend down", types.StateDown, false, false},
+	} {
+		c.Logf("Test case: %s", tc.name)
+		backend := &replicator{}
+		backend.AddBackend("test", &removalTestBackend{}, types.RW)
+		controller := &Controller{
+			frontend:             &removalTestFrontend{state: tc.state},
+			frontendNeedsCleanup: tc.needsCleanup,
+			backend:              backend,
+			replicas:             []types.Replica{{Address: "test", Mode: types.RW}},
+		}
+
+		err := controller.RemoveReplica("test")
+		if tc.rejected {
+			c.Assert(err, ErrorMatches, "cannot remove last replica if volume is up")
+			c.Assert(len(controller.ListReplicas()), Equals, 1)
+		} else {
+			c.Assert(err, IsNil)
+			c.Assert(len(controller.ListReplicas()), Equals, 0)
+		}
+	}
+}
+
+type startupTestBackend struct {
+	removalTestBackend
+	closed bool
+}
+
+func (b *startupTestBackend) Size() (int64, error)                        { return 4096, nil }
+func (b *startupTestBackend) SectorSize() (int64, error)                  { return 512, nil }
+func (b *startupTestBackend) GetState() (string, error)                   { return "open", nil }
+func (b *startupTestBackend) ResetRebuild() error                         { return nil }
+func (b *startupTestBackend) GetMonitorChannel() types.MonitorChannel     { return nil }
+func (b *startupTestBackend) GetUnmapMarkSnapChainRemoved() (bool, error) { return false, nil }
+func (b *startupTestBackend) IsRevisionCounterDisabled() (bool, error)    { return true, nil }
+func (b *startupTestBackend) ReadAt(p []byte, _ int64) (int, error)       { return len(p), nil }
+func (b *startupTestBackend) Close() error {
+	b.closed = true
+	return nil
+}
+
+type startupTestFactory struct {
+	backends []*startupTestBackend
+}
+
+func (f *startupTestFactory) Create(string, string, types.DataServerProtocol, types.SharedTimeouts, bool, int64) (types.Backend, error) {
+	backend := &startupTestBackend{}
+	f.backends = append(f.backends, backend)
+	return backend, nil
+}
+
+func (s *TestSuite) TestAddReplicaRejectedDuringFrontendStartup(c *C) {
+	factory := &startupTestFactory{}
+	// Model a block frontend waiting for device readiness outside the controller lock.
+	controller := &Controller{
+		factory:              factory,
+		frontend:             &removalTestFrontend{state: types.StateDown},
+		frontendNeedsCleanup: true,
+		replicas:             []types.Replica{{Address: "test", Mode: types.RW}},
+	}
+	err := controller.AddReplica("new", false, true, types.WO)
+	c.Assert(err, ErrorMatches, "cannot add replica during the frontend startup")
+	c.Assert(len(factory.backends), Equals, 0)
+	c.Assert(len(controller.ListReplicas()), Equals, 1)
+}
+
+type startupTestFrontend struct {
+	types.Frontend
+	failure        string
+	err            error
+	state          types.State
+	shutdowns      int
+	readinessCalls int
+	controller     *Controller
+}
+
+func (f *startupTestFrontend) FrontendName() string { return types.EngineFrontendBlockDev }
+func (f *startupTestFrontend) State() types.State   { return f.state }
+func (f *startupTestFrontend) Init(string, int64, int64) error {
+	if f.failure == "init" {
+		return f.err
+	}
+	return nil
+}
+func (f *startupTestFrontend) Startup(types.ReaderWriterUnmapperAt) error {
+	if f.failure == "startup" {
+		return f.err
+	}
+	return nil
+}
+func (f *startupTestFrontend) Upgrade(string, int64, int64, types.ReaderWriterUnmapperAt) error {
+	if f.failure == "upgrade" {
+		return f.err
+	}
+	return nil
+}
+func (f *startupTestFrontend) WaitForDeviceReady() error {
+	f.readinessCalls++
+	// Login/scan READs must be served while startup waits for device readiness.
+	if _, err := f.controller.ReadAt(make([]byte, 512), 0); err != nil {
+		return err
+	}
+	if f.failure == "readiness" {
+		return f.err
+	}
+	f.state = types.StateUp
+	return nil
+}
+func (f *startupTestFrontend) Shutdown() error {
+	f.shutdowns++
+	f.state = types.StateDown
+	return nil
+}
+
+func (s *TestSuite) TestStartFrontendFailureKeepsStartupState(c *C) {
+	for _, failure := range []string{"", "init", "startup", "upgrade", "readiness"} {
+		c.Logf("Test case: %s", failure)
+		factory := &startupTestFactory{}
+		f := &startupTestFrontend{failure: failure, err: errors.New("frontend failed"), state: types.StateDown}
+		controller := &Controller{
+			factory: factory, frontend: f, isUpgrade: failure == "upgrade",
+			revisionCounterDisabled: true, metrics: &types.Metrics{},
+		}
+		f.controller = controller
+		result := make(chan error, 1)
+		go func() { result <- controller.Start(4096, 4096, "test") }()
+		err := awaitLifecycleResult(c, result)
+		if failure == "" {
+			c.Assert(err, IsNil)
+			c.Assert(f.State(), Equals, types.StateUp)
+		} else {
+			c.Assert(errors.Is(err, f.err), Equals, true)
+			c.Assert(f.State(), Equals, types.StateDown)
+		}
+		// Like master, Start() does not tear down the frontend or backend on
+		// failure, e.g., the in-use device of a live upgrade must be preserved.
+		c.Assert(f.shutdowns, Equals, 0)
+		c.Assert(factory.backends[0].closed, Equals, false)
+		c.Assert(len(controller.ListReplicas()), Equals, 1)
+		c.Assert(controller.frontendNeedsCleanup, Equals, true)
+		if failure == "" || failure == "readiness" {
+			c.Assert(f.readinessCalls, Equals, 1)
+		} else {
+			c.Assert(f.readinessCalls, Equals, 0)
 		}
 	}
 }

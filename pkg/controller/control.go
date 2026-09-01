@@ -49,6 +49,15 @@ type Controller struct {
 	snapshotMaxCount   int
 	SnapshotMaxSize    int64
 
+	// frontendLifecycleLock serializes frontend start/shutdown flows while the
+	// controller lock is released for iSCSI device readiness. Data-path READs do
+	// not take this lock, so scan READs can still be served during startup.
+	// Other operations check frontendStartPendingNoLock() instead.
+	frontendLifecycleLock sync.Mutex
+
+	// Protected by the controller lock; remains true until frontend shutdown succeeds.
+	frontendNeedsCleanup bool
+
 	rebuildSyncConcurrentLimit int
 
 	GRPCAddress string
@@ -186,6 +195,11 @@ func (c *Controller) canAdd(address string, creatingReplica bool) (bool, error) 
 func (c *Controller) addReplica(address string, snapshotRequired, creatingReplica bool, mode types.Mode) error {
 	c.Lock()
 	defer c.Unlock()
+	// Backend creation and snapshot hold the controller lock, which would block
+	// scan READs while the frontend startup waits for device readiness.
+	if c.frontendStartPendingNoLock() {
+		return fmt.Errorf("cannot add replica during the frontend startup")
+	}
 	if ok, err := c.canAdd(address, creatingReplica); !ok {
 		return err
 	}
@@ -397,6 +411,11 @@ func (c *Controller) startExpansion(size int64) (err error) {
 	if c.isExpanding {
 		return fmt.Errorf("controller expansion is in progress")
 	}
+	// The iSCSI session may not be logged in yet, so the frontend rescan would fail
+	// after the backend has already been expanded.
+	if c.frontendStartPendingNoLock() {
+		return fmt.Errorf("cannot expand during the frontend startup")
+	}
 
 	defer func() {
 		if c.isExpanding {
@@ -524,7 +543,10 @@ func (c *Controller) RemoveReplica(address string) error {
 
 	for i, r := range c.replicas {
 		if r.Address == address {
-			if len(c.replicas) == 1 && c.frontend != nil && c.frontend.State() == types.StateUp {
+			// The block frontend reports down until readiness succeeds outside the
+			// controller lock, so also reject removal while the startup is pending.
+			if len(c.replicas) == 1 && c.frontend != nil &&
+				(c.frontend.State() == types.StateUp || c.frontendStartPendingNoLock()) {
 				return fmt.Errorf("cannot remove last replica if volume is up")
 			}
 			c.replicas = append(c.replicas[:i], c.replicas[i+1:]...)
@@ -577,10 +599,18 @@ func (c *Controller) setReplicaModeNoLock(address string, mode types.Mode) {
 	}
 }
 
+// frontendStartPendingNoLock requires the controller lock. It reports whether a
+// frontend start has begun but the frontend is not up yet, e.g., the block
+// frontend is waiting for device readiness outside the controller lock.
+func (c *Controller) frontendStartPendingNoLock() bool {
+	return c.frontendNeedsCleanup && c.frontend != nil && c.frontend.State() != types.StateUp
+}
+
 func (c *Controller) startFrontend() error {
 	log := logrus.WithField("volume", c.VolumeName)
 
 	if len(c.replicas) > 0 && c.frontend != nil {
+		c.frontendNeedsCleanup = true
 		if c.isUpgrade {
 			log.Info("Upgrading frontend")
 			if err := c.frontend.Upgrade(c.VolumeName, c.size, c.sectorSize, c); err != nil {
@@ -601,9 +631,35 @@ func (c *Controller) startFrontend() error {
 	return nil
 }
 
-func (c *Controller) StartFrontend(frontend string) error {
+func (c *Controller) StartFrontend(frontend string) (err error) {
+	c.frontendLifecycleLock.Lock()
+	defer c.frontendLifecycleLock.Unlock()
+
 	c.Lock()
-	defer c.Unlock()
+	defer func() {
+		var waitFrontend types.Frontend
+
+		// Without replicas, StartFrontend() only configures the frontend type.
+		// Wait for readiness when replicas exist and the block frontend start succeeds.
+		if c.frontend != nil && len(c.replicas) > 0 && c.frontend.FrontendName() == types.EngineFrontendBlockDev {
+			waitFrontend = c.frontend
+		}
+
+		if err != nil || waitFrontend == nil {
+			c.Unlock()
+			return
+		}
+		c.Unlock()
+
+		// Wait outside the controller lock for iSCSI scan/device readiness. The
+		// scan can issue READs that need Controller.ReadAt() to take RLock().
+		if err = waitFrontend.WaitForDeviceReady(); err != nil {
+			// Roll back the partial frontend start so the next retry runs readiness again.
+			if rollbackErr := c.shutdownFrontend(); rollbackErr != nil {
+				err = types.CombineErrors(err, errors.Wrap(rollbackErr, "failed to roll back frontend startup"))
+			}
+		}
+	}()
 
 	if c.isExpanding {
 		return fmt.Errorf("cannot start frontend during the engine expansion")
@@ -616,6 +672,10 @@ func (c *Controller) StartFrontend(frontend string) error {
 			return fmt.Errorf("frontend %v is already started, cannot be set as %v",
 				c.frontend.FrontendName(), frontend)
 		}
+	}
+
+	if err := c.cleanupPendingFrontendNoLock(); err != nil {
+		return err
 	}
 
 	f, err := NewFrontend(frontend, c.iscsiTargetRequestTimeout)
@@ -926,9 +986,23 @@ func isBackendServiceUnavailable(errorCodes map[string]codes.Code) bool {
 	return false
 }
 
-func (c *Controller) Start(volumeSize, volumeCurrentSize int64, addresses ...string) error {
+func (c *Controller) Start(volumeSize, volumeCurrentSize int64, addresses ...string) (err error) {
+	c.frontendLifecycleLock.Lock()
+	defer c.frontendLifecycleLock.Unlock()
+
 	c.Lock()
-	defer c.Unlock()
+	var waitFrontend types.Frontend
+	defer func() {
+		c.Unlock()
+
+		// Wait outside the controller lock for iSCSI scan/device readiness. The
+		// scan can issue READs that need Controller.ReadAt() to take RLock().
+		// Like other startup failures, a readiness failure is not rolled back here.
+		// Tearing down the frontend could remove the in-use device of a live upgrade.
+		if err == nil && waitFrontend != nil {
+			err = waitFrontend.WaitForDeviceReady()
+		}
+	}()
 
 	log := logrus.WithField("volume", c.VolumeName)
 
@@ -942,6 +1016,10 @@ func (c *Controller) Start(volumeSize, volumeCurrentSize int64, addresses ...str
 
 	if len(c.replicas) > 0 {
 		return nil
+	}
+
+	if err := c.cleanupPendingFrontendNoLock(); err != nil {
+		return err
 	}
 
 	c.reset()
@@ -1083,7 +1161,15 @@ func (c *Controller) Start(volumeSize, volumeCurrentSize int64, addresses ...str
 		}
 	}
 
-	return c.startFrontend()
+	if err := c.startFrontend(); err != nil {
+		return err
+	}
+	// Start() may run without a block frontend configured. Wait only after the
+	// block frontend has actually started.
+	if len(c.replicas) > 0 && c.frontend != nil && c.frontend.FrontendName() == types.EngineFrontendBlockDev {
+		waitFrontend = c.frontend
+	}
+	return nil
 }
 
 func (c *Controller) WriteAt(b []byte, off int64) (int, error) {
@@ -1435,18 +1521,40 @@ func (c *Controller) Close() error {
 	return c.Shutdown()
 }
 
+// cleanupPendingFrontendNoLock requires both the lifecycle and controller locks.
+// Release the controller lock during cleanup so frontend I/O can complete.
+func (c *Controller) cleanupPendingFrontendNoLock() error {
+	if !c.frontendNeedsCleanup || c.frontend == nil || c.frontend.State() != types.StateDown {
+		return nil
+	}
+	c.Unlock()
+	err := c.shutdownFrontend()
+	c.Lock()
+	return errors.Wrap(err, "failed to clean up previous frontend startup")
+}
+
+// shutdownFrontend requires the frontend lifecycle lock.
 func (c *Controller) shutdownFrontend() error {
 	// Make sure writing data won't be blocked
 	c.RLock()
-	defer c.RUnlock()
-
+	var err error
 	if c.frontend != nil {
-		return c.frontend.Shutdown()
+		err = c.frontend.Shutdown()
 	}
-	return nil
+	c.RUnlock()
+
+	if err == nil {
+		c.Lock()
+		c.frontendNeedsCleanup = false
+		c.Unlock()
+	}
+	return err
 }
 
 func (c *Controller) ShutdownFrontend() error {
+	c.frontendLifecycleLock.Lock()
+	defer c.frontendLifecycleLock.Unlock()
+
 	if err := c.shutdownFrontend(); err != nil {
 		return err
 	}
@@ -1464,6 +1572,9 @@ func (c *Controller) shutdownBackend() error {
 }
 
 func (c *Controller) Shutdown() error {
+	c.frontendLifecycleLock.Lock()
+	defer c.frontendLifecycleLock.Unlock()
+
 	/*
 		Need to shutdown frontend first because it will write
 		the final piece of data to backend
