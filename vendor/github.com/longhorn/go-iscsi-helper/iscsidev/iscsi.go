@@ -176,14 +176,21 @@ func (dev *Device) StartInitator() error {
 	if err := iscsi.LoginTarget(localIP, dev.Target, dev.nsexec); err != nil {
 		return err
 	}
-	if dev.KernelDevice, err = iscsi.GetDevice(localIP, dev.Target, TargetLunID, dev.nsexec); err != nil {
-		return err
-	}
-	if err := iscsi.UpdateScsiDeviceTimeout(dev.KernelDevice.Name, dev.ScsiTimeout, dev.nsexec); err != nil {
+
+	return nil
+}
+
+// WaitForDeviceReady completes the initiator-side readiness work that can block
+// on SCSI scan/device discovery. Call it after the engine/controller startup
+// lock is released so scan READs can be served.
+func (dev *Device) WaitForDeviceReady() (err error) {
+	localIP, err := util.GetIPToHost()
+	if err != nil {
 		return err
 	}
 
-	return nil
+	dev.KernelDevice, err = iscsi.WaitForDeviceReady(localIP, dev.Target, TargetLunID, dev.ScsiTimeout, dev.nsexec)
+	return err
 }
 
 // ReloadInitiator does nothing for the iSCSI initiator/target except for
