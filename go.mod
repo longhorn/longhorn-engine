@@ -23,7 +23,7 @@ require (
 	github.com/urfave/cli v1.22.17
 	go.uber.org/multierr v1.11.0
 	golang.org/x/sys v0.47.0
-	google.golang.org/grpc v1.83.0
+	google.golang.org/grpc v1.83.1
 	google.golang.org/protobuf v1.36.12
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 	gopkg.in/cheggaaa/pb.v2 v2.0.7
