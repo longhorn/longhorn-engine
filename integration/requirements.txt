@@ -1,6 +1,6 @@
 cattle==0.5.4
 directio==1.3
-protobuf==7.35.1
+protobuf==7.36.0
 grpcio==1.83.0
 
 flake8
