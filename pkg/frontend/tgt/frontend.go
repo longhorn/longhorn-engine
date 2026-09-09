@@ -69,8 +69,25 @@ func (t *Tgt) Startup(rwu types.ReaderWriterUnmapperAt) error {
 		return err
 	}
 
-	t.isUp = true
+	// The block frontend is not reported as up until the iSCSI device is
+	// discovered and /dev/longhorn/<volume> is created.
+	if t.frontendName != types.EngineFrontendBlockDev {
+		t.isUp = true
+	}
 
+	return nil
+}
+
+func (t *Tgt) WaitForDeviceReady() error {
+	if t.dev == nil {
+		return nil
+	}
+	if err := t.dev.WaitForDeviceReady(); err != nil {
+		return err
+	}
+	// Report the block frontend as up only after the deferred readiness wait
+	// succeeds outside the controller lock.
+	t.isUp = true
 	return nil
 }
 
@@ -133,7 +150,9 @@ func (t *Tgt) Upgrade(name string, size, sectorSize int64, rwu types.ReaderWrite
 	if err := t.dev.FinishUpgrade(); err != nil {
 		return err
 	}
-	t.isUp = true
+	if t.frontendName != types.EngineFrontendBlockDev {
+		t.isUp = true
+	}
 	logrus.Infof("engine: Finish upgrading for %v", name)
 
 	return nil

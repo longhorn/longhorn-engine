@@ -10,6 +10,7 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/sirupsen/logrus"
+	"golang.org/x/sys/unix"
 
 	"github.com/longhorn/go-iscsi-helper/iscsidev"
 	"github.com/longhorn/go-iscsi-helper/types"
@@ -35,6 +36,9 @@ type LonghornDevice struct {
 	iscsiTargetRequestTimeout int64
 
 	scsiDevice *iscsidev.Device
+	// deviceReady is set only after iSCSI discovery and createDev() both
+	// succeed, so retries do not accept a partially created device node.
+	deviceReady bool
 }
 
 type DeviceService interface {
@@ -47,6 +51,7 @@ type DeviceService interface {
 
 	InitDevice() error
 	Start() error
+	WaitForDeviceReady() error
 	Shutdown() error
 	PrepareUpgrade() error
 	FinishUpgrade() error
@@ -126,16 +131,13 @@ func (d *LonghornDevice) startScsiDevice(startScsiDevice bool) (err error) {
 			if d.scsiDevice == nil {
 				return fmt.Errorf("there is no iSCSI device during the frontend %v starts", d.frontend)
 			}
+			d.deviceReady = false
 			if err := d.scsiDevice.CreateTarget(); err != nil {
 				return err
 			}
 			if err := d.scsiDevice.StartInitator(); err != nil {
 				return err
 			}
-			if err := d.createDev(); err != nil {
-				return err
-			}
-			logrus.Infof("device %v: iSCSI device %s created", d.name, d.scsiDevice.KernelDevice.Name)
 		} else {
 			if err := d.scsiDevice.ReloadTargetID(); err != nil {
 				return err
@@ -188,8 +190,77 @@ func (d *LonghornDevice) Shutdown() error {
 
 	d.scsiDevice = nil
 	d.endpoint = ""
+	d.deviceReady = false
 
 	return nil
+}
+
+// WaitForDeviceReady waits for iSCSI device discovery and creates the
+// /dev/longhorn/<volume> device node. This is separated from Start() so callers
+// can run it after releasing locks that block frontend READ handling.
+func (d *LonghornDevice) WaitForDeviceReady() error {
+	d.Lock()
+	defer d.Unlock()
+
+	if d.frontend != types.FrontendTGTBlockDev {
+		return nil
+	}
+	if d.scsiDevice == nil {
+		return fmt.Errorf("there is no iSCSI device during the frontend %v waits for device ready", d.frontend)
+	}
+	if d.deviceReady {
+		return nil
+	}
+
+	if err := d.scsiDevice.WaitForDeviceReady(); err != nil {
+		return err
+	}
+	if err := d.createDev(); err != nil {
+		return err
+	}
+	// createDev() only proves the /dev/longhorn/<volume> node exists. Match the
+	// integration test readiness check by probing a non-blocking read before
+	// reporting the block frontend as ready.
+	if err := waitForBlockDeviceReadable(d.getDev()); err != nil {
+		return err
+	}
+	d.deviceReady = true
+
+	logrus.Infof("device %v: iSCSI device %s created", d.name, d.scsiDevice.KernelDevice.Name)
+	return nil
+}
+
+func waitForBlockDeviceReadable(dev string) error {
+	var lastErr error
+	for i := 0; i < WaitCount; i++ {
+		if err := checkBlockDeviceReadable(dev); err == nil {
+			return nil
+		} else {
+			lastErr = err
+		}
+		time.Sleep(WaitInterval)
+	}
+	return errors.Wrapf(lastErr, "block device %v is not readable", dev)
+}
+
+func checkBlockDeviceReadable(dev string) error {
+	info, err := os.Stat(dev)
+	if err != nil {
+		return err
+	}
+	if info.Mode()&os.ModeDevice == 0 || info.Mode()&os.ModeCharDevice != 0 {
+		return fmt.Errorf("%v is not a block device", dev)
+	}
+
+	fd, err := unix.Open(dev, unix.O_RDONLY|unix.O_NONBLOCK, 0)
+	if err != nil {
+		return err
+	}
+	defer unix.Close(fd)
+
+	buf := make([]byte, 4096)
+	_, err = unix.Pread(fd, buf, 0)
+	return err
 }
 
 // call with lock hold
