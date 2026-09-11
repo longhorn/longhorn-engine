@@ -272,6 +272,116 @@ def test_replica_add_after_rebuild_failed(bin, grpc_controller_client,  # NOQA
         assert r.mode == 'RW'
 
 
+def add_replica_and_wait(bin, grpc_controller_client, replica_url):  # NOQA
+    cmd = [bin, '--debug', '--url', grpc_controller_client.address,
+           'add-replica',
+           '--size', SIZE_STR,
+           '--current-size', SIZE_STR,
+           replica_url]
+    subprocess.check_call(cmd)
+    wait_for_rebuild_complete(grpc_controller_client.address)
+
+
+def get_snapshot_names(bin, grpc_controller_client):  # NOQA
+    cmd = [bin, '--debug', '--url', grpc_controller_client.address,
+           'snapshot', 'info']
+    return sorted(json.loads(subprocess.check_output(cmd)).keys())
+
+
+def test_replica_add_rw_replica_is_inert(bin,  # NOQA
+                                         grpc_controller_client,  # NOQA
+                                         grpc_replica_client,  # NOQA
+                                         grpc_replica_client2):  # NOQA
+    # longhorn/longhorn#13914: longhorn-manager can leave a stale
+    # rebuilding goroutine running after the rebuild it was spawned for
+    # already succeeded, so it issues add-replica against a replica that
+    # is now RW.
+    #
+    # The engine rejects that request rather than reporting success,
+    # because nothing was rebuilt -- a success would make the engine
+    # controller emit a "has been rebuilt" event and run a post-rebuild
+    # snapshot purge for a rebuild that never happened. What has to hold
+    # is that the rejection is inert: the healthy replica survives it
+    # untouched. longhorn-manager recognises this specific message in
+    # isReplicaNotInWORWMode() and skips handleRebuildFailure(), which
+    # is what stops the replica from being removed and marked failed.
+    open_replica(grpc_replica_client)
+    open_replica(grpc_replica_client2)
+
+    add_replica_and_wait(bin, grpc_controller_client,
+                         grpc_replica_client.url)
+    add_replica_and_wait(bin, grpc_controller_client,
+                         grpc_replica_client2.url)
+    verify_replica_mode(grpc_controller_client,
+                        grpc_replica_client2.url, "RW")
+
+    snapshots_before = get_snapshot_names(bin, grpc_controller_client)
+
+    # the stale rebuild request
+    cmd = [bin, '--debug', '--url', grpc_controller_client.address,
+           'add-replica',
+           '--size', SIZE_STR,
+           '--current-size', SIZE_STR,
+           grpc_replica_client2.url]
+    proc = subprocess.run(cmd, capture_output=True, encoding='utf-8')
+    assert proc.returncode != 0
+    # longhorn-manager matches on this wording to tell a stale rebuild
+    # apart from a real failure, so it is part of the engine's contract
+    assert "is not in mode WO: RW" in proc.stderr
+
+    volume = grpc_controller_client.volume_get()
+    assert volume.replicaCount == 2
+
+    replicas = grpc_controller_client.replica_list()
+    assert len(replicas) == 2
+    assert sorted(r.address for r in replicas) == \
+        sorted([grpc_replica_client.url, grpc_replica_client2.url])
+    for r in replicas:
+        assert r.mode == 'RW'
+
+    # the rejected add must not have started a rebuild, which would
+    # leave behind another system-generated snapshot
+    assert get_snapshot_names(bin, grpc_controller_client) == snapshots_before
+
+
+def test_replica_create_existing_rw_replica(bin,  # NOQA
+                                            grpc_controller_client,  # NOQA
+                                            grpc_replica_client,  # NOQA
+                                            grpc_replica_client2):  # NOQA
+    # Pins the controller behaviour the longhorn/longhorn#13914 fix in
+    # sync.AddReplica depends on: ControllerReplicaCreate for an address
+    # the controller already holds is a no-op that reports the replica's
+    # *current* mode rather than the requested one. sync.AddReplica uses
+    # that reported mode as its only signal that the rebuild it was
+    # asked to start has already happened. If this ever returns WO, or
+    # errors, or re-adds the replica, that guard stops working and the
+    # stale-rebuild path in #13914 silently comes back.
+    open_replica(grpc_replica_client)
+    open_replica(grpc_replica_client2)
+
+    add_replica_and_wait(bin, grpc_controller_client,
+                         grpc_replica_client.url)
+    add_replica_and_wait(bin, grpc_controller_client,
+                         grpc_replica_client2.url)
+    verify_replica_mode(grpc_controller_client,
+                        grpc_replica_client2.url, "RW")
+
+    snapshots_before = get_snapshot_names(bin, grpc_controller_client)
+
+    r = grpc_controller_client.replica_create(
+        address=grpc_replica_client2.url, snapshot_required=True, mode='WO')
+    assert r.address == grpc_replica_client2.url
+    assert r.mode == 'RW'
+
+    replicas = grpc_controller_client.replica_list()
+    assert len(replicas) == 2
+    for replica in replicas:
+        assert replica.mode == 'RW'
+
+    # snapshot_required is ignored once the replica is already known
+    assert get_snapshot_names(bin, grpc_controller_client) == snapshots_before
+
+
 def test_replica_failure_detection(grpc_controller_client,  # NOQA
                                    grpc_replica_client,  # NOQA
                                    grpc_replica_client2):  # NOQA
