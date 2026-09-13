@@ -7,7 +7,7 @@ toolchain go1.27.0
 require (
 	github.com/cockroachdb/errors v1.14.0
 	github.com/docker/go-units v0.5.0
-	github.com/gofrs/flock v0.13.0
+	github.com/gofrs/flock v0.13.1
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
@@ -19,9 +19,8 @@ require (
 	github.com/moby/sys/reexec v0.1.0
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
 	github.com/rancher/go-rancher v0.1.1-0.20190307222549-9756097e5e4c
-	github.com/sirupsen/logrus v1.10.1
+	github.com/sirupsen/logrus v1.10.2
 	github.com/urfave/cli v1.22.17
-	github.com/urfave/cli/v3 v3.11.0
 	go.uber.org/multierr v1.11.0
 	golang.org/x/sys v0.47.0
 	google.golang.org/grpc v1.83.2
