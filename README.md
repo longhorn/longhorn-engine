@@ -86,7 +86,7 @@ tcp://172.18.0.3:9502 RW   [volume-head-000.img]
 Please check [the main repo](https://github.com/longhorn/longhorn#community) for the contributing guide.
 
 ## License
-Copyright (c) 2014-2019 The Longhorn Authors
+Copyright (c) 2014-2026 The Longhorn Authors
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
