@@ -40,8 +40,8 @@ RUN zypper -n install cmake curl git less file gcc python311 python311-pip pytho
 COPY --from=golangci-lint /usr/bin/golangci-lint /usr/local/bin/golangci-lint
 
 # Install Minio
-ENV MINIO_URL_amd64=https://dl.min.io/server/minio/release/linux-amd64/archive/minio.RELEASE.2021-12-20T22-07-16Z \
-    MINIO_URL_arm64=https://dl.min.io/server/minio/release/linux-arm64/archive/minio.RELEASE.2021-12-20T22-07-16Z \
+ENV MINIO_URL_amd64=https://github.com/minio/minio/releases/download/RELEASE.2021-12-20T22-07-16Z/minio.linux-amd64.RELEASE.2021-12-20T22-07-16Z \
+    MINIO_URL_arm64=https://github.com/minio/minio/releases/download/RELEASE.2021-12-20T22-07-16Z/minio.linux-arm64.RELEASE.2021-12-20T22-07-16Z \
     MINIO_URL=MINIO_URL_${ARCH}
 RUN curl -sSfL ${!MINIO_URL} -o /usr/bin/minio && chmod +x /usr/bin/minio
 
