@@ -53,6 +53,10 @@ func (d *Device) Startup(rwu types.ReaderWriterUnmapperAt) error {
 	return nil
 }
 
+func (d *Device) WaitForDeviceReady() error {
+	return nil
+}
+
 func (d *Device) Shutdown() error {
 	return d.stop()
 }

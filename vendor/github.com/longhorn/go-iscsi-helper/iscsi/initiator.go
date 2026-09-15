@@ -109,32 +109,90 @@ func IsTargetDiscovered(ip, target string, nsexec *lhns.Executor) bool {
 }
 
 func LoginTarget(ip, target string, nsexec *lhns.Executor) error {
+	// Use --no_wait whenever it is supported to avoid coupling iscsiadm login
+	// completion with SCSI scan completion. The scan can issue READs while the
+	// engine is still starting the frontend.
+	if err := loginTarget(ip, target, nsexec, true); err != nil {
+		if !isNoWaitUnsupportedError(err) {
+			return err
+		}
+
+		logrus.WithError(err).Warnf("iscsiadm does not support --no_wait for node mode, falling back to synchronous login for target %v:%v", target, ip)
+		if err := loginTarget(ip, target, nsexec, false); err != nil {
+			return err
+		}
+	}
+
+	return nil
+}
+
+// WaitForDeviceReady waits for the async login to create a logged-in session,
+// then waits for the kernel block device with the existing discovery path and
+// applies the SCSI device timeout. In manual scan mode, login does not trigger
+// a SCSI scan, so run the rescan synchronously after the session is logged in.
+func WaitForDeviceReady(ip, target string, lun int, scsiTimeout int64, nsexec *lhns.Executor) (*lhtypes.BlockDeviceInfo, error) {
+	scanMode, err := getIscsiNodeSessionScanMode(ip, target, nsexec)
+	if err != nil {
+		return nil, errors.Wrap(err, "Failed to get node.session.scan mode")
+	}
+
+	loggedIn := false
+	for i := 0; i < DeviceWaitRetryCounts; i++ {
+		if IsTargetLoggedIn(ip, target, nsexec) {
+			loggedIn = true
+			break
+		}
+
+		time.Sleep(DeviceWaitRetryInterval)
+	}
+	if !loggedIn {
+		return nil, fmt.Errorf("target %v:%v session is not logged in yet", target, ip)
+	}
+
+	switch scanMode {
+	case scanModeManual:
+		logrus.Infof("Manually rescan LUNs of the target %v:%v", target, ip)
+		if err := manualScanSession(ip, target, nsexec); err != nil {
+			return nil, errors.Wrapf(err, "failed to manually rescan iscsi session of target %v:%v", target, ip)
+		}
+	case scanModeAuto:
+		logrus.Infof("default: automatically rescan all LUNs of all iscsi sessions")
+	default:
+		return nil, fmt.Errorf("unknown node.session.scan mode %v for target %v:%v", scanMode, target, ip)
+	}
+
+	dev, err := GetDevice(ip, target, lun, nsexec)
+	if err != nil {
+		return nil, err
+	}
+	if err := UpdateScsiDeviceTimeout(dev.Name, scsiTimeout, nsexec); err != nil {
+		return nil, err
+	}
+
+	return dev, nil
+}
+
+func loginTarget(ip, target string, nsexec *lhns.Executor, noWait bool) error {
 	opts := []string{
 		"-m", "node",
 		"-T", target,
 		"-p", ip,
 		"--login",
 	}
+	if noWait {
+		opts = append(opts, "--no_wait")
+	}
 	_, err := nsexec.Execute(nil, iscsiBinary, opts, lhtypes.ExecuteDefaultTimeout)
-	if err != nil {
-		return err
-	}
+	return err
+}
 
-	scanMode, err := getIscsiNodeSessionScanMode(ip, target, nsexec)
-	if err != nil {
-		return errors.Wrap(err, "Failed to get node.session.scan mode")
-	}
-
-	if scanMode == scanModeManual {
-		logrus.Infof("Manually rescan LUNs of the target %v:%v", target, ip)
-		if err := manualScanSession(ip, target, nsexec); err != nil {
-			return errors.Wrapf(err, "failed to manually rescan iscsi session of target %v:%v", target, ip)
-		}
-	} else {
-		logrus.Infof("default: automatically rescan all LUNs of all iscsi sessions")
-	}
-
-	return nil
+func isNoWaitUnsupportedError(err error) bool {
+	errMsg := err.Error()
+	return strings.Contains(errMsg, "option '--no_wait' is not allowed") ||
+		strings.Contains(errMsg, "option '-W' is not allowed") ||
+		strings.Contains(errMsg, "not allowed/supported") ||
+		strings.Contains(errMsg, "unrecognized option") ||
+		strings.Contains(errMsg, "invalid option")
 }
 
 // LogoutTarget will logout all sessions if ip == ""
