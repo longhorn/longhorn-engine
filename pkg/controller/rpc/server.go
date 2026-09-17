@@ -217,7 +217,7 @@ func (cs *ControllerServer) ReplicaGet(ctx context.Context, req *enginerpc.Repli
 }
 
 func (cs *ControllerServer) ControllerReplicaCreate(ctx context.Context, req *enginerpc.ControllerReplicaCreateRequest) (*enginerpc.ControllerReplica, error) {
-	if err := cs.c.AddReplica(req.Address, req.SnapshotRequired, types.GRPCReplicaModeToReplicaMode(req.Mode)); err != nil {
+	if err := cs.c.AddReplica(req.Address, req.SnapshotRequired, true, types.GRPCReplicaModeToReplicaMode(req.Mode)); err != nil {
 		return nil, err
 	}
 
