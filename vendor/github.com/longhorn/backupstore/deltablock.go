@@ -657,6 +657,8 @@ func performBackup(bsDriver BackupStoreDriver, config *DeltaBackupConfig, delta 
 	volume.CompressionMethod = config.Volume.CompressionMethod
 	volume.StorageClassName = config.Volume.StorageClassName
 	volume.DataEngine = config.Volume.DataEngine
+	volume.LinkedCloneSourceVolume = config.Volume.LinkedCloneSourceVolume
+	volume.LinkedCloneSourceSnapshot = config.Volume.LinkedCloneSourceSnapshot
 
 	if err := saveVolume(bsDriver, volume); err != nil {
 		return progress.progress, "", err
