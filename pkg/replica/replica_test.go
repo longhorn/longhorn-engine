@@ -200,6 +200,95 @@ func (s *TestSuite) TestSnapshot(c *C) {
 	c.Assert(disks["volume-head-002.img"].Size, Equals, "0")
 }
 
+func (s *TestSuite) TestSnapshotDiskMetaName(c *C) {
+	dir, err := os.MkdirTemp("", "replica")
+	c.Assert(err, IsNil)
+	defer func() {
+		errRemove := os.RemoveAll(dir)
+		c.Assert(errRemove, IsNil)
+	}()
+
+	r, err := New(context.Background(), 9, 3, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, 9, "")
+	c.Assert(err, IsNil)
+	defer func() {
+		errClose := r.Close()
+		c.Assert(errClose, IsNil)
+	}()
+
+	err = r.Snapshot("000", true, getNow(), nil)
+	c.Assert(err, IsNil)
+	err = r.Snapshot("001", false, getNow(), nil)
+	c.Assert(err, IsNil)
+
+	for _, name := range []string{"volume-snap-000.img", "volume-snap-001.img", "volume-head-002.img"} {
+		c.Assert(r.diskData[name].Name, Equals, name)
+
+		var d disk
+		err = r.unmarshalFile(name+diskutil.DiskMetadataSuffix, &d)
+		c.Assert(err, IsNil)
+		c.Assert(d.Name, Equals, name)
+	}
+}
+
+func (s *TestSuite) TestSnapshotMetaWriteFailureRollback(c *C) {
+	dir, err := os.MkdirTemp("", "replica")
+	c.Assert(err, IsNil)
+	defer func() {
+		errRemove := os.RemoveAll(dir)
+		c.Assert(errRemove, IsNil)
+	}()
+
+	r, err := New(context.Background(), 9, 3, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, 9, "")
+	c.Assert(err, IsNil)
+	defer func() {
+		errClose := r.Close()
+		c.Assert(errClose, IsNil)
+	}()
+
+	err = r.Snapshot("000", true, getNow(), nil)
+	c.Assert(err, IsNil)
+	head := r.info.Head
+	c.Assert(head, Equals, "volume-head-001.img")
+	headDisk := *r.diskData[head]
+
+	// encodeToFile() writes <file>.tmp first; a directory in its place makes the snapshot meta write fail
+	failedSnap := "volume-snap-001.img"
+	err = os.Mkdir(r.diskPath(failedSnap+diskutil.DiskMetadataSuffix+tmpFileSuffix), 0755)
+	c.Assert(err, IsNil)
+
+	err = r.Snapshot("001", true, getNow(), map[string]string{"key": "value"})
+	c.Assert(err, ErrorMatches, "(?s).*failed to create the tmp file.*")
+
+	// The head must be left exactly as it was before the failed snapshot
+	c.Assert(r.info.Head, Equals, head)
+	c.Assert(*r.diskData[head], DeepEquals, headDisk)
+	c.Assert(r.activeDiskData[len(r.activeDiskData)-1].Name, Equals, head)
+	_, exists := r.diskData[failedSnap]
+	c.Assert(exists, Equals, false)
+	_, err = os.Stat(r.diskPath(failedSnap))
+	c.Assert(os.IsNotExist(err), Equals, true)
+	_, err = os.Stat(r.diskPath(failedSnap + diskutil.DiskMetadataSuffix))
+	c.Assert(os.IsNotExist(err), Equals, true)
+
+	disks := r.ListDisks()
+	c.Assert(len(disks), Equals, 2)
+	c.Assert(disks[head].Parent, Equals, "volume-snap-000.img")
+	c.Assert(len(disks["volume-snap-000.img"].Children), Equals, 1)
+	c.Assert(disks["volume-snap-000.img"].Children[head], Equals, true)
+
+	// The next snapshot succeeds and every meta file carries its own name
+	err = r.Snapshot("002", false, getNow(), nil)
+	c.Assert(err, IsNil)
+	for _, name := range []string{"volume-snap-000.img", "volume-snap-002.img", "volume-head-002.img"} {
+		c.Assert(r.diskData[name].Name, Equals, name)
+
+		var d disk
+		err = r.unmarshalFile(name+diskutil.DiskMetadataSuffix, &d)
+		c.Assert(err, IsNil)
+		c.Assert(d.Name, Equals, name)
+	}
+}
+
 func (s *TestSuite) TestRevert(c *C) {
 	dir, err := os.MkdirTemp("", "replica")
 	c.Assert(err, IsNil)
