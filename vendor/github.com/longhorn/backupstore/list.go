@@ -29,6 +29,9 @@ type VolumeInfo struct {
 	BackingImageChecksum string
 	StorageClassname     string
 	DataEngine           string
+
+	LinkedCloneSourceVolume   string `json:",omitempty"`
+	LinkedCloneSourceSnapshot string `json:",omitempty"`
 }
 
 type BackupInfo struct {

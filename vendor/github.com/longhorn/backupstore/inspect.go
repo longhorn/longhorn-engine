@@ -77,6 +77,9 @@ func fillVolumeInfo(volume *Volume) *VolumeInfo {
 		BackingImageChecksum: volume.BackingImageChecksum,
 		StorageClassname:     volume.StorageClassName,
 		DataEngine:           volume.DataEngine,
+
+		LinkedCloneSourceVolume:   volume.LinkedCloneSourceVolume,
+		LinkedCloneSourceSnapshot: volume.LinkedCloneSourceSnapshot,
 	}
 }
 
