@@ -49,6 +49,11 @@ type Controller struct {
 	snapshotMaxCount   int
 	SnapshotMaxSize    int64
 
+	// frontendLifecycleLock serializes frontend start/shutdown flows while the
+	// controller lock is released for iSCSI device readiness. Data-path READs do
+	// not take this lock, so scan READs can still be served during startup.
+	frontendLifecycleLock sync.Mutex
+
 	rebuildSyncConcurrentLimit int
 
 	GRPCAddress string
@@ -589,9 +594,34 @@ func (c *Controller) startFrontend() error {
 	return nil
 }
 
-func (c *Controller) StartFrontend(frontend string) error {
+func (c *Controller) StartFrontend(frontend string) (err error) {
+	c.frontendLifecycleLock.Lock()
+	defer c.frontendLifecycleLock.Unlock()
+
 	c.Lock()
-	defer c.Unlock()
+	defer func() {
+		var waitFrontend types.Frontend
+
+		// StartFrontend() can only set the frontend type when replicas are not
+		// attached yet. Wait only after the block frontend has actually started.
+		if c.frontend != nil && len(c.replicas) > 0 && c.frontend.FrontendName() == types.EngineFrontendBlockDev {
+			waitFrontend = c.frontend
+		}
+
+		if err != nil || waitFrontend == nil {
+			c.Unlock()
+			return
+		}
+		c.Unlock()
+
+		// Wait outside the controller lock for iSCSI scan/device readiness. The
+		// scan can issue READs that need Controller.ReadAt() to take RLock().
+		if err = waitFrontend.WaitForDeviceReady(); err != nil {
+			// Roll back the partial frontend start so the next retry runs readiness again.
+			rollbackErr := c.rollbackFrontendStart(waitFrontend, false)
+			err = types.CombineErrors(err, rollbackErr)
+		}
+	}()
 
 	if c.isExpanding {
 		return fmt.Errorf("cannot start frontend during the engine expansion")
@@ -914,9 +944,27 @@ func isBackendServiceUnavailable(errorCodes map[string]codes.Code) bool {
 	return false
 }
 
-func (c *Controller) Start(volumeSize, volumeCurrentSize int64, addresses ...string) error {
+func (c *Controller) Start(volumeSize, volumeCurrentSize int64, addresses ...string) (err error) {
+	c.frontendLifecycleLock.Lock()
+	defer c.frontendLifecycleLock.Unlock()
+
 	c.Lock()
-	defer c.Unlock()
+	var waitFrontend types.Frontend
+	defer func() {
+		if err != nil || waitFrontend == nil {
+			c.Unlock()
+			return
+		}
+		c.Unlock()
+
+		// Wait outside the controller lock for iSCSI scan/device readiness. The
+		// scan can issue READs that need Controller.ReadAt() to take RLock().
+		if err = waitFrontend.WaitForDeviceReady(); err != nil {
+			// Roll back the partial frontend start so the next retry runs readiness again.
+			rollbackErr := c.rollbackFrontendStart(waitFrontend, true)
+			err = types.CombineErrors(err, rollbackErr)
+		}
+	}()
 
 	log := logrus.WithField("volume", c.VolumeName)
 
@@ -1071,7 +1119,31 @@ func (c *Controller) Start(volumeSize, volumeCurrentSize int64, addresses ...str
 		}
 	}
 
-	return c.startFrontend()
+	if err := c.startFrontend(); err != nil {
+		return err
+	}
+	// Start() may run without a block frontend configured. Wait only after the
+	// block frontend has actually started.
+	if len(c.replicas) > 0 && c.frontend != nil && c.frontend.FrontendName() == types.EngineFrontendBlockDev {
+		waitFrontend = c.frontend
+	}
+	return nil
+}
+
+// rollbackFrontendStart cleans up a frontend startup after device readiness
+// fails. StartFrontend() rolls back only the frontend because replicas/backend
+// already existed, while Start() also rolls back the backend state it created.
+func (c *Controller) rollbackFrontendStart(frontend types.Frontend, rollbackBackend bool) error {
+	var rollbackErr error
+	if err := frontend.Shutdown(); err != nil {
+		rollbackErr = errors.Wrap(err, "failed to roll back frontend startup")
+	}
+	if rollbackBackend {
+		if err := c.shutdownBackend(); err != nil {
+			rollbackErr = types.CombineErrors(rollbackErr, errors.Wrap(err, "failed to roll back backend startup"))
+		}
+	}
+	return rollbackErr
 }
 
 func (c *Controller) WriteAt(b []byte, off int64) (int, error) {
@@ -1435,6 +1507,9 @@ func (c *Controller) shutdownFrontend() error {
 }
 
 func (c *Controller) ShutdownFrontend() error {
+	c.frontendLifecycleLock.Lock()
+	defer c.frontendLifecycleLock.Unlock()
+
 	if err := c.shutdownFrontend(); err != nil {
 		return err
 	}
@@ -1452,6 +1527,9 @@ func (c *Controller) shutdownBackend() error {
 }
 
 func (c *Controller) Shutdown() error {
+	c.frontendLifecycleLock.Lock()
+	defer c.frontendLifecycleLock.Unlock()
+
 	/*
 		Need to shutdown frontend first because it will write
 		the final piece of data to backend

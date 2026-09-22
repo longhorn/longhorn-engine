@@ -331,7 +331,7 @@ github.com/longhorn/go-common-libs/sync
 github.com/longhorn/go-common-libs/sys
 github.com/longhorn/go-common-libs/types
 github.com/longhorn/go-common-libs/utils
-# github.com/longhorn/go-iscsi-helper v0.0.0-20260625081921-94479d1d3cf4
+# github.com/longhorn/go-iscsi-helper v0.0.0-20260625081921-94479d1d3cf4 => ../go-iscsi-helper
 ## explicit; go 1.25.10
 github.com/longhorn/go-iscsi-helper/iscsi
 github.com/longhorn/go-iscsi-helper/iscsidev
@@ -646,3 +646,4 @@ k8s.io/utils/keymutex
 ## explicit; go 1.23
 sigs.k8s.io/json
 sigs.k8s.io/json/internal/golang/encoding/json
+# github.com/longhorn/go-iscsi-helper => ../go-iscsi-helper
