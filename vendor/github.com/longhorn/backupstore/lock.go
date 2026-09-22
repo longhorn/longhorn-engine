@@ -22,6 +22,27 @@ const (
 	LOCK_CHECK_WAIT_TIME  = time.Second * 2
 )
 
+// Callers such as longhorn-manager only receive lock errors as a string over RPC, so these
+// fragments are the public contract for telling a retryable lock conflict from a terminal
+// failure. Rewording them breaks that classification; prefer IsLockConflictError over
+// matching the message yourself.
+const (
+	ErrorMessageFailedToAcquireLock = "failed to acquire lock"
+	ErrorMessagePleaseTryAgainLater = "please try again later"
+)
+
+// IsLockConflictError reports whether err means the lock is currently held by a
+// conflicting operation. Such an error is transient and the caller should retry with a
+// backoff instead of treating the backup or restore as failed.
+func IsLockConflictError(err error) bool {
+	if err == nil {
+		return false
+	}
+	errMsg := err.Error()
+	return strings.Contains(errMsg, ErrorMessageFailedToAcquireLock) &&
+		strings.Contains(errMsg, ErrorMessagePleaseTryAgainLater)
+}
+
 type LockType int
 
 const UNTYPED_LOCK LockType = 0
@@ -122,7 +143,8 @@ func (lock *FileLock) Lock() error {
 	if !lock.canAcquire() {
 		file := getLockFilePath(lock.volume, lock.Name)
 		_ = removeLock(lock)
-		return fmt.Errorf("failed to acquire lock %v when performing backup %v, please try again later", file, operation)
+		return fmt.Errorf("%v %v when performing backup %v, %v",
+			ErrorMessageFailedToAcquireLock, file, operation, ErrorMessagePleaseTryAgainLater)
 	}
 
 	file := getLockFilePath(lock.volume, lock.Name)
