@@ -185,7 +185,7 @@ func GetNumberFromMap[T GetNumberFromMapSupportedTypes](mapObj map[string]any, k
 
 	switch v := value.(type) {
 	case float64:
-		// Clamp to zero if negative or beyond T’s max range.
+		// Clamp to zero if negative or beyond T's max range.
 		if v < 0 || v > float64(^zero) {
 			return zero
 		}

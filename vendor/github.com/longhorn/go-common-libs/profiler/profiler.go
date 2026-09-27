@@ -6,14 +6,16 @@ import (
 	"fmt"
 	"net"
 	"net/http"
-	_ "net/http/pprof"
 	"sync"
 	"time"
 
-	"github.com/longhorn/types/pkg/generated/profilerrpc"
+	_ "net/http/pprof"
+
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+
+	"github.com/longhorn/types/pkg/generated/profilerrpc"
 
 	"github.com/longhorn/go-common-libs/utils"
 )
@@ -41,6 +43,7 @@ func (c ClientContext) Close() error {
 //   - name: the name of the server
 //   - errMsg: the error message current server has (if enabled failed, it will have the error message)
 //   - server: the http server for the profiler
+//   - listener: the network listener for the profiler server
 //   - lock: the RW lock for the server
 type Server struct {
 	profilerrpc.UnimplementedProfilerServer
@@ -49,7 +52,10 @@ type Server struct {
 	errMsg string
 
 	server *http.Server
-	lock   sync.RWMutex
+	// Keep the listener separately because DisableProfiler may run before
+	// http.Server.Serve has tracked it.
+	listener net.Listener
+	lock     sync.RWMutex
 }
 
 // Client is the gRPC client to interactive with the ProfilerServer
@@ -168,45 +174,35 @@ func (s *Server) EnableProfiler(portNumber int32) (string, error) {
 		Addr:              profilerAddr,
 		ReadHeaderTimeout: 10 * time.Second,
 	}
+	// Listen synchronously so success means the port is already bound; no
+	// readiness polling is needed before Serve starts accepting.
+	listener, err := net.Listen("tcp", profilerAddr)
+	if err != nil {
+		s.errMsg = err.Error()
+		return s.errMsg, fmt.Errorf("failed to start profiler server(%v): %w", profilerAddr, err)
+	}
+
+	s.server = newServer
+	s.listener = listener
+	s.errMsg = ""
 	go func() {
-		if err := newServer.ListenAndServe(); !errors.Is(err, http.ErrServerClosed) {
+		err := newServer.Serve(listener)
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logrus.WithError(err).Warnf("Get error when start profiler server %v", newServer.Addr)
-			s.errMsg = err.Error()
-			return
+			if closeErr := newServer.Close(); closeErr != nil {
+				logrus.WithError(closeErr).Warnf("Failed to close the profiler server %v", newServer.Addr)
+			}
+			s.lock.Lock()
+			if s.server == newServer {
+				s.server = nil
+				s.listener = nil
+				s.errMsg = err.Error()
+			}
+			s.lock.Unlock()
 		}
 		logrus.Infof("Profiler server (%v) is closed", newServer.Addr)
 	}()
 
-	logrus.Infof("Waiting the profiler server(%v) to start", newServer.Addr)
-	// Wait for the profiler server to start, and check the profiler server.
-	var retryErr error
-	retryCount := 3
-	for i := 0; i < retryCount; i++ {
-		conn, err := net.DialTimeout("tcp", newServer.Addr, 1*time.Second)
-		if err == nil {
-			_ = conn.Close()
-			retryErr = nil
-			break
-		}
-
-		retryErr = err
-	}
-
-	if retryErr != nil {
-		_ = newServer.Close()
-		return retryErr.Error(), fmt.Errorf("timeout connecting to profiler server(%v)", profilerAddr)
-	}
-
-	if s.errMsg != "" {
-		_ = newServer.Close()
-		return s.errMsg, fmt.Errorf("failed to start profiler server(%v)", profilerAddr)
-	}
-
-	s.server = newServer
-
-	defer func() {
-		s.errMsg = ""
-	}()
 	return s.server.Addr, nil
 }
 
@@ -223,14 +219,40 @@ func (s *Server) DisableProfiler() (string, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
-	if err := s.server.Shutdown(ctx); err != nil {
-		logrus.WithError(err).Warnf("Failed to shutdown the profiler %v", s.server.Addr)
-		return "", err
+	return s.disableProfilerLocked(ctx)
+}
+
+// disableProfilerLocked disables the profiler while the caller holds s.lock.
+func (s *Server) disableProfilerLocked(ctx context.Context) (string, error) {
+	server := s.server
+	if shutdownErr := server.Shutdown(ctx); shutdownErr != nil {
+		logrus.WithError(shutdownErr).Warnf("Failed to shutdown the profiler %v", server.Addr)
+		// Shutdown has stopped accepting requests even when it times out.
+		// Force-close remaining connections and the retained listener before
+		// clearing the profiler state so a failed disable cannot leak the port.
+		if closeErr := server.Close(); closeErr != nil && !errors.Is(closeErr, net.ErrClosed) {
+			logrus.WithError(closeErr).Warnf("Failed to close the profiler server %v", server.Addr)
+		}
+		if s.listener != nil {
+			if closeErr := s.listener.Close(); closeErr != nil && !errors.Is(closeErr, net.ErrClosed) {
+				logrus.WithError(closeErr).Warnf("Failed to close the profiler listener %v", server.Addr)
+			}
+		}
+		s.server = nil
+		s.listener = nil
+		s.errMsg = shutdownErr.Error()
+		return "", shutdownErr
+	}
+	if s.listener != nil {
+		if err := s.listener.Close(); err != nil && !errors.Is(err, net.ErrClosed) {
+			logrus.WithError(err).Warnf("Failed to close the profiler listener %v", server.Addr)
+			return "", err
+		}
 	}
 
 	s.server = nil
+	s.listener = nil
 	return "", nil
-
 }
 
 // ProfilerOP will call the doProfilerOP for the ProfilerServer.
