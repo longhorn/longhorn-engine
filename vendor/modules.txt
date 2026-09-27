@@ -318,7 +318,7 @@ github.com/longhorn/backupstore/systembackup
 github.com/longhorn/backupstore/types
 github.com/longhorn/backupstore/util
 github.com/longhorn/backupstore/vfs
-# github.com/longhorn/go-common-libs v0.0.0-20260830093844-bff76489ddfd
+# github.com/longhorn/go-common-libs v0.0.0-20260909075701-1a37e0e5083e
 ## explicit; go 1.25.10
 github.com/longhorn/go-common-libs/backingimage
 github.com/longhorn/go-common-libs/backup
@@ -346,7 +346,7 @@ github.com/longhorn/sparse-tools/sparse/rest
 github.com/longhorn/sparse-tools/stats
 github.com/longhorn/sparse-tools/types
 github.com/longhorn/sparse-tools/util
-# github.com/longhorn/types v0.0.0-20260709032252-3d0a3cd8f06f
+# github.com/longhorn/types v0.0.0-20260912171147-ce65698c8b35
 ## explicit; go 1.25.0
 github.com/longhorn/types/pkg/generated/enginerpc
 github.com/longhorn/types/pkg/generated/profilerrpc
@@ -428,8 +428,6 @@ github.com/slok/goresilience/timeout
 # github.com/urfave/cli v1.22.17
 ## explicit; go 1.11
 github.com/urfave/cli
-# github.com/urfave/cli/v3 v3.11.0
-## explicit; go 1.22
 # github.com/x448/float16 v0.8.4
 ## explicit; go 1.11
 github.com/x448/float16
@@ -635,7 +633,7 @@ k8s.io/klog/v2/internal/severity
 k8s.io/klog/v2/internal/sloghandler
 k8s.io/klog/v2/internal/verbosity
 k8s.io/klog/v2/textlogger
-# k8s.io/mount-utils v0.37.0
+# k8s.io/mount-utils v0.37.1
 ## explicit; go 1.26.0
 k8s.io/mount-utils
 # k8s.io/utils v0.0.0-20260626114624-be93311217bd

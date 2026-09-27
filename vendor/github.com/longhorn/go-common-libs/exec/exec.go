@@ -99,7 +99,12 @@ func (e *Executor) executeCmd(cmd *exec.Cmd, timeout time.Duration) (string, err
 		// Kill the process group; otherwise the command would keep running
 		// (and consuming resources) after the timeout error is returned.
 		// The Wait in the goroutine above reaps the process once it exits.
+		//
+		// First try the process group kill (Setpgid-based).
 		_ = syscall.Kill(-cmd.Process.Pid, syscall.SIGKILL)
+		// Fallback: directly kill the process by PID in case the command
+		// changed its process group or process group signal delivery failed.
+		_ = cmd.Process.Kill()
 		return "", errors.Errorf("timeout executing: %v %v", cmd.Path, cmd.Args)
 	}
 
