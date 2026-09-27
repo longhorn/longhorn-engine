@@ -12,16 +12,15 @@ require (
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
 	github.com/longhorn/backupstore v0.0.0-20260922010936-57b3845ad4ef
-	github.com/longhorn/go-common-libs v0.0.0-20260830093844-bff76489ddfd
+	github.com/longhorn/go-common-libs v0.0.0-20260909075701-1a37e0e5083e
 	github.com/longhorn/go-iscsi-helper v0.0.0-20260625081921-94479d1d3cf4
 	github.com/longhorn/sparse-tools v0.0.0-20260423074222-280e61de741a
-	github.com/longhorn/types v0.0.0-20260709032252-3d0a3cd8f06f
+	github.com/longhorn/types v0.0.0-20260912171147-ce65698c8b35
 	github.com/moby/sys/reexec v0.1.0
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
 	github.com/rancher/go-rancher v0.1.1-0.20190307222549-9756097e5e4c
 	github.com/sirupsen/logrus v1.10.2
 	github.com/urfave/cli v1.22.17
-	github.com/urfave/cli/v3 v3.11.0
 	go.uber.org/multierr v1.11.0
 	golang.org/x/sys v0.48.0
 	google.golang.org/grpc v1.83.2
@@ -30,7 +29,7 @@ require (
 	gopkg.in/cheggaaa/pb.v2 v2.0.7
 	k8s.io/apimachinery v0.37.0
 	k8s.io/client-go v0.37.0
-	k8s.io/mount-utils v0.37.0
+	k8s.io/mount-utils v0.37.1
 )
 
 require (
