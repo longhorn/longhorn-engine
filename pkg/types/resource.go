@@ -52,6 +52,7 @@ type VolumeInfo struct {
 	UnmapMarkSnapChainRemoved bool   `json:"unmapMarkSnapChainRemoved"`
 	SnapshotMaxCount          int    `json:"snapshotMaxCount"`
 	SnapshotMaxSize           int64  `json:"SnapshotMaxSize"`
+	SnapshotRemoveOldest      bool   `json:"snapshotRemoveOldest"`
 }
 
 type ControllerReplicaInfo struct {

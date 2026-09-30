@@ -509,3 +509,18 @@ func (r *replicator) SetSnapshotMaxSize(address string, size int64) error {
 
 	return nil
 }
+
+func (r *replicator) SetSnapshotRemoveOldest(address string, enabled bool) error {
+	backend, ok := r.backends[address]
+	if !ok {
+		return fmt.Errorf("cannot find backend %v", address)
+	}
+
+	if err := backend.backend.SetSnapshotRemoveOldest(enabled); err != nil {
+		return err
+	}
+
+	logrus.Infof("Set backend %s SnapshotMaxSize to %v", address, enabled)
+
+	return nil
+}

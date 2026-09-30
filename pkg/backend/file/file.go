@@ -131,6 +131,8 @@ func (f *Wrapper) SetSnapshotMaxSize(size int64) error {
 	return nil
 }
 
+func (f *Wrapper) SetSnapshotRemoveOldest(enabled bool) error { return nil }
+
 func (ff *Factory) Create(volumeName, address string, dataServerProtocol types.DataServerProtocol,
 	sharedTimeouts types.SharedTimeouts, isUpgrade bool, expectedBackendSize int64) (types.Backend, error) {
 	logrus.Infof("Creating file: %s", address)

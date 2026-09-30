@@ -93,7 +93,15 @@ func ControllerCmd() *cli.Command {
 				Name:  "snapshot-max-size",
 				Usage: "Maximum total snapshot size in bytes or human readable 42kb, 42mb, 42gb",
 			},
+<<<<<<< HEAD
 			&cli.IntFlag{
+=======
+			cli.BoolFlag{
+				Name:  "snapshot-remove-oldest",
+				Usage: "To remove the oldest snapshot when snapshot-max-count is reached",
+			},
+			cli.IntFlag{
+>>>>>>> fafbb518 (fix(snapshot): add boilerplate for snapshotRemoveOldest)
 				Name:  "rebuild-sync-concurrent-limit",
 				Value: types.DefaultRebuildSyncConcurrentLimit,
 				Usage: "Maximum number of concurrent syncing files for one rebuilding",
@@ -169,6 +177,8 @@ func startController(c *cli.Command) error {
 		}
 	}
 
+	snapshotRemoveOldest := c.Bool("snapshot-remove-oldest")
+
 	rebuildSyncConcurrentLimit := c.Int("rebuild-sync-concurrent-limit")
 	if rebuildSyncConcurrentLimit <= 0 {
 		return errors.New("rebuild-sync-concurrent-limit must be a positive integer")
@@ -208,7 +218,7 @@ func startController(c *cli.Command) error {
 	control := controller.NewController(volumeName, dynamic.New(factories), frontend, isUpgrade, disableRevCounter,
 		salvageRequested, unmapMarkSnapChainRemoved, iscsiTargetRequestTimeout, engineReplicaTimeoutShort,
 		engineReplicaTimeoutLong, types.DataServerProtocol(dataServerProtocol), fileSyncHTTPClientTimeout,
-		snapshotMaxCount, snapshotMaxSize, rebuildSyncConcurrentLimit)
+		snapshotMaxCount, snapshotMaxSize, snapshotRemoveOldest, rebuildSyncConcurrentLimit)
 
 	// need to wait for Shutdown() completion
 	control.ShutdownWG.Add(1)
