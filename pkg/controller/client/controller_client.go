@@ -277,6 +277,20 @@ func (c *ControllerClient) VolumeSnapshotMaxSizeSet(size int64) error {
 	return nil
 }
 
+func (c *ControllerClient) VolumeSnapshotRemoveOldestSet(enabled bool) error {
+	controllerServiceClient := c.getControllerServiceClient()
+	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)
+	defer cancel()
+
+	if _, err := controllerServiceClient.VolumeSnapshotRemoveOldestSet(ctx, &enginerpc.VolumeSnapshotRemoveOldestSetRequest{
+		Enabled: enabled,
+	}); err != nil {
+		return errors.Wrapf(err, "failed to set SnapshotRemoveOldest to %v for volume %s", enabled, c.serviceURL)
+	}
+
+	return nil
+}
+
 func (c *ControllerClient) ReplicaList() ([]*types.ControllerReplicaInfo, error) {
 	controllerServiceClient := c.getControllerServiceClient()
 	ctx, cancel := context.WithTimeout(context.Background(), GRPCServiceTimeout)

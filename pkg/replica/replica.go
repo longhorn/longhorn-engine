@@ -66,8 +66,9 @@ type Replica struct {
 
 	unmapMarkDiskChainRemoved bool
 
-	snapshotMaxCount int
-	snapshotMaxSize  int64
+	snapshotMaxCount     int
+	snapshotMaxSize      int64
+	snapshotRemoveOldest bool
 }
 
 type Info struct {
@@ -1299,6 +1300,15 @@ func (r *Replica) SetSnapshotMaxSize(size int64) {
 	r.snapshotMaxSize = size
 
 	logrus.Infof("Set replica flag SnapshotMaxSize to %d", size)
+}
+
+func (r *Replica) SetSnapshotRemoveOldest(enabled bool) {
+	r.Lock()
+	defer r.Unlock()
+
+	r.snapshotRemoveOldest = enabled
+
+	logrus.Infof("Set replica flag SnapshotRemoveOldest to %v", enabled)
 }
 
 func (r *Replica) Expand(size int64) (err error) {

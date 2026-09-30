@@ -269,6 +269,11 @@ func (rs *ReplicaServer) SnapshotMaxSizeSet(ctx context.Context, req *enginerpc.
 	return &enginerpc.SnapshotMaxSizeSetResponse{Replica: rs.getReplica()}, nil
 }
 
+func (rs *ReplicaServer) SnapshotRemoveOldestSet(ctx context.Context, req *enginerpc.SnapshotRemoveOldestSetRequest) (*enginerpc.SnapshotRemoveOldestSetResponse, error) {
+	rs.s.SetSnapshotRemoveOldest(req.Enabled)
+	return &enginerpc.SnapshotRemoveOldestSetResponse{Replica: rs.getReplica()}, nil
+}
+
 func (hc *ReplicaHealthCheckServer) Check(context.Context, *healthpb.HealthCheckRequest) (*healthpb.HealthCheckResponse, error) {
 	if hc.rs.s != nil {
 		return &healthpb.HealthCheckResponse{
