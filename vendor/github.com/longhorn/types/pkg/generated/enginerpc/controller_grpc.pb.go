@@ -31,6 +31,7 @@ const (
 	ControllerService_VolumeUnmapMarkSnapChainRemovedSet_FullMethodName   = "/ptypes.ControllerService/VolumeUnmapMarkSnapChainRemovedSet"
 	ControllerService_VolumeSnapshotMaxCountSet_FullMethodName            = "/ptypes.ControllerService/VolumeSnapshotMaxCountSet"
 	ControllerService_VolumeSnapshotMaxSizeSet_FullMethodName             = "/ptypes.ControllerService/VolumeSnapshotMaxSizeSet"
+	ControllerService_VolumeSnapshotRemoveOldestSet_FullMethodName        = "/ptypes.ControllerService/VolumeSnapshotRemoveOldestSet"
 	ControllerService_VolumeIO_FullMethodName                             = "/ptypes.ControllerService/VolumeIO"
 	ControllerService_ReplicaList_FullMethodName                          = "/ptypes.ControllerService/ReplicaList"
 	ControllerService_ReplicaGet_FullMethodName                           = "/ptypes.ControllerService/ReplicaGet"
@@ -61,6 +62,7 @@ type ControllerServiceClient interface {
 	VolumeUnmapMarkSnapChainRemovedSet(ctx context.Context, in *VolumeUnmapMarkSnapChainRemovedSetRequest, opts ...grpc.CallOption) (*Volume, error)
 	VolumeSnapshotMaxCountSet(ctx context.Context, in *VolumeSnapshotMaxCountSetRequest, opts ...grpc.CallOption) (*Volume, error)
 	VolumeSnapshotMaxSizeSet(ctx context.Context, in *VolumeSnapshotMaxSizeSetRequest, opts ...grpc.CallOption) (*Volume, error)
+	VolumeSnapshotRemoveOldestSet(ctx context.Context, in *VolumeSnapshotRemoveOldestSetRequest, opts ...grpc.CallOption) (*Volume, error)
 	VolumeIO(ctx context.Context, in *VolumeIORequest, opts ...grpc.CallOption) (*VolumeIOResponse, error)
 	ReplicaList(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ReplicaListReply, error)
 	ReplicaGet(ctx context.Context, in *ReplicaAddress, opts ...grpc.CallOption) (*ControllerReplica, error)
@@ -177,6 +179,15 @@ func (c *controllerServiceClient) VolumeSnapshotMaxCountSet(ctx context.Context,
 func (c *controllerServiceClient) VolumeSnapshotMaxSizeSet(ctx context.Context, in *VolumeSnapshotMaxSizeSetRequest, opts ...grpc.CallOption) (*Volume, error) {
 	out := new(Volume)
 	err := c.cc.Invoke(ctx, ControllerService_VolumeSnapshotMaxSizeSet_FullMethodName, in, out, opts...)
+	if err != nil {
+		return nil, err
+	}
+	return out, nil
+}
+
+func (c *controllerServiceClient) VolumeSnapshotRemoveOldestSet(ctx context.Context, in *VolumeSnapshotRemoveOldestSetRequest, opts ...grpc.CallOption) (*Volume, error) {
+	out := new(Volume)
+	err := c.cc.Invoke(ctx, ControllerService_VolumeSnapshotRemoveOldestSet_FullMethodName, in, out, opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -315,6 +326,7 @@ type ControllerServiceServer interface {
 	VolumeUnmapMarkSnapChainRemovedSet(context.Context, *VolumeUnmapMarkSnapChainRemovedSetRequest) (*Volume, error)
 	VolumeSnapshotMaxCountSet(context.Context, *VolumeSnapshotMaxCountSetRequest) (*Volume, error)
 	VolumeSnapshotMaxSizeSet(context.Context, *VolumeSnapshotMaxSizeSetRequest) (*Volume, error)
+	VolumeSnapshotRemoveOldestSet(context.Context, *VolumeSnapshotRemoveOldestSetRequest) (*Volume, error)
 	VolumeIO(context.Context, *VolumeIORequest) (*VolumeIOResponse, error)
 	ReplicaList(context.Context, *emptypb.Empty) (*ReplicaListReply, error)
 	ReplicaGet(context.Context, *ReplicaAddress) (*ControllerReplica, error)
@@ -367,6 +379,9 @@ func (UnimplementedControllerServiceServer) VolumeSnapshotMaxCountSet(context.Co
 }
 func (UnimplementedControllerServiceServer) VolumeSnapshotMaxSizeSet(context.Context, *VolumeSnapshotMaxSizeSetRequest) (*Volume, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method VolumeSnapshotMaxSizeSet not implemented")
+}
+func (UnimplementedControllerServiceServer) VolumeSnapshotRemoveOldestSet(context.Context, *VolumeSnapshotRemoveOldestSetRequest) (*Volume, error) {
+	return nil, status.Errorf(codes.Unimplemented, "method VolumeSnapshotRemoveOldestSet not implemented")
 }
 func (UnimplementedControllerServiceServer) VolumeIO(context.Context, *VolumeIORequest) (*VolumeIOResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method VolumeIO not implemented")
@@ -614,6 +629,24 @@ func _ControllerService_VolumeSnapshotMaxSizeSet_Handler(srv interface{}, ctx co
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
 		return srv.(ControllerServiceServer).VolumeSnapshotMaxSizeSet(ctx, req.(*VolumeSnapshotMaxSizeSetRequest))
+	}
+	return interceptor(ctx, in, info, handler)
+}
+
+func _ControllerService_VolumeSnapshotRemoveOldestSet_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
+	in := new(VolumeSnapshotRemoveOldestSetRequest)
+	if err := dec(in); err != nil {
+		return nil, err
+	}
+	if interceptor == nil {
+		return srv.(ControllerServiceServer).VolumeSnapshotRemoveOldestSet(ctx, in)
+	}
+	info := &grpc.UnaryServerInfo{
+		Server:     srv,
+		FullMethod: ControllerService_VolumeSnapshotRemoveOldestSet_FullMethodName,
+	}
+	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
+		return srv.(ControllerServiceServer).VolumeSnapshotRemoveOldestSet(ctx, req.(*VolumeSnapshotRemoveOldestSetRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
@@ -902,6 +935,10 @@ var ControllerService_ServiceDesc = grpc.ServiceDesc{
 		{
 			MethodName: "VolumeSnapshotMaxSizeSet",
 			Handler:    _ControllerService_VolumeSnapshotMaxSizeSet_Handler,
+		},
+		{
+			MethodName: "VolumeSnapshotRemoveOldestSet",
+			Handler:    _ControllerService_VolumeSnapshotRemoveOldestSet_Handler,
 		},
 		{
 			MethodName: "VolumeIO",

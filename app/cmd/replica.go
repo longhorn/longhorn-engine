@@ -84,6 +84,10 @@ func ReplicaCmd() cli.Command {
 				Usage: "Maximum total snapshot size in bytes or human readable 42kb, 42mb, 42gb",
 			},
 			cli.BoolFlag{
+				Name:  "snapshot-remove-oldest",
+				Usage: "To remove the oldest snapshot when snapshot-max-count is reached",
+			},
+			cli.BoolFlag{
 				Name:   "encrypted",
 				Hidden: false,
 				Usage:  "Volume is encrypted",
@@ -121,6 +125,7 @@ func startReplica(c *cli.Context) (err error) {
 		}
 	}
 
+	snapshotRemoveOldest := c.Bool("snapshot-remove-oldest")
 	encrypted := c.Bool("encrypted")
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -132,7 +137,7 @@ func startReplica(c *cli.Context) (err error) {
 
 	volumeName := c.GlobalString("volume-name")
 
-	s := replica.NewServer(ctx, dir, backingFile, diskutil.ReplicaSectorSize, disableRevCounter, unmapMarkDiskChainRemoved, snapshotMaxCount, snapshotMaxSize, encrypted, volumeName)
+	s := replica.NewServer(ctx, dir, backingFile, diskutil.ReplicaSectorSize, disableRevCounter, unmapMarkDiskChainRemoved, snapshotMaxCount, snapshotMaxSize, snapshotRemoveOldest, encrypted, volumeName)
 
 	address := c.String("listen")
 
