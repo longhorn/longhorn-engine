@@ -21,7 +21,6 @@ require (
 	github.com/rancher/go-rancher v0.1.1-0.20190307222549-9756097e5e4c
 	github.com/sirupsen/logrus v1.10.2
 	github.com/urfave/cli v1.22.17
-	github.com/urfave/cli/v3 v3.12.0
 	go.uber.org/multierr v1.11.0
 	golang.org/x/sys v0.48.0
 	google.golang.org/grpc v1.83.2
@@ -109,3 +108,5 @@ require (
 	k8s.io/utils v0.0.0-20260626114624-be93311217bd // indirect
 	sigs.k8s.io/json v0.0.0-20250730193827-2d320260d730 // indirect
 )
+
+replace github.com/longhorn/types => ../types

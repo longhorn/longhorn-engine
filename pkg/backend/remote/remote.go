@@ -462,6 +462,38 @@ func (r *Remote) SetSnapshotMaxSize(size int64) error {
 	return nil
 }
 
+func (r *Remote) SetSnapshotRemoveOldest(enabled bool) error {
+	logrus.Infof("Setting SnapshotRemoveOldest of %s to : %v", r.name, enabled)
+
+	conn, err := grpc.NewClient(
+		r.replicaServiceURL,
+		grpc.WithTransportCredentials(insecure.NewCredentials()),
+		grpc.WithNoProxy(),
+		grpc.WithDisableServiceConfig(),
+		interceptor.WithIdentityValidationClientInterceptor(r.volumeName, ""),
+	)
+	if err != nil {
+		return errors.Wrapf(err, "failed connecting to ReplicaService %v", r.replicaServiceURL)
+	}
+	defer func() {
+		if errClose := conn.Close(); errClose != nil {
+			logrus.WithError(errClose).Errorf("Failed to close connection to ReplicaService %v", r.replicaServiceURL)
+		}
+	}()
+	replicaServiceClient := enginerpc.NewReplicaServiceClient(conn)
+
+	ctx, cancel := context.WithTimeout(context.Background(), replicaClient.GRPCServiceCommonTimeout)
+	defer cancel()
+
+	if _, err := replicaServiceClient.SnapshotRemoveOldestSet(ctx, &enginerpc.SnapshotRemoveOldestSetRequest{
+		Enabled: enabled,
+	}); err != nil {
+		return errors.Wrapf(err, "failed to set SnapshotRemoveOldest to %v for replica %v from remote", enabled, r.replicaServiceURL)
+	}
+
+	return nil
+}
+
 func (r *Remote) info() (*types.ReplicaInfo, error) {
 	conn, err := grpc.NewClient(
 		r.replicaServiceURL,

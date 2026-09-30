@@ -110,6 +110,7 @@ type Backend interface {
 	ResetRebuild() error
 	SetSnapshotMaxCount(count int) error
 	SetSnapshotMaxSize(size int64) error
+	SetSnapshotRemoveOldest(enabled bool) error
 	GetSnapshotCountAndSizeUsage() (int, int, int64, error)
 }
 
