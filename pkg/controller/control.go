@@ -45,9 +45,10 @@ type Controller struct {
 
 	unmapMarkSnapChainRemoved bool
 
-	snapshotFreezeLock sync.Mutex
-	snapshotMaxCount   int
-	SnapshotMaxSize    int64
+	snapshotFreezeLock   sync.Mutex
+	snapshotMaxCount     int
+	SnapshotMaxSize      int64
+	snapshotRemoveOldest bool
 
 	// frontendLifecycleLock serializes frontend start/shutdown flows, replica
 	// addition/removal, and expansion start while the controller lock is released
@@ -83,7 +84,7 @@ const (
 func NewController(name string, factory types.BackendFactory, frontend types.Frontend, isUpgrade, disableRevCounter,
 	salvageRequested, unmapMarkSnapChainRemoved bool, iscsiTargetRequestTimeout, engineReplicaTimeoutShort,
 	engineReplicaTimeoutLong time.Duration, dataServerProtocol types.DataServerProtocol, fileSyncHTTPClientTimeout,
-	snapshotMaxCount int, snapshotMaxSize int64, rebuildSyncConcurrentLimit int) *Controller {
+	snapshotMaxCount int, snapshotMaxSize int64, snapshotRemoveOldest bool, rebuildSyncConcurrentLimit int) *Controller {
 	c := &Controller{
 		factory:       factory,
 		VolumeName:    name,
@@ -97,6 +98,7 @@ func NewController(name string, factory types.BackendFactory, frontend types.Fro
 		unmapMarkSnapChainRemoved: unmapMarkSnapChainRemoved,
 		snapshotMaxCount:          snapshotMaxCount,
 		SnapshotMaxSize:           snapshotMaxSize,
+		snapshotRemoveOldest:      snapshotRemoveOldest,
 
 		rebuildSyncConcurrentLimit: rebuildSyncConcurrentLimit,
 
@@ -934,6 +936,20 @@ func (c *Controller) GetSnapshotMaxSize() int64 {
 	c.RLock()
 	defer c.RUnlock()
 	return c.SnapshotMaxSize
+}
+
+func (c *Controller) SetSnapshotRemoveOldest(enabled bool) error {
+	c.Lock()
+	defer c.Unlock()
+
+	c.snapshotRemoveOldest = enabled
+	return nil
+}
+
+func (c *Controller) GetSnapshotRemoveOldest() bool {
+	c.RLock()
+	defer c.RUnlock()
+	return c.snapshotRemoveOldest
 }
 
 func isReplicaInInvalidState(state string) bool {

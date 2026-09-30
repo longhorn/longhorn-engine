@@ -343,7 +343,7 @@ github.com/longhorn/sparse-tools/sparse/rest
 github.com/longhorn/sparse-tools/stats
 github.com/longhorn/sparse-tools/types
 github.com/longhorn/sparse-tools/util
-# github.com/longhorn/types v0.0.0-20260930155107-5849431731c3
+# github.com/longhorn/types v0.0.0-20260930155107-5849431731c3 => ../types
 ## explicit; go 1.25.0
 github.com/longhorn/types/pkg/generated/enginerpc
 github.com/longhorn/types/pkg/generated/profilerrpc
@@ -640,3 +640,4 @@ k8s.io/utils/keymutex
 ## explicit; go 1.23
 sigs.k8s.io/json
 sigs.k8s.io/json/internal/golang/encoding/json
+# github.com/longhorn/types => ../types
