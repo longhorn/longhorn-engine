@@ -1016,7 +1016,11 @@ func (r *Replica) createDisk(name string, userCreated bool, created string, labe
 	r.diskData[newHeadDisk.Name] = &newHeadDisk
 	if newSnapName != "" {
 		r.addChildDisk(newSnapName, newHeadDisk.Name)
+		// The old head's disk struct is reused for the new snapshot. Keep a copy so the rollback
+		// can restore the head if a later step fails.
+		oldHeadDisk := *r.diskData[oldHead]
 		r.diskData[newSnapName] = r.diskData[oldHead]
+		r.diskData[newSnapName].Name = newSnapName
 		r.diskData[newSnapName].UserCreated = userCreated
 		r.diskData[newSnapName].Created = created
 		r.diskData[newSnapName].Labels = labels
@@ -1024,6 +1028,7 @@ func (r *Replica) createDisk(name string, userCreated bool, created string, labe
 			delete(r.diskData, newHeadDisk.Name)
 			delete(r.diskData, newSnapName)
 			delete(r.diskChildrenMap, newSnapName)
+			*r.diskData[oldHead] = oldHeadDisk
 			return nil
 		})
 
@@ -1034,7 +1039,6 @@ func (r *Replica) createDisk(name string, userCreated bool, created string, labe
 		rollbackFuncList = append(rollbackFuncList, snapMetaEncodeRollbackFunc)
 
 		r.updateChildDisk(oldHead, newSnapName)
-		r.activeDiskData[len(r.activeDiskData)-1].Name = newSnapName
 	}
 	delete(r.diskData, oldHead)
 
