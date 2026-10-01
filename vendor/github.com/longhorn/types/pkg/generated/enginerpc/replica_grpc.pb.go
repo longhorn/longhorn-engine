@@ -47,7 +47,7 @@ type ReplicaServiceClient interface {
 	ReplicaCreate(ctx context.Context, in *ReplicaCreateRequest, opts ...grpc.CallOption) (*ReplicaCreateResponse, error)
 	ReplicaDelete(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*emptypb.Empty, error)
 	ReplicaGet(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ReplicaGetResponse, error)
-	ReplicaOpen(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ReplicaOpenResponse, error)
+	ReplicaOpen(ctx context.Context, in *ReplicaOpenRequest, opts ...grpc.CallOption) (*ReplicaOpenResponse, error)
 	ReplicaClose(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ReplicaCloseResponse, error)
 	ReplicaReload(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ReplicaReloadResponse, error)
 	ReplicaRevert(ctx context.Context, in *ReplicaRevertRequest, opts ...grpc.CallOption) (*ReplicaRevertResponse, error)
@@ -99,7 +99,7 @@ func (c *replicaServiceClient) ReplicaGet(ctx context.Context, in *emptypb.Empty
 	return out, nil
 }
 
-func (c *replicaServiceClient) ReplicaOpen(ctx context.Context, in *emptypb.Empty, opts ...grpc.CallOption) (*ReplicaOpenResponse, error) {
+func (c *replicaServiceClient) ReplicaOpen(ctx context.Context, in *ReplicaOpenRequest, opts ...grpc.CallOption) (*ReplicaOpenResponse, error) {
 	out := new(ReplicaOpenResponse)
 	err := c.cc.Invoke(ctx, ReplicaService_ReplicaOpen_FullMethodName, in, out, opts...)
 	if err != nil {
@@ -241,7 +241,7 @@ type ReplicaServiceServer interface {
 	ReplicaCreate(context.Context, *ReplicaCreateRequest) (*ReplicaCreateResponse, error)
 	ReplicaDelete(context.Context, *emptypb.Empty) (*emptypb.Empty, error)
 	ReplicaGet(context.Context, *emptypb.Empty) (*ReplicaGetResponse, error)
-	ReplicaOpen(context.Context, *emptypb.Empty) (*ReplicaOpenResponse, error)
+	ReplicaOpen(context.Context, *ReplicaOpenRequest) (*ReplicaOpenResponse, error)
 	ReplicaClose(context.Context, *emptypb.Empty) (*ReplicaCloseResponse, error)
 	ReplicaReload(context.Context, *emptypb.Empty) (*ReplicaReloadResponse, error)
 	ReplicaRevert(context.Context, *ReplicaRevertRequest) (*ReplicaRevertResponse, error)
@@ -272,7 +272,7 @@ func (UnimplementedReplicaServiceServer) ReplicaDelete(context.Context, *emptypb
 func (UnimplementedReplicaServiceServer) ReplicaGet(context.Context, *emptypb.Empty) (*ReplicaGetResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReplicaGet not implemented")
 }
-func (UnimplementedReplicaServiceServer) ReplicaOpen(context.Context, *emptypb.Empty) (*ReplicaOpenResponse, error) {
+func (UnimplementedReplicaServiceServer) ReplicaOpen(context.Context, *ReplicaOpenRequest) (*ReplicaOpenResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ReplicaOpen not implemented")
 }
 func (UnimplementedReplicaServiceServer) ReplicaClose(context.Context, *emptypb.Empty) (*ReplicaCloseResponse, error) {
@@ -385,7 +385,7 @@ func _ReplicaService_ReplicaGet_Handler(srv interface{}, ctx context.Context, de
 }
 
 func _ReplicaService_ReplicaOpen_Handler(srv interface{}, ctx context.Context, dec func(interface{}) error, interceptor grpc.UnaryServerInterceptor) (interface{}, error) {
-	in := new(emptypb.Empty)
+	in := new(ReplicaOpenRequest)
 	if err := dec(in); err != nil {
 		return nil, err
 	}
@@ -397,7 +397,7 @@ func _ReplicaService_ReplicaOpen_Handler(srv interface{}, ctx context.Context, d
 		FullMethod: ReplicaService_ReplicaOpen_FullMethodName,
 	}
 	handler := func(ctx context.Context, req interface{}) (interface{}, error) {
-		return srv.(ReplicaServiceServer).ReplicaOpen(ctx, req.(*emptypb.Empty))
+		return srv.(ReplicaServiceServer).ReplicaOpen(ctx, req.(*ReplicaOpenRequest))
 	}
 	return interceptor(ctx, in, info, handler)
 }
