@@ -1,40 +1,36 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 
-	"github.com/urfave/cli/v3"
+	"github.com/urfave/cli"
 
 	"github.com/longhorn/backupstore"
 	"github.com/longhorn/backupstore/util"
 )
 
-func GetConfigMetadataCmd() *cli.Command {
-	return &cli.Command{
+func GetConfigMetadataCmd() cli.Command {
+	return cli.Command{
 		Name:        "head",
 		Usage:       "get the config metadata",
 		Description: "this returns the last modification time of a config file for now",
-		Action: func(ctx context.Context, c *cli.Command) error {
-			cmdGetConfigMetadata(c)
-			return nil
-		},
+		Action:      cmdGetConfigMetadata,
 	}
 }
 
-func cmdGetConfigMetadata(c *cli.Command) {
+func cmdGetConfigMetadata(c *cli.Context) {
 	if err := doGetConfigMetadata(c); err != nil {
 		panic(err)
 	}
 }
 
-func doGetConfigMetadata(c *cli.Command) error {
+func doGetConfigMetadata(c *cli.Context) error {
 	var err error
 
 	if c.NArg() == 0 {
 		return RequiredMissingError("dest URL")
 	}
-	destURL := c.Args().First()
+	destURL := c.Args()[0]
 	if destURL == "" {
 		return RequiredMissingError("dest URL")
 	}

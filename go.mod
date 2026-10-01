@@ -2,7 +2,7 @@ module github.com/longhorn/longhorn-engine
 
 go 1.25.10
 
-replace github.com/longhorn/types => github.com/longhorn/types v0.0.0-20260930155107-5849431731c3
+replace github.com/longhorn/types => github.com/longhorn/types v0.0.0-20260408014255-ff785625245f
 
 require (
 	github.com/cockroachdb/errors v1.12.0
@@ -11,7 +11,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
-	github.com/longhorn/backupstore v0.0.0-20260929130031-0fe49ea4aac7
+	github.com/longhorn/backupstore v0.0.0-20260929125828-90c810cfa40d
 	github.com/longhorn/go-common-libs v0.0.0-20260929125724-80fe6c1e3c2a
 	github.com/longhorn/go-iscsi-helper v0.0.0-20260625081921-94479d1d3cf4
 	github.com/longhorn/sparse-tools v0.0.0-20260423074222-280e61de741a
@@ -92,7 +92,6 @@ require (
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/shirou/gopsutil/v3 v3.24.5 // indirect
 	github.com/slok/goresilience v0.2.0 // indirect
-	github.com/urfave/cli/v3 v3.13.0 // indirect
 	github.com/x448/float16 v0.8.4 // indirect
 	github.com/yusufpapurcu/wmi v1.2.4 // indirect
 	golang.org/x/net v0.58.0 // indirect
