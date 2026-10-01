@@ -1,6 +1,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"log"
 	"os"
@@ -12,7 +13,7 @@ import (
 
 	"github.com/moby/sys/reexec"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v3"
 
 	"github.com/longhorn/sparse-tools/cli/ssync"
 
@@ -62,11 +63,11 @@ func cleanup() {
 	}
 }
 
-func cmdNotFound(c *cli.Context, command string) {
+func cmdNotFound(ctx context.Context, c *cli.Command, command string) {
 	panic(fmt.Errorf("unrecognized command: %s", command))
 }
 
-func onUsageError(c *cli.Context, err error, isSubcommand bool) error {
+func onUsageError(ctx context.Context, c *cli.Command, err error, isSubcommand bool) error {
 	panic(fmt.Errorf("usage error, please check your command"))
 }
 
@@ -83,9 +84,6 @@ func longhornCli() {
 		defer pprof.StopCPUProfile()
 	}
 
-	a := cli.NewApp()
-
-	a.Version = Version
 	meta.Version = Version
 	meta.GitCommit = GitCommit
 	meta.BuildDate = BuildDate
@@ -101,61 +99,73 @@ func longhornCli() {
 		FullTimestamp:   true,
 	})
 
-	a.Before = func(c *cli.Context) error {
-		if c.GlobalBool("debug") {
-			logrus.SetLevel(logrus.DebugLevel)
+	a := &cli.Command{
+		Version: Version,
+		Before: func(ctx context.Context, c *cli.Command) (context.Context, error) {
+			if c.Bool("debug") {
+				logrus.SetLevel(logrus.DebugLevel)
+			}
+			return ctx, nil
+		},
+		Flags: []cli.Flag{
+			&cli.StringFlag{
+				Name:  "url",
+				Value: "http://localhost:9501",
+			},
+			&cli.StringFlag{
+				Name:     "volume-name",
+				Required: false,
+				Usage:    "Name of the volume (for validation purposes)",
+			},
+			&cli.StringFlag{
+				Name:     "engine-instance-name",
+				Required: false,
+				Usage:    "Name of the engine instance (for validation purposes)",
+			},
+			&cli.BoolFlag{
+				Name: "debug",
+			},
+		},
+		Commands: []*cli.Command{
+			cmd.ControllerCmd(),
+			cmd.ReplicaCmd(),
+			cmd.SyncAgentCmd(),
+			cmd.SyncAgentServerResetCmd(),
+			cmd.StartWithReplicasCmd(),
+			cmd.AddReplicaCmd(),
+			cmd.VerifyRebuildReplicaCmd(),
+			cmd.LsReplicaCmd(),
+			cmd.RmReplicaCmd(),
+			cmd.UpdateReplicaCmd(),
+			cmd.RebuildStatusCmd(),
+			cmd.SnapshotCmd(),
+			cmd.SnapshotHashCmd(),
+			cmd.SnapshotHashCancelCmd(),
+			cmd.SnapshotHashStatusCmd(),
+			cmd.BackupCmd(),
+			cmd.ExpandCmd(),
+			cmd.UnmapMarkSnapChainRemovedCmd(),
+			cmd.Journal(),
+			cmd.InfoCmd(),
+			cmd.FrontendCmd(),
+			cmd.SystemBackupCmd(),
+			cmd.ProfilerCmd(),
+			VersionCmd(),
+		},
+		CommandNotFound: cmdNotFound,
+		OnUsageError:    onUsageError,
+	}
+
+	_ = a.Walk(func(command *cli.Command) error {
+		// Keep v1 semantics: slice flag values (e.g. --label k=a,b) must not be split on commas.
+		command.DisableSliceFlagSeparator = true
+		if len(command.Commands) > 0 {
+			command.CommandNotFound = cmdNotFound
 		}
 		return nil
-	}
-	a.Flags = []cli.Flag{
-		cli.StringFlag{
-			Name:  "url",
-			Value: "http://localhost:9501",
-		},
-		cli.StringFlag{
-			Name:     "volume-name",
-			Required: false,
-			Usage:    "Name of the volume (for validation purposes)",
-		},
-		cli.StringFlag{
-			Name:     "engine-instance-name",
-			Required: false,
-			Usage:    "Name of the engine instance (for validation purposes)",
-		},
-		cli.BoolFlag{
-			Name: "debug",
-		},
-	}
-	a.Commands = []cli.Command{
-		cmd.ControllerCmd(),
-		cmd.ReplicaCmd(),
-		cmd.SyncAgentCmd(),
-		cmd.SyncAgentServerResetCmd(),
-		cmd.StartWithReplicasCmd(),
-		cmd.AddReplicaCmd(),
-		cmd.VerifyRebuildReplicaCmd(),
-		cmd.LsReplicaCmd(),
-		cmd.RmReplicaCmd(),
-		cmd.UpdateReplicaCmd(),
-		cmd.RebuildStatusCmd(),
-		cmd.SnapshotCmd(),
-		cmd.SnapshotHashCmd(),
-		cmd.SnapshotHashCancelCmd(),
-		cmd.SnapshotHashStatusCmd(),
-		cmd.BackupCmd(),
-		cmd.ExpandCmd(),
-		cmd.UnmapMarkSnapChainRemovedCmd(),
-		cmd.Journal(),
-		cmd.InfoCmd(),
-		cmd.FrontendCmd(),
-		cmd.SystemBackupCmd(),
-		cmd.ProfilerCmd(),
-		VersionCmd(),
-	}
-	a.CommandNotFound = cmdNotFound
-	a.OnUsageError = onUsageError
+	})
 
-	if err := a.Run(os.Args); err != nil {
+	if err := a.Run(context.Background(), os.Args); err != nil {
 		logrus.WithError(err).Fatal("Error when executing command")
 	}
 }
