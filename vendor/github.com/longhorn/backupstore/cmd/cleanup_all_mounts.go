@@ -1,32 +1,27 @@
 package cmd
 
 import (
-	"context"
-
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli/v3"
+	"github.com/urfave/cli"
 
 	"github.com/longhorn/backupstore"
 )
 
-func BackupCleanupAllMountsCmd() *cli.Command {
-	return &cli.Command{
-		Name:  "cleanup-all-mounts",
-		Usage: "clean up unused mount points",
-		Action: func(ctx context.Context, c *cli.Command) error {
-			cmdCleanUpAllMounts(c)
-			return nil
-		},
+func BackupCleanupAllMountsCmd() cli.Command {
+	return cli.Command{
+		Name:   "cleanup-all-mounts",
+		Usage:  "clean up unused mount points",
+		Action: cmdCleanUpAllMounts,
 	}
 }
 
-func cmdCleanUpAllMounts(c *cli.Command) {
+func cmdCleanUpAllMounts(c *cli.Context) {
 	if err := doCleanUpAllMounts(c); err != nil {
 		panic(err)
 	}
 }
 
-func doCleanUpAllMounts(c *cli.Command) error {
+func doCleanUpAllMounts(c *cli.Context) error {
 	log := logrus.WithFields(logrus.Fields{"Command": "cleanup-mount"})
 
 	if err := backupstore.CleanUpAllMounts(); err != nil {

@@ -1,39 +1,35 @@
 package cmd
 
 import (
-	"context"
 	"fmt"
 
-	"github.com/urfave/cli/v3"
+	"github.com/urfave/cli"
 
 	"github.com/longhorn/backupstore"
 	"github.com/longhorn/backupstore/util"
 )
 
-func InspectVolumeCmd() *cli.Command {
-	return &cli.Command{
-		Name:  "inspect-volume",
-		Usage: "inspect a volume: inspect <volume>",
-		Action: func(ctx context.Context, c *cli.Command) error {
-			cmdInspectVolume(c)
-			return nil
-		},
+func InspectVolumeCmd() cli.Command {
+	return cli.Command{
+		Name:   "inspect-volume",
+		Usage:  "inspect a volume: inspect <volume>",
+		Action: cmdInspectVolume,
 	}
 }
 
-func cmdInspectVolume(c *cli.Command) {
+func cmdInspectVolume(c *cli.Context) {
 	if err := doInspectVolume(c); err != nil {
 		panic(err)
 	}
 }
 
-func doInspectVolume(c *cli.Command) error {
+func doInspectVolume(c *cli.Context) error {
 	var err error
 
 	if c.NArg() == 0 {
 		return RequiredMissingError("dest URL")
 	}
-	destURL := c.Args().First()
+	destURL := c.Args()[0]
 	if destURL == "" {
 		return RequiredMissingError("dest URL")
 	}
@@ -51,30 +47,27 @@ func doInspectVolume(c *cli.Command) error {
 	return nil
 }
 
-func InspectBackupCmd() *cli.Command {
-	return &cli.Command{
-		Name:  "inspect",
-		Usage: "inspect a backup: inspect <backup>",
-		Action: func(ctx context.Context, c *cli.Command) error {
-			cmdInspectBackup(c)
-			return nil
-		},
+func InspectBackupCmd() cli.Command {
+	return cli.Command{
+		Name:   "inspect",
+		Usage:  "inspect a backup: inspect <backup>",
+		Action: cmdInspectBackup,
 	}
 }
 
-func cmdInspectBackup(c *cli.Command) {
+func cmdInspectBackup(c *cli.Context) {
 	if err := doInspectBackup(c); err != nil {
 		panic(err)
 	}
 }
 
-func doInspectBackup(c *cli.Command) error {
+func doInspectBackup(c *cli.Context) error {
 	var err error
 
 	if c.NArg() == 0 {
 		return RequiredMissingError("dest URL")
 	}
-	destURL := c.Args().First()
+	destURL := c.Args()[0]
 	if destURL == "" {
 		return RequiredMissingError("dest URL")
 	}
