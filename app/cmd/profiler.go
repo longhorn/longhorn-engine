@@ -1,13 +1,14 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"strconv"
 	"strings"
 
 	"github.com/longhorn/go-common-libs/profiler"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v3"
 	"google.golang.org/grpc"
 
 	"github.com/longhorn/longhorn-engine/pkg/interceptor"
@@ -24,10 +25,10 @@ const (
 	profilerPortBase = 20001
 )
 
-func ProfilerCmd() cli.Command {
-	return cli.Command{
+func ProfilerCmd() *cli.Command {
+	return &cli.Command{
 		Name: "profiler",
-		Subcommands: []cli.Command{
+		Commands: []*cli.Command{
 			ProfilerShowCmd(),
 			ProfilerEnableCmd(),
 			ProfilerDisableCmd(),
@@ -35,30 +36,32 @@ func ProfilerCmd() cli.Command {
 	}
 }
 
-func getProfilerClient(c *cli.Context) (*profiler.Client, error) {
-	url := c.GlobalString("url")
-	volumeName := c.GlobalString("volume-name")
-	engineInstanceName := c.GlobalString("engine-instance-name")
+func getProfilerClient(c *cli.Command) (*profiler.Client, error) {
+	url := c.String("url")
+	volumeName := c.String("volume-name")
+	engineInstanceName := c.String("engine-instance-name")
 	dialOpts := []grpc.DialOption{interceptor.WithIdentityValidationClientInterceptor(volumeName, engineInstanceName)}
 	return profiler.NewClient(url, volumeName, dialOpts...)
 }
 
-func ProfilerShowCmd() cli.Command {
-	return cli.Command{
+func ProfilerShowCmd() *cli.Command {
+	return &cli.Command{
 		Name: "show",
-		Action: func(c *cli.Context) {
+		Action: func(ctx context.Context, c *cli.Command) error {
 			if err := showProfiler(c); err != nil {
 				logrus.WithError(err).Fatalf("Error running profiler show")
+				return err
 			}
+			return nil
 		},
 	}
 }
 
-func ProfilerEnableCmd() cli.Command {
-	return cli.Command{
+func ProfilerEnableCmd() *cli.Command {
+	return &cli.Command{
 		Name: "enable",
 		Flags: []cli.Flag{
-			cli.IntFlag{
+			&cli.IntFlag{
 				Name:     "port",
 				Hidden:   false,
 				Required: false,
@@ -66,26 +69,30 @@ func ProfilerEnableCmd() cli.Command {
 				Usage:    "run profiler with specific port. The port number should bigger than 30000.",
 			},
 		},
-		Action: func(c *cli.Context) {
+		Action: func(ctx context.Context, c *cli.Command) error {
 			if err := enableProfiler(c); err != nil {
 				logrus.WithError(err).Fatalf("Error running profiler enable")
+				return err
 			}
+			return nil
 		},
 	}
 }
 
-func ProfilerDisableCmd() cli.Command {
-	return cli.Command{
+func ProfilerDisableCmd() *cli.Command {
+	return &cli.Command{
 		Name: "disable",
-		Action: func(c *cli.Context) {
+		Action: func(ctx context.Context, c *cli.Command) error {
 			if err := disableProfiler(c); err != nil {
 				logrus.WithError(err).Fatalf("Error running profiler disable")
+				return err
 			}
+			return nil
 		},
 	}
 }
 
-func showProfiler(c *cli.Context) error {
+func showProfiler(c *cli.Command) error {
 	client, err := getProfilerClient(c)
 	if err != nil {
 		return err
@@ -110,7 +117,7 @@ func showProfiler(c *cli.Context) error {
 	return nil
 }
 
-func enableProfiler(c *cli.Context) error {
+func enableProfiler(c *cli.Command) error {
 	portNumber := int32(c.Int("port"))
 	if err := validatePortNumber(portNumber); err != nil {
 		return err
@@ -118,7 +125,7 @@ func enableProfiler(c *cli.Context) error {
 
 	// get grpc server port as a base port number and add profilerPortBase as target port number
 	if portNumber == 0 {
-		grpcURL := c.GlobalString("url")
+		grpcURL := c.String("url")
 		grpcPort, err := strconv.Atoi(strings.Split(grpcURL, ":")[1])
 		if err != nil {
 			return fmt.Errorf("failed to get grpc server port")
@@ -145,7 +152,7 @@ func enableProfiler(c *cli.Context) error {
 	return nil
 }
 
-func disableProfiler(c *cli.Context) error {
+func disableProfiler(c *cli.Command) error {
 	client, err := getProfilerClient(c)
 	if err != nil {
 		return err

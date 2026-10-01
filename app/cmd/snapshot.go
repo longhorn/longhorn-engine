@@ -10,7 +10,7 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v3"
 
 	lhutils "github.com/longhorn/go-common-libs/utils"
 
@@ -20,11 +20,11 @@ import (
 	"github.com/longhorn/longhorn-engine/pkg/util"
 )
 
-func SnapshotCmd() cli.Command {
-	return cli.Command{
-		Name:      "snapshots",
-		ShortName: "snapshot",
-		Subcommands: []cli.Command{
+func SnapshotCmd() *cli.Command {
+	return &cli.Command{
+		Name:    "snapshots",
+		Aliases: []string{"snapshot"},
+		Commands: []*cli.Command{
 			SnapshotCreateCmd(),
 			SnapshotRevertCmd(),
 			SnapshotLsCmd(),
@@ -38,213 +38,239 @@ func SnapshotCmd() cli.Command {
 			SnapshotHashCancelCmd(),
 			SnapshotHashStatusCmd(),
 		},
-		Action: func(c *cli.Context) {
+		Action: func(ctx context.Context, c *cli.Command) error {
 			if err := lsSnapshot(c); err != nil {
 				logrus.WithError(err).Fatalf("Error running snapshot command")
+				return err
 			}
+			return nil
 		},
 	}
 }
 
-func SnapshotCreateCmd() cli.Command {
-	return cli.Command{
+func SnapshotCreateCmd() *cli.Command {
+	return &cli.Command{
 		Name: "create",
 		Flags: []cli.Flag{
-			cli.StringSliceFlag{
+			&cli.StringSliceFlag{
 				Name:  "label",
 				Usage: "Specify labels, in the format of `--label key1=value1 --label key2=value2`",
 			},
-			cli.BoolFlag{
+			&cli.BoolFlag{
 				Name:  "freeze-fs",
 				Usage: "Freeze the filesystem on the root partition before taking the snapshot",
 			},
 		},
-		Action: func(c *cli.Context) {
+		Action: func(ctx context.Context, c *cli.Command) error {
 			if err := createSnapshot(c); err != nil {
 				logrus.WithError(err).Fatalf("Error running create snapshot command")
+				return err
 			}
+			return nil
 		},
 	}
 }
 
-func SnapshotRevertCmd() cli.Command {
-	return cli.Command{
+func SnapshotRevertCmd() *cli.Command {
+	return &cli.Command{
 		Name: "revert",
-		Action: func(c *cli.Context) {
+		Action: func(ctx context.Context, c *cli.Command) error {
 			if err := revertSnapshot(c); err != nil {
 				logrus.WithError(err).Fatalf("Error running revert snapshot command")
+				return err
 			}
+			return nil
 		},
 	}
 }
 
-func SnapshotRmCmd() cli.Command {
-	return cli.Command{
+func SnapshotRmCmd() *cli.Command {
+	return &cli.Command{
 		Name: "rm",
-		Action: func(c *cli.Context) {
+		Action: func(ctx context.Context, c *cli.Command) error {
 			if err := rmSnapshot(c); err != nil {
 				logrus.WithError(err).Fatalf("Error running rm snapshot command")
+				return err
 			}
+			return nil
 		},
 	}
 }
 
-func SnapshotPurgeCmd() cli.Command {
-	return cli.Command{
+func SnapshotPurgeCmd() *cli.Command {
+	return &cli.Command{
 		Name: "purge",
 		Flags: []cli.Flag{
-			cli.BoolFlag{
+			&cli.BoolFlag{
 				Name:  "skip-if-in-progress",
 				Usage: "set to mute errors if replica is already purging",
 			},
 		},
-		Action: func(c *cli.Context) {
+		Action: func(ctx context.Context, c *cli.Command) error {
 			if err := purgeSnapshot(c); err != nil {
 				logrus.WithError(err).Fatalf("Error running purge snapshot command")
+				return err
 			}
+			return nil
 		},
 	}
 }
 
-func SnapshotPurgeStatusCmd() cli.Command {
-	return cli.Command{
+func SnapshotPurgeStatusCmd() *cli.Command {
+	return &cli.Command{
 		Name: "purge-status",
-		Action: func(c *cli.Context) {
+		Action: func(ctx context.Context, c *cli.Command) error {
 			if err := purgeSnapshotStatus(c); err != nil {
 				logrus.WithError(err).Fatalf("Error running snapshot purge status command")
+				return err
 			}
+			return nil
 		},
 	}
 }
 
-func SnapshotLsCmd() cli.Command {
-	return cli.Command{
+func SnapshotLsCmd() *cli.Command {
+	return &cli.Command{
 		Name: "ls",
-		Action: func(c *cli.Context) {
+		Action: func(ctx context.Context, c *cli.Command) error {
 			if err := lsSnapshot(c); err != nil {
 				logrus.WithError(err).Fatalf("Error running ls snapshot command")
+				return err
 			}
+			return nil
 		},
 	}
 }
 
-func SnapshotInfoCmd() cli.Command {
-	return cli.Command{
+func SnapshotInfoCmd() *cli.Command {
+	return &cli.Command{
 		Name: "info",
-		Action: func(c *cli.Context) {
+		Action: func(ctx context.Context, c *cli.Command) error {
 			if err := infoSnapshot(c); err != nil {
 				logrus.WithError(err).Fatalf("Error running snapshot info command")
+				return err
 			}
+			return nil
 		},
 	}
 }
 
-func SnapshotCloneCmd() cli.Command {
-	return cli.Command{
+func SnapshotCloneCmd() *cli.Command {
+	return &cli.Command{
 		Name: "clone",
 		Flags: []cli.Flag{
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:  "snapshot-name",
 				Usage: "Specify the name of snapshot needed to clone",
 			},
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:  "from-controller-address",
 				Usage: "Specify the address of the engine controller of the source volume",
 			},
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:     "from-volume-name",
 				Required: false,
 				Usage:    "Specify the name of the source volume (for validation purposes)",
 			},
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:     "from-controller-instance-name",
 				Required: false,
 				Usage:    "Specify the name of the engine controller instance of the source volume (for validation purposes)",
 			},
-			cli.BoolFlag{
+			&cli.BoolFlag{
 				Name:  "export-backing-image-if-exist",
 				Usage: "Specify if the backing image should be exported if it exists",
 			},
-			cli.IntFlag{
+			&cli.IntFlag{
 				Name:     "file-sync-http-client-timeout",
 				Required: false,
 				Value:    5,
 				Usage:    "HTTP client timeout for replica file sync server",
 			},
-			cli.IntFlag{
+			&cli.Int64Flag{
 				Name:     "grpc-timeout-seconds",
 				Required: false,
 				Value:    0,
 				Usage:    "Specify the gRPC timeout for snapshot clone. If specify a value <= 0, we will use 24h timeout",
 			},
 		},
-		Action: func(c *cli.Context) {
+		Action: func(ctx context.Context, c *cli.Command) error {
 			if err := cloneSnapshot(c); err != nil {
 				logrus.WithError(err).Fatalf("Error running snapshot clone command")
+				return err
 			}
+			return nil
 		},
 	}
 }
 
-func SnapshotCloneStatusCmd() cli.Command {
-	return cli.Command{
+func SnapshotCloneStatusCmd() *cli.Command {
+	return &cli.Command{
 		Name: "clone-status",
-		Action: func(c *cli.Context) {
+		Action: func(ctx context.Context, c *cli.Command) error {
 			if err := cloneSnapshotStatus(c); err != nil {
 				logrus.WithError(err).Fatalf("Error running snapshot clone status command")
+				return err
 			}
+			return nil
 		},
 	}
 }
 
-func SnapshotHashCmd() cli.Command {
-	return cli.Command{
+func SnapshotHashCmd() *cli.Command {
+	return &cli.Command{
 		Name: "hash",
 		Flags: []cli.Flag{
-			cli.BoolFlag{
+			&cli.BoolFlag{
 				Name:  "rehash",
 				Usage: "Rehash snapshot disk file",
 			},
 		},
-		Action: func(c *cli.Context) {
+		Action: func(ctx context.Context, c *cli.Command) error {
 			if err := hashSnapshot(c); err != nil {
 				logrus.WithError(err).Fatalf("Error running hash snapshot command")
+				return err
 			}
+			return nil
 		},
 	}
 }
 
-func SnapshotHashCancelCmd() cli.Command {
-	return cli.Command{
+func SnapshotHashCancelCmd() *cli.Command {
+	return &cli.Command{
 		Name: "hash-cancel",
-		Action: func(c *cli.Context) {
+		Action: func(ctx context.Context, c *cli.Command) error {
 			if err := cancelHashSnapshot(c); err != nil {
 				logrus.WithError(err).Fatalf("Error running cancel hashing snapshot command")
+				return err
 			}
+			return nil
 		},
 	}
 }
 
-func SnapshotHashStatusCmd() cli.Command {
-	return cli.Command{
+func SnapshotHashStatusCmd() *cli.Command {
+	return &cli.Command{
 		Name: "hash-status",
-		Action: func(c *cli.Context) {
+		Action: func(ctx context.Context, c *cli.Command) error {
 			if err := hashSnapshotStatus(c); err != nil {
 				logrus.WithError(err).Fatalf("Error running snapshot hash status command")
+				return err
 			}
+			return nil
 		},
 	}
 }
 
-func createSnapshot(c *cli.Context) error {
+func createSnapshot(c *cli.Command) error {
 	var (
 		labelMap map[string]string
 		err      error
 	)
 
 	var name string
-	if len(c.Args()) > 0 {
-		name = c.Args()[0]
+	if c.Args().Len() > 0 {
+		name = c.Args().First()
 	}
 
 	labels := c.StringSlice("label")
@@ -276,12 +302,12 @@ func createSnapshot(c *cli.Context) error {
 	return nil
 }
 
-func revertSnapshot(c *cli.Context) error {
+func revertSnapshot(c *cli.Command) error {
 	if c.NArg() == 0 {
 		return errors.New("snapshot name is required")
 	}
 
-	name := c.Args()[0]
+	name := c.Args().First()
 	if name == "" {
 		return fmt.Errorf("missing parameter for snapshot")
 	}
@@ -303,10 +329,10 @@ func revertSnapshot(c *cli.Context) error {
 	return nil
 }
 
-func rmSnapshot(c *cli.Context) error {
-	url := c.GlobalString("url")
-	volumeName := c.GlobalString("volume-name")
-	engineInstanceName := c.GlobalString("engine-instance-name")
+func rmSnapshot(c *cli.Command) error {
+	url := c.String("url")
+	volumeName := c.String("volume-name")
+	engineInstanceName := c.String("engine-instance-name")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	task, err := sync.NewTask(ctx, url, volumeName, engineInstanceName)
@@ -315,7 +341,7 @@ func rmSnapshot(c *cli.Context) error {
 	}
 
 	var lastErr error
-	for _, name := range c.Args() {
+	for _, name := range c.Args().Slice() {
 		if err := task.DeleteSnapshot(name); err != nil {
 			lastErr = err
 			fmt.Fprintf(os.Stderr, "Failed to delete %s: %v\n", name, err)
@@ -325,10 +351,10 @@ func rmSnapshot(c *cli.Context) error {
 	return lastErr
 }
 
-func purgeSnapshot(c *cli.Context) error {
-	url := c.GlobalString("url")
-	volumeName := c.GlobalString("volume-name")
-	engineInstanceName := c.GlobalString("engine-instance-name")
+func purgeSnapshot(c *cli.Command) error {
+	url := c.String("url")
+	volumeName := c.String("volume-name")
+	engineInstanceName := c.String("engine-instance-name")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	task, err := sync.NewTask(ctx, url, volumeName, engineInstanceName)
@@ -344,10 +370,10 @@ func purgeSnapshot(c *cli.Context) error {
 	return nil
 }
 
-func purgeSnapshotStatus(c *cli.Context) error {
-	url := c.GlobalString("url")
-	volumeName := c.GlobalString("volume-name")
-	engineInstanceName := c.GlobalString("engine-instance-name")
+func purgeSnapshotStatus(c *cli.Command) error {
+	url := c.String("url")
+	volumeName := c.String("volume-name")
+	engineInstanceName := c.String("engine-instance-name")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	task, err := sync.NewTask(ctx, url, volumeName, engineInstanceName)
@@ -369,7 +395,7 @@ func purgeSnapshotStatus(c *cli.Context) error {
 	return nil
 }
 
-func lsSnapshot(c *cli.Context) error {
+func lsSnapshot(c *cli.Command) error {
 	controllerClient, err := getControllerClient(c)
 	if err != nil {
 		return err
@@ -380,7 +406,7 @@ func lsSnapshot(c *cli.Context) error {
 		}
 	}()
 
-	volumeName := c.GlobalString("volume-name")
+	volumeName := c.String("volume-name")
 
 	replicas, err := controllerClient.ReplicaList()
 	if err != nil {
@@ -433,7 +459,7 @@ func lsSnapshot(c *cli.Context) error {
 	return nil
 }
 
-func infoSnapshot(c *cli.Context) error {
+func infoSnapshot(c *cli.Command) error {
 	var output []byte
 
 	controllerClient, err := getControllerClient(c)
@@ -451,7 +477,7 @@ func infoSnapshot(c *cli.Context) error {
 		return err
 	}
 
-	volumeName := c.GlobalString("volume-name")
+	volumeName := c.String("volume-name")
 	outputDisks, err := sync.GetSnapshotsInfo(replicas, volumeName)
 	if err != nil {
 		return err
@@ -469,7 +495,7 @@ func infoSnapshot(c *cli.Context) error {
 	return nil
 }
 
-func cloneSnapshot(c *cli.Context) error {
+func cloneSnapshot(c *cli.Command) error {
 	snapshotName := c.String("snapshot-name")
 	if snapshotName == "" {
 		return fmt.Errorf("missing required parameter --snapshot-name")
@@ -492,7 +518,7 @@ func cloneSnapshot(c *cli.Context) error {
 		}
 	}()
 
-	volumeName := c.GlobalString("volume-name")
+	volumeName := c.String("volume-name")
 	fromVolumeName := c.String("from-volume-name")
 	fromControllerInstanceName := c.String("from-controller-instance-name")
 	fromControllerClient, err := client.NewControllerClient(fromControllerAddress, fromVolumeName,
@@ -513,7 +539,7 @@ func cloneSnapshot(c *cli.Context) error {
 	return nil
 }
 
-func cloneSnapshotStatus(c *cli.Context) error {
+func cloneSnapshotStatus(c *cli.Command) error {
 	controllerClient, err := getControllerClient(c)
 	if err != nil {
 		return err
@@ -524,7 +550,7 @@ func cloneSnapshotStatus(c *cli.Context) error {
 		}
 	}()
 
-	volumeName := c.GlobalString("volume-name")
+	volumeName := c.String("volume-name")
 	statusMap, err := sync.CloneStatus(controllerClient, volumeName)
 	if err != nil {
 		return err
@@ -539,16 +565,16 @@ func cloneSnapshotStatus(c *cli.Context) error {
 	return nil
 }
 
-func hashSnapshot(c *cli.Context) error {
+func hashSnapshot(c *cli.Command) error {
 	if c.NArg() == 0 {
 		return errors.New("snapshot name is required")
 	}
 
-	snapshotName := c.Args()[0]
+	snapshotName := c.Args().First()
 
-	url := c.GlobalString("url")
-	volumeName := c.GlobalString("volume-name")
-	engineInstanceName := c.GlobalString("engine-instance-name")
+	url := c.String("url")
+	volumeName := c.String("volume-name")
+	engineInstanceName := c.String("engine-instance-name")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	task, err := sync.NewTask(ctx, url, volumeName, engineInstanceName)
@@ -565,16 +591,16 @@ func hashSnapshot(c *cli.Context) error {
 	return nil
 }
 
-func cancelHashSnapshot(c *cli.Context) error {
+func cancelHashSnapshot(c *cli.Command) error {
 	if c.NArg() == 0 {
 		return errors.New("snapshot name is required")
 	}
 
-	snapshotName := c.Args()[0]
+	snapshotName := c.Args().First()
 
-	url := c.GlobalString("url")
-	volumeName := c.GlobalString("volume-name")
-	engineInstanceName := c.GlobalString("engine-instance-name")
+	url := c.String("url")
+	volumeName := c.String("volume-name")
+	engineInstanceName := c.String("engine-instance-name")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	task, err := sync.NewTask(ctx, url, volumeName, engineInstanceName)
@@ -589,16 +615,16 @@ func cancelHashSnapshot(c *cli.Context) error {
 	return nil
 }
 
-func hashSnapshotStatus(c *cli.Context) error {
+func hashSnapshotStatus(c *cli.Command) error {
 	if c.NArg() == 0 {
 		return errors.New("snapshot name is required")
 	}
 
-	snapshotName := c.Args()[0]
+	snapshotName := c.Args().First()
 
-	url := c.GlobalString("url")
-	volumeName := c.GlobalString("volume-name")
-	engineInstanceName := c.GlobalString("engine-instance-name")
+	url := c.String("url")
+	volumeName := c.String("volume-name")
+	engineInstanceName := c.String("engine-instance-name")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	task, err := sync.NewTask(ctx, url, volumeName, engineInstanceName)

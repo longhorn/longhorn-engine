@@ -1,54 +1,57 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"log"
 
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v3"
 
 	replicaclient "github.com/longhorn/longhorn-engine/pkg/replica/client"
 	"github.com/longhorn/longhorn-engine/pkg/types"
 	diskutil "github.com/longhorn/longhorn-engine/pkg/util/disk"
 )
 
-func ExportVolumeCmd() cli.Command {
-	return cli.Command{
-		Name:      "export-volume",
-		ShortName: "export",
+func ExportVolumeCmd() *cli.Command {
+	return &cli.Command{
+		Name:    "export-volume",
+		Aliases: []string{"export"},
 		Flags: []cli.Flag{
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:  "snapshot-name",
 				Usage: "specify the name of the volume's snapshot to export",
 			},
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:  "receiver-address",
 				Usage: "specify the address of the receiver",
 			},
-			cli.IntFlag{
+			&cli.IntFlag{
 				Name:  "receiver-port",
 				Usage: "specify the port of the receiver",
 			},
-			cli.BoolFlag{
+			&cli.BoolFlag{
 				Name:  "export-backing-image-if-exist",
 				Usage: "specify if the backing image should be exported if it exists",
 			},
-			cli.IntFlag{
+			&cli.IntFlag{
 				Name:     "file-sync-http-client-timeout",
 				Required: false,
 				Value:    5,
 				Usage:    "HTTP client timeout for replica file sync server",
 			},
 		},
-		Action: func(c *cli.Context) {
+		Action: func(ctx context.Context, c *cli.Command) error {
 			if err := exportVolume(c); err != nil {
 				log.Fatalf("Error running export volume command: %v", err)
+				return err
 			}
+			return nil
 		},
 	}
 }
 
-func exportVolume(c *cli.Context) error {
+func exportVolume(c *cli.Command) error {
 	// Validate arguments
 	snapshotName := c.String("snapshot-name")
 	if snapshotName == "" {
@@ -64,7 +67,7 @@ func exportVolume(c *cli.Context) error {
 	}
 	exportBackingImageIfExist := c.Bool("export-backing-image-if-exist")
 	fileSyncHTTPClientTimeout := c.Int("file-sync-http-client-timeout")
-	volumeName := c.GlobalString("volume-name")
+	volumeName := c.String("volume-name")
 
 	// Get controller url
 	controllerClient, err := getControllerClient(c)

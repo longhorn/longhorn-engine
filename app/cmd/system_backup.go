@@ -1,15 +1,15 @@
 package cmd
 
 import (
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v3"
 
 	"github.com/longhorn/backupstore/cmd"
 )
 
-func SystemBackupCmd() cli.Command {
-	return cli.Command{
+func SystemBackupCmd() *cli.Command {
+	return &cli.Command{
 		Name: "system-backup",
-		Subcommands: []cli.Command{
+		Commands: []*cli.Command{
 			cmd.SystemBackupUploadCmd(),
 			cmd.SystemBackupDeleteCmd(),
 			cmd.SystemBackupDownloadCmd(),

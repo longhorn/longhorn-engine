@@ -8,7 +8,7 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v3"
 	"k8s.io/apimachinery/pkg/api/resource"
 
 	"github.com/longhorn/backupstore"
@@ -22,11 +22,11 @@ import (
 	"github.com/longhorn/longhorn-engine/pkg/util"
 )
 
-func BackupCmd() cli.Command {
-	return cli.Command{
-		Name:      "backups",
-		ShortName: "backup",
-		Subcommands: []cli.Command{
+func BackupCmd() *cli.Command {
+	return &cli.Command{
+		Name:    "backups",
+		Aliases: []string{"backup"},
+		Commands: []*cli.Command{
 			BackupCreateCmd(),
 			BackupStatusCmd(),
 			BackupRestoreCmd(),
@@ -45,79 +45,83 @@ func BackupCmd() cli.Command {
 	}
 }
 
-func BackupCreateCmd() cli.Command {
-	return cli.Command{
+func BackupCreateCmd() *cli.Command {
+	return &cli.Command{
 		Name:  "create",
 		Usage: "create a backup in objectstore: create <snapshot> --dest <dest>",
 		Flags: []cli.Flag{
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:  "dest",
 				Usage: "destination of backup if driver supports, would be url like s3://bucket@region/path/ or vfs:///path/",
 			},
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:  "backing-image-name",
 				Usage: "specify backing image name of the volume for backup",
 			},
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:  "backing-image-checksum",
 				Usage: "specify checksum of backing image file",
 			},
-			cli.StringSliceFlag{
+			&cli.StringSliceFlag{
 				Name:  "label",
 				Usage: "specify labels for backup, in the format of `--label key1=value1 --label key2=value2`",
 			},
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:  "backup-name",
 				Usage: "specify the backup name. If it is not set, a random name will be generated automatically",
 			},
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:  "compression-method",
 				Value: "lz4",
 				Usage: "Compression method for backing up blocks",
 			},
-			cli.IntFlag{
+			&cli.IntFlag{
 				Name:  "concurrent-limit",
 				Value: 1,
 				Usage: "Concurrent backup worker threads",
 			},
-			cli.IntFlag{
+			&cli.StringFlag{
 				Name:  "storage-class-name",
 				Usage: "Storage class name of the pv binding with the volume",
 			},
-			cli.Int64Flag{
+			&cli.Int64Flag{
 				Name:  "backup-block-size",
 				Usage: "Backup block size in MB",
 				Value: backupstore.DEFAULT_BLOCK_SIZE_IN_MB,
 			},
 		},
-		Action: func(c *cli.Context) {
+		Action: func(ctx context.Context, c *cli.Command) error {
 			if err := createBackup(c); err != nil {
 				logrus.WithError(err).Fatalf("Error running create backup command")
+				return err
 			}
+			return nil
 		},
 	}
 }
 
-func BackupStatusCmd() cli.Command {
-	return cli.Command{
+func BackupStatusCmd() *cli.Command {
+	return &cli.Command{
 		Name:  "status",
 		Usage: "query the progress of the backup: status <backupID>",
 		Flags: []cli.Flag{
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:     "replica",
 				Required: false,
 				Usage:    "Address of the replica",
 			},
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:     "replica-instance-name",
 				Required: false,
 				Usage:    "Name of the replica instance (for validation purposes)",
 			},
 		},
-		Action: func(c *cli.Context) {
+		Action: func(ctx context.Context, c *cli.Command) error {
 			if err := checkBackupStatus(c); err != nil {
 				logrus.Fatalf("Error querying backup status: %v", err)
+				return err
 			}
+			return nil
 		},
 	}
 }
@@ -131,7 +135,7 @@ func getReplicaModeMap(replicas []*types.ControllerReplicaInfo) map[string]types
 	return replicaModeMap
 }
 
-func checkBackupStatus(c *cli.Context) error {
+func checkBackupStatus(c *cli.Command) error {
 	backupID := c.Args().First()
 	if backupID == "" {
 		return fmt.Errorf("missing required parameter backupID")
@@ -152,7 +156,7 @@ func checkBackupStatus(c *cli.Context) error {
 		return errors.Wrap(err, "failed to get replica list")
 	}
 
-	volumeName := c.GlobalString("volume-name")
+	volumeName := c.String("volume-name")
 	replicaAddress := c.String("replica")
 	replicaInstanceName := c.String("replica-instance-name")
 
@@ -217,22 +221,22 @@ func checkBackupStatus(c *cli.Context) error {
 	return nil
 }
 
-func BackupRestoreCmd() cli.Command {
-	return cli.Command{
+func BackupRestoreCmd() *cli.Command {
+	return &cli.Command{
 		Name:  "restore",
 		Usage: "restore a backup to current volume: restore <backup>",
 		Flags: []cli.Flag{
-			cli.IntFlag{
+			&cli.IntFlag{
 				Name:  "concurrent-limit",
 				Value: 1,
 				Usage: "Concurrent restore worker threads",
 			},
-			cli.BoolFlag{
+			&cli.BoolFlag{
 				Name:  "need-correct-encrypted-volume-size",
 				Usage: "Whether to correct the encrypted volume size during restore, only used for encrypted volume restore",
 			},
 		},
-		Action: func(c *cli.Context) {
+		Action: func(ctx context.Context, c *cli.Command) error {
 			if err := restoreBackup(c); err != nil {
 				errInfo, jsonErr := json.MarshalIndent(err, "", "\t")
 				if jsonErr != nil {
@@ -246,24 +250,28 @@ func BackupRestoreCmd() cli.Command {
 					}
 				}
 				logrus.WithError(err).Fatalf("Error running restore backup command")
+				return err
 			}
+			return nil
 		},
 	}
 }
 
-func RestoreStatusCmd() cli.Command {
-	return cli.Command{
+func RestoreStatusCmd() *cli.Command {
+	return &cli.Command{
 		Name:  "restore-status",
 		Usage: "Check if restore operation is currently going on",
-		Action: func(c *cli.Context) {
+		Action: func(ctx context.Context, c *cli.Command) error {
 			if err := restoreStatus(c); err != nil {
 				logrus.WithError(err).Fatalf("Error running restore backup command")
+				return err
 			}
+			return nil
 		},
 	}
 }
 
-func createBackup(c *cli.Context) error {
+func createBackup(c *cli.Command) error {
 	dest := c.String("dest")
 	if dest == "" {
 		return fmt.Errorf("missing required parameter --dest")
@@ -296,9 +304,9 @@ func createBackup(c *cli.Context) error {
 		return err
 	}
 
-	url := c.GlobalString("url")
-	volumeName := c.GlobalString("volume-name")
-	engineInstanceName := c.GlobalString("engine-instance-name")
+	url := c.String("url")
+	volumeName := c.String("volume-name")
+	engineInstanceName := c.String("engine-instance-name")
 
 	backupBlockSizeMB := c.Int64("backup-block-size")
 	if backupBlockSizeMB <= 0 {
@@ -329,10 +337,10 @@ func createBackup(c *cli.Context) error {
 	return nil
 }
 
-func restoreBackup(c *cli.Context) error {
-	url := c.GlobalString("url")
-	volumeName := c.GlobalString("volume-name")
-	engineInstanceName := c.GlobalString("engine-instance-name")
+func restoreBackup(c *cli.Command) error {
+	url := c.String("url")
+	volumeName := c.String("volume-name")
+	engineInstanceName := c.String("engine-instance-name")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	task, err := sync.NewTask(ctx, url, volumeName, engineInstanceName)
@@ -360,10 +368,10 @@ func restoreBackup(c *cli.Context) error {
 	return nil
 }
 
-func restoreStatus(c *cli.Context) error {
-	url := c.GlobalString("url")
-	volumeName := c.GlobalString("volume-name")
-	engineInstanceName := c.GlobalString("engine-instance-name")
+func restoreStatus(c *cli.Command) error {
+	url := c.String("url")
+	volumeName := c.String("volume-name")
+	engineInstanceName := c.String("engine-instance-name")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	task, err := sync.NewTask(ctx, url, volumeName, engineInstanceName)
