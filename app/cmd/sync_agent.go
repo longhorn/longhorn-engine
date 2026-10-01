@@ -9,59 +9,63 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v3"
 
 	"github.com/longhorn/longhorn-engine/pkg/sync"
 	syncagentrpc "github.com/longhorn/longhorn-engine/pkg/sync/rpc"
 )
 
-func SyncAgentCmd() cli.Command {
-	return cli.Command{
+func SyncAgentCmd() *cli.Command {
+	return &cli.Command{
 		Name:      "sync-agent",
 		UsageText: "longhorn controller DIRECTORY SIZE",
 		Flags: []cli.Flag{
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:  "listen",
 				Value: "localhost:9504",
 			},
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:  "listen-port-range",
 				Value: "9700-9800",
 			},
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:  "replica",
 				Usage: "specify replica address",
 			},
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:  "replica-instance-name",
 				Value: "",
 				Usage: "Name of the replica instance (for validation purposes)",
 			},
 		},
-		Action: func(c *cli.Context) {
+		Action: func(ctx context.Context, c *cli.Command) error {
 			if err := startSyncAgent(c); err != nil {
 				logrus.WithError(err).Fatal("Error running sync-agent command")
+				return err
 			}
+			return nil
 		},
 	}
 }
 
-func SyncAgentServerResetCmd() cli.Command {
-	return cli.Command{
+func SyncAgentServerResetCmd() *cli.Command {
+	return &cli.Command{
 		Name: "sync-agent-server-reset",
-		Action: func(c *cli.Context) {
+		Action: func(ctx context.Context, c *cli.Command) error {
 			if err := doReset(c); err != nil {
 				logrus.WithError(err).Fatal("Error running sync-agent-server-reset command")
+				return err
 			}
+			return nil
 		},
 	}
 }
 
-func startSyncAgent(c *cli.Context) error {
+func startSyncAgent(c *cli.Command) error {
 	listenPort := c.String("listen")
 	portRange := c.String("listen-port-range")
 	replicaAddress := c.String("replica")
-	volumeName := c.GlobalString("volume-name")
+	volumeName := c.String("volume-name")
 	replicaInstanceName := c.String("replica-instance-name")
 
 	parts := strings.Split(portRange, "-")
@@ -117,10 +121,10 @@ func (l tcpKeepAliveListener) Accept() (net.Conn, error) {
 	return conn, nil
 }
 
-func doReset(c *cli.Context) error {
-	url := c.GlobalString("url")
-	volumeName := c.GlobalString("volume-name")
-	engineInstanceName := c.GlobalString("engine-instance-name")
+func doReset(c *cli.Command) error {
+	url := c.String("url")
+	volumeName := c.String("volume-name")
+	engineInstanceName := c.String("engine-instance-name")
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	task, err := sync.NewTask(ctx, url, volumeName, engineInstanceName)

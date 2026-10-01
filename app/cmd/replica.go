@@ -12,7 +12,7 @@ import (
 
 	"github.com/docker/go-units"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v3"
 
 	"github.com/longhorn/longhorn-engine/pkg/backingfile"
 	"github.com/longhorn/longhorn-engine/pkg/replica"
@@ -22,87 +22,90 @@ import (
 	diskutil "github.com/longhorn/longhorn-engine/pkg/util/disk"
 )
 
-func ReplicaCmd() cli.Command {
-	return cli.Command{
+func ReplicaCmd() *cli.Command {
+	return &cli.Command{
 		Name:      "replica",
 		UsageText: "longhorn replica DIRECTORY",
 		Flags: []cli.Flag{
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:  "listen",
 				Value: "localhost:9502",
 			},
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:  "backing-file",
 				Usage: "qcow file or encapsulating directory to use as the base image of this disk",
 			},
-			cli.BoolTFlag{
-				Name: "sync-agent",
+			&cli.BoolFlag{
+				Name:  "sync-agent",
+				Value: true,
 			},
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:  "size",
 				Usage: "Volume size in bytes or human readable 42kb, 42mb, 42gb",
 			},
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:  "restore-from",
 				Usage: "specify backup to be restored, must be used with --restore-name",
 			},
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:  "restore-name",
 				Usage: "specify the snapshot name for restore, must be used with --restore-from",
 			},
-			cli.IntFlag{
+			&cli.IntFlag{
 				Name:  "sync-agent-port-count",
 				Value: 10,
 			},
-			cli.BoolFlag{
+			&cli.BoolFlag{
 				Name:   "disableRevCounter",
 				Hidden: false,
 				Usage:  "To disable revision counter for every write",
 			},
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:  "data-server-protocol",
 				Value: "tcp",
 				Usage: "Specify the data-server protocol. Available options are \"tcp\" and \"unix\"",
 			},
-			cli.BoolFlag{
+			&cli.BoolFlag{
 				Name:   "unmap-mark-disk-chain-removed",
 				Hidden: false,
 				Usage:  "To mark the current disk chain as removed before starting unmap",
 			},
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:  "replica-instance-name",
 				Value: "",
 				Usage: "Name of the replica instance (for validation purposes)",
 			},
-			cli.IntFlag{
+			&cli.IntFlag{
 				Name:  "snapshot-max-count",
 				Value: types.MaximumTotalSnapshotCount,
 				Usage: "Maximum number of snapshots to keep",
 			},
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:  "snapshot-max-size",
 				Usage: "Maximum total snapshot size in bytes or human readable 42kb, 42mb, 42gb",
 			},
-			cli.BoolFlag{
+			&cli.BoolFlag{
 				Name:   "encrypted",
 				Hidden: false,
 				Usage:  "Volume is encrypted",
 			},
 		},
-		Action: func(c *cli.Context) {
+		Action: func(ctx context.Context, c *cli.Command) error {
 			if err := startReplica(c); err != nil {
 				logrus.WithError(err).Fatalf("Error running start replica command")
+				return err
 			}
+			return nil
 		},
 	}
 }
 
-func startReplica(c *cli.Context) (err error) {
+func startReplica(c *cli.Command) (err error) {
 	if c.NArg() != 1 {
 		return errors.New("directory name is required")
 	}
 
-	dir := c.Args()[0]
+	dir := c.Args().Slice()[0]
 	backingFile, err := backingfile.OpenBackingFile(c.String("backing-file"))
 	if err != nil {
 		return err
@@ -130,7 +133,7 @@ func startReplica(c *cli.Context) (err error) {
 		}
 	}()
 
-	volumeName := c.GlobalString("volume-name")
+	volumeName := c.String("volume-name")
 
 	s := replica.NewServer(ctx, dir, backingFile, diskutil.ReplicaSectorSize, disableRevCounter, unmapMarkDiskChainRemoved, snapshotMaxCount, snapshotMaxSize, encrypted, volumeName)
 

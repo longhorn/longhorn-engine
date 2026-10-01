@@ -10,7 +10,7 @@ import (
 
 	"github.com/cockroachdb/errors"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v3"
 	"gopkg.in/cheggaaa/pb.v2"
 
 	lhexec "github.com/longhorn/go-common-libs/exec"
@@ -37,38 +37,40 @@ var SupportedImageFormats = []string{
 	"raw",
 }
 
-func RestoreToFileCmd() cli.Command {
-	return cli.Command{
+func RestoreToFileCmd() *cli.Command {
+	return &cli.Command{
 		Name:  "restore-to-file",
 		Usage: "restore a backup to a raw image or a qcow2 image: restore-to-file <backupURL> --backing-file <backing-file-path> --output-file <output-file> --output-format <output-format>",
 		Flags: []cli.Flag{
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:  "backing-file",
 				Usage: "filepath or dirpath containing exactly one qcow2 backing file",
 			},
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:  "output-file",
 				Usage: "filepath to write the resulting image to",
 			},
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:  "output-format",
 				Usage: "format of output file image to produce",
 				Value: DefaultOutputFormat,
 			},
-			cli.IntFlag{
+			&cli.IntFlag{
 				Name:  "concurrent-limit",
 				Value: 5,
 				Usage: "Concurrent backup worker threads",
 			},
 		},
-		Action: func(c *cli.Context) {
+		Action: func(ctx context.Context, c *cli.Command) error {
 			logrus.Infof("Running restore to file command: backup-url=%s backing-file=%s output-file=%s output-format=%s",
 				c.Args().First(), c.String("backing-file"), c.String("output-file"), c.String("output-format"))
 			if err := restoreToFile(c); err != nil {
 				logrus.WithError(err).Fatalf("Error running restore to file command")
+				return err
 			}
 			logrus.Infof("Done running restore to file command. Produced image: %s",
 				c.String("output-file"))
+			return nil
 		},
 	}
 }
@@ -117,7 +119,7 @@ func restore(url string, concurrentLimit int) error {
 	return nil
 }
 
-func restoreToFile(c *cli.Context) error {
+func restoreToFile(c *cli.Command) error {
 	outputFormat := c.String("output-format")
 	if !outputFormatSupported(outputFormat) {
 		return fmt.Errorf("unsupported output image format: %s", outputFormat)
