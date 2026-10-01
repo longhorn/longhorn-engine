@@ -1,30 +1,33 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"text/tabwriter"
 
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v3"
 
 	replicaClient "github.com/longhorn/longhorn-engine/pkg/replica/client"
 	"github.com/longhorn/longhorn-engine/pkg/types"
 )
 
-func LsReplicaCmd() cli.Command {
-	return cli.Command{
-		Name:      "ls-replica",
-		ShortName: "ls",
-		Action: func(c *cli.Context) {
+func LsReplicaCmd() *cli.Command {
+	return &cli.Command{
+		Name:    "ls-replica",
+		Aliases: []string{"ls"},
+		Action: func(ctx context.Context, c *cli.Command) error {
 			if err := lsReplica(c); err != nil {
 				logrus.WithError(err).Fatalf("Error running ls command")
+				return err
 			}
+			return nil
 		},
 	}
 }
 
-func lsReplica(c *cli.Context) error {
+func lsReplica(c *cli.Command) error {
 	controllerClient, err := getControllerClient(c)
 	if err != nil {
 		return err
@@ -35,7 +38,7 @@ func lsReplica(c *cli.Context) error {
 		}
 	}()
 
-	volumeName := c.GlobalString("volume-name")
+	volumeName := c.String("volume-name")
 
 	reps, err := controllerClient.ReplicaList()
 	if err != nil {

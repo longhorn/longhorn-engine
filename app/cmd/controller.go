@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"context"
 	"os"
 	"strings"
 	"syscall"
@@ -9,7 +10,7 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/docker/go-units"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v3"
 
 	"github.com/longhorn/longhorn-engine/pkg/backend/dynamic"
 	"github.com/longhorn/longhorn-engine/pkg/backend/file"
@@ -21,96 +22,98 @@ import (
 	"github.com/longhorn/longhorn-engine/pkg/util"
 )
 
-func ControllerCmd() cli.Command {
-	return cli.Command{
+func ControllerCmd() *cli.Command {
+	return &cli.Command{
 		Name: "controller",
 		Flags: []cli.Flag{
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:  "listen",
 				Value: "localhost:9501",
 			},
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:  "size",
 				Usage: "Volume nominal size in bytes or human readable 42kb, 42mb, 42gb",
 			},
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:  "current-size",
 				Usage: "Volume current size in bytes or human readable 42kb, 42mb, 42gb",
 			},
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:  "frontend",
 				Value: "",
 			},
-			cli.StringSliceFlag{
+			&cli.StringSliceFlag{
 				Name:  "enable-backend",
-				Value: (*cli.StringSlice)(&[]string{"tcp"}),
+				Value: []string{"tcp"},
 			},
-			cli.StringSliceFlag{
+			&cli.StringSliceFlag{
 				Name: "replica",
 			},
-			cli.BoolFlag{
+			&cli.BoolFlag{
 				Name: "upgrade",
 			},
-			cli.BoolFlag{
+			&cli.BoolFlag{
 				Name:   "disableRevCounter",
 				Hidden: false,
 				Usage:  "To disable revision counter checking",
 			},
-			cli.BoolFlag{
+			&cli.BoolFlag{
 				Name:   "salvageRequested",
 				Hidden: false,
 				Usage:  "Start engine controller in a special mode only to get best replica candidate for salvage",
 			},
-			cli.Int64Flag{
+			&cli.Int64Flag{
 				Name:   "engine-replica-timeout",
 				Hidden: false,
 				Value:  int64(controller.DefaultEngineReplicaTimeout.Seconds()),
 				Usage:  "In seconds. Timeout between engine and replica(s)",
 			},
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:  "data-server-protocol",
 				Value: "tcp",
 				Usage: "Specify the data-server protocol. Available options are \"tcp\" and \"unix\"",
 			},
-			cli.BoolFlag{
+			&cli.BoolFlag{
 				Name:   "unmap-mark-snap-chain-removed",
 				Hidden: false,
 				Usage:  "To enable marking snapshot chain as removed during unmap",
 			},
-			cli.IntFlag{
+			&cli.IntFlag{
 				Name:     "file-sync-http-client-timeout",
 				Required: false,
 				Value:    5,
 				Usage:    "HTTP client timeout for replica file sync server",
 			},
-			cli.IntFlag{
+			&cli.IntFlag{
 				Name:  "snapshot-max-count",
 				Value: types.MaximumTotalSnapshotCount,
 				Usage: "Maximum number of snapshots to keep",
 			},
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:  "snapshot-max-size",
 				Usage: "Maximum total snapshot size in bytes or human readable 42kb, 42mb, 42gb",
 			},
-			cli.IntFlag{
+			&cli.IntFlag{
 				Name:  "rebuild-sync-concurrent-limit",
 				Value: types.DefaultRebuildSyncConcurrentLimit,
 				Usage: "Maximum number of concurrent syncing files for one rebuilding",
 			},
 		},
-		Action: func(c *cli.Context) {
+		Action: func(ctx context.Context, c *cli.Command) error {
 			if err := startController(c); err != nil {
 				logrus.WithError(err).Fatalf("Error running controller command")
+				return err
 			}
+			return nil
 		},
 	}
 }
 
-func startController(c *cli.Context) error {
+func startController(c *cli.Command) error {
 	if c.NArg() == 0 {
 		return errors.New("volume name is required")
 	}
-	volumeName := c.Args()[0]
+	volumeName := c.Args().Slice()[0]
 	// The global "--volume-name" flag is ignored here. It is redundant with the above required positional argument.
 
 	if !util.ValidVolumeName(volumeName) {
@@ -127,7 +130,7 @@ func startController(c *cli.Context) error {
 	unmapMarkSnapChainRemoved := c.Bool("unmap-mark-snap-chain-removed")
 	dataServerProtocol := c.String("data-server-protocol")
 	fileSyncHTTPClientTimeout := c.Int("file-sync-http-client-timeout")
-	engineInstanceName := c.GlobalString("engine-instance-name")
+	engineInstanceName := c.String("engine-instance-name")
 
 	size := c.String("size")
 	if size == "" {
@@ -239,9 +242,9 @@ func startController(c *cli.Context) error {
 	return control.WaitForShutdown()
 }
 
-func getControllerClient(c *cli.Context) (*client.ControllerClient, error) {
-	url := c.GlobalString("url")
-	volumeName := c.GlobalString("volume-name")
-	engineInstanceName := c.GlobalString("engine-instance-name")
+func getControllerClient(c *cli.Command) (*client.ControllerClient, error) {
+	url := c.String("url")
+	volumeName := c.String("volume-name")
+	engineInstanceName := c.String("engine-instance-name")
 	return client.NewControllerClient(url, volumeName, engineInstanceName)
 }
