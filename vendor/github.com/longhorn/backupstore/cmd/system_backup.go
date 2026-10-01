@@ -1,100 +1,111 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 	"time"
 
 	"github.com/cockroachdb/errors"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v3"
 
 	"github.com/longhorn/backupstore/systembackup"
 	"github.com/longhorn/backupstore/util"
 )
 
-func SystemBackupUploadCmd() cli.Command {
-	return cli.Command{
+func SystemBackupUploadCmd() *cli.Command {
+	return &cli.Command{
 		Name:  "upload",
 		Usage: "upload a system backup zip file to the object store: upload <local-path> <system-backup-url> --git-commit <longhorn-git-commit> --manager-image <manager-image> --engine-image <engine-image>",
 		Flags: []cli.Flag{
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:  "git-commit",
 				Usage: "specify the git commit of the system backup",
 			},
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:  "manager-image",
 				Usage: "specify the manager image to use for system restore",
 			},
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:  "engine-image",
 				Usage: "specify the engine image to use for system restore",
 			},
 		},
-		Action: func(c *cli.Context) {
+		Action: func(ctx context.Context, c *cli.Command) error {
 			if err := uploadSystemBackup(c); err != nil {
 				logrus.WithError(err).Fatalf("Failed to run upload system-backup command")
+				return err
 			}
+			return nil
 		},
 	}
 }
 
-func SystemBackupDownloadCmd() cli.Command {
-	return cli.Command{
+func SystemBackupDownloadCmd() *cli.Command {
+	return &cli.Command{
 		Name:  "download",
 		Usage: "download a system backup zip file from the object store: download <system-backup-url> <local-path>",
-		Action: func(c *cli.Context) {
+		Action: func(ctx context.Context, c *cli.Command) error {
 			if err := downloadSystemBackup(c); err != nil {
 				logrus.WithError(err).Fatalf("Failed to run download system backup command")
+				return err
 			}
+			return nil
 		},
 	}
 }
 
-func SystemBackupGetConfigCmd() cli.Command {
-	return cli.Command{
+func SystemBackupGetConfigCmd() *cli.Command {
+	return &cli.Command{
 		Name:  "get-config",
 		Usage: "output the system backup config from the object store: get-config <system-backup-url>",
-		Action: func(c *cli.Context) {
+		Action: func(ctx context.Context, c *cli.Command) error {
 			if err := getSystemBackupConfig(c); err != nil {
 				logrus.WithError(err).Fatalf("Failed to run get-config system backup command")
+				return err
 			}
+			return nil
 		},
 	}
 }
 
-func SystemBackupListCmd() cli.Command {
-	return cli.Command{
+func SystemBackupListCmd() *cli.Command {
+	return &cli.Command{
 		Name:  "list",
 		Usage: "list system backups in the object store: list <backup-target-url>",
 		Flags: []cli.Flag{},
-		Action: func(c *cli.Context) {
+		Action: func(ctx context.Context, c *cli.Command) error {
 			if err := listSystemBackup(c); err != nil {
 				logrus.WithError(err).Fatalf("Failed to run list system backup command")
+				return err
 			}
+			return nil
 		},
 	}
 }
 
-func SystemBackupDeleteCmd() cli.Command {
-	return cli.Command{
+func SystemBackupDeleteCmd() *cli.Command {
+	return &cli.Command{
 		Name:  "delete",
 		Usage: "delete a system backup in the object store: delete <system-backup-url>",
-		Action: func(c *cli.Context) {
+		Action: func(ctx context.Context, c *cli.Command) error {
 			if err := deleteSystemBackup(c); err != nil {
 				logrus.WithError(err).Fatalf("Failed to run delete system backup command")
+				return err
 			}
+			return nil
 		},
 	}
 }
 
-func uploadSystemBackup(c *cli.Context) error {
+func uploadSystemBackup(c *cli.Command) error {
 	if c.NArg() != 2 {
 		return fmt.Errorf("missing required parameters to upload system backup")
 	}
 
-	source := c.Args()[0]
+	source := c.Args().First()
 
-	backupTargetURL, longhornVersion, systemBackupName, err := systembackup.ParseSystemBackupURL(c.Args()[1])
+	backupTargetURL, longhornVersion, systemBackupName, err := systembackup.ParseSystemBackupURL(c.Args().Get(1))
 	if err != nil {
 		return err
 	}
@@ -133,12 +144,12 @@ func uploadSystemBackup(c *cli.Context) error {
 	return systembackup.Upload(source, config)
 }
 
-func getSystemBackupConfig(c *cli.Context) error {
+func getSystemBackupConfig(c *cli.Command) error {
 	if c.NArg() == 0 {
 		return fmt.Errorf("missing required parameter for system backup URL")
 	}
 
-	backupTargetURL, longhornVersion, systemBackupName, err := systembackup.ParseSystemBackupURL(c.Args()[0])
+	backupTargetURL, longhornVersion, systemBackupName, err := systembackup.ParseSystemBackupURL(c.Args().First())
 	if err != nil {
 		return err
 	}
@@ -156,17 +167,17 @@ func getSystemBackupConfig(c *cli.Context) error {
 	return nil
 }
 
-func downloadSystemBackup(c *cli.Context) error {
+func downloadSystemBackup(c *cli.Command) error {
 	if c.NArg() != 2 {
 		return fmt.Errorf("missing required parameters to download system backup")
 	}
 
-	backupTargetURL, longhornVersion, systemBackupName, err := systembackup.ParseSystemBackupURL(c.Args()[0])
+	backupTargetURL, longhornVersion, systemBackupName, err := systembackup.ParseSystemBackupURL(c.Args().First())
 	if err != nil {
 		return err
 	}
 
-	destination := c.Args()[1]
+	destination := c.Args().Get(1)
 
 	cfg, err := systembackup.LoadConfig(systemBackupName, longhornVersion, backupTargetURL)
 	if err != nil {
@@ -176,12 +187,12 @@ func downloadSystemBackup(c *cli.Context) error {
 	return systembackup.Download(destination, cfg)
 }
 
-func listSystemBackup(c *cli.Context) error {
+func listSystemBackup(c *cli.Command) error {
 	if c.NArg() == 0 {
 		return fmt.Errorf("missing required parameter for backup target URL")
 	}
 
-	bsURL := c.Args()[0]
+	bsURL := c.Args().First()
 
 	systemBackups, err := systembackup.List(bsURL)
 	if err != nil {
@@ -197,12 +208,12 @@ func listSystemBackup(c *cli.Context) error {
 	return nil
 }
 
-func deleteSystemBackup(c *cli.Context) error {
+func deleteSystemBackup(c *cli.Command) error {
 	if c.NArg() == 0 {
 		return fmt.Errorf("missing required parameter for system backup URL")
 	}
 
-	backupTargetURL, longhornVersion, systemBackupName, err := systembackup.ParseSystemBackupURL(c.Args()[0])
+	backupTargetURL, longhornVersion, systemBackupName, err := systembackup.ParseSystemBackupURL(c.Args().First())
 	if err != nil {
 		return err
 	}

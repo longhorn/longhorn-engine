@@ -1,20 +1,40 @@
 package cmd
 
 import (
-	"flag"
+	"context"
 	"testing"
 
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v3"
 )
 
+func newTestCommand(t *testing.T, args []string) *cli.Command {
+	t.Helper()
+
+	var parsedCmd *cli.Command
+	cmd := &cli.Command{
+		Name: "test",
+		Action: func(ctx context.Context, c *cli.Command) error {
+			parsedCmd = c
+			return nil
+		},
+	}
+
+	if err := cmd.Run(context.Background(), args); err != nil {
+		t.Fatalf("failed to run test command: %v", err)
+	}
+
+	if parsedCmd == nil {
+		t.Fatal("failed to capture parsed command")
+	}
+
+	return parsedCmd
+}
+
 func TestRevertSnapshotWithNoArgs(t *testing.T) {
-	// Create a CLI context with no arguments
-	app := cli.NewApp()
-	flagSet := flag.NewFlagSet("test", flag.ContinueOnError)
-	ctx := cli.NewContext(app, flagSet, nil)
+	cmd := newTestCommand(t, []string{"test"})
 
 	// Call revertSnapshot with no arguments - should return error, not panic
-	err := revertSnapshot(ctx)
+	err := revertSnapshot(cmd)
 
 	// Should return an error about missing snapshot name, not panic
 	if err == nil {
@@ -28,17 +48,10 @@ func TestRevertSnapshotWithNoArgs(t *testing.T) {
 }
 
 func TestRevertSnapshotWithEmptyStringArg(t *testing.T) {
-	// Create a CLI context with an empty string argument
-	app := cli.NewApp()
-	flagSet := flag.NewFlagSet("test", flag.ContinueOnError)
-	err := flagSet.Parse([]string{""}) // Empty string argument
-	if err != nil {
-		t.Fatalf("Failed to parse flags: %v", err)
-	}
-	ctx := cli.NewContext(app, flagSet, nil)
+	cmd := newTestCommand(t, []string{"test", ""})
 
 	// Call revertSnapshot with empty string argument
-	err = revertSnapshot(ctx)
+	err := revertSnapshot(cmd)
 
 	// Should return an error about missing parameter
 	if err == nil {

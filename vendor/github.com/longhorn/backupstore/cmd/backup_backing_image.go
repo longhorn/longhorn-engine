@@ -1,37 +1,41 @@
 package cmd
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v3"
 
 	"github.com/longhorn/backupstore"
 	"github.com/longhorn/backupstore/backupbackingimage"
 	"github.com/longhorn/backupstore/util"
 )
 
-func BackupBackingImageListCmd() cli.Command {
-	return cli.Command{
-		Name:   "ls-backing-image",
-		Usage:  "list backup backing images in backupstore: ls-backing-image <dest>",
-		Action: cmdBackupBackingImageList,
+func BackupBackingImageListCmd() *cli.Command {
+	return &cli.Command{
+		Name:  "ls-backing-image",
+		Usage: "list backup backing images in backupstore: ls-backing-image <dest>",
+		Action: func(ctx context.Context, c *cli.Command) error {
+			cmdBackupBackingImageList(c)
+			return nil
+		},
 	}
 }
 
-func cmdBackupBackingImageList(c *cli.Context) {
+func cmdBackupBackingImageList(c *cli.Command) {
 	if err := doBackupBackingImageList(c); err != nil {
 		panic(err)
 	}
 }
 
-func doBackupBackingImageList(c *cli.Context) error {
+func doBackupBackingImageList(c *cli.Command) error {
 	var err error
 
 	if c.NArg() == 0 {
 		return RequiredMissingError("dest URL")
 	}
-	destURL := c.Args()[0]
+	destURL := c.Args().First()
 	if destURL == "" {
 		return RequiredMissingError("dest URL")
 	}
@@ -53,19 +57,21 @@ func doBackupBackingImageList(c *cli.Context) error {
 	return nil
 }
 
-func InspectBackingImageCmd() cli.Command {
-	return cli.Command{
+func InspectBackingImageCmd() *cli.Command {
+	return &cli.Command{
 		Name:  "inspect-backing-image",
 		Usage: "output the backup backing image config from the object store: inspect-backing-image <backup-url>",
-		Action: func(c *cli.Context) {
+		Action: func(ctx context.Context, c *cli.Command) error {
 			if err := inspectBackupBackingImageConfig(c); err != nil {
 				logrus.WithError(err).Fatalf("Failed to run inspect-backing-image command")
+				return err
 			}
+			return nil
 		},
 	}
 }
 
-func inspectBackupBackingImageConfig(c *cli.Context) error {
+func inspectBackupBackingImageConfig(c *cli.Command) error {
 	if c.NArg() == 0 {
 		return fmt.Errorf("missing required parameter for backup backing image URL")
 	}
@@ -73,7 +79,7 @@ func inspectBackupBackingImageConfig(c *cli.Context) error {
 	if c.NArg() == 0 {
 		return RequiredMissingError("backup-url")
 	}
-	backupURL := c.Args()[0]
+	backupURL := c.Args().First()
 	if backupURL == "" {
 		return RequiredMissingError("backup-url")
 	}
@@ -92,25 +98,28 @@ func inspectBackupBackingImageConfig(c *cli.Context) error {
 	return nil
 }
 
-func BackupBackingImageRemoveCmd() cli.Command {
-	return cli.Command{
-		Name:   "rm-backing-image",
-		Usage:  "remove a backup backing image in objectstore",
-		Action: cmdBackupBackingImageRemove,
+func BackupBackingImageRemoveCmd() *cli.Command {
+	return &cli.Command{
+		Name:  "rm-backing-image",
+		Usage: "remove a backup backing image in objectstore",
+		Action: func(ctx context.Context, c *cli.Command) error {
+			cmdBackupBackingImageRemove(c)
+			return nil
+		},
 	}
 }
 
-func cmdBackupBackingImageRemove(c *cli.Context) {
+func cmdBackupBackingImageRemove(c *cli.Command) {
 	if err := doBackupBackingImageRemove(c); err != nil {
 		panic(err)
 	}
 }
 
-func doBackupBackingImageRemove(c *cli.Context) error {
+func doBackupBackingImageRemove(c *cli.Command) error {
 	if c.NArg() == 0 {
 		return RequiredMissingError("dest URL")
 	}
-	destURL := c.Args()[0]
+	destURL := c.Args().First()
 	if destURL == "" {
 		return RequiredMissingError("dest URL")
 	}
