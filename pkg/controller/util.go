@@ -2,6 +2,7 @@ package controller
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/cockroachdb/errors"
 	"github.com/sirupsen/logrus"
@@ -45,4 +46,30 @@ func GetReplicaDisksAndHead(address, volumeName, instanceName string) (map[strin
 		disks[diskName] = info
 	}
 	return disks, head, nil
+}
+
+// FindOldestSnapshot returns the name of the oldest snapshot disk in disks
+// that is not marked as removed. Disks with the same creation time are
+// ordered by name so the result is deterministic. It returns an empty string
+// if there is no such disk found.
+func FindOldestSnapshot(disks map[string]types.DiskInfo) (string, error) {
+	var oldestSnapshot string
+	var oldestCreated time.Time
+	for name, disk := range disks {
+		if disk.Removed {
+			continue
+		}
+		created, err := time.Parse(time.RFC3339, disk.Created)
+		if err != nil {
+			return "", fmt.Errorf("cannot parse creation time for snapshot disk %v: %w", name, err)
+		}
+
+		cmp := created.Compare(oldestCreated)
+		// if the creationTimeStamp of both is same, prefer the name that sorts first alphabetically
+		if oldestSnapshot == "" || cmp < 0 || (cmp == 0 && name < oldestSnapshot) {
+			oldestCreated = created
+			oldestSnapshot = name
+		}
+	}
+	return oldestSnapshot, nil
 }

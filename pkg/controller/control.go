@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/cockroachdb/errors"
+	"github.com/longhorn/longhorn-engine/pkg/replica/client"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
@@ -220,7 +221,7 @@ func (c *Controller) Snapshot(inputName string, labels map[string]string, should
 	var endpoint string
 	c.RLock()
 	// Check now to avoid freezing or syncing unnecessarily. Also check again later as originally designed.
-	err = c.canDoSnapshot()
+	err = c.canDoSnapshot(false)
 	if c.frontend != nil && c.frontend.FrontendName() == types.EngineFrontendBlockDev {
 		// It is meaningless to try to freeze filesystems for a tgt-iscsi endpoint.
 		endpoint = c.Endpoint()
@@ -281,7 +282,7 @@ func (c *Controller) Snapshot(inputName string, labels map[string]string, should
 
 	c.Lock()
 	defer c.Unlock()
-	if err = c.canDoSnapshot(); err != nil {
+	if err = c.canDoSnapshot(false); err != nil {
 		return "", err
 	}
 
@@ -293,13 +294,26 @@ func (c *Controller) Snapshot(inputName string, labels map[string]string, should
 	return name, nil
 }
 
-func (c *Controller) canDoSnapshot() error {
+func (c *Controller) canDoSnapshot(allowRemoveOldest bool) error {
 	countUsage, countTotal, sizeUsage, err := c.backend.GetSnapshotCountAndSizeUsage()
 	if err != nil {
 		return err
 	}
 	if countUsage >= c.snapshotMaxCount {
-		return fmt.Errorf("snapshot count usage %d is equal or larger than snapshotMaxCount %d", countUsage, c.snapshotMaxCount)
+		if !(c.snapshotRemoveOldest && allowRemoveOldest) {
+			return fmt.Errorf("snapshot count usage %d is equal or larger than snapshotMaxCount %d", countUsage, c.snapshotMaxCount)
+		}
+		if err := c.removeOldestSnapshotNoLock(); err != nil {
+			return fmt.Errorf("snapshot count usage %d reached snapshotMaxCount %d and removing the oldest snapshot failed: %v", countUsage, c.snapshotMaxCount, err)
+		}
+		// The removal changed the numbers, so re-read them before the checks below.
+		countUsage, countTotal, sizeUsage, err = c.backend.GetSnapshotCountAndSizeUsage()
+		if err != nil {
+			return err
+		}
+		if countUsage >= c.snapshotMaxCount {
+			return fmt.Errorf("snapshot count usage %d is still >= snapshotMaxCount %d after removing the oldest snapshot", countUsage, c.snapshotMaxCount)
+		}
 	}
 	if countTotal >= types.MaximumTotalSnapshotCount {
 		return fmt.Errorf("snapshot count total is already too big: %v", countTotal)
@@ -316,6 +330,77 @@ func (c *Controller) canDoSnapshot() error {
 	remainSize := c.SnapshotMaxSize - sizeUsage
 	if headFileSize > remainSize {
 		return fmt.Errorf("snapshot free space %d is not enough for head file %d", remainSize, headFileSize)
+	}
+	return nil
+}
+
+// removeOldestSnapshotNoLock marks the oldest snapshot as removed on every RW
+// replica. ERR replicas are skipped. It returns an error if any replica is
+// rebuilding (WO) or if the RW replicas disagree on which snapshot is the
+// oldest, and in both cases nothing is marked. It returns nil without
+// removing anything if no RW replica reports a removable snapshot, so callers
+// must re-check the snapshot limit afterward.
+func (c *Controller) removeOldestSnapshotNoLock() error {
+	var oldestDisk string
+	var rwAddresses []string
+	for _, replica := range c.replicas {
+		switch replica.Mode {
+		case types.WO:
+			return fmt.Errorf("replica %v is rebuilding, refusing to remove a snapshot", replica.Address)
+		case types.RW:
+		default:
+			continue
+		}
+
+		disks, _, err := GetReplicaDisksAndHead(replica.Address, c.VolumeName, "")
+		if err != nil {
+			return fmt.Errorf("failed to get replica disks and/or head for %s: %v", replica.Address, err)
+		}
+		diskName, err := FindOldestSnapshot(disks)
+		if err != nil {
+			return fmt.Errorf("failed to find oldest snapshot for replica %s: %v", replica.Address, err)
+		}
+		if oldestDisk != "" && diskName != oldestDisk {
+			return fmt.Errorf("replicas disagree on the oldest snapshot: %v vs %v (replica %s)", oldestDisk, diskName, replica.Address)
+		}
+		oldestDisk = diskName
+		rwAddresses = append(rwAddresses, replica.Address)
+	}
+	if oldestDisk != "" {
+		removeSnapshotName, err := diskutil.GetSnapshotNameFromDiskName(oldestDisk)
+		if err != nil {
+			return fmt.Errorf("failed to get snapshot name from disk %s: %v", oldestDisk, err)
+		}
+
+		logrus.Warnf("Removing the oldest snapshot %v of volume %v", removeSnapshotName, c.VolumeName)
+		for _, address := range rwAddresses {
+			if err := c.markSnapshotRemovedOnReplica(address, removeSnapshotName); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// markSnapshotRemovedOnReplica marks the snapshot as removed on the replica at
+// address and cancels any running hash job for it. It does not purge the
+// snapshot.
+func (c *Controller) markSnapshotRemovedOnReplica(address, snapshotName string) error {
+	repClient, err := client.NewReplicaClient(address, c.VolumeName, "")
+	if err != nil {
+		return fmt.Errorf("cannot get replica client for %v: %w", address, err)
+	}
+	defer func() {
+		if errClose := repClient.Close(); errClose != nil {
+			logrus.WithError(errClose).Errorf("Failed to close replica client for %v", address)
+		}
+	}()
+
+	if err := repClient.MarkDiskAsRemoved(snapshotName); err != nil {
+		return fmt.Errorf("failed to mark snapshot %v as removed on %v: %w", snapshotName, address, err)
+	}
+	if err := repClient.SnapshotHashCancel(snapshotName); err != nil {
+		return fmt.Errorf("failed to cancel hash of snapshot %v on %v: %w", snapshotName, address, err)
 	}
 	return nil
 }
@@ -352,7 +437,7 @@ func (c *Controller) Expand(size int64) error {
 		// Should block R/W during the expansion.
 		c.Lock()
 		defer c.Unlock()
-		if err := c.canDoSnapshot(); err != nil {
+		if err := c.canDoSnapshot(false); err != nil {
 			log.WithError(err).Error("Cannot get remain snapshot count before expansion")
 			return
 		}
@@ -468,7 +553,7 @@ func (c *Controller) addReplicaNoLock(newBackend types.Backend, address string, 
 
 		// if there is no replica, we don't need to check whether remaining replica can do snapshot
 		if len(c.backend.backends) != 0 {
-			if err := c.canDoSnapshot(); err != nil {
+			if err := c.canDoSnapshot(true); err != nil {
 				return err
 			}
 		}
