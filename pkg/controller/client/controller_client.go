@@ -93,6 +93,7 @@ func GetVolumeInfo(v *enginerpc.Volume) *types.VolumeInfo {
 		UnmapMarkSnapChainRemoved: v.UnmapMarkSnapChainRemoved,
 		SnapshotMaxCount:          int(v.SnapshotMaxCount),
 		SnapshotMaxSize:           v.SnapshotMaxSize,
+		SnapshotRemoveOldest:      v.SnapshotRemoveOldest,
 	}
 }
 

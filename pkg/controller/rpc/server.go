@@ -100,6 +100,7 @@ func (cs *ControllerServer) getVolume() *enginerpc.Volume {
 		UnmapMarkSnapChainRemoved: cs.c.GetUnmapMarkSnapChainRemoved(),
 		SnapshotMaxCount:          int32(cs.c.GetSnapshotMaxCount()),
 		SnapshotMaxSize:           cs.c.GetSnapshotMaxSize(),
+		SnapshotRemoveOldest:      cs.c.GetSnapshotRemoveOldest(),
 	}
 }
 

@@ -520,7 +520,7 @@ func (r *replicator) SetSnapshotRemoveOldest(address string, enabled bool) error
 		return err
 	}
 
-	logrus.Infof("Set backend %s SnapshotMaxSize to %v", address, enabled)
+	logrus.Infof("Set backend %s SnapshotRemoveOldest to %v", address, enabled)
 
 	return nil
 }
