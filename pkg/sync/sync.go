@@ -622,7 +622,7 @@ func (t *Task) getTransferClients(address, instanceName string) (toClient *repli
 
 		if r.Address == address {
 			if r.Mode != types.WO {
-				return nil, nil, fmt.Errorf("replica %s is not in mode WO: %s", address, r.Mode)
+				return nil, nil, types.ErrReplicaNotInWOMode(address, string(r.Mode))
 			}
 			if toClient, err = replicaClient.NewReplicaClient(r.Address, t.client.VolumeName, instanceName); err != nil {
 				return nil, nil, err
