@@ -27,8 +27,13 @@ def test_replica_create(grpc_controller_client):  # NOQA
     replica = grpc_controller_client.replica_create(address=r1)
     assert replica.address == r1
 
-    grpc_controller_client.replica_create(address=r1)
-    grpc_controller_client.replica_create(address=r1)
+    # creating a replica the controller already holds is rejected instead
+    # of being a silent no-op, so that a second rebuilding goroutine for
+    # an already rebuilt replica stops here (longhorn/longhorn#13914)
+    for _ in range(2):
+        with pytest.raises(grpc.RpcError) as e:
+            grpc_controller_client.replica_create(address=r1)
+        assert 'replica already exists at address' in str(e.value)
 
     rs = grpc_controller_client.replica_list()
     assert len(rs) == 1
