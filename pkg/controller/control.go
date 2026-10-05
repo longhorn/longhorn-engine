@@ -147,8 +147,8 @@ func (c *Controller) WaitForShutdown() error {
 	return c.lastError
 }
 
-func (c *Controller) AddReplica(address string, snapshotRequired bool, mode types.Mode) error {
-	return c.addReplica(address, snapshotRequired, mode)
+func (c *Controller) AddReplica(address string, snapshotRequired, creatingReplica bool, mode types.Mode) error {
+	return c.addReplica(address, snapshotRequired, creatingReplica, mode)
 }
 
 func (c *Controller) hasWOReplica() bool {
@@ -160,8 +160,18 @@ func (c *Controller) hasWOReplica() bool {
 	return false
 }
 
-func (c *Controller) canAdd(address string) (bool, error) {
+// canAdd checks if a new replica can be added to the controller.
+// It returns a boolean indicating if the addition is allowed and an error if it is not.
+//
+//	address: the address of the new replica to be added.
+//	creatingReplica: true indicates whether the new replica is being created, false indicates it might already exist.
+//	Returns true if the new replica can be added, false otherwise.
+//	Returns an error if the addition is not allowed.
+func (c *Controller) canAdd(address string, creatingReplica bool) (bool, error) {
 	if c.hasReplica(address) {
+		if creatingReplica {
+			return false, fmt.Errorf(types.ErrorStringReplicaAddressExist+" %v", address)
+		}
 		return false, nil
 	}
 	if c.hasWOReplica() {
@@ -173,10 +183,10 @@ func (c *Controller) canAdd(address string) (bool, error) {
 	return true, nil
 }
 
-func (c *Controller) addReplica(address string, snapshotRequired bool, mode types.Mode) error {
+func (c *Controller) addReplica(address string, snapshotRequired, creatingReplica bool, mode types.Mode) error {
 	c.Lock()
 	defer c.Unlock()
-	if ok, err := c.canAdd(address); !ok {
+	if ok, err := c.canAdd(address, creatingReplica); !ok {
 		return err
 	}
 
@@ -456,7 +466,9 @@ func (c *Controller) addReplicaNoLock(newBackend types.Backend, address string, 
 		}
 	}()
 
-	if ok, err := c.canAdd(address); !ok {
+	// `false` indicates that the replica is being added and might be created somewhere else, and we don't need to check its create status here.
+	// The canAdd function will check if the replica can be added and the engine is in correct state.
+	if ok, err := c.canAdd(address, false); !ok {
 		return err
 	}
 
