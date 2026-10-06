@@ -2,7 +2,6 @@ package controller
 
 import (
 	"fmt"
-	"time"
 
 	"github.com/cockroachdb/errors"
 	"github.com/sirupsen/logrus"
@@ -11,11 +10,11 @@ import (
 	"github.com/longhorn/longhorn-engine/pkg/types"
 )
 
-func GetReplicaDisksAndHead(address, volumeName, instanceName string) (map[string]types.DiskInfo, string, error) {
+func GetReplicaDisksAndChain(address, volumeName, instanceName string) (map[string]types.DiskInfo, []string, error) {
 	// We may not know the replica instance name. Validation is best effort, so it's fine to pass an empty string.
 	repClient, err := client.NewReplicaClient(address, volumeName, instanceName)
 	if err != nil {
-		return nil, "", errors.Wrapf(err, "cannot get replica client for %v", address)
+		return nil, nil, errors.Wrapf(err, "cannot get replica client for %v", address)
 	}
 	defer func() {
 		if errClose := repClient.Close(); errClose != nil {
@@ -25,11 +24,11 @@ func GetReplicaDisksAndHead(address, volumeName, instanceName string) (map[strin
 
 	rep, err := repClient.GetReplica()
 	if err != nil {
-		return nil, "", errors.Wrapf(err, "cannot get replica for %v", address)
+		return nil, nil, errors.Wrapf(err, "cannot get replica for %v", address)
 	}
 
 	if len(rep.Chain) == 0 {
-		return nil, "", fmt.Errorf("replica on %v does not have any non-removed disks", address)
+		return nil, nil, fmt.Errorf("replica on %v does not have any non-removed disks", address)
 	}
 
 	disks := map[string]types.DiskInfo{}
@@ -45,31 +44,38 @@ func GetReplicaDisksAndHead(address, volumeName, instanceName string) (map[strin
 		}
 		disks[diskName] = info
 	}
-	return disks, head, nil
+	return disks, rep.Chain, nil
 }
 
-// FindOldestSnapshot returns the name of the oldest snapshot disk in disks
-// that is not marked as removed. Disks with the same creation time are
-// ordered by name so the result is deterministic. It returns an empty string
-// if there is no such disk found.
-func FindOldestSnapshot(disks map[string]types.DiskInfo) (string, error) {
-	var oldestSnapshot string
-	var oldestCreated time.Time
-	for name, disk := range disks {
-		if disk.Removed {
-			continue
-		}
-		created, err := time.Parse(time.RFC3339, disk.Created)
-		if err != nil {
-			return "", fmt.Errorf("cannot parse creation time for snapshot disk %v: %w", name, err)
-		}
-
-		cmp := created.Compare(oldestCreated)
-		// if the creationTimeStamp of both is same, prefer the name that sorts first alphabetically
-		if oldestSnapshot == "" || cmp < 0 || (cmp == 0 && name < oldestSnapshot) {
-			oldestCreated = created
-			oldestSnapshot = name
-		}
+// GetReplicaDisksAndHead returns the disks of the replica at address, without the
+// volume head and the backing file, and the name of the volume head.
+func GetReplicaDisksAndHead(address, volumeName, instanceName string) (map[string]types.DiskInfo, string, error) {
+	disks, chain, err := GetReplicaDisksAndChain(address, volumeName, instanceName)
+	if err != nil {
+		return nil, "", fmt.Errorf("failed to get replica disks and/or head for %s: %v", address, err)
 	}
-	return oldestSnapshot, nil
+	return disks, chain[0], nil
+}
+
+// markSnapshotRemovedOnReplica marks the snapshot as removed on the replica at
+// address and cancels any running hash job for it. It does not purge the
+// snapshot.
+func markSnapshotRemovedOnReplica(address, volumeName, instanceName, snapshotName string) error {
+	repClient, err := client.NewReplicaClient(address, volumeName, instanceName)
+	if err != nil {
+		return fmt.Errorf("cannot get replica client for %v: %w", address, err)
+	}
+	defer func() {
+		if errClose := repClient.Close(); errClose != nil {
+			logrus.WithError(errClose).Errorf("Failed to close replica client for %v", address)
+		}
+	}()
+
+	if err := repClient.MarkDiskAsRemoved(snapshotName); err != nil {
+		return fmt.Errorf("failed to mark snapshot %v as removed on %v: %w", snapshotName, address, err)
+	}
+	if err := repClient.SnapshotHashCancel(snapshotName); err != nil {
+		return fmt.Errorf("failed to cancel hash of snapshot %v on %v: %w", snapshotName, address, err)
+	}
+	return nil
 }
