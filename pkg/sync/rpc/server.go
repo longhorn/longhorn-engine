@@ -903,7 +903,7 @@ func (s *SyncAgentServer) startCloning(req *enginerpc.SnapshotCloneRequest, from
 
 func (s *SyncAgentServer) postCloning() error {
 	snapshotDiskName := diskutil.GenerateSnapshotDiskName(s.CloneStatus.SnapshotName)
-	if err := backup.CreateNewSnapshotMetafile(snapshotDiskName + ".meta"); err != nil {
+	if err := backup.CreateNewSnapshotMetafile(snapshotDiskName+".meta", util.Now()); err != nil {
 		return errors.Wrapf(err, "failed creating meta snapshot file")
 	}
 
@@ -1141,7 +1141,7 @@ func (s *SyncAgentServer) completeBackupRestore() (err error) {
 }
 
 func (s *SyncAgentServer) postFullRestoreOperations(restoreStatus *replica.RestoreStatus) error {
-	if err := backup.CreateNewSnapshotMetafile(restoreStatus.ToFileName + ".meta"); err != nil {
+	if err := backup.CreateNewSnapshotMetafile(restoreStatus.ToFileName+".meta", util.Now()); err != nil {
 		logrus.WithError(err).Error("Failed creating meta snapshot file")
 		return err
 	}

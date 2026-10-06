@@ -196,7 +196,17 @@ func DoBackupRestoreIncrementally(url string, deltaFile string, lastRestored str
 		})
 }
 
-func CreateNewSnapshotMetafile(file string) error {
+// CreateNewSnapshotMetafile writes the metadata file of a snapshot that has no parent, such as the
+// first snapshot of a restored or cloned volume. created is recorded as the snapshot creation time.
+func CreateNewSnapshotMetafile(file, created string) error {
+	content, err := json.Marshal(struct {
+		Parent  string
+		Created string
+	}{Created: created})
+	if err != nil {
+		return err
+	}
+
 	path := file + ".tmp"
 	f, err := os.Create(path)
 	if err != nil {
@@ -208,8 +218,7 @@ func CreateNewSnapshotMetafile(file string) error {
 		}
 	}()
 
-	content := "{\"Parent\":\"\"}\n"
-	if _, err := f.Write([]byte(content)); err != nil {
+	if _, err := f.Write(append(content, '\n')); err != nil {
 		return err
 	}
 
