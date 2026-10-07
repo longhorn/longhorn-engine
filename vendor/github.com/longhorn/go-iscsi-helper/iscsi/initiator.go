@@ -109,6 +109,8 @@ func IsTargetDiscovered(ip, target string, nsexec *lhns.Executor) bool {
 }
 
 func LoginTarget(ip, target string, nsexec *lhns.Executor) error {
+	// Login may wait for SCSI scan I/O, so callers must not hold locks that
+	// prevent the frontend from serving READs.
 	opts := []string{
 		"-m", "node",
 		"-T", target,
@@ -116,25 +118,36 @@ func LoginTarget(ip, target string, nsexec *lhns.Executor) error {
 		"--login",
 	}
 	_, err := nsexec.Execute(nil, iscsiBinary, opts, lhtypes.ExecuteDefaultTimeout)
-	if err != nil {
-		return err
-	}
+	return err
+}
 
+// WaitForDeviceReady discovers the kernel block device after synchronous login
+// and applies the SCSI device timeout. In manual scan mode, login does not trigger
+// a SCSI scan, so rescan the session before device discovery.
+func WaitForDeviceReady(ip, target string, lun int, scsiTimeout int64, nsexec *lhns.Executor) (*lhtypes.BlockDeviceInfo, error) {
 	scanMode, err := getIscsiNodeSessionScanMode(ip, target, nsexec)
 	if err != nil {
-		return errors.Wrap(err, "Failed to get node.session.scan mode")
+		return nil, errors.Wrap(err, "Failed to get node.session.scan mode")
 	}
 
 	if scanMode == scanModeManual {
 		logrus.Infof("Manually rescan LUNs of the target %v:%v", target, ip)
 		if err := manualScanSession(ip, target, nsexec); err != nil {
-			return errors.Wrapf(err, "failed to manually rescan iscsi session of target %v:%v", target, ip)
+			return nil, errors.Wrapf(err, "failed to manually rescan iscsi session of target %v:%v", target, ip)
 		}
 	} else {
 		logrus.Infof("default: automatically rescan all LUNs of all iscsi sessions")
 	}
 
-	return nil
+	dev, err := GetDevice(ip, target, lun, nsexec)
+	if err != nil {
+		return nil, err
+	}
+	if err := UpdateScsiDeviceTimeout(dev.Name, scsiTimeout, nsexec); err != nil {
+		return nil, err
+	}
+
+	return dev, nil
 }
 
 // LogoutTarget will logout all sessions if ip == ""

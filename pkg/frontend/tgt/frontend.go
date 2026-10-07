@@ -1,6 +1,8 @@
 package tgt
 
 import (
+	"fmt"
+	"sync/atomic"
 	"time"
 
 	"github.com/sirupsen/logrus"
@@ -20,7 +22,7 @@ const (
 type Tgt struct {
 	s *socket.Socket
 
-	isUp                      bool
+	isUp                      atomic.Bool
 	dev                       longhorndev.DeviceService
 	frontendName              string
 	scsiTimeout               time.Duration
@@ -30,7 +32,13 @@ type Tgt struct {
 
 func New(frontendName string, scsiTimeout, iscsiAbortTimeout, iscsiTargetRequestTimeout time.Duration) types.Frontend {
 	s := socket.New()
-	return &Tgt{s, false, nil, frontendName, scsiTimeout, iscsiAbortTimeout, iscsiTargetRequestTimeout}
+	return &Tgt{
+		s:                         s,
+		frontendName:              frontendName,
+		scsiTimeout:               scsiTimeout,
+		iscsiAbortTimeout:         iscsiAbortTimeout,
+		iscsiTargetRequestTimeout: iscsiTargetRequestTimeout,
+	}
 }
 
 func (t *Tgt) FrontendName() string {
@@ -55,7 +63,7 @@ func (t *Tgt) Init(name string, size, sectorSize int64) error {
 		return err
 	}
 
-	t.isUp = false
+	t.isUp.Store(false)
 
 	return nil
 }
@@ -69,8 +77,25 @@ func (t *Tgt) Startup(rwu types.ReaderWriterUnmapperAt) error {
 		return err
 	}
 
-	t.isUp = true
+	// The block frontend is not reported as up until the iSCSI device is
+	// discovered and /dev/longhorn/<volume> is created.
+	if t.frontendName != types.EngineFrontendBlockDev {
+		t.isUp.Store(true)
+	}
 
+	return nil
+}
+
+func (t *Tgt) WaitForDeviceReady() error {
+	if t.dev == nil {
+		return fmt.Errorf("cannot wait for frontend device readiness: device is not initialized")
+	}
+	if err := t.dev.StartInitiatorAndWaitForDeviceReady(); err != nil {
+		return err
+	}
+	// Report the block frontend as up only after the deferred readiness wait
+	// succeeds outside the controller lock.
+	t.isUp.Store(true)
 	return nil
 }
 
@@ -89,20 +114,20 @@ func (t *Tgt) Shutdown() error {
 	if err := t.s.Shutdown(); err != nil {
 		return err
 	}
-	t.isUp = false
+	t.isUp.Store(false)
 
 	return nil
 }
 
 func (t *Tgt) State() types.State {
-	if t.isUp {
+	if t.isUp.Load() {
 		return types.StateUp
 	}
 	return types.StateDown
 }
 
 func (t *Tgt) Endpoint() string {
-	if t.isUp {
+	if t.isUp.Load() {
 		return t.dev.GetEndpoint()
 	}
 	return ""
@@ -133,7 +158,9 @@ func (t *Tgt) Upgrade(name string, size, sectorSize int64, rwu types.ReaderWrite
 	if err := t.dev.FinishUpgrade(); err != nil {
 		return err
 	}
-	t.isUp = true
+	if t.frontendName != types.EngineFrontendBlockDev {
+		t.isUp.Store(true)
+	}
 	logrus.Infof("engine: Finish upgrading for %v", name)
 
 	return nil
