@@ -1036,3 +1036,115 @@ func (s *TestSuite) TestStartFailureKeepsStartupState(c *C) {
 		}
 	}
 }
+
+// snapshotUsage is one result of GetSnapshotCountAndSizeUsage.
+type snapshotUsage struct {
+	countUsage int
+	countTotal int
+	sizeUsage  int64
+}
+
+type snapshotLimitTestBackend struct {
+	removalTestBackend
+
+	// usages are returned in call order; the last one repeats.
+	usages []snapshotUsage
+	// usageErrAt makes the Nth (1-based) usage call fail. 0 means never.
+	usageErrAt    int
+	headFileSize  int64
+	headFileErr   error
+	usageCalls    int
+	headFileCalls int
+}
+
+func (b *snapshotLimitTestBackend) GetSnapshotCountAndSizeUsage() (int, int, int64, error) {
+	b.usageCalls++
+	if b.usageErrAt == b.usageCalls {
+		return 0, 0, 0, errors.New("usage failed")
+	}
+	i := b.usageCalls - 1
+	if i >= len(b.usages) {
+		i = len(b.usages) - 1
+	}
+	u := b.usages[i]
+	return u.countUsage, u.countTotal, u.sizeUsage, nil
+}
+
+func (b *snapshotLimitTestBackend) GetHeadFileSize() (int64, error) {
+	b.headFileCalls++
+	return b.headFileSize, b.headFileErr
+}
+
+func (s *TestSuite) TestCanDoSnapshot_AttemptsRemovalOnlyWhenAllowed(c *C) {
+	const maxCount = 5
+	const attempted = "snapshot count usage 5 reached snapshotMaxCount 5 and removing the oldest snapshot failed: " +
+		"replica 1.1.1.1 is rebuilding, refusing to remove a snapshot"
+	const rejected = "snapshot limit reached: snapshot count usage 5 is equal or larger than snapshotMaxCount 5"
+
+	tests := []struct {
+		name         string
+		removeOldest bool // c.snapshotRemoveOldest
+		allowRemove  bool // allowRemoveOldest argument
+		countUsage   int
+		expectedErr  string
+	}{
+		{"config on, caller allows, at limit: removal attempted", true, true, maxCount, attempted},
+		{"config on, caller forbids, at limit: no removal", true, false, maxCount, rejected},
+		{"config off, caller allows, at limit: no removal", false, true, maxCount, rejected},
+		{"config off, caller forbids, at limit: no removal", false, false, maxCount, rejected},
+		{"both on but below limit: no removal", true, true, maxCount - 1, ""},
+	}
+
+	for _, tt := range tests {
+		backend := &replicator{}
+		backend.AddBackend("test", &snapshotLimitTestBackend{
+			usages: []snapshotUsage{{countUsage: tt.countUsage}},
+		}, types.RW)
+		ctrl := &Controller{
+			VolumeName: "test-removal-attempt",
+			backend:    backend,
+			// The WO replica makes removeOldSnapshotNoLock fail fast, before any RPC.
+			replicas:             []types.Replica{{Address: "1.1.1.1", Mode: types.WO}},
+			snapshotMaxCount:     maxCount,
+			snapshotRemoveOldest: tt.removeOldest,
+		}
+
+		err := ctrl.canDoSnapshot(tt.allowRemove)
+		if tt.expectedErr == "" {
+			c.Assert(err, IsNil, Commentf("Test case: %s", tt.name))
+		} else {
+			c.Assert(err, ErrorMatches, tt.expectedErr, Commentf("Test case: %s", tt.name))
+		}
+	}
+}
+
+func (s *TestSuite) TestRemoveOldSnapshotNoLockWithoutRPC(c *C) {
+	tests := []struct {
+		name        string
+		replicas    []types.Replica
+		expectedErr string
+	}{
+		{"no replicas is a no-op", nil, ""},
+		{"only ERR replicas are skipped", []types.Replica{{Address: "1.1.1.1", Mode: types.ERR}}, ""},
+		{
+			"WO replica refuses removal",
+			[]types.Replica{{Address: "1.1.1.1", Mode: types.WO}},
+			"replica 1.1.1.1 is rebuilding, refusing to remove a snapshot",
+		},
+		{
+			"ERR replica is skipped before reaching a WO replica",
+			[]types.Replica{{Address: "1.1.1.1", Mode: types.ERR}, {Address: "1.1.1.2", Mode: types.WO}},
+			"replica 1.1.1.2 is rebuilding, refusing to remove a snapshot",
+		},
+	}
+
+	for _, tt := range tests {
+		ctrl := &Controller{VolumeName: "test-remove-old", replicas: tt.replicas}
+		err := ctrl.removeOldSnapshotNoLock(5, 0)
+		if tt.expectedErr == "" {
+			c.Assert(err, IsNil, Commentf("Test case: %s", tt.name))
+		} else {
+			c.Assert(err, ErrorMatches, tt.expectedErr, Commentf("Test case: %s", tt.name))
+		}
+	}
+}
