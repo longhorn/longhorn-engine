@@ -64,6 +64,14 @@ def snapshot_purge_status(url):
     output = subprocess.check_output(cmd, encoding='utf-8')
     return json.loads(output)
 
+def set_snapshot_max_count(url, count):
+    cmd = [_bin(), '--url', url, '--debug', 'snapshot-max-count', str(count)]
+    return subprocess.check_output(cmd, encoding='utf-8')
+
+def set_snapshot_remove_oldest(url, enabled):
+    cmd = [_bin(), '--url', url, '--debug', 'snapshot-remove-oldest',
+           '--enable' if enabled else '--disable']
+    return subprocess.check_output(cmd, encoding='utf-8')
 
 def backup_status(url, backupID, replicaAddress):
     output = ""
