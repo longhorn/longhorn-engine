@@ -929,3 +929,89 @@ def wait_for_snap_size_no_less_than_value(controller_addr, snap_name, size):
     assert snap_name in info
     assert int(info[snap_name]["size"]) >= size
     return info
+
+def test_snapshot_remove_oldest_when_max_count_reached(
+        grpc_controller, grpc_replica1, grpc_replica2):  # NOQA
+    """
+    1. Set snapshot max count to 3 and enable snapshot-remove-oldest.
+    2. Create snapshots until the limit is hit.
+    3. Create one more snapshot: it must succeed and the oldest
+       snapshot must be marked removed.
+    4. Purge: the oldest snapshot disappears, data is intact.
+    """
+    address = grpc_controller.address
+    dev = get_dev(grpc_replica1, grpc_replica2, grpc_controller)
+
+    cmd.set_snapshot_max_count(address, 3)          # add wrapper if missing
+    cmd.set_snapshot_remove_oldest(address, True)
+
+    existings = {}
+    snap1 = Snapshot(dev, generate_random_data(existings), address)
+    snap2 = Snapshot(dev, generate_random_data(existings), address)
+
+    # Do not hard-code the exact count at which the limit trips; the
+    # controller counts the head. Keep creating until the first snapshot
+    # gets marked removed, with an upper bound.
+    snaps = [snap1, snap2]
+    for _ in range(3):
+        snaps.append(Snapshot(dev, generate_random_data(existings), address))
+        if cmd.snapshot_info(address)[snap1.name]["removed"]:
+            break
+
+    info = cmd.snapshot_info(address)
+    assert info[snap1.name]["removed"] is True       # oldest was picked
+    assert info[snaps[-1].name]["removed"] is False  # newest is kept
+
+    cmd.snapshot_purge(address)
+    wait_for_purge_completion(address)
+
+    info = cmd.snapshot_info(address)
+    assert snap1.name not in info
+    assert snaps[-1].name in info
+    snaps[-1].verify_checksum()
+    for s in snaps[1:-1]:
+        s.verify_data()
+
+
+def test_snapshot_max_count_without_remove_oldest(
+        grpc_controller, grpc_replica1, grpc_replica2):  # NOQA
+    """Flag off: creating past the limit still fails, nothing is removed."""
+    address = grpc_controller.address
+    dev = get_dev(grpc_replica1, grpc_replica2, grpc_controller)
+
+    cmd.set_snapshot_max_count(address, 3)
+    cmd.set_snapshot_remove_oldest(address, False)
+
+    existings = {}
+    Snapshot(dev, generate_random_data(existings), address)
+    Snapshot(dev, generate_random_data(existings), address)
+
+    with pytest.raises(subprocess.CalledProcessError):
+        Snapshot(dev, generate_random_data(existings), address)
+
+    info = cmd.snapshot_info(address)
+    assert all(not v["removed"] for k, v in info.items() if k != VOLUME_HEAD)
+
+
+def test_snapshot_remove_oldest_skips_snapshot_with_children(
+        grpc_controller, grpc_replica1, grpc_replica2):  # NOQA
+    """
+    Build snap1 -> snap2 -> head, revert to snap1, create snap3 so snap1
+    has two children. snap1 must not be picked as the oldest to remove.
+    """
+    address = grpc_controller.address
+    dev = get_dev(grpc_replica1, grpc_replica2, grpc_controller)
+
+    existings = {}
+    snap1 = Snapshot(dev, generate_random_data(existings), address)
+    Snapshot(dev, generate_random_data(existings), address)
+    snapshot_revert_with_frontend(address, ENGINE_NAME, snap1.name)
+    Snapshot(dev, generate_random_data(existings), address)
+
+    cmd.set_snapshot_max_count(address, 4)
+    cmd.set_snapshot_remove_oldest(address, True)
+
+    Snapshot(dev, generate_random_data(existings), address)
+
+    info = cmd.snapshot_info(address)
+    assert info[snap1.name]["removed"] is False
