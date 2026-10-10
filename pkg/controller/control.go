@@ -546,12 +546,9 @@ func (c *Controller) ListReplicas() []types.Replica {
 
 func (c *Controller) SetReplicaMode(address string, mode types.Mode) error {
 	switch mode {
-	case types.ERR:
+	case types.ERR, types.RW:
 		c.Lock()
 		defer c.Unlock()
-	case types.RW:
-		c.RLock()
-		defer c.RUnlock()
 	default:
 		return fmt.Errorf("cannot set to mode %s", mode)
 	}
