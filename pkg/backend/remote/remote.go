@@ -32,7 +32,7 @@ const (
 )
 
 func New() types.BackendFactory {
-	return &Factory{}
+	return &Factory{connectFn: connect}
 }
 
 type RevisionCounter struct {
@@ -40,6 +40,10 @@ type RevisionCounter struct {
 }
 
 type Factory struct {
+	// connectFn establishes data-plane connections. New() initializes it to
+	// connect(); tests can override it to deterministically inject connection
+	// failures.
+	connectFn func(dataServerProtocol types.DataServerProtocol, address string) (net.Conn, error)
 }
 
 type Remote struct {
@@ -520,9 +524,18 @@ func (rf *Factory) Create(volumeName, address string, dataServerProtocol types.D
 	}
 
 	var conns []net.Conn
+	connectFn := rf.connectFn
+	if connectFn == nil {
+		connectFn = connect
+	}
 	for i := 0; i < NumberOfConnections; i++ {
-		conn, err := connect(dataServerProtocol, dataAddress)
+		conn, err := connectFn(dataServerProtocol, dataAddress)
 		if err != nil {
+			for _, c := range conns {
+				if errClose := c.Close(); errClose != nil {
+					logrus.WithError(errClose).Errorf("Failed to close connection to remote %v", dataAddress)
+				}
+			}
 			return nil, err
 		}
 		conns = append(conns, conn)
@@ -532,6 +545,7 @@ func (rf *Factory) Create(volumeName, address string, dataServerProtocol types.D
 	r.ReaderWriterUnmapperAt = dataConnClient
 
 	if err := r.open(isUpgrade, expectedBackendSize); err != nil {
+		dataConnClient.Close()
 		return nil, err
 	}
 
