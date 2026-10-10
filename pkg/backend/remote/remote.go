@@ -523,6 +523,11 @@ func (rf *Factory) Create(volumeName, address string, dataServerProtocol types.D
 	for i := 0; i < NumberOfConnections; i++ {
 		conn, err := connect(dataServerProtocol, dataAddress)
 		if err != nil {
+			for _, c := range conns {
+				if errClose := c.Close(); errClose != nil {
+					logrus.WithError(errClose).Errorf("Failed to close connection to remote %v", dataAddress)
+				}
+			}
 			return nil, err
 		}
 		conns = append(conns, conn)
@@ -532,6 +537,7 @@ func (rf *Factory) Create(volumeName, address string, dataServerProtocol types.D
 	r.ReaderWriterUnmapperAt = dataConnClient
 
 	if err := r.open(isUpgrade, expectedBackendSize); err != nil {
+		dataConnClient.Close()
 		return nil, err
 	}
 
