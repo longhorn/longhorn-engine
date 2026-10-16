@@ -6,10 +6,13 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	"github.com/cockroachdb/errors"
 	"github.com/sirupsen/logrus"
 	"go.uber.org/multierr"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 
 	"github.com/longhorn/types/pkg/generated/enginerpc"
 
@@ -19,6 +22,13 @@ import (
 
 	replicaClient "github.com/longhorn/longhorn-engine/pkg/replica/client"
 	diskutil "github.com/longhorn/longhorn-engine/pkg/util/disk"
+)
+
+var (
+	replicaStatusMaxAttempts   = 3
+	replicaStatusRetryInterval = 1 * time.Second
+	// A failed attempt that took longer, e.g. until the connect timeout because the replica's node is gone, is not retried.
+	replicaStatusMaxRetryableDuration = 5 * time.Second
 )
 
 type Task struct {
@@ -234,27 +244,12 @@ func (t *Task) PurgeSnapshotStatus() (map[string]*SnapshotPurgeStatus, error) {
 		return nil, err
 	}
 
-	// clean up clients after processing
-	var clients []*replicaClient.ReplicaClient
-	defer func() {
-		for _, client := range clients {
-			_ = client.Close()
-		}
-	}()
-
 	for _, r := range replicas {
 		if r.Mode == types.ERR {
 			continue
 		}
 
-		// We don't know the replica's instanceName, so create a client without it.
-		repClient, err := replicaClient.NewReplicaClient(r.Address, t.client.VolumeName, "")
-		if err != nil {
-			return nil, err
-		}
-		clients = append(clients, repClient)
-
-		status, err := repClient.SnapshotPurgeStatus()
+		status, err := getReplicaStatus(r.Address, t.client.VolumeName, (*replicaClient.ReplicaClient).SnapshotPurgeStatus)
 		if err != nil {
 			replicaStatusMap[r.Address] = &SnapshotPurgeStatus{
 				Error: fmt.Sprintf("failed to get snapshot purge status of %v: %v", r.Address, err),
@@ -270,6 +265,35 @@ func (t *Task) PurgeSnapshotStatus() (map[string]*SnapshotPurgeStatus, error) {
 	}
 
 	return replicaStatusMap, nil
+}
+
+// getReplicaStatus sends a status request to the replica. The callers report a failed request as the replica's
+// error, so a request that fails fast with codes.Unavailable, e.g. on a reset connection, is retried. Each attempt uses
+// a new client, since the connection of the previous one may still be in its reconnect backoff.
+func getReplicaStatus[T any](address, volumeName string, request func(*replicaClient.ReplicaClient) (T, error)) (T, error) {
+	for attempt := 1; ; attempt++ {
+		start := time.Now()
+		resp, err := requestReplicaStatus(address, volumeName, request)
+		if err == nil || attempt >= replicaStatusMaxAttempts || status.Code(err) != codes.Unavailable ||
+			time.Since(start) > replicaStatusMaxRetryableDuration {
+			return resp, err
+		}
+		logrus.WithError(err).Warnf("Retrying status request to replica %v after attempt %v failed", address, attempt)
+		time.Sleep(replicaStatusRetryInterval)
+	}
+}
+
+func requestReplicaStatus[T any](address, volumeName string, request func(*replicaClient.ReplicaClient) (T, error)) (T, error) {
+	// We don't know the replica's instanceName, so create a client without it.
+	repClient, err := replicaClient.NewReplicaClient(address, volumeName, "")
+	if err != nil {
+		var empty T
+		return empty, err
+	}
+	defer func() {
+		_ = repClient.Close()
+	}()
+	return request(repClient)
 }
 
 func (t *Task) isRebuilding(replicaInController *types.ControllerReplicaInfo) (bool, error) {
