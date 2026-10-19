@@ -350,19 +350,22 @@ func (t *Task) RestoreStatus() (map[string]*RestoreStatus, error) {
 		return nil, err
 	}
 
+	var addresses []string
 	for _, replica := range replicas {
-		if replica.Mode == types.ERR {
-			continue
+		if replica.Mode != types.ERR {
+			addresses = append(addresses, replica.Address)
 		}
+	}
 
-		rs, err := getReplicaStatus(replica.Address, t.client.VolumeName, (*replicaClient.ReplicaClient).RestoreStatus)
+	for address, result := range getReplicaStatuses(addresses, t.client.VolumeName, (*replicaClient.ReplicaClient).RestoreStatus) {
+		rs, err := result.resp, result.err
 		if err != nil {
-			replicaStatusMap[replica.Address] = &RestoreStatus{
-				Error: fmt.Sprintf("Failed to get restoring status on %s: %v", replica.Address, err),
+			replicaStatusMap[address] = &RestoreStatus{
+				Error: fmt.Sprintf("Failed to get restoring status on %s: %v", address, err),
 			}
 			continue
 		}
-		replicaStatusMap[replica.Address] = &RestoreStatus{
+		replicaStatusMap[address] = &RestoreStatus{
 			IsRestoring:            rs.IsRestoring,
 			Progress:               int(rs.Progress),
 			Error:                  rs.Error,
