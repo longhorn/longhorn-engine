@@ -244,19 +244,22 @@ func (t *Task) PurgeSnapshotStatus() (map[string]*SnapshotPurgeStatus, error) {
 		return nil, err
 	}
 
+	var addresses []string
 	for _, r := range replicas {
-		if r.Mode == types.ERR {
-			continue
+		if r.Mode != types.ERR {
+			addresses = append(addresses, r.Address)
 		}
+	}
 
-		status, err := getReplicaStatus(r.Address, t.client.VolumeName, (*replicaClient.ReplicaClient).SnapshotPurgeStatus)
+	for address, result := range getReplicaStatuses(addresses, t.client.VolumeName, (*replicaClient.ReplicaClient).SnapshotPurgeStatus) {
+		status, err := result.resp, result.err
 		if err != nil {
-			replicaStatusMap[r.Address] = &SnapshotPurgeStatus{
-				Error: fmt.Sprintf("failed to get snapshot purge status of %v: %v", r.Address, err),
+			replicaStatusMap[address] = &SnapshotPurgeStatus{
+				Error: fmt.Sprintf("failed to get snapshot purge status of %v: %v", address, err),
 			}
 			continue
 		}
-		replicaStatusMap[r.Address] = &SnapshotPurgeStatus{
+		replicaStatusMap[address] = &SnapshotPurgeStatus{
 			Error:     status.Error,
 			IsPurging: status.IsPurging,
 			Progress:  int(status.Progress),
@@ -265,6 +268,31 @@ func (t *Task) PurgeSnapshotStatus() (map[string]*SnapshotPurgeStatus, error) {
 	}
 
 	return replicaStatusMap, nil
+}
+
+type replicaStatusResult[T any] struct {
+	resp T
+	err  error
+}
+
+// getReplicaStatuses sends a status request to each replica in parallel, so a replica that is slow to answer or is
+// retried does not hold up the others.
+func getReplicaStatuses[T any](addresses []string, volumeName string, request func(*replicaClient.ReplicaClient) (T, error)) map[string]replicaStatusResult[T] {
+	results := make(map[string]replicaStatusResult[T], len(addresses))
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+	for _, address := range addresses {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			resp, err := getReplicaStatus(address, volumeName, request)
+			mu.Lock()
+			defer mu.Unlock()
+			results[address] = replicaStatusResult[T]{resp: resp, err: err}
+		}()
+	}
+	wg.Wait()
+	return results
 }
 
 // getReplicaStatus sends a status request to the replica. The callers report a failed request as the replica's
