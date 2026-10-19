@@ -125,20 +125,27 @@ func (l *resetListener) Accept() (net.Conn, error) {
 
 type purgeStatusServer struct {
 	enginerpc.UnimplementedSyncAgentServiceServer
+	delay time.Duration
 }
 
-func (purgeStatusServer) SnapshotPurgeStatus(context.Context, *emptypb.Empty) (*enginerpc.SnapshotPurgeStatusResponse, error) {
+func (s purgeStatusServer) SnapshotPurgeStatus(context.Context, *emptypb.Empty) (*enginerpc.SnapshotPurgeStatusResponse, error) {
+	time.Sleep(s.delay)
 	return &enginerpc.SnapshotPurgeStatusResponse{State: "complete"}, nil
 }
 
 // startSyncAgent starts a sync agent that resets its first n connections and returns the replica's address.
 func startSyncAgent(t *testing.T, n int) string {
+	return startSlowSyncAgent(t, n, 0)
+}
+
+// startSlowSyncAgent is startSyncAgent with a sync agent that takes delay to answer.
+func startSlowSyncAgent(t *testing.T, n int, delay time.Duration) string {
 	l, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		t.Fatal(err)
 	}
 	server := grpc.NewServer()
-	enginerpc.RegisterSyncAgentServiceServer(server, purgeStatusServer{})
+	enginerpc.RegisterSyncAgentServiceServer(server, purgeStatusServer{delay: delay})
 	go func() {
 		_ = server.Serve(&resetListener{Listener: l, n: n})
 	}()
@@ -180,4 +187,39 @@ func TestGetReplicaStatusConnectionReset(t *testing.T) {
 			}
 		}
 	})
+}
+
+func TestGetReplicaStatuses(t *testing.T) {
+	interval := replicaStatusRetryInterval
+	replicaStatusRetryInterval = time.Millisecond
+	defer func() { replicaStatusRetryInterval = interval }()
+
+	l, err := net.Listen("tcp", "127.0.0.1:0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	refused := replicaAddress(l)
+	_ = l.Close()
+
+	const delay = 500 * time.Millisecond
+	slow := []string{startSlowSyncAgent(t, 0, delay), startSlowSyncAgent(t, 1, delay), startSlowSyncAgent(t, 0, delay)}
+
+	start := time.Now()
+	results := getReplicaStatuses(append(slow, refused), "volume", (*replicaClient.ReplicaClient).SnapshotPurgeStatus)
+	// Asked one after the other, the slow replicas alone would take 3 * delay.
+	if elapsed := time.Since(start); elapsed >= 2*delay {
+		t.Errorf("took %v, want less than %v", elapsed, 2*delay)
+	}
+
+	if len(results) != 4 {
+		t.Fatalf("got %d results, want 4", len(results))
+	}
+	for _, address := range slow {
+		if result := results[address]; result.err != nil || result.resp.State != "complete" {
+			t.Errorf("%v: resp, err = %v, %v, want state complete", address, result.resp, result.err)
+		}
+	}
+	if result := results[refused]; status.Code(result.err) != codes.Unavailable {
+		t.Errorf("%v: err = %v, want code Unavailable", refused, result.err)
+	}
 }
