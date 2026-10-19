@@ -93,15 +93,11 @@ func ControllerCmd() *cli.Command {
 				Name:  "snapshot-max-size",
 				Usage: "Maximum total snapshot size in bytes or human readable 42kb, 42mb, 42gb",
 			},
-<<<<<<< HEAD
-			&cli.IntFlag{
-=======
-			cli.BoolFlag{
+			&cli.BoolFlag{
 				Name:  "snapshot-remove-oldest",
 				Usage: "To remove the oldest snapshot when snapshot-max-count is reached",
 			},
-			cli.IntFlag{
->>>>>>> fafbb518 (fix(snapshot): add boilerplate for snapshotRemoveOldest)
+			&cli.IntFlag{
 				Name:  "rebuild-sync-concurrent-limit",
 				Value: types.DefaultRebuildSyncConcurrentLimit,
 				Usage: "Maximum number of concurrent syncing files for one rebuilding",

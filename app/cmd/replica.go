@@ -84,11 +84,11 @@ func ReplicaCmd() *cli.Command {
 				Name:  "snapshot-max-size",
 				Usage: "Maximum total snapshot size in bytes or human readable 42kb, 42mb, 42gb",
 			},
-			cli.BoolFlag{
+			&cli.BoolFlag{
 				Name:  "snapshot-remove-oldest",
 				Usage: "To remove the oldest snapshot when snapshot-max-count is reached",
 			},
-			cli.BoolFlag{
+			&cli.BoolFlag{
 				Name:   "encrypted",
 				Hidden: false,
 				Usage:  "Volume is encrypted",
