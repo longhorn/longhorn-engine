@@ -2,6 +2,7 @@ package workerpool
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"sync/atomic"
 	"time"
@@ -9,20 +10,24 @@ import (
 	"github.com/gammazero/deque"
 )
 
-const (
-	// If workes idle for at least this period of time, then stop a worker.
-	idleTimeout = 2 * time.Second
-)
+var ErrStopped = errors.New("submitting work to stopped workerpool")
 
 // New creates and starts a pool of worker goroutines.
 //
 // The maxWorkers parameter specifies the maximum number of workers that can
 // execute tasks concurrently. When there are no incoming tasks, workers are
 // gradually stopped until there are no remaining workers.
-func New(maxWorkers int) *WorkerPool {
+func New(maxWorkers int, options ...Option) *WorkerPool {
 	// There must be at least one worker.
 	if maxWorkers < 1 {
 		maxWorkers = 1
+	}
+
+	cfg := config{
+		idleTimeout: DefaultIdleTimeout,
+	}
+	for _, opt := range options {
+		opt(&cfg)
 	}
 
 	pool := &WorkerPool{
@@ -34,7 +39,7 @@ func New(maxWorkers int) *WorkerPool {
 	}
 
 	// Start the task dispatcher.
-	go pool.dispatch()
+	go pool.dispatch(cfg.idleTimeout)
 
 	return pool
 }
@@ -85,13 +90,14 @@ func (p *WorkerPool) Stopped() bool {
 	return p.stopped
 }
 
-// Submit enqueues a function for a worker to execute.
+// Do enqueues a function for a worker to execute. Returns ErrStopped if the
+// worker pool is stopped.
 //
 // Any external values needed by the task function must be captured in a
 // closure. Any return values should be returned over a channel that is
 // captured in the task function closure.
 //
-// Submit will not block regardless of the number of tasks submitted. Each task
+// Do will not block regardless of the number of tasks submitted. Each task
 // is immediately given to an available worker or to a newly started worker. If
 // there are no available workers, and the maximum number of workers are
 // already created, then the task is put onto a waiting queue.
@@ -104,22 +110,38 @@ func (p *WorkerPool) Stopped() bool {
 // period until there are no more idle workers. Since the time to start new
 // goroutines is not significant, there is no need to retain idle workers
 // indefinitely.
+func (p *WorkerPool) Do(task func()) (err error) {
+	if task == nil {
+		return
+	}
+	defer func() {
+		if recover() != nil {
+			err = ErrStopped
+		}
+	}()
+	p.taskQueue <- task
+	return
+}
+
+// Submit enqueues the given function without blocking. Panics if the worker
+// pool is stopped.
 func (p *WorkerPool) Submit(task func()) {
-	if task != nil {
-		p.taskQueue <- task
+	if err := p.Do(task); err != nil {
+		panic(err)
 	}
 }
 
-// SubmitWait enqueues the given function and waits for it to be executed.
+// SubmitWait enqueues the given function, without blocking, and waits for it
+// to be executed. Panics if the worker pool is stopped.
 func (p *WorkerPool) SubmitWait(task func()) {
 	if task == nil {
 		return
 	}
 	doneChan := make(chan struct{})
-	p.taskQueue <- func() {
+	p.Submit(func() {
 		task()
 		close(doneChan)
-	}
+	})
 	<-doneChan
 }
 
@@ -149,25 +171,32 @@ func (p *WorkerPool) Pause(ctx context.Context) {
 	ready := new(sync.WaitGroup)
 	ready.Add(p.maxWorkers)
 	for i := 0; i < p.maxWorkers; i++ {
-		p.Submit(func() {
+		p.taskQueue <- func() {
 			ready.Done()
 			select {
 			case <-ctx.Done():
 			case <-p.stopSignal:
 			}
-		})
+		}
 	}
 	// Wait for workers to all be paused
 	ready.Wait()
 }
 
 // dispatch sends the next queued task to an available worker.
-func (p *WorkerPool) dispatch() {
+func (p *WorkerPool) dispatch(idleTimeout time.Duration) {
 	defer close(p.stoppedChan)
-	timeout := time.NewTimer(idleTimeout)
-	var workerCount int
 	var idle bool
+	var idleTO <-chan time.Time
+	var workerCount int
 	var wg sync.WaitGroup
+
+	var timeout *time.Timer
+	if idleTimeout > 0 {
+		timeout = time.NewTimer(idleTimeout)
+		defer timeout.Stop()
+		idleTO = timeout.C
+	}
 
 Loop:
 	for {
@@ -203,7 +232,7 @@ Loop:
 				}
 			}
 			idle = false
-		case <-timeout.C:
+		case <-idleTO:
 			// Timed out waiting for work to arrive. Kill a ready worker if
 			// pool has been idle for a whole timeout.
 			if idle && workerCount > 0 {
@@ -227,8 +256,6 @@ Loop:
 		workerCount--
 	}
 	wg.Wait()
-
-	timeout.Stop()
 }
 
 // worker executes tasks and stops when it receives a nil task.
@@ -261,7 +288,7 @@ func (p *WorkerPool) stop(wait bool) {
 	<-p.stoppedChan
 }
 
-// processWaitingQueue puts new tasks onto the the waiting queue, and removes
+// processWaitingQueue puts new tasks onto the waiting queue, and removes
 // tasks from the waiting queue as workers become available. Returns false if
 // worker pool is stopped.
 func (p *WorkerPool) processWaitingQueue() bool {

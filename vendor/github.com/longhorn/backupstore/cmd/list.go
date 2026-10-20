@@ -1,50 +1,54 @@
 package cmd
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"runtime"
 	"runtime/debug"
 
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v3"
 
 	"github.com/longhorn/backupstore"
 	"github.com/longhorn/backupstore/util"
 )
 
-func BackupListCmd() cli.Command {
-	return cli.Command{
+func BackupListCmd() *cli.Command {
+	return &cli.Command{
 		Name:    "list",
 		Aliases: []string{"ls"},
 		Usage:   "list backups in backupstore: list <dest>",
 		Flags: []cli.Flag{
-			cli.StringFlag{
+			&cli.StringFlag{
 				Name:  "volume",
 				Usage: "volume name",
 			},
-			cli.BoolFlag{
+			&cli.BoolFlag{
 				Name:  "volume-only",
 				Usage: "specify if only need list volumes without backup details",
 			},
 		},
-		Action: cmdBackupList,
+		Action: func(ctx context.Context, c *cli.Command) error {
+			cmdBackupList(c)
+			return nil
+		},
 	}
 }
 
-func cmdBackupList(c *cli.Context) {
+func cmdBackupList(c *cli.Command) {
 	if err := doBackupList(c); err != nil {
 		panic(err)
 	}
 }
 
-func doBackupList(c *cli.Context) error {
+func doBackupList(c *cli.Command) error {
 	var err error
 
 	if c.NArg() == 0 {
 		return RequiredMissingError("dest URL")
 	}
-	destURL := c.Args()[0]
+	destURL := c.Args().First()
 	if destURL == "" {
 		return RequiredMissingError("dest URL")
 	}

@@ -18,6 +18,125 @@ func FindBlockDeviceForMount(mountPath string) (string, error) {
 	return findBlockDeviceForMountWithDeps(mountPath, "/proc/mounts", findBlockDeviceByMajorMinor)
 }
 
+// maxStackedDeviceDepth bounds how many stacked device layers (e.g. LVM on top
+// of dm-crypt, or a partitioned md array) FindBlockDeviceForPath follows.
+const maxStackedDeviceDepth = 8
+
+// Mocked in tests.
+var (
+	sysfsDir = "/sys"
+	statDev  = statDevNumber
+)
+
+// statDevNumber returns the number of the device containing path. The type of
+// Stat_t.Dev differs between platforms, so it is normalized to uint64 here.
+func statDevNumber(path string) (uint64, error) {
+	var st unix.Stat_t
+	if err := unix.Stat(path, &st); err != nil {
+		return 0, err
+	}
+	return uint64(st.Dev), nil // nolint: unconvert // Stat_t.Dev is not uint64 on every platform.
+}
+
+// FindBlockDeviceForPath returns the block device (e.g. /dev/sdb1) backing the
+// filesystem that contains the given path. Unlike FindBlockDeviceForMount, the
+// path does not need to be a mount point: it is resolved through its device
+// number, so it can be any file or directory on the filesystem.
+//
+// A stacked device (e.g. an LVM logical volume or dm-crypt device) is resolved
+// to its underlying device as long as each layer has exactly one. A partition
+// of a stacked device (e.g. /dev/md0p1) is resolved through the device it
+// belongs to, while a partition of a plain disk (e.g. /dev/sda1) is returned
+// as is. The path is looked up in the mount namespace of the calling thread.
+func FindBlockDeviceForPath(path string) (string, error) {
+	dev, err := statDev(path)
+	if err != nil {
+		return "", errors.Wrapf(err, "failed to stat %s", path)
+	}
+
+	major := unix.Major(dev)
+	minor := unix.Minor(dev)
+
+	// /sys/dev/block/<major>:<minor> only exists for real block devices. It is
+	// missing for filesystems without one, such as tmpfs, overlayfs or btrfs.
+	devLink := filepath.Join(sysfsDir, "dev", "block", fmt.Sprintf("%d:%d", major, minor))
+	target, err := os.Readlink(devLink)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", fmt.Errorf("%s is not backed by a block device (device %d:%d)", path, major, minor)
+		}
+		return "", errors.Wrapf(err, "failed to read %s", devLink)
+	}
+
+	name := filepath.Base(target)
+	// Up to maxStackedDeviceDepth stacked layers plus the bottom device.
+	for range maxStackedDeviceDepth + 1 {
+		owner := name
+		slaves, err := readBlockDeviceSlaves(owner)
+		if err != nil {
+			return "", err
+		}
+		if len(slaves) == 0 {
+			// A partition has no slaves of its own; the underlying devices of
+			// e.g. md0p1 are listed under its parent md0.
+			parent, err := blockDevicePartitionParent(name)
+			if err != nil {
+				return "", err
+			}
+			if parent != "" {
+				owner = parent
+				if slaves, err = readBlockDeviceSlaves(owner); err != nil {
+					return "", err
+				}
+			}
+		}
+		if len(slaves) == 0 {
+			// sysfs encodes "/" in device names as "!", e.g. cciss!c0d0p1 for
+			// /dev/cciss/c0d0p1.
+			return "/dev/" + strings.ReplaceAll(name, "!", "/"), nil
+		}
+		if len(slaves) > 1 {
+			return "", fmt.Errorf("%s is on device %s, which spans multiple devices %v", path, owner, slaves)
+		}
+		name = slaves[0]
+	}
+	return "", fmt.Errorf("%s is on a device stacked more than %d levels deep", path, maxStackedDeviceDepth)
+}
+
+// readBlockDeviceSlaves returns the names of the devices underlying the given
+// block device, if any.
+func readBlockDeviceSlaves(name string) ([]string, error) {
+	slavesDir := filepath.Join(sysfsDir, "class", "block", name, "slaves")
+	entries, err := os.ReadDir(slavesDir)
+	if err != nil && !os.IsNotExist(err) {
+		return nil, errors.Wrapf(err, "failed to read %s", slavesDir)
+	}
+	slaves := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		slaves = append(slaves, entry.Name())
+	}
+	return slaves, nil
+}
+
+// blockDevicePartitionParent returns the name of the device containing the
+// given partition, or an empty string if the device is not a partition.
+func blockDevicePartitionParent(name string) (string, error) {
+	devDir := filepath.Join(sysfsDir, "class", "block", name)
+	if _, err := os.Stat(filepath.Join(devDir, "partition")); err != nil {
+		if os.IsNotExist(err) {
+			return "", nil
+		}
+		return "", errors.Wrapf(err, "failed to check whether %s is a partition", name)
+	}
+	// A partition's sysfs directory is nested in its parent's, e.g.
+	// /sys/devices/virtual/block/md0/md0p1.
+	realDir, err := filepath.EvalSymlinks(devDir)
+	if err != nil {
+		return "", errors.Wrapf(err, "failed to resolve %s", devDir)
+	}
+	return filepath.Base(filepath.Dir(realDir)), nil
+}
+
 // findBlockDeviceForMountWithDeps returns the block device associated with a given mount path
 // by reading the specified mounts file.
 //
