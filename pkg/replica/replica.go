@@ -426,6 +426,15 @@ func (r *Replica) ReplaceDisk(target, source string) error {
 		return fmt.Errorf("cannot replace the active differencing disk")
 	}
 
+	// The target disk content will be replaced (e.g. the source is the parent disk coalesced with
+	// the target during snapshot purge), so the checksum recorded for the old target disk becomes stale.
+	// Remove it to prevent it from being trusted or propagated to other replicas during rebuilding.
+	targetChecksumPath := r.diskPath(target + diskutil.DiskChecksumSuffix)
+	logrus.Infof("Removing stale disk checksum file %v", targetChecksumPath)
+	if err := os.RemoveAll(targetChecksumPath); err != nil {
+		return errors.Wrapf(err, "failed to remove stale disk checksum file %v", targetChecksumPath)
+	}
+
 	if err := r.hardlinkDisk(target, source); err != nil {
 		return err
 	}
