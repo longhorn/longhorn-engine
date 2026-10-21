@@ -143,8 +143,6 @@ github.com/longhorn/go-iscsi-helper v0.0.0-20261012034506-35fee3c307ac h1:OtddAH
 github.com/longhorn/go-iscsi-helper v0.0.0-20261012034506-35fee3c307ac/go.mod h1:tx8IHeQXisTCpcg9gB4S+P8rPifC1D98qpWcDwI19tU=
 github.com/longhorn/sparse-tools v0.0.0-20260423074222-280e61de741a h1:xb71oeVPI7XZymAAG8ts5deC8s40dnX5IgxTYAB/qnk=
 github.com/longhorn/sparse-tools v0.0.0-20260423074222-280e61de741a/go.mod h1:d8l9nyC8No3PIfYHwZunnBj88y5M4sDM+h6uZyTtaNk=
-github.com/longhorn/types v0.0.0-20260930155107-5849431731c3 h1:U5PUbPnjKEn0UqVU+S39vRkHj0b3G7Y4yoTcYeTazns=
-github.com/longhorn/types v0.0.0-20260930155107-5849431731c3/go.mod h1:t09pWhpJbufsg5yoZWyNif15QWp/5WQrTyEa3mEQfS4=
 github.com/mattn/go-colorable v0.1.13 h1:fFA4WZxdEF4tXPZVKMLwD8oUnCTTo08duU7wxecdEvA=
 github.com/mattn/go-colorable v0.1.13/go.mod h1:7S9/ev0klgBDR4GtXTXX8a3vIGJpMovkB8vQcUbaXHg=
 github.com/mattn/go-isatty v0.0.16/go.mod h1:kYGgaQfpe5nmfYZH+SKPsOc2e4SrIfOl2e/yFXSvRLM=

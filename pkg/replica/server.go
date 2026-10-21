@@ -24,11 +24,12 @@ type Server struct {
 	unmapMarkDiskChainRemoved bool
 	snapshotMaxCount          int
 	snapshotMaxSize           int64
+	snapshotRemoveOldest      bool
 	encrypted                 bool
 }
 
 func NewServer(ctx context.Context, dir string, backing *backingfile.BackingFile, sectorSize int64, disableRevCounter, unmapMarkDiskChainRemoved bool,
-	snapshotMaxCount int, snapshotMaxSize int64, encrypted bool, volumeName string) *Server {
+	snapshotMaxCount int, snapshotMaxSize int64, snapshotRemoveOldest, encrypted bool, volumeName string) *Server {
 	return &Server{
 		ctx:                       ctx,
 		dir:                       dir,
@@ -39,6 +40,7 @@ func NewServer(ctx context.Context, dir string, backing *backingfile.BackingFile
 		unmapMarkDiskChainRemoved: unmapMarkDiskChainRemoved,
 		snapshotMaxCount:          snapshotMaxCount,
 		snapshotMaxSize:           snapshotMaxSize,
+		snapshotRemoveOldest:      snapshotRemoveOldest,
 		encrypted:                 encrypted,
 	}
 }
@@ -224,6 +226,16 @@ func (s *Server) SetSnapshotMaxSize(size int64) {
 	s.snapshotMaxSize = size
 	if s.r != nil {
 		s.r.SetSnapshotMaxSize(size)
+	}
+}
+
+func (s *Server) SetSnapshotRemoveOldest(enabled bool) {
+	s.Lock()
+	defer s.Unlock()
+
+	s.snapshotRemoveOldest = enabled
+	if s.r != nil {
+		s.r.SetSnapshotRemoveOldest(enabled)
 	}
 }
 

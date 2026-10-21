@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strconv"
 
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v3"
@@ -57,6 +58,38 @@ func UnmapMarkSnapChainRemovedCmd() *cli.Command {
 		Action: func(ctx context.Context, c *cli.Command) error {
 			if err := unmapMarkSnapChainRemoved(c); err != nil {
 				logrus.Fatalf("Error running unmap-mark-snap-chain-removed command: %v", err)
+				return err
+			}
+			return nil
+		},
+	}
+}
+
+func SnapshotMaxCountCmd() *cli.Command {
+	return &cli.Command{
+		Name:  "snapshot-max-count",
+		Usage: "snapshot-max-count <count>: set the maximum number of snapshots of the volume",
+		Action: func(ctx context.Context, c *cli.Command) error {
+			if err := setSnapshotMaxCount(c); err != nil {
+				logrus.WithError(err).Fatalf("Error running snapshot-max-count command")
+				return err
+			}
+			return nil
+		},
+	}
+}
+
+func SnapshotRemoveOldestCmd() *cli.Command {
+	return &cli.Command{
+		Name: "snapshot-remove-oldest",
+		Flags: []cli.Flag{
+			&cli.BoolFlag{Name: "enable"},
+			&cli.BoolFlag{Name: "disable"},
+		},
+		Usage: "Enable or disable removing the oldest snapshot when the snapshot limit blocks a snapshot",
+		Action: func(ctx context.Context, c *cli.Command) error {
+			if err := setSnapshotRemoveOldest(c); err != nil {
+				logrus.WithError(err).Fatalf("Error running snapshot-remove-oldest command")
 				return err
 			}
 			return nil
@@ -196,4 +229,38 @@ func unmapMarkSnapChainRemoved(c *cli.Command) error {
 	}()
 
 	return controllerClient.VolumeUnmapMarkSnapChainRemovedSet(enabled)
+}
+
+func setSnapshotMaxCount(c *cli.Command) error {
+	count, err := strconv.Atoi(c.Args().First())
+	if err != nil {
+		return fmt.Errorf("invalid snapshot max count %q: %w", c.Args().First(), err)
+	}
+	controllerClient, err := getControllerClient(c)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if errClose := controllerClient.Close(); errClose != nil {
+			logrus.WithError(errClose).Error("Failed to close controller client")
+		}
+	}()
+	return controllerClient.VolumeSnapshotMaxCountSet(count)
+}
+
+func setSnapshotRemoveOldest(c *cli.Command) error {
+	enabled, disabled := c.Bool("enable"), c.Bool("disable")
+	if enabled == disabled {
+		return fmt.Errorf("specify exactly one of --enable or --disable")
+	}
+	controllerClient, err := getControllerClient(c)
+	if err != nil {
+		return err
+	}
+	defer func() {
+		if errClose := controllerClient.Close(); errClose != nil {
+			logrus.WithError(errClose).Error("Failed to close controller client")
+		}
+	}()
+	return controllerClient.VolumeSnapshotRemoveOldestSet(enabled)
 }

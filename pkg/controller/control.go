@@ -5,6 +5,8 @@ import (
 	"net"
 	"os"
 	"regexp"
+	"slices"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -45,9 +47,10 @@ type Controller struct {
 
 	unmapMarkSnapChainRemoved bool
 
-	snapshotFreezeLock sync.Mutex
-	snapshotMaxCount   int
-	SnapshotMaxSize    int64
+	snapshotFreezeLock   sync.Mutex
+	snapshotMaxCount     int
+	SnapshotMaxSize      int64
+	snapshotRemoveOldest bool
 
 	// frontendLifecycleLock serializes frontend start/shutdown flows, replica
 	// addition/removal, and expansion start while the controller lock is released
@@ -80,10 +83,12 @@ const (
 	lastModifyCheckPeriod = 5 * time.Second
 )
 
+var errSnapshotLimitReached = errors.New("snapshot limit reached")
+
 func NewController(name string, factory types.BackendFactory, frontend types.Frontend, isUpgrade, disableRevCounter,
 	salvageRequested, unmapMarkSnapChainRemoved bool, iscsiTargetRequestTimeout, engineReplicaTimeoutShort,
 	engineReplicaTimeoutLong time.Duration, dataServerProtocol types.DataServerProtocol, fileSyncHTTPClientTimeout,
-	snapshotMaxCount int, snapshotMaxSize int64, rebuildSyncConcurrentLimit int) *Controller {
+	snapshotMaxCount int, snapshotMaxSize int64, snapshotRemoveOldest bool, rebuildSyncConcurrentLimit int) *Controller {
 	c := &Controller{
 		factory:       factory,
 		VolumeName:    name,
@@ -97,6 +102,7 @@ func NewController(name string, factory types.BackendFactory, frontend types.Fro
 		unmapMarkSnapChainRemoved: unmapMarkSnapChainRemoved,
 		snapshotMaxCount:          snapshotMaxCount,
 		SnapshotMaxSize:           snapshotMaxSize,
+		snapshotRemoveOldest:      snapshotRemoveOldest,
 
 		rebuildSyncConcurrentLimit: rebuildSyncConcurrentLimit,
 
@@ -217,7 +223,7 @@ func (c *Controller) addReplica(address string, snapshotRequired, creatingReplic
 	return c.addReplicaNoLock(newBackend, address, snapshotRequired, mode)
 }
 
-// If shouldFreeze, Snapshot attempts to freeze the mounted filesystem on the volume's root partition. If it fails to
+// Snapshot attempts to freeze the mounted filesystem on the volume's root partition if shouldFreeze. If it fails to
 // do so, Snapshot attempts to clean up and returns an error. If not shouldFreeze or if a mounted filesystem is not
 // detected on the volume's root partition, Snapshot does a best effort sync and takes a snapshot.
 func (c *Controller) Snapshot(inputName string, labels map[string]string, shouldFreeze bool) (name string, err error) {
@@ -239,7 +245,13 @@ func (c *Controller) Snapshot(inputName string, labels map[string]string, should
 	var endpoint string
 	c.RLock()
 	// Check now to avoid freezing or syncing unnecessarily. Also check again later as originally designed.
-	err = c.canDoSnapshot()
+	// false: pre-check under RLock before freeze/sync must not perform any snapshot deletion.
+	err = c.canDoSnapshot(false)
+	if err != nil && c.snapshotRemoveOldest && errors.Is(err, errSnapshotLimitReached) {
+		// Limit reached, but with "c.snapshotRemoveOldest == true", canDoSnapshot under the
+		// write lock (at line ~315) is allowed to make room, so don't reject the request here.
+		err = nil
+	}
 	if c.frontend != nil && c.frontend.FrontendName() == types.EngineFrontendBlockDev {
 		// It is meaningless to try to freeze filesystems for a tgt-iscsi endpoint.
 		endpoint = c.Endpoint()
@@ -300,7 +312,7 @@ func (c *Controller) Snapshot(inputName string, labels map[string]string, should
 
 	c.Lock()
 	defer c.Unlock()
-	if err = c.canDoSnapshot(); err != nil {
+	if err = c.canDoSnapshot(true); err != nil {
 		return "", err
 	}
 
@@ -312,13 +324,29 @@ func (c *Controller) Snapshot(inputName string, labels map[string]string, should
 	return name, nil
 }
 
-func (c *Controller) canDoSnapshot() error {
+// canDoSnapshot checks that a new snapshot fits within snapshotMaxCount and
+// SnapshotMaxSize. When the limits are hit and both snapshotRemoveOldest and
+// allowRemoveOldest are set, it removes old snapshots first and re-checks.
+func (c *Controller) canDoSnapshot(allowRemoveOldest bool) error {
 	countUsage, countTotal, sizeUsage, err := c.backend.GetSnapshotCountAndSizeUsage()
 	if err != nil {
 		return err
 	}
 	if countUsage >= c.snapshotMaxCount {
-		return fmt.Errorf("snapshot count usage %d is equal or larger than snapshotMaxCount %d", countUsage, c.snapshotMaxCount)
+		if !c.snapshotRemoveOldest || !allowRemoveOldest {
+			return fmt.Errorf("%w: snapshot count usage %d is equal or larger than snapshotMaxCount %d", errSnapshotLimitReached, countUsage, c.snapshotMaxCount)
+		}
+		if err := c.removeOldSnapshotNoLock(countUsage, sizeUsage); err != nil {
+			return fmt.Errorf("snapshot count usage %d reached snapshotMaxCount %d and removing the oldest snapshot failed: %v", countUsage, c.snapshotMaxCount, err)
+		}
+		// The removal changed the numbers, so re-read them before the checks below.
+		countUsage, countTotal, sizeUsage, err = c.backend.GetSnapshotCountAndSizeUsage()
+		if err != nil {
+			return err
+		}
+		if countUsage >= c.snapshotMaxCount {
+			return fmt.Errorf("snapshot count usage %d is still >= snapshotMaxCount %d after removing the oldest snapshot", countUsage, c.snapshotMaxCount)
+		}
 	}
 	if countTotal >= types.MaximumTotalSnapshotCount {
 		return fmt.Errorf("snapshot count total is already too big: %v", countTotal)
@@ -337,6 +365,101 @@ func (c *Controller) canDoSnapshot() error {
 		return fmt.Errorf("snapshot free space %d is not enough for head file %d", remainSize, headFileSize)
 	}
 	return nil
+}
+
+// removeOldSnapshotNoLock picks the oldest snapshots to delete so that a new
+// snapshot fits, and removes them from all RW replicas. The caller must hold
+// the controller lock. It fails if any replica is rebuilding, if RW replicas
+// have different chains, or if no snapshot can be removed.
+func (c *Controller) removeOldSnapshotNoLock(countUsage int, sizeUsage int64) error {
+	var rwAddresses []string
+	var removeSnaps []string
+	for _, replica := range c.replicas {
+		switch replica.Mode {
+		case types.WO:
+			return fmt.Errorf("replica %v is rebuilding, refusing to remove a snapshot", replica.Address)
+		case types.RW:
+		default:
+			continue
+		}
+
+		disks, repChain, err := GetReplicaDisksAndChain(replica.Address, c.VolumeName, "")
+		if err != nil {
+			return fmt.Errorf("failed to get replica disks and chain for %s: %v", replica.Address, err)
+		}
+
+		removeSnapsTemp, err := c.listRemovableSnapshots(disks, repChain, countUsage, sizeUsage)
+		if err != nil {
+			return fmt.Errorf("failed to list removable snapshots for %s: %v", replica.Address, err)
+		}
+
+		if len(rwAddresses) > 0 && !slices.Equal(removeSnaps, removeSnapsTemp) {
+			return fmt.Errorf("replicas disagree on the snapshots to be removed: snapshot diff: %v/%v", removeSnaps, removeSnapsTemp)
+		}
+		removeSnaps = removeSnapsTemp
+		rwAddresses = append(rwAddresses, replica.Address)
+	}
+
+	for _, diskName := range removeSnaps {
+		snapshotName, err := diskutil.GetSnapshotNameFromDiskName(diskName)
+		if err != nil {
+			return fmt.Errorf("failed to get snapshot name from disk %s: %w", diskName, err)
+		}
+		logrus.Warnf("Removing snapshot %v of volume %v to make room", snapshotName, c.VolumeName)
+		for _, address := range rwAddresses {
+			if err := markSnapshotRemovedOnReplica(address, c.VolumeName, "", snapshotName); err != nil {
+				return err
+			}
+		}
+	}
+	return nil
+}
+
+// listRemovableSnapshots returns the oldest-first snapshots to remove from one
+// replica's chain until a new snapshot fits within the count and size limits.
+// repChain is newest-to-oldest with the head at index 0, which is never
+// removed. It returns an error if the limits still can't be met after removing every eligible snapshot.
+func (c *Controller) listRemovableSnapshots(disks map[string]types.DiskInfo, repChain []string, countUsage int, sizeUsage int64) ([]string, error) {
+	if len(repChain) == 0 {
+		return nil, fmt.Errorf("empty replica chain")
+	}
+	headSize, err := c.backend.GetHeadFileSize()
+	if err != nil {
+		return nil, fmt.Errorf("failed to get head file size: %v", err)
+	}
+
+	// After the new snapshot: count+1(head) must be < maxCount, size+headSize <= maxSize.
+	fits := func(count int, size int64) bool {
+		return count < c.snapshotMaxCount && (c.SnapshotMaxSize == 0 || size+headSize <= c.SnapshotMaxSize)
+	}
+
+	var removable []string
+	count, size := countUsage, sizeUsage
+
+	for i := len(repChain) - 1; i > 0 && !fits(count, size); i-- {
+		name := repChain[i]
+		if info, exists := disks[repChain[i]]; exists {
+			// TODO: Should we remove the snapshots with children, or skip such snapshot deletions?
+			// For now, skipping the deletion of snapshot with children.
+			if len(info.Children) > 1 {
+				continue
+			}
+			snapSize, err := strconv.ParseInt(info.Size, 10, 64)
+			if err != nil {
+				return nil, fmt.Errorf("failed to parse disk size for replica %v: %v", name, err)
+			}
+			count--
+			size -= snapSize
+			removable = append(removable, name)
+		}
+	}
+
+	if !fits(count, size) {
+		return nil, fmt.Errorf("removing %d snapshots would not leave room for a new one (count %d/%d, size %d/%d)",
+			len(removable), count, c.snapshotMaxCount, size+headSize, c.SnapshotMaxSize)
+	}
+
+	return removable, nil
 }
 
 func (c *Controller) Expand(size int64) error {
@@ -377,7 +500,8 @@ func (c *Controller) Expand(size int64) error {
 		// Should block R/W during the expansion.
 		c.Lock()
 		defer c.Unlock()
-		if err := c.canDoSnapshot(); err != nil {
+		// false: expansion is only a limit pre-check and must not delete snapshots as a side effect.
+		if err := c.canDoSnapshot(false); err != nil {
 			log.WithError(err).Error("Cannot get remain snapshot count before expansion")
 			return
 		}
@@ -495,7 +619,9 @@ func (c *Controller) addReplicaNoLock(newBackend types.Backend, address string, 
 
 		// if there is no replica, we don't need to check whether remaining replica can do snapshot
 		if len(c.backend.backends) != 0 {
-			if err := c.canDoSnapshot(); err != nil {
+			// rebuild needs a snapshot, so allow removing the oldest one
+			// (safe, c.Lock() is held by all current callers of addReplicaNoLock).
+			if err := c.canDoSnapshot(true); err != nil {
 				return err
 			}
 		}
@@ -934,6 +1060,20 @@ func (c *Controller) GetSnapshotMaxSize() int64 {
 	c.RLock()
 	defer c.RUnlock()
 	return c.SnapshotMaxSize
+}
+
+func (c *Controller) SetSnapshotRemoveOldest(enabled bool) error {
+	c.Lock()
+	defer c.Unlock()
+
+	c.snapshotRemoveOldest = enabled
+	return nil
+}
+
+func (c *Controller) GetSnapshotRemoveOldest() bool {
+	c.RLock()
+	defer c.RUnlock()
+	return c.snapshotRemoveOldest
 }
 
 func isReplicaInInvalidState(state string) bool {

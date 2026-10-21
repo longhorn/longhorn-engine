@@ -206,6 +206,14 @@ func (cs *ControllerServer) VolumeSnapshotMaxSizeSet(ctx context.Context, req *e
 	return cs.getVolume(), nil
 }
 
+func (cs *ControllerServer) VolumeSnapshotRemoveOldestSet(ctx context.Context, req *enginerpc.VolumeSnapshotRemoveOldestSetRequest) (*enginerpc.Volume, error) {
+	if err := cs.c.SetSnapshotRemoveOldest(req.Enabled); err != nil {
+		return nil, err
+	}
+
+	return cs.getVolume(), nil
+}
+
 func (cs *ControllerServer) ReplicaList(ctx context.Context, req *emptypb.Empty) (*enginerpc.ReplicaListReply, error) {
 	return &enginerpc.ReplicaListReply{
 		Replicas: cs.listControllerReplica(),
