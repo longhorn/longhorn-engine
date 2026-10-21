@@ -699,6 +699,55 @@ func (s *TestSuite) TestRemoveFirst(c *C) {
 	c.Assert(err, NotNil)
 }
 
+func (s *TestSuite) TestReplaceDiskRemovesStaleChecksum(c *C) {
+	dir, err := os.MkdirTemp("", "replica")
+	c.Assert(err, IsNil)
+	defer func() {
+		errRemove := os.RemoveAll(dir)
+		c.Assert(errRemove, IsNil)
+	}()
+
+	r, err := New(context.Background(), 9, 3, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, 9, "")
+	c.Assert(err, IsNil)
+	defer func() {
+		errClose := r.Close()
+		c.Assert(errClose, IsNil)
+	}()
+
+	now := getNow()
+	err = r.Snapshot("000", true, now, nil)
+	c.Assert(err, IsNil)
+
+	err = r.Snapshot("001", true, now, nil)
+	c.Assert(err, IsNil)
+
+	parentChecksum := path.Join(dir, "volume-snap-000.img"+diskutil.DiskChecksumSuffix)
+	childChecksum := path.Join(dir, "volume-snap-001.img"+diskutil.DiskChecksumSuffix)
+	for _, checksumFile := range []string{parentChecksum, childChecksum} {
+		err = os.WriteFile(checksumFile, []byte(`{"method":"crc64","checksum":"17f13af45475f134"}`), 0644)
+		c.Assert(err, IsNil)
+	}
+
+	// Simulate the snapshot purge: the parent is coalesced with the child, then replaces the child.
+	err = r.ReplaceDisk("volume-snap-001.img", "volume-snap-000.img")
+	c.Assert(err, IsNil)
+
+	c.Assert(len(r.activeDiskData), Equals, 3)
+	c.Assert(r.activeDiskData[1].Name, Equals, "volume-snap-001.img")
+	c.Assert(r.activeDiskData[1].Parent, Equals, "")
+
+	_, err = os.Stat(path.Join(dir, "volume-snap-001.img"))
+	c.Assert(err, IsNil)
+	_, err = os.Stat(path.Join(dir, "volume-snap-000.img"))
+	c.Assert(os.IsNotExist(err), Equals, true)
+
+	// The checksum recorded for the replaced child disk is stale, and must be removed
+	_, err = os.Stat(childChecksum)
+	c.Assert(os.IsNotExist(err), Equals, true)
+	_, err = os.Stat(parentChecksum)
+	c.Assert(os.IsNotExist(err), Equals, true)
+}
+
 func (s *TestSuite) TestRemoveOutOfChain(c *C) {
 	dir, err := os.MkdirTemp("", "replica")
 	c.Assert(err, IsNil)
