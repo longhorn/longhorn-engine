@@ -146,6 +146,7 @@ func (server *SyncServer) close(writer http.ResponseWriter, request *http.Reques
 		_ = server.fileIo.Close()
 	}
 
+	checksumFilePath := server.filePath + types.DiskChecksumSuffix
 	if checksumMethod != "" && checksum != "" {
 		changeTime, err := util.GetFileChangeTime(server.filePath)
 		if err == nil {
@@ -155,11 +156,22 @@ func (server *SyncServer) close(writer http.ResponseWriter, request *http.Reques
 				ChangeTime: changeTime,
 			}
 
-			err = util.SetSnapshotHashInfoToChecksumFile(server.filePath+".checksum", info)
+			err = util.SetSnapshotHashInfoToChecksumFile(checksumFilePath, info)
 		}
 
 		if err != nil {
 			log.WithError(err).Warnf("Failed to set snapshot hash info to checksum file %v", server.filePath)
+			// Do not leave a checksum file that may not match the received file content.
+			if removeErr := os.RemoveAll(checksumFilePath); removeErr != nil {
+				log.WithError(removeErr).Warnf("Failed to remove checksum file %v", checksumFilePath)
+			}
+		}
+	} else if server.fileIo != nil {
+		// The client does not provide a valid checksum for the received file (e.g. the checksum
+		// of the source file is stale or the sync failed), so the existing checksum file no longer
+		// describes the file content and must be removed.
+		if err := os.RemoveAll(checksumFilePath); err != nil {
+			log.WithError(err).Warnf("Failed to remove stale checksum file %v", checksumFilePath)
 		}
 	}
 
