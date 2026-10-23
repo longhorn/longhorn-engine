@@ -2,7 +2,7 @@ module github.com/longhorn/longhorn-engine
 
 go 1.26.0
 
-replace github.com/longhorn/types => github.com/longhorn/types v0.0.0-20260408014255-ff785625245f
+replace github.com/longhorn/types => github.com/longhorn/types v0.0.0-20260930155107-5849431731c3
 
 require (
 	github.com/cockroachdb/errors v1.14.0
