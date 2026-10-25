@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1.28.0@sha256:bb22d9815c728170f72750f4e5b0d672e06176142e1d602c7e66c050100b7e5b
-FROM golangci/golangci-lint:v2.14.0@sha256:ad862ba6b3798cbe0fd9fd7408d498fd74fbd2623a92406b2fd3898faf0bf98f AS golangci-lint
+FROM golangci/golangci-lint:v2.15.0@sha256:fbfcfd12a6f8d7f1b97b3362ca80fc2a244d46863148c73cb88e7793af96c481 AS golangci-lint
 
-FROM registry.suse.com/bci/golang:1.26@sha256:f6f04957fbc16399c76b1e8266cc7d0f3b4a5434b824fb251d7e3ae559d6a910 AS base
+FROM registry.suse.com/bci/golang:1.27@sha256:634cd6f1e373bcde01a1f8df6d1c3a9784142353a0842b5371d6385b4e9d2abb AS base
 
 ARG TARGETARCH
 ARG SRC_BRANCH=master
