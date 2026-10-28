@@ -3,6 +3,7 @@ package replica
 import (
 	"context"
 	"crypto/md5"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -198,6 +199,164 @@ func (s *TestSuite) TestSnapshot(c *C) {
 	c.Assert(len(disks["volume-head-002.img"].Children), Equals, 0)
 	c.Assert(disks["volume-head-002.img"].Created, Equals, createdTime1)
 	c.Assert(disks["volume-head-002.img"].Size, Equals, "0")
+}
+
+func (s *TestSuite) TestSnapshotDiskMetaName(c *C) {
+	dir, err := os.MkdirTemp("", "replica")
+	c.Assert(err, IsNil)
+	defer func() {
+		errRemove := os.RemoveAll(dir)
+		c.Assert(errRemove, IsNil)
+	}()
+
+	r, err := New(context.Background(), 9, 3, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, 9, "")
+	c.Assert(err, IsNil)
+	defer func() {
+		errClose := r.Close()
+		c.Assert(errClose, IsNil)
+	}()
+
+	err = r.Snapshot("000", true, getNow(), nil)
+	c.Assert(err, IsNil)
+	err = r.Snapshot("001", false, getNow(), nil)
+	c.Assert(err, IsNil)
+
+	sourceHeads := map[string]string{
+		"volume-snap-000.img": "volume-head-000.img",
+		"volume-snap-001.img": "volume-head-001.img",
+		"volume-head-002.img": "",
+	}
+	for name, sourceHead := range sourceHeads {
+		c.Assert(r.diskData[name].Name, Equals, name)
+		c.Assert(r.diskData[name].SourceHead, Equals, sourceHead)
+
+		var d disk
+		err = r.unmarshalFile(name+diskutil.DiskMetadataSuffix, &d)
+		c.Assert(err, IsNil)
+		c.Assert(d.Name, Equals, name)
+		c.Assert(d.SourceHead, Equals, sourceHead)
+	}
+}
+
+func (s *TestSuite) TestSnapshotDiskMetaEmptySourceHead(c *C) {
+	dir, err := os.MkdirTemp("", "replica")
+	c.Assert(err, IsNil)
+	defer func() {
+		errRemove := os.RemoveAll(dir)
+		c.Assert(errRemove, IsNil)
+	}()
+
+	r, err := New(context.Background(), 9, 3, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, 9, "")
+	c.Assert(err, IsNil)
+
+	err = r.Snapshot("000", true, getNow(), nil)
+	c.Assert(err, IsNil)
+	err = r.Snapshot("001", false, getNow(), nil)
+	c.Assert(err, IsNil)
+	head := r.info.Head
+	c.Assert(head, Equals, "volume-head-002.img")
+
+	// The head has no source head, so its meta file must not carry the field at all
+	headMeta := map[string]interface{}{}
+	err = r.unmarshalFile(head+diskutil.DiskMetadataSuffix, &headMeta)
+	c.Assert(err, IsNil)
+	_, exists := headMeta["SourceHead"]
+	c.Assert(exists, Equals, false)
+
+	// Meta files written before SourceHead existed do not have the field. Rewrite a snapshot's
+	// meta file in that format and make sure it loads with an empty SourceHead.
+	legacy := "volume-snap-000.img"
+	legacyMeta := map[string]interface{}{}
+	err = r.unmarshalFile(legacy+diskutil.DiskMetadataSuffix, &legacyMeta)
+	c.Assert(err, IsNil)
+	c.Assert(legacyMeta["SourceHead"], Equals, "volume-head-000.img")
+	delete(legacyMeta, "SourceHead")
+
+	err = r.Close()
+	c.Assert(err, IsNil)
+	data, err := json.Marshal(legacyMeta)
+	c.Assert(err, IsNil)
+	err = os.WriteFile(r.diskPath(legacy+diskutil.DiskMetadataSuffix), data, 0644)
+	c.Assert(err, IsNil)
+
+	r, err = New(context.Background(), 9, 3, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, 9, "")
+	c.Assert(err, IsNil)
+	defer func() {
+		errClose := r.Close()
+		c.Assert(errClose, IsNil)
+	}()
+
+	c.Assert(r.info.Head, Equals, head)
+	c.Assert(r.diskData[legacy].Name, Equals, legacy)
+	c.Assert(r.diskData[legacy].SourceHead, Equals, "")
+	c.Assert(r.diskData["volume-snap-001.img"].SourceHead, Equals, "volume-head-001.img")
+	c.Assert(r.diskData[head].SourceHead, Equals, "")
+}
+
+func (s *TestSuite) TestSnapshotMetaWriteFailureRollback(c *C) {
+	dir, err := os.MkdirTemp("", "replica")
+	c.Assert(err, IsNil)
+	defer func() {
+		errRemove := os.RemoveAll(dir)
+		c.Assert(errRemove, IsNil)
+	}()
+
+	r, err := New(context.Background(), 9, 3, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, 9, "")
+	c.Assert(err, IsNil)
+	defer func() {
+		errClose := r.Close()
+		c.Assert(errClose, IsNil)
+	}()
+
+	err = r.Snapshot("000", true, getNow(), nil)
+	c.Assert(err, IsNil)
+	head := r.info.Head
+	c.Assert(head, Equals, "volume-head-001.img")
+	headDisk := *r.diskData[head]
+
+	// encodeToFile() writes <file>.tmp first; a directory in its place makes the snapshot meta write fail
+	failedSnap := "volume-snap-001.img"
+	err = os.Mkdir(r.diskPath(failedSnap+diskutil.DiskMetadataSuffix+tmpFileSuffix), 0755)
+	c.Assert(err, IsNil)
+
+	err = r.Snapshot("001", true, getNow(), map[string]string{"key": "value"})
+	c.Assert(err, ErrorMatches, "(?s).*failed to create the tmp file.*")
+
+	// The head must be left exactly as it was before the failed snapshot
+	c.Assert(r.info.Head, Equals, head)
+	c.Assert(*r.diskData[head], DeepEquals, headDisk)
+	c.Assert(r.activeDiskData[len(r.activeDiskData)-1].Name, Equals, head)
+	_, exists := r.diskData[failedSnap]
+	c.Assert(exists, Equals, false)
+	_, err = os.Stat(r.diskPath(failedSnap))
+	c.Assert(os.IsNotExist(err), Equals, true)
+	_, err = os.Stat(r.diskPath(failedSnap + diskutil.DiskMetadataSuffix))
+	c.Assert(os.IsNotExist(err), Equals, true)
+
+	disks := r.ListDisks()
+	c.Assert(len(disks), Equals, 2)
+	c.Assert(disks[head].Parent, Equals, "volume-snap-000.img")
+	c.Assert(len(disks["volume-snap-000.img"].Children), Equals, 1)
+	c.Assert(disks["volume-snap-000.img"].Children[head], Equals, true)
+
+	// The next snapshot succeeds and every meta file carries its own name and source head
+	err = r.Snapshot("002", false, getNow(), nil)
+	c.Assert(err, IsNil)
+	sourceHeads := map[string]string{
+		"volume-snap-000.img": "volume-head-000.img",
+		"volume-snap-002.img": "volume-head-001.img",
+		"volume-head-002.img": "",
+	}
+	for name, sourceHead := range sourceHeads {
+		c.Assert(r.diskData[name].Name, Equals, name)
+		c.Assert(r.diskData[name].SourceHead, Equals, sourceHead)
+
+		var d disk
+		err = r.unmarshalFile(name+diskutil.DiskMetadataSuffix, &d)
+		c.Assert(err, IsNil)
+		c.Assert(d.Name, Equals, name)
+		c.Assert(d.SourceHead, Equals, sourceHead)
+	}
 }
 
 func (s *TestSuite) TestRevert(c *C) {
@@ -538,6 +697,55 @@ func (s *TestSuite) TestRemoveFirst(c *C) {
 
 	err = r.RemoveDiffDisk("volume-head-002.img", false)
 	c.Assert(err, NotNil)
+}
+
+func (s *TestSuite) TestReplaceDiskRemovesStaleChecksum(c *C) {
+	dir, err := os.MkdirTemp("", "replica")
+	c.Assert(err, IsNil)
+	defer func() {
+		errRemove := os.RemoveAll(dir)
+		c.Assert(errRemove, IsNil)
+	}()
+
+	r, err := New(context.Background(), 9, 3, dir, nil, false, false, 250, 0, false, false, types.ReplicaStateInitial, 9, "")
+	c.Assert(err, IsNil)
+	defer func() {
+		errClose := r.Close()
+		c.Assert(errClose, IsNil)
+	}()
+
+	now := getNow()
+	err = r.Snapshot("000", true, now, nil)
+	c.Assert(err, IsNil)
+
+	err = r.Snapshot("001", true, now, nil)
+	c.Assert(err, IsNil)
+
+	parentChecksum := path.Join(dir, "volume-snap-000.img"+diskutil.DiskChecksumSuffix)
+	childChecksum := path.Join(dir, "volume-snap-001.img"+diskutil.DiskChecksumSuffix)
+	for _, checksumFile := range []string{parentChecksum, childChecksum} {
+		err = os.WriteFile(checksumFile, []byte(`{"method":"crc64","checksum":"17f13af45475f134"}`), 0644)
+		c.Assert(err, IsNil)
+	}
+
+	// Simulate the snapshot purge: the parent is coalesced with the child, then replaces the child.
+	err = r.ReplaceDisk("volume-snap-001.img", "volume-snap-000.img")
+	c.Assert(err, IsNil)
+
+	c.Assert(len(r.activeDiskData), Equals, 3)
+	c.Assert(r.activeDiskData[1].Name, Equals, "volume-snap-001.img")
+	c.Assert(r.activeDiskData[1].Parent, Equals, "")
+
+	_, err = os.Stat(path.Join(dir, "volume-snap-001.img"))
+	c.Assert(err, IsNil)
+	_, err = os.Stat(path.Join(dir, "volume-snap-000.img"))
+	c.Assert(os.IsNotExist(err), Equals, true)
+
+	// The checksum recorded for the replaced child disk is stale, and must be removed
+	_, err = os.Stat(childChecksum)
+	c.Assert(os.IsNotExist(err), Equals, true)
+	_, err = os.Stat(parentChecksum)
+	c.Assert(os.IsNotExist(err), Equals, true)
 }
 
 func (s *TestSuite) TestRemoveOutOfChain(c *C) {

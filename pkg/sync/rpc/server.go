@@ -903,7 +903,7 @@ func (s *SyncAgentServer) startCloning(req *enginerpc.SnapshotCloneRequest, from
 
 func (s *SyncAgentServer) postCloning() error {
 	snapshotDiskName := diskutil.GenerateSnapshotDiskName(s.CloneStatus.SnapshotName)
-	if err := backup.CreateNewSnapshotMetafile(snapshotDiskName + ".meta"); err != nil {
+	if err := backup.CreateNewSnapshotMetafile(snapshotDiskName+".meta", util.Now()); err != nil {
 		return errors.Wrapf(err, "failed creating meta snapshot file")
 	}
 
@@ -1141,7 +1141,7 @@ func (s *SyncAgentServer) completeBackupRestore() (err error) {
 }
 
 func (s *SyncAgentServer) postFullRestoreOperations(restoreStatus *replica.RestoreStatus) error {
-	if err := backup.CreateNewSnapshotMetafile(restoreStatus.ToFileName + ".meta"); err != nil {
+	if err := backup.CreateNewSnapshotMetafile(restoreStatus.ToFileName+".meta", util.Now()); err != nil {
 		logrus.WithError(err).Error("Failed creating meta snapshot file")
 		return err
 	}
@@ -1200,6 +1200,9 @@ func (s *SyncAgentServer) extraIncrementalFullRestoreOperations(restoreStatus *r
 	}()
 
 	// Replace old snapshot and the related meta file
+	if err := removeDiskChecksumFile(snapshotDiskName); err != nil {
+		return err
+	}
 	if err := os.Rename(tmpSnapshotDiskName, snapshotDiskName); err != nil {
 		return errors.Wrapf(err, "failed to replace old snapshot %v with the new fully restored file %v",
 			snapshotDiskName, tmpSnapshotDiskName)
@@ -1229,6 +1232,9 @@ func (s *SyncAgentServer) postIncrementalRestoreOperations(restoreStatus *replic
 	}()
 
 	// Coalesce delta file to snapshot/disk file
+	if err := removeDiskChecksumFile(restoreStatus.SnapshotDiskName); err != nil {
+		return err
+	}
 	if err := sparse.FoldFile(deltaFileName, restoreStatus.SnapshotDiskName, &PurgeStatus{}); err != nil {
 		logrus.WithError(err).Errorf("Failed to coalesce %s on %s", deltaFileName, restoreStatus.SnapshotDiskName)
 		return err
@@ -1644,29 +1650,42 @@ func (s *SyncAgentServer) processRemoveSnapshot(snapshot string) error {
 		return err
 	}
 
-	for _, op := range ops.Operations {
+	return executePrepareRemoveActions(ops.Operations, s.PurgeStatus, s.rmDisk, s.replaceDisk)
+}
+
+// executePrepareRemoveActions applies the actions returned by DiskPrepareRemove to the disk files.
+// rmDisk and replaceDisk are delegated to the replica, since the replica disk chain needs to be updated.
+func executePrepareRemoveActions(actions []*enginerpc.PrepareRemoveAction, ops sparse.FileHandlingOperations,
+	rmDisk func(disk string) error, replaceDisk func(source, target string) error) error {
+	for _, op := range actions {
 		switch op.Action {
 		case replica.OpCoalesce:
 			logrus.Infof("Coalescing %v to %v", op.Target, op.Source)
-			if err := sparse.FoldFile(op.Target, op.Source, s.PurgeStatus); err != nil {
+			if err := removeDiskChecksumFile(op.Source); err != nil {
+				return err
+			}
+			if err := sparse.FoldFile(op.Target, op.Source, ops); err != nil {
 				logrus.WithError(err).Errorf("Failed to coalesce %v to %v", op.Target, op.Source)
 				return err
 			}
 		case replica.OpRemove:
 			logrus.Infof("Removing %v", op.Source)
-			if err := s.rmDisk(op.Source); err != nil {
+			if err := rmDisk(op.Source); err != nil {
 				logrus.WithError(err).Errorf("Failed to remove %v", op.Source)
 				return err
 			}
 		case replica.OpReplace:
 			logrus.Infof("Replacing %v with %v", op.Source, op.Target)
-			if err = s.replaceDisk(op.Source, op.Target); err != nil {
+			if err := replaceDisk(op.Source, op.Target); err != nil {
 				logrus.WithError(err).Errorf("Failed to replace %v with %v", op.Source, op.Target)
 				return err
 			}
 		case replica.OpPrune:
 			logrus.Infof("Pruning overlapping chunks from %v based on %v", op.Source, op.Target)
-			if err := sparse.PruneFile(op.Source, op.Target, s.PurgeStatus); err != nil {
+			if err := removeDiskChecksumFile(op.Source); err != nil {
+				return err
+			}
+			if err := sparse.PruneFile(op.Source, op.Target, ops); err != nil {
 				logrus.WithError(err).Errorf("Failed to prune %v based on %v", op.Source, op.Target)
 				return err
 			}
@@ -1735,6 +1754,16 @@ func (s *SyncAgentServer) rmDisk(disk string) error {
 		return err
 	}
 
+	return nil
+}
+
+// removeDiskChecksumFile removes the checksum file of a disk file whose content is going to be changed.
+// Otherwise, the stale checksum may be trusted or propagated to other replicas during rebuilding.
+func removeDiskChecksumFile(diskName string) error {
+	checksumFileName := diskutil.GenerateSnapshotDiskChecksumName(diskName)
+	if err := os.RemoveAll(checksumFileName); err != nil {
+		return errors.Wrapf(err, "failed to remove disk checksum file %v", checksumFileName)
+	}
 	return nil
 }
 

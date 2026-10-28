@@ -350,34 +350,22 @@ func (t *Task) RestoreStatus() (map[string]*RestoreStatus, error) {
 		return nil, err
 	}
 
-	// clean up clients after processing
-	var clients []*replicaClient.ReplicaClient
-	defer func() {
-		for _, client := range clients {
-			_ = client.Close()
-		}
-	}()
-
+	var addresses []string
 	for _, replica := range replicas {
-		if replica.Mode == types.ERR {
-			continue
+		if replica.Mode != types.ERR {
+			addresses = append(addresses, replica.Address)
 		}
+	}
 
-		// We don't know the replica's instanceName, so create a client without it.
-		repClient, err := replicaClient.NewReplicaClient(replica.Address, t.client.VolumeName, "")
+	for address, result := range getReplicaStatuses(addresses, t.client.VolumeName, (*replicaClient.ReplicaClient).RestoreStatus) {
+		rs, err := result.resp, result.err
 		if err != nil {
-			return nil, err
-		}
-		clients = append(clients, repClient)
-
-		rs, err := repClient.RestoreStatus()
-		if err != nil {
-			replicaStatusMap[replica.Address] = &RestoreStatus{
-				Error: fmt.Sprintf("Failed to get restoring status on %s: %v", replica.Address, err),
+			replicaStatusMap[address] = &RestoreStatus{
+				Error: fmt.Sprintf("Failed to get restoring status on %s: %v", address, err),
 			}
 			continue
 		}
-		replicaStatusMap[replica.Address] = &RestoreStatus{
+		replicaStatusMap[address] = &RestoreStatus{
 			IsRestoring:            rs.IsRestoring,
 			Progress:               int(rs.Progress),
 			Error:                  rs.Error,

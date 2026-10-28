@@ -161,6 +161,8 @@ func longhornCli() {
 		command.DisableSliceFlagSeparator = true
 		if len(command.Commands) > 0 {
 			command.CommandNotFound = cmdNotFound
+		} else {
+			command.HideHelpCommand = true // leaves take positional args such as snapshot names
 		}
 		return nil
 	})
