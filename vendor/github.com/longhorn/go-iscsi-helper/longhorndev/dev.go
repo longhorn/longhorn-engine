@@ -35,6 +35,9 @@ type LonghornDevice struct {
 	iscsiTargetRequestTimeout int64
 
 	scsiDevice *iscsidev.Device
+	// deviceReady is set only after iSCSI discovery and createDev() both
+	// succeed, so retries do not accept a partially created device node.
+	deviceReady bool
 }
 
 type DeviceService interface {
@@ -47,6 +50,7 @@ type DeviceService interface {
 
 	InitDevice() error
 	Start() error
+	StartInitiatorAndWaitForDeviceReady() error
 	Shutdown() error
 	PrepareUpgrade() error
 	FinishUpgrade() error
@@ -126,16 +130,12 @@ func (d *LonghornDevice) startScsiDevice(startScsiDevice bool) (err error) {
 			if d.scsiDevice == nil {
 				return fmt.Errorf("there is no iSCSI device during the frontend %v starts", d.frontend)
 			}
+			d.deviceReady = false
 			if err := d.scsiDevice.CreateTarget(); err != nil {
 				return err
 			}
-			if err := d.scsiDevice.StartInitator(); err != nil {
-				return err
-			}
-			if err := d.createDev(); err != nil {
-				return err
-			}
-			logrus.Infof("device %v: iSCSI device %s created", d.name, d.scsiDevice.KernelDevice.Name)
+			// Initiator discovery, configuration, and login run in StartInitiatorAndWaitForDeviceReady().
+			// Callers must release locks that prevent frontend I/O before calling it.
 		} else {
 			if err := d.scsiDevice.ReloadTargetID(); err != nil {
 				return err
@@ -143,6 +143,8 @@ func (d *LonghornDevice) startScsiDevice(startScsiDevice bool) (err error) {
 			if err := d.scsiDevice.ReloadInitiator(); err != nil {
 				return err
 			}
+			// Preserve the existing device node during live upgrade.
+			d.deviceReady = true
 			logrus.Infof("device %v: iSCSI device %s reloaded the target and the initiator", d.name, d.scsiDevice.KernelDevice.Name)
 		}
 
@@ -182,6 +184,8 @@ func (d *LonghornDevice) Shutdown() error {
 		return nil
 	}
 
+	// shutdownFrontend() removes the device node before steps that can fail.
+	d.deviceReady = false
 	if err := d.shutdownFrontend(); err != nil {
 		return err
 	}
@@ -189,6 +193,35 @@ func (d *LonghornDevice) Shutdown() error {
 	d.scsiDevice = nil
 	d.endpoint = ""
 
+	return nil
+}
+
+// StartInitiatorAndWaitForDeviceReady starts the initiator, discovers the iSCSI
+// device, and creates the /dev/longhorn/<volume> device node. Callers must release
+// locks that block frontend READ handling before calling it.
+func (d *LonghornDevice) StartInitiatorAndWaitForDeviceReady() error {
+	d.Lock()
+	defer d.Unlock()
+
+	if d.frontend != types.FrontendTGTBlockDev {
+		return nil
+	}
+	if d.scsiDevice == nil {
+		return fmt.Errorf("there is no iSCSI device during the frontend %v waits for device ready", d.frontend)
+	}
+	if d.deviceReady {
+		return nil
+	}
+
+	if err := d.scsiDevice.StartInitator(); err != nil {
+		return err
+	}
+	if err := d.createDev(); err != nil {
+		return err
+	}
+	d.deviceReady = true
+
+	logrus.Infof("device %v: iSCSI device %s created", d.name, d.scsiDevice.KernelDevice.Name)
 	return nil
 }
 
