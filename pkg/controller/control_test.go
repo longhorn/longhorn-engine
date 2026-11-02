@@ -1092,3 +1092,76 @@ func (s *TestSuite) TestConcurrentUnalignedWritesInWOMode(c *C) {
 		}
 	}
 }
+
+type coordinatedStore struct {
+	slowSharedStore
+	readDone    chan struct{}
+	releaseRead chan struct{}
+	writes      chan int
+	pauseFirst  sync.Once
+}
+
+func (s *coordinatedStore) ReadAt(buf []byte, off int64) (int, error) {
+	n, err := s.slowSharedStore.ReadAt(buf, off)
+	s.pauseFirst.Do(func() {
+		close(s.readDone)
+		<-s.releaseRead
+	})
+	return n, err
+}
+
+func (s *coordinatedStore) WriteAt(buf []byte, off int64) (int, error) {
+	s.writes <- len(buf)
+	return s.slowSharedStore.WriteAt(buf, off)
+}
+
+func (s *TestSuite) TestAlignedWriteWaitsForUnalignedWriteInWOMode(c *C) {
+	store := &coordinatedStore{
+		slowSharedStore: slowSharedStore{data: make([]byte, 4096)},
+		readDone:        make(chan struct{}),
+		releaseRead:     make(chan struct{}),
+		writes:          make(chan int, 2),
+	}
+	ctrl := &Controller{
+		backend: &replicator{
+			backendsAvailable: true,
+			backends:          map[string]backendWrapper{},
+			writerIndex:       map[int]string{0: "w"},
+			readerIndex:       map[int]string{0: "r"},
+			readers:           []io.ReaderAt{store},
+			writer:            store,
+		},
+	}
+
+	unalignedDone := make(chan struct{})
+	go func() {
+		defer close(unalignedDone)
+		n, err := ctrl.writeInWOMode(bytes.Repeat([]byte{1}, 512), 0)
+		c.Check(err, IsNil)
+		c.Check(n, Equals, 512)
+	}()
+	select {
+	case <-store.readDone:
+	case <-time.After(5 * time.Second):
+		c.Fatal("unaligned write did not reach the read step")
+	}
+
+	alignedDone := make(chan struct{})
+	go func() {
+		defer close(alignedDone)
+		n, err := ctrl.writeInWOMode(bytes.Repeat([]byte{2}, 4096), 0)
+		c.Check(err, IsNil)
+		c.Check(n, Equals, 4096)
+	}()
+
+	select {
+	case <-store.writes:
+		c.Fatal("aligned write reached the backend before the read-modify-write finished")
+	case <-time.After(200 * time.Millisecond):
+	}
+
+	close(store.releaseRead)
+	<-unalignedDone
+	<-alignedDone
+	c.Assert(len(store.writes), Equals, 2)
+}
