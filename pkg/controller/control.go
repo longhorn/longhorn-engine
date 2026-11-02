@@ -45,6 +45,12 @@ type Controller struct {
 
 	unmapMarkSnapChainRemoved bool
 
+	// woWriteRangeLock serializes writes on the same VolumeSectorSize-aligned
+	// range while a WO replica exists, so that unaligned read-modify-write
+	// cycles cannot overwrite concurrent writes with stale data.
+	woWriteRangeLock     *rangeLocker
+	woWriteRangeLockInit sync.Once
+
 	snapshotFreezeLock sync.Mutex
 	snapshotMaxCount   int
 	SnapshotMaxSize    int64
@@ -1112,8 +1118,18 @@ func (c *Controller) WriteAt(b []byte, off int64) (int, error) {
 
 func (c *Controller) writeInWOMode(b []byte, off int64) (int, error) {
 	bufLen := len(b)
+	if bufLen == 0 {
+		return c.backend.WriteAt(b, off)
+	}
+
+	lockStart := (off / diskutil.VolumeSectorSize) * diskutil.VolumeSectorSize
+	lockEnd := ((off + int64(bufLen) + diskutil.VolumeSectorSize - 1) / diskutil.VolumeSectorSize) * diskutil.VolumeSectorSize
+	locker := c.getWOWriteRangeLocker()
+	held := locker.Lock(lockStart, lockEnd)
+	defer locker.Unlock(held)
+
 	// buffer b is defaultSectorSize aligned
-	if (bufLen == 0) || ((off%diskutil.VolumeSectorSize == 0) && (bufLen%diskutil.VolumeSectorSize == 0)) {
+	if (off%diskutil.VolumeSectorSize == 0) && (bufLen%diskutil.VolumeSectorSize == 0) {
 		return c.backend.WriteAt(b, off)
 	}
 
@@ -1142,6 +1158,13 @@ func (c *Controller) writeInWOMode(b []byte, off int64) (int, error) {
 		return bufLen, err
 	}
 	return bufLen, nil
+}
+
+func (c *Controller) getWOWriteRangeLocker() *rangeLocker {
+	c.woWriteRangeLockInit.Do(func() {
+		c.woWriteRangeLock = newRangeLocker()
+	})
+	return c.woWriteRangeLock
 }
 
 func (c *Controller) writeInNormalMode(b []byte, off int64) (int, error) {
