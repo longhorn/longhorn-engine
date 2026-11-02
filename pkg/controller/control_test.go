@@ -1,9 +1,11 @@
 package controller
 
 import (
+	"bytes"
 	"errors"
 	"io"
 	"reflect"
+	"sync"
 	"testing"
 	"time"
 
@@ -1033,6 +1035,60 @@ func (s *TestSuite) TestStartFailureKeepsStartupState(c *C) {
 			c.Assert(f.readinessCalls, Equals, 1)
 		} else {
 			c.Assert(f.readinessCalls, Equals, 0)
+		}
+	}
+}
+
+type slowSharedStore struct {
+	sync.Mutex
+	data []byte
+}
+
+func (s *slowSharedStore) ReadAt(buf []byte, off int64) (int, error) {
+	s.Lock()
+	copy(buf, s.data[off:off+int64(len(buf))])
+	s.Unlock()
+	time.Sleep(time.Millisecond)
+	return len(buf), nil
+}
+
+func (s *slowSharedStore) WriteAt(buf []byte, off int64) (int, error) {
+	s.Lock()
+	copy(s.data[off:off+int64(len(buf))], buf)
+	s.Unlock()
+	return len(buf), nil
+}
+
+func (s *TestSuite) TestConcurrentUnalignedWritesInWOMode(c *C) {
+	const slots = 8
+	const slot = 512
+	for round := 0; round < 20; round++ {
+		store := &slowSharedStore{data: make([]byte, 4096)}
+		ctrl := &Controller{
+			backend: &replicator{
+				backendsAvailable: true,
+				backends:          map[string]backendWrapper{},
+				writerIndex:       map[int]string{0: "w"},
+				readerIndex:       map[int]string{0: "r"},
+				readers:           []io.ReaderAt{store},
+				writer:            store,
+			},
+		}
+		var wg sync.WaitGroup
+		for i := 0; i < slots; i++ {
+			wg.Add(1)
+			go func(i int) {
+				defer wg.Done()
+				b := bytes.Repeat([]byte{byte(i + 1)}, slot)
+				n, err := ctrl.writeInWOMode(b, int64(i*slot))
+				c.Check(err, IsNil)
+				c.Check(n, Equals, slot)
+			}(i)
+		}
+		wg.Wait()
+		for i := 0; i < slots; i++ {
+			c.Assert(store.data[i*slot], Equals, byte(i+1))
+			c.Assert(store.data[(i+1)*slot-1], Equals, byte(i+1))
 		}
 	}
 }
