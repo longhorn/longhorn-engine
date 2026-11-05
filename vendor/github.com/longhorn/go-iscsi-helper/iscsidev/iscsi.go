@@ -135,6 +135,9 @@ func (dev *Device) CreateTarget() (err error) {
 	return nil
 }
 
+// StartInitator starts the initiator and waits for SCSI device discovery
+// under the same file lock. Callers must release locks that prevent frontend I/O
+// so scan READs from synchronous login and manual rescan can be served.
 func (dev *Device) StartInitator() error {
 	lock := lhns.NewLock(LockFile, LockTimeout)
 	if err := lock.Lock(); err != nil {
@@ -142,6 +145,27 @@ func (dev *Device) StartInitator() error {
 	}
 	defer lock.Unlock()
 
+	if err := dev.startInitiatorNoLock(); err != nil {
+		return err
+	}
+
+	localIP, err := util.GetIPToHost()
+	if err != nil {
+		return err
+	}
+
+	kernelDev, err := iscsi.ScanAndGetDevice(localIP, dev.Target, TargetLunID, dev.ScsiTimeout, dev.nsexec)
+	if err != nil {
+		return err
+	}
+	dev.KernelDevice = kernelDev
+
+	return nil
+}
+
+// startInitiatorNoLock requires LockFile to keep discovery, configuration, and
+// login serialized with other initiator operations on the node.
+func (dev *Device) startInitiatorNoLock() error {
 	if err := iscsi.CheckForInitiatorExistence(dev.nsexec); err != nil {
 		return err
 	}
@@ -173,17 +197,7 @@ func (dev *Device) StartInitator() error {
 	if err := iscsi.UpdateIscsiDeviceAbortTimeout(dev.Target, dev.IscsiAbortTimeout, dev.nsexec); err != nil {
 		return err
 	}
-	if err := iscsi.LoginTarget(localIP, dev.Target, dev.nsexec); err != nil {
-		return err
-	}
-	if dev.KernelDevice, err = iscsi.GetDevice(localIP, dev.Target, TargetLunID, dev.nsexec); err != nil {
-		return err
-	}
-	if err := iscsi.UpdateScsiDeviceTimeout(dev.KernelDevice.Name, dev.ScsiTimeout, dev.nsexec); err != nil {
-		return err
-	}
-
-	return nil
+	return iscsi.LoginTarget(localIP, dev.Target, dev.nsexec)
 }
 
 // ReloadInitiator does nothing for the iSCSI initiator/target except for
