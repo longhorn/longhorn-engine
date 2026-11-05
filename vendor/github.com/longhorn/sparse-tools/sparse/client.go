@@ -46,7 +46,7 @@ func defaultRetryOpts() []retry.Option {
 
 type DataSyncClient interface {
 	open() error
-	close()
+	close(propagateChecksum bool)
 	syncHoleInterval(holeInterval Interval) error
 	syncDataInterval(dataInterval Interval) error
 	getServerChecksum(checksumInterval Interval) ([]byte, error)
@@ -225,11 +225,19 @@ func syncContentWithContextAndRetry(ctx context.Context, sourceName string, rw R
 	ctx, cancel := context.WithCancel(ctx)
 	client.ctx = ctx
 	defer cancel()
-	defer client.close() // kill the server no matter success or not, best effort
+
+	// Kill the server no matter success or not, best effort.
+	// The recorded checksum is propagated to the server only if the sync succeeds, and
+	// close() additionally verifies that the checksum is still valid for the local file.
+	syncSucceeded := false
+	defer func() {
+		client.close(syncSucceeded)
+	}()
 
 	if fastSync && filepath.Ext(client.sourceName) == types.SnapshotDiskSuffix {
 		if client.isLocalAndRemoteDiskFilesIdentical() {
 			log.Infof("Skipped syncing file %v", client.sourceName)
+			syncSucceeded = true
 			return nil
 		}
 	}
@@ -240,6 +248,7 @@ func syncContentWithContextAndRetry(ctx context.Context, sourceName string, rw R
 	if err != nil {
 		return err
 	}
+	syncSucceeded = true
 
 	log.Infof("Finished sync for the source file %v, size %v, elapsed %.2fs",
 		sourceName, fileSize, time.Since(syncStartTime).Seconds())
@@ -269,6 +278,11 @@ func (client *syncClient) syncContent() error {
 	// channel has run into an error, which will lead to the ctx being cancelled
 	mergedErrc := mergeErrorChannels(ctx, errorChannels...)
 	err = <-mergedErrc
+	if err == nil {
+		// The merged error channel is closed without an error once the context is done,
+		// so check the context to avoid treating an interrupted sync as a successful one.
+		err = ctx.Err()
+	}
 
 	return err
 }
@@ -294,7 +308,10 @@ func (client *syncClient) sendHTTPRequestMaybeRetry(method string, action string
 	return client.sendHTTPRequestWithRetry(method, action, queries, data)
 }
 
-func (client *syncClient) isLocalAndRemoteDiskFilesIdentical() bool {
+// isRecordedChecksumValid returns true if the checksum recorded in the local checksum file
+// still describes the current content of the local file. The checksum is stale if the
+// file has been changed (e.g. coalesced by a snapshot purge) after it was hashed.
+func (client *syncClient) isRecordedChecksumValid() bool {
 	if client.recordedChangeTime == "" || client.recordedChecksumMethod == "" || client.recordedChecksum == "" {
 		return false
 	}
@@ -305,6 +322,15 @@ func (client *syncClient) isLocalAndRemoteDiskFilesIdentical() bool {
 		return false
 	}
 	if !remain {
+		log.Infof("Recorded checksum of local file %v is stale since the file is changed after hashing", client.sourceName)
+		return false
+	}
+
+	return true
+}
+
+func (client *syncClient) isLocalAndRemoteDiskFilesIdentical() bool {
+	if !client.isRecordedChecksumValid() {
 		return false
 	}
 
@@ -520,10 +546,16 @@ func (client *syncClient) open() error {
 	return err
 }
 
-func (client *syncClient) close() {
+// close stops the server. If propagateChecksum is true and the recorded checksum is still
+// valid for the local file, the checksum is sent to the server so that it can be recorded
+// for the received file. Otherwise, no checksum is sent, and the server is expected to
+// invalidate its existing checksum file, since the received file may have been changed.
+func (client *syncClient) close(propagateChecksum bool) {
 	queries := make(map[string]string)
-	queries["checksumMethod"] = client.recordedChecksumMethod
-	queries["checksum"] = client.recordedChecksum
+	if propagateChecksum && client.isRecordedChecksumValid() {
+		queries["checksumMethod"] = client.recordedChecksumMethod
+		queries["checksum"] = client.recordedChecksum
+	}
 	resp, err := client.sendHTTPRequest("POST", "close", queries, nil)
 	if err == nil {
 		// drain the buffer and close the body
