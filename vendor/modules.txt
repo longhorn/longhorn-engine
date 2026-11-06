@@ -182,7 +182,7 @@ github.com/aws/aws-sdk-go-v2/service/ssooidc/types
 github.com/aws/aws-sdk-go-v2/service/sts
 github.com/aws/aws-sdk-go-v2/service/sts/internal/endpoints
 github.com/aws/aws-sdk-go-v2/service/sts/types
-# github.com/aws/smithy-go v1.28.4
+# github.com/aws/smithy-go v1.28.5
 ## explicit; go 1.24
 github.com/aws/smithy-go
 github.com/aws/smithy-go/auth
@@ -267,11 +267,11 @@ github.com/felixge/httpsnoop
 # github.com/fxamacker/cbor/v2 v2.9.1
 ## explicit; go 1.20
 github.com/fxamacker/cbor/v2
-# github.com/gammazero/deque v1.2.1
-## explicit; go 1.24
+# github.com/gammazero/deque v1.2.2
+## explicit; go 1.26
 github.com/gammazero/deque
-# github.com/gammazero/workerpool v1.2.1
-## explicit; go 1.24
+# github.com/gammazero/workerpool v1.2.2
+## explicit; go 1.26
 github.com/gammazero/workerpool
 # github.com/getsentry/sentry-go v0.46.0
 ## explicit; go 1.25.0
@@ -356,7 +356,7 @@ github.com/kr/pretty
 # github.com/kr/text v0.2.0
 ## explicit
 github.com/kr/text
-# github.com/longhorn/backupstore v0.0.0-20261023052728-3d3f7521be06
+# github.com/longhorn/backupstore v0.0.0-20261023052728-3d3f7521be06 => github.com/alliasgher/backupstore v0.0.0-20261028082641-eef964a66eb3
 ## explicit; go 1.26.0
 github.com/longhorn/backupstore
 github.com/longhorn/backupstore/azblob
@@ -705,3 +705,4 @@ k8s.io/utils/keymutex
 ## explicit; go 1.23
 sigs.k8s.io/json
 sigs.k8s.io/json/internal/golang/encoding/json
+# github.com/longhorn/backupstore => github.com/alliasgher/backupstore v0.0.0-20261028082641-eef964a66eb3

@@ -16,6 +16,10 @@ const (
 	AWSEndPoint  = "AWS_ENDPOINTS"
 	AWSCert      = "AWS_CERT"
 
+	AWSRetryMaxAttempts     = "AWS_RETRY_MAX_ATTEMPTS"
+	AWSRetryMaximumAttempts = "AWS_RETRY_MAXIMUM_ATTEMPTS"
+	AWSRetryMaximumBackoff  = "AWS_RETRY_MAXIMUM_BACKOFF"
+
 	CIFSUsername = "CIFS_USERNAME"
 	CIFSPassword = "CIFS_PASSWORD"
 
