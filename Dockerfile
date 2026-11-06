@@ -108,6 +108,15 @@ ENTRYPOINT ["./scripts/entry"]
 CMD ["ci"]
 
 FROM base AS build
+# Git metadata is resolved on the host (see Makefile) because git does not work
+# inside the container for git worktrees. Declared here, not in base, so the
+# shared base stage cache is not invalidated.
+ARG GIT_COMMIT
+ARG GIT_COMMIT_SHORT
+ARG GIT_DIRTY
+ARG GIT_TAG
+ARG COMMIT_BRANCH
+ARG COMMIT_TAG
 RUN ./scripts/build
 
 FROM base AS validate
