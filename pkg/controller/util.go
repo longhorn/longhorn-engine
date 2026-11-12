@@ -2,6 +2,7 @@ package controller
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/cockroachdb/errors"
 	"github.com/sirupsen/logrus"
@@ -10,6 +11,9 @@ import (
 	"github.com/longhorn/longhorn-engine/pkg/types"
 )
 
+// GetReplicaDisksAndChain returns the replica's disks, without the volume head
+// and the backing file, and its chain from the head down, newest-to-oldest.
+// Removed disks are in the disks map but not in the chain.
 func GetReplicaDisksAndChain(address, volumeName, instanceName string) (map[string]types.DiskInfo, []string, error) {
 	// We may not know the replica instance name. Validation is best effort, so it's fine to pass an empty string.
 	repClient, err := client.NewReplicaClient(address, volumeName, instanceName)
@@ -78,4 +82,13 @@ func markSnapshotRemovedOnReplica(address, volumeName, instanceName, snapshotNam
 		return fmt.Errorf("failed to cancel hash of snapshot %v on %v: %w", snapshotName, address, err)
 	}
 	return nil
+}
+
+// longerIfPrefix returns the longer of the two lists and true if the shorter one
+// is a prefix of it. It returns false if the lists diverge.
+func longerIfPrefix(a, b []string) ([]string, bool) {
+	if len(a) > len(b) {
+		a, b = b, a
+	}
+	return b, slices.Equal(a, b[:len(a)])
 }
