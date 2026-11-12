@@ -12,8 +12,13 @@ import (
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 
+	lhnet "github.com/longhorn/go-common-libs/net"
 	lhtypes "github.com/longhorn/go-common-libs/types"
 )
+
+// hostInterfaceName is the interface that the host default IP discovery
+// checks first, before falling back to the first global-unicast address.
+const hostInterfaceName = "eth1"
 
 func getIPFromAddrs(addrs []net.Addr) string {
 	for _, addr := range addrs {
@@ -24,7 +29,29 @@ func getIPFromAddrs(addrs []net.Addr) string {
 	return ""
 }
 
+// GetIPToHost returns the primary POD_IP, in canonical form, for the V1
+// frontend. The host initiator cannot reach pod-local Multus storage networks.
+// Standalone callers without POD_IP fall back to the host default IP discovery.
 func GetIPToHost() (string, error) {
+	return getIPToHost(os.Getenv(lhnet.EnvPodIP), getHostDefaultIP)
+}
+
+func getIPToHost(podIP string, getDefaultIP func() (string, error)) (string, error) {
+	if podIP != "" {
+		ip := net.ParseIP(podIP)
+		if !lhnet.IsUsableIPForFamily(ip, lhnet.IPFamilyUnspecified) {
+			return "", fmt.Errorf("invalid POD_IP %q", podIP)
+		}
+		// The portal becomes the session's persistent portal, which reload and
+		// rescan match as text against iscsiadm output, so keep it canonical.
+		return ip.String(), nil
+	}
+
+	logrus.Warnf("%s is not set; falling back to the host default IP discovery, which may not match the pod primary IP family", lhnet.EnvPodIP)
+	return getDefaultIP()
+}
+
+func getHostDefaultIP() (string, error) {
 	ifaces, err := net.Interfaces()
 	if err != nil {
 		return "", err
@@ -32,7 +59,7 @@ func GetIPToHost() (string, error) {
 	// TODO: This is a workaround, we want to get the interface IP connect
 	// to the host, it's likely eth1 with one network attached to the host.
 	for _, iface := range ifaces {
-		if iface.Name == "eth1" {
+		if iface.Name == hostInterfaceName {
 			addrs, err := iface.Addrs()
 			if err != nil {
 				return "", err
