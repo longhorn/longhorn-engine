@@ -8,12 +8,12 @@ import (
 	"github.com/cockroachdb/errors"
 	"github.com/sirupsen/logrus"
 
+	lhns "github.com/longhorn/go-common-libs/ns"
+	lhtypes "github.com/longhorn/go-common-libs/types"
+
 	"github.com/longhorn/go-iscsi-helper/iscsi"
 	"github.com/longhorn/go-iscsi-helper/types"
 	"github.com/longhorn/go-iscsi-helper/util"
-
-	lhns "github.com/longhorn/go-common-libs/ns"
-	lhtypes "github.com/longhorn/go-common-libs/types"
 )
 
 var (
@@ -214,7 +214,14 @@ func (dev *Device) ReloadInitiator() error {
 		return err
 	}
 
-	localIP, err := util.GetIPToHost()
+	// Reuse the portal of the existing session instead of selecting a new one.
+	// On a live upgrade, the new engine takes over an attached volume without
+	// logging in again, and the kernel device is looked up by portal below. If
+	// the current selection policy picks a different address, for example IPv6
+	// for a volume attached through IPv4 by an older engine, discovery adds a
+	// second portal and the attached device is not found. A target without a
+	// single identifiable session portal uses the current selection policy.
+	localIP, err := dev.getInitiatorIP()
 	if err != nil {
 		return err
 	}
@@ -261,12 +268,32 @@ func (dev *Device) RefreshInitiator() error {
 		return err
 	}
 
-	ip, err := util.GetIPToHost()
+	ip, err := dev.getInitiatorIP()
 	if err != nil {
 		return err
 	}
 
 	return iscsi.RescanTarget(ip, dev.Target, dev.nsexec)
+}
+
+// getInitiatorIP preserves the portal of an attached volume on reload/rescan.
+// When the session portal cannot be determined, warn and use the pod IP.
+func (dev *Device) getInitiatorIP() (string, error) {
+	return getInitiatorIP(dev.Target, func(target string) (string, error) {
+		return iscsi.GetTargetSessionIP(target, dev.nsexec)
+	}, util.GetIPToHost)
+}
+
+func getInitiatorIP(target string, sessionIP func(string) (string, error), newAttachmentPortalIP func() (string, error)) (string, error) {
+	ip, err := sessionIP(target)
+	if err == nil && ip != "" {
+		return ip, nil
+	}
+	fallbackIP, fallbackErr := newAttachmentPortalIP()
+	if err != nil {
+		logrus.WithError(err).Warnf("Cannot determine the session portal of target %v, using %v instead", target, fallbackIP)
+	}
+	return fallbackIP, fallbackErr
 }
 
 func LogoutTarget(target string, nsexec *lhns.Executor) error {
