@@ -1,0 +1,30 @@
+name: Update Go Module
+
+on:
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: "Base branch to update (e.g. master, v1.11.x)"
+        required: true
+        default: master
+        type: string
+      package:
+        description: "go.mod package to update (e.g. github.com/longhorn/go-common-libs)"
+        required: true
+        type: string
+      version:
+        description: "Target version, tag, branch or commit SHA (e.g. v1.2.3 or a commit hash)"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  update:
+    uses: longhorn/longhorn/.github/workflows/update-go-module.yml@master
+    with:
+      branch: ${{ inputs.branch }}
+      package: ${{ inputs.package }}
+      version: ${{ inputs.version }}
+    secrets: inherit
