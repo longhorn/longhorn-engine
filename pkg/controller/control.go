@@ -5,7 +5,6 @@ import (
 	"net"
 	"os"
 	"regexp"
-	"slices"
 	"strconv"
 	"strings"
 	"sync"
@@ -338,12 +337,24 @@ func (c *Controller) canDoSnapshot(allowRemoveOldest bool) error {
 	if err != nil {
 		return err
 	}
-	if countUsage >= c.snapshotMaxCount {
-		if !c.snapshotRemoveOldest || !allowRemoveOldest {
-			return fmt.Errorf("%w: snapshot count usage %d is equal or larger than snapshotMaxCount %d", errSnapshotLimitReached, countUsage, c.snapshotMaxCount)
+
+	// if SnapshotMaxSize is 0, it means no limit
+	var headFileSize int64
+	if c.SnapshotMaxSize != 0 {
+		if headFileSize, err = c.backend.GetHeadFileSize(); err != nil {
+			return err
 		}
-		if err := c.removeOldSnapshotNoLock(countUsage, sizeUsage); err != nil {
-			return fmt.Errorf("snapshot count usage %d reached snapshotMaxCount %d and removing the oldest snapshot failed: %v", countUsage, c.snapshotMaxCount, err)
+	}
+
+	countExceeded := countUsage >= c.snapshotMaxCount
+	sizeExceeded := c.SnapshotMaxSize != 0 && headFileSize > c.SnapshotMaxSize-sizeUsage
+
+	if countExceeded || sizeExceeded {
+		if !c.snapshotRemoveOldest || !allowRemoveOldest {
+			return fmt.Errorf("%w: count %d/%d, size %d/%d", errSnapshotLimitReached, countUsage, c.snapshotMaxCount, sizeUsage+headFileSize, c.SnapshotMaxSize)
+		}
+		if err := c.removeOldSnapshotsNoLock(countUsage, sizeUsage, headFileSize); err != nil {
+			return fmt.Errorf("%w: (count %d/%d, size %d/%d) and removing the oldest snapshots failed: %w", errSnapshotLimitReached, countUsage, c.snapshotMaxCount, sizeUsage+headFileSize, c.SnapshotMaxSize, err)
 		}
 		// The removal changed the numbers, so re-read them before the checks below.
 		countUsage, countTotal, sizeUsage, err = c.backend.GetSnapshotCountAndSizeUsage()
@@ -351,67 +362,71 @@ func (c *Controller) canDoSnapshot(allowRemoveOldest bool) error {
 			return err
 		}
 		if countUsage >= c.snapshotMaxCount {
-			return fmt.Errorf("snapshot count usage %d is still >= snapshotMaxCount %d after removing the oldest snapshot", countUsage, c.snapshotMaxCount)
+			return fmt.Errorf("snapshot count usage %d is still >= snapshotMaxCount %d after removing the oldest snapshots", countUsage, c.snapshotMaxCount)
+		}
+		if c.SnapshotMaxSize != 0 {
+			if remainSize := c.SnapshotMaxSize - sizeUsage; headFileSize > remainSize {
+				return fmt.Errorf("snapshot free space %d is still not enough for head file %d after removing the oldest snapshots", remainSize, headFileSize)
+			}
 		}
 	}
+
 	if countTotal >= types.MaximumTotalSnapshotCount {
-		return fmt.Errorf("snapshot count total is already too big: %v", countTotal)
-	}
-	// if SnapshotMaxSize is 0, it means no limit
-	if c.SnapshotMaxSize == 0 {
-		return nil
+		return fmt.Errorf("snapshot count total %d reached %d, purge snapshots first", countTotal, types.MaximumTotalSnapshotCount)
 	}
 
-	headFileSize, err := c.backend.GetHeadFileSize()
-	if err != nil {
-		return err
-	}
-	remainSize := c.SnapshotMaxSize - sizeUsage
-	if headFileSize > remainSize {
-		return fmt.Errorf("snapshot free space %d is not enough for head file %d", remainSize, headFileSize)
-	}
 	return nil
 }
 
-// removeOldSnapshotNoLock picks the oldest snapshots to delete so that a new
+// removeOldSnapshotsNoLock picks the oldest snapshots to delete so that a new
 // snapshot fits, and removes them from all RW replicas. The caller must hold
-// the controller lock. It fails if any replica is rebuilding, if RW replicas
-// have different chains, or if no snapshot can be removed.
-func (c *Controller) removeOldSnapshotNoLock(countUsage int, sizeUsage int64) error {
-	var rwAddresses []string
-	var removeSnaps []string
+// the controller lock. It fails if any replica is rebuilding, if RW replicas's
+// removal lists are not prefixes of one another, or if no snapshot can be removed.
+func (c *Controller) removeOldSnapshotsNoLock(countUsage int, sizeUsage, headFileSize int64) error {
 	for _, replica := range c.replicas {
-		switch replica.Mode {
-		case types.WO:
+		if replica.Mode == types.WO {
 			return fmt.Errorf("replica %v is rebuilding, refusing to remove a snapshot", replica.Address)
-		case types.RW:
-		default:
+		}
+	}
+
+	var rwAddresses []string
+	var toRemove []string
+	for _, replica := range c.replicas {
+		if replica.Mode != types.RW {
 			continue
 		}
 
-		disks, repChain, err := GetReplicaDisksAndChain(replica.Address, c.VolumeName, "")
+		disks, chain, err := GetReplicaDisksAndChain(replica.Address, c.VolumeName, "")
 		if err != nil {
-			return fmt.Errorf("failed to get replica disks and chain for %s: %v", replica.Address, err)
+			return fmt.Errorf("failed to get replica disks and chain for %s: %w", replica.Address, err)
 		}
 
-		removeSnapsTemp, err := c.listRemovableSnapshots(disks, repChain, countUsage, sizeUsage)
+		candidates, err := c.listRemovableSnapshots(disks, chain, countUsage, sizeUsage, headFileSize)
 		if err != nil {
-			return fmt.Errorf("failed to list removable snapshots for %s: %v", replica.Address, err)
+			return fmt.Errorf("failed to list removable snapshots for %s: %w", replica.Address, err)
 		}
 
-		if len(rwAddresses) > 0 && !slices.Equal(removeSnaps, removeSnapsTemp) {
-			return fmt.Errorf("replicas disagree on the snapshots to be removed: snapshot diff: %v/%v", removeSnaps, removeSnapsTemp)
+		// Replicas share the chain, so each list is a prefix of the same oldest-first
+		// sequence. Lengths can differ because actual on-disk sizes differ per replica;
+		// keep the longest so the new snapshot fits on every replica.
+		maxRemoval, isPrefix := longerIfPrefix(toRemove, candidates)
+		if !isPrefix {
+			return fmt.Errorf("replicas disagree on the snapshots to be removed: %v vs %v", toRemove, candidates)
 		}
-		removeSnaps = removeSnapsTemp
+		toRemove = maxRemoval
 		rwAddresses = append(rwAddresses, replica.Address)
 	}
 
-	for _, diskName := range removeSnaps {
+	if len(rwAddresses) == 0 {
+		return fmt.Errorf("no RW replica available to remove snapshots from")
+	}
+
+	for _, diskName := range toRemove {
 		snapshotName, err := diskutil.GetSnapshotNameFromDiskName(diskName)
 		if err != nil {
 			return fmt.Errorf("failed to get snapshot name from disk %s: %w", diskName, err)
 		}
-		logrus.Warnf("Removing snapshot %v of volume %v to make room", snapshotName, c.VolumeName)
+		logrus.WithFields(logrus.Fields{"volume": c.VolumeName, "snapshot": snapshotName}).Warn("removing snapshot to make room")
 		for _, address := range rwAddresses {
 			if err := markSnapshotRemovedOnReplica(address, c.VolumeName, "", snapshotName); err != nil {
 				return err
@@ -425,18 +440,14 @@ func (c *Controller) removeOldSnapshotNoLock(countUsage int, sizeUsage int64) er
 // replica's chain until a new snapshot fits within the count and size limits.
 // repChain is newest-to-oldest with the head at index 0, which is never
 // removed. It returns an error if the limits still can't be met after removing every eligible snapshot.
-func (c *Controller) listRemovableSnapshots(disks map[string]types.DiskInfo, repChain []string, countUsage int, sizeUsage int64) ([]string, error) {
+func (c *Controller) listRemovableSnapshots(disks map[string]types.DiskInfo, repChain []string, countUsage int, sizeUsage, headFileSize int64) ([]string, error) {
 	if len(repChain) == 0 {
 		return nil, fmt.Errorf("empty replica chain")
 	}
-	headSize, err := c.backend.GetHeadFileSize()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get head file size: %v", err)
-	}
 
-	// After the new snapshot: count+1(head) must be < maxCount, size+headSize <= maxSize.
+	// After the new snapshot: count < maxCount && size+headFileSize <= maxSize.
 	fits := func(count int, size int64) bool {
-		return count < c.snapshotMaxCount && (c.SnapshotMaxSize == 0 || size+headSize <= c.SnapshotMaxSize)
+		return count < c.snapshotMaxCount && (c.SnapshotMaxSize == 0 || size+headFileSize <= c.SnapshotMaxSize)
 	}
 
 	var removable []string
@@ -444,25 +455,24 @@ func (c *Controller) listRemovableSnapshots(disks map[string]types.DiskInfo, rep
 
 	for i := len(repChain) - 1; i > 0 && !fits(count, size); i-- {
 		name := repChain[i]
-		if info, exists := disks[repChain[i]]; exists {
-			// TODO: Should we remove the snapshots with children, or skip such snapshot deletions?
-			// For now, skipping the deletion of snapshot with children.
-			if len(info.Children) > 1 {
+		if info, exists := disks[name]; exists {
+			// skipping the deletion of snapshot with children.
+			if info.Removed || len(info.Children) > 1 {
 				continue
 			}
-			snapSize, err := strconv.ParseInt(info.Size, 10, 64)
+			diskSize, err := strconv.ParseInt(info.Size, 10, 64)
 			if err != nil {
-				return nil, fmt.Errorf("failed to parse disk size for replica %v: %v", name, err)
+				return nil, fmt.Errorf("failed to parse disk size for replica %v: %w", name, err)
 			}
-			count--
-			size -= snapSize
 			removable = append(removable, name)
+			count--
+			size -= diskSize
 		}
 	}
 
 	if !fits(count, size) {
 		return nil, fmt.Errorf("removing %d snapshots would not leave room for a new one (count %d/%d, size %d/%d)",
-			len(removable), count, c.snapshotMaxCount, size+headSize, c.SnapshotMaxSize)
+			len(removable), count, c.snapshotMaxCount, size+headFileSize, c.SnapshotMaxSize)
 	}
 
 	return removable, nil

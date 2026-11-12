@@ -2,6 +2,7 @@ package controller
 
 import (
 	"fmt"
+	"slices"
 
 	"github.com/cockroachdb/errors"
 	"github.com/sirupsen/logrus"
@@ -78,4 +79,13 @@ func markSnapshotRemovedOnReplica(address, volumeName, instanceName, snapshotNam
 		return fmt.Errorf("failed to cancel hash of snapshot %v on %v: %w", snapshotName, address, err)
 	}
 	return nil
+}
+
+// longerIfPrefix returns the longer of the two lists and true if the shorter one
+// is a prefix of it. It returns false if the lists diverge.
+func longerIfPrefix(a, b []string) ([]string, bool) {
+	if len(a) > len(b) {
+		a, b = b, a
+	}
+	return b, slices.Equal(a, b[:len(a)])
 }
