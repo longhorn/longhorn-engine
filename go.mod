@@ -13,7 +13,7 @@ require (
 	github.com/gorilla/mux v1.8.1
 	github.com/longhorn/backupstore v0.0.0-20261023052728-3d3f7521be06
 	github.com/longhorn/go-common-libs v0.0.0-20261023023359-4e90b601fcb9
-	github.com/longhorn/go-iscsi-helper v0.0.0-20261012034506-35fee3c307ac
+	github.com/longhorn/go-iscsi-helper v0.0.0-20261111091915-a9bc4284e8cf
 	github.com/longhorn/sparse-tools v0.0.0-20261022004111-a7caacc40965
 	github.com/longhorn/types v0.0.0-20261023101212-edea52fc05df
 	github.com/moby/sys/reexec v0.1.0
