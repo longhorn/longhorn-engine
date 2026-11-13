@@ -911,7 +911,8 @@ func (c *Controller) SetSnapshotMaxSize(size int64) error {
 		return err
 	}
 
-	if size < sizeUsage {
+	// SnapshotMaxSize 0 means no limit, so it is valid regardless of the current usage
+	if size != 0 && size < sizeUsage {
 		return fmt.Errorf("cannot set snapshotMaxSize=%d smaller than current snapshot size usage=%d, please purge snapshots first", size, sizeUsage)
 	}
 
