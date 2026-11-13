@@ -1,11 +1,22 @@
 #!/bin/bash
 
-if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
-    DIRTY="-dirty"
+# GIT_COMMIT is set when the git metadata was resolved on the host and passed in with
+# --build-arg (see the Makefile). Inside the build container git does not work for git
+# worktrees and jj workspaces, so don't call it in that case. Otherwise fall back to git.
+if [ -z "$GIT_COMMIT" ]; then
+    GIT_DIRTY=""
+    if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
+        GIT_DIRTY="-dirty"
+    fi
+    GIT_COMMIT=$(git rev-parse HEAD)
+    GIT_COMMIT_SHORT=$(git rev-parse --short HEAD)
+    GIT_TAG=$(git tag -l --contains HEAD | head -n 1)
+    COMMIT_BRANCH=$(git rev-parse --abbrev-ref HEAD)
+    COMMIT_TAG=$(git tag --points-at HEAD | head -n 1)
 fi
-
-COMMIT=$(git rev-parse --short HEAD)
-GIT_TAG=$(git tag -l --contains HEAD | head -n 1)
+# GIT_COMMIT_SHORT may be missing when only GIT_COMMIT was passed in.
+COMMIT="${GIT_COMMIT_SHORT:-${GIT_COMMIT:0:9}}"
+DIRTY="$GIT_DIRTY"
 
 if [[ -z "$DIRTY" && -n "$GIT_TAG" ]]; then
     VERSION=$GIT_TAG
@@ -13,6 +24,6 @@ else
     VERSION="${COMMIT}${DIRTY}"
 fi
 
-GITCOMMIT=$(git rev-parse HEAD)
+GITCOMMIT="$GIT_COMMIT"
 BUILDDATE=$(date -u --rfc-3339=seconds)
 BUILDDATE=${BUILDDATE// /T}
