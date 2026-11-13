@@ -18,6 +18,8 @@ github.com/apache/arrow-go/v18 v18.7.0 h1:Vw/i+cJyebUofT7JlqFpe65LrmwxULn166jjwS
 github.com/apache/arrow-go/v18 v18.7.0/go.mod h1:PM6IigLJkdMwIpeHXnymo+xZ52f42a9EYiLtRel4p/A=
 github.com/apache/thrift v0.24.0 h1:zy31L1a49QTNB2bG1BBfMXol3yJrTH975G3pPubQVLQ=
 github.com/apache/thrift v0.24.0/go.mod h1:zPt6WxgvTOM6hF92y8C+MkEM5LMxZuk4JcQOiU4Esvs=
+github.com/apoorvajagtap/longhorn-types v0.0.0-20260930204518-071276641798 h1:mVsWyPrQQCP0Katfds7YsEgznOTkPvfWj35UgXMqhHM=
+github.com/apoorvajagtap/longhorn-types v0.0.0-20260930204518-071276641798/go.mod h1:Vkzz3elQIX2hvqj1ubCVyPEX+AJdyuU5asYFpVNjqvs=
 github.com/avast/retry-go/v4 v4.7.0 h1:yjDs35SlGvKwRNSykujfjdMxMhMQQM0TnIjJaHB+Zio=
 github.com/avast/retry-go/v4 v4.7.0/go.mod h1:ZMPDa3sY2bKgpLtap9JRUgk2yTAba7cgiFhqxY2Sg6Q=
 github.com/aws/aws-sdk-go-v2 v1.43.7 h1:msCzvkeYJA9ehbV8mRRmkZLo/zJg/+yDVLNtflg83hQ=
@@ -143,8 +145,6 @@ github.com/longhorn/go-iscsi-helper v0.0.0-20261111091915-a9bc4284e8cf h1:yc32uQ
 github.com/longhorn/go-iscsi-helper v0.0.0-20261111091915-a9bc4284e8cf/go.mod h1:3BEiRrrNXUWmHxuiw+ZPkDFja5OVBm1n8BYidb2hQYs=
 github.com/longhorn/sparse-tools v0.0.0-20261022004111-a7caacc40965 h1:082mjqY6STBnO4SEN7DBG+NubfUeyMlgwEQhOxC6T1o=
 github.com/longhorn/sparse-tools v0.0.0-20261022004111-a7caacc40965/go.mod h1:d8l9nyC8No3PIfYHwZunnBj88y5M4sDM+h6uZyTtaNk=
-github.com/longhorn/types v0.0.0-20261023101212-edea52fc05df h1:cNg59HHjR3r9rGBffU26wCigsN+Bw7QhwwPiTbr2PoM=
-github.com/longhorn/types v0.0.0-20261023101212-edea52fc05df/go.mod h1:BK7TFo75ZRJ6uhtE0uk78i/yHYKc+C6xcK3IdZ6PjSY=
 github.com/mattn/go-colorable v0.1.13 h1:fFA4WZxdEF4tXPZVKMLwD8oUnCTTo08duU7wxecdEvA=
 github.com/mattn/go-colorable v0.1.13/go.mod h1:7S9/ev0klgBDR4GtXTXX8a3vIGJpMovkB8vQcUbaXHg=
 github.com/mattn/go-isatty v0.0.16/go.mod h1:kYGgaQfpe5nmfYZH+SKPsOc2e4SrIfOl2e/yFXSvRLM=

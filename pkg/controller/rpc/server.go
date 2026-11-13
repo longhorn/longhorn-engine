@@ -100,6 +100,7 @@ func (cs *ControllerServer) getVolume() *enginerpc.Volume {
 		UnmapMarkSnapChainRemoved: cs.c.GetUnmapMarkSnapChainRemoved(),
 		SnapshotMaxCount:          int32(cs.c.GetSnapshotMaxCount()),
 		SnapshotMaxSize:           cs.c.GetSnapshotMaxSize(),
+		SnapshotRemoveOldest:      cs.c.GetSnapshotRemoveOldest(),
 	}
 }
 
@@ -200,6 +201,14 @@ func (cs *ControllerServer) VolumeSnapshotMaxCountSet(ctx context.Context, req *
 
 func (cs *ControllerServer) VolumeSnapshotMaxSizeSet(ctx context.Context, req *enginerpc.VolumeSnapshotMaxSizeSetRequest) (*enginerpc.Volume, error) {
 	if err := cs.c.SetSnapshotMaxSize(req.Size); err != nil {
+		return nil, err
+	}
+
+	return cs.getVolume(), nil
+}
+
+func (cs *ControllerServer) VolumeSnapshotRemoveOldestSet(ctx context.Context, req *enginerpc.VolumeSnapshotRemoveOldestSetRequest) (*enginerpc.Volume, error) {
+	if err := cs.c.SetSnapshotRemoveOldest(req.Enabled); err != nil {
 		return nil, err
 	}
 

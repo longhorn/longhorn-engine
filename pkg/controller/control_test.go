@@ -1165,3 +1165,355 @@ func (s *TestSuite) TestAlignedWriteWaitsForUnalignedWriteInWOMode(c *C) {
 	<-alignedDone
 	c.Assert(len(store.writes), Equals, 2)
 }
+
+// snapshotUsage is one result of GetSnapshotCountAndSizeUsage.
+type snapshotUsage struct {
+	countUsage int
+	countTotal int
+	sizeUsage  int64
+}
+
+type snapshotLimitTestBackend struct {
+	removalTestBackend
+
+	// usages are returned in call order; the last one repeats.
+	usages []snapshotUsage
+	// usageErrAt makes the Nth (1-based) usage call fail. 0 means never.
+	usageErrAt    int
+	headFileSize  int64
+	headFileErr   error
+	usageCalls    int
+	headFileCalls int
+}
+
+func (b *snapshotLimitTestBackend) GetSnapshotCountAndSizeUsage() (int, int, int64, error) {
+	b.usageCalls++
+	if b.usageErrAt == b.usageCalls {
+		return 0, 0, 0, errors.New("usage failed")
+	}
+	i := b.usageCalls - 1
+	if i >= len(b.usages) {
+		i = len(b.usages) - 1
+	}
+	u := b.usages[i]
+	return u.countUsage, u.countTotal, u.sizeUsage, nil
+}
+
+func (b *snapshotLimitTestBackend) GetHeadFileSize() (int64, error) {
+	b.headFileCalls++
+	return b.headFileSize, b.headFileErr
+}
+
+func (s *TestSuite) TestCanDoSnapshot_AttemptsRemovalOnlyWhenAllowed(c *C) {
+	const maxCount = 5
+	const attempted = `snapshot limit reached: \(count 5/5, size 0/0\) and removing the oldest snapshots failed: ` +
+		`replica 1\.1\.1\.1 is rebuilding, refusing to remove a snapshot`
+	const rejected = "snapshot limit reached: count 5/5, size 0/0"
+
+	tests := []struct {
+		name         string
+		removeOldest bool // c.snapshotRemoveOldest
+		allowRemove  bool // allowRemoveOldest argument
+		countUsage   int
+		expectedErr  string
+	}{
+		{"config on, caller allows, at limit: removal attempted", true, true, maxCount, attempted},
+		{"config on, caller forbids, at limit: no removal", true, false, maxCount, rejected},
+		{"config off, caller allows, at limit: no removal", false, true, maxCount, rejected},
+		{"config off, caller forbids, at limit: no removal", false, false, maxCount, rejected},
+		{"both on but below limit: no removal", true, true, maxCount - 1, ""},
+	}
+
+	for _, tt := range tests {
+		backend := &replicator{}
+		backend.AddBackend("test", &snapshotLimitTestBackend{
+			usages: []snapshotUsage{{countUsage: tt.countUsage}},
+		}, types.RW)
+		ctrl := &Controller{
+			VolumeName: "test-removal-attempt",
+			backend:    backend,
+			// The WO replica makes removeOldSnapshotsNoLock fail fast, before any RPC.
+			replicas:             []types.Replica{{Address: "1.1.1.1", Mode: types.WO}},
+			snapshotMaxCount:     maxCount,
+			snapshotRemoveOldest: tt.removeOldest,
+		}
+
+		err := ctrl.canDoSnapshot(tt.allowRemove)
+		if tt.expectedErr == "" {
+			c.Assert(err, IsNil, Commentf("Test case: %s", tt.name))
+		} else {
+			c.Assert(err, ErrorMatches, tt.expectedErr, Commentf("Test case: %s", tt.name))
+		}
+	}
+}
+
+func (s *TestSuite) TestRemoveOldSnapshotsNoLockWithoutRPC(c *C) {
+	const noRW = "no RW replica available to remove snapshots from"
+
+	tests := []struct {
+		name        string
+		replicas    []types.Replica
+		expectedErr string
+	}{
+		{"no replicas fails", nil, noRW},
+		{"only ERR replicas fails", []types.Replica{{Address: "1.1.1.1", Mode: types.ERR}}, noRW},
+		{
+			"WO replica refuses removal",
+			[]types.Replica{{Address: "1.1.1.1", Mode: types.WO}},
+			"replica 1.1.1.1 is rebuilding, refusing to remove a snapshot",
+		},
+		{
+			"ERR replica is skipped before reaching a WO replica",
+			[]types.Replica{{Address: "1.1.1.1", Mode: types.ERR}, {Address: "1.1.1.2", Mode: types.WO}},
+			"replica 1.1.1.2 is rebuilding, refusing to remove a snapshot",
+		},
+	}
+
+	for _, tt := range tests {
+		ctrl := &Controller{VolumeName: "test-remove-old", replicas: tt.replicas}
+		err := ctrl.removeOldSnapshotsNoLock(5, 0, 0)
+		if tt.expectedErr == "" {
+			c.Assert(err, IsNil, Commentf("Test case: %s", tt.name))
+		} else {
+			c.Assert(err, ErrorMatches, tt.expectedErr, Commentf("Test case: %s", tt.name))
+		}
+	}
+}
+
+func (s *TestSuite) TestCanDoSnapshot_SizeLimitAndErrors(c *C) {
+	const maxCount = 5
+
+	tests := []struct {
+		name          string
+		maxSize       int64
+		usage         snapshotUsage
+		usageErrAt    int
+		headFileSize  int64
+		headFileErr   error
+		removeOldest  bool
+		allowRemove   bool
+		expectedErr   string
+		headFileCalls int
+	}{
+		{
+			name:          "no size limit: head file size is not read",
+			usage:         snapshotUsage{countUsage: 1, sizeUsage: 1 << 40},
+			headFileCalls: 0,
+		},
+		{
+			name:          "size limit not reached",
+			maxSize:       100,
+			usage:         snapshotUsage{countUsage: 1, sizeUsage: 60},
+			headFileSize:  40,
+			headFileCalls: 1,
+		},
+		{
+			name:          "size limit reached, removal disabled: rejected",
+			maxSize:       100,
+			usage:         snapshotUsage{countUsage: 1, sizeUsage: 90},
+			headFileSize:  20,
+			expectedErr:   "snapshot limit reached: count 1/5, size 110/100",
+			headFileCalls: 1,
+		},
+		{
+			name:         "size limit reached, removal enabled: removal attempted",
+			maxSize:      100,
+			usage:        snapshotUsage{countUsage: 1, sizeUsage: 90},
+			headFileSize: 20,
+			removeOldest: true,
+			allowRemove:  true,
+			expectedErr: `snapshot limit reached: \(count 1/5, size 110/100\) and removing the oldest snapshots failed: ` +
+				`replica 1\.1\.1\.1 is rebuilding, refusing to remove a snapshot`,
+			headFileCalls: 1,
+		},
+		{
+			name:        "usage error is returned",
+			usageErrAt:  1,
+			usage:       snapshotUsage{countUsage: 1},
+			expectedErr: "cannot get an valid result for snapshot usage",
+		},
+		{
+			name:          "head file size error is returned",
+			maxSize:       100,
+			usage:         snapshotUsage{countUsage: 1},
+			headFileErr:   errors.New("head failed"),
+			expectedErr:   "cannot get valid result for head file size",
+			headFileCalls: 1,
+		},
+		{
+			name:        "total count limit reached",
+			usage:       snapshotUsage{countUsage: 1, countTotal: types.MaximumTotalSnapshotCount},
+			expectedErr: "snapshot count total 250 reached 250, purge snapshots first",
+		},
+	}
+
+	for _, tt := range tests {
+		limitBackend := &snapshotLimitTestBackend{
+			usages:       []snapshotUsage{tt.usage},
+			usageErrAt:   tt.usageErrAt,
+			headFileSize: tt.headFileSize,
+			headFileErr:  tt.headFileErr,
+		}
+		backend := &replicator{}
+		backend.AddBackend("test", limitBackend, types.RW)
+		ctrl := &Controller{
+			VolumeName: "test-size-limit",
+			backend:    backend,
+			// The WO replica makes removeOldSnapshotsNoLock fail fast, before any RPC.
+			replicas:             []types.Replica{{Address: "1.1.1.1", Mode: types.WO}},
+			snapshotMaxCount:     maxCount,
+			SnapshotMaxSize:      tt.maxSize,
+			snapshotRemoveOldest: tt.removeOldest,
+		}
+
+		err := ctrl.canDoSnapshot(tt.allowRemove)
+		comment := Commentf("Test case: %s", tt.name)
+		if tt.expectedErr == "" {
+			c.Assert(err, IsNil, comment)
+		} else {
+			c.Assert(err, ErrorMatches, tt.expectedErr, comment)
+		}
+		c.Assert(limitBackend.headFileCalls, Equals, tt.headFileCalls, comment)
+	}
+}
+
+func (s *TestSuite) TestListRemovableSnapshots(c *C) {
+	const (
+		head    = "volume-head-002.img"
+		snapA   = "volume-snap-a.img" // oldest
+		snapB   = "volume-snap-b.img"
+		snapC   = "volume-snap-c.img" // newest
+		backing = "backing.img"
+	)
+	// chain is newest-to-oldest with the head at index 0.
+	chain := []string{head, snapC, snapB, snapA}
+
+	disk := func(size string, children ...string) types.DiskInfo {
+		info := types.DiskInfo{Size: size, Children: map[string]bool{}}
+		for _, ch := range children {
+			info.Children[ch] = true
+		}
+		return info
+	}
+	linearDisks := func() map[string]types.DiskInfo {
+		return map[string]types.DiskInfo{
+			snapA: disk("30", snapB),
+			snapB: disk("30", snapC),
+			snapC: disk("30", head),
+		}
+	}
+
+	tests := []struct {
+		name         string
+		chain        []string
+		disks        map[string]types.DiskInfo
+		maxCount     int
+		maxSize      int64
+		countUsage   int
+		sizeUsage    int64
+		headFileSize int64
+		expected     []string
+		expectedErr  string
+	}{
+		{
+			name:  "already fits: nothing removed",
+			chain: chain, disks: linearDisks(),
+			maxCount: 5, countUsage: 3,
+			expected: nil,
+		},
+		{
+			name:  "count limit: oldest removed",
+			chain: chain, disks: linearDisks(),
+			maxCount: 3, countUsage: 3,
+			expected: []string{snapA},
+		},
+		{
+			name:  "count limit: two oldest removed",
+			chain: chain, disks: linearDisks(),
+			maxCount: 2, countUsage: 3,
+			expected: []string{snapA, snapB},
+		},
+		{
+			name:  "size limit: oldest removed",
+			chain: chain, disks: linearDisks(),
+			maxCount: 10, maxSize: 100, countUsage: 3, sizeUsage: 90, headFileSize: 20,
+			expected: []string{snapA},
+		},
+		{
+			name:  "size limit: two oldest removed",
+			chain: chain, disks: linearDisks(),
+			maxCount: 10, maxSize: 100, countUsage: 3, sizeUsage: 90, headFileSize: 50,
+			expected: []string{snapA, snapB},
+		},
+		{
+			name:  "no size limit: size is ignored",
+			chain: chain, disks: linearDisks(),
+			maxCount: 3, countUsage: 3, sizeUsage: 1 << 40, headFileSize: 1 << 40,
+			expected: []string{snapA},
+		},
+		{
+			name:  "removed snapshot is skipped",
+			chain: chain,
+			disks: map[string]types.DiskInfo{
+				snapA: {Size: "30", Removed: true, Children: map[string]bool{snapB: true}},
+				snapB: disk("30", snapC),
+				snapC: disk("30", head),
+			},
+			maxCount: 2, countUsage: 2,
+			expected: []string{snapB},
+		},
+		{
+			name:  "snapshot with multiple children is skipped",
+			chain: chain,
+			disks: map[string]types.DiskInfo{
+				snapA: disk("30", snapB, "volume-snap-x.img"),
+				snapB: disk("30", snapC),
+				snapC: disk("30", head),
+			},
+			maxCount: 3, countUsage: 3,
+			expected: []string{snapB},
+		},
+		{
+			name:  "backing file in chain is skipped",
+			chain: append(append([]string{}, chain...), backing), disks: linearDisks(),
+			maxCount: 3, countUsage: 3,
+			expected: []string{snapA},
+		},
+		{
+			name:  "cannot make room",
+			chain: chain, disks: linearDisks(),
+			maxCount: 10, maxSize: 10, countUsage: 3, sizeUsage: 90, headFileSize: 20,
+			expectedErr: "removing 3 snapshots would not leave room for a new one .*",
+		},
+		{
+			name:  "unparsable size",
+			chain: chain,
+			disks: map[string]types.DiskInfo{
+				snapA: disk("abc", snapB),
+				snapB: disk("30", snapC),
+				snapC: disk("30", head),
+			},
+			maxCount: 3, countUsage: 3,
+			expectedErr: "failed to parse disk size .*",
+		},
+		{
+			name:        "empty chain",
+			disks:       linearDisks(),
+			maxCount:    3,
+			countUsage:  3,
+			expectedErr: "empty replica chain",
+		},
+	}
+
+	for _, tt := range tests {
+		ctrl := &Controller{snapshotMaxCount: tt.maxCount, SnapshotMaxSize: tt.maxSize}
+		got, err := ctrl.listRemovableSnapshots(tt.disks, tt.chain, tt.countUsage, tt.sizeUsage, tt.headFileSize)
+		comment := Commentf("Test case: %s", tt.name)
+		if tt.expectedErr != "" {
+			c.Assert(err, ErrorMatches, tt.expectedErr, comment)
+			continue
+		}
+		c.Assert(err, IsNil, comment)
+		c.Assert(got, DeepEquals, tt.expected, comment)
+	}
+}
