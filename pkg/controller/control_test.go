@@ -1165,3 +1165,39 @@ func (s *TestSuite) TestAlignedWriteWaitsForUnalignedWriteInWOMode(c *C) {
 	<-alignedDone
 	c.Assert(len(store.writes), Equals, 2)
 }
+
+type snapshotLimitTestBackend struct {
+	removalTestBackend
+	sizeUsage       int64
+	snapshotMaxSize int64
+}
+
+func (b *snapshotLimitTestBackend) GetSnapshotCountAndSizeUsage() (int, int, int64, error) {
+	return 1, 1, b.sizeUsage, nil
+}
+
+func (b *snapshotLimitTestBackend) SetSnapshotMaxSize(size int64) error {
+	b.snapshotMaxSize = size
+	return nil
+}
+
+func (s *TestSuite) TestSetSnapshotMaxSize(c *C) {
+	replicaBackend := &snapshotLimitTestBackend{sizeUsage: 8192, snapshotMaxSize: 16384}
+	backend := &replicator{}
+	backend.AddBackend("test", replicaBackend, types.RW)
+	controller := &Controller{
+		backend:         backend,
+		replicas:        []types.Replica{{Address: "test", Mode: types.RW}},
+		SnapshotMaxSize: 16384,
+	}
+
+	err := controller.SetSnapshotMaxSize(4096)
+	c.Assert(err, ErrorMatches, "cannot set snapshotMaxSize=4096 smaller than current snapshot size usage=8192.*")
+	c.Assert(controller.GetSnapshotMaxSize(), Equals, int64(16384))
+	c.Assert(replicaBackend.snapshotMaxSize, Equals, int64(16384))
+
+	// 0 means no limit, so it is allowed even if snapshots already use space.
+	c.Assert(controller.SetSnapshotMaxSize(0), IsNil)
+	c.Assert(controller.GetSnapshotMaxSize(), Equals, int64(0))
+	c.Assert(replicaBackend.snapshotMaxSize, Equals, int64(0))
+}
