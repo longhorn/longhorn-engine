@@ -15,7 +15,7 @@ require (
 	github.com/longhorn/go-common-libs v0.0.0-20261023023359-4e90b601fcb9
 	github.com/longhorn/go-iscsi-helper v0.0.0-20261111091915-a9bc4284e8cf
 	github.com/longhorn/sparse-tools v0.0.0-20261022004111-a7caacc40965
-	github.com/longhorn/types v0.0.0-20261023101212-edea52fc05df
+	github.com/longhorn/types v0.0.0-20261030035820-c6ac902022cf
 	github.com/moby/sys/reexec v0.1.0
 	github.com/rancher/go-fibmap v0.0.0-20160418233256-5fc9f8c1ed47
 	github.com/rancher/go-rancher v0.1.1-0.20190307222549-9756097e5e4c
@@ -27,9 +27,9 @@ require (
 	google.golang.org/protobuf v1.36.12
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 	gopkg.in/cheggaaa/pb.v2 v2.0.7
-	k8s.io/apimachinery v0.37.1
-	k8s.io/client-go v0.37.1
-	k8s.io/mount-utils v0.37.1
+	k8s.io/apimachinery v0.37.2
+	k8s.io/client-go v0.37.2
+	k8s.io/mount-utils v0.37.2
 )
 
 require (
