@@ -346,8 +346,8 @@ github.com/longhorn/sparse-tools/sparse/rest
 github.com/longhorn/sparse-tools/stats
 github.com/longhorn/sparse-tools/types
 github.com/longhorn/sparse-tools/util
-# github.com/longhorn/types v0.0.0-20260930155107-5849431731c3 => github.com/longhorn/types v0.0.0-20260408014255-ff785625245f
-## explicit; go 1.24.0
+# github.com/longhorn/types v0.0.0-20261030035820-c6ac902022cf => github.com/longhorn/types v0.0.0-20261030035820-c6ac902022cf
+## explicit; go 1.26.0
 github.com/longhorn/types/pkg/generated/enginerpc
 github.com/longhorn/types/pkg/generated/profilerrpc
 # github.com/mattn/go-colorable v0.1.13
@@ -437,7 +437,7 @@ github.com/yusufpapurcu/wmi
 # go.uber.org/multierr v1.11.0
 ## explicit; go 1.19
 go.uber.org/multierr
-# golang.org/x/net v0.60.0
+# golang.org/x/net v0.62.0
 ## explicit; go 1.26.0
 golang.org/x/net/http/httpguts
 golang.org/x/net/http/httpproxy
@@ -450,13 +450,13 @@ golang.org/x/net/internal/socks
 golang.org/x/net/internal/timeseries
 golang.org/x/net/proxy
 golang.org/x/net/trace
-# golang.org/x/sys v0.48.0
+# golang.org/x/sys v0.49.0
 ## explicit; go 1.26.0
 golang.org/x/sys/execabs
 golang.org/x/sys/unix
 golang.org/x/sys/windows
 golang.org/x/sys/windows/registry
-# golang.org/x/text v0.42.0
+# golang.org/x/text v0.43.0
 ## explicit; go 1.26.0
 golang.org/x/text/cases
 golang.org/x/text/internal
@@ -644,4 +644,4 @@ k8s.io/utils/keymutex
 ## explicit; go 1.23
 sigs.k8s.io/json
 sigs.k8s.io/json/internal/golang/encoding/json
-# github.com/longhorn/types => github.com/longhorn/types v0.0.0-20260408014255-ff785625245f
+# github.com/longhorn/types => github.com/longhorn/types v0.0.0-20261030035820-c6ac902022cf
