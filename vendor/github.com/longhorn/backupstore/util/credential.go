@@ -42,6 +42,9 @@ func setupS3Credential(credential map[string]string) error {
 	_ = os.Setenv(types.NOProxy, credential[types.NOProxy])
 	_ = os.Setenv(types.VirtualHostedStyle, credential[types.VirtualHostedStyle])
 	_ = os.Setenv(types.AWSSignAcceptEncoding, credential[types.AWSSignAcceptEncoding])
+	_ = os.Setenv(types.AWSRetryMaxAttempts, credential[types.AWSRetryMaxAttempts])
+	_ = os.Setenv(types.AWSRetryMaximumAttempts, credential[types.AWSRetryMaximumAttempts])
+	_ = os.Setenv(types.AWSRetryMaximumBackoff, credential[types.AWSRetryMaximumBackoff])
 
 	// set a custom ca cert if available
 	if credential[types.AWSCert] != "" {
@@ -147,6 +150,9 @@ func getS3CredentialFromEnvVars() (map[string]string, error) {
 	credential[types.NOProxy] = os.Getenv(types.NOProxy)
 	credential[types.VirtualHostedStyle] = os.Getenv(types.VirtualHostedStyle)
 	credential[types.AWSSignAcceptEncoding] = os.Getenv(types.AWSSignAcceptEncoding)
+	credential[types.AWSRetryMaxAttempts] = os.Getenv(types.AWSRetryMaxAttempts)
+	credential[types.AWSRetryMaximumAttempts] = os.Getenv(types.AWSRetryMaximumAttempts)
+	credential[types.AWSRetryMaximumBackoff] = os.Getenv(types.AWSRetryMaximumBackoff)
 
 	return credential, nil
 }
