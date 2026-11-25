@@ -80,23 +80,26 @@ func fillVolumeInfo(volume *Volume) *VolumeInfo {
 
 		LinkedCloneSourceVolume:   volume.LinkedCloneSourceVolume,
 		LinkedCloneSourceSnapshot: volume.LinkedCloneSourceSnapshot,
+
+		BackupEncryptionSecret: volume.Encryption.SecretName(),
 	}
 }
 
 func fillBackupInfo(backup *Backup, destURL string) *BackupInfo {
 	return &BackupInfo{
-		Name:                  backup.Name,
-		URL:                   EncodeBackupURL(backup.Name, backup.VolumeName, destURL),
-		SnapshotName:          backup.SnapshotName,
-		SnapshotCreated:       backup.SnapshotCreatedAt,
-		Created:               backup.CreatedTime,
-		Size:                  backup.Size,
-		Labels:                backup.Labels,
-		Parameters:            backup.Parameters,
-		IsIncremental:         backup.IsIncremental,
-		CompressionMethod:     backup.CompressionMethod,
-		NewlyUploadedDataSize: backup.NewlyUploadedDataSize,
-		ReUploadedDataSize:    backup.ReUploadedDataSize,
+		Name:                   backup.Name,
+		URL:                    EncodeBackupURL(backup.Name, backup.VolumeName, destURL),
+		SnapshotName:           backup.SnapshotName,
+		SnapshotCreated:        backup.SnapshotCreatedAt,
+		Created:                backup.CreatedTime,
+		Size:                   backup.Size,
+		Labels:                 backup.Labels,
+		Parameters:             backup.Parameters,
+		IsIncremental:          backup.IsIncremental,
+		CompressionMethod:      backup.CompressionMethod,
+		NewlyUploadedDataSize:  backup.NewlyUploadedDataSize,
+		ReUploadedDataSize:     backup.ReUploadedDataSize,
+		BackupEncryptionSecret: backup.Encryption.SecretName(),
 	}
 }
 

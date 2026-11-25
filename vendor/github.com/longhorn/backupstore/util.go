@@ -5,7 +5,6 @@ import (
 	"compress/gzip"
 	"context"
 	"io"
-	"io/fs"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -96,13 +95,7 @@ func retryWithBackoff(ctx context.Context, f func() (io.Reader, error)) (io.Read
 		if err == nil {
 			return r, nil
 		}
-		if strings.Contains(err.Error(), "checksum verification failed") {
-			return nil, err
-		}
-		// A block that does not exist in the backup store will not appear on a
-		// later attempt. Fail now so the caller can react without waiting for
-		// the whole backoff.
-		if errors.Is(err, fs.ErrNotExist) {
+		if strings.Contains(err.Error(), "checksum verification failed") || errors.Is(err, ErrBackupDecryptionFailed) {
 			return nil, err
 		}
 		lastErr = err
@@ -122,7 +115,13 @@ func retryWithBackoff(ctx context.Context, f func() (io.Reader, error)) (io.Read
 // when header/magic suggests a mismatched method. Rationale: remote stores can be
 // transient; retries avoid spurious failures while checksum preserves integrity.
 func DecompressAndVerifyWithFallback(ctx context.Context, bsDriver BackupStoreDriver, blkFile, decompression, checksum string) (io.Reader, error) {
-	// Helper function to read block from backup store
+	return readBlockWithFallback(ctx, bsDriver, blkFile, decompression, checksum, nil)
+}
+
+// readBlockWithFallback is DecompressAndVerifyWithFallback with an optional block cipher. An
+// encrypted block is authenticated and decrypted before decompression; a decryption failure is
+// returned immediately and never retried as plaintext.
+func readBlockWithFallback(ctx context.Context, bsDriver BackupStoreDriver, blkFile, decompression, checksum string, blkCipher *blockCipher) (io.Reader, error) {
 	readBlock := func() (io.ReadCloser, error) {
 		rc, err := bsDriver.Read(blkFile)
 		if err != nil {
@@ -140,6 +139,11 @@ func DecompressAndVerifyWithFallback(ctx context.Context, bsDriver BackupStoreDr
 		_ = rc.Close()
 		if readErr != nil {
 			return nil, errors.Wrapf(readErr, "failed to read block %v into buffer", blkFile)
+		}
+		if blkCipher != nil {
+			if buf, err = blkCipher.decrypt(buf); err != nil {
+				return nil, errors.Wrapf(err, "block %v", blkFile)
+			}
 		}
 		r, err := util.DecompressAndVerify(decompression, bytes.NewReader(buf), checksum)
 		if err == nil {

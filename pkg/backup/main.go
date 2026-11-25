@@ -35,6 +35,7 @@ type CreateBackupParameters struct {
 	StorageClassName     string
 	Labels               []string
 	Parameters           map[string]string
+	Encryption           *backupstore.EncryptionConfig
 }
 
 type ErrorResponse struct {
@@ -130,6 +131,7 @@ func DoBackupInit(params *CreateBackupParameters) (*replica.BackupStatus, *backu
 		DeltaOps:        backup,
 		Labels:          labelMap,
 		Parameters:      params.Parameters,
+		Encryption:      params.Encryption,
 	}
 	return backup, config, nil
 }
@@ -167,7 +169,7 @@ func openBackingFile(backingFilePath string) (*backingfile.BackingFile, error) {
 	return backingfile.OpenBackingFile(backingFilePath)
 }
 
-func DoBackupRestore(backupURL string, toFile string, concurrentLimit int, restoreObj *replica.RestoreStatus) error {
+func DoBackupRestore(backupURL string, toFile string, concurrentLimit int, restoreObj *replica.RestoreStatus, encryption *backupstore.EncryptionConfig) error {
 	backupURL = util.UnescapeURL(backupURL)
 
 	log.Infof("Start restoring from %v into snapshot %v", backupURL, toFile)
@@ -178,10 +180,11 @@ func DoBackupRestore(backupURL string, toFile string, concurrentLimit int, resto
 			DeltaOps:        restoreObj,
 			Filename:        toFile,
 			ConcurrentLimit: int32(concurrentLimit),
+			Encryption:      encryption,
 		})
 }
 
-func DoBackupRestoreIncrementally(url string, deltaFile string, lastRestored string, concurrentLimit int, restoreObj *replica.RestoreStatus) error {
+func DoBackupRestoreIncrementally(url string, deltaFile string, lastRestored string, concurrentLimit int, restoreObj *replica.RestoreStatus, encryption *backupstore.EncryptionConfig) error {
 	backupURL := util.UnescapeURL(url)
 
 	log.Infof("Start incremental restoring from %v into delta file %v", backupURL, deltaFile)
@@ -193,6 +196,7 @@ func DoBackupRestoreIncrementally(url string, deltaFile string, lastRestored str
 			LastBackupName:  lastRestored,
 			Filename:        deltaFile,
 			ConcurrentLimit: int32(concurrentLimit),
+			Encryption:      encryption,
 		})
 }
 

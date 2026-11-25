@@ -157,5 +157,27 @@ func GetBackupCredential(backupURL string) (map[string]string, error) {
 		return nil, err
 	}
 
-	return getCredentialFromEnvVars(backupType)
+	credential, err := getCredentialFromEnvVars(backupType)
+	if err != nil {
+		return nil, err
+	}
+	if credential == nil {
+		credential = map[string]string{}
+	}
+
+	// Encryption credentials are request-scoped and apply to every backup target,
+	// including NFS which otherwise has no storage-provider env vars. They are
+	// collected into the credential map only and must never be written back into
+	// the process environment by SetupCredential.
+	addBackupEncryptionCredentialFromEnvVars(credential)
+	return credential, nil
+}
+
+func addBackupEncryptionCredentialFromEnvVars(credential map[string]string) {
+	if secret := os.Getenv(types.BackupEncryptionSecret); secret != "" {
+		credential[types.BackupEncryptionSecret] = secret
+	}
+	if key := os.Getenv(types.BackupEncryptionKey); key != "" {
+		credential[types.BackupEncryptionKey] = key
+	}
 }

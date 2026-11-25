@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/fs"
 	"net/url"
 	"os"
 	"strings"
@@ -12,7 +11,6 @@ import (
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore"
 	"github.com/Azure/azure-sdk-for-go/sdk/azcore/streaming"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/blob"
-	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/bloberror"
 	"github.com/Azure/azure-sdk-for-go/sdk/storage/azblob/container"
 	"github.com/cockroachdb/errors"
 
@@ -135,11 +133,6 @@ func (s *service) getBlob(blob string) (io.ReadCloser, error) {
 
 	response, err := blobClient.DownloadStream(context.Background(), nil)
 	if err != nil {
-		// Mark the error for callers that need to tell a missing blob from
-		// other failures.
-		if bloberror.HasCode(err, bloberror.BlobNotFound) {
-			return nil, errors.Mark(err, fs.ErrNotExist)
-		}
 		return nil, err
 	}
 

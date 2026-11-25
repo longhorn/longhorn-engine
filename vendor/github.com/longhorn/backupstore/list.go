@@ -32,6 +32,8 @@ type VolumeInfo struct {
 
 	LinkedCloneSourceVolume   string `json:",omitempty"`
 	LinkedCloneSourceSnapshot string `json:",omitempty"`
+
+	BackupEncryptionSecret string `json:",omitempty"`
 }
 
 type BackupInfo struct {
@@ -52,6 +54,8 @@ type BackupInfo struct {
 	VolumeSize             int64  `json:",string,omitempty"`
 	VolumeCreated          string `json:",omitempty"`
 	VolumeBackingImageName string `json:",omitempty"`
+
+	BackupEncryptionSecret string `json:",omitempty"`
 
 	Messages map[types.MessageType]string
 }
