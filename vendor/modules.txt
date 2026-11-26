@@ -715,4 +715,4 @@ k8s.io/utils/keymutex
 ## explicit; go 1.23
 sigs.k8s.io/json
 sigs.k8s.io/json/internal/golang/encoding/json
-# github.com/longhorn/backupstore => ../backupstore
+# github.com/longhorn/backupstore => github.com/carterli0407-cell/backupstore v0.0.0-20261126023318-b725cf70b494
