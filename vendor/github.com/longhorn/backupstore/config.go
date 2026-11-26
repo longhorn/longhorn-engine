@@ -303,9 +303,13 @@ func saveVolume(driver BackupStoreDriver, v *Volume) error {
 
 func getBackupNamesForVolume(driver BackupStoreDriver, volumeName string) ([]string, error) {
 	result := []string{}
-	fileList, err := driver.List(getBackupPath(volumeName))
+	backupPath := getBackupPath(volumeName)
+	fileList, err := driver.List(backupPath)
 	if err != nil {
-		// path doesn't exist
+		// Drivers return an empty list without an error when the path does not
+		// exist, so any error here is a real listing failure. Log it so a
+		// failed listing is distinguishable from a volume with no backups.
+		log.WithError(err).Warnf("Failed to list backup names in %v, treating as empty", backupPath)
 		return result, nil
 	}
 	return util.ExtractNames(fileList, BACKUP_CONFIG_PREFIX, CFG_SUFFIX), nil

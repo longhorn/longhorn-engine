@@ -106,6 +106,14 @@ type progress struct {
 	progress int
 }
 
+// currentProgress returns the last computed progress percentage under the lock. Use it after the
+// first worker error returns, because the remaining workers may still be updating the counters.
+func (p *progress) currentProgress() int {
+	p.Lock()
+	defer p.Unlock()
+	return p.progress
+}
+
 type DeltaBlockBackupOperations interface {
 	HasSnapshot(id, volumeID string) bool
 	CompareSnapshot(id, compareID, volumeID string, blockSize int64) (*types.Mappings, error)
@@ -338,8 +346,17 @@ func populateMappings(delta *types.Mappings) (<-chan types.Mapping, <-chan error
 	return mappingChan, errChan
 }
 
-func getProgress(total, processed int64) int {
-	return int((float64(processed+1) / float64(total)) * PROGRESS_PERCENTAGE_BACKUP_SNAPSHOT)
+// getProgress returns the progress percentage to report after processedBlocks of totalBlocks
+// have been backed up or restored.
+//
+// processedBlocks is a count that includes the block that just finished, not a zero-based index,
+// so the last block yields exactly PROGRESS_PERCENTAGE_BACKUP_SNAPSHOT.
+//
+// Values above PROGRESS_PERCENTAGE_BACKUP_SNAPSHOT up to PROGRESS_PERCENTAGE_BACKUP_TOTAL are
+// reserved for the final status update, which runs after the metadata is saved or the volume
+// device is closed. Per-block progress must never report completion.
+func getProgress(totalBlocks, processedBlocks int64) int {
+	return int((float64(processedBlocks) / float64(totalBlocks)) * PROGRESS_PERCENTAGE_BACKUP_SNAPSHOT)
 }
 
 func isBlockBeingProcessed(deltaBackup *Backup, offset int64, checksum string) bool {
@@ -611,7 +628,7 @@ func performBackup(bsDriver BackupStoreDriver, config *DeltaBackupConfig, delta 
 
 	if err != nil {
 		logrus.WithError(err).Errorf("Failed to backup volume %v snapshot %v", volume.Name, snapshot.Name)
-		return progress.progress, "", err
+		return progress.currentProgress(), "", err
 	}
 
 	log.WithFields(logrus.Fields{
@@ -709,6 +726,62 @@ func mergeSnapshotMap(deltaBackup, lastBackup *Backup) *Backup {
 	}
 
 	return backup
+}
+
+// finishRestore closes the volume device, reports the final restore status, and releases the
+// lock. progressReached is the per-block progress when the restore stopped. It is replaced by
+// PROGRESS_PERCENTAGE_BACKUP_TOTAL only when both the restore and the close succeeded, because
+// the engines treat that value as success regardless of the error field.
+func finishRestore(deltaOps DeltaRestoreOperations, volDev *os.File, volDevName string, restoreLog logrus.FieldLogger, lock *FileLock, progressReached int, restoreErr error) {
+	err := closeRestoreVolumeDev(deltaOps, volDev, volDevName, restoreLog, restoreErr)
+	if err == nil {
+		progressReached = PROGRESS_PERCENTAGE_BACKUP_TOTAL
+	}
+	deltaOps.UpdateRestoreStatus(volDevName, progressReached, err)
+	if unlockErr := lock.Unlock(); unlockErr != nil {
+		restoreLog.WithError(unlockErr).Warn("Failed to unlock")
+	}
+}
+
+// closeRestoreVolumeDev closes the volume device and returns the error to report for the restore.
+//
+// The restoreBlocks goroutines write through their own file descriptors and discard their close
+// errors, so CloseVolumeDev is the only call that reports whether the restored data was flushed
+// to the device. The returned error is chosen as follows:
+//   - Close succeeded: the restore error, which is nil when the restore succeeded.
+//   - Close failed and the restore already failed: the restore error, because it is the earlier
+//     failure. The close error is only logged.
+//   - Close failed and the restore succeeded: the close error, so that the restore is reported
+//     as failed instead of complete.
+func closeRestoreVolumeDev(deltaOps DeltaRestoreOperations, volDev *os.File, volDevName string, restoreLog logrus.FieldLogger, restoreErr error) error {
+	closeErr := deltaOps.CloseVolumeDev(volDev)
+	if closeErr == nil {
+		return restoreErr
+	}
+
+	if restoreErr != nil {
+		restoreLog.WithError(closeErr).Warnf("Failed to close volume device %v after the restore failed", volDevName)
+		return restoreErr
+	}
+	restoreLog.WithError(closeErr).Errorf("Failed to close volume device %v, failing the restore because the flush of the restored data could not be confirmed", volDevName)
+	return errors.Wrapf(closeErr, "failed to close volume device %v", volDevName)
+}
+
+// wrapContextErrorAsRestoreCancelled returns err wrapped with the types.ErrorMsgRestoreCancelled
+// message when err is a context error, either context.Canceled or context.DeadlineExceeded. Any
+// other error is returned unchanged.
+//
+// The engines match on that message to record the restore as cancelled instead of failed, so
+// that it is restarted later. A cancellation reaches the caller in one of three shapes: this
+// message from a worker that saw ctx.Done(), a ctx error wrapped by a worker's block read, or the
+// bare ctx.Err() relayed by mergeErrorChannels. Normalizing here gives the engines the same
+// message in every case. The message names no cause; the wrapped ctx error already says whether
+// the ctx was cancelled or its deadline passed.
+func wrapContextErrorAsRestoreCancelled(err error, volumeName string) error {
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
+		return errors.Wrapf(err, types.ErrorMsgRestoreCancelled+" for volume %v", volumeName)
+	}
+	return err
 }
 
 // RestoreDeltaBlockBackup restores a delta block backup for the given configuration
@@ -827,18 +900,19 @@ func RestoreDeltaBlockBackup(ctx context.Context, config *DeltaRestoreConfig) (e
 
 	go func(ctx context.Context) {
 		var err error
-		currentProgress := 0
+		progressReached := 0
 
+		// The closure is required so that err and progressReached are read when the goroutine
+		// exits, not when the defer is registered.
 		defer func() {
-			if _err := deltaOps.CloseVolumeDev(volDev); _err != nil {
-				restoreLog.WithError(_err).Warnf("Failed to close volume device %v", volDevName)
-			}
-
-			deltaOps.UpdateRestoreStatus(volDevName, currentProgress, err)
-			if unlockErr := lock.Unlock(); unlockErr != nil {
-				restoreLog.WithError(unlockErr).Warn("Failed to unlock")
-			}
+			finishRestore(deltaOps, volDev, volDevName, restoreLog, lock, progressReached, err)
 		}()
+
+		// The restore ends with the first error or completion below. Cancel ctx so
+		// the goroutines still feeding and writing blocks exit, without relying on
+		// the caller to cancel. Runs before the finishRestore defer above.
+		ctx, cancel := context.WithCancel(ctx)
+		defer cancel()
 
 		progress := &progress{
 			totalBlockCounts: int64(len(backup.Blocks)),
@@ -857,7 +931,7 @@ func RestoreDeltaBlockBackup(ctx context.Context, config *DeltaRestoreConfig) (e
 			}
 		}
 
-		blockChan, errChan := populateBlocksForFullRestore(bsDriver, backup)
+		blockChan, errChan := populateBlocksForFullRestore(ctx, bsDriver, backup)
 
 		errorChans := []<-chan error{errChan}
 		for i := 0; i < int(concurrentLimit); i++ {
@@ -865,13 +939,14 @@ func RestoreDeltaBlockBackup(ctx context.Context, config *DeltaRestoreConfig) (e
 		}
 
 		mergedErrChan := mergeErrorChannels(ctx, errorChans...)
-		err = <-mergedErrChan
+		err = wrapContextErrorAsRestoreCancelled(<-mergedErrChan, srcVolumeName)
 		if err != nil {
-			currentProgress = progress.progress
+			progressReached = progress.currentProgress()
 			restoreLog.WithError(err).Errorf("Failed to delta restore volume %v backup %v", srcVolumeName, backup.Name)
 			return
 		}
-		currentProgress = PROGRESS_PERCENTAGE_BACKUP_TOTAL
+		// All blocks are written. The deferred close decides whether to report completion.
+		progressReached = PROGRESS_PERCENTAGE_BACKUP_SNAPSHOT
 	}(ctx)
 
 	return nil
@@ -1024,18 +1099,12 @@ func RestoreDeltaBlockBackupIncrementally(ctx context.Context, config *DeltaRest
 	}
 	go func() {
 		var err error
-		finalProgress := 0
+		progressReached := 0
 
+		// The closure is required so that err and progressReached are read when the goroutine
+		// exits, not when the defer is registered.
 		defer func() {
-			if _err := deltaOps.CloseVolumeDev(volDev); _err != nil {
-				restoreLog.WithError(_err).Warnf("Failed to close volume device %v", volDevName)
-			}
-
-			deltaOps.UpdateRestoreStatus(volDevName, finalProgress, err)
-
-			if unlockErr := lock.Unlock(); unlockErr != nil {
-				restoreLog.WithError(unlockErr).Warn("Failed to unlock")
-			}
+			finishRestore(deltaOps, volDev, volDevName, restoreLog, lock, progressReached, err)
 		}()
 
 		// This pre-truncate is to ensure the XFS speculatively
@@ -1056,12 +1125,25 @@ func RestoreDeltaBlockBackupIncrementally(ctx context.Context, config *DeltaRest
 			return
 		}
 
-		finalProgress = PROGRESS_PERCENTAGE_BACKUP_TOTAL
+		// All blocks are written. The deferred close decides whether to report completion.
+		progressReached = PROGRESS_PERCENTAGE_BACKUP_SNAPSHOT
 	}()
 	return nil
 }
 
-func populateBlocksForIncrementalRestore(bsDriver BackupStoreDriver, lastBackup, backup *Backup) (<-chan *Block, <-chan error) {
+// sendBlock sends one block to the restore workers. It returns false if ctx is
+// cancelled first, so the sender does not block forever once the workers have
+// stopped reading.
+func sendBlock(ctx context.Context, blockChan chan<- *Block, block *Block) bool {
+	select {
+	case blockChan <- block:
+		return true
+	case <-ctx.Done():
+		return false
+	}
+}
+
+func populateBlocksForIncrementalRestore(ctx context.Context, bsDriver BackupStoreDriver, lastBackup, backup *Backup) (<-chan *Block, <-chan error) {
 	blockChan := make(chan *Block, 10)
 	errChan := make(chan error, 1)
 
@@ -1071,18 +1153,22 @@ func populateBlocksForIncrementalRestore(bsDriver BackupStoreDriver, lastBackup,
 
 		for b, l := 0, 0; b < len(backup.Blocks) || l < len(lastBackup.Blocks); {
 			if b >= len(backup.Blocks) {
-				blockChan <- &Block{
+				if !sendBlock(ctx, blockChan, &Block{
 					offset:      lastBackup.Blocks[l].Offset,
 					isZeroBlock: true,
+				}) {
+					return
 				}
 				l++
 				continue
 			}
 			if l >= len(lastBackup.Blocks) {
-				blockChan <- &Block{
+				if !sendBlock(ctx, blockChan, &Block{
 					offset:            backup.Blocks[b].Offset,
 					blockChecksum:     backup.Blocks[b].BlockChecksum,
 					compressionMethod: backup.CompressionMethod,
+				}) {
+					return
 				}
 				b++
 				continue
@@ -1092,25 +1178,31 @@ func populateBlocksForIncrementalRestore(bsDriver BackupStoreDriver, lastBackup,
 			lB := lastBackup.Blocks[l]
 			if bB.Offset == lB.Offset {
 				if bB.BlockChecksum != lB.BlockChecksum {
-					blockChan <- &Block{
+					if !sendBlock(ctx, blockChan, &Block{
 						offset:            bB.Offset,
 						blockChecksum:     bB.BlockChecksum,
 						compressionMethod: backup.CompressionMethod,
+					}) {
+						return
 					}
 				}
 				b++
 				l++
 			} else if bB.Offset < lB.Offset {
-				blockChan <- &Block{
+				if !sendBlock(ctx, blockChan, &Block{
 					offset:            bB.Offset,
 					blockChecksum:     bB.BlockChecksum,
 					compressionMethod: backup.CompressionMethod,
+				}) {
+					return
 				}
 				b++
 			} else {
-				blockChan <- &Block{
+				if !sendBlock(ctx, blockChan, &Block{
 					offset:      lB.Offset,
 					isZeroBlock: true,
+				}) {
+					return
 				}
 				l++
 			}
@@ -1120,7 +1212,7 @@ func populateBlocksForIncrementalRestore(bsDriver BackupStoreDriver, lastBackup,
 	return blockChan, errChan
 }
 
-func populateBlocksForFullRestore(bsDriver BackupStoreDriver, backup *Backup) (<-chan *Block, <-chan error) {
+func populateBlocksForFullRestore(ctx context.Context, bsDriver BackupStoreDriver, backup *Backup) (<-chan *Block, <-chan error) {
 	blockChan := make(chan *Block, 10)
 	errChan := make(chan error, 1)
 
@@ -1129,10 +1221,12 @@ func populateBlocksForFullRestore(bsDriver BackupStoreDriver, backup *Backup) (<
 		defer close(errChan)
 
 		for _, block := range backup.Blocks {
-			blockChan <- &Block{
+			if !sendBlock(ctx, blockChan, &Block{
 				offset:            block.Offset,
 				blockChecksum:     block.BlockChecksum,
 				compressionMethod: backup.CompressionMethod,
+			}) {
+				return
 			}
 		}
 	}()
@@ -1210,11 +1304,17 @@ func performIncrementalRestore(ctx context.Context, bsDriver BackupStoreDriver, 
 	var err error
 	concurrentLimit := config.ConcurrentLimit
 
+	// The restore ends with the first error or completion below. Cancel ctx so
+	// the goroutines still feeding and writing blocks exit, without relying on
+	// the caller to cancel.
+	ctx, cancel := context.WithCancel(ctx)
+	defer cancel()
+
 	progress := &progress{
 		totalBlockCounts: int64(len(backup.Blocks) + len(lastBackup.Blocks)),
 	}
 
-	blockChan, errChan := populateBlocksForIncrementalRestore(bsDriver, lastBackup, backup)
+	blockChan, errChan := populateBlocksForIncrementalRestore(ctx, bsDriver, lastBackup, backup)
 
 	errorChans := []<-chan error{errChan}
 	for i := 0; i < int(concurrentLimit); i++ {
@@ -1222,7 +1322,7 @@ func performIncrementalRestore(ctx context.Context, bsDriver BackupStoreDriver, 
 	}
 
 	mergedErrChan := mergeErrorChannels(ctx, errorChans...)
-	err = <-mergedErrChan
+	err = wrapContextErrorAsRestoreCancelled(<-mergedErrChan, srcVolumeName)
 	if err != nil {
 		logrus.WithError(err).Errorf("Failed to incrementally restore volume %v backup %v", srcVolumeName, backup.Name)
 	}

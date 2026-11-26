@@ -10,6 +10,7 @@ import (
 	"github.com/gammazero/deque"
 )
 
+// ErrStopped is returned by Do when the worker pool is stopped.
 var ErrStopped = errors.New("submitting work to stopped workerpool")
 
 // New creates and starts a pool of worker goroutines.
@@ -54,9 +55,10 @@ type WorkerPool struct {
 	stopSignal   chan struct{}
 	waitingQueue deque.Deque[func()]
 	stopLock     sync.Mutex
+	submitLock   sync.RWMutex
 	stopOnce     sync.Once
-	stopped      bool
-	waiting      int32
+	stopped      atomic.Bool
+	waiting      atomic.Int64
 	wait         bool
 }
 
@@ -66,8 +68,8 @@ func (p *WorkerPool) Size() int {
 }
 
 // Stop stops the worker pool and waits for only currently running tasks to
-// complete. Pending tasks that are not currently running are abandoned. Tasks
-// must not be submitted to the worker pool after calling stop.
+// complete. Pending tasks that are not currently running are abandoned. Once
+// stopped, Do and DoWait return ErrStopped.
 //
 // Since creating the worker pool starts at least one goroutine, for the
 // dispatcher, Stop() or StopWait() should be called when the worker pool is no
@@ -76,18 +78,16 @@ func (p *WorkerPool) Stop() {
 	p.stop(false)
 }
 
-// StopWait stops the worker pool and waits for all queued tasks tasks to
-// complete. No additional tasks may be submitted, but all pending tasks are
-// executed by workers before this function returns.
+// StopWait stops the worker pool and waits for all queued tasks to complete.
+// No additional tasks may be submitted, but all pending tasks are executed by
+// workers before this function returns.
 func (p *WorkerPool) StopWait() {
 	p.stop(true)
 }
 
 // Stopped returns true if this worker pool has been stopped.
 func (p *WorkerPool) Stopped() bool {
-	p.stopLock.Lock()
-	defer p.stopLock.Unlock()
-	return p.stopped
+	return p.stopped.Load()
 }
 
 // Do enqueues a function for a worker to execute. Returns ErrStopped if the
@@ -110,44 +110,79 @@ func (p *WorkerPool) Stopped() bool {
 // period until there are no more idle workers. Since the time to start new
 // goroutines is not significant, there is no need to retain idle workers
 // indefinitely.
-func (p *WorkerPool) Do(task func()) (err error) {
+//
+// Do is safe to call concurrently with Stop or StopWait. A task submitted
+// while the worker pool is stopping is either accepted, the same as a task
+// submitted just before stopping, or rejected with ErrStopped.
+//
+// A task that panics crashes the program, as with any goroutine. Recover
+// within the task function to prevent this.
+func (p *WorkerPool) Do(task func()) error {
 	if task == nil {
-		return
+		return nil
 	}
-	defer func() {
-		if recover() != nil {
-			err = ErrStopped
-		}
-	}()
+	// Holding submitLock for reading keeps stop from closing the taskQueue
+	// while sending to it.
+	p.submitLock.RLock()
+	defer p.submitLock.RUnlock()
+	if p.stopped.Load() {
+		return ErrStopped
+	}
 	p.taskQueue <- task
-	return
+	return nil
 }
 
-// Submit enqueues the given function without blocking. Panics if the worker
-// pool is stopped.
+// DoWait enqueues the given function and waits for it to be executed. Returns
+// ErrStopped if the worker pool is stopped, or if the worker pool is stopped
+// with Stop before the task is executed. When stopped with StopWait, the task
+// is executed before DoWait returns.
+func (p *WorkerPool) DoWait(task func()) error {
+	if task == nil {
+		return nil
+	}
+	doneChan := make(chan struct{})
+	err := p.Do(func() {
+		task()
+		close(doneChan)
+	})
+	if err != nil {
+		return err
+	}
+	select {
+	case <-doneChan:
+	case <-p.stoppedChan:
+		// The stoppedChan is closed after all workers exit, so if the task
+		// was executed then doneChan is already closed.
+		select {
+		case <-doneChan:
+		default:
+			return ErrStopped
+		}
+	}
+	return nil
+}
+
+// Submit enqueues the given function without blocking. Submit is like Do but
+// panics instead of returning ErrStopped. Use Submit when submitting to a
+// stopped worker pool is a programming error.
 func (p *WorkerPool) Submit(task func()) {
 	if err := p.Do(task); err != nil {
 		panic(err)
 	}
 }
 
-// SubmitWait enqueues the given function, without blocking, and waits for it
-// to be executed. Panics if the worker pool is stopped.
+// SubmitWait enqueues the given function and waits for it to be executed.
+// SubmitWait is like DoWait but panics instead of returning ErrStopped. Use
+// SubmitWait when submitting to a stopped worker pool is a programming error.
 func (p *WorkerPool) SubmitWait(task func()) {
-	if task == nil {
-		return
+	if err := p.DoWait(task); err != nil {
+		panic(err)
 	}
-	doneChan := make(chan struct{})
-	p.Submit(func() {
-		task()
-		close(doneChan)
-	})
-	<-doneChan
 }
 
 // WaitingQueueSize returns the count of tasks in the waiting queue.
 func (p *WorkerPool) WaitingQueueSize() int {
-	return int(atomic.LoadInt32(&p.waiting))
+	return int(p.waiting.Load())
 }
 
 // Pause causes all workers to wait on the given Context, thereby making them
@@ -165,12 +200,12 @@ func (p *WorkerPool) WaitingQueueSize() int {
 func (p *WorkerPool) Pause(ctx context.Context) {
 	p.stopLock.Lock()
 	defer p.stopLock.Unlock()
-	if p.stopped {
+	if p.stopped.Load() {
 		return
 	}
 	ready := new(sync.WaitGroup)
 	ready.Add(p.maxWorkers)
-	for i := 0; i < p.maxWorkers; i++ {
+	for range p.maxWorkers {
 		p.taskQueue <- func() {
 			ready.Done()
 			select {
@@ -228,7 +263,7 @@ Loop:
 				} else {
 					// Enqueue task to be executed by next available worker.
 					p.waitingQueue.PushBack(task)
-					atomic.StoreInt32(&p.waiting, int32(p.waitingQueue.Len()))
+					p.waiting.Store(int64(p.waitingQueue.Len()))
 				}
 			}
 			idle = false
@@ -249,6 +284,7 @@ Loop:
 	if p.wait {
 		p.runQueuedTasks()
 	}
+	p.waitingQueue = deque.Deque[func()]{}
 
 	// Stop all remaining workers as they become ready.
 	for workerCount > 0 {
@@ -278,12 +314,17 @@ func (p *WorkerPool) stop(wait bool) {
 		// workers.
 		p.stopLock.Lock()
 		// The stopped flag prevents any additional paused workers. This makes
-		// it safe to close the taskQueue.
-		p.stopped = true
+		// it safe to close the taskQueue, since no Pause can be sending to it.
+		// Do returns ErrStopped once it sees the stopped flag.
+		p.stopped.Store(true)
 		p.stopLock.Unlock()
 		p.wait = wait
 		// Close task queue and wait for currently running tasks to finish.
+		// Acquiring submitLock waits for any Do that is sending to the
+		// taskQueue, so that the close does not race with a send.
+		p.submitLock.Lock()
 		close(p.taskQueue)
+		p.submitLock.Unlock()
 	})
 	<-p.stoppedChan
 }
@@ -302,7 +343,7 @@ func (p *WorkerPool) processWaitingQueue() bool {
 		// A worker was ready, so gave task to worker.
 		p.waitingQueue.PopFront()
 	}
-	atomic.StoreInt32(&p.waiting, int32(p.waitingQueue.Len()))
+	p.waiting.Store(int64(p.waitingQueue.Len()))
 	return true
 }
 
@@ -323,6 +364,6 @@ func (p *WorkerPool) runQueuedTasks() {
 	for p.waitingQueue.Len() != 0 {
 		// A worker is ready, so give task to worker.
 		p.workerQueue <- p.waitingQueue.PopFront()
-		atomic.StoreInt32(&p.waiting, int32(p.waitingQueue.Len()))
+		p.waiting.Store(int64(p.waitingQueue.Len()))
 	}
 }
