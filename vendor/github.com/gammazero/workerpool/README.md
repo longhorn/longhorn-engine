@@ -2,9 +2,8 @@
 
 [![GoDoc](https://pkg.go.dev/badge/github.com/gammazero/workerpool)](https://pkg.go.dev/github.com/gammazero/workerpool)
 [![Build Status](https://github.com/gammazero/workerpool/actions/workflows/go.yml/badge.svg)](https://github.com/gammazero/workerpool/actions/workflows/go.yml)
-[![Go Report Card](https://goreportcard.com/badge/github.com/gammazero/workerpool)](https://goreportcard.com/report/github.com/gammazero/workerpool)
-[![codecov](https://codecov.io/gh/gammazero/workerpool/branch/master/graph/badge.svg)](https://codecov.io/gh/gammazero/workerpool)
-[![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/gammazero/workerpool/blob/master/LICENSE)
+[![codecov](https://codecov.io/gh/gammazero/workerpool/graph/badge.svg?token=9BLO50ZRY1)](https://codecov.io/gh/gammazero/workerpool)
+[![License](https://img.shields.io/badge/License-MIT-blue.svg)](https://github.com/gammazero/workerpool/blob/main/LICENSE)
 
 Concurrency limiting goroutine pool. Limits the concurrency of task execution, not the number of tasks queued. Never blocks submitting tasks, no matter how many tasks are queued.
 
@@ -17,9 +16,9 @@ This implementation builds on ideas from the following:
 
 ## Installation
 
-To install this package, you need to setup your Go workspace. The simplest way to install the library is to run:
+Add the module to your project:
 ```
-$ go get github.com/gammazero/workerpool
+go get github.com/gammazero/workerpool
 ```
 
 ## Example
@@ -37,9 +36,12 @@ func main() {
 	requests := []string{"alpha", "beta", "gamma", "delta", "epsilon"}
 
 	for _, r := range requests {
-		wp.Submit(func() {
+		err := wp.Do(func() {
 			fmt.Println("Handling request:", r)
 		})
+		if err != nil {
+			fmt.Println("Cannot handle request:", err)
+		}
 	}
 
 	wp.StopWait()

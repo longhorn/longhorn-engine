@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/fs"
 	"net/http"
 	"net/url"
 	"os"
@@ -203,6 +204,13 @@ func parseAwsError(err error) error {
 	return err
 }
 
+// isObjectNotFound reports whether err is the S3 response for a key that does
+// not exist.
+func isObjectNotFound(err error) bool {
+	var apiErr smithy.APIError
+	return errors.As(err, &apiErr) && apiErr.ErrorCode() == "NoSuchKey"
+}
+
 func (s *service) ListObjects(ctx context.Context, key, delimiter string) ([]types.Object, []types.CommonPrefix, error) {
 	svc, err := s.newInstance(ctx, false)
 	if err != nil {
@@ -372,7 +380,13 @@ func (s *service) GetObject(ctx context.Context, key string) (io.ReadCloser, err
 
 	resp, err := svc.GetObject(ctx, params)
 	if err != nil {
-		return nil, errors.Wrapf(parseAwsError(err), "failed to get object: %v", key)
+		getErr := errors.Wrapf(parseAwsError(err), "failed to get object: %v", key)
+		// parseAwsError keeps only the error text, so mark the error for
+		// callers that need to tell a missing object from other failures.
+		if isObjectNotFound(err) {
+			return nil, errors.Mark(getErr, fs.ErrNotExist)
+		}
+		return nil, getErr
 	}
 
 	return resp.Body, nil
