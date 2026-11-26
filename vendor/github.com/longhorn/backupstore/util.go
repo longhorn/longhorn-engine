@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"context"
 	"io"
+	"io/fs"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -96,6 +97,12 @@ func retryWithBackoff(ctx context.Context, f func() (io.Reader, error)) (io.Read
 			return r, nil
 		}
 		if strings.Contains(err.Error(), "checksum verification failed") || errors.Is(err, ErrBackupDecryptionFailed) {
+			return nil, err
+		}
+		// A block that does not exist in the backup store will not appear on a
+		// later attempt. Fail now so the caller can react without waiting for
+		// the whole backoff.
+		if errors.Is(err, fs.ErrNotExist) {
 			return nil, err
 		}
 		lastErr = err
