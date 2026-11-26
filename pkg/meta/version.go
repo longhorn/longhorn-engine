@@ -2,7 +2,7 @@ package meta
 
 const (
 	// CLIAPIVersion used to communicate with user e.g. longhorn-manager
-	CLIAPIVersion = 12
+	CLIAPIVersion = 13
 	// CLIAPIMinVersion is the minimum CLI API version that the engine supports. If the CLI API version of the client is lower than this, the engine will can not be used.
 	// such as longhorn-manager, CLIAPIVersion 8 is introduced at 1.5.0, and CLIAPIMinVersion 8 is introduced at 1.6.0,
 	// which means longhorn-manager lower than 1.5.0 can not work with engine 1.6.0 or later.

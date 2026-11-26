@@ -200,7 +200,7 @@ func (s *SyncAgentServer) IsRestoring() bool {
 	return s.isRestoring
 }
 
-func (s *SyncAgentServer) StartRestore(backupURL, requestedBackupName, snapshotDiskName string, concurrentLimit int) (err error) {
+func (s *SyncAgentServer) StartRestore(backupURL, requestedBackupName, snapshotDiskName string, concurrentLimit int, encryption *backupstore.EncryptionConfig) (err error) {
 	s.Lock()
 	defer s.Unlock()
 
@@ -255,12 +255,12 @@ func (s *SyncAgentServer) StartRestore(backupURL, requestedBackupName, snapshotD
 	}()
 
 	if newRestoreStatus.LastRestored == "" {
-		if err := backup.DoBackupRestore(backupURL, newRestoreStatus.ToFileName, concurrentLimit, s.RestoreInfo); err != nil {
+		if err := backup.DoBackupRestore(backupURL, newRestoreStatus.ToFileName, concurrentLimit, s.RestoreInfo, encryption); err != nil {
 			return errors.Wrapf(err, "error initiating full backup restore")
 		}
 		logrus.Infof("Successfully initiated full restore for %v to [%v]", backupURL, newRestoreStatus.ToFileName)
 	} else {
-		if err := backup.DoBackupRestoreIncrementally(backupURL, newRestoreStatus.ToFileName, newRestoreStatus.LastRestored, concurrentLimit, s.RestoreInfo); err != nil {
+		if err := backup.DoBackupRestoreIncrementally(backupURL, newRestoreStatus.ToFileName, newRestoreStatus.LastRestored, concurrentLimit, s.RestoreInfo, encryption); err != nil {
 			return errors.Wrapf(err, "error initiating incremental backup restore")
 		}
 		logrus.Infof("Successfully initiated incremental restore for %v to [%v]", backupURL, newRestoreStatus.ToFileName)
@@ -965,6 +965,11 @@ func (s *SyncAgentServer) BackupCreate(ctx context.Context, req *enginerpc.Backu
 		return nil, err
 	}
 
+	encryption, err := backupstore.NewEncryptionConfig(req.Credential)
+	if err != nil {
+		return nil, err
+	}
+
 	// Mounting NFS is part of the backup initialization, and at this stage, the backup status is not
 	// created and is not added to the BackupList.
 	//
@@ -984,6 +989,7 @@ func (s *SyncAgentServer) BackupCreate(ctx context.Context, req *enginerpc.Backu
 		StorageClassName:     req.StorageClassName,
 		Labels:               req.Labels,
 		Parameters:           req.Parameters,
+		Encryption:           encryption,
 	})
 	if err != nil {
 		logrus.WithError(err).Errorf("Failed to initialize backup %v", req.BackupName)
@@ -1100,12 +1106,17 @@ func (s *SyncAgentServer) BackupRestore(ctx context.Context, req *enginerpc.Back
 		return nil, errors.Wrapf(err, "failed to setup credential for backup %v", req.Backup)
 	}
 
+	encryption, err := backupstore.NewEncryptionConfig(req.Credential)
+	if err != nil {
+		return nil, errors.Wrapf(err, "failed to setup encryption for backup %v", req.Backup)
+	}
+
 	requestedBackupName, _, _, err := backupstore.DecodeBackupURL(util.UnescapeURL(req.Backup))
 	if err != nil {
 		return nil, err
 	}
 
-	if err := s.StartRestore(req.Backup, requestedBackupName, req.SnapshotDiskName, int(req.ConcurrentLimit)); err != nil {
+	if err := s.StartRestore(req.Backup, requestedBackupName, req.SnapshotDiskName, int(req.ConcurrentLimit), encryption); err != nil {
 		return nil, errors.Wrapf(err, "error starting backup restore")
 	}
 

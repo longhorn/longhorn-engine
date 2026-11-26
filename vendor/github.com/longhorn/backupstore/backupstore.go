@@ -33,6 +33,8 @@ type Volume struct {
 	// Both are empty for a volume that is not a linked clone.
 	LinkedCloneSourceVolume   string `json:",string"`
 	LinkedCloneSourceSnapshot string `json:",string"`
+
+	Encryption *BackupEncryption `json:"encryption,omitempty"`
 }
 
 type Snapshot struct {
@@ -64,6 +66,9 @@ type Backup struct {
 
 	Blocks     []BlockMapping `json:",omitempty"`
 	SingleFile BackupFile     `json:",omitempty"`
+
+	Encryption *BackupEncryption `json:"encryption,omitempty"`
+	cipher     *blockCipher
 }
 
 func (backup *Backup) GetBlockSize() (int64, error) {
@@ -114,6 +119,7 @@ func removeVolume(volumeName string, driver BackupStoreDriver) error {
 	volumeBlocksDirectory := getBlockPath(volumeName)
 	volumeBackupsDirectory := getBackupPath(volumeName)
 	volumeLocksDirectory := getLockPath(volumeName)
+	volumeEncryptionDirectory := getEncryptionPath(volumeName)
 	if err := driver.Remove(volumeBackupsDirectory); err != nil {
 		return errors.Wrapf(err, "failed to remove all the backups for volume %v", volumeName)
 	}
@@ -122,6 +128,9 @@ func removeVolume(volumeName string, driver BackupStoreDriver) error {
 	}
 	if err := driver.Remove(volumeLocksDirectory); err != nil {
 		return errors.Wrapf(err, "failed to remove all the locks for volume %v", volumeName)
+	}
+	if err := driver.Remove(volumeEncryptionDirectory); err != nil {
+		return errors.Wrapf(err, "failed to remove the encryption metadata for volume %v", volumeName)
 	}
 	if err := driver.Remove(volumeDir); err != nil {
 		return errors.Wrapf(err, "failed to remove backup volume %v directory in backupstore", volumeName)

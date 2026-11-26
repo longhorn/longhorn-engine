@@ -29,6 +29,7 @@ type DeltaBackupConfig struct {
 	Labels          map[string]string
 	ConcurrentLimit int32
 	Parameters      map[string]string
+	Encryption      *EncryptionConfig
 }
 
 // getBackupBlockSize returns the block size in bytes from the DeltaBackupConfig.
@@ -42,6 +43,7 @@ type DeltaRestoreConfig struct {
 	LastBackupName  string
 	Filename        string
 	ConcurrentLimit int32
+	Encryption      *EncryptionConfig
 }
 
 type BlockMapping struct {
@@ -54,6 +56,7 @@ type Block struct {
 	blockChecksum     string
 	compressionMethod string
 	isZeroBlock       bool
+	cipher            *blockCipher
 }
 
 type BlockInfo struct {
@@ -203,6 +206,11 @@ func CreateDeltaBlockBackup(backupName string, config *DeltaBackupConfig) (isInc
 
 	config.Volume.CompressionMethod = volume.CompressionMethod
 	config.Volume.DataEngine = volume.DataEngine
+	blkCipher, err := reconcileBackupEncryption(bsDriver, volume, config.Encryption)
+	if err != nil {
+		return false, err
+	}
+	config.Volume.Encryption = volume.Encryption
 	createLog = createLog.WithFields(logrus.Fields{
 		LogFieldCompressionMethod: volume.CompressionMethod,
 		LogFieldDataEngine:        volume.DataEngine,
@@ -289,6 +297,8 @@ func CreateDeltaBlockBackup(backupName string, config *DeltaBackupConfig) (isInc
 		ProcessingBlocks: &ProcessingBlocks{
 			blocks: map[string][]*BlockMapping{},
 		},
+		Encryption: volume.Encryption,
+		cipher:     blkCipher,
 	}
 
 	// keep lock alive for async go routine.
@@ -452,6 +462,12 @@ func backupBlock(bsDriver BackupStoreDriver, config *DeltaBackupConfig,
 		return err
 	}
 
+	if deltaBackup.cipher != nil {
+		if rs, err = deltaBackup.cipher.encrypt(rs); err != nil {
+			return err
+		}
+	}
+
 	dataSize, err := getTransferDataSize(rs)
 	if err != nil {
 		return errors.Wrapf(err, "failed to get transfer data size during saving blocks")
@@ -595,6 +611,7 @@ func performBackup(bsDriver BackupStoreDriver, config *DeltaBackupConfig, delta 
 	if err := saveBackup(bsDriver, &Backup{
 		Name:              deltaBackup.Name,
 		VolumeName:        deltaBackup.VolumeName,
+		Encryption:        deltaBackup.Encryption,
 		CompressionMethod: volume.CompressionMethod,
 		CreatedTime:       "",
 	}); err != nil {
@@ -693,6 +710,7 @@ func mergeSnapshotMap(deltaBackup, lastBackup *Backup) *Backup {
 		VolumeName:        deltaBackup.VolumeName,
 		SnapshotName:      deltaBackup.SnapshotName,
 		CompressionMethod: deltaBackup.CompressionMethod,
+		Encryption:        deltaBackup.Encryption,
 		Blocks:            []BlockMapping{},
 	}
 	var d, l int
@@ -877,6 +895,10 @@ func RestoreDeltaBlockBackup(ctx context.Context, config *DeltaRestoreConfig) (e
 		return err
 	}
 
+	if backup.cipher, err = loadBackupCipher(bsDriver, srcVolumeName, backup.Encryption, config.Encryption); err != nil {
+		return err
+	}
+
 	backupBlockSize, err := backup.GetBlockSize()
 	if err != nil {
 		return err
@@ -952,9 +974,9 @@ func RestoreDeltaBlockBackup(ctx context.Context, config *DeltaRestoreConfig) (e
 	return nil
 }
 
-func restoreBlockToFile(ctx context.Context, bsDriver BackupStoreDriver, volumeName string, volDev *os.File, decompression string, blockSize int64, blk BlockMapping) error {
+func restoreBlockToFile(ctx context.Context, bsDriver BackupStoreDriver, volumeName string, volDev *os.File, decompression string, blkCipher *blockCipher, blockSize int64, blk BlockMapping) error {
 	blkFile := getBlockFilePath(volumeName, blk.BlockChecksum)
-	r, err := DecompressAndVerifyWithFallback(ctx, bsDriver, blkFile, decompression, blk.BlockChecksum)
+	r, err := readBlockWithFallback(ctx, bsDriver, blkFile, decompression, blk.BlockChecksum, blkCipher)
 	if err != nil {
 		return errors.Wrapf(err, "failed to decompress and verify block %v with checksum %v", blkFile, blk.BlockChecksum)
 	}
@@ -1073,6 +1095,10 @@ func RestoreDeltaBlockBackupIncrementally(ctx context.Context, config *DeltaRest
 		return err
 	}
 
+	if backup.cipher, err = loadBackupCipher(bsDriver, srcVolumeName, backup.Encryption, config.Encryption); err != nil {
+		return err
+	}
+
 	lastBackupBlockSize, err := lastBackup.GetBlockSize()
 	if err != nil {
 		return err
@@ -1167,6 +1193,7 @@ func populateBlocksForIncrementalRestore(ctx context.Context, bsDriver BackupSto
 					offset:            backup.Blocks[b].Offset,
 					blockChecksum:     backup.Blocks[b].BlockChecksum,
 					compressionMethod: backup.CompressionMethod,
+					cipher:            backup.cipher,
 				}) {
 					return
 				}
@@ -1182,6 +1209,7 @@ func populateBlocksForIncrementalRestore(ctx context.Context, bsDriver BackupSto
 						offset:            bB.Offset,
 						blockChecksum:     bB.BlockChecksum,
 						compressionMethod: backup.CompressionMethod,
+						cipher:            backup.cipher,
 					}) {
 						return
 					}
@@ -1193,6 +1221,7 @@ func populateBlocksForIncrementalRestore(ctx context.Context, bsDriver BackupSto
 					offset:            bB.Offset,
 					blockChecksum:     bB.BlockChecksum,
 					compressionMethod: backup.CompressionMethod,
+					cipher:            backup.cipher,
 				}) {
 					return
 				}
@@ -1225,6 +1254,7 @@ func populateBlocksForFullRestore(ctx context.Context, bsDriver BackupStoreDrive
 				offset:            block.Offset,
 				blockChecksum:     block.BlockChecksum,
 				compressionMethod: backup.CompressionMethod,
+				cipher:            backup.cipher,
 			}) {
 				return
 			}
@@ -1248,7 +1278,7 @@ func restoreBlock(ctx context.Context, bsDriver BackupStoreDriver, deltaOps Delt
 		return fillZeros(volDev, block.offset, blockSize)
 	}
 
-	return restoreBlockToFile(ctx, bsDriver, volumeName, volDev, block.compressionMethod, blockSize,
+	return restoreBlockToFile(ctx, bsDriver, volumeName, volDev, block.compressionMethod, block.cipher, blockSize,
 		BlockMapping{
 			Offset:        block.offset,
 			BlockChecksum: block.blockChecksum,

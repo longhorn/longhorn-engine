@@ -31,6 +31,9 @@ const (
 	VirtualHostedStyle = "VIRTUAL_HOSTED_STYLE"
 
 	AWSSignAcceptEncoding = "AWS_SIGN_ACCEPT_ENCODING"
+
+	BackupEncryptionSecret = "LONGHORN_BACKUP_ENCRYPTION_SECRET"
+	BackupEncryptionKey    = "LONGHORN_BACKUP_ENCRYPTION_KEY"
 )
 
 type Mapping struct {
