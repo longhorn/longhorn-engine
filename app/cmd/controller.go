@@ -221,15 +221,8 @@ func startController(c *cli.Command) error {
 	if len(replicas) > 0 {
 		logrus.Infof("Starting with replicas %q", replicas)
 		if err := control.Start(volumeSize, volumeCurrentSize, replicas...); err != nil {
-			exitCode := 1
-			// Most of the time, 1 is the exit code when there's an error.
-			// The exit code will be ENODATA (61) if there is no backend.
-			// The engine controller will then catch the ENODATA.
-			if strings.Contains(err.Error(), controller.ControllerErrorNoBackendReplicaError) {
-				exitCode = int(syscall.ENODATA)
-			}
 			logrus.Error(err.Error())
-			os.Exit(exitCode)
+			os.Exit(getControllerStartExitCode(err))
 		}
 	}
 
@@ -240,6 +233,17 @@ func startController(c *cli.Command) error {
 		logrus.WithError(err).Warn("Failed to start GRPC server")
 	}
 	return control.WaitForShutdown()
+}
+
+func getControllerStartExitCode(err error) int {
+	if strings.Contains(err.Error(), controller.ControllerErrorNoBackendServiceUnavailable) {
+		return int(syscall.EHOSTUNREACH)
+	}
+	if strings.Contains(err.Error(), controller.ControllerErrorNoBackendReplicaError) {
+		return int(syscall.ENODATA)
+	}
+
+	return 1
 }
 
 func getControllerClient(c *cli.Command) (*client.ControllerClient, error) {
