@@ -5,6 +5,7 @@ import (
 	"compress/gzip"
 	"context"
 	"io"
+	"io/fs"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -32,13 +33,23 @@ func getBlockFilePath(volumeName, checksum string) string {
 	return filepath.Join(path, fileName)
 }
 
-// mergeErrorChannels will merge all error channels into a single error out channel.
-// the error out channel will be closed once the ctx is done or all error channels are closed
-// if there is an error on one of the incoming channels the error will be relayed.
+// mergeErrorChannels merges the error channels into a single output channel.
+//
+// Each input channel is expected to carry the result of one worker: the worker sends at most
+// one error and then closes the channel. Each error received is passed on to the output.
+//
+// If ctx is cancelled before an input delivers a value (even if the input closes without
+// sending), ctx.Err() is passed on instead. This way the caller sees cancellation as a
+// failure, not as a clean completion.
+//
+// The output is closed once every input has been handled: it delivered a value, it closed,
+// or the cancelled ctx cut it off.
 func mergeErrorChannels(ctx context.Context, channels ...<-chan error) <-chan error {
 	var wg sync.WaitGroup
 	wg.Add(len(channels))
 
+	// Buffered to len(channels) and each goroutine sends at most once, so no send blocks even
+	// after the caller stops reading.
 	out := make(chan error, len(channels))
 	output := func(c <-chan error) {
 		defer wg.Done()
@@ -46,10 +57,14 @@ func mergeErrorChannels(ctx context.Context, channels ...<-chan error) <-chan er
 		case err, ok := <-c:
 			if ok {
 				out <- err
+			} else if ctxErr := ctx.Err(); ctxErr != nil {
+				// The input closed while ctx was already cancelled. Both select cases were
+				// ready, and this receive case can win over ctx.Done(); send the cancellation
+				// so the caller does not read a closed output as success.
+				out <- ctxErr
 			}
-			return
 		case <-ctx.Done():
-			return
+			out <- ctx.Err()
 		}
 	}
 
@@ -82,6 +97,12 @@ func retryWithBackoff(ctx context.Context, f func() (io.Reader, error)) (io.Read
 			return r, nil
 		}
 		if strings.Contains(err.Error(), "checksum verification failed") {
+			return nil, err
+		}
+		// A block that does not exist in the backup store will not appear on a
+		// later attempt. Fail now so the caller can react without waiting for
+		// the whole backoff.
+		if errors.Is(err, fs.ErrNotExist) {
 			return nil, err
 		}
 		lastErr = err

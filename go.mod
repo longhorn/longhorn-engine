@@ -11,7 +11,7 @@ require (
 	github.com/google/uuid v1.6.0
 	github.com/gorilla/handlers v1.5.2
 	github.com/gorilla/mux v1.8.1
-	github.com/longhorn/backupstore v0.0.0-20261023052728-3d3f7521be06
+	github.com/longhorn/backupstore v0.0.0-20261126014319-1a59e1ebb9d9
 	github.com/longhorn/go-common-libs v0.0.0-20261023023359-4e90b601fcb9
 	github.com/longhorn/go-iscsi-helper v0.0.0-20261111091915-a9bc4284e8cf
 	github.com/longhorn/sparse-tools v0.0.0-20261022004111-a7caacc40965
@@ -58,7 +58,7 @@ require (
 	github.com/aws/aws-sdk-go-v2/service/sso v1.33.7 // indirect
 	github.com/aws/aws-sdk-go-v2/service/ssooidc v1.38.7 // indirect
 	github.com/aws/aws-sdk-go-v2/service/sts v1.45.7 // indirect
-	github.com/aws/smithy-go v1.28.4 // indirect
+	github.com/aws/smithy-go v1.28.6 // indirect
 	github.com/beorn7/perks v1.0.1 // indirect
 	github.com/c9s/goprocinfo v0.0.0-20210130143923-c95fcf8c64a8 // indirect
 	github.com/cespare/xxhash/v2 v2.3.0 // indirect
@@ -66,8 +66,8 @@ require (
 	github.com/cockroachdb/redact v1.1.5 // indirect
 	github.com/felixge/httpsnoop v1.1.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.9.1 // indirect
-	github.com/gammazero/deque v1.2.1 // indirect
-	github.com/gammazero/workerpool v1.2.1 // indirect
+	github.com/gammazero/deque v1.2.2 // indirect
+	github.com/gammazero/workerpool v1.3.0 // indirect
 	github.com/getsentry/sentry-go v0.46.0 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-ole/go-ole v1.3.0 // indirect
@@ -77,7 +77,7 @@ require (
 	github.com/google/flatbuffers v25.12.19+incompatible // indirect
 	github.com/gorilla/context v1.1.2 // indirect
 	github.com/gorilla/websocket v1.5.4-0.20250319132907-e064f32e3674 // indirect
-	github.com/klauspost/compress v1.19.2 // indirect
+	github.com/klauspost/compress v1.20.2 // indirect
 	github.com/klauspost/cpuid/v2 v2.4.0 // indirect
 	github.com/kr/pretty v0.3.1 // indirect
 	github.com/kr/text v0.2.0 // indirect
