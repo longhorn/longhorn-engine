@@ -13,6 +13,7 @@ import (
 	"github.com/sirupsen/logrus"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 	"k8s.io/mount-utils"
 
 	lhexec "github.com/longhorn/go-common-libs/exec"
@@ -977,13 +978,18 @@ func determineCorrectVolumeSize(volumeSize, volumeCurrentSize int64, backendSize
 	return volumeCurrentSize
 }
 
-func isBackendServiceUnavailable(errorCodes map[string]codes.Code) bool {
-	for _, code := range errorCodes {
-		if code == codes.Unavailable {
-			return true
+// isBackendServiceUnavailable returns true only when every expected backend
+// has a complete startup outcome of gRPC Unavailable.
+func isBackendServiceUnavailable(addresses []string, errorCodes map[string]codes.Code) bool {
+	if len(addresses) == 0 {
+		return false
+	}
+	for _, address := range addresses {
+		if code, exists := errorCodes[address]; !exists || code != codes.Unavailable {
+			return false
 		}
 	}
-	return false
+	return true
 }
 
 func (c *Controller) Start(volumeSize, volumeCurrentSize int64, addresses ...string) (err error) {
@@ -1023,13 +1029,14 @@ func (c *Controller) Start(volumeSize, volumeCurrentSize int64, addresses ...str
 	availableBackends := map[string]types.Backend{}
 	backendSizes := map[int64]struct{}{}
 	errorCodes := map[string]codes.Code{}
+	for _, address := range addresses {
+		errorCodes[address] = codes.Unknown
+	}
 	first := true
 	for _, address := range addresses {
 		newBackend, err := c.factory.Create(c.VolumeName, address, c.DataServerProtocol, c.sharedTimeouts, c.isUpgrade, volumeCurrentSize)
 		if err != nil {
-			if strings.Contains(err.Error(), "rpc error: code = Unavailable") {
-				errorCodes[address] = codes.Unavailable
-			}
+			errorCodes[address] = status.Code(err)
 			log.WithError(err).Warnf("Failed to create backend with address %v", address)
 			continue
 		}
@@ -1050,27 +1057,21 @@ func (c *Controller) Start(volumeSize, volumeCurrentSize int64, addresses ...str
 
 		newSize, err := newBackend.Size()
 		if err != nil {
-			if strings.Contains(err.Error(), "rpc error: code = Unavailable") {
-				errorCodes[address] = codes.Unavailable
-			}
+			errorCodes[address] = status.Code(err)
 			log.WithError(err).Warnf("Failed to get the size from the backend address %v", address)
 			continue
 		}
 
 		newSectorSize, err := newBackend.SectorSize()
 		if err != nil {
-			if strings.Contains(err.Error(), "rpc error: code = Unavailable") {
-				errorCodes[address] = codes.Unavailable
-			}
+			errorCodes[address] = status.Code(err)
 			log.WithError(err).Warnf("Failed to get the sector size from the backend address %v", address)
 			continue
 		}
 
 		state, err := newBackend.GetState()
 		if err != nil {
-			if strings.Contains(err.Error(), "rpc error: code = Unavailable") {
-				errorCodes[address] = codes.Unavailable
-			}
+			errorCodes[address] = status.Code(err)
 			log.WithError(err).Warnf("Failed to get the state from the backend address %v", address)
 			continue
 		}
@@ -1098,6 +1099,7 @@ func (c *Controller) Start(volumeSize, volumeCurrentSize int64, addresses ...str
 	for address, backend := range availableBackends {
 		size, err := backend.Size()
 		if err != nil {
+			errorCodes[address] = status.Code(err)
 			log.WithError(err).Warnf("Failed to get the size from the backend address %v", address)
 			delete(availableBackends, address)
 			continue
@@ -1123,7 +1125,7 @@ func (c *Controller) Start(volumeSize, volumeCurrentSize int64, addresses ...str
 	}
 
 	if len(availableBackends) == 0 {
-		if isBackendServiceUnavailable(errorCodes) {
+		if isBackendServiceUnavailable(addresses, errorCodes) {
 			return fmt.Errorf(ControllerErrorNoBackendServiceUnavailable+" from the addresses %+v", addresses)
 		}
 		return fmt.Errorf(ControllerErrorNoBackendReplicaError+" from the addresses %+v", addresses)

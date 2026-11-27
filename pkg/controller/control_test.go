@@ -9,6 +9,7 @@ import (
 	"testing"
 	"time"
 
+	"google.golang.org/grpc/codes"
 	. "gopkg.in/check.v1"
 
 	diskutil "github.com/longhorn/longhorn-engine/pkg/util/disk"
@@ -22,6 +23,37 @@ type TestSuite struct {
 }
 
 var _ = Suite(&TestSuite{})
+
+func (s *TestSuite) TestIsBackendServiceUnavailable(c *C) {
+	testCases := []struct {
+		name       string
+		addresses  []string
+		errorCodes map[string]codes.Code
+		expected   bool
+	}{
+		{
+			name:       "all backends unavailable",
+			addresses:  []string{"tcp://replica-1", "tcp://replica-2"},
+			errorCodes: map[string]codes.Code{"tcp://replica-1": codes.Unavailable, "tcp://replica-2": codes.Unavailable},
+			expected:   true,
+		},
+		{
+			name:       "mixed unavailable and unknown",
+			addresses:  []string{"tcp://replica-1", "tcp://replica-2"},
+			errorCodes: map[string]codes.Code{"tcp://replica-1": codes.Unavailable, "tcp://replica-2": codes.Unknown},
+		},
+		{
+			name:       "missing backend outcome",
+			addresses:  []string{"tcp://replica-1", "tcp://replica-2"},
+			errorCodes: map[string]codes.Code{"tcp://replica-1": codes.Unavailable},
+		},
+		{name: "empty input", addresses: nil, errorCodes: map[string]codes.Code{}},
+	}
+
+	for _, tc := range testCases {
+		c.Assert(isBackendServiceUnavailable(tc.addresses, tc.errorCodes), Equals, tc.expected, Commentf(tc.name))
+	}
+}
 
 type testset struct {
 	volumeSize        int64
