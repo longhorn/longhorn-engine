@@ -31,6 +31,13 @@ const (
 	scanModeManual = "manual"
 	scanModeAuto   = "auto"
 	ScanTimeout    = 10 * time.Second
+
+	// defaultISCSIPort is the only portal port that callers can express,
+	// because portals are passed around as a bare IP.
+	defaultISCSIPort = "3260"
+
+	// iscsiErrNoObjsFound is iscsiadm's ISCSI_ERR_NO_OBJS_FOUND exit code.
+	iscsiErrNoObjsFound = 21
 )
 
 func CheckForInitiatorExistence(nsexec *lhns.Executor) error {
@@ -109,6 +116,8 @@ func IsTargetDiscovered(ip, target string, nsexec *lhns.Executor) bool {
 }
 
 func LoginTarget(ip, target string, nsexec *lhns.Executor) error {
+	// Login may wait for SCSI scan I/O, so callers must not hold locks that
+	// prevent the frontend from serving READs.
 	opts := []string{
 		"-m", "node",
 		"-T", target,
@@ -116,25 +125,37 @@ func LoginTarget(ip, target string, nsexec *lhns.Executor) error {
 		"--login",
 	}
 	_, err := nsexec.Execute(nil, iscsiBinary, opts, lhtypes.ExecuteDefaultTimeout)
-	if err != nil {
-		return err
-	}
+	return err
+}
 
+// ScanAndGetDevice rescans the session if node.session.scan is manual, since
+// login does not trigger a SCSI scan in that mode. It then waits for the kernel
+// block device to show up after synchronous login and applies the SCSI device
+// timeout.
+func ScanAndGetDevice(ip, target string, lun int, scsiTimeout int64, nsexec *lhns.Executor) (*lhtypes.BlockDeviceInfo, error) {
 	scanMode, err := getIscsiNodeSessionScanMode(ip, target, nsexec)
 	if err != nil {
-		return errors.Wrap(err, "Failed to get node.session.scan mode")
+		return nil, errors.Wrap(err, "Failed to get node.session.scan mode")
 	}
 
 	if scanMode == scanModeManual {
 		logrus.Infof("Manually rescan LUNs of the target %v:%v", target, ip)
 		if err := manualScanSession(ip, target, nsexec); err != nil {
-			return errors.Wrapf(err, "failed to manually rescan iscsi session of target %v:%v", target, ip)
+			return nil, errors.Wrapf(err, "failed to manually rescan iscsi session of target %v:%v", target, ip)
 		}
 	} else {
 		logrus.Infof("default: automatically rescan all LUNs of all iscsi sessions")
 	}
 
-	return nil
+	dev, err := GetDevice(ip, target, lun, nsexec)
+	if err != nil {
+		return nil, err
+	}
+	if err := UpdateScsiDeviceTimeout(dev.Name, scsiTimeout, nsexec); err != nil {
+		return nil, err
+	}
+
+	return dev, nil
 }
 
 // LogoutTarget will logout all sessions if ip == ""
@@ -197,6 +218,79 @@ func IsTargetLoggedIn(ip, target string, nsexec *lhns.Executor) bool {
 	}
 
 	return found
+}
+
+// GetTargetSessionIP returns the persistent portal IP of target, as printed by
+// iscsiadm's detailed session listing without brackets or port. open-iscsi
+// matches sessions and node records by the persistent portal, which is the
+// address used at login. No matching session, including iscsiadm exit code 21,
+// returns an empty IP and nil error. Repeated sessions at the same portal are
+// accepted; distinct portals are an error rather than an arbitrary choice.
+// Non-default ports are rejected because callers use bare IPs with the default
+// iSCSI port. All other command/parse errors propagate.
+func GetTargetSessionIP(target string, nsexec *lhns.Executor) (string, error) {
+	output, err := nsexec.Execute(nil, iscsiBinary, []string{"-m", "session", "-P", "3"}, lhtypes.ExecuteDefaultTimeout)
+	if err != nil {
+		if isNoSessionError(err) {
+			return "", nil
+		}
+		return "", errors.Wrap(err, "failed to list iSCSI sessions")
+	}
+	return parseTargetSessionIP(output, target)
+}
+
+// isNoSessionError reports whether iscsiadm exited with ISCSI_ERR_NO_OBJS_FOUND,
+// which it returns when there are no sessions at all.
+func isNoSessionError(err error) bool {
+	var exitErr interface{ ExitCode() int }
+	return errors.As(err, &exitErr) && exitErr.ExitCode() == iscsiErrNoObjsFound
+}
+
+func parseTargetSessionIP(output, target string) (string, error) {
+	ip := ""
+	inTarget, hasPortal := false, false
+	scanner := bufio.NewScanner(strings.NewReader(output))
+	for scanner.Scan() {
+		line := strings.TrimSpace(scanner.Text())
+		if value, ok := strings.CutPrefix(line, "Target: "); ok {
+			if inTarget && !hasPortal {
+				return "", fmt.Errorf("no persistent portal in session for target %s", target)
+			}
+			fields := strings.Fields(value)
+			inTarget = len(fields) > 0 && fields[0] == target
+			hasPortal = false
+			continue
+		}
+		value, ok := strings.CutPrefix(line, "Persistent Portal: ")
+		if !inTarget || !ok {
+			continue
+		}
+
+		portal, _, _ := strings.Cut(value, ",")
+		host, port, err := net.SplitHostPort(portal)
+		if err != nil || net.ParseIP(host) == nil {
+			return "", fmt.Errorf("invalid persistent portal %q for target %s", value, target)
+		}
+		if port != defaultISCSIPort {
+			return "", fmt.Errorf("unsupported persistent portal port %q for target %s, only %s is supported", port, target, defaultISCSIPort)
+		}
+		// Return the address as printed, which is the node record address that
+		// discovery, rescan, and device lookup match; compare canonical forms.
+		if ip != "" && !net.ParseIP(ip).Equal(net.ParseIP(host)) {
+			return "", fmt.Errorf("target %s has sessions on distinct portals %s and %s", target, ip, host)
+		}
+		if ip == "" {
+			ip = host
+		}
+		hasPortal = true
+	}
+	if err := scanner.Err(); err != nil {
+		return "", errors.Wrap(err, "failed to parse iSCSI sessions")
+	}
+	if inTarget && !hasPortal {
+		return "", fmt.Errorf("no persistent portal in session for target %s", target)
+	}
+	return ip, nil
 }
 
 func manualScanSession(ip, target string, nsexec *lhns.Executor) error {
